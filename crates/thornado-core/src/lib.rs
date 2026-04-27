@@ -4,10 +4,19 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
+mod stark;
+pub use stark::{
+    prove_stark_withdrawal, stark_field_from_bytes, stark_field_from_string, stark_field_from_u64,
+    stark_merkle_path, verify_stark_withdrawal, StarkMerklePath, StarkProofVerifier,
+    TornadoStarkProof, STARK_MERKLE_DEPTH,
+};
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub const DOMAIN: &str = "thornado-mvp-v1";
 pub const SNAPSHOT_VERSION: u32 = 1;
+pub const DEFAULT_SIGNER_COUNT: u16 = 5;
+pub const DEFAULT_DEPOSIT_POW_DIFFICULTY_BITS: u8 = 16;
 pub const DEFAULT_FEE_BUCKET_TARGET_SATS: u64 = 30 * 1_000_000;
 pub const DEFAULT_DENOMINATIONS_SATS: [u64; 4] =
     [1_000_000_000, 100_000_000, 10_000_000, 1_000_000];
@@ -16,6 +25,8 @@ pub const DEFAULT_DENOMINATIONS_SATS: [u64; 4] =
 pub enum Error {
     #[error("invalid proof")]
     InvalidProof,
+    #[error("invalid field element")]
+    InvalidFieldElement,
     #[error("deposit intent not found")]
     DepositNotFound,
     #[error("deposit is not confirmed")]
@@ -26,6 +37,10 @@ pub enum Error {
     DepositTooSmall,
     #[error("note commitments do not match the greedy denomination split")]
     InvalidNoteCommitments,
+    #[error("invalid deposit proof of work")]
+    InvalidDepositPow,
+    #[error("deposit proof of work token was already used")]
+    DuplicateDepositPow,
     #[error("unsupported snapshot version {0}")]
     UnsupportedSnapshotVersion(u32),
     #[error("unknown denomination")]
@@ -34,18 +49,25 @@ pub enum Error {
     UnknownMerkleRoot,
     #[error("unknown note commitment")]
     UnknownCommitment,
+    #[error("unknown withdrawal")]
+    UnknownWithdrawal,
     #[error("nullifier has already been spent")]
     DuplicateNullifier,
     #[error("io error: {0}")]
     Io(String),
     #[error("json error: {0}")]
     Json(String),
+    #[error("frost error: {0}")]
+    Frost(String),
+    #[error("stark error: {0}")]
+    Stark(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Command {
     RequestDepositAddress {
         pow_token: String,
+        user_pubkey: String,
     },
     ObserveDeposit {
         intent_id: String,
@@ -78,10 +100,15 @@ pub enum Command {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Event {
+    CustodyKeysetGenerated {
+        epoch: u64,
+        keyset: FrostKeyset,
+    },
     DepositIntentCreated {
         intent_id: String,
         deposit_address: String,
         pow_token: String,
+        user_pubkey: String,
     },
     DepositObserved {
         intent_id: String,
@@ -106,7 +133,7 @@ pub enum Event {
         amount_sats: u64,
         fee_sats: u64,
         nullifier_hash: String,
-        signature: MockSignature,
+        signature: CustodySignature,
     },
     FeeCharged {
         amount_sats: u64,
@@ -134,6 +161,7 @@ pub enum Event {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AppState {
+    pub custody: CustodyState,
     pub deposits: DepositState,
     pub notes: NoteState,
     pub fees: FeeState,
@@ -146,6 +174,7 @@ pub struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
+            custody: CustodyState::default(),
             deposits: DepositState::default(),
             notes: NoteState::new(DEFAULT_DENOMINATIONS_SATS),
             fees: FeeState::default(),
@@ -158,8 +187,17 @@ impl Default for AppState {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CustodyState {
+    pub active_epoch: u64,
+    pub active_group_public_key: String,
+    pub keysets: BTreeMap<u64, FrostKeyset>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DepositState {
     pub intents: BTreeMap<String, DepositIntent>,
+    #[serde(default)]
+    pub used_pow_tokens: BTreeSet<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -167,6 +205,8 @@ pub struct DepositIntent {
     pub id: String,
     pub deposit_address: String,
     pub pow_token: String,
+    #[serde(default)]
+    pub user_pubkey: String,
     pub txid: Option<String>,
     pub amount_sats: Option<u64>,
     pub confirmed: bool,
@@ -208,6 +248,15 @@ impl DenominationTree {
     pub fn root(&self) -> String {
         merkle_root(&self.leaves)
     }
+
+    pub fn path_for_commitment(&self, commitment: &str) -> Result<StarkMerklePath> {
+        let index = self
+            .leaves
+            .iter()
+            .position(|leaf| leaf == commitment)
+            .ok_or(Error::UnknownCommitment)?;
+        stark_merkle_path(&self.leaves, index)
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -237,7 +286,7 @@ pub struct AuthorizedWithdrawal {
     pub amount_sats: u64,
     pub fee_sats: u64,
     pub nullifier_hash: String,
-    pub signature: MockSignature,
+    pub signature: CustodySignature,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -281,6 +330,8 @@ pub struct WithdrawalProof {
     pub secret: String,
     pub commitment: String,
     pub merkle_root: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stark: Option<TornadoStarkProof>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -290,6 +341,12 @@ pub struct WithdrawalPublicInputs {
     pub recipient: String,
     pub fee_sats: u64,
     pub merkle_root: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recipient_field: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relayer_field: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub refund_field: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -302,9 +359,41 @@ pub struct WithdrawalRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct MockSignature {
+pub struct CustodySignature {
+    pub scheme: String,
     pub signer: String,
-    pub digest: String,
+    pub message_digest: String,
+    pub group_public_key: String,
+    pub signature: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct FrostKeyset {
+    pub epoch: u64,
+    pub threshold: u16,
+    pub max_signers: u16,
+    pub group_public_key: String,
+    pub public_key_package: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct FrostSignerNode {
+    identifier: frost_secp256k1::Identifier,
+    key_package: frost_secp256k1::keys::KeyPackage,
+}
+
+#[derive(Debug)]
+struct FrostSignerRound1 {
+    identifier: frost_secp256k1::Identifier,
+    nonces: frost_secp256k1::round1::SigningNonces,
+    commitments: frost_secp256k1::round1::SigningCommitments,
+}
+
+#[derive(Debug, Clone)]
+pub struct FrostSigningCoordinator {
+    public_key_package: frost_secp256k1::keys::PublicKeyPackage,
+    threshold: u16,
+    max_signers: u16,
 }
 
 pub trait ProofVerifier {
@@ -313,10 +402,14 @@ pub trait ProofVerifier {
         proof: &WithdrawalProof,
         public: &WithdrawalPublicInputs,
     ) -> Result<()>;
+
+    fn reveals_commitment(&self) -> bool {
+        true
+    }
 }
 
 pub trait CustodySigner {
-    fn authorize_withdrawal(&self, request: &WithdrawalRequest) -> Result<MockSignature>;
+    fn authorize_withdrawal(&self, request: &WithdrawalRequest) -> Result<CustodySignature>;
 }
 
 #[derive(Debug, Default, Clone)]
@@ -347,11 +440,299 @@ impl ProofVerifier for MockProofVerifier {
 pub struct MockCustodySigner;
 
 impl CustodySigner for MockCustodySigner {
-    fn authorize_withdrawal(&self, request: &WithdrawalRequest) -> Result<MockSignature> {
-        Ok(MockSignature {
+    fn authorize_withdrawal(&self, request: &WithdrawalRequest) -> Result<CustodySignature> {
+        let message = withdrawal_signing_message(request)?;
+        Ok(CustodySignature {
+            scheme: "mock-sha256".to_string(),
             signer: "mock-frost-quorum".to_string(),
-            digest: hash_json(request),
+            message_digest: hash_bytes(&message),
+            group_public_key: "mock".to_string(),
+            signature: hash_bytes(&message),
         })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FrostCustodySigner {
+    key_packages: BTreeMap<frost_secp256k1::Identifier, frost_secp256k1::keys::KeyPackage>,
+    public_key_package: frost_secp256k1::keys::PublicKeyPackage,
+    threshold: u16,
+}
+
+impl FrostSignerNode {
+    fn new(
+        identifier: frost_secp256k1::Identifier,
+        key_package: frost_secp256k1::keys::KeyPackage,
+    ) -> Self {
+        Self {
+            identifier,
+            key_package,
+        }
+    }
+
+    pub fn identifier_hex(&self) -> String {
+        hex::encode(self.identifier.serialize())
+    }
+
+    fn round1_commit(&self) -> FrostSignerRound1 {
+        let mut rng = rand_core::OsRng;
+        let (nonces, commitments) =
+            frost_secp256k1::round1::commit(self.key_package.signing_share(), &mut rng);
+        FrostSignerRound1 {
+            identifier: self.identifier,
+            nonces,
+            commitments,
+        }
+    }
+
+    fn sign_share(
+        &self,
+        signing_package: &frost_secp256k1::SigningPackage,
+        nonces: &frost_secp256k1::round1::SigningNonces,
+    ) -> Result<frost_secp256k1::round2::SignatureShare> {
+        frost_secp256k1::round2::sign(signing_package, nonces, &self.key_package)
+            .map_err(frost_error)
+    }
+}
+
+impl FrostSigningCoordinator {
+    pub fn new(keyset: &FrostKeyset) -> Result<Self> {
+        let public_key_package_bytes = hex::decode(&keyset.public_key_package)
+            .map_err(|e| Error::Frost(format!("invalid public key package hex: {e}")))?;
+        let public_key_package =
+            frost_secp256k1::keys::PublicKeyPackage::deserialize(&public_key_package_bytes)
+                .map_err(frost_error)?;
+        Ok(Self {
+            public_key_package,
+            threshold: keyset.threshold,
+            max_signers: keyset.max_signers,
+        })
+    }
+
+    pub fn sign_with_nodes(
+        &self,
+        request: &WithdrawalRequest,
+        signers: &[FrostSignerNode],
+    ) -> Result<CustodySignature> {
+        if signers.len() < self.threshold as usize {
+            return Err(Error::Frost(format!(
+                "insufficient FROST signers: need {}, got {}",
+                self.threshold,
+                signers.len()
+            )));
+        }
+
+        let selected = &signers[..self.threshold as usize];
+        let message = withdrawal_signing_message(request)?;
+        let rounds = selected
+            .iter()
+            .map(FrostSignerNode::round1_commit)
+            .collect::<Vec<_>>();
+        let commitments = rounds
+            .iter()
+            .map(|round| (round.identifier, round.commitments.clone()))
+            .collect::<BTreeMap<_, _>>();
+        let signing_package = frost_secp256k1::SigningPackage::new(commitments, &message);
+        let mut signature_shares = BTreeMap::new();
+
+        for (signer, round) in selected.iter().zip(rounds.iter()) {
+            let share = signer.sign_share(&signing_package, &round.nonces)?;
+            signature_shares.insert(round.identifier, share);
+        }
+
+        let signature = frost_secp256k1::aggregate(
+            &signing_package,
+            &signature_shares,
+            &self.public_key_package,
+        )
+        .map_err(frost_error)?;
+        self.public_key_package
+            .verifying_key()
+            .verify(&message, &signature)
+            .map_err(frost_error)?;
+
+        Ok(CustodySignature {
+            scheme: "frost-secp256k1-sha256".to_string(),
+            signer: format!("frost-{}-of-{}", self.threshold, self.max_signers),
+            message_digest: hash_bytes(&message),
+            group_public_key: self.group_public_key_hex()?,
+            signature: signature
+                .serialize()
+                .map(hex::encode)
+                .map_err(frost_error)?,
+        })
+    }
+
+    pub fn group_public_key_hex(&self) -> Result<String> {
+        self.public_key_package
+            .verifying_key()
+            .serialize()
+            .map(hex::encode)
+            .map_err(frost_error)
+    }
+}
+
+impl FrostCustodySigner {
+    pub fn generate_with_dkg(max_signers: u16, threshold: u16) -> Result<Self> {
+        let mut rng = rand_core::OsRng;
+        let mut round1_secret_packages = BTreeMap::new();
+        let mut received_round1_packages: BTreeMap<
+            frost_secp256k1::Identifier,
+            BTreeMap<frost_secp256k1::Identifier, frost_secp256k1::keys::dkg::round1::Package>,
+        > = BTreeMap::new();
+
+        for participant_index in 1..=max_signers {
+            let participant_identifier: frost_secp256k1::Identifier = participant_index
+                .try_into()
+                .map_err(|e| Error::Frost(format!("invalid participant id: {e:?}")))?;
+            let (round1_secret_package, round1_package) = frost_secp256k1::keys::dkg::part1(
+                participant_identifier,
+                max_signers,
+                threshold,
+                &mut rng,
+            )
+            .map_err(frost_error)?;
+            round1_secret_packages.insert(participant_identifier, round1_secret_package);
+
+            for receiver_index in 1..=max_signers {
+                if receiver_index == participant_index {
+                    continue;
+                }
+                let receiver_identifier: frost_secp256k1::Identifier = receiver_index
+                    .try_into()
+                    .map_err(|e| Error::Frost(format!("invalid participant id: {e:?}")))?;
+                received_round1_packages
+                    .entry(receiver_identifier)
+                    .or_default()
+                    .insert(participant_identifier, round1_package.clone());
+            }
+        }
+
+        let mut round2_secret_packages = BTreeMap::new();
+        let mut received_round2_packages: BTreeMap<
+            frost_secp256k1::Identifier,
+            BTreeMap<frost_secp256k1::Identifier, frost_secp256k1::keys::dkg::round2::Package>,
+        > = BTreeMap::new();
+
+        for participant_index in 1..=max_signers {
+            let participant_identifier: frost_secp256k1::Identifier = participant_index
+                .try_into()
+                .map_err(|e| Error::Frost(format!("invalid participant id: {e:?}")))?;
+            let round1_secret_package = round1_secret_packages
+                .remove(&participant_identifier)
+                .ok_or_else(|| Error::Frost("missing DKG round 1 secret package".to_string()))?;
+            let round1_packages = received_round1_packages
+                .get(&participant_identifier)
+                .ok_or_else(|| Error::Frost("missing DKG round 1 packages".to_string()))?;
+            let (round2_secret_package, round2_packages) =
+                frost_secp256k1::keys::dkg::part2(round1_secret_package, round1_packages)
+                    .map_err(frost_error)?;
+            round2_secret_packages.insert(participant_identifier, round2_secret_package);
+
+            for (receiver_identifier, round2_package) in round2_packages {
+                received_round2_packages
+                    .entry(receiver_identifier)
+                    .or_default()
+                    .insert(participant_identifier, round2_package);
+            }
+        }
+
+        let mut key_packages = BTreeMap::new();
+        let mut public_key_package = None;
+        for participant_index in 1..=max_signers {
+            let participant_identifier: frost_secp256k1::Identifier = participant_index
+                .try_into()
+                .map_err(|e| Error::Frost(format!("invalid participant id: {e:?}")))?;
+            let round2_secret_package = round2_secret_packages
+                .get(&participant_identifier)
+                .ok_or_else(|| Error::Frost("missing DKG round 2 secret package".to_string()))?;
+            let round1_packages = received_round1_packages
+                .get(&participant_identifier)
+                .ok_or_else(|| Error::Frost("missing DKG round 1 packages".to_string()))?;
+            let round2_packages = received_round2_packages
+                .get(&participant_identifier)
+                .ok_or_else(|| Error::Frost("missing DKG round 2 packages".to_string()))?;
+            let (key_package, participant_public_key_package) = frost_secp256k1::keys::dkg::part3(
+                round2_secret_package,
+                round1_packages,
+                round2_packages,
+            )
+            .map_err(frost_error)?;
+            if let Some(public_key_package) = &public_key_package {
+                if public_key_package != &participant_public_key_package {
+                    return Err(Error::Frost(
+                        "DKG participants produced inconsistent public key packages".to_string(),
+                    ));
+                }
+            } else {
+                public_key_package = Some(participant_public_key_package);
+            }
+            key_packages.insert(participant_identifier, key_package);
+        }
+
+        Ok(Self {
+            key_packages,
+            public_key_package: public_key_package
+                .ok_or_else(|| Error::Frost("DKG produced no public key package".to_string()))?,
+            threshold,
+        })
+    }
+
+    pub fn generate_keyset_with_dkg(
+        epoch: u64,
+        max_signers: u16,
+        threshold: u16,
+    ) -> Result<FrostKeyset> {
+        Self::generate_with_dkg(max_signers, threshold)?.to_keyset(epoch)
+    }
+
+    pub fn signer_nodes(&self) -> Vec<FrostSignerNode> {
+        self.key_packages
+            .iter()
+            .map(|(identifier, key_package)| FrostSignerNode::new(*identifier, key_package.clone()))
+            .collect()
+    }
+
+    pub fn coordinator(&self) -> FrostSigningCoordinator {
+        FrostSigningCoordinator {
+            public_key_package: self.public_key_package.clone(),
+            threshold: self.threshold,
+            max_signers: self.key_packages.len() as u16,
+        }
+    }
+
+    pub fn to_keyset(&self, epoch: u64) -> Result<FrostKeyset> {
+        Ok(FrostKeyset {
+            epoch,
+            threshold: self.threshold,
+            max_signers: self.key_packages.len() as u16,
+            group_public_key: self.group_public_key_hex()?,
+            public_key_package: self
+                .public_key_package
+                .serialize()
+                .map(hex::encode)
+                .map_err(frost_error)?,
+        })
+    }
+
+    pub fn demo_67_percent() -> Result<Self> {
+        let max_signers = 5;
+        Self::generate_with_dkg(max_signers, frost_threshold_for_committee(max_signers))
+    }
+
+    pub fn group_public_key_hex(&self) -> Result<String> {
+        self.public_key_package
+            .verifying_key()
+            .serialize()
+            .map(hex::encode)
+            .map_err(frost_error)
+    }
+}
+
+impl CustodySigner for FrostCustodySigner {
+    fn authorize_withdrawal(&self, request: &WithdrawalRequest) -> Result<CustodySignature> {
+        self.coordinator()
+            .sign_with_nodes(request, &self.signer_nodes())
     }
 }
 
@@ -362,16 +743,26 @@ pub fn execute_command<V: ProofVerifier, S: CustodySigner>(
     signer: &S,
 ) -> Result<Vec<Event>> {
     match command {
-        Command::RequestDepositAddress { pow_token } => {
+        Command::RequestDepositAddress {
+            pow_token,
+            user_pubkey,
+        } => {
+            verify_deposit_pow(&pow_token)?;
+            if state.deposits.used_pow_tokens.contains(&pow_token) {
+                return Err(Error::DuplicateDepositPow);
+            }
+            let mut events = ensure_active_keyset(state)?;
             let id = format!("dep-{}", state.next_deposit_id);
-            let address = format!("tb1qmock{}", state.next_deposit_id);
+            let address = derive_deposit_address(state, &id, &pow_token, &user_pubkey)?;
             let event = Event::DepositIntentCreated {
                 intent_id: id,
                 deposit_address: address,
                 pow_token,
+                user_pubkey,
             };
             apply_event(state, event.clone())?;
-            Ok(vec![event])
+            events.push(event);
+            Ok(events)
         }
         Command::ObserveDeposit {
             intent_id,
@@ -401,11 +792,20 @@ pub fn execute_command<V: ProofVerifier, S: CustodySigner>(
             withdraw_note(state, proof, public, verifier, signer)
         }
         Command::StartChurnEpoch => {
-            let event = Event::ChurnEpochStarted {
-                epoch: state.churn.epoch + 1,
+            let next_epoch = state.churn.epoch + 1;
+            let event = Event::ChurnEpochStarted { epoch: next_epoch };
+            let keyset = FrostCustodySigner::generate_keyset_with_dkg(
+                next_epoch,
+                DEFAULT_SIGNER_COUNT,
+                frost_threshold_for_committee(DEFAULT_SIGNER_COUNT),
+            )?;
+            let keyset_event = Event::CustodyKeysetGenerated {
+                epoch: next_epoch,
+                keyset,
             };
             apply_event(state, event.clone())?;
-            Ok(vec![event])
+            apply_event(state, keyset_event.clone())?;
+            Ok(vec![event, keyset_event])
         }
         Command::MarkNodeOffline { node_id } => {
             let event = Event::NodeMarkedOffline {
@@ -450,17 +850,25 @@ pub fn execute_command<V: ProofVerifier, S: CustodySigner>(
 
 pub fn apply_event(state: &mut AppState, event: Event) -> Result<()> {
     match event {
+        Event::CustodyKeysetGenerated { epoch, keyset } => {
+            state.custody.active_epoch = epoch;
+            state.custody.active_group_public_key = keyset.group_public_key.clone();
+            state.custody.keysets.insert(epoch, keyset);
+        }
         Event::DepositIntentCreated {
             intent_id,
             deposit_address,
             pow_token,
+            user_pubkey,
         } => {
+            state.deposits.used_pow_tokens.insert(pow_token.clone());
             state.deposits.intents.insert(
                 intent_id.clone(),
                 DepositIntent {
                     id: intent_id,
                     deposit_address,
                     pow_token,
+                    user_pubkey,
                     txid: None,
                     amount_sats: None,
                     confirmed: false,
@@ -623,34 +1031,18 @@ pub fn state_hash(state: &AppState) -> String {
 }
 
 pub fn note_commitment(nullifier: &str, secret: &str, denomination_sats: u64) -> String {
-    hash_parts(&[
-        DOMAIN,
-        "commitment",
-        nullifier,
-        secret,
-        &denomination_sats.to_string(),
-    ])
+    let nullifier = stark_field_from_string(nullifier);
+    let secret = stark_field_from_string(secret);
+    let denomination = stark_field_from_u64(denomination_sats);
+    stark::algebraic_hash3(nullifier, secret, denomination)
 }
 
 pub fn nullifier_hash(nullifier: &str) -> String {
-    hash_parts(&[DOMAIN, "nullifier", nullifier])
+    stark::algebraic_hash1(stark_field_from_string(nullifier))
 }
 
 pub fn merkle_root(leaves: &[String]) -> String {
-    if leaves.is_empty() {
-        return hash_parts(&[DOMAIN, "empty-tree"]);
-    }
-
-    let mut level = leaves.to_vec();
-    while level.len() > 1 {
-        let mut next = Vec::new();
-        for pair in level.chunks(2) {
-            let right = pair.get(1).unwrap_or(&pair[0]);
-            next.push(hash_parts(&[DOMAIN, "node", &pair[0], right]));
-        }
-        level = next;
-    }
-    level[0].clone()
+    stark::fixed_depth_merkle_root(leaves)
 }
 
 pub fn withdrawal_from_receipt(
@@ -664,6 +1056,7 @@ pub fn withdrawal_from_receipt(
         secret: receipt.secret.clone(),
         commitment: receipt.commitment.clone(),
         merkle_root: merkle_root.clone(),
+        stark: None,
     };
     let public = WithdrawalPublicInputs {
         nullifier_hash: nullifier_hash(&receipt.nullifier),
@@ -671,8 +1064,172 @@ pub fn withdrawal_from_receipt(
         recipient,
         fee_sats,
         merkle_root,
+        recipient_field: None,
+        relayer_field: None,
+        refund_field: None,
     };
     (proof, public)
+}
+
+pub fn stark_withdrawal_from_receipt(
+    receipt: &NoteReceipt,
+    tree: &DenominationTree,
+    recipient: String,
+    fee_sats: u64,
+) -> Result<(WithdrawalProof, WithdrawalPublicInputs)> {
+    let path = tree.path_for_commitment(&receipt.commitment)?;
+    let recipient_field = stark_field_from_bytes(recipient.as_bytes());
+    let relayer_field = stark_field_from_u64(0);
+    let refund_field = stark_field_from_u64(0);
+    let public = WithdrawalPublicInputs {
+        nullifier_hash: nullifier_hash(&receipt.nullifier),
+        denomination_sats: receipt.denomination_sats,
+        recipient,
+        fee_sats,
+        merkle_root: tree.root(),
+        recipient_field: Some(recipient_field),
+        relayer_field: Some(relayer_field),
+        refund_field: Some(refund_field),
+    };
+    let stark = prove_stark_withdrawal(
+        &receipt.nullifier,
+        &receipt.secret,
+        receipt.denomination_sats,
+        &path,
+        &public,
+    )?;
+    let proof = WithdrawalProof {
+        nullifier: String::new(),
+        secret: String::new(),
+        commitment: String::new(),
+        merkle_root: public.merkle_root.clone(),
+        stark: Some(stark),
+    };
+    Ok((proof, public))
+}
+
+pub fn active_custody_public_key(state: &AppState) -> Option<&str> {
+    (!state.custody.active_group_public_key.is_empty())
+        .then_some(state.custody.active_group_public_key.as_str())
+}
+
+pub fn derive_deposit_address(
+    state: &AppState,
+    intent_id: &str,
+    pow_token: &str,
+    user_pubkey: &str,
+) -> Result<String> {
+    let public_key = active_custody_public_key(state)
+        .ok_or_else(|| Error::Frost("missing active custody keyset".to_string()))?;
+    let hidden_tap_node = hash_parts_bytes(&[
+        DOMAIN,
+        "deposit-address",
+        &state.custody.active_epoch.to_string(),
+        public_key,
+        user_pubkey,
+        intent_id,
+        pow_token,
+    ]);
+    let group_key_bytes = hex::decode(public_key)
+        .map_err(|e| Error::Frost(format!("invalid custody public key hex: {e}")))?;
+    let group_key = bitcoin::secp256k1::PublicKey::from_slice(&group_key_bytes)
+        .map_err(|e| Error::Frost(format!("invalid custody public key: {e}")))?;
+    let (internal_key, _) = group_key.x_only_public_key();
+    let merkle_root = bitcoin::taproot::TapNodeHash::assume_hidden(
+        hidden_tap_node
+            .try_into()
+            .expect("sha256 output is exactly 32 bytes"),
+    );
+    let secp = bitcoin::secp256k1::Secp256k1::verification_only();
+    Ok(bitcoin::Address::p2tr(
+        &secp,
+        internal_key,
+        Some(merkle_root),
+        bitcoin::KnownHrp::Regtest,
+    )
+    .to_string())
+}
+
+pub fn deposit_pow_digest(pow_token: &str) -> String {
+    hash_parts(&[DOMAIN, "deposit-pow", pow_token])
+}
+
+pub fn verify_deposit_pow(pow_token: &str) -> Result<()> {
+    let digest = hash_parts_bytes(&[DOMAIN, "deposit-pow", pow_token]);
+    has_leading_zero_bits(&digest, DEFAULT_DEPOSIT_POW_DIFFICULTY_BITS)
+        .then_some(())
+        .ok_or(Error::InvalidDepositPow)
+}
+
+pub fn mine_deposit_pow(prefix: &str) -> String {
+    for nonce in 0u64.. {
+        let pow_token = format!("{prefix}:{nonce}");
+        if verify_deposit_pow(&pow_token).is_ok() {
+            return pow_token;
+        }
+    }
+    unreachable!("u64 nonce space exhausted")
+}
+
+pub fn verify_custody_signature(
+    request: &WithdrawalRequest,
+    signature: &CustodySignature,
+) -> Result<()> {
+    if signature.scheme == "mock-sha256" {
+        let message = withdrawal_signing_message(request)?;
+        let digest = hash_bytes(&message);
+        return (signature.message_digest == digest && signature.signature == digest)
+            .then_some(())
+            .ok_or_else(|| Error::Frost("mock signature mismatch".to_string()));
+    }
+
+    if signature.scheme != "frost-secp256k1-sha256" {
+        return Err(Error::Frost(format!(
+            "unsupported custody signature scheme {}",
+            signature.scheme
+        )));
+    }
+
+    let message = withdrawal_signing_message(request)?;
+    if signature.message_digest != hash_bytes(&message) {
+        return Err(Error::Frost("message digest mismatch".to_string()));
+    }
+
+    let public_key_bytes = hex::decode(&signature.group_public_key)
+        .map_err(|e| Error::Frost(format!("invalid group public key hex: {e}")))?;
+    let signature_bytes = hex::decode(&signature.signature)
+        .map_err(|e| Error::Frost(format!("invalid signature hex: {e}")))?;
+    let public_key =
+        frost_secp256k1::VerifyingKey::deserialize(&public_key_bytes).map_err(frost_error)?;
+    let signature =
+        frost_secp256k1::Signature::deserialize(&signature_bytes).map_err(frost_error)?;
+    public_key.verify(&message, &signature).map_err(frost_error)
+}
+
+pub fn frost_threshold_for_committee(max_signers: u16) -> u16 {
+    ((max_signers as u32 * 67).div_ceil(100)) as u16
+}
+
+fn ensure_active_keyset(state: &mut AppState) -> Result<Vec<Event>> {
+    if state
+        .custody
+        .keysets
+        .contains_key(&state.custody.active_epoch)
+    {
+        return Ok(Vec::new());
+    }
+
+    let keyset = FrostCustodySigner::generate_keyset_with_dkg(
+        state.churn.epoch,
+        DEFAULT_SIGNER_COUNT,
+        frost_threshold_for_committee(DEFAULT_SIGNER_COUNT),
+    )?;
+    let event = Event::CustodyKeysetGenerated {
+        epoch: state.churn.epoch,
+        keyset,
+    };
+    apply_event(state, event.clone())?;
+    Ok(vec![event])
 }
 
 fn split_deposit(
@@ -752,7 +1309,7 @@ fn withdraw_note<V: ProofVerifier, S: CustodySigner>(
     if !tree.known_roots.contains(&public.merkle_root) {
         return Err(Error::UnknownMerkleRoot);
     }
-    if !tree.leaves.contains(&proof.commitment) {
+    if verifier.reveals_commitment() && !tree.leaves.contains(&proof.commitment) {
         return Err(Error::UnknownCommitment);
     }
 
@@ -816,24 +1373,55 @@ fn fee_bucket_target(state: &AppState) -> u64 {
     }
 }
 
+fn withdrawal_signing_message(request: &WithdrawalRequest) -> Result<Vec<u8>> {
+    serde_json::to_vec(request).map_err(|e| Error::Json(e.to_string()))
+}
+
+fn frost_error<E: std::fmt::Debug>(error: E) -> Error {
+    Error::Frost(format!("{error:?}"))
+}
+
 fn hash_json<T: Serialize>(value: &T) -> String {
     let json = serde_json::to_vec(value).expect("serializing deterministic state should not fail");
     hash_bytes(&json)
 }
 
 fn hash_parts(parts: &[&str]) -> String {
+    hex::encode(hash_parts_bytes(parts))
+}
+
+fn hash_parts_bytes(parts: &[&str]) -> Vec<u8> {
     let mut hasher = Sha256::new();
     for part in parts {
         hasher.update((part.len() as u64).to_be_bytes());
         hasher.update(part.as_bytes());
     }
-    hex::encode(hasher.finalize())
+    hasher.finalize().to_vec()
 }
 
 fn hash_bytes(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
     hex::encode(hasher.finalize())
+}
+
+fn has_leading_zero_bits(bytes: &[u8], bits: u8) -> bool {
+    let full_zero_bytes = (bits / 8) as usize;
+    let remaining_bits = bits % 8;
+
+    if bytes.iter().take(full_zero_bytes).any(|byte| *byte != 0) {
+        return false;
+    }
+
+    if remaining_bits == 0 {
+        return true;
+    }
+
+    let Some(byte) = bytes.get(full_zero_bytes) else {
+        return false;
+    };
+    let mask = 0xff << (8 - remaining_bits);
+    byte & mask == 0
 }
 
 pub fn happy_path_state() -> Result<(AppState, SplitReceipt)> {
@@ -843,7 +1431,8 @@ pub fn happy_path_state() -> Result<(AppState, SplitReceipt)> {
     execute_command(
         &mut state,
         Command::RequestDepositAddress {
-            pow_token: "mock".to_string(),
+            pow_token: mine_deposit_pow("happy-path"),
+            user_pubkey: "test-client-pubkey".to_string(),
         },
         &verifier,
         &signer,
@@ -895,6 +1484,7 @@ pub fn derive_split_receipt(
             deposit_id,
             &index.to_string(),
         ]);
+        let nullifier = stark_field_from_bytes(nullifier.as_bytes());
         let secret = hash_parts(&[
             DOMAIN,
             "receipt-secret",
@@ -902,6 +1492,7 @@ pub fn derive_split_receipt(
             deposit_id,
             &index.to_string(),
         ]);
+        let secret = stark_field_from_bytes(secret.as_bytes());
         let commitment = note_commitment(&nullifier, &secret, denomination);
         notes.push(NoteReceipt {
             deposit_id: deposit_id.to_string(),

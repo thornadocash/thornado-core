@@ -1,10 +1,9 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 use thornado_core::{
     derive_split_receipt, execute_command, happy_path_state, load_snapshot, save_snapshot,
-    withdrawal_from_receipt, AppState, Command, Event, MockCustodySigner, MockProofVerifier,
-    NoteReceipt,
+    AppState, Command, Event, MockCustodySigner, MockProofVerifier,
 };
 
 #[derive(Debug, Parser)]
@@ -49,6 +48,8 @@ enum DepositSubcommand {
     Request {
         #[arg(long)]
         pow_token: String,
+        #[arg(long, default_value = "local-client-pubkey")]
+        user_pubkey: String,
     },
     Confirm {
         #[arg(long)]
@@ -121,38 +122,28 @@ fn main() -> Result<()> {
         TopCommand::Demo(DemoCommand {
             command: DemoSubcommand::HappyPath,
         }) => {
-            let (mut state, receipt) = happy_path_state()?;
+            let (state, receipt) = happy_path_state()?;
             let note = receipt
                 .notes
                 .first()
                 .context("demo did not mint any notes")?;
-            let root = state
-                .notes
-                .trees
-                .get(&note.denomination_sats)
-                .context("demo note tree missing")?
-                .root();
-            let (proof, public) =
-                withdrawal_from_receipt(note, root, "tb1qrecipientdemo".to_string(), 100_000);
-            let events = execute_command(
-                &mut state,
-                Command::WithdrawNote { proof, public },
-                &verifier,
-                &signer,
-            )?;
             print_json(&serde_json::json!({
                 "state_hash": thornado_core::state_hash(&state),
                 "first_note": note,
-                "withdrawal_events": events,
+                "withdrawal_disabled": "plaintext note withdrawal is disabled; use a witness-hiding ZK proof backend",
                 "fee_state": state.fees,
             }))
         }
         TopCommand::Deposit(DepositCommand { command }) => {
             let mut state = load_or_default(&cli.state)?;
             let command = match command {
-                DepositSubcommand::Request { pow_token } => {
-                    Command::RequestDepositAddress { pow_token }
-                }
+                DepositSubcommand::Request {
+                    pow_token,
+                    user_pubkey,
+                } => Command::RequestDepositAddress {
+                    pow_token,
+                    user_pubkey,
+                },
                 DepositSubcommand::Confirm {
                     intent,
                     txid,
@@ -199,25 +190,8 @@ fn main() -> Result<()> {
                 "receipt": receipt,
             }))
         }
-        TopCommand::Withdraw(args) => {
-            let mut state = load_or_default(&cli.state)?;
-            let note: NoteReceipt = serde_json::from_str(&args.note)
-                .context("note must be a NoteReceipt JSON value")?;
-            let root = state
-                .notes
-                .trees
-                .get(&note.denomination_sats)
-                .context("denomination tree not found")?
-                .root();
-            let (proof, public) = withdrawal_from_receipt(&note, root, args.to, args.fee_sats);
-            let events = execute_command(
-                &mut state,
-                Command::WithdrawNote { proof, public },
-                &verifier,
-                &signer,
-            )?;
-            save_snapshot(&state, &cli.state)?;
-            print_events(&events)
+        TopCommand::Withdraw(_args) => {
+            bail!("plaintext note withdrawal is disabled; use a witness-hiding ZK proof backend")
         }
         TopCommand::Churn(ChurnCommand { command }) => {
             let mut state = load_or_default(&cli.state)?;
