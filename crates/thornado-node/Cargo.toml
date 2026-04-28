@@ -12,12 +12,17 @@ path = "src/main.rs"
 anyhow.workspace = true
 axum.workspace = true
 clap.workspace = true
+hex.workspace = true
+http.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 tokio.workspace = true
 thornado-bitcoin = { path = "../thornado-bitcoin" }
+thornado-abci = { path = "../thornado-abci" }
 thornado-core = { path = "../thornado-core" }
+thornado-store = { path = "../thornado-store" }
 
 [dev-dependencies]
 bitcoin.workspace = true

@@ -1,9 +1,12 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand};
+use std::fs;
+use std::io::{self, Read};
 use std::path::PathBuf;
 use thornado_core::{
     derive_split_receipt, execute_command, happy_path_state, load_snapshot, save_snapshot,
-    AppState, Command, Event, MockCustodySigner, MockProofVerifier,
+    stark_withdrawal_from_receipt, AppState, Command, Event, MockCustodySigner, MockProofVerifier,
+    NoteReceipt, StarkProofVerifier,
 };
 
 #[derive(Debug, Parser)]
@@ -71,8 +74,12 @@ struct SplitArgs {
 
 #[derive(Debug, Args)]
 struct WithdrawArgs {
-    #[arg(long)]
-    note: String,
+    #[arg(long, conflicts_with = "note_stdin")]
+    note_file: Option<PathBuf>,
+    #[arg(long, conflicts_with = "note_file")]
+    note_stdin: bool,
+    #[arg(long, default_value = "local-client-seed")]
+    client_seed: String,
     #[arg(long)]
     to: String,
     #[arg(long)]
@@ -190,8 +197,31 @@ fn main() -> Result<()> {
                 "receipt": receipt,
             }))
         }
-        TopCommand::Withdraw(_args) => {
-            bail!("plaintext note withdrawal is disabled; use a witness-hiding ZK proof backend")
+        TopCommand::Withdraw(args) => {
+            let mut state = load_or_default(&cli.state)?;
+            let note_json = read_note_json(&args)?;
+            let note: NoteReceipt = serde_json::from_str(&note_json)
+                .context("note must be a NoteReceipt JSON value")?;
+            let tree = state
+                .notes
+                .trees
+                .get(&note.denomination_sats)
+                .context("denomination tree not found")?;
+            let (proof, public) = stark_withdrawal_from_receipt(
+                &note,
+                &args.client_seed,
+                tree,
+                args.to,
+                args.fee_sats,
+            )?;
+            let events = execute_command(
+                &mut state,
+                Command::WithdrawNote { proof, public },
+                &StarkProofVerifier,
+                &signer,
+            )?;
+            save_snapshot(&state, &cli.state)?;
+            print_events(&events)
         }
         TopCommand::Churn(ChurnCommand { command }) => {
             let mut state = load_or_default(&cli.state)?;
@@ -220,6 +250,20 @@ fn main() -> Result<()> {
                 }))
             }
         },
+    }
+}
+
+fn read_note_json(args: &WithdrawArgs) -> Result<String> {
+    if let Some(path) = &args.note_file {
+        fs::read_to_string(path).with_context(|| format!("failed to read {}", path.display()))
+    } else if args.note_stdin {
+        let mut note = String::new();
+        io::stdin()
+            .read_to_string(&mut note)
+            .context("failed to read note from stdin")?;
+        Ok(note)
+    } else {
+        anyhow::bail!("withdraw requires --note-file or --note-stdin")
     }
 }
 

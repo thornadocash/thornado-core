@@ -1,0 +1,185 @@
+services:
+  bitcoin:
+    image: bitcoin/bitcoin:26
+    command:
+      - -regtest=1
+      - -server=1
+      - -printtoconsole=1
+      - -rpcbind=0.0.0.0:18443
+      - -rpcallowip=0.0.0.0/0
+      - -rpcuser=user
+      - -rpcpassword=password
+      - -fallbackfee=0.0002
+      - -txindex=1
+    ports:
+      - "18443:18443"
+      - "18444:18444"
+    volumes:
+      - bitcoin-regtest:/home/bitcoin/.bitcoin
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bitcoin-cli",
+          "-regtest",
+          "-rpcconnect=127.0.0.1",
+          "-rpcuser=user",
+          "-rpcpassword=password",
+          "getblockchaininfo"
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  bitcoin-init:
+    image: bitcoin/bitcoin:26
+    depends_on:
+      bitcoin:
+        condition: service_healthy
+    volumes:
+      - bitcoin-regtest:/home/bitcoin/.bitcoin
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        bitcoin-cli -regtest -rpcconnect=bitcoin -rpcuser=user -rpcpassword=password createwallet thornado || true
+        bitcoin-cli -regtest -rpcconnect=bitcoin -rpcuser=user -rpcpassword=password loadwallet thornado || true
+        ADDRESS=$$(bitcoin-cli -regtest -rpcconnect=bitcoin -rpcuser=user -rpcpassword=password -rpcwallet=thornado getnewaddress "" bech32)
+        BLOCKS=$$(bitcoin-cli -regtest -rpcconnect=bitcoin -rpcuser=user -rpcpassword=password getblockcount)
+        if [ "$$BLOCKS" -lt 101 ]; then
+          bitcoin-cli -regtest -rpcconnect=bitcoin -rpcuser=user -rpcpassword=password generatetoaddress 101 "$$ADDRESS" >/dev/null
+        fi
+        bitcoin-cli -regtest -rpcconnect=bitcoin -rpcuser=user -rpcpassword=password -rpcwallet=thornado listunspent 0 >/dev/null
+
+  node-1:
+    <<: &thornado-node
+      build:
+        context: .
+      depends_on:
+        bitcoin-init:
+          condition: service_completed_successfully
+      restart: unless-stopped
+      environment:
+        BITCOIN_RPC_USER: user
+        BITCOIN_RPC_PASSWORD: password
+      healthcheck:
+        test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3030/state/hash"]
+        interval: 5s
+        timeout: 3s
+        retries: 20
+    command:
+      - --listen
+      - 0.0.0.0:3030
+      - --state
+      - /data/thornado-state.json
+      - --bitcoin-rpc-url
+      - http://bitcoin:18443/wallet/thornado
+      - --peer
+      - http://node-2:3030
+      - --peer
+      - http://node-3:3030
+      - --peer
+      - http://node-4:3030
+      - --peer
+      - http://node-5:3030
+    ports:
+      - "3030:3030"
+    volumes:
+      - node-1-data:/data
+
+  node-2:
+    <<: *thornado-node
+    command:
+      - --listen
+      - 0.0.0.0:3030
+      - --state
+      - /data/thornado-state.json
+      - --bitcoin-rpc-url
+      - http://bitcoin:18443/wallet/thornado
+      - --peer
+      - http://node-1:3030
+      - --peer
+      - http://node-3:3030
+      - --peer
+      - http://node-4:3030
+      - --peer
+      - http://node-5:3030
+    ports:
+      - "3031:3030"
+    volumes:
+      - node-2-data:/data
+
+  node-3:
+    <<: *thornado-node
+    command:
+      - --listen
+      - 0.0.0.0:3030
+      - --state
+      - /data/thornado-state.json
+      - --bitcoin-rpc-url
+      - http://bitcoin:18443/wallet/thornado
+      - --peer
+      - http://node-1:3030
+      - --peer
+      - http://node-2:3030
+      - --peer
+      - http://node-4:3030
+      - --peer
+      - http://node-5:3030
+    ports:
+      - "3032:3030"
+    volumes:
+      - node-3-data:/data
+
+  node-4:
+    <<: *thornado-node
+    command:
+      - --listen
+      - 0.0.0.0:3030
+      - --state
+      - /data/thornado-state.json
+      - --bitcoin-rpc-url
+      - http://bitcoin:18443/wallet/thornado
+      - --peer
+      - http://node-1:3030
+      - --peer
+      - http://node-2:3030
+      - --peer
+      - http://node-3:3030
+      - --peer
+      - http://node-5:3030
+    ports:
+      - "3033:3030"
+    volumes:
+      - node-4-data:/data
+
+  node-5:
+    <<: *thornado-node
+    command:
+      - --listen
+      - 0.0.0.0:3030
+      - --state
+      - /data/thornado-state.json
+      - --bitcoin-rpc-url
+      - http://bitcoin:18443/wallet/thornado
+      - --peer
+      - http://node-1:3030
+      - --peer
+      - http://node-2:3030
+      - --peer
+      - http://node-3:3030
+      - --peer
+      - http://node-4:3030
+    ports:
+      - "3034:3030"
+    volumes:
+      - node-5-data:/data
+
+volumes:
+  bitcoin-regtest:
+  node-1-data:
+  node-2-data:
+  node-3-data:
+  node-4-data:
+  node-5-data:

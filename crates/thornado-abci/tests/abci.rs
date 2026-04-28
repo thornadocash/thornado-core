@@ -2,8 +2,8 @@ use tendermint_abci::Application;
 use tendermint_proto::v0_38::abci::{RequestCheckTx, RequestFinalizeBlock};
 use thornado_abci::{decode_tx, encode_tx, ThornadoAbciApp};
 use thornado_core::{
-    derive_split_receipt, execute_command, mine_deposit_pow, state_hash, AppState, Command,
-    MockCustodySigner, MockProofVerifier,
+    derive_split_receipt, execute_command, frost_threshold_for_committee, mine_deposit_pow,
+    state_hash, AppState, Command, FrostCustodySigner, MockCustodySigner, MockProofVerifier,
 };
 
 fn seeded_state() -> AppState {
@@ -129,11 +129,79 @@ fn request_deposit_requires_genesis_custody_keyset() {
 }
 
 #[test]
-fn churn_key_generation_is_rejected_in_abci() {
+fn consensus_churn_promotes_standby_without_generating_keyset() {
     let app = ThornadoAbciApp::new(seeded_state());
+    let register = encode_tx(Command::RegisterStandbyNode {
+        node_id: "node-1".to_string(),
+    })
+    .unwrap();
     let tx = encode_tx(Command::StartChurnEpoch).unwrap();
 
+    let result = app.finalize_block_bytes(&[register, tx]);
+
+    assert!(result.iter().all(Result::is_ok));
+    let state = app.current_state();
+    assert_eq!(state.churn.epoch, 1);
+    assert!(state.churn.active_nodes.contains("node-1"));
+    assert!(!state.custody.keysets.contains_key(&1));
+}
+
+#[test]
+fn consensus_accepts_public_keyset_commit_after_churn() {
+    let mut genesis = seeded_state();
+    for node_id in ["node-1", "node-2", "node-3", "node-4", "node-5"] {
+        execute_command(
+            &mut genesis,
+            Command::RegisterStandbyNode {
+                node_id: node_id.to_string(),
+            },
+            &MockProofVerifier,
+            &MockCustodySigner,
+        )
+        .unwrap();
+    }
+    let app = ThornadoAbciApp::new(genesis);
+    app.finalize_block_bytes(&[encode_tx(Command::StartChurnEpoch).unwrap()]);
+    let keyset =
+        FrostCustodySigner::generate_keyset_with_dkg(1, 5, frost_threshold_for_committee(5))
+            .unwrap();
+    let tx = encode_tx(Command::CommitCustodyKeyset { epoch: 1, keyset }).unwrap();
+    let result = app.finalize_block_bytes(&[tx]);
+
+    assert!(result[0].is_ok());
+    assert!(matches!(
+        app.current_state().custody.keysets.get(&1),
+        Some(keyset) if keyset.max_signers == 5
+    ));
+}
+
+#[test]
+fn consensus_rejects_keyset_commit_that_does_not_match_active_set() {
+    let mut genesis = seeded_state();
+    for node_id in ["node-1", "node-2"] {
+        execute_command(
+            &mut genesis,
+            Command::RegisterStandbyNode {
+                node_id: node_id.to_string(),
+            },
+            &MockProofVerifier,
+            &MockCustodySigner,
+        )
+        .unwrap();
+    }
+    let app = ThornadoAbciApp::new(genesis);
+    app.finalize_block_bytes(&[encode_tx(Command::StartChurnEpoch).unwrap()]);
+    let wrong_keyset =
+        FrostCustodySigner::generate_keyset_with_dkg(1, 5, frost_threshold_for_committee(5))
+            .unwrap();
+    let tx = encode_tx(Command::CommitCustodyKeyset {
+        epoch: 1,
+        keyset: wrong_keyset,
+    })
+    .unwrap();
+    let before = app.status().app_hash;
     let result = app.finalize_block_bytes(&[tx]);
 
     assert!(result[0].is_err());
+    assert_eq!(app.status().app_hash, before);
 }

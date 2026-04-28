@@ -6,8 +6,9 @@ use tendermint_proto::v0_38::abci::{
     ResponseCommit, ResponseFinalizeBlock, ResponseInfo, ResponseQuery,
 };
 use thornado_core::{
-    execute_command, state_hash, AppState, Command, Error as CoreError, MockCustodySigner,
-    MockProofVerifier, StarkProofVerifier, WithdrawalProof,
+    execute_command, start_churn_epoch_without_keygen, state_hash, validate_keyset_commit,
+    AppState, Command, Error as CoreError, MockCustodySigner, MockProofVerifier,
+    StarkProofVerifier, WithdrawalProof,
 };
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -166,6 +167,10 @@ pub fn decode_tx(bytes: &[u8]) -> Result<ThornadoTx> {
 
 fn apply_command(state: &mut AppState, command: Command) -> Result<()> {
     guard_consensus_determinism(state, &command)?;
+    if let Command::StartChurnEpoch = command {
+        apply_consensus_churn(state)?;
+        return Ok(());
+    }
     let signer = MockCustodySigner;
     execute_command_secure(state, command, &signer)
         .map(|_| ())
@@ -185,11 +190,18 @@ fn guard_consensus_determinism(state: &AppState, command: &Command) -> Result<()
                     .to_string(),
             ))
         }
-        Command::StartChurnEpoch => Err(Error::Execution(
-            "churn key generation is not consensus-safe in this MVP ABCI adapter".to_string(),
-        )),
+        Command::CommitCustodyKeyset { epoch, keyset } => {
+            validate_keyset_commit(state, *epoch, keyset)
+                .map_err(|error| Error::Execution(error.to_string()))
+        }
         _ => Ok(()),
     }
+}
+
+fn apply_consensus_churn(state: &mut AppState) -> Result<()> {
+    start_churn_epoch_without_keygen(state)
+        .map(|_| ())
+        .map_err(|error| Error::Execution(error.to_string()))
 }
 
 fn execute_command_secure(
@@ -198,7 +210,7 @@ fn execute_command_secure(
     signer: &MockCustodySigner,
 ) -> thornado_core::Result<Vec<thornado_core::Event>> {
     match &command {
-        Command::WithdrawNote { proof, .. } => {
+        Command::WithdrawNote { proof, .. } | Command::RequestWithdrawal { proof, .. } => {
             reject_secret_bearing_proof(proof)?;
             execute_command(state, command, &StarkProofVerifier, signer)
         }
