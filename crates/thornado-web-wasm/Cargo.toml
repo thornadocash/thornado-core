@@ -1,0 +1,25 @@
+[package]
+name = "thornado-web-wasm"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+hex.workspace = true
+incrementalmerkletree.workspace = true
+nonempty.workspace = true
+orchard = { version = "0.13.1", default-features = false, features = ["circuit", "std"] }
+rand_chacha.workspace = true
+rand_core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+shardtree.workspace = true
+sha2.workspace = true
+wasm-bindgen.workspace = true
+zcash_note_encryption.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }

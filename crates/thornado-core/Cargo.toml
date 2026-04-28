@@ -6,6 +6,7 @@ license.workspace = true
 
 [features]
 default = ["orchard-zcash"]
+proof-tests = []
 orchard-zcash = [
     "dep:incrementalmerkletree",
     "dep:nonempty",
@@ -15,14 +16,10 @@ orchard-zcash = [
 ]
 
 [dependencies]
-ark-bn254.workspace = true
-ark-ff.workspace = true
-ark-groth16.workspace = true
-ark-relations.workspace = true
-ark-serialize.workspace = true
 bitcoin.workspace = true
 frost-core.workspace = true
 frost-secp256k1.workspace = true
+frost-secp256k1-tr.workspace = true
 frost-rerandomized.workspace = true
 hex.workspace = true
 incrementalmerkletree = { workspace = true, optional = true }
@@ -35,7 +32,6 @@ serde_json.workspace = true
 shardtree = { workspace = true, optional = true }
 sha2.workspace = true
 thiserror.workspace = true
-tiny-keccak.workspace = true
 zcash_note_encryption = { workspace = true, optional = true }
 
 [dev-dependencies]

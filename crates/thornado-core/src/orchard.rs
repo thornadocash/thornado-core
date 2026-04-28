@@ -1,7 +1,7 @@
 //! Orchard-backed shielded note primitives.
 //!
 //! This module intentionally uses the Zcash `orchard` crate directly. It is the
-//! migration target for replacing the current MVP `stark` module with
+//! migration target for replacing the previous MVP proof module with
 //! Orchard/Halo2 notes, anchors, nullifiers, and spend authorization.
 
 use crate::{Error, Result};
@@ -103,10 +103,10 @@ pub fn create_orchard_note(
             NoteValue::from_raw(value_sats),
             [0_u8; 512],
         )
-        .map_err(|e| Error::Stark(format!("Orchard output build failed: {e:?}")))?;
+        .map_err(|e| Error::Zk(format!("Orchard output build failed: {e:?}")))?;
     let (unauthorized, meta): (Bundle<_, i64>, _) = builder
         .build(&mut rng)
-        .map_err(|e| Error::Stark(format!("Orchard shielding bundle build failed: {e:?}")))?
+        .map_err(|e| Error::Zk(format!("Orchard shielding bundle build failed: {e:?}")))?
         .ok_or(Error::InvalidProof)?;
     let output_index = meta.output_action_index(0).ok_or(Error::InvalidProof)?;
 
@@ -176,10 +176,10 @@ pub fn prove_orchard_withdrawal(
     );
     builder
         .add_spend(fvk, note, merkle_path.into())
-        .map_err(|e| Error::Stark(format!("Orchard spend build failed: {e:?}")))?;
+        .map_err(|e| Error::Zk(format!("Orchard spend build failed: {e:?}")))?;
     let (unauthorized, meta): (Bundle<_, i64>, _) = builder
         .build(&mut rng)
-        .map_err(|e| Error::Stark(format!("Orchard spend bundle build failed: {e:?}")))?
+        .map_err(|e| Error::Zk(format!("Orchard spend bundle build failed: {e:?}")))?
         .ok_or(Error::InvalidProof)?;
     let spend_index = meta.spend_action_index(0).ok_or(Error::InvalidProof)?;
     let sighash = orchard_sighash(
@@ -188,10 +188,10 @@ pub fn prove_orchard_withdrawal(
     );
     let proven = unauthorized
         .create_proof(&pk, &mut rng)
-        .map_err(|e| Error::Stark(format!("Orchard spend proof failed: {e:?}")))?;
+        .map_err(|e| Error::Zk(format!("Orchard spend proof failed: {e:?}")))?;
     let spend_bundle = proven
         .apply_signatures(&mut rng, sighash, &[SpendAuthorizingKey::from(&sk)])
-        .map_err(|e| Error::Stark(format!("Orchard spend signature failed: {e:?}")))?;
+        .map_err(|e| Error::Zk(format!("Orchard spend signature failed: {e:?}")))?;
     verify_bundle(
         &spend_bundle,
         &vk,
@@ -230,21 +230,10 @@ pub fn merkle_root_hex(leaves: &[String]) -> Result<String> {
         let empty = MerkleHashOrchard::empty_root(32.into());
         return Ok(hex::encode(empty.to_bytes()));
     }
-    let mut tree: ShardTree<MemoryShardStore<MerkleHashOrchard, u32>, 32, 16> =
-        ShardTree::new(MemoryShardStore::empty(), 100);
-    for leaf in leaves {
-        tree.append(
-            parse_merkle_hash(leaf)?,
-            Retention::Checkpoint {
-                id: 0,
-                marking: Marking::Marked,
-            },
-        )
-        .map_err(|e| Error::Stark(format!("Orchard tree append failed: {e:?}")))?;
-    }
+    let (tree, checkpoint_id) = orchard_tree(leaves)?;
     let root = tree
-        .root_at_checkpoint_id(&0)
-        .map_err(|e| Error::Stark(format!("Orchard root lookup failed: {e:?}")))?
+        .root_at_checkpoint_id(&checkpoint_id)
+        .map_err(|e| Error::Zk(format!("Orchard root lookup failed: {e:?}")))?
         .ok_or(Error::UnknownMerkleRoot)?;
     Ok(hex::encode(root.to_bytes()))
 }
@@ -273,18 +262,18 @@ pub fn prove_orchard_spend_smoke(seed: &str, value_sats: u64) -> Result<Vec<u8>>
                 NoteValue::from_raw(value_sats),
                 [0_u8; 512],
             )
-            .map_err(|e| Error::Stark(format!("Orchard output build failed: {e:?}")))?;
+            .map_err(|e| Error::Zk(format!("Orchard output build failed: {e:?}")))?;
         let (unauthorized, _) = builder
             .build(&mut rng)
-            .map_err(|e| Error::Stark(format!("Orchard shielding bundle build failed: {e:?}")))?
+            .map_err(|e| Error::Zk(format!("Orchard shielding bundle build failed: {e:?}")))?
             .ok_or(Error::InvalidProof)?;
         let sighash = orchard_sighash(unauthorized.commitment().into(), b"thornado:shield");
         let proven = unauthorized
             .create_proof(&pk, &mut rng)
-            .map_err(|e| Error::Stark(format!("Orchard shielding proof failed: {e:?}")))?;
+            .map_err(|e| Error::Zk(format!("Orchard shielding proof failed: {e:?}")))?;
         proven
             .apply_signatures(&mut rng, sighash, &[])
-            .map_err(|e| Error::Stark(format!("Orchard shielding signature failed: {e:?}")))?
+            .map_err(|e| Error::Zk(format!("Orchard shielding signature failed: {e:?}")))?
     };
     verify_bundle(&shielding_bundle, &vk, b"thornado:shield")?;
 
@@ -310,18 +299,18 @@ pub fn prove_orchard_spend_smoke(seed: &str, value_sats: u64) -> Result<Vec<u8>>
                 marking: Marking::Marked,
             },
         )
-        .map_err(|e| Error::Stark(format!("Orchard tree append failed: {e:?}")))?;
+        .map_err(|e| Error::Zk(format!("Orchard tree append failed: {e:?}")))?;
         let root = tree
             .root_at_checkpoint_id(&0)
-            .map_err(|e| Error::Stark(format!("Orchard root lookup failed: {e:?}")))?
+            .map_err(|e| Error::Zk(format!("Orchard root lookup failed: {e:?}")))?
             .ok_or(Error::UnknownMerkleRoot)?;
         let position = tree
             .max_leaf_position(None)
-            .map_err(|e| Error::Stark(format!("Orchard position lookup failed: {e:?}")))?
+            .map_err(|e| Error::Zk(format!("Orchard position lookup failed: {e:?}")))?
             .ok_or(Error::UnknownCommitment)?;
         let merkle_path = tree
             .witness_at_checkpoint_id(position, &0)
-            .map_err(|e| Error::Stark(format!("Orchard witness lookup failed: {e:?}")))?
+            .map_err(|e| Error::Zk(format!("Orchard witness lookup failed: {e:?}")))?
             .ok_or(Error::UnknownCommitment)?;
 
         let mut builder = Builder::new(
@@ -333,18 +322,18 @@ pub fn prove_orchard_spend_smoke(seed: &str, value_sats: u64) -> Result<Vec<u8>>
         );
         builder
             .add_spend(fvk, note, merkle_path.into())
-            .map_err(|e| Error::Stark(format!("Orchard spend build failed: {e:?}")))?;
+            .map_err(|e| Error::Zk(format!("Orchard spend build failed: {e:?}")))?;
         let (unauthorized, _) = builder
             .build(&mut rng)
-            .map_err(|e| Error::Stark(format!("Orchard spend bundle build failed: {e:?}")))?
+            .map_err(|e| Error::Zk(format!("Orchard spend bundle build failed: {e:?}")))?
             .ok_or(Error::InvalidProof)?;
         let sighash = orchard_sighash(unauthorized.commitment().into(), b"thornado:withdraw");
         let proven = unauthorized
             .create_proof(&pk, &mut rng)
-            .map_err(|e| Error::Stark(format!("Orchard spend proof failed: {e:?}")))?;
+            .map_err(|e| Error::Zk(format!("Orchard spend proof failed: {e:?}")))?;
         proven
             .apply_signatures(&mut rng, sighash, &[SpendAuthorizingKey::from(&sk)])
-            .map_err(|e| Error::Stark(format!("Orchard spend signature failed: {e:?}")))?
+            .map_err(|e| Error::Zk(format!("Orchard spend signature failed: {e:?}")))?
     };
     verify_bundle(&spend_bundle, &vk, b"thornado:withdraw")?;
     Ok(spend_bundle.authorization().proof().as_ref().to_vec())
@@ -357,19 +346,8 @@ fn orchard_path(
     MerkleHashOrchard,
     incrementalmerkletree::MerklePath<MerkleHashOrchard, 32>,
 )> {
-    let mut tree: ShardTree<MemoryShardStore<MerkleHashOrchard, u32>, 32, 16> =
-        ShardTree::new(MemoryShardStore::empty(), 100);
     let mut found = false;
     for leaf in leaves {
-        let hash = parse_merkle_hash(leaf)?;
-        tree.append(
-            hash,
-            Retention::Checkpoint {
-                id: 0,
-                marking: Marking::Marked,
-            },
-        )
-        .map_err(|e| Error::Stark(format!("Orchard tree append failed: {e:?}")))?;
         if leaf == commitment {
             found = true;
         }
@@ -377,19 +355,43 @@ fn orchard_path(
     if !found {
         return Err(Error::UnknownCommitment);
     }
+    let (tree, checkpoint_id) = orchard_tree(leaves)?;
     let root = tree
-        .root_at_checkpoint_id(&0)
-        .map_err(|e| Error::Stark(format!("Orchard root lookup failed: {e:?}")))?
+        .root_at_checkpoint_id(&checkpoint_id)
+        .map_err(|e| Error::Zk(format!("Orchard root lookup failed: {e:?}")))?
         .ok_or(Error::UnknownMerkleRoot)?;
     let position = leaves
         .iter()
         .position(|leaf| leaf == commitment)
         .ok_or(Error::UnknownCommitment)?;
     let merkle_path = tree
-        .witness_at_checkpoint_id((position as u64).into(), &0)
-        .map_err(|e| Error::Stark(format!("Orchard witness lookup failed: {e:?}")))?
+        .witness_at_checkpoint_id((position as u64).into(), &checkpoint_id)
+        .map_err(|e| Error::Zk(format!("Orchard witness lookup failed: {e:?}")))?
         .ok_or(Error::UnknownCommitment)?;
     Ok((root, merkle_path))
+}
+
+fn orchard_tree(
+    leaves: &[String],
+) -> Result<(
+    ShardTree<MemoryShardStore<MerkleHashOrchard, u32>, 32, 16>,
+    u32,
+)> {
+    let mut tree: ShardTree<MemoryShardStore<MerkleHashOrchard, u32>, 32, 16> =
+        ShardTree::new(MemoryShardStore::empty(), 100);
+    let mut checkpoint_id = 0_u32;
+    for (index, leaf) in leaves.iter().enumerate() {
+        checkpoint_id = u32::try_from(index).map_err(|_| Error::InvalidProof)?;
+        tree.append(
+            parse_merkle_hash(leaf)?,
+            Retention::Checkpoint {
+                id: checkpoint_id,
+                marking: Marking::Marked,
+            },
+        )
+        .map_err(|e| Error::Zk(format!("Orchard tree append failed: {e:?}")))?;
+    }
+    Ok((tree, checkpoint_id))
 }
 
 fn verify_bundle(
@@ -399,7 +401,7 @@ fn verify_bundle(
 ) -> Result<()> {
     bundle
         .verify_proof(vk)
-        .map_err(|e| Error::Stark(format!("Orchard proof verification failed: {e:?}")))?;
+        .map_err(|e| Error::Zk(format!("Orchard proof verification failed: {e:?}")))?;
     let sighash = orchard_sighash(bundle.commitment().into(), context);
     for action in bundle.actions() {
         action
@@ -550,6 +552,10 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg_attr(
+        not(feature = "proof-tests"),
+        ignore = "expensive proof test; run with `cargo test -p thornado-core --features proof-tests`"
+    )]
     fn orchard_spend_bundle_proves_and_verifies() {
         let proof = prove_orchard_spend_smoke("orchard-test-seed", 100_000).unwrap();
         assert!(!proof.is_empty());
@@ -563,5 +569,22 @@ mod tests {
         assert_eq!(a, b);
         assert_ne!(a, c);
         assert!(!hex::encode(a).contains("client-seed"));
+    }
+
+    #[test]
+    fn empty_orchard_withdrawal_proof_is_rejected() {
+        let proof = OrchardWithdrawalProof {
+            proof_hex: String::new(),
+            binding_signature_hex: String::new(),
+            anchor_hex: String::new(),
+            public_context_hex: hex::encode(b"context"),
+            value_balance: 1,
+            actions: Vec::new(),
+        };
+
+        assert_eq!(
+            verify_orchard_withdrawal(&proof, b"context"),
+            Err(Error::InvalidProof)
+        );
     }
 }

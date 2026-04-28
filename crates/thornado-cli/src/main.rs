@@ -5,8 +5,8 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 use thornado_core::{
     derive_split_receipt, execute_command, happy_path_state, load_snapshot, save_snapshot,
-    stark_withdrawal_from_receipt, AppState, Command, Event, MockCustodySigner, MockProofVerifier,
-    NoteReceipt, StarkProofVerifier,
+    zk_withdrawal_from_receipt, AppState, Command, Event, MockCustodySigner, MockProofVerifier,
+    NoteReceipt, ZkProofVerifier,
 };
 
 #[derive(Debug, Parser)]
@@ -207,17 +207,12 @@ fn main() -> Result<()> {
                 .trees
                 .get(&note.denomination_sats)
                 .context("denomination tree not found")?;
-            let (proof, public) = stark_withdrawal_from_receipt(
-                &note,
-                &args.client_seed,
-                tree,
-                args.to,
-                args.fee_sats,
-            )?;
+            let (proof, public) =
+                zk_withdrawal_from_receipt(&note, &args.client_seed, tree, args.to, args.fee_sats)?;
             let events = execute_command(
                 &mut state,
                 Command::WithdrawNote { proof, public },
-                &StarkProofVerifier,
+                &ZkProofVerifier,
                 &signer,
             )?;
             save_snapshot(&state, &cli.state)?;

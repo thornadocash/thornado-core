@@ -7,8 +7,8 @@ use tendermint_proto::v0_38::abci::{
 };
 use thornado_core::{
     execute_command, start_churn_epoch_without_keygen, state_hash, validate_keyset_commit,
-    AppState, Command, Error as CoreError, MockCustodySigner, MockProofVerifier,
-    StarkProofVerifier, WithdrawalProof,
+    AppState, AuthorizedWithdrawal, Command, Error as CoreError, MockCustodySigner,
+    MockProofVerifier, PendingWithdrawal, WithdrawalProof, ZkProofVerifier,
 };
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -30,6 +30,39 @@ pub struct ThornadoTx {
 pub struct AbciStatus {
     pub height: i64,
     pub app_hash: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AbciBifrostKeygenWork {
+    pub pending: bool,
+    pub epoch: u64,
+    pub participants: Vec<String>,
+    pub threshold: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AbciBifrostWithdrawalsWork {
+    pub pending: Vec<PendingWithdrawal>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AbciBifrostBitcoinWork {
+    #[serde(default)]
+    pub outbounds: Vec<thornado_core::BitcoinOutbound>,
+    #[serde(default)]
+    pub deposit_sweeps: Vec<AbciDepositSweepWork>,
+    #[serde(default)]
+    pub authorized: Vec<AuthorizedWithdrawal>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AbciDepositSweepWork {
+    pub deposit_id: String,
+    pub txid: String,
+    pub custody_epoch: u64,
+    pub deposit_key_tweak: String,
+    pub vault_signers: Vec<String>,
+    pub vault_threshold: u16,
 }
 
 #[derive(Clone)]
@@ -105,6 +138,57 @@ impl Application for ThornadoAbciApp {
                 log: "ok".to_string(),
                 ..Default::default()
             },
+            "/state" => response_json(&self.current_state()),
+            "/bifrost/work/keygen" => {
+                let state = self.current_state();
+                response_json(&keygen_work(&state))
+            }
+            "/bifrost/work/withdrawals" => {
+                let state = self.current_state();
+                response_json(&AbciBifrostWithdrawalsWork {
+                    pending: state.withdrawals.pending.values().cloned().collect(),
+                })
+            }
+            "/bifrost/work/bitcoin" => {
+                let state = self.current_state();
+                response_json(&AbciBifrostBitcoinWork {
+                    outbounds: state
+                        .withdrawals
+                        .bitcoin_outbounds
+                        .values()
+                        .filter(|outbound| outbound.published_txid.is_none())
+                        .cloned()
+                        .collect(),
+                    deposit_sweeps: state
+                        .deposits
+                        .intents
+                        .values()
+                        .filter(|intent| intent.confirmed && intent.swept_txid.is_none())
+                        .filter_map(|intent| {
+                            Some(AbciDepositSweepWork {
+                                deposit_id: intent.id.clone(),
+                                txid: intent.txid.clone()?,
+                                custody_epoch: intent.custody_epoch,
+                                deposit_key_tweak: intent.deposit_key_tweak.clone(),
+                                vault_signers: intent.vault_signers.clone(),
+                                vault_threshold: intent.vault_threshold,
+                            })
+                        })
+                        .collect(),
+                    authorized: state
+                        .withdrawals
+                        .authorized
+                        .values()
+                        .filter(|withdrawal| {
+                            !state
+                                .withdrawals
+                                .bitcoin_broadcasts
+                                .contains_key(&withdrawal.id)
+                        })
+                        .cloned()
+                        .collect(),
+                })
+            }
             _ => ResponseQuery {
                 code: 1,
                 log: format!("unknown query path {}", request.path),
@@ -154,6 +238,39 @@ impl Application for ThornadoAbciApp {
 
     fn commit(&self) -> ResponseCommit {
         ResponseCommit { retain_height: 0 }
+    }
+}
+
+fn response_json<T: Serialize>(value: &T) -> ResponseQuery {
+    match serde_json::to_vec(value) {
+        Ok(value) => ResponseQuery {
+            code: 0,
+            value: value.into(),
+            log: "ok".to_string(),
+            ..Default::default()
+        },
+        Err(error) => ResponseQuery {
+            code: 1,
+            log: error.to_string(),
+            ..Default::default()
+        },
+    }
+}
+
+fn keygen_work(state: &AppState) -> AbciBifrostKeygenWork {
+    let epoch = state.churn.epoch;
+    let participants = state.churn.active_nodes.iter().cloned().collect::<Vec<_>>();
+    let pending = participants.len() >= 2 && !state.custody.keysets.contains_key(&epoch);
+    let threshold = if pending {
+        thornado_core::frost_threshold_for_committee(participants.len() as u16)
+    } else {
+        0
+    };
+    AbciBifrostKeygenWork {
+        pending,
+        epoch,
+        participants,
+        threshold,
     }
 }
 
@@ -212,7 +329,7 @@ fn execute_command_secure(
     match &command {
         Command::WithdrawNote { proof, .. } | Command::RequestWithdrawal { proof, .. } => {
             reject_secret_bearing_proof(proof)?;
-            execute_command(state, command, &StarkProofVerifier, signer)
+            execute_command(state, command, &ZkProofVerifier, signer)
         }
         _ => execute_command(state, command, &MockProofVerifier, signer),
     }

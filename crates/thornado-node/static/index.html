@@ -26,6 +26,10 @@
       box-sizing: border-box;
     }
 
+    [hidden] {
+      display: none !important;
+    }
+
     body {
       margin: 0;
       background: var(--bg);
@@ -280,6 +284,83 @@
       text-transform: lowercase;
     }
 
+    .card-tools {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      pointer-events: none;
+    }
+
+    .icon-button {
+      width: 34px;
+      min-height: 34px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background: #fff;
+      color: var(--ink);
+      font-weight: 800;
+      pointer-events: auto;
+    }
+
+    .popover {
+      position: absolute;
+      top: 50px;
+      left: 12px;
+      right: 12px;
+      z-index: 5;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 12px 30px rgba(22, 32, 42, 0.16);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .custom-secret-panel {
+      display: grid;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #f8fafb;
+    }
+
+    .secret-box {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border: 1px dashed #b8c2cd;
+      border-radius: 10px;
+      background: #fbfcfd;
+    }
+
+    .secret-value {
+      min-height: 48px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #eef5f4;
+      border: 1px solid #c9dfdc;
+      color: #123f3d;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .secret-help {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .field-error {
+      color: var(--danger);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
     .stage-card.locked {
       border-color: #cbd3dc;
       background: #f4f6f8;
@@ -351,31 +432,82 @@
     }
 
     .qr.generated {
-      grid-template-columns: repeat(9, 12px);
-      grid-auto-rows: 12px;
-      gap: 3px;
-      align-content: center;
-      justify-content: center;
-      color: transparent;
+      background: #fff;
+      background-size: auto;
     }
 
-    .qr.generated span {
-      width: 12px;
-      height: 12px;
-      background: #16202a;
+    .qr svg {
+      width: min(100%, 180px);
+      height: auto;
+      display: block;
     }
 
-    .qr.generated span.off {
-      background: transparent;
-    }
-
-    .qr.generated::after {
-      content: attr(data-label);
-      grid-column: 1 / -1;
-      margin-top: 8px;
+    .pow-status {
+      display: grid;
+      place-items: center;
+      min-height: 50px;
       color: var(--muted);
-      font-size: 11px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-weight: 700;
+    }
+
+    .pow-spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid #dbe2ea;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .address-result {
+      display: grid;
+      gap: 8px;
+    }
+
+    .address-line {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .address-line .value {
+      margin-top: 0;
+    }
+
+    .expiry-line {
+      display: grid;
+      gap: 2px;
+      padding: 8px 10px;
+      border: 1px solid #dce4eb;
+      border-radius: 8px;
+      background: #f7fafc;
+      color: #33414f;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .expiry-line strong {
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .expiry-line.expired {
+      border-color: #f0c7c4;
+      background: #fff6f5;
+      color: #8f332d;
+    }
+
+    .copy-button {
+      min-height: 38px;
+      background: #e7ebef;
+      color: #26323d;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
 
 
@@ -509,6 +641,7 @@
     .actions {
       display: flex;
       flex-wrap: wrap;
+      justify-content: center;
       gap: 10px;
       margin-top: 14px;
     }
@@ -585,6 +718,11 @@
       color: var(--muted);
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 12px;
+    }
+
+    .note .note-pool {
+      font-family: inherit;
+      white-space: normal;
     }
 
     .log {
@@ -667,6 +805,7 @@
       }
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </head>
 <body>
   <main>
@@ -709,36 +848,52 @@
       <section class="app-board" aria-label="Thornado app flow">
         <div class="flow-stage">
           <div id="stageDeposit" class="stage-card">
+            <div class="card-tools">
+              <button id="depositInfoButton" class="icon-button" type="button" aria-label="Deposit info">i</button>
+            </div>
             <h2>deposit</h2>
-            <div class="compact-fields">
+            <div id="depositInfo" class="popover" hidden>
+              The secret stays in your browser. Thornado derives your pubkey locally, then mines a small proof of work before requesting a deposit address. The address is watched only until the next churn, because churn rotates custody keys. PoW makes bulk address spam expensive without asking you to solve a CAPTCHA.
+            </div>
+            <textarea id="walletRoot" hidden spellcheck="false"></textarea>
+            <input id="walletPassphrase" type="password" hidden autocomplete="off">
+            <div id="customSecretPanel" class="custom-secret-panel" hidden>
               <label>
-                BIP39 seed
-                <textarea id="walletRoot" spellcheck="false" placeholder="Generated 12-word mnemonic appears here, or paste your own BIP39 mnemonic"></textarea>
+                Enter a new 12 or 24 word phrase
+                <textarea id="customWalletRoot" spellcheck="false" placeholder="Enter your BIP39 seedphrase"></textarea>
               </label>
-              <div class="compact-fields two">
-                <label>
-                  Passphrase
-                  <input id="walletPassphrase" type="password" autocomplete="off">
-                </label>
-                <label>
-                  PoW label
-                  <input id="powToken" value="browser">
-                </label>
+              <div id="customSecretError" class="field-error" hidden></div>
+              <div class="actions">
+                <button id="cancelCustomSecret" class="secondary" type="button">Cancel</button>
+                <button id="saveCustomSecret" type="button">Done</button>
+              </div>
+            </div>
+            <div id="secretBox" class="secret-box">
+              <button id="revealSecret" class="secondary" type="button">Reveal Secret</button>
+              <div id="secretValue" class="secret-value" hidden></div>
+              <div id="secretHelp" class="secret-help" hidden>Save this secret to withdraw your deposit later.</div>
+              <div id="secretActions" class="actions" hidden>
+                <button id="useCustomSecret" class="secondary" type="button">Use Custom Secret</button>
+                <button id="doneSecret" type="button">Done</button>
               </div>
             </div>
             <div class="actions">
-              <button id="generateWalletRoot" class="secondary">Generate 12 words</button>
-              <button id="requestDeposit">Get address</button>
+              <button id="requestDeposit">Get Address</button>
             </div>
-            <div id="walletRootStatus" class="value">No wallet root loaded.</div>
+            <div id="powStatus" class="pow-status" hidden>
+              <div class="pow-spinner" aria-label="Mining PoW"></div>
+            </div>
+            <div id="depositResult" class="address-result" hidden>
+              <div id="depositQr" class="qr">Deposit address and QR will appear here</div>
+              <div class="address-line">
+                <div id="depositAddress" class="value"></div>
+                <button id="copyDepositAddress" class="copy-button" type="button">Copy</button>
+              </div>
+              <div id="depositExpiry" class="expiry-line" hidden></div>
+            </div>
+            <div id="walletRootStatus" class="value" hidden></div>
             <div id="clientPubkey" class="value" hidden></div>
             <div id="powResult" class="value" hidden></div>
-            <div id="depositAddress" class="value" hidden></div>
-            <div id="depositQr" class="qr">Deposit address and QR will appear here</div>
-            <div class="pill-row">
-              <span id="powPill" class="pill">PoW not mined</span>
-              <span id="pubkeyPill" class="pill">pubkey pending</span>
-            </div>
           </div>
         </div>
 
@@ -780,6 +935,7 @@
             <div class="panel-list">
               <div class="row"><span>Demo maturity</span><strong id="waitDemo">~1 min</strong></div>
               <div class="row"><span>Protocol target</span><strong>expands to ~1 day</strong></div>
+              <div class="row"><span>Later notes</span><strong id="laterDepositMetric">none</strong></div>
               <div class="row"><span>Privacy</span><strong id="withdrawRisk">high before split</strong></div>
             </div>
             <div class="meter"><span id="privacyMeter"></span></div>
@@ -799,6 +955,7 @@
               <input id="feeSats" type="number" min="0" step="1" value="100000">
             </label>
             <div class="actions">
+              <button id="validateProof" class="secondary" disabled>Validate proof</button>
               <button id="withdrawNote" disabled>Withdraw selected note</button>
             </div>
             <div class="panel-list">
@@ -836,7 +993,7 @@
             <div>
               <span class="panel-label">Light node</span>
               <div class="panel-list">
-                <div class="row"><span>Endpoint</span><strong>127.0.0.1:3030</strong></div>
+                <div class="row"><span>Attached node</span><strong id="nodeEndpoint">same origin</strong></div>
                 <div class="row"><span>Broadcast tx</span><strong>dev API only</strong></div>
                 <div class="row"><span>State query</span><strong>/state/hash</strong></div>
               </div>
@@ -852,8 +1009,10 @@
               <span class="panel-label">Operator set</span>
               <div class="panel-list">
                 <div class="row"><span>Threshold</span><strong>67% FROST</strong></div>
-                <div class="row"><span>Churn interval</span><strong>7 days</strong></div>
-                <div class="row"><span>Standby slots</span><strong>1 per cycle</strong></div>
+                <div class="row"><span>Churn interval</span><strong id="networkChurnInterval">3 days</strong></div>
+                <div class="row"><span>Target nodes</span><strong id="networkTargetNodes">4</strong></div>
+                <div class="row"><span>Next churn</span><strong id="networkNextChurn">not scheduled</strong></div>
+                <div class="row"><span>Max churn</span><strong id="networkMaxChurn">1 per cycle</strong></div>
                 <div class="row"><span>Offline penalty</span><strong>1% per missed cycle</strong></div>
               </div>
             </div>
@@ -875,7 +1034,7 @@
           <h2>System Params</h2>
           <div class="panel-list">
             <div class="row"><span>Denominations</span><strong>10, 1, 0.1, 0.01 BTC</strong></div>
-            <div class="row"><span>PoW target</span><strong>browser hashcash</strong></div>
+            <div class="row"><span>PoW target</span><strong>17-bit browser hashcash</strong></div>
             <div class="row"><span>Outbound fee</span><strong>100k sats</strong></div>
             <div class="row"><span>Fee bucket</span><strong>30 x 0.01 BTC</strong></div>
           </div>
@@ -896,22 +1055,64 @@
     </div>
   </main>
 
-  <script>
+  <script type="module">
+    let thornadoWasmReady;
+
+    async function thornadoWasm() {
+      if (!thornadoWasmReady) {
+        thornadoWasmReady = import("/wasm/thornado_web_wasm.js").then(async (mod) => {
+          await mod.default();
+          return mod;
+        });
+      }
+      const mod = await thornadoWasmReady;
+      return {
+        clientPubkeyFromSecretJson: mod.client_pubkey_from_secret_json,
+        deriveSplitReceiptJson: mod.derive_split_receipt_json,
+        verifyWithdrawalJson: mod.verify_withdrawal_json,
+        zkWithdrawalFromReceiptJson: mod.zk_withdrawal_from_receipt_json
+      };
+    }
     const DOMAIN = "thornado-mvp-v1";
-    const POW_DIFFICULTY_BITS = 16;
+    const POW_DIFFICULTY_BITS = 17;
+    const MIN_POW_MS = 2000;
     const DENOMINATIONS = [1000000000, 100000000, 10000000, 1000000];
-    const FIELD_MODULUS = (1n << 128n) - (45n << 40n) + 1n;
     const DEMO_MATURITY_MS = 60000;
+    const MIN_LATER_DEPOSITS = 3;
+    const POOL_REFRESH_MS = 15000;
+    const DEFAULT_CHURN_CYCLE_MS = 20 * 60 * 1000;
     const BIP39_WORDS = ["abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident","account","accuse","achieve","acid","acoustic","acquire","across","act","action","actor","actress","actual","adapt","add","addict","address","adjust","admit","adult","advance","advice","aerobic","affair","afford","afraid","again","age","agent","agree","ahead","aim","air","airport","aisle","alarm","album","alcohol","alert","alien","all","alley","allow","almost","alone","alpha","already","also","alter","always","amateur","amazing","among","amount","amused","analyst","anchor","ancient","anger","angle","angry","animal","ankle","announce","annual","another","answer","antenna","antique","anxiety","any","apart","apology","appear","apple","approve","april","arch","arctic","area","arena","argue","arm","armed","armor","army","around","arrange","arrest","arrive","arrow","art","artefact","artist","artwork","ask","aspect","assault","asset","assist","assume","asthma","athlete","atom","attack","attend","attitude","attract","auction","audit","august","aunt","author","auto","autumn","average","avocado","avoid","awake","aware","away","awesome","awful","awkward","axis","baby","bachelor","bacon","badge","bag","balance","balcony","ball","bamboo","banana","banner","bar","barely","bargain","barrel","base","basic","basket","battle","beach","bean","beauty","because","become","beef","before","begin","behave","behind","believe","below","belt","bench","benefit","best","betray","better","between","beyond","bicycle","bid","bike","bind","biology","bird","birth","bitter","black","blade","blame","blanket","blast","bleak","bless","blind","blood","blossom","blouse","blue","blur","blush","board","boat","body","boil","bomb","bone","bonus","book","boost","border","boring","borrow","boss","bottom","bounce","box","boy","bracket","brain","brand","brass","brave","bread","breeze","brick","bridge","brief","bright","bring","brisk","broccoli","broken","bronze","broom","brother","brown","brush","bubble","buddy","budget","buffalo","build","bulb","bulk","bullet","bundle","bunker","burden","burger","burst","bus","business","busy","butter","buyer","buzz","cabbage","cabin","cable","cactus","cage","cake","call","calm","camera","camp","can","canal","cancel","candy","cannon","canoe","canvas","canyon","capable","capital","captain","car","carbon","card","cargo","carpet","carry","cart","case","cash","casino","castle","casual","cat","catalog","catch","category","cattle","caught","cause","caution","cave","ceiling","celery","cement","census","century","cereal","certain","chair","chalk","champion","change","chaos","chapter","charge","chase","chat","cheap","check","cheese","chef","cherry","chest","chicken","chief","child","chimney","choice","choose","chronic","chuckle","chunk","churn","cigar","cinnamon","circle","citizen","city","civil","claim","clap","clarify","claw","clay","clean","clerk","clever","click","client","cliff","climb","clinic","clip","clock","clog","close","cloth","cloud","clown","club","clump","cluster","clutch","coach","coast","coconut","code","coffee","coil","coin","collect","color","column","combine","come","comfort","comic","common","company","concert","conduct","confirm","congress","connect","consider","control","convince","cook","cool","copper","copy","coral","core","corn","correct","cost","cotton","couch","country","couple","course","cousin","cover","coyote","crack","cradle","craft","cram","crane","crash","crater","crawl","crazy","cream","credit","creek","crew","cricket","crime","crisp","critic","crop","cross","crouch","crowd","crucial","cruel","cruise","crumble","crunch","crush","cry","crystal","cube","culture","cup","cupboard","curious","current","curtain","curve","cushion","custom","cute","cycle","dad","damage","damp","dance","danger","daring","dash","daughter","dawn","day","deal","debate","debris","decade","december","decide","decline","decorate","decrease","deer","defense","define","defy","degree","delay","deliver","demand","demise","denial","dentist","deny","depart","depend","deposit","depth","deputy","derive","describe","desert","design","desk","despair","destroy","detail","detect","develop","device","devote","diagram","dial","diamond","diary","dice","diesel","diet","differ","digital","dignity","dilemma","dinner","dinosaur","direct","dirt","disagree","discover","disease","dish","dismiss","disorder","display","distance","divert","divide","divorce","dizzy","doctor","document","dog","doll","dolphin","domain","donate","donkey","donor","door","dose","double","dove","draft","dragon","drama","drastic","draw","dream","dress","drift","drill","drink","drip","drive","drop","drum","dry","duck","dumb","dune","during","dust","dutch","duty","dwarf","dynamic","eager","eagle","early","earn","earth","easily","east","easy","echo","ecology","economy","edge","edit","educate","effort","egg","eight","either","elbow","elder","electric","elegant","element","elephant","elevator","elite","else","embark","embody","embrace","emerge","emotion","employ","empower","empty","enable","enact","end","endless","endorse","enemy","energy","enforce","engage","engine","enhance","enjoy","enlist","enough","enrich","enroll","ensure","enter","entire","entry","envelope","episode","equal","equip","era","erase","erode","erosion","error","erupt","escape","essay","essence","estate","eternal","ethics","evidence","evil","evoke","evolve","exact","example","excess","exchange","excite","exclude","excuse","execute","exercise","exhaust","exhibit","exile","exist","exit","exotic","expand","expect","expire","explain","expose","express","extend","extra","eye","eyebrow","fabric","face","faculty","fade","faint","faith","fall","false","fame","family","famous","fan","fancy","fantasy","farm","fashion","fat","fatal","father","fatigue","fault","favorite","feature","february","federal","fee","feed","feel","female","fence","festival","fetch","fever","few","fiber","fiction","field","figure","file","film","filter","final","find","fine","finger","finish","fire","firm","first","fiscal","fish","fit","fitness","fix","flag","flame","flash","flat","flavor","flee","flight","flip","float","flock","floor","flower","fluid","flush","fly","foam","focus","fog","foil","fold","follow","food","foot","force","forest","forget","fork","fortune","forum","forward","fossil","foster","found","fox","fragile","frame","frequent","fresh","friend","fringe","frog","front","frost","frown","frozen","fruit","fuel","fun","funny","furnace","fury","future","gadget","gain","galaxy","gallery","game","gap","garage","garbage","garden","garlic","garment","gas","gasp","gate","gather","gauge","gaze","general","genius","genre","gentle","genuine","gesture","ghost","giant","gift","giggle","ginger","giraffe","girl","give","glad","glance","glare","glass","glide","glimpse","globe","gloom","glory","glove","glow","glue","goat","goddess","gold","good","goose","gorilla","gospel","gossip","govern","gown","grab","grace","grain","grant","grape","grass","gravity","great","green","grid","grief","grit","grocery","group","grow","grunt","guard","guess","guide","guilt","guitar","gun","gym","habit","hair","half","hammer","hamster","hand","happy","harbor","hard","harsh","harvest","hat","have","hawk","hazard","head","health","heart","heavy","hedgehog","height","hello","helmet","help","hen","hero","hidden","high","hill","hint","hip","hire","history","hobby","hockey","hold","hole","holiday","hollow","home","honey","hood","hope","horn","horror","horse","hospital","host","hotel","hour","hover","hub","huge","human","humble","humor","hundred","hungry","hunt","hurdle","hurry","hurt","husband","hybrid","ice","icon","idea","identify","idle","ignore","ill","illegal","illness","image","imitate","immense","immune","impact","impose","improve","impulse","inch","include","income","increase","index","indicate","indoor","industry","infant","inflict","inform","inhale","inherit","initial","inject","injury","inmate","inner","innocent","input","inquiry","insane","insect","inside","inspire","install","intact","interest","into","invest","invite","involve","iron","island","isolate","issue","item","ivory","jacket","jaguar","jar","jazz","jealous","jeans","jelly","jewel","job","join","joke","journey","joy","judge","juice","jump","jungle","junior","junk","just","kangaroo","keen","keep","ketchup","key","kick","kid","kidney","kind","kingdom","kiss","kit","kitchen","kite","kitten","kiwi","knee","knife","knock","know","lab","label","labor","ladder","lady","lake","lamp","language","laptop","large","later","latin","laugh","laundry","lava","law","lawn","lawsuit","layer","lazy","leader","leaf","learn","leave","lecture","left","leg","legal","legend","leisure","lemon","lend","length","lens","leopard","lesson","letter","level","liar","liberty","library","license","life","lift","light","like","limb","limit","link","lion","liquid","list","little","live","lizard","load","loan","lobster","local","lock","logic","lonely","long","loop","lottery","loud","lounge","love","loyal","lucky","luggage","lumber","lunar","lunch","luxury","lyrics","machine","mad","magic","magnet","maid","mail","main","major","make","mammal","man","manage","mandate","mango","mansion","manual","maple","marble","march","margin","marine","market","marriage","mask","mass","master","match","material","math","matrix","matter","maximum","maze","meadow","mean","measure","meat","mechanic","medal","media","melody","melt","member","memory","mention","menu","mercy","merge","merit","merry","mesh","message","metal","method","middle","midnight","milk","million","mimic","mind","minimum","minor","minute","miracle","mirror","misery","miss","mistake","mix","mixed","mixture","mobile","model","modify","mom","moment","monitor","monkey","monster","month","moon","moral","more","morning","mosquito","mother","motion","motor","mountain","mouse","move","movie","much","muffin","mule","multiply","muscle","museum","mushroom","music","must","mutual","myself","mystery","myth","naive","name","napkin","narrow","nasty","nation","nature","near","neck","need","negative","neglect","neither","nephew","nerve","nest","net","network","neutral","never","news","next","nice","night","noble","noise","nominee","noodle","normal","north","nose","notable","note","nothing","notice","novel","now","nuclear","number","nurse","nut","oak","obey","object","oblige","obscure","observe","obtain","obvious","occur","ocean","october","odor","off","offer","office","often","oil","okay","old","olive","olympic","omit","once","one","onion","online","only","open","opera","opinion","oppose","option","orange","orbit","orchard","order","ordinary","organ","orient","original","orphan","ostrich","other","outdoor","outer","output","outside","oval","oven","over","own","owner","oxygen","oyster","ozone","pact","paddle","page","pair","palace","palm","panda","panel","panic","panther","paper","parade","parent","park","parrot","party","pass","patch","path","patient","patrol","pattern","pause","pave","payment","peace","peanut","pear","peasant","pelican","pen","penalty","pencil","people","pepper","perfect","permit","person","pet","phone","photo","phrase","physical","piano","picnic","picture","piece","pig","pigeon","pill","pilot","pink","pioneer","pipe","pistol","pitch","pizza","place","planet","plastic","plate","play","please","pledge","pluck","plug","plunge","poem","poet","point","polar","pole","police","pond","pony","pool","popular","portion","position","possible","post","potato","pottery","poverty","powder","power","practice","praise","predict","prefer","prepare","present","pretty","prevent","price","pride","primary","print","priority","prison","private","prize","problem","process","produce","profit","program","project","promote","proof","property","prosper","protect","proud","provide","public","pudding","pull","pulp","pulse","pumpkin","punch","pupil","puppy","purchase","purity","purpose","purse","push","put","puzzle","pyramid","quality","quantum","quarter","question","quick","quit","quiz","quote","rabbit","raccoon","race","rack","radar","radio","rail","rain","raise","rally","ramp","ranch","random","range","rapid","rare","rate","rather","raven","raw","razor","ready","real","reason","rebel","rebuild","recall","receive","recipe","record","recycle","reduce","reflect","reform","refuse","region","regret","regular","reject","relax","release","relief","rely","remain","remember","remind","remove","render","renew","rent","reopen","repair","repeat","replace","report","require","rescue","resemble","resist","resource","response","result","retire","retreat","return","reunion","reveal","review","reward","rhythm","rib","ribbon","rice","rich","ride","ridge","rifle","right","rigid","ring","riot","ripple","risk","ritual","rival","river","road","roast","robot","robust","rocket","romance","roof","rookie","room","rose","rotate","rough","round","route","royal","rubber","rude","rug","rule","run","runway","rural","sad","saddle","sadness","safe","sail","salad","salmon","salon","salt","salute","same","sample","sand","satisfy","satoshi","sauce","sausage","save","say","scale","scan","scare","scatter","scene","scheme","school","science","scissors","scorpion","scout","scrap","screen","script","scrub","sea","search","season","seat","second","secret","section","security","seed","seek","segment","select","sell","seminar","senior","sense","sentence","series","service","session","settle","setup","seven","shadow","shaft","shallow","share","shed","shell","sheriff","shield","shift","shine","ship","shiver","shock","shoe","shoot","shop","short","shoulder","shove","shrimp","shrug","shuffle","shy","sibling","sick","side","siege","sight","sign","silent","silk","silly","silver","similar","simple","since","sing","siren","sister","situate","six","size","skate","sketch","ski","skill","skin","skirt","skull","slab","slam","sleep","slender","slice","slide","slight","slim","slogan","slot","slow","slush","small","smart","smile","smoke","smooth","snack","snake","snap","sniff","snow","soap","soccer","social","sock","soda","soft","solar","soldier","solid","solution","solve","someone","song","soon","sorry","sort","soul","sound","soup","source","south","space","spare","spatial","spawn","speak","special","speed","spell","spend","sphere","spice","spider","spike","spin","spirit","split","spoil","sponsor","spoon","sport","spot","spray","spread","spring","spy","square","squeeze","squirrel","stable","stadium","staff","stage","stairs","stamp","stand","start","state","stay","steak","steel","stem","step","stereo","stick","still","sting","stock","stomach","stone","stool","story","stove","strategy","street","strike","strong","struggle","student","stuff","stumble","style","subject","submit","subway","success","such","sudden","suffer","sugar","suggest","suit","summer","sun","sunny","sunset","super","supply","supreme","sure","surface","surge","surprise","surround","survey","suspect","sustain","swallow","swamp","swap","swarm","swear","sweet","swift","swim","swing","switch","sword","symbol","symptom","syrup","system","table","tackle","tag","tail","talent","talk","tank","tape","target","task","taste","tattoo","taxi","teach","team","tell","ten","tenant","tennis","tent","term","test","text","thank","that","theme","then","theory","there","they","thing","this","thought","three","thrive","throw","thumb","thunder","ticket","tide","tiger","tilt","timber","time","tiny","tip","tired","tissue","title","toast","tobacco","today","toddler","toe","together","toilet","token","tomato","tomorrow","tone","tongue","tonight","tool","tooth","top","topic","topple","torch","tornado","tortoise","toss","total","tourist","toward","tower","town","toy","track","trade","traffic","tragic","train","transfer","trap","trash","travel","tray","treat","tree","trend","trial","tribe","trick","trigger","trim","trip","trophy","trouble","truck","true","truly","trumpet","trust","truth","try","tube","tuition","tumble","tuna","tunnel","turkey","turn","turtle","twelve","twenty","twice","twin","twist","two","type","typical","ugly","umbrella","unable","unaware","uncle","uncover","under","undo","unfair","unfold","unhappy","uniform","unique","unit","universe","unknown","unlock","until","unusual","unveil","update","upgrade","uphold","upon","upper","upset","urban","urge","usage","use","used","useful","useless","usual","utility","vacant","vacuum","vague","valid","valley","valve","van","vanish","vapor","various","vast","vault","vehicle","velvet","vendor","venture","venue","verb","verify","version","very","vessel","veteran","viable","vibrant","vicious","victory","video","view","village","vintage","violin","virtual","virus","visa","visit","visual","vital","vivid","vocal","voice","void","volcano","volume","vote","voyage","wage","wagon","wait","walk","wall","walnut","want","warfare","warm","warrior","wash","wasp","waste","water","wave","way","wealth","weapon","wear","weasel","weather","web","wedding","weekend","weird","welcome","west","wet","whale","what","wheat","wheel","when","where","whip","whisper","wide","width","wife","wild","will","win","window","wine","wing","wink","winner","winter","wire","wisdom","wise","wish","witness","wolf","woman","wonder","wood","wool","word","work","world","worry","worth","wrap","wreck","wrestle","wrist","write","wrong","yard","year","yellow","you","young","youth","zebra","zero","zone","zoo"];
     const state = {
       receipt: null,
       selectedNote: 0,
       activeIntentId: null,
+      depositRequestPending: false,
+      depositExpiresAt: null,
+      churnCycleMs: DEFAULT_CHURN_CYCLE_MS,
+      churnServerDeltaMs: 0,
       waitStartedAt: null,
-      waitMaturesAt: null
+      waitMaturesAt: null,
+      secretMode: "hidden",
+      lastWithdrawalProof: null,
+      lastWithdrawalPublic: null
     };
 
     const $ = (id) => document.getElementById(id);
+
+    function nodeOrigin() {
+      if (location.protocol === "file:") {
+        throw new Error("Open this page from a running Thornado node to use API actions.");
+      }
+      return location.origin;
+    }
+
+    function renderNodeEndpoint() {
+      const el = $("nodeEndpoint");
+      if (!el) {
+        return;
+      }
+      el.textContent = location.protocol === "file:" ? "file mode" : location.origin;
+    }
 
     function setMessage(text, kind = "") {
       const el = $("message");
@@ -959,15 +1160,15 @@
         return;
       }
       el.className = "qr generated";
-      el.dataset.label = short(address, 12, 10);
-      for (let index = 0; index < 81; index += 1) {
-        const cell = document.createElement("span");
-        const code = address.charCodeAt(index % address.length) + index * 17;
-        if (code % 4 === 0) {
-          cell.className = "off";
-        }
-        el.append(cell);
+      if (typeof qrcode !== "function") {
+        el.className = "qr";
+        el.textContent = "QR library failed to load";
+        return;
       }
+      const qr = qrcode(0, "M");
+      qr.addData(address);
+      qr.make();
+      el.innerHTML = qr.createSvgTag(4, 4);
     }
 
     function waitRemainingMs() {
@@ -975,6 +1176,17 @@
         return null;
       }
       return Math.max(0, state.waitMaturesAt - Date.now());
+    }
+
+    function depositRemainingMs() {
+      if (!state.depositExpiresAt) {
+        return null;
+      }
+      return Math.max(0, state.depositExpiresAt - Date.now());
+    }
+
+    function depositExpired() {
+      return state.activeIntentId && state.depositExpiresAt && depositRemainingMs() === 0;
     }
 
     function formatClock(ms) {
@@ -985,6 +1197,160 @@
       const minutes = String(Math.floor(total / 60)).padStart(2, "0");
       const seconds = String(total % 60).padStart(2, "0");
       return `${minutes}:${seconds}`;
+    }
+
+    function selectedReceiptNote() {
+      return state.receipt?.notes?.[state.selectedNote || 0] || null;
+    }
+
+    function updateNotePoolPosition(note, leavesResponse) {
+      const leaves = Array.isArray(leavesResponse.leaves) ? leavesResponse.leaves : [];
+      const position = leaves.indexOf(note.commitment);
+      note.pool_leaf_position = position >= 0 ? position : null;
+      note.pool_leaf_count = Number(leavesResponse.leaf_count || leaves.length);
+      note.later_note_count = position >= 0 ? Math.max(0, leaves.length - position - 1) : 0;
+      note.privacy_target_later_notes = MIN_LATER_DEPOSITS;
+    }
+
+    async function refreshReceiptPoolPositions() {
+      const notes = state.receipt?.notes || [];
+      if (!notes.length || location.protocol === "file:") {
+        return;
+      }
+      const denominations = [...new Set(notes.map((note) => note.denomination_sats))];
+      const responses = await Promise.all(
+        denominations.map(async (denomination) => [
+          denomination,
+          await api(`/notes/leaves/${denomination}`)
+        ])
+      );
+      const byDenomination = new Map(responses);
+      for (const note of notes) {
+        const leavesResponse = byDenomination.get(note.denomination_sats);
+        if (leavesResponse) {
+          updateNotePoolPosition(note, leavesResponse);
+        }
+      }
+    }
+
+    function formatDuration(ms) {
+      if (ms === null) {
+        return "not scheduled";
+      }
+      if (ms <= 0) {
+        return "expired";
+      }
+      const totalMinutes = Math.ceil(ms / 60000);
+      const days = Math.floor(totalMinutes / 1440);
+      const hours = Math.floor((totalMinutes % 1440) / 60);
+      const minutes = totalMinutes % 60;
+      const parts = [];
+      if (days) {
+        parts.push(`${days}d`);
+      }
+      if (hours || days) {
+        parts.push(`${hours}h`);
+      }
+      parts.push(`${minutes}m`);
+      return parts.join(" ");
+    }
+
+    function formatChurnCountdown(ms) {
+      if (ms === null) {
+        return "--:--:--:--";
+      }
+      const totalSeconds = Math.ceil(Math.max(0, ms) / 1000);
+      const days = String(Math.floor(totalSeconds / 86400)).padStart(2, "0");
+      const hours = String(Math.floor((totalSeconds % 86400) / 3600)).padStart(2, "0");
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      return `${days}:${hours}:${minutes}:${seconds}`;
+    }
+
+    function applyChurnWindow(window) {
+      state.churnCycleMs = window.cycle_ms || DEFAULT_CHURN_CYCLE_MS;
+      state.churnServerDeltaMs = Date.now() - window.server_now_ms;
+      if (window.remaining_ms !== undefined) {
+        state.depositExpiresAt = Date.now() + window.remaining_ms;
+      } else {
+        state.depositExpiresAt = window.next_churn_at_ms + state.churnServerDeltaMs;
+      }
+      const intervalEl = $("networkChurnInterval");
+      if (intervalEl) {
+        intervalEl.textContent = formatDuration(state.churnCycleMs);
+      }
+      const targetNodesEl = $("networkTargetNodes");
+      if (targetNodesEl && window.target_active_nodes !== undefined) {
+        targetNodesEl.textContent = String(window.target_active_nodes);
+      }
+      const maxChurnEl = $("networkMaxChurn");
+      if (maxChurnEl && window.max_nodes_per_churn !== undefined) {
+        maxChurnEl.textContent = `${window.max_nodes_per_churn} per cycle`;
+      }
+      renderDepositExpiry();
+      return window;
+    }
+
+    async function refreshChurnWindow() {
+      return applyChurnWindow(await api("/churn/window"));
+    }
+
+    function renderDepositExpiry() {
+      const el = $("depositExpiry");
+      const nextChurnEl = $("networkNextChurn");
+      if (!state.depositExpiresAt) {
+        el.hidden = true;
+        if (nextChurnEl) {
+          nextChurnEl.textContent = "not scheduled";
+        }
+        return;
+      }
+      const remaining = depositRemainingMs();
+      const expired = remaining === 0;
+      if (nextChurnEl) {
+        nextChurnEl.textContent = expired ? "expired" : formatChurnCountdown(remaining);
+      }
+      if (!state.activeIntentId) {
+        el.hidden = true;
+        return;
+      }
+      el.hidden = false;
+      el.className = `expiry-line${expired ? " expired" : ""}`;
+      el.innerHTML = expired
+        ? "<strong>Deposit address expired</strong><span>Request a new address for the current churn cycle.</span>"
+        : `<strong>Valid until next churn: ${formatChurnCountdown(remaining)}</strong>`;
+    }
+
+    function renderSecret() {
+      const secret = $("walletRoot").value.trim();
+      const isRevealed = state.secretMode === "revealed";
+      const isCustom = state.secretMode === "custom";
+      $("customSecretPanel").hidden = !isCustom;
+      $("secretBox").hidden = isCustom;
+      $("revealSecret").hidden = isRevealed;
+      $("secretValue").hidden = !isRevealed;
+      $("secretHelp").hidden = !isRevealed;
+      $("secretActions").hidden = !isRevealed;
+      $("secretValue").textContent = isRevealed ? secret : "";
+      $("requestDeposit").hidden = state.secretMode !== "hidden";
+    }
+
+    function resetDepositState() {
+      state.activeIntentId = null;
+      state.depositExpiresAt = null;
+      state.churnCycleMs = DEFAULT_CHURN_CYCLE_MS;
+      state.receipt = null;
+      state.selectedNote = 0;
+      state.waitStartedAt = null;
+      state.waitMaturesAt = null;
+      state.lastWithdrawalProof = null;
+      state.lastWithdrawalPublic = null;
+      $("intentId").value = "";
+      $("depositAddress").hidden = true;
+      $("depositResult").hidden = true;
+      $("clientPubkey").hidden = true;
+      $("powResult").hidden = true;
+      $("confirmations").textContent = "0 / 1";
     }
 
     function renderDenominations() {
@@ -1012,47 +1378,79 @@
     function updateDashboard() {
       const notes = state.receipt?.notes || [];
       const hasWallet = Boolean($("walletRoot").value.trim());
-      const hasDeposit = Boolean(state.activeIntentId);
+      const hasDeposit = Boolean(
+        state.activeIntentId
+          && $("depositAddress").textContent.trim()
+          && !state.depositRequestPending
+      );
+      const isDepositExpired = depositExpired();
+      const hasObservableDeposit = hasDeposit && !isDepositExpired;
       const hasConfirmed = $("confirmations").textContent === "1 / 1";
       const hasSplit = notes.length > 0;
       const remainingMs = waitRemainingMs();
       const hasMatureNote = hasSplit && remainingMs === 0;
+      const hasProof = Boolean(state.lastWithdrawalProof && state.lastWithdrawalPublic);
+      const note = selectedReceiptNote();
+      const laterNoteCount = note?.later_note_count;
+      const hasLaterNoteCount = Number.isFinite(laterNoteCount);
+      const targetLaterNotes = Number.isFinite(note?.privacy_target_later_notes)
+        ? note.privacy_target_later_notes
+        : MIN_LATER_DEPOSITS;
+      const laterNoteProgress = hasLaterNoteCount
+        ? `${laterNoteCount} / ${targetLaterNotes}`
+        : hasSplit ? "syncing" : "none";
+      const missingLaterNotes = hasLaterNoteCount
+        ? Math.max(0, targetLaterNotes - laterNoteCount)
+        : targetLaterNotes;
+      const poolReady = hasMatureNote && hasLaterNoteCount && laterNoteCount >= targetLaterNotes;
       $("walletMetric").textContent = hasWallet ? "Mnemonic local" : "No mnemonic";
-      $("depositMetric").textContent = hasDeposit ? state.activeIntentId : "No intent";
+      $("depositMetric").textContent = hasDeposit ? isDepositExpired ? "Expired" : state.activeIntentId : "No intent";
       $("notesMetric").textContent = `${notes.length} minted`;
-      $("privacyMetric").textContent = hasMatureNote ? "First note mature" : hasSplit ? "Timer running" : "No pool yet";
+      $("privacyMetric").textContent = hasSplit ? `${laterNoteProgress} later` : "No pool yet";
       setStep("stepWallet", hasWallet ? "done" : "active");
-      setStep("stepDeposit", hasDeposit ? "done" : hasWallet ? "active" : "");
+      setStep("stepDeposit", hasObservableDeposit || hasConfirmed ? "done" : hasWallet ? "active" : "");
       setStep("stepSplit", hasSplit ? "done" : hasConfirmed ? "active" : "");
       setStep("stepWithdraw", hasSplit ? "active" : "");
-      setStage("stageDeposit", hasDeposit ? "done" : "");
-      setStage("stageSplit", hasSplit ? "done" : hasDeposit ? "" : "locked");
+      setStage("stageDeposit", hasObservableDeposit || hasConfirmed ? "done" : "");
+      setStage("stageSplit", hasSplit ? "done" : hasObservableDeposit || hasConfirmed ? "" : "locked");
       setStage("stageWait", hasMatureNote ? "done" : hasSplit ? "" : "locked");
       setStage("stageWithdraw", hasMatureNote ? "" : "locked");
-      $("confirmDeposit").disabled = !hasDeposit || hasConfirmed;
+      $("confirmDeposit").disabled = !hasObservableDeposit || hasConfirmed;
       $("splitDeposit").disabled = !hasConfirmed || hasSplit;
       $("withdrawNote").disabled = !hasMatureNote;
-      $("powPill").className = hasDeposit ? "pill ok" : "pill";
-      $("powPill").textContent = hasDeposit ? "PoW accepted" : "PoW not mined";
-      $("pubkeyPill").className = hasWallet ? "pill ok" : "pill";
-      $("pubkeyPill").textContent = hasWallet ? "pubkey derived" : "pubkey pending";
-      renderDepositQr(hasDeposit ? $("depositAddress").textContent : "");
+      $("validateProof").disabled = !hasMatureNote && !hasProof;
+      $("depositResult").hidden = !hasDeposit;
+      $("depositQr").hidden = !hasDeposit || isDepositExpired;
+      $("depositAddress").hidden = !hasDeposit || isDepositExpired;
+      $("copyDepositAddress").hidden = !hasDeposit || isDepositExpired;
+      renderDepositQr(hasDeposit && !isDepositExpired ? $("depositAddress").textContent : "");
+      renderDepositExpiry();
       $("knownAmount").textContent = `${sats(Number($("amountSats").value || 0))} sats`;
       $("waitClock").textContent = formatClock(remainingMs);
-      $("waitDemo").textContent = hasMatureNote ? "ready" : hasSplit ? "~1 min" : "waiting for split";
-      $("withdrawRisk").textContent = hasMatureNote ? "lower after maturity delay" : hasSplit ? "high until time passes" : "high before split";
-      $("privacyMeter").style.width = hasMatureNote ? "72%" : hasSplit ? "42%" : hasDeposit ? "18%" : "8%";
+      $("waitDemo").textContent = hasMatureNote ? "time ready" : hasSplit ? "~1 min" : "waiting for split";
+      $("laterDepositMetric").textContent = laterNoteProgress;
+      $("withdrawRisk").textContent = poolReady
+        ? "lower after later notes"
+        : hasMatureNote && hasLaterNoteCount
+          ? `wait for ${missingLaterNotes} more same-denom notes`
+          : hasSplit
+            ? hasMatureNote ? "syncing pool position" : "high until time passes"
+            : "high before split";
+      const poolProgress = hasLaterNoteCount
+        ? Math.min(1, laterNoteCount / targetLaterNotes)
+        : 0;
+      $("privacyMeter").style.width = hasSplit
+        ? `${Math.round(30 + poolProgress * 62)}%`
+        : hasDeposit ? "18%" : "8%";
       $("receiptFingerprint").textContent = notes[0]?.root_fingerprint || "none";
       $("remainderSats").textContent = `${sats(state.receipt?.remainder_sats || 0)} sats`;
       $("feePreview").textContent = `${sats(Number($("feeSats").value || 0))} sats`;
       renderDenominations();
+      renderSecret();
     }
 
     async function api(path, options = {}) {
-      if (location.protocol === "file:") {
-        throw new Error("Open http://127.0.0.1:3030/ to use API actions.");
-      }
-      const response = await fetch(path, {
+      const response = await fetch(new URL(path, nodeOrigin()), {
         headers: options.body ? { "content-type": "application/json" } : undefined,
         ...options,
         body: options.body ? JSON.stringify(options.body) : undefined
@@ -1171,61 +1569,6 @@
       return words.join(" ");
     }
 
-    function bytesToBigInt(bytes) {
-      let value = 0n;
-      for (const byte of bytes) {
-        value = (value << 8n) + BigInt(byte);
-      }
-      return value;
-    }
-
-    async function starkFieldFromBytes(bytes) {
-      const digest = await sha256(bytes);
-      return (bytesToBigInt(digest.slice(0, 16)) % FIELD_MODULUS).toString();
-    }
-
-    function parseField(value) {
-      const text = String(value).trim();
-      if (/^[0-9]+$/.test(text)) {
-        return BigInt(text) % FIELD_MODULUS;
-      }
-      const hex = text.replace(/^0x/i, "");
-      if (/^[0-9a-f]+$/i.test(hex)) {
-        return bytesToBigInt(hexToBytes(hex.length % 2 === 0 ? hex : `0${hex}`).slice(-16)) % FIELD_MODULUS;
-      }
-      throw new Error("invalid field element");
-    }
-
-    function fieldPow(value, exponent) {
-      let base = value % FIELD_MODULUS;
-      let power = BigInt(exponent);
-      let result = 1n;
-      while (power > 0n) {
-        if (power & 1n) {
-          result = (result * base) % FIELD_MODULUS;
-        }
-        base = (base * base) % FIELD_MODULUS;
-        power >>= 1n;
-      }
-      return result;
-    }
-
-    function algebraicHash1(value) {
-      return ((fieldPow(parseField(value), 5) + 17n) % FIELD_MODULUS).toString();
-    }
-
-    function algebraicHash2(left, right) {
-      return (
-        fieldPow(parseField(left), 3) +
-        (fieldPow(parseField(right), 3) * 29n) +
-        41n
-      ) % FIELD_MODULUS;
-    }
-
-    function algebraicHash3(left, right, third) {
-      return ((algebraicHash2(algebraicHash2(left, right).toString(), third) + 53n) % FIELD_MODULUS).toString();
-    }
-
     function hasLeadingZeroBits(bytes, bits) {
       const fullZeroBytes = Math.floor(bits / 8);
       const remainingBits = bits % 8;
@@ -1244,40 +1587,36 @@
 
     async function mineDepositPow(label) {
       const uniqueLabel = `${label || "browser"}-${Date.now()}-${crypto.getRandomValues(new Uint32Array(1))[0].toString(16)}`;
+      const startedAt = performance.now();
       for (let nonce = 0; nonce < Number.MAX_SAFE_INTEGER; nonce += 1) {
         const token = `${uniqueLabel}:${nonce}`;
         const digest = await hashPartsBytes([DOMAIN, "deposit-pow", token]);
-        if (hasLeadingZeroBits(digest, POW_DIFFICULTY_BITS)) {
+        const elapsedMs = performance.now() - startedAt;
+        if (hasLeadingZeroBits(digest, POW_DIFFICULTY_BITS) && elapsedMs >= MIN_POW_MS) {
           return {
             token,
             nonce,
-            digest: bytesToHex(digest)
+            digest: bytesToHex(digest),
+            difficulty_bits: POW_DIFFICULTY_BITS,
+            elapsed_ms: Math.round(elapsedMs)
           };
         }
         if (nonce > 0 && nonce % 2000 === 0) {
-          setMessage(`Mining PoW nonce ${nonce.toLocaleString()}...`);
           await new Promise((resolve) => setTimeout(resolve, 0));
         }
       }
       throw new Error("unable to mine deposit proof of work");
     }
 
-    async function noteCommitment(nullifier, secret, denominationSats) {
-      return algebraicHash3(nullifier, secret, String(denominationSats));
-    }
-
-    async function nullifierHash(nullifier) {
-      return algebraicHash1(nullifier);
-    }
-
     async function generateWalletRoot() {
       const mnemonic = await generateMnemonic12();
       $("walletRoot").value = mnemonic;
+      state.secretMode = "hidden";
       const seedHex = await bip39SeedFromMnemonic(mnemonic, $("walletPassphrase").value);
       const pubkey = await clientPubkeyFromSeed(seedHex);
-      $("walletRootStatus").hidden = false;
+      $("walletRootStatus").hidden = true;
       $("walletRootStatus").textContent = `Generated 12-word BIP39 mnemonic in this browser. Root fingerprint ${await rootFingerprint(seedHex)}.`;
-      $("clientPubkey").hidden = false;
+      $("clientPubkey").hidden = true;
       $("clientPubkey").textContent = `Client pubkey ${pubkey}`;
       updateDashboard();
     }
@@ -1309,16 +1648,37 @@
       if (!root) {
         throw new Error("generate or paste a BIP39 root before splitting");
       }
-      const words = root.normalize("NFKD").toLowerCase().split(/\s+/).filter(Boolean);
-      if (![12, 15, 18, 21, 24].includes(words.length)) {
-        throw new Error("mnemonic must have 12, 15, 18, 21, or 24 words");
+      const words = await validateMnemonic(root, [12, 15, 18, 21, 24]);
+      return bip39SeedFromMnemonic(words.join(" "), $("walletPassphrase").value);
+    }
+
+    async function validateMnemonic(mnemonic, allowedWordCounts) {
+      const words = mnemonic.normalize("NFKD").toLowerCase().split(/\s+/).filter(Boolean);
+      if (!allowedWordCounts.includes(words.length)) {
+        throw new Error(`mnemonic must have ${allowedWordCounts.join(" or ")} words`);
       }
+      const indexes = [];
       for (const word of words) {
-        if (!BIP39_WORDS.includes(word)) {
+        const index = BIP39_WORDS.indexOf(word);
+        if (index === -1) {
           throw new Error(`unknown BIP39 word: ${word}`);
         }
+        indexes.push(index);
       }
-      return bip39SeedFromMnemonic(words.join(" "), $("walletPassphrase").value);
+      const bits = indexes.map((index) => index.toString(2).padStart(11, "0")).join("");
+      const entropyBitLength = Math.floor(bits.length * 32 / 33);
+      const checksumBitLength = bits.length - entropyBitLength;
+      const entropyBits = bits.slice(0, entropyBitLength);
+      const checksumBits = bits.slice(entropyBitLength);
+      const entropy = new Uint8Array(entropyBitLength / 8);
+      for (let offset = 0; offset < entropy.length; offset += 1) {
+        entropy[offset] = parseInt(entropyBits.slice(offset * 8, offset * 8 + 8), 2);
+      }
+      const expectedChecksum = bytesToBits(await sha256(entropy)).slice(0, checksumBitLength);
+      if (checksumBits !== expectedChecksum) {
+        throw new Error("mnemonic checksum is invalid");
+      }
+      return words;
     }
 
     async function rootFingerprint(seedHex) {
@@ -1326,13 +1686,14 @@
     }
 
     async function clientPubkeyFromSeed(seedHex) {
-      return hashParts([DOMAIN, "client-pubkey", seedHex]);
+      const wasm = await thornadoWasm();
+      return wasm.clientPubkeyFromSecretJson(seedHex);
     }
 
     async function refreshClientPubkey() {
       const seedHex = await walletRootSeedHex();
       const pubkey = await clientPubkeyFromSeed(seedHex);
-      $("clientPubkey").hidden = false;
+      $("clientPubkey").hidden = true;
       $("clientPubkey").textContent = `Client pubkey ${pubkey}`;
       return pubkey;
     }
@@ -1342,29 +1703,15 @@
     }
 
     async function deriveSplitReceipt(depositId, amountSats, seedHex) {
-      const { denominations, remaining } = greedyDenominations(amountSats);
-      if (denominations.length === 0) {
-        throw new Error("deposit amount does not produce any supported denomination notes");
-      }
+      const wasm = await thornadoWasm();
       const fingerprint = await rootFingerprint(seedHex);
-      const notes = [];
-      for (let index = 0; index < denominations.length; index += 1) {
-        const path = notePath(index);
-        const nullifier = await starkFieldFromBytes(encodePart(`${DOMAIN}:receipt-nullifier:${seedHex}:${depositId}:${path}`));
-        const secret = await starkFieldFromBytes(encodePart(`${DOMAIN}:receipt-secret:${seedHex}:${depositId}:${path}`));
-        const commitment = await noteCommitment(nullifier, secret, denominations[index]);
-        notes.push({
-          deposit_id: depositId,
-          denomination_sats: denominations[index],
-          index,
-          derivation_path: path,
-          root_fingerprint: fingerprint,
-          nullifier,
-          secret,
-          commitment
-        });
-      }
-      return { notes, remainder_sats: remaining };
+      const receipt = JSON.parse(wasm.deriveSplitReceiptJson(depositId, BigInt(amountSats), seedHex));
+      receipt.notes = receipt.notes.map((note) => ({
+        ...note,
+        derivation_path: notePath(note.index),
+        root_fingerprint: fingerprint
+      }));
+      return receipt;
     }
 
     function commitments(receipt) {
@@ -1372,6 +1719,60 @@
         denomination_sats: note.denomination_sats,
         commitment: note.commitment
       }));
+    }
+
+    async function generateWithdrawalProof() {
+      if (!state.receipt?.notes?.length) {
+        throw new Error("split into notes before withdrawing");
+      }
+      const note = state.receipt.notes[state.selectedNote || 0];
+      if (!note) {
+        throw new Error("select a note to withdraw");
+      }
+      const recipient = $("recipient").value.trim();
+      if (!recipient) {
+        throw new Error("receive address is required");
+      }
+      const feeSats = Number($("feeSats").value || 0);
+      if (!Number.isSafeInteger(feeSats) || feeSats < 0) {
+        throw new Error("fee_sats must be a positive integer");
+      }
+      const seedHex = await walletRootSeedHex();
+      const leavesResponse = await api(`/notes/leaves/${note.denomination_sats}`);
+      updateNotePoolPosition(note, leavesResponse);
+      renderNotes();
+      updateDashboard();
+      const wasm = await thornadoWasm();
+      const [proof, publicInputs] = JSON.parse(wasm.zkWithdrawalFromReceiptJson(
+        JSON.stringify(note),
+        seedHex,
+        JSON.stringify(leavesResponse.leaves),
+        recipient,
+        BigInt(feeSats)
+      ));
+      state.lastWithdrawalProof = proof;
+      state.lastWithdrawalPublic = publicInputs;
+      return { proof, public: publicInputs, note };
+    }
+
+    async function validateGeneratedProof() {
+      let proof = state.lastWithdrawalProof;
+      let publicInputs = state.lastWithdrawalPublic;
+      if (!proof || !publicInputs) {
+        const generated = await generateWithdrawalProof();
+        proof = generated.proof;
+        publicInputs = generated.public;
+      }
+      const wasm = await thornadoWasm();
+      wasm.verifyWithdrawalJson(JSON.stringify(proof), JSON.stringify(publicInputs));
+      log("withdraw/proof/validate", {
+        nullifier_hash: publicInputs.nullifier_hash,
+        merkle_root: publicInputs.merkle_root,
+        proof_bytes: proof.orchard?.proof_hex?.length ? proof.orchard.proof_hex.length / 2 : 0
+      });
+      setMessage("Withdrawal proof validates locally.", "ok");
+      updateDashboard();
+      return { proof, public: publicInputs };
     }
 
     function renderNotes() {
@@ -1395,13 +1796,25 @@
         radio.disabled = !mature;
         radio.addEventListener("change", () => {
           state.selectedNote = index;
+          state.lastWithdrawalProof = null;
+          state.lastWithdrawalPublic = null;
+          updateDashboard();
         });
         const body = document.createElement("div");
         const title = document.createElement("strong");
         title.textContent = `${sats(note.denomination_sats)} sats ${note.derivation_path}`;
         const commitment = document.createElement("span");
         commitment.textContent = mature ? `${note.root_fingerprint} ${note.commitment}` : "matures after wait timer";
-        body.append(title, commitment);
+        const pool = document.createElement("span");
+        pool.className = "note-pool";
+        const laterNotes = Number.isFinite(note.later_note_count)
+          ? note.later_note_count
+          : null;
+        const poolLeafCount = Number.isFinite(note.pool_leaf_count) ? note.pool_leaf_count : 0;
+        pool.textContent = laterNotes === null
+          ? "pool position syncing"
+          : `${laterNotes} later same-denom notes · ${poolLeafCount} pool notes`;
+        body.append(title, commitment, pool);
         row.append(radio, body);
         el.append(row);
       }
@@ -1409,35 +1822,52 @@
     }
 
     async function requestDeposit() {
-      $("requestDeposit").disabled = true;
-      const userPubkey = await refreshClientPubkey();
-      setMessage("Mining deposit proof of work...");
-      const mined = await mineDepositPow($("powToken").value.trim());
-      $("powResult").hidden = false;
-      $("powResult").textContent = `PoW ${mined.token}`;
-      const payload = await api("/deposit/request", {
-        method: "POST",
-        body: {
-          pow_token: mined.token,
-          user_pubkey: userPubkey
-        }
-      });
-      const intent = payload.events.find((event) => event.DepositIntentCreated);
-      if (intent) {
-        const created = intent.DepositIntentCreated;
-        state.activeIntentId = created.intent_id;
-        state.receipt = null;
-        state.waitStartedAt = null;
-        state.waitMaturesAt = null;
-        $("intentId").value = created.intent_id;
-        $("depositAddress").hidden = false;
-        $("depositAddress").textContent = created.deposit_address;
-        $("confirmations").textContent = "0 / 1";
+      if (location.protocol === "file:") {
+        throw new Error("Open this page from a running Thornado node to get a deposit address.");
       }
-      log("deposit/request", { user_pubkey: userPubkey, pow: mined, response: payload });
-      setMessage("Deposit intent created.", "ok");
-      $("requestDeposit").disabled = false;
-      updateDashboard();
+      state.depositRequestPending = true;
+      $("requestDeposit").disabled = true;
+      $("depositResult").hidden = true;
+      $("depositAddress").textContent = "";
+      renderDepositQr("");
+      $("powStatus").hidden = false;
+      if (!$("walletRoot").value.trim()) {
+        await generateWalletRoot();
+      }
+      try {
+        const userPubkey = await refreshClientPubkey();
+        const mined = await mineDepositPow("browser");
+        $("powResult").hidden = true;
+        $("powResult").textContent = `PoW ${mined.token}`;
+        const payload = await api("/deposit/request", {
+          method: "POST",
+          body: {
+            pow_token: mined.token,
+            user_pubkey: userPubkey
+          }
+        });
+        const intent = payload.events.find((event) => event.DepositIntentCreated);
+        if (intent) {
+          const created = intent.DepositIntentCreated;
+          const churnWindow = await refreshChurnWindow();
+          state.activeIntentId = created.intent_id;
+          applyChurnWindow(churnWindow);
+          state.receipt = null;
+          state.waitStartedAt = null;
+          state.waitMaturesAt = null;
+          $("intentId").value = created.intent_id;
+          $("depositAddress").hidden = false;
+          $("depositAddress").textContent = created.deposit_address;
+          $("confirmations").textContent = "0 / 1";
+        }
+        log("deposit/request", { user_pubkey: userPubkey, pow: mined, response: payload });
+        setMessage("Deposit intent created.", "ok");
+      } finally {
+        state.depositRequestPending = false;
+        $("powStatus").hidden = true;
+        $("requestDeposit").disabled = false;
+        updateDashboard();
+      }
     }
 
     async function confirmDeposit() {
@@ -1472,7 +1902,7 @@
       const intentId = getIntentId();
       const amountSats = getAmountSats();
       const seedHex = await walletRootSeedHex();
-      $("walletRootStatus").hidden = false;
+      $("walletRootStatus").hidden = true;
       $("walletRootStatus").textContent = `Root fingerprint ${await rootFingerprint(seedHex)}. Notes use m/84'/1'/0'/0/index.`;
       const receipt = await deriveSplitReceipt(intentId, amountSats, seedHex);
       const payload = await api("/split", {
@@ -1486,6 +1916,7 @@
       state.selectedNote = 0;
       state.waitStartedAt = Date.now();
       state.waitMaturesAt = state.waitStartedAt + DEMO_MATURITY_MS;
+      await refreshReceiptPoolPositions();
       renderNotes();
       log("split", { ...payload, receipt });
       setMessage(`Minted ${receipt.notes.length} notes with ${sats(receipt.remainder_sats)} sats remainder.`, "ok");
@@ -1493,7 +1924,15 @@
     }
 
     async function withdrawNote() {
-      throw new Error("plaintext note withdrawal is disabled; use a witness-hiding ZK proof backend");
+      setMessage("Generating Orchard withdrawal proof in this browser...", "");
+      const { proof, public: publicInputs } = await validateGeneratedProof();
+      const payload = await api("/withdraw", {
+        method: "POST",
+        body: { proof, public: publicInputs }
+      });
+      log("withdraw", payload);
+      setMessage("Withdrawal proof accepted and payout authorized.", "ok");
+      updateDashboard();
     }
 
     function downloadReceipt() {
@@ -1514,10 +1953,76 @@
       try {
         await action();
       } catch (error) {
+        const message = error?.message || String(error);
         $("requestDeposit").disabled = false;
-        setMessage(error.message, "error");
-        log("error", { error: error.message });
+        $("powStatus").hidden = true;
+        setMessage(message, "error");
+        log("error", { error: message });
       }
+    }
+
+    function revealSecret() {
+      state.secretMode = "revealed";
+      renderSecret();
+    }
+
+    function hideSecret() {
+      state.secretMode = "hidden";
+      renderSecret();
+    }
+
+    function toggleDepositInfo() {
+      $("depositInfo").hidden = !$("depositInfo").hidden;
+    }
+
+    function startCustomSecret() {
+      state.secretMode = "custom";
+      $("customWalletRoot").value = "";
+      $("customSecretError").hidden = true;
+      $("customSecretError").textContent = "";
+      renderSecret();
+      $("customWalletRoot").focus();
+    }
+
+    function cancelCustomSecret() {
+      $("customWalletRoot").value = "";
+      $("customSecretError").hidden = true;
+      $("customSecretError").textContent = "";
+      state.secretMode = "revealed";
+      renderSecret();
+    }
+
+    async function saveCustomSecret() {
+      $("customSecretError").hidden = true;
+      $("customSecretError").textContent = "";
+      let words;
+      try {
+        words = await validateMnemonic($("customWalletRoot").value, [12, 24]);
+      } catch (error) {
+        $("customSecretError").textContent = error.message;
+        $("customSecretError").hidden = false;
+        throw error;
+      }
+      $("walletRoot").value = words.join(" ");
+      $("customWalletRoot").value = "";
+      state.secretMode = "hidden";
+      resetDepositState();
+      updateDashboard();
+    }
+
+    async function copyDepositAddress() {
+      if (depositExpired()) {
+        throw new Error("Deposit address expired. Request a new address for the current churn cycle.");
+      }
+      const address = $("depositAddress").textContent.trim();
+      if (!address) {
+        return;
+      }
+      await navigator.clipboard.writeText(address);
+      $("copyDepositAddress").textContent = "Copied";
+      setTimeout(() => {
+        $("copyDepositAddress").textContent = "Copy";
+      }, 1200);
     }
 
     function showTab(tabName) {
@@ -1531,35 +2036,51 @@
     $("tabUser").addEventListener("click", () => showTab("user"));
     $("tabNetwork").addEventListener("click", () => showTab("network"));
     $("requestDeposit").addEventListener("click", () => run(requestDeposit));
-    $("generateWalletRoot").addEventListener("click", () => run(generateWalletRoot));
+    $("depositInfoButton").addEventListener("click", toggleDepositInfo);
+    $("revealSecret").addEventListener("click", revealSecret);
+    $("useCustomSecret").addEventListener("click", startCustomSecret);
+    $("doneSecret").addEventListener("click", hideSecret);
+    $("cancelCustomSecret").addEventListener("click", cancelCustomSecret);
+    $("saveCustomSecret").addEventListener("click", () => run(saveCustomSecret));
+    $("copyDepositAddress").addEventListener("click", () => run(copyDepositAddress));
     $("confirmDeposit").addEventListener("click", () => run(confirmDeposit));
     $("splitDeposit").addEventListener("click", () => run(splitDeposit));
+    $("validateProof").addEventListener("click", () => run(validateGeneratedProof));
     $("withdrawNote").addEventListener("click", () => run(withdrawNote));
     $("downloadReceipt").addEventListener("click", downloadReceipt);
     $("amountSats").addEventListener("input", updateDashboard);
     $("feeSats").addEventListener("input", updateDashboard);
     $("walletRoot").addEventListener("input", () => {
-      state.activeIntentId = null;
-      state.receipt = null;
-      state.waitStartedAt = null;
-      state.waitMaturesAt = null;
-      $("intentId").value = "";
-      $("depositAddress").hidden = true;
-      $("clientPubkey").hidden = true;
-      $("powResult").hidden = true;
-      $("confirmations").textContent = "0 / 1";
+      resetDepositState();
+      updateDashboard();
+    });
+    $("walletPassphrase").addEventListener("input", () => {
+      resetDepositState();
       updateDashboard();
     });
 
     generateWalletRoot().catch((error) => setMessage(error.message, "error"));
+    renderNodeEndpoint();
+    refreshChurnWindow().catch((error) => log("churn/window", { error: error.message }));
     renderNotes();
     updateDashboard();
     setInterval(() => {
-      if (state.waitMaturesAt) {
+      if (state.waitMaturesAt || state.depositExpiresAt) {
         renderNotes();
         updateDashboard();
       }
     }, 1000);
+    setInterval(() => {
+      if (!state.receipt?.notes?.length || location.protocol === "file:") {
+        return;
+      }
+      refreshReceiptPoolPositions()
+        .then(() => {
+          renderNotes();
+          updateDashboard();
+        })
+        .catch((error) => log("notes/pool", { error: error?.message || String(error) }));
+    }, POOL_REFRESH_MS);
     if (location.protocol === "file:") {
       $("stateHash").textContent = "file mode";
     } else {

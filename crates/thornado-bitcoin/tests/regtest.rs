@@ -4,9 +4,10 @@ use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::thread;
 use thornado_bitcoin::{
-    script_hex, tx_bytes, txid_for_tests, BitcoinBackend, BitcoinConsolidationRequest,
-    BitcoinRpcConfig, BitcoinWithdrawalRequest, DevBitcoinBackend, Error, RegtestUtxo,
-    RegtestVault, RpcBitcoinBackend,
+    attach_taproot_key_spend_signatures, script_hex, taproot_key_spend_signing_payloads, tx_bytes,
+    txid_for_tests, BitcoinBackend, BitcoinConsolidationRequest, BitcoinRpcConfig,
+    BitcoinWithdrawalRequest, DevBitcoinBackend, Error, RegtestUtxo, RegtestVault,
+    RpcBitcoinBackend,
 };
 
 #[test]
@@ -157,6 +158,21 @@ fn clamps_fee_rate_and_honors_min_relay_fee() {
 }
 
 #[test]
+fn estimates_fee_from_signed_transaction_shape() {
+    let mut vault = RegtestVault::default();
+    vault
+        .import_utxo(regtest_utxo(14, 200_000, change_script_hex()))
+        .unwrap();
+
+    let mut request = withdrawal_request("wd-sized-fee", Network::Regtest);
+    request.fee_rate_sats_per_vb = 1;
+    let built = vault.build_withdrawal(request).unwrap();
+
+    assert!(built.change_value_sats > 0);
+    assert!(built.miner_fee_sats < 146);
+}
+
+#[test]
 fn rejects_unsupported_bare_multisig_utxo_script() {
     let mut vault = RegtestVault::default();
     let err = vault
@@ -172,14 +188,38 @@ fn rejects_unsupported_bare_multisig_utxo_script() {
 }
 
 #[test]
-fn rejects_non_p2wpkh_spend_scripts() {
+fn accepts_taproot_vault_utxo_scripts() {
     let mut vault = RegtestVault::default();
     let p2tr_script = format!("5120{}", hex::encode([1_u8; 32]));
-    let err = vault
+    vault
         .import_utxo(regtest_utxo(13, 100_000, p2tr_script))
-        .unwrap_err();
+        .unwrap();
 
-    assert_eq!(err, Error::InvalidUtxoScript);
+    assert_eq!(vault.utxos.len(), 1);
+}
+
+#[test]
+fn builds_taproot_sighash_payloads_and_attaches_key_spend_witnesses() {
+    let mut vault = RegtestVault::default();
+    let mut utxo = regtest_utxo(14, 150_000, format!("5120{}", hex::encode([2_u8; 32])));
+    utxo.deposit_key_tweak = Some(hex::encode([7_u8; 32]));
+    vault.import_utxo(utxo).unwrap();
+    let built = vault
+        .build_withdrawal(withdrawal_request("wd-tr", Network::Regtest))
+        .unwrap();
+
+    let payloads =
+        taproot_key_spend_signing_payloads(&built.unsigned_tx_hex, &built.selected_utxos).unwrap();
+    assert_eq!(payloads.len(), 1);
+    assert_eq!(payloads[0].sighash_hex.len(), 64);
+    assert_eq!(payloads[0].merkle_root_hex, Some(hex::encode([7_u8; 32])));
+
+    let signed =
+        attach_taproot_key_spend_signatures(&built.unsigned_tx_hex, &[hex::encode([3_u8; 64])])
+            .unwrap();
+    let bytes = hex::decode(signed).unwrap();
+    let tx: bitcoin::Transaction = bitcoin::consensus::encode::deserialize(&bytes).unwrap();
+    assert_eq!(tx.input[0].witness.len(), 1);
 }
 
 #[test]
@@ -280,6 +320,7 @@ fn builds_consolidation_when_enough_utxos_exist() {
             consolidation_id: "consolidate-1".to_string(),
             fee_rate_sats_per_vb: 2,
             change_script_pubkey_hex: change_script_hex(),
+            include_txids: Vec::new(),
             min_utxos: Some(4),
             max_inputs: None,
             min_confirmations: None,
@@ -303,6 +344,34 @@ fn builds_consolidation_when_enough_utxos_exist() {
 }
 
 #[test]
+fn consolidation_can_be_filtered_to_specific_deposit_txid() {
+    let mut backend = DevBitcoinBackend::new();
+    let selected = regtest_utxo(40, 80_000, change_script_hex());
+    let other = regtest_utxo(41, 80_000, change_script_hex());
+    backend.import_dev_utxo(other.clone()).unwrap();
+    backend.import_dev_utxo(selected.clone()).unwrap();
+
+    let built = backend
+        .build_consolidation(BitcoinConsolidationRequest {
+            consolidation_id: "sweep-deposit".to_string(),
+            fee_rate_sats_per_vb: 2,
+            change_script_pubkey_hex: change_script_hex(),
+            include_txids: vec![selected.txid.clone()],
+            min_utxos: Some(1),
+            max_inputs: None,
+            min_confirmations: None,
+            max_mempool_chain_length: None,
+            max_fee_rate_sats_per_vb: None,
+            min_relay_fee_sats: None,
+        })
+        .unwrap();
+
+    assert_eq!(built.selected_utxos.len(), 1);
+    assert_eq!(built.selected_utxos[0].txid, selected.txid);
+    assert_ne!(built.selected_utxos[0].txid, other.txid);
+}
+
+#[test]
 fn rejects_duplicate_consolidation_ids() {
     let mut backend = DevBitcoinBackend::new();
     for byte in 34..38 {
@@ -315,6 +384,7 @@ fn rejects_duplicate_consolidation_ids() {
         consolidation_id: "consolidate-dup".to_string(),
         fee_rate_sats_per_vb: 2,
         change_script_pubkey_hex: change_script_hex(),
+        include_txids: Vec::new(),
         min_utxos: Some(2),
         max_inputs: Some(2),
         min_confirmations: None,
@@ -347,6 +417,26 @@ fn validates_signing_checkpoint_and_rejects_spent_inputs() {
         .validate_signing_checkpoint("wd-checkpoint", signed_tx_hex_for_tests())
         .unwrap_err();
     assert_eq!(err, Error::CheckpointMismatch);
+}
+
+#[test]
+fn checkpoint_validation_rejects_changed_input_amounts() {
+    let mut backend = DevBitcoinBackend::new();
+    backend
+        .import_dev_utxo(regtest_utxo(42, 150_000, change_script_hex()))
+        .unwrap();
+    let built = backend
+        .build_withdrawal(withdrawal_request("wd-amount-check", Network::Regtest))
+        .unwrap();
+    backend
+        .import_dev_utxo(regtest_utxo(42, 151_000, change_script_hex()))
+        .unwrap();
+
+    let err = backend
+        .validate_signing_checkpoint("wd-amount-check", built.unsigned_tx_hex)
+        .unwrap_err();
+
+    assert_eq!(err, Error::CheckpointInputsUnavailable);
 }
 
 #[test]
@@ -393,6 +483,81 @@ fn rpc_checkpoint_validation_rejects_spent_inputs() {
     assert_eq!(err, Error::CheckpointInputsUnavailable);
 }
 
+#[test]
+fn rpc_zero_conf_from_same_script_is_spendable() {
+    let child_txid = txid_for_tests(43);
+    let parent_txid = txid_for_tests(44);
+    let script = change_script_hex();
+    let rpc = spawn_rpc_server(vec![
+        r#"{"result":{"chain":"regtest"},"error":null,"id":"thornado"}"#.to_string(),
+        format!(
+            r#"{{"result":[{{"txid":"{}","vout":0,"amount":0.002,"scriptPubKey":"{}","spendable":true,"confirmations":0}}],"error":null,"id":"thornado"}}"#,
+            child_txid, script
+        ),
+        format!(
+            r#"{{"result":{{"vin":[{{"txid":"{}","vout":0}}]}},"error":null,"id":"thornado"}}"#,
+            parent_txid
+        ),
+        format!(
+            r#"{{"result":{{"vout":[{{"scriptPubKey":{{"hex":"{}"}}}}]}},"error":null,"id":"thornado"}}"#,
+            script
+        ),
+        r#"{"result":{"ancestorcount":1,"descendantcount":0},"error":null,"id":"thornado"}"#
+            .to_string(),
+    ]);
+    let mut backend = RpcBitcoinBackend::new(BitcoinRpcConfig {
+        url: rpc,
+        user: "user".to_string(),
+        password: "password".to_string(),
+    })
+    .unwrap();
+
+    let built = backend
+        .build_withdrawal(withdrawal_request("wd-rpc-zero-conf", Network::Regtest))
+        .unwrap();
+
+    assert_eq!(built.selected_utxos.len(), 1);
+    assert_eq!(built.selected_utxos[0].txid, child_txid);
+}
+
+#[test]
+fn rpc_duplicate_broadcast_error_marks_withdrawal_broadcast() {
+    let utxo_txid = txid_for_tests(45);
+    let rpc = spawn_rpc_server(vec![
+        r#"{"result":{"chain":"regtest"},"error":null,"id":"thornado"}"#.to_string(),
+        format!(
+            r#"{{"result":[{{"txid":"{}","vout":0,"amount":0.002,"scriptPubKey":"{}","spendable":true,"confirmations":1}}],"error":null,"id":"thornado"}}"#,
+            utxo_txid,
+            change_script_hex()
+        ),
+        format!(
+            r#"{{"result":[{{"txid":"{}","vout":0,"amount":0.002,"scriptPubKey":"{}","spendable":true,"confirmations":1}}],"error":null,"id":"thornado"}}"#,
+            utxo_txid,
+            change_script_hex()
+        ),
+        r#"{"result":null,"error":{"code":-27,"message":"transaction already in block chain"},"id":"thornado"}"#.to_string(),
+    ]);
+    let mut backend = RpcBitcoinBackend::new(BitcoinRpcConfig {
+        url: rpc,
+        user: "user".to_string(),
+        password: "password".to_string(),
+    })
+    .unwrap();
+    let built = backend
+        .build_withdrawal(withdrawal_request("wd-rpc-duplicate", Network::Regtest))
+        .unwrap();
+    let expected_txid = txid_from_hex(&built.unsigned_tx_hex);
+
+    let record = backend
+        .broadcast_withdrawal("wd-rpc-duplicate", built.unsigned_tx_hex)
+        .unwrap();
+
+    assert_eq!(
+        record.broadcast_txid.as_deref(),
+        Some(expected_txid.as_str())
+    );
+}
+
 fn change_script_hex() -> String {
     script_hex(&address(Network::Regtest).script_pubkey())
 }
@@ -411,6 +576,7 @@ fn regtest_utxo(byte: u8, value_sats: u64, script_pubkey_hex: String) -> Regtest
         is_self_transfer: false,
         mempool_ancestor_count: 0,
         mempool_descendant_count: 0,
+        deposit_key_tweak: None,
     }
 }
 
@@ -463,4 +629,10 @@ fn signed_tx_hex_for_tests() -> String {
         output: Vec::new(),
     };
     bitcoin::consensus::encode::serialize_hex(&tx)
+}
+
+fn txid_from_hex(tx_hex: &str) -> String {
+    let bytes = hex::decode(tx_hex).unwrap();
+    let tx: bitcoin::Transaction = bitcoin::consensus::encode::deserialize(&bytes).unwrap();
+    tx.compute_txid().to_string()
 }

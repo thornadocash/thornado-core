@@ -8,6 +8,7 @@ RUN apt-get update \
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 COPY circuits ./circuits
+COPY scripts ./scripts
 
 RUN cargo build --release -p thornado-node
 
@@ -18,6 +19,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/thornado-node /usr/local/bin/thornado-node
+COPY --from=builder /app/scripts/live_regtest_smoke.sh /usr/local/bin/live_regtest_smoke.sh
 
 EXPOSE 3030
 ENTRYPOINT ["thornado-node"]

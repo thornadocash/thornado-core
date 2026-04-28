@@ -29,6 +29,8 @@ struct Cli {
     bitcoin_rpc_user: Option<String>,
     #[arg(long)]
     bitcoin_rpc_password: Option<String>,
+    #[arg(long)]
+    churn_cycle_secs: Option<u64>,
 }
 
 #[tokio::main]
@@ -52,6 +54,7 @@ async fn main() -> Result<()> {
             bitcoin_state_path: cli.bitcoin_state,
             bitcoin_rpc,
             node_id: cli.node_id,
+            churn_cycle_ms: cli.churn_cycle_secs.map(|secs| secs.saturating_mul(1000)),
         },
         cli.peers,
     )?;

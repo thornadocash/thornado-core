@@ -1,37 +1,43 @@
 use axum::extract::{Path, State};
-use axum::http::StatusCode;
+use axum::http::{header, StatusCode};
 use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
+use base64::Engine as _;
+use bitcoin::{Address, Network};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 #[cfg(unix)]
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex as StdMutex};
+use std::time::{SystemTime, UNIX_EPOCH};
 use thornado_abci::encode_tx;
 use thornado_bitcoin::{
-    BitcoinBackend, BitcoinConsolidationRecord, BitcoinConsolidationRequest, BitcoinRpcConfig,
+    attach_taproot_key_spend_signatures, taproot_key_spend_signing_payloads, BitcoinBackend,
+    BitcoinConsolidationRecord, BitcoinConsolidationRequest, BitcoinRpcConfig,
     BitcoinSolvencyReport, BitcoinWithdrawalRecord, BitcoinWithdrawalRequest, BuiltConsolidation,
     BuiltWithdrawal, DevBitcoinBackend, RegtestUtxo, RpcBitcoinBackend,
     SigningCheckpointValidation,
 };
 use thornado_core::{
-    active_signer_count, apply_event, execute_command, load_snapshot,
-    required_node_bond_sats_for_state, save_snapshot, start_churn_epoch_without_keygen, state_hash,
-    AppState, AuthorizedWithdrawal, Command, CustodySignature, CustodySigner, Error as CoreError,
-    Event, FrostCustodySigner, FrostCustodySignerSnapshot, FrostKeyset, FrostSignatureShare,
-    FrostSigningCommitmentPublic, MockCustodySigner, MockProofVerifier, NodeStatus, NoteCommitment,
-    PendingWithdrawal, StarkProofVerifier, WithdrawalProof, WithdrawalPublicInputs,
-    WithdrawalRequest,
+    active_signer_count, apply_event, derive_vault_address, derive_vault_child_key,
+    execute_command, load_snapshot, required_node_bond_sats_for_state, save_snapshot,
+    start_churn_epoch_without_keygen, state_hash, AppState, AuthorizedWithdrawal, BitcoinOutbound,
+    Command, CustodySignature, CustodySigner, Error as CoreError, Event, FrostCustodySigner,
+    FrostCustodySignerSnapshot, FrostKeyset, FrostSignatureShare, FrostSigningCommitmentPublic,
+    MockCustodySigner, MockProofVerifier, NodeStatus, NoteCommitment, PendingWithdrawal,
+    WithdrawalProof, WithdrawalPublicInputs, WithdrawalRequest, ZkProofVerifier,
 };
 use thornado_store::{get_json, put_json, RedbKvStore};
 use tokio::sync::Mutex;
 
 const BITCOIN_BACKEND_KEY: &str = "bitcoin_backend";
-
 #[derive(Clone)]
 pub struct NodeState {
     inner: Arc<Mutex<AppState>>,
@@ -47,6 +53,7 @@ pub struct NodeState {
     node_id: Option<String>,
     dkg_round1: Arc<Mutex<BTreeMap<String, DkgRound1State>>>,
     dkg_round2: Arc<Mutex<BTreeMap<String, DkgRound2State>>>,
+    churn_clock: Arc<Mutex<ChurnClock>>,
 }
 
 #[derive(Debug, Clone)]
@@ -56,18 +63,26 @@ pub struct NodeConfig {
     pub bitcoin_state_path: Option<PathBuf>,
     pub bitcoin_rpc: Option<BitcoinRpcConfig>,
     pub node_id: Option<String>,
+    pub churn_cycle_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone)]
+struct ChurnClock {
+    started_at_ms: u64,
 }
 
 #[derive(Debug, Clone)]
 struct DkgRound1State {
     signer_id: String,
     secret_package: String,
+    taproot_secret_package: String,
 }
 
 #[derive(Debug, Clone)]
 struct DkgRound2State {
     signer_id: String,
     secret_package: String,
+    taproot_secret_package: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -137,6 +152,21 @@ impl BitcoinBackend for NodeBitcoinBackend {
         match self {
             Self::Dev(backend) => backend.mark_confirmed(withdrawal_id, height),
             Self::Rpc(backend) => backend.mark_confirmed(withdrawal_id, height),
+        }
+    }
+
+    fn validate_withdrawal_signed_tx(
+        &self,
+        withdrawal_id: &str,
+        signed_tx_hex: &str,
+    ) -> thornado_bitcoin::Result<String> {
+        match self {
+            Self::Dev(backend) => {
+                backend.validate_withdrawal_signed_tx(withdrawal_id, signed_tx_hex)
+            }
+            Self::Rpc(backend) => {
+                backend.validate_withdrawal_signed_tx(withdrawal_id, signed_tx_hex)
+            }
         }
     }
 
@@ -222,6 +252,7 @@ impl NodeState {
                 bitcoin_state_path: None,
                 bitcoin_rpc: None,
                 node_id: None,
+                churn_cycle_ms: None,
             },
             peers,
         )
@@ -247,6 +278,10 @@ impl NodeState {
                 None => NodeBitcoinBackend::dev(),
             },
         };
+        let mut state = state;
+        if let Some(churn_cycle_ms) = config.churn_cycle_ms {
+            state.churn.churn_cycle_ms = churn_cycle_ms;
+        }
         Ok(Self {
             inner: Arc::new(Mutex::new(state)),
             custody_signer: Arc::new(Mutex::new(custody_signer)),
@@ -261,6 +296,9 @@ impl NodeState {
             node_id: config.node_id,
             dkg_round1: Arc::new(Mutex::new(BTreeMap::new())),
             dkg_round2: Arc::new(Mutex::new(BTreeMap::new())),
+            churn_clock: Arc::new(Mutex::new(ChurnClock {
+                started_at_ms: now_ms(),
+            })),
         })
     }
 
@@ -391,6 +429,65 @@ impl CometBftClient {
         }
         Ok(result.hash.unwrap_or_default())
     }
+
+    async fn abci_query_bytes(&self, path: &str) -> Result<Vec<u8>, ApiError> {
+        let request = CometBftQueryRpcRequest {
+            jsonrpc: "2.0",
+            id: "thornado-node",
+            method: "abci_query",
+            params: CometBftQueryParams {
+                path,
+                data: "0x",
+                height: "0",
+                prove: false,
+            },
+        };
+        let response = self
+            .client
+            .post(&self.rpc_url)
+            .json(&request)
+            .send()
+            .await
+            .map_err(ApiError::consensus_rpc)?;
+        if !response.status().is_success() {
+            return Err(ApiError::consensus_status(
+                self.rpc_url.clone(),
+                response.status(),
+                response.text().await.unwrap_or_default(),
+            ));
+        }
+        let response = response
+            .json::<CometBftQueryRpcResponse>()
+            .await
+            .map_err(ApiError::consensus_rpc)?;
+        if let Some(error) = response.error {
+            return Err(ApiError::consensus_message(error.message));
+        }
+        let result = response.result.ok_or_else(|| {
+            ApiError::consensus_message("missing CometBFT query result".to_string())
+        })?;
+        let query = result.response;
+        if query.code.unwrap_or(0) != 0 {
+            return Err(ApiError::consensus_message(
+                query
+                    .log
+                    .unwrap_or_else(|| format!("ABCI query failed for {path}")),
+            ));
+        }
+        let value = query.value.unwrap_or_default();
+        BASE64_STANDARD.decode(value).map_err(|error| {
+            ApiError::consensus_message(format!("ABCI query value decode failed: {error}"))
+        })
+    }
+
+    async fn abci_query_json<T: DeserializeOwned>(&self, path: &str) -> Result<T, ApiError> {
+        let bytes = self.abci_query_bytes(path).await?;
+        serde_json::from_slice(&bytes).map_err(|error| {
+            ApiError::consensus_message(format!(
+                "ABCI query JSON decode failed for {path}: {error}"
+            ))
+        })
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -402,6 +499,22 @@ struct CometBftRpcRequest<'a> {
 }
 
 #[derive(Debug, Serialize)]
+struct CometBftQueryRpcRequest<'a> {
+    jsonrpc: &'a str,
+    id: &'a str,
+    method: &'a str,
+    params: CometBftQueryParams<'a>,
+}
+
+#[derive(Debug, Serialize)]
+struct CometBftQueryParams<'a> {
+    path: &'a str,
+    data: &'a str,
+    height: &'a str,
+    prove: bool,
+}
+
+#[derive(Debug, Serialize)]
 struct CometBftBroadcastParams {
     tx: String,
 }
@@ -410,6 +523,27 @@ struct CometBftBroadcastParams {
 struct CometBftRpcResponse {
     result: Option<CometBftBroadcastResult>,
     error: Option<CometBftRpcError>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CometBftQueryRpcResponse {
+    result: Option<CometBftQueryResult>,
+    error: Option<CometBftRpcError>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CometBftQueryResult {
+    response: CometBftQueryResponse,
+}
+
+#[derive(Debug, Deserialize)]
+struct CometBftQueryResponse {
+    #[serde(default)]
+    code: Option<u32>,
+    #[serde(default)]
+    log: Option<String>,
+    #[serde(default)]
+    value: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -443,7 +577,7 @@ pub struct RootResponse {
     pub root: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DepositRequestBody {
     pub pow_token: String,
     #[serde(default)]
@@ -475,6 +609,13 @@ pub struct WithdrawBody {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct LeavesResponse {
+    pub denomination_sats: u64,
+    pub leaf_count: usize,
+    pub leaves: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AuthorizeWithdrawalBody {
     pub withdrawal_id: String,
     pub signature: CustodySignature,
@@ -498,6 +639,8 @@ pub struct RegisterNodeBody {
 pub struct BondNodeBody {
     pub node_id: String,
     pub amount_sats: u64,
+    pub txid: String,
+    pub vout: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -510,6 +653,18 @@ pub struct AssignNodeSlotBody {
 pub struct BondParametersBody {
     pub min_bond_sats: u64,
     pub min_bond_increase_sats: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NetworkParameterVoteBody {
+    pub node_id: Option<String>,
+    pub churn_cycle_ms: Option<u64>,
+    pub target_active_nodes: Option<u16>,
+    pub max_nodes_per_churn: Option<u16>,
+    #[serde(default)]
+    pub bitcoin_keysign_grace_epochs: Option<u64>,
+    #[serde(default)]
+    pub bitcoin_attestation_grace_epochs: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -532,6 +687,8 @@ pub struct CommitKeysetBody {
 pub struct FrostKeysignCommitmentBody {
     pub session_id: String,
     pub signer_id: Option<String>,
+    #[serde(default)]
+    pub custody_epoch: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -541,12 +698,35 @@ pub struct FrostKeysignShareBody {
     pub request: WithdrawalRequest,
     pub commitments: Vec<FrostSigningCommitmentPublic>,
     pub key_tweak: Option<String>,
+    #[serde(default)]
+    pub custody_epoch: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FrostKeysignBody {
     pub request: WithdrawalRequest,
     pub key_tweak: Option<String>,
+    #[serde(default)]
+    pub custody_epoch: Option<u64>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FrostTaprootKeysignCommitmentBody {
+    pub session_id: String,
+    pub signer_id: Option<String>,
+    #[serde(default)]
+    pub custody_epoch: Option<u64>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FrostTaprootKeysignShareBody {
+    pub session_id: String,
+    pub signer_id: String,
+    pub message_hex: String,
+    pub commitments: Vec<FrostSigningCommitmentPublic>,
+    pub merkle_root_hex: Option<String>,
+    #[serde(default)]
+    pub custody_epoch: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -569,7 +749,34 @@ pub struct BifrostWithdrawalsWork {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BifrostBitcoinWork {
+    #[serde(default)]
+    pub outbounds: Vec<BitcoinOutbound>,
+    #[serde(default)]
+    pub deposit_sweeps: Vec<DepositSweepWork>,
+    #[serde(default)]
+    pub vault_sweeps: Vec<VaultSweepWork>,
+    #[serde(default)]
     pub authorized: Vec<AuthorizedWithdrawal>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DepositSweepWork {
+    pub deposit_id: String,
+    pub txid: String,
+    pub custody_epoch: u64,
+    pub deposit_key_tweak: String,
+    pub vault_signers: Vec<String>,
+    pub vault_threshold: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VaultSweepWork {
+    pub from_epoch: u64,
+    pub to_epoch: u64,
+    pub include_txids: Vec<String>,
+    pub from_vault_key_tweak: String,
+    pub vault_signers: Vec<String>,
+    pub vault_threshold: u16,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -619,6 +826,14 @@ pub struct UtxosResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct BitcoinVaultAddressResponse {
+    pub address: String,
+    pub script_pubkey_hex: String,
+    pub custody_epoch: u64,
+    pub index: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MarkBroadcastBody {
     pub txid: String,
 }
@@ -626,6 +841,13 @@ pub struct MarkBroadcastBody {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BroadcastBitcoinWithdrawalBody {
     pub signed_tx_hex: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BitcoinWithdrawalAttestationBody {
+    pub signed_tx_hex: String,
+    pub node_id: Option<String>,
+    pub epoch: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -636,6 +858,8 @@ pub struct ValidateBitcoinCheckpointBody {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BitcoinSolvencyBody {
     pub expected_sats: u64,
+    pub node_id: Option<String>,
+    pub epoch: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -643,6 +867,8 @@ pub struct BuildBitcoinConsolidationBody {
     pub consolidation_id: String,
     pub fee_rate_sats_per_vb: Option<u64>,
     pub change_script_pubkey_hex: String,
+    #[serde(default)]
+    pub include_txids: Vec<String>,
     pub min_utxos: Option<usize>,
     pub max_inputs: Option<usize>,
     pub min_confirmations: Option<u64>,
@@ -657,6 +883,20 @@ pub struct MarkConfirmedBody {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct ChurnWindowResponse {
+    pub epoch: u64,
+    pub cycle_ms: u64,
+    pub target_active_nodes: u16,
+    pub max_nodes_per_churn: u16,
+    pub bitcoin_keysign_grace_epochs: u64,
+    pub bitcoin_attestation_grace_epochs: u64,
+    pub cycle_started_at_ms: u64,
+    pub next_churn_at_ms: u64,
+    pub remaining_ms: u64,
+    pub server_now_ms: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 struct ErrorResponse {
     error: String,
 }
@@ -664,9 +904,12 @@ struct ErrorResponse {
 pub fn router(state: NodeState) -> Router {
     Router::new()
         .route("/", get(ui))
+        .route("/wasm/thornado_web_wasm.js", get(wasm_js))
+        .route("/wasm/thornado_web_wasm_bg.wasm", get(wasm_bg))
         .route("/deposit/request", post(deposit_request))
         .route("/deposit/observe", post(deposit_observe))
         .route("/deposit/confirm", post(deposit_confirm))
+        .route("/bitcoin/deposits/scan", post(bitcoin_deposits_scan))
         .route("/split", post(split))
         .route("/withdraw", post(withdraw))
         .route("/withdraw/authorize", post(withdraw_authorize))
@@ -674,6 +917,7 @@ pub fn router(state: NodeState) -> Router {
         .route("/nodes/bond", post(node_bond))
         .route("/nodes/slot/assign", post(node_slot_assign))
         .route("/nodes/bond-parameters", post(node_bond_parameters))
+        .route("/network/parameters/vote", post(network_parameters_vote))
         .route("/custody/keyset/commit", post(custody_keyset_commit))
         .route("/frost/keygen", post(frost_keygen))
         .route("/frost/keygen/round1", post(frost_keygen_round1))
@@ -682,8 +926,17 @@ pub fn router(state: NodeState) -> Router {
         .route("/frost/keysign", post(frost_keysign))
         .route("/frost/keysign/commitment", post(frost_keysign_commitment))
         .route("/frost/keysign/share", post(frost_keysign_share))
+        .route(
+            "/frost/taproot/keysign/commitment",
+            post(frost_taproot_keysign_commitment),
+        )
+        .route(
+            "/frost/taproot/keysign/share",
+            post(frost_taproot_keysign_share),
+        )
         .route("/churn/standby", post(churn_standby))
         .route("/churn/start", post(churn_start))
+        .route("/churn/window", get(churn_window))
         .route("/churn/offline", post(churn_offline))
         .route("/churn/penalties", post(churn_penalties))
         .route("/events/apply", post(apply_events))
@@ -691,11 +944,16 @@ pub fn router(state: NodeState) -> Router {
         .route("/peers/add", post(peer_add))
         .route("/bitcoin/utxo/import", post(bitcoin_utxo_import))
         .route("/bitcoin/utxos", get(bitcoin_utxos))
+        .route("/bitcoin/vault/address", get(bitcoin_vault_address))
         .route("/bitcoin/withdrawal/build", post(bitcoin_withdrawal_build))
         .route("/bitcoin/withdrawal/:id", get(bitcoin_withdrawal_get))
         .route(
             "/bitcoin/withdrawal/:id/broadcast",
             post(bitcoin_withdrawal_broadcast),
+        )
+        .route(
+            "/bitcoin/withdrawal/:id/attest",
+            post(bitcoin_withdrawal_attest),
         )
         .route(
             "/bitcoin/withdrawal/:id/checkpoint/validate",
@@ -710,7 +968,12 @@ pub fn router(state: NodeState) -> Router {
             post(bitcoin_withdrawal_mark_confirmed),
         )
         .route("/bitcoin/solvency", post(bitcoin_solvency))
-        .route("/bitcoin/withdrawal/broadcast/submit", post(bitcoin_broadcast_submit))
+        .route("/bitcoin/solvency/submit", post(bitcoin_solvency_submit))
+        .route("/bitcoin/outbounds", get(bitcoin_outbounds))
+        .route(
+            "/bitcoin/withdrawal/broadcast/submit",
+            post(bitcoin_broadcast_submit),
+        )
         .route(
             "/bitcoin/consolidation/build",
             post(bitcoin_consolidation_build),
@@ -726,6 +989,7 @@ pub fn router(state: NodeState) -> Router {
         .route("/bifrost/work/bitcoin", get(bifrost_work_bitcoin))
         .route("/bifrost/tick", post(bifrost_tick))
         .route("/notes/root/:denomination", get(get_note_root))
+        .route("/notes/leaves/:denomination", get(get_note_leaves))
         .with_state(state)
 }
 
@@ -733,10 +997,29 @@ async fn ui() -> Html<&'static str> {
     Html(include_str!("../static/index.html"))
 }
 
+async fn wasm_js() -> impl IntoResponse {
+    (
+        [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+        include_str!("../static/wasm/thornado_web_wasm.js"),
+    )
+}
+
+async fn wasm_bg() -> impl IntoResponse {
+    (
+        [(header::CONTENT_TYPE, "application/wasm")],
+        include_bytes!("../static/wasm/thornado_web_wasm_bg.wasm").as_slice(),
+    )
+}
+
 async fn deposit_request(
     State(node): State<NodeState>,
     Json(body): Json<DepositRequestBody>,
 ) -> ApiResult<EventsResponse> {
+    if !can_serve_local_custody_request(&node).await? {
+        if let Some(peer) = first_active_peer(&node).await? {
+            return forward_deposit_request(&node, &peer, &body).await;
+        }
+    }
     execute(
         &node,
         Command::RequestDepositAddress {
@@ -775,6 +1058,120 @@ async fn deposit_confirm(
     .await
 }
 
+async fn bitcoin_deposits_scan(State(node): State<NodeState>) -> ApiResult<EventsResponse> {
+    let utxos = {
+        let vault = node.bitcoin.lock().await;
+        vault.list_utxos()
+    };
+    let mut observed_txids = {
+        let state = current_app_state(&node).await?;
+        state
+            .deposits
+            .intents
+            .values()
+            .filter_map(|intent| intent.txid.clone())
+            .collect::<BTreeSet<_>>()
+    };
+    let mut events = Vec::new();
+    let mut tx_hash = None;
+
+    for utxo in utxos {
+        if observed_txids.contains(&utxo.txid) {
+            continue;
+        }
+        let Some(intent_id) = matching_deposit_intent(&node, &utxo).await? else {
+            continue;
+        };
+        let Json(observed) = execute(
+            &node,
+            Command::ObserveDeposit {
+                intent_id,
+                txid: utxo.txid.clone(),
+                amount_sats: utxo.value_sats,
+            },
+        )
+        .await?;
+        let observed_intent_id = observed.events.iter().find_map(|event| match event {
+            Event::DepositObserved { intent_id, .. } => Some(intent_id.clone()),
+            _ => None,
+        });
+        tx_hash = observed.tx_hash.clone().or(tx_hash);
+        events.extend(observed.events);
+        observed_txids.insert(utxo.txid);
+
+        if utxo.confirmations > 0 {
+            if let Some(intent_id) = observed_intent_id {
+                let Json(confirmed) = execute(&node, Command::ConfirmDeposit { intent_id }).await?;
+                tx_hash = confirmed.tx_hash.clone().or(tx_hash);
+                events.extend(confirmed.events);
+            }
+        }
+    }
+
+    let state = current_app_state(&node).await?;
+    Ok(Json(EventsResponse {
+        events,
+        state_hash: state_hash(&state),
+        tx_hash,
+    }))
+}
+
+async fn matching_deposit_intent(
+    node: &NodeState,
+    utxo: &RegtestUtxo,
+) -> Result<Option<String>, ApiError> {
+    let state = current_app_state(node).await?;
+    for intent in state.deposits.intents.values() {
+        if intent.split {
+            continue;
+        }
+        let script = script_pubkey_hex_for_address(&intent.deposit_address)?;
+        if script == utxo.script_pubkey_hex {
+            return Ok(Some(intent.id.clone()));
+        }
+    }
+    Ok(None)
+}
+
+async fn ensure_bond_paid_to_vault(node: &NodeState, body: &BondNodeBody) -> Result<(), ApiError> {
+    let state = current_app_state(node).await?;
+    let vault_script = vault_script_pubkey_hex(&state, state.custody.active_epoch)?;
+    let utxo = {
+        let vault = node.bitcoin.lock().await;
+        vault
+            .list_utxos()
+            .into_iter()
+            .find(|utxo| utxo.txid == body.txid && utxo.vout == body.vout)
+    }
+    .ok_or_else(|| ApiError::bad_request(CoreError::DepositNotFound))?;
+
+    if utxo.script_pubkey_hex != vault_script || utxo.value_sats < body.amount_sats {
+        return Err(ApiError::bad_request(CoreError::InvalidProof));
+    }
+    Ok(())
+}
+
+async fn vault_change_script_pubkey_hex(
+    node: &NodeState,
+    custody_epoch: u64,
+) -> Result<String, ApiError> {
+    let state = current_app_state(node).await?;
+    vault_script_pubkey_hex(&state, custody_epoch)
+}
+
+fn vault_script_pubkey_hex(state: &AppState, custody_epoch: u64) -> Result<String, ApiError> {
+    let address = derive_vault_address(state, custody_epoch, 0).map_err(ApiError::bad_request)?;
+    script_pubkey_hex_for_address(&address)
+}
+
+fn script_pubkey_hex_for_address(address: &str) -> Result<String, ApiError> {
+    let address = Address::from_str(address)
+        .map_err(|error| ApiError::bad_request(CoreError::Frost(error.to_string())))?
+        .require_network(Network::Regtest)
+        .map_err(|error| ApiError::bad_request(CoreError::Frost(error.to_string())))?;
+    Ok(hex::encode(address.script_pubkey().as_bytes()))
+}
+
 async fn split(
     State(node): State<NodeState>,
     Json(body): Json<SplitBody>,
@@ -803,7 +1200,7 @@ async fn withdraw(
         )
         .await;
     }
-    execute(
+    execute_local(
         &node,
         Command::WithdrawNote {
             proof: body.proof,
@@ -847,6 +1244,7 @@ async fn node_bond(
     State(node): State<NodeState>,
     Json(body): Json<BondNodeBody>,
 ) -> ApiResult<EventsResponse> {
+    ensure_bond_paid_to_vault(&node, &body).await?;
     execute(
         &node,
         Command::BondNode {
@@ -885,14 +1283,47 @@ async fn node_bond_parameters(
     .await
 }
 
+async fn network_parameters_vote(
+    State(node): State<NodeState>,
+    Json(body): Json<NetworkParameterVoteBody>,
+) -> ApiResult<EventsResponse> {
+    let node_id = body
+        .node_id
+        .or_else(|| node.node_id.clone())
+        .ok_or_else(|| {
+            ApiError::bad_request(CoreError::Frost(
+                "node_id is required for network parameter voting".to_string(),
+            ))
+        })?;
+    execute(
+        &node,
+        Command::VoteNetworkParameters {
+            node_id,
+            churn_cycle_ms: body.churn_cycle_ms,
+            target_active_nodes: body.target_active_nodes,
+            max_nodes_per_churn: body.max_nodes_per_churn,
+            bitcoin_keysign_grace_epochs: body.bitcoin_keysign_grace_epochs,
+            bitcoin_attestation_grace_epochs: body.bitcoin_attestation_grace_epochs,
+        },
+    )
+    .await
+}
+
 async fn churn_start(State(node): State<NodeState>) -> ApiResult<EventsResponse> {
-    if node.consensus.is_some() {
-        return execute(&node, Command::StartChurnEpoch).await;
-    }
-    if node.node_id.is_some() && !node.peers.lock().await.is_empty() {
-        return execute_churn_with_http_frost(&node).await;
-    }
-    execute(&node, Command::StartChurnEpoch).await
+    let response = if node.consensus.is_some() {
+        execute(&node, Command::StartChurnEpoch).await?
+    } else if node.node_id.is_some() && !node.peers.lock().await.is_empty() {
+        execute_churn_with_http_frost(&node).await?
+    } else {
+        execute(&node, Command::StartChurnEpoch).await?
+    };
+    mark_churn_started(&node).await;
+    Ok(response)
+}
+
+async fn churn_window(State(node): State<NodeState>) -> ApiResult<ChurnWindowResponse> {
+    let state = node.inner.lock().await.clone();
+    Ok(Json(churn_window_response(&node, &state).await))
 }
 
 async fn custody_keyset_commit(
@@ -937,11 +1368,13 @@ async fn frost_keygen_round1(
         DkgRound1State {
             signer_id: output.signer_id.clone(),
             secret_package: output.secret_package,
+            taproot_secret_package: output.taproot_secret_package,
         },
     );
     Ok(Json(thornado_core::FrostDkgRound1Public {
         signer_id: output.signer_id,
         package: output.package,
+        taproot_package: output.taproot_package,
     }))
 }
 
@@ -962,6 +1395,7 @@ async fn frost_keygen_round2(
     let output = FrostCustodySigner::dkg_round2(
         &state.signer_id,
         &state.secret_package,
+        &state.taproot_secret_package,
         &body.round1_packages,
     )
     .map_err(ApiError::bad_request)?;
@@ -970,11 +1404,13 @@ async fn frost_keygen_round2(
         DkgRound2State {
             signer_id: output.signer_id.clone(),
             secret_package: output.secret_package,
+            taproot_secret_package: output.taproot_secret_package,
         },
     );
     Ok(Json(thornado_core::FrostDkgRound2Public {
         signer_id: output.signer_id,
         packages: output.packages,
+        taproot_packages: output.taproot_packages,
     }))
 }
 
@@ -995,6 +1431,7 @@ async fn frost_keygen_finalize(
     let signer = FrostCustodySigner::dkg_finalize_single(
         &state.signer_id,
         &state.secret_package,
+        &state.taproot_secret_package,
         &body.round1_packages,
         &body.round2_packages,
     )
@@ -1003,7 +1440,7 @@ async fn frost_keygen_finalize(
         .to_keyset(body.epoch)
         .map_err(ApiError::bad_request)?;
     if let Some(path) = node.frost_signer_path.as_ref() {
-        save_frost_signer(path, &signer).map_err(ApiError::internal)?;
+        save_frost_signer_for_epoch(path, body.epoch, &signer).map_err(ApiError::internal)?;
     }
     *node.custody_signer.lock().await = Some(signer);
     Ok(Json(keyset))
@@ -1014,10 +1451,7 @@ async fn frost_keysign_commitment(
     Json(body): Json<FrostKeysignCommitmentBody>,
 ) -> ApiResult<FrostSigningCommitmentPublic> {
     let commitment = {
-        let signer = node.custody_signer.lock().await;
-        let signer = signer.as_ref().ok_or_else(|| {
-            ApiError::bad_request(CoreError::Frost("missing local FROST signer".to_string()))
-        })?;
+        let signer = signer_for_epoch(&node, body.custody_epoch).await?;
         let signer_id = match body.signer_id {
             Some(signer_id) => signer_id,
             None => signer.first_signer_id().map_err(ApiError::bad_request)?,
@@ -1051,10 +1485,7 @@ async fn frost_keysign_share(
                 "missing FROST nonces for keysign session".to_string(),
             ))
         })?;
-    let signer = node.custody_signer.lock().await;
-    let signer = signer.as_ref().ok_or_else(|| {
-        ApiError::bad_request(CoreError::Frost("missing local FROST signer".to_string()))
-    })?;
+    let signer = signer_for_epoch(&node, body.custody_epoch).await?;
     let share = signer
         .signature_share(
             &body.signer_id,
@@ -1071,8 +1502,70 @@ async fn frost_keysign(
     State(node): State<NodeState>,
     Json(body): Json<FrostKeysignBody>,
 ) -> ApiResult<CustodySignature> {
-    let signature = coordinate_http_frost_keysign(&node, body.request, body.key_tweak).await?;
+    let signature = coordinate_http_frost_keysign(
+        &node,
+        body.request,
+        body.key_tweak,
+        body.custody_epoch,
+        None,
+    )
+    .await?;
     Ok(Json(signature))
+}
+
+async fn frost_taproot_keysign_commitment(
+    State(node): State<NodeState>,
+    Json(body): Json<FrostTaprootKeysignCommitmentBody>,
+) -> ApiResult<FrostSigningCommitmentPublic> {
+    let commitment = {
+        let signer = signer_for_epoch(&node, body.custody_epoch).await?;
+        let signer_id = match body.signer_id {
+            Some(signer_id) => signer_id,
+            None => signer.first_signer_id().map_err(ApiError::bad_request)?,
+        };
+        signer
+            .taproot_signing_commitment(&signer_id)
+            .map_err(ApiError::bad_request)?
+    };
+    node.frost_nonces.lock().await.insert(
+        frost_nonce_key(&body.session_id, &commitment.signer_id),
+        commitment.nonces,
+    );
+    Ok(Json(FrostSigningCommitmentPublic {
+        signer_id: commitment.signer_id,
+        commitment: commitment.commitment,
+    }))
+}
+
+async fn frost_taproot_keysign_share(
+    State(node): State<NodeState>,
+    Json(body): Json<FrostTaprootKeysignShareBody>,
+) -> ApiResult<FrostSignatureShare> {
+    let nonce_key = frost_nonce_key(&body.session_id, &body.signer_id);
+    let nonces = node
+        .frost_nonces
+        .lock()
+        .await
+        .remove(&nonce_key)
+        .ok_or_else(|| {
+            ApiError::bad_request(CoreError::Frost(
+                "missing FROST nonces for taproot keysign session".to_string(),
+            ))
+        })?;
+    let message = hex::decode(&body.message_hex)
+        .map_err(|e| ApiError::bad_request(CoreError::Frost(e.to_string())))?;
+    let merkle_root = parse_optional_hex_32(body.merkle_root_hex.as_deref())?;
+    let signer = signer_for_epoch(&node, body.custody_epoch).await?;
+    let share = signer
+        .taproot_signature_share(
+            &body.signer_id,
+            &nonces,
+            &message,
+            &body.commitments,
+            merkle_root.as_deref(),
+        )
+        .map_err(ApiError::bad_request)?;
+    Ok(Json(share))
 }
 
 async fn churn_standby(
@@ -1110,10 +1603,19 @@ async fn apply_events(
     Json(body): Json<ApplyEventsBody>,
 ) -> ApiResult<EventsResponse> {
     let mut state = node.inner.lock().await;
+    let saw_churn = body
+        .events
+        .iter()
+        .any(|event| matches!(event, Event::ChurnEpochStarted { .. }));
     for event in body.events.iter().cloned() {
         apply_event(&mut state, event).map_err(ApiError::bad_request)?;
     }
     persist_state(&node, &state)?;
+    drop(state);
+    if saw_churn {
+        mark_churn_started(&node).await;
+    }
+    let state = node.inner.lock().await.clone();
     Ok(Json(EventsResponse {
         events: body.events,
         state_hash: state_hash(&state),
@@ -1166,12 +1668,27 @@ async fn bitcoin_utxos(State(node): State<NodeState>) -> ApiResult<UtxosResponse
     }))
 }
 
+async fn bitcoin_vault_address(
+    State(node): State<NodeState>,
+) -> ApiResult<BitcoinVaultAddressResponse> {
+    let state = current_app_state(&node).await?;
+    let custody_epoch = state.custody.active_epoch;
+    let address = derive_vault_address(&state, custody_epoch, 0).map_err(ApiError::bad_request)?;
+    let script_pubkey_hex = script_pubkey_hex_for_address(&address)?;
+    Ok(Json(BitcoinVaultAddressResponse {
+        address,
+        script_pubkey_hex,
+        custody_epoch,
+        index: 0,
+    }))
+}
+
 async fn bitcoin_withdrawal_build(
     State(node): State<NodeState>,
     Json(body): Json<BuildBitcoinWithdrawalBody>,
 ) -> ApiResult<BuiltWithdrawal> {
     let withdrawal = {
-        let state = node.inner.lock().await;
+        let state = current_app_state(&node).await?;
         state
             .withdrawals
             .authorized
@@ -1187,7 +1704,10 @@ async fn bitcoin_withdrawal_build(
         fee_rate_sats_per_vb: body
             .fee_rate_sats_per_vb
             .unwrap_or(thornado_bitcoin::DEFAULT_FEE_RATE_SATS_PER_VB),
-        change_script_pubkey_hex: body.change_script_pubkey_hex,
+        change_script_pubkey_hex: match body.change_script_pubkey_hex {
+            Some(script) => Some(script),
+            None => Some(vault_change_script_pubkey_hex(&node, withdrawal.custody_epoch).await?),
+        },
         max_fee_rate_sats_per_vb: body.max_fee_rate_sats_per_vb,
         min_relay_fee_sats: body.min_relay_fee_sats,
         max_inputs: body.max_inputs,
@@ -1249,6 +1769,52 @@ async fn bitcoin_withdrawal_broadcast(
     Ok(Json(record))
 }
 
+async fn bitcoin_withdrawal_attest(
+    State(node): State<NodeState>,
+    Path(id): Path<String>,
+    Json(body): Json<BitcoinWithdrawalAttestationBody>,
+) -> ApiResult<EventsResponse> {
+    let txid = {
+        let vault = node.bitcoin.lock().await;
+        vault
+            .validate_withdrawal_signed_tx(&id, &body.signed_tx_hex)
+            .map_err(ApiError::bitcoin_bad_request)?
+    };
+    let (attester, epoch) = {
+        let state = current_app_state(&node).await?;
+        (
+            body.node_id
+                .clone()
+                .or_else(|| node.node_id.clone())
+                .unwrap_or_else(|| "local".to_string()),
+            body.epoch.unwrap_or(state.churn.epoch),
+        )
+    };
+    execute(
+        &node,
+        Command::AttestBitcoinWithdrawal {
+            withdrawal_id: id,
+            txid,
+            signed_tx_hash: signed_tx_hash(&body.signed_tx_hex),
+            attester,
+            epoch,
+        },
+    )
+    .await
+}
+
+async fn bitcoin_outbounds(State(node): State<NodeState>) -> ApiResult<Vec<BitcoinOutbound>> {
+    let state = current_app_state(&node).await?;
+    Ok(Json(
+        state
+            .withdrawals
+            .bitcoin_outbounds
+            .values()
+            .cloned()
+            .collect(),
+    ))
+}
+
 async fn bitcoin_withdrawal_checkpoint_validate(
     State(node): State<NodeState>,
     Path(id): Path<String>,
@@ -1288,6 +1854,40 @@ async fn bitcoin_solvency(
     Ok(Json(report))
 }
 
+async fn bitcoin_solvency_submit(
+    State(node): State<NodeState>,
+    Json(body): Json<BitcoinSolvencyBody>,
+) -> ApiResult<EventsResponse> {
+    let (reporter, epoch) = {
+        let state = node.inner.lock().await;
+        (
+            body.node_id
+                .clone()
+                .or_else(|| node.node_id.clone())
+                .unwrap_or_else(|| "local".to_string()),
+            body.epoch.unwrap_or(state.churn.epoch),
+        )
+    };
+    let report = {
+        let vault = node.bitcoin.lock().await;
+        vault
+            .report_solvency(body.expected_sats)
+            .map_err(ApiError::bitcoin_bad_request)?
+    };
+    execute(
+        &node,
+        Command::SubmitBitcoinSolvency {
+            reporter,
+            epoch,
+            expected_sats: report.expected_sats,
+            actual_sats: report.actual_sats,
+            spendable_sats: report.confirmed_sats + report.self_mempool_sats,
+            solvent: report.solvent,
+        },
+    )
+    .await
+}
+
 async fn bitcoin_broadcast_submit(
     State(node): State<NodeState>,
     Json(body): Json<SubmitBitcoinBroadcastBody>,
@@ -1302,6 +1902,12 @@ async fn bitcoin_broadcast_submit(
     .await
 }
 
+fn signed_tx_hash(signed_tx_hex: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(signed_tx_hex.as_bytes());
+    hex::encode(hasher.finalize())
+}
+
 async fn bitcoin_consolidation_build(
     State(node): State<NodeState>,
     Json(body): Json<BuildBitcoinConsolidationBody>,
@@ -1312,6 +1918,7 @@ async fn bitcoin_consolidation_build(
             .fee_rate_sats_per_vb
             .unwrap_or(thornado_bitcoin::DEFAULT_FEE_RATE_SATS_PER_VB),
         change_script_pubkey_hex: body.change_script_pubkey_hex,
+        include_txids: body.include_txids,
         min_utxos: body.min_utxos,
         max_inputs: body.max_inputs,
         min_confirmations: body.min_confirmations,
@@ -1365,6 +1972,13 @@ async fn get_state_hash(State(node): State<NodeState>) -> ApiResult<StateHashRes
 }
 
 async fn bifrost_work_keygen(State(node): State<NodeState>) -> ApiResult<BifrostKeygenWork> {
+    if let Some(consensus) = node.consensus.as_ref() {
+        return Ok(Json(
+            consensus
+                .abci_query_json::<BifrostKeygenWork>("/bifrost/work/keygen")
+                .await?,
+        ));
+    }
     let state = node.inner.lock().await;
     let epoch = state.churn.epoch;
     let participants = state.churn.active_nodes.iter().cloned().collect::<Vec<_>>();
@@ -1385,6 +1999,13 @@ async fn bifrost_work_keygen(State(node): State<NodeState>) -> ApiResult<Bifrost
 async fn bifrost_work_withdrawals(
     State(node): State<NodeState>,
 ) -> ApiResult<BifrostWithdrawalsWork> {
+    if let Some(consensus) = node.consensus.as_ref() {
+        return Ok(Json(
+            consensus
+                .abci_query_json::<BifrostWithdrawalsWork>("/bifrost/work/withdrawals")
+                .await?,
+        ));
+    }
     let state = node.inner.lock().await;
     Ok(Json(BifrostWithdrawalsWork {
         pending: state.withdrawals.pending.values().cloned().collect(),
@@ -1392,43 +2013,40 @@ async fn bifrost_work_withdrawals(
 }
 
 async fn bifrost_work_bitcoin(State(node): State<NodeState>) -> ApiResult<BifrostBitcoinWork> {
+    if let Some(consensus) = node.consensus.as_ref() {
+        return Ok(Json(
+            consensus
+                .abci_query_json::<BifrostBitcoinWork>("/bifrost/work/bitcoin")
+                .await?,
+        ));
+    }
     let state = node.inner.lock().await;
     Ok(Json(BifrostBitcoinWork {
-        authorized: state
+        outbounds: state
             .withdrawals
-            .authorized
+            .bitcoin_outbounds
             .values()
-            .filter(|withdrawal| {
-                !state
-                    .withdrawals
-                    .bitcoin_broadcasts
-                    .contains_key(&withdrawal.id)
-            })
+            .filter(|outbound| outbound.published_txid.is_none())
             .cloned()
             .collect(),
+        deposit_sweeps: deposit_sweep_work_from_state(&state),
+        vault_sweeps: vault_sweep_work_from_state(&state, &node).await?,
+        authorized: Vec::new(),
     }))
 }
 
 async fn bifrost_tick(State(node): State<NodeState>) -> ApiResult<EventsResponse> {
     let mut events = Vec::new();
     let mut tx_hash = None;
-    let keygen_work = {
-        let state = node.inner.lock().await;
-        state.churn.active_nodes.len() >= 2
-            && !state.custody.keysets.contains_key(&state.churn.epoch)
-    };
-    if keygen_work {
-        let epoch = node.inner.lock().await.churn.epoch;
-        let Json(response) = coordinate_http_frost_keygen(&node, epoch).await?;
+    let keygen_work = current_bifrost_keygen_work(&node).await?;
+    if keygen_work.pending {
+        let Json(response) = coordinate_http_frost_keygen(&node, keygen_work.epoch).await?;
         events.extend(response.events);
         tx_hash = response.tx_hash;
+        refresh_consensus_state(&node).await?;
     }
 
-    let pending = {
-        let state = node.inner.lock().await;
-        state.withdrawals.pending.values().cloned().collect::<Vec<_>>()
-    };
-    for withdrawal in pending {
+    for withdrawal in current_bifrost_withdrawals_work(&node).await?.pending {
         let request = WithdrawalRequest {
             withdrawal_id: withdrawal.id.clone(),
             recipient: withdrawal.recipient.clone(),
@@ -1436,7 +2054,14 @@ async fn bifrost_tick(State(node): State<NodeState>) -> ApiResult<EventsResponse
             fee_sats: withdrawal.fee_sats,
             nullifier_hash: withdrawal.nullifier_hash.clone(),
         };
-        let signature = coordinate_http_frost_keysign(&node, request, None).await?;
+        let signature = coordinate_http_frost_keysign(
+            &node,
+            request,
+            None,
+            Some(withdrawal.custody_epoch),
+            Some(withdrawal.vault_signers.clone()),
+        )
+        .await?;
         let Json(response) = execute(
             &node,
             Command::AuthorizeWithdrawal {
@@ -1447,14 +2072,573 @@ async fn bifrost_tick(State(node): State<NodeState>) -> ApiResult<EventsResponse
         .await?;
         events.extend(response.events);
         tx_hash = response.tx_hash.or(tx_hash);
+        refresh_consensus_state(&node).await?;
     }
 
-    let state = node.inner.lock().await;
+    let bitcoin_work = current_bifrost_bitcoin_work(&node).await?;
+    for sweep in bitcoin_work.deposit_sweeps {
+        if !local_node_is_sweep_signer(&node, &sweep) {
+            continue;
+        }
+        let signed_tx_hex = build_bitcoin_deposit_sweep(&node, &sweep).await?;
+        let txid = broadcast_bitcoin_deposit_sweep(&node, &sweep.deposit_id, signed_tx_hex).await?;
+        let Json(response) = execute(
+            &node,
+            Command::SubmitDepositSweep {
+                deposit_id: sweep.deposit_id,
+                txid,
+            },
+        )
+        .await?;
+        events.extend(response.events);
+        tx_hash = response.tx_hash.or(tx_hash);
+        refresh_consensus_state(&node).await?;
+    }
+
+    for sweep in bitcoin_work.vault_sweeps {
+        if !local_node_is_vault_sweep_signer(&node, &sweep) {
+            continue;
+        }
+        let signed_tx_hex = build_bitcoin_vault_sweep(&node, &sweep).await?;
+        let txid = broadcast_bitcoin_vault_sweep(&node, &sweep, signed_tx_hex).await?;
+        let Json(response) = execute(
+            &node,
+            Command::SubmitVaultSweep {
+                from_epoch: sweep.from_epoch,
+                to_epoch: sweep.to_epoch,
+                txid,
+            },
+        )
+        .await?;
+        events.extend(response.events);
+        tx_hash = response.tx_hash.or(tx_hash);
+        refresh_consensus_state(&node).await?;
+    }
+
+    for outbound in bitcoin_work.outbounds {
+        if !local_node_is_bitcoin_signer(&node, &outbound) {
+            continue;
+        }
+        let signed_tx_hex = build_bitcoin_outbound(&node, &outbound).await?;
+        broadcast_bitcoin_outbound(&node, &outbound.withdrawal_id, signed_tx_hex.clone()).await?;
+        let Json(response) =
+            attest_bitcoin_withdrawal_with_peers(&node, &outbound.withdrawal_id, &signed_tx_hex)
+                .await?;
+        events.extend(response.events);
+        tx_hash = response.tx_hash.or(tx_hash);
+        refresh_consensus_state(&node).await?;
+        let Json(response) =
+            publish_attested_bitcoin_withdrawal(&node, &outbound.withdrawal_id, &signed_tx_hex)
+                .await?;
+        events.extend(response.events);
+        tx_hash = response.tx_hash.or(tx_hash);
+        refresh_consensus_state(&node).await?;
+    }
+    let Json(response) = execute(&node, Command::ApplyBitcoinOutboundPenalties).await?;
+    events.extend(response.events);
+    tx_hash = response.tx_hash.or(tx_hash);
+    refresh_consensus_state(&node).await?;
+    let Json(response) = execute(&node, Command::ApplyDepositRetirements).await?;
+    events.extend(response.events);
+    tx_hash = response.tx_hash.or(tx_hash);
+    refresh_consensus_state(&node).await?;
+
+    let state = current_app_state(&node).await?;
     Ok(Json(EventsResponse {
         events,
         state_hash: state_hash(&state),
         tx_hash,
     }))
+}
+
+async fn current_app_state(node: &NodeState) -> Result<AppState, ApiError> {
+    if let Some(consensus) = node.consensus.as_ref() {
+        let state = consensus.abci_query_json::<AppState>("/state").await?;
+        *node.inner.lock().await = state.clone();
+        Ok(state)
+    } else {
+        Ok(node.inner.lock().await.clone())
+    }
+}
+
+async fn refresh_consensus_state(node: &NodeState) -> Result<(), ApiError> {
+    if node.consensus.is_some() {
+        current_app_state(node).await?;
+    }
+    Ok(())
+}
+
+async fn current_bifrost_keygen_work(node: &NodeState) -> Result<BifrostKeygenWork, ApiError> {
+    if let Some(consensus) = node.consensus.as_ref() {
+        consensus
+            .abci_query_json::<BifrostKeygenWork>("/bifrost/work/keygen")
+            .await
+    } else {
+        let state = node.inner.lock().await;
+        let epoch = state.churn.epoch;
+        let participants = state.churn.active_nodes.iter().cloned().collect::<Vec<_>>();
+        let pending = participants.len() >= 2 && !state.custody.keysets.contains_key(&epoch);
+        let threshold = if pending {
+            thornado_core::frost_threshold_for_committee(participants.len() as u16)
+        } else {
+            0
+        };
+        Ok(BifrostKeygenWork {
+            pending,
+            epoch,
+            participants,
+            threshold,
+        })
+    }
+}
+
+async fn current_bifrost_withdrawals_work(
+    node: &NodeState,
+) -> Result<BifrostWithdrawalsWork, ApiError> {
+    if let Some(consensus) = node.consensus.as_ref() {
+        consensus
+            .abci_query_json::<BifrostWithdrawalsWork>("/bifrost/work/withdrawals")
+            .await
+    } else {
+        let state = node.inner.lock().await;
+        Ok(BifrostWithdrawalsWork {
+            pending: state.withdrawals.pending.values().cloned().collect(),
+        })
+    }
+}
+
+async fn current_bifrost_bitcoin_work(node: &NodeState) -> Result<BifrostBitcoinWork, ApiError> {
+    if let Some(consensus) = node.consensus.as_ref() {
+        consensus
+            .abci_query_json::<BifrostBitcoinWork>("/bifrost/work/bitcoin")
+            .await
+    } else {
+        let state = node.inner.lock().await.clone();
+        Ok(BifrostBitcoinWork {
+            outbounds: state
+                .withdrawals
+                .bitcoin_outbounds
+                .values()
+                .filter(|outbound| outbound.published_txid.is_none())
+                .cloned()
+                .collect(),
+            deposit_sweeps: deposit_sweep_work_from_state(&state),
+            vault_sweeps: vault_sweep_work_from_state(&state, node).await?,
+            authorized: Vec::new(),
+        })
+    }
+}
+
+fn deposit_sweep_work_from_state(state: &AppState) -> Vec<DepositSweepWork> {
+    state
+        .deposits
+        .intents
+        .values()
+        .filter(|intent| intent.confirmed && intent.swept_txid.is_none())
+        .filter_map(|intent| {
+            Some(DepositSweepWork {
+                deposit_id: intent.id.clone(),
+                txid: intent.txid.clone()?,
+                custody_epoch: intent.custody_epoch,
+                deposit_key_tweak: intent.deposit_key_tweak.clone(),
+                vault_signers: intent.vault_signers.clone(),
+                vault_threshold: intent.vault_threshold,
+            })
+        })
+        .collect()
+}
+
+async fn vault_sweep_work_from_state(
+    state: &AppState,
+    node: &NodeState,
+) -> Result<Vec<VaultSweepWork>, ApiError> {
+    let active_epoch = state.custody.active_epoch;
+    let utxos = {
+        let vault = node.bitcoin.lock().await;
+        vault.list_utxos()
+    };
+    let mut work = Vec::new();
+    for vault in state.custody.vaults.values() {
+        if vault.epoch >= active_epoch || vault.sweep_txid.is_some() {
+            continue;
+        }
+        if vault.signers.is_empty() || vault.threshold == 0 {
+            continue;
+        }
+        let from_script = vault_script_pubkey_hex(state, vault.epoch)?;
+        let include_txids = utxos
+            .iter()
+            .filter(|utxo| utxo.script_pubkey_hex == from_script)
+            .map(|utxo| utxo.txid.clone())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>();
+        if include_txids.is_empty() {
+            continue;
+        }
+        let from_vault =
+            derive_vault_child_key(state, vault.epoch, 0).map_err(ApiError::bad_request)?;
+        work.push(VaultSweepWork {
+            from_epoch: vault.epoch,
+            to_epoch: active_epoch,
+            include_txids,
+            from_vault_key_tweak: from_vault.key_tweak,
+            vault_signers: vault.signers.clone(),
+            vault_threshold: vault.threshold,
+        });
+    }
+    Ok(work)
+}
+
+fn local_node_is_bitcoin_signer(node: &NodeState, outbound: &BitcoinOutbound) -> bool {
+    let eligible = if outbound.vault_signers.is_empty() {
+        &outbound.signers
+    } else {
+        &outbound.vault_signers
+    };
+    node.node_id
+        .as_ref()
+        .is_some_and(|node_id| eligible.contains(node_id))
+}
+
+fn local_node_is_sweep_signer(node: &NodeState, sweep: &DepositSweepWork) -> bool {
+    node.node_id
+        .as_ref()
+        .is_some_and(|node_id| sweep.vault_signers.contains(node_id))
+}
+
+fn local_node_is_vault_sweep_signer(node: &NodeState, sweep: &VaultSweepWork) -> bool {
+    node.node_id
+        .as_ref()
+        .is_some_and(|node_id| sweep.vault_signers.contains(node_id))
+}
+
+async fn build_bitcoin_outbound(
+    node: &NodeState,
+    outbound: &BitcoinOutbound,
+) -> Result<String, ApiError> {
+    let default_change_script_pubkey_hex =
+        vault_change_script_pubkey_hex(node, outbound.custody_epoch).await?;
+    let (mut built, snapshot) = {
+        let mut vault = node.bitcoin.lock().await;
+        let record = match vault.get_withdrawal(&outbound.withdrawal_id) {
+            Ok(record) => record,
+            Err(thornado_bitcoin::Error::WithdrawalNotFound) => {
+                let built = vault
+                    .build_withdrawal(BitcoinWithdrawalRequest {
+                        withdrawal_id: outbound.withdrawal_id.clone(),
+                        recipient: outbound.recipient.clone(),
+                        amount_sats: outbound.amount_sats,
+                        fee_rate_sats_per_vb: thornado_bitcoin::DEFAULT_FEE_RATE_SATS_PER_VB,
+                        change_script_pubkey_hex: Some(default_change_script_pubkey_hex),
+                        max_fee_rate_sats_per_vb: None,
+                        min_relay_fee_sats: None,
+                        max_inputs: None,
+                        min_confirmations: None,
+                        max_mempool_chain_length: None,
+                    })
+                    .map_err(ApiError::bitcoin_bad_request)?;
+                vault
+                    .get_withdrawal(&built.withdrawal_id)
+                    .map_err(ApiError::bitcoin_bad_request)?
+            }
+            Err(error) => return Err(ApiError::bitcoin_bad_request(error)),
+        };
+        (record.built, vault.clone())
+    };
+    let deposit_tweaks = {
+        let state = node.inner.lock().await;
+        state
+            .deposits
+            .intents
+            .values()
+            .filter_map(|intent| {
+                Some((
+                    intent.txid.as_ref()?.clone(),
+                    intent.deposit_key_tweak.clone(),
+                ))
+            })
+            .collect::<BTreeMap<_, _>>()
+    };
+    for utxo in &mut built.selected_utxos {
+        utxo.deposit_key_tweak = deposit_tweaks.get(&utxo.txid).cloned().or_else(|| {
+            (!outbound.deposit_key_tweak.is_empty()).then(|| outbound.deposit_key_tweak.clone())
+        });
+    }
+    persist_bitcoin(node, &snapshot)?;
+    let payloads =
+        taproot_key_spend_signing_payloads(&built.unsigned_tx_hex, &built.selected_utxos)
+            .map_err(ApiError::bitcoin_bad_request)?;
+    let mut signatures = Vec::with_capacity(payloads.len());
+    for payload in payloads {
+        let session_id = format!(
+            "bitcoin:{}:{}:{}",
+            outbound.withdrawal_id, built.unsigned_tx_hex, payload.input_index
+        );
+        signatures.push(
+            coordinate_http_taproot_keysign_required(
+                node,
+                session_id,
+                payload.sighash_hex,
+                payload.merkle_root_hex,
+                Some(outbound.custody_epoch),
+                outbound.vault_signers.clone(),
+            )
+            .await?,
+        );
+    }
+    attach_taproot_key_spend_signatures(&built.unsigned_tx_hex, &signatures)
+        .map_err(ApiError::bitcoin_bad_request)
+}
+
+async fn broadcast_bitcoin_outbound(
+    node: &NodeState,
+    withdrawal_id: &str,
+    signed_tx_hex: String,
+) -> Result<String, ApiError> {
+    let (txid, snapshot) = {
+        let mut vault = node.bitcoin.lock().await;
+        let record = vault
+            .broadcast_withdrawal(withdrawal_id, signed_tx_hex)
+            .map_err(ApiError::bitcoin_bad_request)?;
+        let txid = record.broadcast_txid.clone().ok_or_else(|| {
+            ApiError::consensus_message("bitcoin broadcast did not return txid".to_string())
+        })?;
+        (txid, vault.clone())
+    };
+    persist_bitcoin(node, &snapshot)?;
+    Ok(txid)
+}
+
+async fn build_bitcoin_deposit_sweep(
+    node: &NodeState,
+    sweep: &DepositSweepWork,
+) -> Result<String, ApiError> {
+    let consolidation_id = deposit_sweep_consolidation_id(&sweep.deposit_id);
+    let change_script_pubkey_hex =
+        vault_change_script_pubkey_hex(node, sweep.custody_epoch).await?;
+    let (mut built, snapshot) = {
+        let mut vault = node.bitcoin.lock().await;
+        let record = match vault.get_consolidation(&consolidation_id) {
+            Ok(record) => record,
+            Err(thornado_bitcoin::Error::ConsolidationNotFound) => {
+                let built = vault
+                    .build_consolidation(BitcoinConsolidationRequest {
+                        consolidation_id: consolidation_id.clone(),
+                        fee_rate_sats_per_vb: thornado_bitcoin::DEFAULT_FEE_RATE_SATS_PER_VB,
+                        change_script_pubkey_hex,
+                        include_txids: vec![sweep.txid.clone()],
+                        min_utxos: Some(1),
+                        max_inputs: None,
+                        min_confirmations: Some(1),
+                        max_mempool_chain_length: None,
+                        max_fee_rate_sats_per_vb: None,
+                        min_relay_fee_sats: None,
+                    })
+                    .map_err(ApiError::bitcoin_bad_request)?;
+                vault
+                    .get_consolidation(&built.consolidation_id)
+                    .map_err(ApiError::bitcoin_bad_request)?
+            }
+            Err(error) => return Err(ApiError::bitcoin_bad_request(error)),
+        };
+        (record.built, vault.clone())
+    };
+    for utxo in &mut built.selected_utxos {
+        if utxo.txid == sweep.txid {
+            utxo.deposit_key_tweak = Some(sweep.deposit_key_tweak.clone());
+        }
+    }
+    persist_bitcoin(node, &snapshot)?;
+    let payloads =
+        taproot_key_spend_signing_payloads(&built.unsigned_tx_hex, &built.selected_utxos)
+            .map_err(ApiError::bitcoin_bad_request)?;
+    let mut signatures = Vec::with_capacity(payloads.len());
+    for payload in payloads {
+        let session_id = format!(
+            "deposit-sweep:{}:{}:{}",
+            sweep.deposit_id, built.unsigned_tx_hex, payload.input_index
+        );
+        signatures.push(
+            coordinate_http_taproot_keysign_required(
+                node,
+                session_id,
+                payload.sighash_hex,
+                payload.merkle_root_hex,
+                Some(sweep.custody_epoch),
+                sweep.vault_signers.clone(),
+            )
+            .await?,
+        );
+    }
+    attach_taproot_key_spend_signatures(&built.unsigned_tx_hex, &signatures)
+        .map_err(ApiError::bitcoin_bad_request)
+}
+
+async fn broadcast_bitcoin_deposit_sweep(
+    node: &NodeState,
+    deposit_id: &str,
+    signed_tx_hex: String,
+) -> Result<String, ApiError> {
+    let consolidation_id = deposit_sweep_consolidation_id(deposit_id);
+    let (txid, snapshot) = {
+        let mut vault = node.bitcoin.lock().await;
+        let record = vault
+            .broadcast_consolidation(&consolidation_id, signed_tx_hex)
+            .map_err(ApiError::bitcoin_bad_request)?;
+        let txid = record.broadcast_txid.clone().ok_or_else(|| {
+            ApiError::consensus_message("bitcoin sweep broadcast did not return txid".to_string())
+        })?;
+        (txid, vault.clone())
+    };
+    persist_bitcoin(node, &snapshot)?;
+    Ok(txid)
+}
+
+fn deposit_sweep_consolidation_id(deposit_id: &str) -> String {
+    format!("deposit-sweep-{deposit_id}")
+}
+
+async fn build_bitcoin_vault_sweep(
+    node: &NodeState,
+    sweep: &VaultSweepWork,
+) -> Result<String, ApiError> {
+    let consolidation_id = vault_sweep_consolidation_id(sweep.from_epoch, sweep.to_epoch);
+    let destination_script_pubkey_hex =
+        vault_change_script_pubkey_hex(node, sweep.to_epoch).await?;
+    let (mut built, snapshot) = {
+        let mut vault = node.bitcoin.lock().await;
+        let record = match vault.get_consolidation(&consolidation_id) {
+            Ok(record) => record,
+            Err(thornado_bitcoin::Error::ConsolidationNotFound) => {
+                let built = vault
+                    .build_consolidation(BitcoinConsolidationRequest {
+                        consolidation_id: consolidation_id.clone(),
+                        fee_rate_sats_per_vb: thornado_bitcoin::DEFAULT_FEE_RATE_SATS_PER_VB,
+                        change_script_pubkey_hex: destination_script_pubkey_hex,
+                        include_txids: sweep.include_txids.clone(),
+                        min_utxos: Some(1),
+                        max_inputs: None,
+                        min_confirmations: Some(1),
+                        max_mempool_chain_length: None,
+                        max_fee_rate_sats_per_vb: None,
+                        min_relay_fee_sats: None,
+                    })
+                    .map_err(ApiError::bitcoin_bad_request)?;
+                vault
+                    .get_consolidation(&built.consolidation_id)
+                    .map_err(ApiError::bitcoin_bad_request)?
+            }
+            Err(error) => return Err(ApiError::bitcoin_bad_request(error)),
+        };
+        (record.built, vault.clone())
+    };
+    for utxo in &mut built.selected_utxos {
+        if sweep.include_txids.contains(&utxo.txid) {
+            utxo.deposit_key_tweak = Some(sweep.from_vault_key_tweak.clone());
+        }
+    }
+    persist_bitcoin(node, &snapshot)?;
+    let payloads =
+        taproot_key_spend_signing_payloads(&built.unsigned_tx_hex, &built.selected_utxos)
+            .map_err(ApiError::bitcoin_bad_request)?;
+    let mut signatures = Vec::with_capacity(payloads.len());
+    for payload in payloads {
+        let session_id = format!(
+            "vault-sweep:{}:{}:{}:{}",
+            sweep.from_epoch, sweep.to_epoch, built.unsigned_tx_hex, payload.input_index
+        );
+        signatures.push(
+            coordinate_http_taproot_keysign_required(
+                node,
+                session_id,
+                payload.sighash_hex,
+                payload.merkle_root_hex,
+                Some(sweep.from_epoch),
+                sweep.vault_signers.clone(),
+            )
+            .await?,
+        );
+    }
+    attach_taproot_key_spend_signatures(&built.unsigned_tx_hex, &signatures)
+        .map_err(ApiError::bitcoin_bad_request)
+}
+
+async fn broadcast_bitcoin_vault_sweep(
+    node: &NodeState,
+    sweep: &VaultSweepWork,
+    signed_tx_hex: String,
+) -> Result<String, ApiError> {
+    let consolidation_id = vault_sweep_consolidation_id(sweep.from_epoch, sweep.to_epoch);
+    let (txid, snapshot) = {
+        let mut vault = node.bitcoin.lock().await;
+        let record = vault
+            .broadcast_consolidation(&consolidation_id, signed_tx_hex)
+            .map_err(ApiError::bitcoin_bad_request)?;
+        let txid = record.broadcast_txid.clone().ok_or_else(|| {
+            ApiError::consensus_message(
+                "bitcoin vault sweep broadcast did not return txid".to_string(),
+            )
+        })?;
+        (txid, vault.clone())
+    };
+    persist_bitcoin(node, &snapshot)?;
+    Ok(txid)
+}
+
+fn vault_sweep_consolidation_id(from_epoch: u64, to_epoch: u64) -> String {
+    format!("vault-sweep-{from_epoch}-to-{to_epoch}")
+}
+
+async fn attest_bitcoin_withdrawal_with_peers(
+    node: &NodeState,
+    withdrawal_id: &str,
+    signed_tx_hex: &str,
+) -> ApiResult<EventsResponse> {
+    let body = BitcoinWithdrawalAttestationBody {
+        signed_tx_hex: signed_tx_hex.to_string(),
+        node_id: None,
+        epoch: None,
+    };
+    let Json(mut response) = bitcoin_withdrawal_attest(
+        State(node.clone()),
+        Path(withdrawal_id.to_string()),
+        Json(body.clone()),
+    )
+    .await?;
+    for peer in node.peers.lock().await.clone() {
+        let peer_response: EventsResponse = post_peer_json(
+            node,
+            &peer,
+            &format!("/bitcoin/withdrawal/{withdrawal_id}/attest"),
+            &body,
+        )
+        .await?;
+        response.events.extend(peer_response.events);
+        response.tx_hash = peer_response.tx_hash.or(response.tx_hash);
+    }
+    Ok(Json(response))
+}
+
+async fn publish_attested_bitcoin_withdrawal(
+    node: &NodeState,
+    withdrawal_id: &str,
+    signed_tx_hex: &str,
+) -> ApiResult<EventsResponse> {
+    let txid = {
+        let vault = node.bitcoin.lock().await;
+        vault
+            .validate_withdrawal_signed_tx(withdrawal_id, signed_tx_hex)
+            .map_err(ApiError::bitcoin_bad_request)?
+    };
+    execute(
+        node,
+        Command::SubmitBitcoinBroadcast {
+            withdrawal_id: withdrawal_id.to_string(),
+            txid,
+        },
+    )
+    .await
 }
 
 async fn get_note_root(
@@ -1473,6 +2657,26 @@ async fn get_note_root(
     Ok(Json(RootResponse {
         denomination_sats: denomination,
         root: tree.root(),
+    }))
+}
+
+async fn get_note_leaves(
+    State(node): State<NodeState>,
+    Path(denomination): Path<u64>,
+) -> ApiResult<LeavesResponse> {
+    let state = node.inner.lock().await;
+    let tree = state
+        .notes
+        .trees
+        .get(&denomination)
+        .ok_or(ApiError::bad_request(
+            thornado_core::Error::UnknownDenomination,
+        ))?;
+
+    Ok(Json(LeavesResponse {
+        denomination_sats: denomination,
+        leaf_count: tree.leaves.len(),
+        leaves: tree.leaves.clone(),
     }))
 }
 
@@ -1520,7 +2724,108 @@ fn persist_bitcoin(node: &NodeState, backend: &NodeBitcoinBackend) -> Result<(),
     Ok(())
 }
 
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as u64)
+        .unwrap_or_default()
+}
+
+async fn mark_churn_started(node: &NodeState) {
+    node.churn_clock.lock().await.started_at_ms = now_ms();
+}
+
+async fn can_serve_local_custody_request(node: &NodeState) -> Result<bool, ApiError> {
+    let local = match node.node_id.as_ref() {
+        Some(local) => local,
+        None => return Ok(true),
+    };
+    let state = node.inner.lock().await;
+    if !state.churn.active_nodes.contains(local) {
+        return Ok(false);
+    }
+    if state.custody.active_group_public_key.is_empty() {
+        return Ok(true);
+    }
+    let expected_group_public_key = state.custody.active_group_public_key.clone();
+    drop(state);
+    let signer = node.custody_signer.lock().await;
+    match signer.as_ref() {
+        Some(signer) => signer
+            .group_public_key_hex()
+            .map(|group_public_key| group_public_key == expected_group_public_key)
+            .map_err(ApiError::bad_request),
+        None => Ok(false),
+    }
+}
+
+async fn first_active_peer(node: &NodeState) -> Result<Option<String>, ApiError> {
+    let local = node.node_id.as_deref();
+    let state = node.inner.lock().await;
+    Ok(state
+        .churn
+        .active_nodes
+        .iter()
+        .find(|node_id| Some(node_id.as_str()) != local)
+        .cloned())
+}
+
+async fn forward_deposit_request(
+    node: &NodeState,
+    peer: &str,
+    body: &DepositRequestBody,
+) -> ApiResult<EventsResponse> {
+    let url = format!("{}/deposit/request", peer.trim_end_matches('/'));
+    let response = node
+        .client
+        .post(&url)
+        .json(body)
+        .send()
+        .await
+        .map_err(ApiError::replication)?;
+    if !response.status().is_success() {
+        return Err(ApiError::replication_status(
+            url,
+            response.status(),
+            response.text().await.unwrap_or_default(),
+        ));
+    }
+    response
+        .json::<EventsResponse>()
+        .await
+        .map(Json)
+        .map_err(ApiError::replication)
+}
+
+async fn churn_window_response(node: &NodeState, state: &AppState) -> ChurnWindowResponse {
+    let now = now_ms();
+    let clock = node.churn_clock.lock().await.clone();
+    let cycle_ms = state.churn.churn_cycle_ms.max(1);
+    let elapsed = now.saturating_sub(clock.started_at_ms);
+    let cycles_elapsed = elapsed / cycle_ms;
+    let cycle_started_at_ms = clock
+        .started_at_ms
+        .saturating_add(cycles_elapsed.saturating_mul(cycle_ms));
+    let next_churn_at_ms = cycle_started_at_ms.saturating_add(cycle_ms);
+    ChurnWindowResponse {
+        epoch: state.churn.epoch,
+        cycle_ms,
+        target_active_nodes: state.churn.target_active_nodes,
+        max_nodes_per_churn: state.churn.max_nodes_per_churn,
+        bitcoin_keysign_grace_epochs: state.churn.bitcoin_keysign_grace_epochs,
+        bitcoin_attestation_grace_epochs: state.churn.bitcoin_attestation_grace_epochs,
+        cycle_started_at_ms,
+        next_churn_at_ms,
+        remaining_ms: next_churn_at_ms.saturating_sub(now),
+        server_now_ms: now,
+    }
+}
+
 fn load_bitcoin_backend(path: &PathBuf) -> thornado_core::Result<NodeBitcoinBackend> {
+    if is_json_path(path) {
+        let json = fs::read_to_string(path).map_err(|e| CoreError::Io(e.to_string()))?;
+        return serde_json::from_str(&json).map_err(|e| CoreError::Json(e.to_string()));
+    }
     if let Ok(json) = fs::read_to_string(path) {
         if json.trim_start().starts_with('{') {
             return serde_json::from_str(&json).map_err(|e| CoreError::Json(e.to_string()));
@@ -1533,8 +2838,36 @@ fn load_bitcoin_backend(path: &PathBuf) -> thornado_core::Result<NodeBitcoinBack
 }
 
 fn save_bitcoin_backend(path: &PathBuf, backend: &NodeBitcoinBackend) -> thornado_core::Result<()> {
+    if is_json_path(path) {
+        return save_bitcoin_backend_json(path, backend);
+    }
     let store = RedbKvStore::open(path).map_err(store_error)?;
     put_json(&store, BITCOIN_BACKEND_KEY, backend).map_err(store_error)
+}
+
+fn save_bitcoin_backend_json(
+    path: &PathBuf,
+    backend: &NodeBitcoinBackend,
+) -> thornado_core::Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| CoreError::Io(e.to_string()))?;
+    }
+    let json = serde_json::to_vec(backend).map_err(|e| CoreError::Json(e.to_string()))?;
+    let mut options = fs::OpenOptions::new();
+    options.create(true).truncate(true).write(true);
+    #[cfg(unix)]
+    options.mode(0o600);
+    use std::io::Write;
+    let mut file = options
+        .open(path)
+        .map_err(|e| CoreError::Io(e.to_string()))?;
+    file.write_all(&json)
+        .map_err(|e| CoreError::Io(e.to_string()))
+}
+
+fn is_json_path(path: &PathBuf) -> bool {
+    path.extension()
+        .is_some_and(|extension| extension == "json")
 }
 
 fn store_error(error: thornado_store::Error) -> CoreError {
@@ -1546,6 +2879,45 @@ fn load_frost_signer(path: &PathBuf) -> thornado_core::Result<FrostCustodySigner
     let snapshot: FrostCustodySignerSnapshot =
         serde_json::from_str(&json).map_err(|e| CoreError::Json(e.to_string()))?;
     FrostCustodySigner::from_snapshot(&snapshot)
+}
+
+fn epoch_frost_signer_path(path: &PathBuf, epoch: u64) -> PathBuf {
+    let mut epoch_path = path.clone();
+    let file_name = path
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .unwrap_or("frost-signer");
+    let extension = path.extension().and_then(|extension| extension.to_str());
+    let epoch_file = match extension {
+        Some(extension) => format!("{file_name}-epoch-{epoch}.{extension}"),
+        None => format!("{file_name}-epoch-{epoch}"),
+    };
+    epoch_path.set_file_name(epoch_file);
+    epoch_path
+}
+
+fn save_frost_signer_for_epoch(
+    path: &PathBuf,
+    epoch: u64,
+    signer: &FrostCustodySigner,
+) -> thornado_core::Result<()> {
+    save_frost_signer(path, signer)?;
+    save_frost_signer(&epoch_frost_signer_path(path, epoch), signer)
+}
+
+async fn signer_for_epoch(
+    node: &NodeState,
+    custody_epoch: Option<u64>,
+) -> Result<FrostCustodySigner, ApiError> {
+    if let (Some(path), Some(epoch)) = (node.frost_signer_path.as_ref(), custody_epoch) {
+        let epoch_path = epoch_frost_signer_path(path, epoch);
+        if epoch_path.exists() {
+            return load_frost_signer(&epoch_path).map_err(ApiError::internal);
+        }
+    }
+    node.custody_signer.lock().await.clone().ok_or_else(|| {
+        ApiError::bad_request(CoreError::Frost("missing local FROST signer".to_string()))
+    })
 }
 
 fn save_frost_signer(path: &PathBuf, signer: &FrostCustodySigner) -> thornado_core::Result<()> {
@@ -1595,7 +2967,13 @@ async fn replicate_events(node: &NodeState, events: &[Event]) -> Result<(), ApiE
 }
 
 async fn coordinate_http_frost_keygen(node: &NodeState, epoch: u64) -> ApiResult<EventsResponse> {
-    let participants = ceremony_participants(node).await?;
+    refresh_consensus_state(node).await?;
+    let work = current_bifrost_keygen_work(node).await?;
+    let participants = if work.pending && work.epoch == epoch {
+        work.participants
+    } else {
+        ceremony_participants(node).await?
+    };
     let session_id = frost_ceremony_id("keygen", epoch, "", &participants);
     let leader = leader_node(&session_id, epoch, &participants)?;
     let local = node.node_id.as_ref().ok_or_else(|| {
@@ -1709,7 +3087,7 @@ async fn coordinate_http_frost_keygen(node: &NodeState, epoch: u64) -> ApiResult
         let tx_hash = consensus
             .broadcast_tx_commit(Command::CommitCustodyKeyset { epoch, keyset })
             .await?;
-        let state = node.inner.lock().await;
+        let state = current_app_state(node).await?;
         return Ok(Json(EventsResponse {
             events: Vec::new(),
             state_hash: state_hash(&state),
@@ -1748,11 +3126,13 @@ async fn frost_keygen_round1_local(
         DkgRound1State {
             signer_id: output.signer_id.clone(),
             secret_package: output.secret_package,
+            taproot_secret_package: output.taproot_secret_package,
         },
     );
     Ok(thornado_core::FrostDkgRound1Public {
         signer_id: output.signer_id,
         package: output.package,
+        taproot_package: output.taproot_package,
     })
 }
 
@@ -1773,6 +3153,7 @@ async fn frost_keygen_round2_local(
     let output = FrostCustodySigner::dkg_round2(
         &state.signer_id,
         &state.secret_package,
+        &state.taproot_secret_package,
         &body.round1_packages,
     )
     .map_err(ApiError::bad_request)?;
@@ -1781,11 +3162,13 @@ async fn frost_keygen_round2_local(
         DkgRound2State {
             signer_id: output.signer_id.clone(),
             secret_package: output.secret_package,
+            taproot_secret_package: output.taproot_secret_package,
         },
     );
     Ok(thornado_core::FrostDkgRound2Public {
         signer_id: output.signer_id,
         packages: output.packages,
+        taproot_packages: output.taproot_packages,
     })
 }
 
@@ -1806,6 +3189,7 @@ async fn frost_keygen_finalize_local(
     let signer = FrostCustodySigner::dkg_finalize_single(
         &state.signer_id,
         &state.secret_package,
+        &state.taproot_secret_package,
         &body.round1_packages,
         &body.round2_packages,
     )
@@ -1814,7 +3198,7 @@ async fn frost_keygen_finalize_local(
         .to_keyset(body.epoch)
         .map_err(ApiError::bad_request)?;
     if let Some(path) = node.frost_signer_path.as_ref() {
-        save_frost_signer(path, &signer).map_err(ApiError::internal)?;
+        save_frost_signer_for_epoch(path, body.epoch, &signer).map_err(ApiError::internal)?;
     }
     *node.custody_signer.lock().await = Some(signer);
     Ok(keyset)
@@ -1849,16 +3233,49 @@ where
 }
 
 async fn ceremony_participants(node: &NodeState) -> Result<Vec<String>, ApiError> {
-    let local = node.node_id.clone().ok_or_else(|| {
+    node.node_id.as_ref().ok_or_else(|| {
         ApiError::bad_request(CoreError::Frost(
             "node_id is required for FROST ceremony".to_string(),
         ))
     })?;
-    let mut participants = node.peers.lock().await.clone();
-    participants.push(local);
+    let state = node.inner.lock().await;
+    let mut participants = state.churn.active_nodes.iter().cloned().collect::<Vec<_>>();
+    drop(state);
     participants.sort();
     participants.dedup();
+    if participants.is_empty() {
+        return Err(ApiError::bad_request(CoreError::Frost(
+            "FROST ceremony requires active nodes".to_string(),
+        )));
+    }
     Ok(participants)
+}
+
+async fn active_peer_urls(node: &NodeState) -> Vec<String> {
+    let local = node.node_id.clone();
+    let mut peers = {
+        let state = node.inner.lock().await;
+        state.churn.active_nodes.iter().cloned().collect::<Vec<_>>()
+    };
+    if peers.is_empty() {
+        peers = node.peers.lock().await.clone();
+    }
+    peers.retain(|peer| Some(peer) != local.as_ref());
+    peers.sort();
+    peers.dedup();
+    peers
+}
+
+async fn signer_peer_urls(node: &NodeState, signer_candidates: Option<Vec<String>>) -> Vec<String> {
+    match signer_candidates {
+        Some(mut peers) => {
+            peers.retain(|peer| Some(peer) != node.node_id.as_ref());
+            peers.sort();
+            peers.dedup();
+            peers
+        }
+        None => active_peer_urls(node).await,
+    }
 }
 
 fn frost_ceremony_id(kind: &str, epoch: u64, key: &str, participants: &[String]) -> String {
@@ -1899,12 +3316,11 @@ async fn coordinate_http_frost_keysign(
     node: &NodeState,
     request: WithdrawalRequest,
     key_tweak: Option<String>,
+    custody_epoch: Option<u64>,
+    signer_candidates: Option<Vec<String>>,
 ) -> Result<CustodySignature, ApiError> {
     let (coordinator, threshold, local_signer_id) = {
-        let signer = node.custody_signer.lock().await;
-        let signer = signer.as_ref().ok_or_else(|| {
-            ApiError::bad_request(CoreError::Frost("missing local FROST signer".to_string()))
-        })?;
+        let signer = signer_for_epoch(node, custody_epoch).await?;
         (
             signer.coordinator(),
             signer
@@ -1916,8 +3332,7 @@ async fn coordinate_http_frost_keysign(
     };
     let session_id = format!("{}:{}", request.withdrawal_id, request.nullifier_hash);
     let local_commitment = {
-        let signer = node.custody_signer.lock().await;
-        let signer = signer.as_ref().expect("checked above");
+        let signer = signer_for_epoch(node, custody_epoch).await?;
         signer
             .signing_commitment(&local_signer_id)
             .map_err(ApiError::bad_request)?
@@ -1930,7 +3345,7 @@ async fn coordinate_http_frost_keysign(
         signer_id: local_commitment.signer_id,
         commitment: local_commitment.commitment,
     }];
-    let peers = node.peers.lock().await.clone();
+    let peers = signer_peer_urls(node, signer_candidates).await;
     let mut selected_peers = Vec::new();
     for peer in peers {
         if commitments.len() >= threshold {
@@ -1943,21 +3358,20 @@ async fn coordinate_http_frost_keysign(
             .json(&FrostKeysignCommitmentBody {
                 session_id: session_id.clone(),
                 signer_id: None,
+                custody_epoch,
             })
             .send()
-            .await
-            .map_err(ApiError::replication)?;
+            .await;
+        let response = match response {
+            Ok(response) => response,
+            Err(_) => continue,
+        };
         if !response.status().is_success() {
-            return Err(ApiError::replication_status(
-                url,
-                response.status(),
-                response.text().await.unwrap_or_default(),
-            ));
+            continue;
         }
-        let commitment = response
-            .json::<FrostSigningCommitmentPublic>()
-            .await
-            .map_err(ApiError::replication)?;
+        let Ok(commitment) = response.json::<FrostSigningCommitmentPublic>().await else {
+            continue;
+        };
         selected_peers.push(peer);
         commitments.push(commitment);
     }
@@ -1979,8 +3393,7 @@ async fn coordinate_http_frost_keysign(
             ))
         })?;
     let local_share = {
-        let signer = node.custody_signer.lock().await;
-        let signer = signer.as_ref().expect("checked above");
+        let signer = signer_for_epoch(node, custody_epoch).await?;
         signer
             .signature_share(
                 &local_signer_id,
@@ -2003,6 +3416,7 @@ async fn coordinate_http_frost_keysign(
                 request: request.clone(),
                 commitments: commitments.clone(),
                 key_tweak: key_tweak.clone(),
+                custody_epoch,
             })
             .send()
             .await
@@ -2024,6 +3438,162 @@ async fn coordinate_http_frost_keysign(
     coordinator
         .aggregate_signature_shares(&request, &commitments, &shares, key_tweak.as_deref())
         .map_err(ApiError::bad_request)
+}
+
+async fn coordinate_http_taproot_keysign(
+    node: &NodeState,
+    session_id: String,
+    message_hex: String,
+    merkle_root_hex: Option<String>,
+    custody_epoch: Option<u64>,
+    signer_candidates: Option<Vec<String>>,
+) -> Result<String, ApiError> {
+    let message = hex::decode(&message_hex)
+        .map_err(|e| ApiError::bad_request(CoreError::Frost(e.to_string())))?;
+    let merkle_root = parse_optional_hex_32(merkle_root_hex.as_deref())?;
+    let (threshold, local_signer_id) = {
+        let signer = signer_for_epoch(node, custody_epoch).await?;
+        (
+            signer
+                .to_keyset(0)
+                .map_err(ApiError::bad_request)?
+                .threshold as usize,
+            signer.first_signer_id().map_err(ApiError::bad_request)?,
+        )
+    };
+    let local_commitment = {
+        let signer = signer_for_epoch(node, custody_epoch).await?;
+        signer
+            .taproot_signing_commitment(&local_signer_id)
+            .map_err(ApiError::bad_request)?
+    };
+    node.frost_nonces.lock().await.insert(
+        frost_nonce_key(&session_id, &local_commitment.signer_id),
+        local_commitment.nonces,
+    );
+    let mut commitments = vec![FrostSigningCommitmentPublic {
+        signer_id: local_commitment.signer_id,
+        commitment: local_commitment.commitment,
+    }];
+    let peers = signer_peer_urls(node, signer_candidates).await;
+    let mut selected_peers = Vec::new();
+    for peer in peers {
+        if commitments.len() >= threshold {
+            break;
+        }
+        let Ok(commitment) = post_peer_json::<FrostSigningCommitmentPublic, _>(
+            node,
+            &peer,
+            "/frost/taproot/keysign/commitment",
+            &FrostTaprootKeysignCommitmentBody {
+                session_id: session_id.clone(),
+                signer_id: None,
+                custody_epoch,
+            },
+        )
+        .await
+        else {
+            continue;
+        };
+        selected_peers.push(peer);
+        commitments.push(commitment);
+    }
+    if commitments.len() < threshold {
+        return Err(ApiError::bad_request(CoreError::Frost(format!(
+            "insufficient Taproot FROST peers: need {threshold}, got {}",
+            commitments.len()
+        ))));
+    }
+
+    let local_nonces = node
+        .frost_nonces
+        .lock()
+        .await
+        .remove(&frost_nonce_key(&session_id, &local_signer_id))
+        .ok_or_else(|| {
+            ApiError::bad_request(CoreError::Frost(
+                "missing local FROST nonces for taproot keysign session".to_string(),
+            ))
+        })?;
+    let local_share = {
+        let signer = signer_for_epoch(node, custody_epoch).await?;
+        signer
+            .taproot_signature_share(
+                &local_signer_id,
+                &local_nonces,
+                &message,
+                &commitments,
+                merkle_root.as_deref(),
+            )
+            .map_err(ApiError::bad_request)?
+    };
+    let mut shares = vec![local_share];
+    for (peer, commitment) in selected_peers.into_iter().zip(commitments.iter().skip(1)) {
+        let share: FrostSignatureShare = post_peer_json(
+            node,
+            &peer,
+            "/frost/taproot/keysign/share",
+            &FrostTaprootKeysignShareBody {
+                session_id: session_id.clone(),
+                signer_id: commitment.signer_id.clone(),
+                message_hex: message_hex.clone(),
+                commitments: commitments.clone(),
+                merkle_root_hex: merkle_root_hex.clone(),
+                custody_epoch,
+            },
+        )
+        .await?;
+        shares.push(share);
+    }
+    let signer = signer_for_epoch(node, custody_epoch).await?;
+    signer
+        .aggregate_taproot_signature_shares(&message, &commitments, &shares, merkle_root.as_deref())
+        .map_err(ApiError::bad_request)
+}
+
+async fn coordinate_http_taproot_keysign_required(
+    node: &NodeState,
+    session_id: String,
+    message_hex: String,
+    merkle_root_hex: Option<String>,
+    custody_epoch: Option<u64>,
+    signer_candidates: Vec<String>,
+) -> Result<String, ApiError> {
+    if node.node_id.is_none() || node.peers.lock().await.is_empty() {
+        return Err(ApiError::bad_request(CoreError::Frost(
+            "Bitcoin signing requires node-to-node FROST peers".to_string(),
+        )));
+    }
+    let unique_signers = signer_candidates.iter().cloned().collect::<BTreeSet<_>>();
+    if unique_signers.len() < 2 {
+        return Err(ApiError::bad_request(CoreError::Frost(
+            "Bitcoin signing requires a threshold signer set".to_string(),
+        )));
+    }
+    coordinate_http_taproot_keysign(
+        node,
+        session_id,
+        message_hex,
+        merkle_root_hex,
+        custody_epoch,
+        Some(signer_candidates),
+    )
+    .await
+}
+
+fn parse_optional_hex_32(value: Option<&str>) -> Result<Option<Vec<u8>>, ApiError> {
+    value
+        .map(|value| {
+            let bytes = hex::decode(value)
+                .map_err(|e| ApiError::bad_request(CoreError::Frost(e.to_string())))?;
+            if bytes.len() != 32 {
+                return Err(ApiError::bad_request(CoreError::Frost(
+                    "Taproot merkle root must be 32 bytes".to_string(),
+                )));
+            }
+            Ok(bytes)
+        })
+        .transpose()
 }
 
 fn frost_nonce_key(session_id: &str, signer_id: &str) -> String {
@@ -2102,7 +3672,7 @@ async fn execute_withdraw_with_http_frost(
                 proof: proof.clone(),
                 public: public.clone(),
             },
-            &StarkProofVerifier,
+            &ZkProofVerifier,
             &CaptureCustodySigner {
                 captured: captured.clone(),
             },
@@ -2118,12 +3688,25 @@ async fn execute_withdraw_with_http_frost(
                 "withdrawal did not request a FROST signature".to_string(),
             ))
         })?;
-    let signature = coordinate_http_frost_keysign(node, request.clone(), None).await?;
+    let (custody_epoch, signer_candidates) = {
+        let state = node.inner.lock().await;
+        let candidates = (!state.churn.active_nodes.is_empty())
+            .then(|| state.churn.active_nodes.iter().cloned().collect::<Vec<_>>());
+        (Some(state.custody.active_epoch), candidates)
+    };
+    let signature = coordinate_http_frost_keysign(
+        node,
+        request.clone(),
+        None,
+        custody_epoch,
+        signer_candidates,
+    )
+    .await?;
     let mut state = node.inner.lock().await;
     let events = execute_command(
         &mut state,
         Command::WithdrawNote { proof, public },
-        &StarkProofVerifier,
+        &ZkProofVerifier,
         &PrecomputedCustodySigner { request, signature },
     )
     .map_err(ApiError::bad_request)?;
@@ -2164,7 +3747,7 @@ fn execute_command_secure(
             execute_command(
                 state,
                 Command::WithdrawNote { proof, public },
-                &StarkProofVerifier,
+                &ZkProofVerifier,
                 signer,
             )
             .map_err(ApiError::bad_request)
@@ -2294,6 +3877,23 @@ fn start_churn_with_local_frost(
     let churn = Event::ChurnEpochStarted { epoch: next_epoch };
     apply_event(state, churn.clone()).map_err(ApiError::bad_request)?;
     let mut events = vec![churn];
+    let mut demoted_nodes = BTreeSet::new();
+    let max_moves = usize::from(state.churn.max_nodes_per_churn.max(1));
+    while state.churn.active_nodes.len() > state.churn.target_active_nodes as usize
+        && demoted_nodes.len() < max_moves
+    {
+        let Some(node_id) = local_churn_out_candidate(state) else {
+            break;
+        };
+        let standby = Event::NodeStatusUpdated {
+            node_id: node_id.clone(),
+            status: NodeStatus::Standby,
+            epoch: next_epoch,
+        };
+        apply_event(state, standby.clone()).map_err(ApiError::bad_request)?;
+        demoted_nodes.insert(node_id);
+        events.push(standby);
+    }
     let standby_nodes = state
         .churn
         .standby_nodes
@@ -2314,7 +3914,17 @@ fn start_churn_with_local_frost(
         })
         .map(|node| node.node_id.clone())
         .collect::<Vec<_>>();
+    let mut activated_count = 0usize;
     for node_id in standby_nodes.into_iter().chain(eligible_nodes) {
+        if state.churn.active_nodes.len() >= state.churn.target_active_nodes as usize {
+            break;
+        }
+        if activated_count >= max_moves {
+            break;
+        }
+        if demoted_nodes.contains(&node_id) {
+            continue;
+        }
         if state.churn.active_nodes.contains(&node_id) {
             continue;
         }
@@ -2337,6 +3947,7 @@ fn start_churn_with_local_frost(
             epoch: next_epoch,
         };
         apply_event(state, event.clone()).map_err(ApiError::bad_request)?;
+        activated_count += 1;
         events.push(event);
     }
     if active_signer_count(state) >= 2 {
@@ -2345,6 +3956,29 @@ fn start_churn_with_local_frost(
         events.push(keyset);
     }
     Ok(events)
+}
+
+fn local_churn_out_candidate(state: &AppState) -> Option<String> {
+    let mut candidates = state
+        .churn
+        .active_nodes
+        .iter()
+        .filter_map(|node_id| {
+            state.churn.node_accounts.get(node_id).map(|node| {
+                (
+                    node.node_id.clone(),
+                    node.slash_points,
+                    node.active_since_epoch.unwrap_or(node.status_since_epoch),
+                )
+            })
+        })
+        .collect::<Vec<_>>();
+    candidates.sort_by(|a, b| {
+        b.1.cmp(&a.1)
+            .then_with(|| a.2.cmp(&b.2))
+            .then_with(|| a.0.cmp(&b.0))
+    });
+    candidates.into_iter().map(|candidate| candidate.0).next()
 }
 
 fn install_local_frost_keyset(
@@ -2363,7 +3997,7 @@ fn install_local_frost_keyset(
     let event = Event::CustodyKeysetGenerated { epoch, keyset };
     apply_event(state, event.clone()).map_err(ApiError::bad_request)?;
     if let Some(path) = frost_signer_path {
-        save_frost_signer(path, &signer).map_err(ApiError::internal)?;
+        save_frost_signer_for_epoch(path, epoch, &signer).map_err(ApiError::internal)?;
     }
     *custody_signer = Some(signer);
     Ok(event)

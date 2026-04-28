@@ -6,6 +6,7 @@ members = [
     "crates/thornado-cli",
     "crates/thornado-node",
     "crates/thornado-store",
+    "crates/thornado-web-wasm",
 ]
 resolver = "2"
 
@@ -16,15 +17,12 @@ license = "MIT"
 [workspace.dependencies]
 anyhow = "1"
 axum = "0.7"
+base64 = "0.22"
 bitcoin = { version = "0.32", features = ["serde"] }
-ark-bn254 = "0.4"
-ark-ff = "0.4"
-ark-groth16 = "0.4"
-ark-relations = "0.4"
-ark-serialize = "0.4"
 clap = { version = "4", features = ["derive"] }
 frost-core = "3"
 frost-secp256k1 = "3"
+frost-secp256k1-tr = "2.2"
 frost-rerandomized = "3"
 hex = "0.4"
 http = "1"
@@ -42,7 +40,7 @@ sha2 = "0.10"
 tendermint-abci = "0.40"
 tendermint-proto = "0.40"
 thiserror = "2"
-tiny-keccak = { version = "2", features = ["keccak"] }
 tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal"] }
 tower = "0.5"
+wasm-bindgen = "0.2"
 zcash_note_encryption = "0.4"

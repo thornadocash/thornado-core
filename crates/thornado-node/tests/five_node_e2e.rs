@@ -5,9 +5,9 @@ use serde::de::DeserializeOwned;
 use serde_json::json;
 use thornado_bitcoin::{script_hex, txid_for_tests};
 use thornado_core::{
-    apply_event, derive_split_receipt, mine_deposit_pow, stark_withdrawal_from_receipt, AppState,
-    DenominationTree, Event, FrostCustodySigner, FrostCustodySignerSnapshot, WithdrawalProof,
-    WithdrawalRequest,
+    apply_event, client_pubkey_from_secret, derive_split_receipt, mine_deposit_pow,
+    zk_withdrawal_from_receipt, AppState, DenominationTree, Event, FrostCustodySigner,
+    FrostCustodySignerSnapshot, WithdrawalProof, WithdrawalRequest,
 };
 use thornado_node::{
     router, EventsResponse, NodeConfig, NodeState, RootResponse, StateHashResponse,
@@ -16,6 +16,10 @@ use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[cfg_attr(
+    not(feature = "proof-tests"),
+    ignore = "expensive proof test; run with `cargo test -p thornado-node --features proof-tests`"
+)]
 async fn five_http_nodes_with_five_dev_bitcoin_backends_run_the_same_flow() {
     let nodes = spawn_nodes(5, AppState::default()).await;
     let client = Client::new();
@@ -28,7 +32,7 @@ async fn five_http_nodes_with_five_dev_bitcoin_backends_run_the_same_flow() {
         &client,
         leader,
         "/deposit/request",
-        json!({ "pow_token": pow("five-node-deposit"), "user_pubkey": "five-node-client" }),
+        json!({ "pow_token": pow("five-node-deposit"), "user_pubkey": client_pubkey_from_secret("five-node-seed") }),
     )
     .await;
     assert_replicated(&client, &nodes).await;
@@ -153,6 +157,10 @@ async fn five_http_nodes_with_five_dev_bitcoin_backends_run_the_same_flow() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[cfg_attr(
+    not(feature = "proof-tests"),
+    ignore = "expensive proof test; run with `cargo test -p thornado-node --features proof-tests`"
+)]
 async fn one_node_deploy_churns_in_one_node_at_a_time_until_five() {
     let mut current_state = AppState::default();
     let client = Client::new();
@@ -231,7 +239,7 @@ async fn one_node_deploy_churns_in_one_node_at_a_time_until_five() {
         &client,
         &nodes[0],
         "/deposit/request",
-        json!({ "pow_token": pow("post-churn-deposit"), "user_pubkey": "post-churn-client" }),
+        json!({ "pow_token": pow("post-churn-deposit"), "user_pubkey": client_pubkey_from_secret("post-churn-seed") }),
     )
     .await;
     apply_events_to_state(&mut current_state, &deposit.events);
@@ -374,6 +382,10 @@ async fn five_http_nodes_run_threshold_frost_keysign_over_http() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[cfg_attr(
+    not(feature = "proof-tests"),
+    ignore = "expensive proof test; run with `cargo test -p thornado-node --features proof-tests`"
+)]
 async fn five_http_nodes_churn_with_live_frost_keygen_then_deposit_and_keysign() {
     let nodes = spawn_nodes_with_empty_frost_paths(5, |base_urls| {
         let mut state = AppState::default();
@@ -416,7 +428,7 @@ async fn five_http_nodes_churn_with_live_frost_keygen_then_deposit_and_keysign()
         &client,
         &nodes[0],
         "/deposit/request",
-        json!({ "pow_token": pow("live-keygen-deposit"), "user_pubkey": "live-client" }),
+        json!({ "pow_token": pow("live-keygen-deposit"), "user_pubkey": client_pubkey_from_secret("live-keygen-seed") }),
     )
     .await;
     let mut key_state = AppState::default();
@@ -431,7 +443,7 @@ async fn five_http_nodes_churn_with_live_frost_keygen_then_deposit_and_keysign()
         &key_state,
         "dep-1",
         &pow("live-keygen-deposit"),
-        "live-client",
+        &client_pubkey_from_secret("live-keygen-seed"),
     )
     .unwrap()
     .key_tweak;
@@ -554,6 +566,7 @@ async fn spawn_nodes_with_frost_shares(
                     bitcoin_state_path: None,
                     bitcoin_rpc: None,
                     node_id: Some(base_urls[index].clone()),
+                    churn_cycle_ms: None,
                 },
                 peers,
             )
@@ -601,6 +614,7 @@ where
                     bitcoin_state_path: None,
                     bitcoin_rpc: None,
                     node_id: Some(base_urls[index].clone()),
+                    churn_cycle_ms: None,
                 },
                 peers,
             )
@@ -637,7 +651,7 @@ fn public_proof_from_receipt(
     let mut tree = DenominationTree::default();
     tree.insert(note.commitment.clone());
     assert_eq!(tree.root(), root);
-    stark_withdrawal_from_receipt(note, client_seed, &tree, recipient, fee_sats).unwrap()
+    zk_withdrawal_from_receipt(note, client_seed, &tree, recipient, fee_sats).unwrap()
 }
 
 async fn assert_replicated(client: &Client, nodes: &[TestNode]) {

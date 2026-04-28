@@ -1,5 +1,7 @@
 use bitcoin::absolute::LockTime;
 use bitcoin::consensus::encode::{serialize, serialize_hex};
+use bitcoin::sighash::{Prevouts, SighashCache, TapSighashType};
+use bitcoin::taproot;
 use bitcoin::{
     Address, Amount, Network, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid,
     Witness,
@@ -77,6 +79,8 @@ pub struct RegtestUtxo {
     pub mempool_ancestor_count: u64,
     #[serde(default)]
     pub mempool_descendant_count: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deposit_key_tweak: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -106,6 +110,8 @@ pub struct BuiltWithdrawal {
     pub output_value_sats: u64,
     pub change_value_sats: u64,
     pub miner_fee_sats: u64,
+    #[serde(default)]
+    pub input_amounts: BTreeMap<String, u64>,
     pub selected_utxos: Vec<RegtestUtxo>,
 }
 
@@ -114,6 +120,8 @@ pub struct BitcoinConsolidationRequest {
     pub consolidation_id: String,
     pub fee_rate_sats_per_vb: u64,
     pub change_script_pubkey_hex: String,
+    #[serde(default)]
+    pub include_txids: Vec<String>,
     #[serde(default)]
     pub min_utxos: Option<usize>,
     #[serde(default)]
@@ -135,6 +143,8 @@ pub struct BuiltConsolidation {
     pub input_value_sats: u64,
     pub output_value_sats: u64,
     pub miner_fee_sats: u64,
+    #[serde(default)]
+    pub input_amounts: BTreeMap<String, u64>,
     pub selected_utxos: Vec<RegtestUtxo>,
 }
 
@@ -156,6 +166,14 @@ pub struct SigningCheckpointValidation {
     pub txid: String,
     pub input_count: usize,
     pub valid: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TaprootSigningPayload {
+    pub input_index: usize,
+    pub sighash_hex: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub merkle_root_hex: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -184,6 +202,12 @@ pub struct BitcoinRpcConfig {
     pub password: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BitcoinFeeObservation {
+    pub fee_sats: u64,
+    pub vbytes: u64,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DevBitcoinBackend {
     vault: RegtestVault,
@@ -191,6 +215,8 @@ pub struct DevBitcoinBackend {
     built_consolidations: BTreeMap<String, BitcoinConsolidationRecord>,
     reserved_outpoints: BTreeSet<String>,
     self_transactions: BTreeSet<String>,
+    #[serde(default)]
+    last_fee: Option<BitcoinFeeObservation>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -200,6 +226,8 @@ pub struct RpcBitcoinBackend {
     built_consolidations: BTreeMap<String, BitcoinConsolidationRecord>,
     reserved_outpoints: BTreeSet<String>,
     self_transactions: BTreeSet<String>,
+    #[serde(default)]
+    last_fee: Option<BitcoinFeeObservation>,
 }
 
 pub trait BitcoinBackend {
@@ -217,6 +245,11 @@ pub trait BitcoinBackend {
         withdrawal_id: &str,
         height: u64,
     ) -> Result<BitcoinWithdrawalRecord>;
+    fn validate_withdrawal_signed_tx(
+        &self,
+        withdrawal_id: &str,
+        signed_tx_hex: &str,
+    ) -> Result<String>;
     fn broadcast_withdrawal(
         &mut self,
         withdrawal_id: &str,
@@ -259,7 +292,10 @@ impl BitcoinBackend for DevBitcoinBackend {
         self.vault.utxos.clone()
     }
 
-    fn build_withdrawal(&mut self, request: BitcoinWithdrawalRequest) -> Result<BuiltWithdrawal> {
+    fn build_withdrawal(
+        &mut self,
+        mut request: BitcoinWithdrawalRequest,
+    ) -> Result<BuiltWithdrawal> {
         if self.built_withdrawals.contains_key(&request.withdrawal_id) {
             return Err(Error::WithdrawalAlreadyBuilt);
         }
@@ -269,6 +305,7 @@ impl BitcoinBackend for DevBitcoinBackend {
         {
             return Err(Error::WithdrawalAlreadyBuilt);
         }
+        apply_fee_fallback(&mut request.fee_rate_sats_per_vb, self.last_fee.as_ref());
 
         let spendable = self
             .vault
@@ -280,6 +317,7 @@ impl BitcoinBackend for DevBitcoinBackend {
                 return Err(Error::UtxoReserved);
             }
         }
+        self.last_fee = fee_observation(&built.unsigned_tx_hex, built.miner_fee_sats)?;
 
         self.built_withdrawals.insert(
             built.withdrawal_id.clone(),
@@ -327,15 +365,27 @@ impl BitcoinBackend for DevBitcoinBackend {
         Ok(record.clone())
     }
 
+    fn validate_withdrawal_signed_tx(
+        &self,
+        withdrawal_id: &str,
+        signed_tx_hex: &str,
+    ) -> Result<String> {
+        let record = self.get_withdrawal(withdrawal_id)?;
+        validate_checkpoint_inputs(
+            &record.built.unsigned_tx_hex,
+            &self.vault.utxos,
+            &record.built.input_amounts,
+        )?;
+        let tx = validate_signed_tx_matches_built(&record.built.unsigned_tx_hex, signed_tx_hex)?;
+        Ok(tx.compute_txid().to_string())
+    }
+
     fn broadcast_withdrawal(
         &mut self,
         withdrawal_id: &str,
         signed_tx_hex: String,
     ) -> Result<BitcoinWithdrawalRecord> {
-        let record = self.get_withdrawal(withdrawal_id)?;
-        validate_checkpoint_inputs(&record.built.unsigned_tx_hex, &self.vault.utxos)?;
-        let tx = validate_signed_tx_matches_built(&record.built.unsigned_tx_hex, &signed_tx_hex)?;
-        let txid = tx.compute_txid().to_string();
+        let txid = self.validate_withdrawal_signed_tx(withdrawal_id, &signed_tx_hex)?;
         self.mark_broadcast(withdrawal_id, txid)
     }
 
@@ -346,7 +396,11 @@ impl BitcoinBackend for DevBitcoinBackend {
     ) -> Result<SigningCheckpointValidation> {
         let record = self.get_withdrawal(withdrawal_id)?;
         validate_checkpoint_match(&record.built.unsigned_tx_hex, &unsigned_tx_hex)?;
-        validate_checkpoint_inputs(&unsigned_tx_hex, &self.vault.utxos)?;
+        validate_checkpoint_inputs(
+            &unsigned_tx_hex,
+            &self.vault.utxos,
+            &record.built.input_amounts,
+        )?;
         let tx = transaction_from_hex(&unsigned_tx_hex)?;
         Ok(SigningCheckpointValidation {
             withdrawal_id: withdrawal_id.to_string(),
@@ -366,7 +420,7 @@ impl BitcoinBackend for DevBitcoinBackend {
 
     fn build_consolidation(
         &mut self,
-        request: BitcoinConsolidationRequest,
+        mut request: BitcoinConsolidationRequest,
     ) -> Result<BuiltConsolidation> {
         if self
             .built_consolidations
@@ -377,6 +431,7 @@ impl BitcoinBackend for DevBitcoinBackend {
         {
             return Err(Error::ConsolidationAlreadyBuilt);
         }
+        apply_fee_fallback(&mut request.fee_rate_sats_per_vb, self.last_fee.as_ref());
         let spendable = self
             .vault
             .clone_with_excluded_outpoints(&self.reserved_outpoints);
@@ -386,6 +441,7 @@ impl BitcoinBackend for DevBitcoinBackend {
                 return Err(Error::UtxoReserved);
             }
         }
+        self.last_fee = fee_observation(&built.unsigned_tx_hex, built.miner_fee_sats)?;
         self.built_consolidations.insert(
             built.consolidation_id.clone(),
             BitcoinConsolidationRecord {
@@ -410,7 +466,11 @@ impl BitcoinBackend for DevBitcoinBackend {
         signed_tx_hex: String,
     ) -> Result<BitcoinConsolidationRecord> {
         let record = self.get_consolidation(consolidation_id)?;
-        validate_checkpoint_inputs(&record.built.unsigned_tx_hex, &self.vault.utxos)?;
+        validate_checkpoint_inputs(
+            &record.built.unsigned_tx_hex,
+            &self.vault.utxos,
+            &record.built.input_amounts,
+        )?;
         let tx = validate_signed_tx_matches_built(&record.built.unsigned_tx_hex, &signed_tx_hex)?;
         let txid = tx.compute_txid().to_string();
         self.self_transactions.insert(txid.clone());
@@ -431,6 +491,7 @@ impl RpcBitcoinBackend {
             built_consolidations: BTreeMap::new(),
             reserved_outpoints: BTreeSet::new(),
             self_transactions: BTreeSet::new(),
+            last_fee: None,
         };
         backend.ensure_regtest()?;
         Ok(backend)
@@ -484,8 +545,9 @@ impl RpcBitcoinBackend {
     fn rpc_utxos(&self) -> Result<Vec<RegtestUtxo>> {
         let mut utxos = rpc_utxos_from_value(&self.rpc("listunspent", serde_json::json!([0]))?)?;
         for utxo in &mut utxos {
-            utxo.is_self_transfer = self.self_transactions.contains(&utxo.txid);
             if utxo.confirmations == 0 {
+                utxo.is_self_transfer = self.self_transactions.contains(&utxo.txid)
+                    || self.rpc_is_from_same_script(&utxo.txid, &utxo.script_pubkey_hex);
                 if let Ok(entry) = self.rpc("getmempoolentry", serde_json::json!([utxo.txid])) {
                     utxo.mempool_ancestor_count = entry
                         .get("ancestorcount")
@@ -496,9 +558,57 @@ impl RpcBitcoinBackend {
                         .and_then(serde_json::Value::as_u64)
                         .unwrap_or(utxo.mempool_descendant_count);
                 }
+            } else {
+                utxo.is_self_transfer = self.self_transactions.contains(&utxo.txid);
             }
         }
         Ok(utxos)
+    }
+
+    fn rpc_is_from_same_script(&self, txid: &str, script_pubkey_hex: &str) -> bool {
+        let Ok(tx) = self.rpc("getrawtransaction", serde_json::json!([txid, true])) else {
+            return false;
+        };
+        let Some(vin) = tx
+            .get("vin")
+            .and_then(serde_json::Value::as_array)
+            .and_then(|vins| vins.first())
+        else {
+            return false;
+        };
+        let Some(parent_txid) = vin.get("txid").and_then(serde_json::Value::as_str) else {
+            return false;
+        };
+        let Some(parent_vout) = vin.get("vout").and_then(serde_json::Value::as_u64) else {
+            return false;
+        };
+        let Ok(parent) = self.rpc("getrawtransaction", serde_json::json!([parent_txid, true]))
+        else {
+            return false;
+        };
+        parent
+            .get("vout")
+            .and_then(serde_json::Value::as_array)
+            .and_then(|vouts| vouts.get(parent_vout as usize))
+            .and_then(|vout| vout.get("scriptPubKey"))
+            .and_then(|script| script.get("hex"))
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|source_script| source_script.eq_ignore_ascii_case(script_pubkey_hex))
+    }
+
+    fn send_raw_transaction(&self, signed_tx_hex: &str) -> Result<String> {
+        match self.rpc("sendrawtransaction", serde_json::json!([signed_tx_hex])) {
+            Ok(value) => value
+                .as_str()
+                .map(ToString::to_string)
+                .ok_or_else(|| Error::Rpc("sendrawtransaction result was not a txid".to_string())),
+            Err(Error::Rpc(message)) if is_duplicate_broadcast_error(&message) => {
+                Ok(transaction_from_hex(signed_tx_hex)?
+                    .compute_txid()
+                    .to_string())
+            }
+            Err(error) => Err(error),
+        }
     }
 }
 
@@ -511,7 +621,10 @@ impl BitcoinBackend for RpcBitcoinBackend {
         self.rpc_utxos().unwrap_or_default()
     }
 
-    fn build_withdrawal(&mut self, request: BitcoinWithdrawalRequest) -> Result<BuiltWithdrawal> {
+    fn build_withdrawal(
+        &mut self,
+        mut request: BitcoinWithdrawalRequest,
+    ) -> Result<BuiltWithdrawal> {
         if self.built_withdrawals.contains_key(&request.withdrawal_id) {
             return Err(Error::WithdrawalAlreadyBuilt);
         }
@@ -521,6 +634,7 @@ impl BitcoinBackend for RpcBitcoinBackend {
         {
             return Err(Error::WithdrawalAlreadyBuilt);
         }
+        apply_fee_fallback(&mut request.fee_rate_sats_per_vb, self.last_fee.as_ref());
 
         let mut vault = RegtestVault::default();
         for utxo in self.rpc_utxos()? {
@@ -534,6 +648,7 @@ impl BitcoinBackend for RpcBitcoinBackend {
                 return Err(Error::UtxoReserved);
             }
         }
+        self.last_fee = fee_observation(&built.unsigned_tx_hex, built.miner_fee_sats)?;
         self.built_withdrawals.insert(
             built.withdrawal_id.clone(),
             BitcoinWithdrawalRecord {
@@ -580,19 +695,28 @@ impl BitcoinBackend for RpcBitcoinBackend {
         Ok(record.clone())
     }
 
+    fn validate_withdrawal_signed_tx(
+        &self,
+        withdrawal_id: &str,
+        signed_tx_hex: &str,
+    ) -> Result<String> {
+        let record = self.get_withdrawal(withdrawal_id)?;
+        validate_checkpoint_inputs(
+            &record.built.unsigned_tx_hex,
+            &self.rpc_utxos()?,
+            &record.built.input_amounts,
+        )?;
+        let tx = validate_signed_tx_matches_built(&record.built.unsigned_tx_hex, signed_tx_hex)?;
+        Ok(tx.compute_txid().to_string())
+    }
+
     fn broadcast_withdrawal(
         &mut self,
         withdrawal_id: &str,
         signed_tx_hex: String,
     ) -> Result<BitcoinWithdrawalRecord> {
-        let record = self.get_withdrawal(withdrawal_id)?;
-        validate_checkpoint_inputs(&record.built.unsigned_tx_hex, &self.rpc_utxos()?)?;
-        validate_signed_tx_matches_built(&record.built.unsigned_tx_hex, &signed_tx_hex)?;
-        let txid = self
-            .rpc("sendrawtransaction", serde_json::json!([signed_tx_hex]))?
-            .as_str()
-            .ok_or_else(|| Error::Rpc("sendrawtransaction result was not a txid".to_string()))?
-            .to_string();
+        self.validate_withdrawal_signed_tx(withdrawal_id, &signed_tx_hex)?;
+        let txid = self.send_raw_transaction(&signed_tx_hex)?;
         self.mark_broadcast(withdrawal_id, txid)
     }
 
@@ -603,7 +727,11 @@ impl BitcoinBackend for RpcBitcoinBackend {
     ) -> Result<SigningCheckpointValidation> {
         let record = self.get_withdrawal(withdrawal_id)?;
         validate_checkpoint_match(&record.built.unsigned_tx_hex, &unsigned_tx_hex)?;
-        validate_checkpoint_inputs(&unsigned_tx_hex, &self.rpc_utxos()?)?;
+        validate_checkpoint_inputs(
+            &unsigned_tx_hex,
+            &self.rpc_utxos()?,
+            &record.built.input_amounts,
+        )?;
         let tx = transaction_from_hex(&unsigned_tx_hex)?;
         Ok(SigningCheckpointValidation {
             withdrawal_id: withdrawal_id.to_string(),
@@ -623,7 +751,7 @@ impl BitcoinBackend for RpcBitcoinBackend {
 
     fn build_consolidation(
         &mut self,
-        request: BitcoinConsolidationRequest,
+        mut request: BitcoinConsolidationRequest,
     ) -> Result<BuiltConsolidation> {
         if self
             .built_consolidations
@@ -634,6 +762,7 @@ impl BitcoinBackend for RpcBitcoinBackend {
         {
             return Err(Error::ConsolidationAlreadyBuilt);
         }
+        apply_fee_fallback(&mut request.fee_rate_sats_per_vb, self.last_fee.as_ref());
         let mut vault = RegtestVault::default();
         for utxo in self.rpc_utxos()? {
             if !self.reserved_outpoints.contains(&outpoint_key(&utxo)) {
@@ -646,6 +775,7 @@ impl BitcoinBackend for RpcBitcoinBackend {
                 return Err(Error::UtxoReserved);
             }
         }
+        self.last_fee = fee_observation(&built.unsigned_tx_hex, built.miner_fee_sats)?;
         self.built_consolidations.insert(
             built.consolidation_id.clone(),
             BitcoinConsolidationRecord {
@@ -670,13 +800,13 @@ impl BitcoinBackend for RpcBitcoinBackend {
         signed_tx_hex: String,
     ) -> Result<BitcoinConsolidationRecord> {
         let record = self.get_consolidation(consolidation_id)?;
-        validate_checkpoint_inputs(&record.built.unsigned_tx_hex, &self.rpc_utxos()?)?;
+        validate_checkpoint_inputs(
+            &record.built.unsigned_tx_hex,
+            &self.rpc_utxos()?,
+            &record.built.input_amounts,
+        )?;
         validate_signed_tx_matches_built(&record.built.unsigned_tx_hex, &signed_tx_hex)?;
-        let txid = self
-            .rpc("sendrawtransaction", serde_json::json!([signed_tx_hex]))?
-            .as_str()
-            .ok_or_else(|| Error::Rpc("sendrawtransaction result was not a txid".to_string()))?
-            .to_string();
+        let txid = self.send_raw_transaction(&signed_tx_hex)?;
         Txid::from_str(&txid).map_err(|e| Error::InvalidTxid(e.to_string()))?;
         self.self_transactions.insert(txid.clone());
         let record = self
@@ -749,7 +879,7 @@ impl RegtestVault {
             selected.push(utxo);
             let estimated_fee = estimate_fee_sats(
                 selected.len(),
-                change_script.is_some(),
+                &withdrawal_output_scripts(&recipient, change_script.as_ref()),
                 fee_rate,
                 request.min_relay_fee_sats.unwrap_or(0),
             );
@@ -764,7 +894,7 @@ impl RegtestVault {
 
         let mut miner_fee_sats = estimate_fee_sats(
             selected.len(),
-            change_script.is_some(),
+            &withdrawal_output_scripts(&recipient, change_script.as_ref()),
             fee_rate,
             request.min_relay_fee_sats.unwrap_or(0),
         );
@@ -818,6 +948,7 @@ impl RegtestVault {
             output_value_sats: request.amount_sats,
             change_value_sats,
             miner_fee_sats,
+            input_amounts: input_amounts(&selected),
             selected_utxos: selected,
         })
     }
@@ -840,10 +971,16 @@ impl RegtestVault {
         let min_utxos = request
             .min_utxos
             .unwrap_or(DEFAULT_CONSOLIDATION_MIN_UTXOS)
-            .max(2);
+            .max(1);
+        let include_txids = request
+            .include_txids
+            .iter()
+            .cloned()
+            .collect::<BTreeSet<_>>();
         let selected = self
             .spendable_utxos(min_confirmations, max_mempool_chain_length)
             .into_iter()
+            .filter(|utxo| include_txids.is_empty() || include_txids.contains(&utxo.txid))
             .take(max_inputs)
             .collect::<Vec<_>>();
         if selected.len() < min_utxos {
@@ -858,7 +995,7 @@ impl RegtestVault {
         );
         let miner_fee_sats = estimate_fee_sats(
             selected.len(),
-            false,
+            std::slice::from_ref(&change_script),
             fee_rate,
             request.min_relay_fee_sats.unwrap_or(0),
         );
@@ -893,6 +1030,7 @@ impl RegtestVault {
             input_value_sats,
             output_value_sats,
             miner_fee_sats,
+            input_amounts: input_amounts(&selected),
             selected_utxos: selected,
         })
     }
@@ -945,18 +1083,48 @@ pub fn tx_weight_bytes(tx_hex: &str) -> Result<usize> {
 }
 
 pub fn is_valid_utxo_script(script: &ScriptBuf) -> bool {
-    is_p2wpkh(script.as_bytes())
+    let bytes = script.as_bytes();
+    is_p2wpkh(bytes) || is_p2tr(bytes)
 }
 
 fn estimate_fee_sats(
     input_count: usize,
-    has_change: bool,
+    output_scripts: &[ScriptBuf],
     fee_rate_sats_per_vb: u64,
     min_relay_fee_sats: u64,
 ) -> u64 {
-    let change_outputs = usize::from(has_change);
-    let estimated_vbytes = 10 + input_count as u64 * 68 + (1 + change_outputs) as u64 * 34;
+    let estimated_vbytes = estimate_signed_vbytes(input_count, output_scripts) as u64;
     (estimated_vbytes * fee_rate_sats_per_vb).max(min_relay_fee_sats)
+}
+
+fn estimate_signed_vbytes(input_count: usize, output_scripts: &[ScriptBuf]) -> usize {
+    let txid = Txid::from_str(&hex::encode([0_u8; 32])).expect("zero txid is valid");
+    let tx = Transaction {
+        version: bitcoin::transaction::Version(2),
+        lock_time: LockTime::ZERO,
+        input: (0..input_count)
+            .map(|_| {
+                let mut witness = Witness::new();
+                witness.push(vec![0_u8; 72]);
+                witness.push(vec![0_u8; 33]);
+                TxIn {
+                    previous_output: OutPoint::new(txid, 0),
+                    script_sig: ScriptBuf::new(),
+                    sequence: Sequence::ENABLE_RBF_NO_LOCKTIME,
+                    witness,
+                }
+            })
+            .collect(),
+        output: output_scripts
+            .iter()
+            .cloned()
+            .map(|script_pubkey| TxOut {
+                value: Amount::from_sat(0),
+                script_pubkey,
+            })
+            .collect(),
+    };
+    tx.vsize()
 }
 
 fn parse_outpoint(utxo: &RegtestUtxo) -> Result<OutPoint> {
@@ -973,8 +1141,30 @@ fn is_p2wpkh(bytes: &[u8]) -> bool {
     bytes.len() == 22 && bytes[0] == 0x00 && bytes[1] == 0x14
 }
 
+fn is_p2tr(bytes: &[u8]) -> bool {
+    bytes.len() == 34 && bytes[0] == 0x51 && bytes[1] == 0x20
+}
+
 fn outpoint_key(utxo: &RegtestUtxo) -> String {
     format!("{}:{}", utxo.txid, utxo.vout)
+}
+
+fn input_amounts(utxos: &[RegtestUtxo]) -> BTreeMap<String, u64> {
+    utxos
+        .iter()
+        .map(|utxo| (outpoint_key(utxo), utxo.value_sats))
+        .collect()
+}
+
+fn withdrawal_output_scripts(
+    recipient: &Address,
+    change_script: Option<&ScriptBuf>,
+) -> Vec<ScriptBuf> {
+    let mut scripts = vec![recipient.script_pubkey()];
+    if let Some(script) = change_script {
+        scripts.push(script.clone());
+    }
+    scripts
 }
 
 pub fn txid_for_tests(byte: u8) -> String {
@@ -989,8 +1179,96 @@ pub fn tx_bytes(tx_hex: &str) -> Result<Vec<u8>> {
     hex::decode(tx_hex).map_err(|e| Error::InvalidScript(e.to_string()))
 }
 
+pub fn taproot_key_spend_signing_payloads(
+    unsigned_tx_hex: &str,
+    utxos: &[RegtestUtxo],
+) -> Result<Vec<TaprootSigningPayload>> {
+    let tx = transaction_from_hex(unsigned_tx_hex)?;
+    if tx.input.len() != utxos.len() {
+        return Err(Error::CheckpointMismatch);
+    }
+    let prevouts = utxos
+        .iter()
+        .map(|utxo| {
+            parse_outpoint(utxo)?;
+            Ok(TxOut {
+                value: Amount::from_sat(utxo.value_sats),
+                script_pubkey: parse_script_hex(&utxo.script_pubkey_hex)?,
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
+    for (input, utxo) in tx.input.iter().zip(utxos.iter()) {
+        if input.previous_output != parse_outpoint(utxo)? {
+            return Err(Error::CheckpointMismatch);
+        }
+    }
+    let prevouts = Prevouts::All(&prevouts);
+    let mut cache = SighashCache::new(&tx);
+    (0..tx.input.len())
+        .map(|input_index| {
+            let sighash = cache
+                .taproot_key_spend_signature_hash(input_index, &prevouts, TapSighashType::Default)
+                .map_err(|e| Error::InvalidScript(e.to_string()))?;
+            let sighash_bytes: &[u8] = sighash.as_ref();
+            Ok(TaprootSigningPayload {
+                input_index,
+                sighash_hex: hex::encode(sighash_bytes),
+                merkle_root_hex: utxos[input_index].deposit_key_tweak.clone(),
+            })
+        })
+        .collect()
+}
+
+pub fn attach_taproot_key_spend_signatures(
+    unsigned_tx_hex: &str,
+    signatures_hex: &[String],
+) -> Result<String> {
+    let mut tx = transaction_from_hex(unsigned_tx_hex)?;
+    if tx.input.len() != signatures_hex.len() {
+        return Err(Error::CheckpointMismatch);
+    }
+    for (input, signature_hex) in tx.input.iter_mut().zip(signatures_hex.iter()) {
+        let signature_bytes =
+            hex::decode(signature_hex).map_err(|e| Error::InvalidScript(e.to_string()))?;
+        let signature = taproot::Signature::from_slice(&signature_bytes)
+            .map_err(|e| Error::InvalidScript(e.to_string()))?;
+        input.witness = Witness::p2tr_key_spend(&signature);
+    }
+    Ok(serialize_hex(&tx))
+}
+
 pub fn serialized_len(tx: &Transaction) -> usize {
     serialize(tx).len()
+}
+
+fn fee_observation(tx_hex: &str, fee_sats: u64) -> Result<Option<BitcoinFeeObservation>> {
+    let tx = transaction_from_hex(tx_hex)?;
+    let vbytes = signed_vbytes_for_unsigned_tx(&tx) as u64;
+    Ok(Some(BitcoinFeeObservation { fee_sats, vbytes }))
+}
+
+fn apply_fee_fallback(fee_rate_sats_per_vb: &mut u64, last_fee: Option<&BitcoinFeeObservation>) {
+    if *fee_rate_sats_per_vb != 0 {
+        return;
+    }
+    *fee_rate_sats_per_vb = last_fee
+        .and_then(|fee| {
+            if fee.vbytes == 0 {
+                None
+            } else {
+                Some((fee.fee_sats / fee.vbytes).max(1))
+            }
+        })
+        .unwrap_or(DEFAULT_FEE_RATE_SATS_PER_VB);
+}
+
+fn signed_vbytes_for_unsigned_tx(tx: &Transaction) -> usize {
+    let output_scripts = tx
+        .output
+        .iter()
+        .map(|output| output.script_pubkey.clone())
+        .collect::<Vec<_>>();
+    estimate_signed_vbytes(tx.input.len(), &output_scripts)
 }
 
 fn default_confirmations() -> u64 {
@@ -1034,22 +1312,37 @@ fn validate_checkpoint_match(expected_tx_hex: &str, actual_tx_hex: &str) -> Resu
     }
 }
 
-fn validate_checkpoint_inputs(tx_hex: &str, utxos: &[RegtestUtxo]) -> Result<()> {
+fn validate_checkpoint_inputs(
+    tx_hex: &str,
+    utxos: &[RegtestUtxo],
+    expected_amounts: &BTreeMap<String, u64>,
+) -> Result<()> {
     let tx = transaction_from_hex(tx_hex)?;
     let available = utxos
         .iter()
-        .map(|utxo| outpoint_key(utxo))
-        .collect::<BTreeSet<_>>();
+        .map(|utxo| (outpoint_key(utxo), utxo.value_sats))
+        .collect::<BTreeMap<_, _>>();
     for input in tx.input {
         let key = format!(
             "{}:{}",
             input.previous_output.txid, input.previous_output.vout
         );
-        if !available.contains(&key) {
+        let Some(available_amount) = available.get(&key) else {
+            return Err(Error::CheckpointInputsUnavailable);
+        };
+        if expected_amounts.get(&key) != Some(available_amount) {
             return Err(Error::CheckpointInputsUnavailable);
         }
     }
     Ok(())
+}
+
+fn is_duplicate_broadcast_error(message: &str) -> bool {
+    let message = message.to_ascii_lowercase();
+    message.contains("already in block chain")
+        || message.contains("txn-already-in-mempool")
+        || message.contains("already have transaction")
+        || message.contains("transaction already in mempool")
 }
 
 fn solvency_report(
@@ -1121,9 +1414,9 @@ fn rpc_utxos_from_value(value: &serde_json::Value) -> Result<Vec<RegtestUtxo>> {
     utxos
         .iter()
         .filter(|utxo| {
-            utxo.get("spendable")
-                .and_then(serde_json::Value::as_bool)
-                .unwrap_or(true)
+            utxo.get("scriptPubKey")
+                .and_then(serde_json::Value::as_str)
+                .is_some_and(is_p2tr_script_pubkey)
         })
         .map(|utxo| {
             Ok(RegtestUtxo {
@@ -1147,9 +1440,14 @@ fn rpc_utxos_from_value(value: &serde_json::Value) -> Result<Vec<RegtestUtxo>> {
                     .get("descendantcount")
                     .and_then(serde_json::Value::as_u64)
                     .unwrap_or_default(),
+                deposit_key_tweak: None,
             })
         })
         .collect()
+}
+
+fn is_p2tr_script_pubkey(script_pubkey_hex: &str) -> bool {
+    script_pubkey_hex.len() == 68 && script_pubkey_hex.starts_with("5120")
 }
 
 fn required_str<'a>(value: &'a serde_json::Value, key: &str) -> Result<&'a str> {
@@ -1203,9 +1501,11 @@ fn rpc_http_post(url: &str, user: &str, password: &str, body: &str) -> Result<St
         .split_once("\r\n\r\n")
         .ok_or_else(|| Error::Rpc("malformed HTTP response".to_string()))?;
     if !headers.starts_with("HTTP/1.1 200") && !headers.starts_with("HTTP/1.0 200") {
-        return Err(Error::Rpc(
-            headers.lines().next().unwrap_or(headers).to_string(),
-        ));
+        return Err(Error::Rpc(format!(
+            "{}: {}",
+            headers.lines().next().unwrap_or(headers),
+            body
+        )));
     }
     Ok(body.to_string())
 }
