@@ -1,0 +1,7 @@
+{
+  "biz": "exchange",
+  "pairCode": "79",
+  "data": { "result": true },
+  "channel": "subscribe",
+  "type": "ticker"
+}

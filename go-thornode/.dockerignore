@@ -1,0 +1,59 @@
+# OS / IDE / Editor
+.DS_Store
+.idea
+.trunk
+.vscode
+*.swo
+*.swp
+
+# Environment
+.env*
+.envrc
+
+# Git / CI
+.git
+.gitlab-ci.yml
+
+# AI / Tools
+.cache
+.claude
+CLAUDE.md
+CLAUDE.local.md
+
+# Documentation
+bugbounty.md
+docs
+LICENSE
+public
+README.md
+
+# Build / CI directories
+build/docker
+ci
+chain
+midgard
+semgrep
+
+# Source not needed for image
+app-layer
+proto
+scripts
+
+# Test
+*.prof
+coverage*
+report.xml
+test
+tmp
+
+# Dependencies / Caches
+__pycache__
+**/evm/cache/*
+node_modules
+
+# Tools (exclude all, then re-include needed)
+tools
+!tools/events
+!tools/generate
+!tools/recover-keyshare-backup
+!tools/thorscan

@@ -1,0 +1,21 @@
+{
+  "method": "ticker.update",
+  "params": [
+    {
+      "symbol": "BTC_USDT",
+      "open_24h": "108767.25",
+      "low_24h": "108091.55",
+      "high_24h": "109528.69",
+      "base_volume_24h": "3248.4142326",
+      "quote_volume_24h": "353483650.7203141",
+      "last": "109514.72",
+      "last_qty": "0.0006881",
+      "best_bid": "109512.5",
+      "best_bid_size": "0.0012839",
+      "best_ask": "109517.69",
+      "best_ask_size": "47.9678415",
+      "timestamp": 1752064628095
+    }
+  ],
+  "id": null
+}

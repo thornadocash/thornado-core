@@ -1,0 +1,20 @@
+{
+  "msg": "Success",
+  "result": "true",
+  "data": [
+    {
+      "symbol": "btc_usdt",
+      "ticker": {
+        "high": "109765.68",
+        "vol": "3082.7075",
+        "low": "108096.25",
+        "change": "0.81",
+        "turnover": "335949337.48",
+        "latest": "109063.51"
+      },
+      "timestamp": 1752077348673
+    }
+  ],
+  "error_code": 0,
+  "ts": 1752077349900
+}

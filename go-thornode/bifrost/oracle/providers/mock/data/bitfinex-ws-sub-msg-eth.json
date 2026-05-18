@@ -1,0 +1,7 @@
+{
+  "event": "subscribed",
+  "channel": "ticker",
+  "chanId": 163821,
+  "symbol": "tETHUSD",
+  "pair": "ETHUSD"
+}

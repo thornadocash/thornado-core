@@ -1,0 +1,21 @@
+{
+  "data": [
+    {
+      "ask_px": "2604.66",
+      "ask_sz": "30.4366",
+      "base_volume_24h": "97645.65230",
+      "bid_px": "2604.64",
+      "bid_sz": "21.70318",
+      "fluctuation": "+0.0261",
+      "high_24h": "2628.10",
+      "last_price": "2604.65",
+      "low_24h": "2523.67",
+      "ms_t": 1752005739055,
+      "open_24h": "2538.31",
+      "quote_volume_24h": "252622790.50",
+      "s_t": 1752005739,
+      "symbol": "ETH_USDT"
+    }
+  ],
+  "table": "spot/ticker"
+}

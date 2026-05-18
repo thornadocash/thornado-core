@@ -1,0 +1,23 @@
+{
+  "name": "THORChain Tron Tokenlist",
+  "tokens": [
+    {
+      "name": "USDT",
+      "symbol": "USDT",
+      "address": "TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf",
+      "decimals": 6
+    },
+    {
+      "name": "BTT",
+      "symbol": "BTT",
+      "address": "TNuoKL1ni8aoshfFL1ASca1Gou9RXwAzfn",
+      "decimals": 18
+    },
+    {
+      "name": "JST",
+      "symbol": "JST",
+      "address": "TF17BgPaZYbz8oxbjhriubPDsA7ArKoLX3",
+      "decimals": 18
+    }
+  ]
+}

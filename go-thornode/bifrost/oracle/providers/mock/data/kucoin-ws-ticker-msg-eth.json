@@ -1,0 +1,69 @@
+{
+  "topic": "/market/snapshot:ETH-USDT",
+  "type": "message",
+  "subject": "trade.snapshot",
+  "data": {
+    "sequence": "14097067785",
+    "data": {
+      "askSize": 5.3908452,
+      "averagePrice": 2619.17290428,
+      "baseCurrency": "ETH",
+      "bidSize": 20.2162397,
+      "board": 0,
+      "buy": 2657.32,
+      "changePrice": 90.86,
+      "changeRate": 0.0354,
+      "close": 2657.23,
+      "datetime": 1752077022162,
+      "high": 2674.51,
+      "lastSize": 2.43188,
+      "lastTradedPrice": 2657.23,
+      "low": 2559.76,
+      "makerCoefficient": 1.0,
+      "makerFeeRate": 0.001,
+      "marginTrade": true,
+      "mark": 0,
+      "market": "USDS",
+      "marketChange1h": {
+        "changePrice": 5.78,
+        "changeRate": 0.0021,
+        "high": 2659.09,
+        "low": 2643.75,
+        "open": 2651.45,
+        "vol": 2796.1827335,
+        "volValue": 7414342.604884205
+      },
+      "marketChange24h": {
+        "changePrice": 90.86,
+        "changeRate": 0.0354,
+        "high": 2674.51,
+        "low": 2559.76,
+        "open": 2566.37,
+        "vol": 83101.3443315,
+        "volValue": 217670442.30705428
+      },
+      "marketChange4h": {
+        "changePrice": 30.04,
+        "changeRate": 0.0114,
+        "high": 2674.51,
+        "low": 2627.19,
+        "open": 2627.19,
+        "vol": 18480.5971606,
+        "volValue": 49027051.31129007
+      },
+      "markets": ["USDS"],
+      "open": 2566.37,
+      "quoteCurrency": "USDT",
+      "sell": 2657.33,
+      "siteTypes": ["turkey", "global", "australia"],
+      "sort": 100,
+      "symbol": "ETH-USDT",
+      "symbolCode": "ETH-USDT",
+      "takerCoefficient": 1.0,
+      "takerFeeRate": 0.001,
+      "trading": true,
+      "vol": 83101.3443315,
+      "volValue": 217670442.30705428
+    }
+  }
+}

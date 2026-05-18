@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package thornado.privacy.v1;
+
+option go_package = "github.com/thornado/thornado/proto/privacy/v1;privacyv1";
+
+import "proto/common/v1/types.proto";
+
+service PrivacyVerifier {
+  rpc Health(thornado.common.v1.HealthRequest) returns (thornado.common.v1.HealthResponse);
+  rpc GetVerifierInfo(GetVerifierInfoRequest) returns (GetVerifierInfoResponse);
+  rpc VerifyWithdrawal(VerifyWithdrawalRequest) returns (VerifyWithdrawalResponse);
+  rpc ComputeCommitment(ComputeCommitmentRequest) returns (ComputeCommitmentResponse);
+  rpc ComputeNullifier(ComputeNullifierRequest) returns (ComputeNullifierResponse);
+}
+
+message ProofBytes {
+  bytes value = 1;
+}
+
+message PublicInputs {
+  bytes canonical_bytes = 1;
+}
+
+message MerkleRoot {
+  bytes value = 1;
+}
+
+message Nullifier {
+  bytes value = 1;
+}
+
+message Commitment {
+  bytes value = 1;
+}
+
+message Denomination {
+  uint64 sats = 1;
+}
+
+message VerifyingKeyId {
+  string value = 1;
+}
+
+message VerifyingKeyHash {
+  bytes value = 1;
+}
+
+message ProofSystemVersion {
+  string value = 1;
+}
+
+message GetVerifierInfoRequest {}
+
+message AcceptedVerifyingKey {
+  VerifyingKeyId id = 1;
+  VerifyingKeyHash hash = 2;
+  ProofSystemVersion proof_system_version = 3;
+  bool active = 4;
+}
+
+message GetVerifierInfoResponse {
+  string verifier_version = 1;
+  repeated AcceptedVerifyingKey verifying_keys = 2;
+}
+
+message VerifyWithdrawalRequest {
+  ProofBytes proof = 1;
+  PublicInputs public_inputs = 2;
+  MerkleRoot root = 3;
+  Nullifier nullifier = 4;
+  Denomination denomination = 5;
+  bytes withdrawal_target = 6;
+  thornado.common.v1.BitcoinAmount fee = 7;
+  thornado.common.v1.BitcoinAmount relayer_fee = 8;
+  VerifyingKeyId verifying_key_id = 9;
+  VerifyingKeyHash verifying_key_hash = 10;
+  ProofSystemVersion proof_system_version = 11;
+}
+
+message VerifyWithdrawalResponse {
+  bool valid = 1;
+  thornado.common.v1.ErrorCode error_code = 2;
+  string message = 3;
+  string verifier_version = 4;
+  VerifyingKeyHash verifying_key_hash = 5;
+}
+
+message ComputeCommitmentRequest {
+  bytes note_secret = 1;
+  Denomination denomination = 2;
+  bytes asset_id = 3;
+  ProofSystemVersion proof_system_version = 4;
+}
+
+message ComputeCommitmentResponse {
+  thornado.common.v1.ErrorCode error_code = 1;
+  string message = 2;
+  Commitment commitment = 3;
+}
+
+message ComputeNullifierRequest {
+  bytes nullifier_secret = 1;
+  MerkleRoot root = 2;
+  ProofSystemVersion proof_system_version = 3;
+}
+
+message ComputeNullifierResponse {
+  thornado.common.v1.ErrorCode error_code = 1;
+  string message = 2;
+  Nullifier nullifier = 3;
+}

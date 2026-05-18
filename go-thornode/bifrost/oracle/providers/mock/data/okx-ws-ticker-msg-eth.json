@@ -1,0 +1,26 @@
+{
+  "arg": {
+    "channel": "tickers",
+    "instId": "ETH-USDT"
+  },
+  "data": [
+    {
+      "instType": "SPOT",
+      "instId": "ETH-USDT",
+      "last": "2659.9",
+      "lastSz": "0.007",
+      "askPx": "2660",
+      "askSz": "3.384",
+      "bidPx": "2659.99",
+      "bidSz": "7.812024",
+      "open24h": "2573.63",
+      "high24h": "2674.9",
+      "low24h": "2571.94",
+      "sodUtc0": "2615.18",
+      "sodUtc8": "2656.87",
+      "volCcy24h": "430803773.82033094",
+      "vol24h": "163936.49611",
+      "ts": "1752079529365"
+    }
+  ]
+}

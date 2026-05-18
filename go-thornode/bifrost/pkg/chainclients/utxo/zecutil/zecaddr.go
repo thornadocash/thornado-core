@@ -1,0 +1,270 @@
+package zecutil
+
+import (
+	"crypto/sha256"
+	"errors"
+	"strings"
+
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/base58"
+	bech32 "github.com/btcsuite/btcd/btcutil/bech32" // tex address
+	"github.com/btcsuite/btcd/chaincfg"
+
+	/* trunk-ignore(golangci-lint/gosec) */
+	"golang.org/x/crypto/ripemd160"
+)
+
+type ChainParams struct {
+	PubHashPrefixes    []byte
+	ScriptHashPrefixes []byte
+}
+
+var (
+	MainNet = ChainParams{
+		PubHashPrefixes:    []byte{0x1C, 0xB8},
+		ScriptHashPrefixes: []byte{0x1C, 0xBD},
+	}
+
+	TestNet3 = ChainParams{
+		PubHashPrefixes:    []byte{0x1D, 0x25},
+		ScriptHashPrefixes: []byte{0x1C, 0xBA},
+	}
+
+	NetList = map[string]ChainParams{
+		"mainnet":  MainNet,
+		"testnet3": TestNet3,
+		"regtest":  TestNet3,
+	}
+)
+
+type ZecAddressScriptHash struct {
+	hash   [ripemd160.Size]byte
+	prefix string
+}
+
+type ZecAddressPubKeyHash struct {
+	hash   [ripemd160.Size]byte
+	prefix string
+}
+
+func NewAddressPubKeyHash(hash [ripemd160.Size]byte, prefix string) *ZecAddressPubKeyHash {
+	return &ZecAddressPubKeyHash{hash, prefix}
+}
+
+func NewAddressScriptHash(hash [ripemd160.Size]byte, prefix string) *ZecAddressScriptHash {
+	return &ZecAddressScriptHash{hash, prefix}
+}
+
+// Encode pubHash to zec address
+func Encode(pkHash []byte, net *chaincfg.Params) (_ string, err error) {
+	if _, ok := NetList[net.Name]; !ok {
+		return "", errors.New("unknown network parameters")
+	}
+
+	var addrPubKey *btcutil.AddressPubKey
+	if addrPubKey, err = btcutil.NewAddressPubKey(pkHash, net); err != nil {
+		return "", err
+	}
+
+	return EncodeHash(btcutil.Hash160(addrPubKey.ScriptAddress())[:ripemd160.Size], NetList[net.Name].PubHashPrefixes)
+}
+
+func EncodeHash(addrHash, prefix []byte) (_ string, err error) {
+	if len(addrHash) != ripemd160.Size {
+		return "", errors.New("incorrect hash length")
+	}
+
+	var (
+		body  = append(prefix, addrHash[:ripemd160.Size]...)
+		chk   = addrChecksum(body)
+		cksum [4]byte
+	)
+
+	copy(cksum[:], chk[:4])
+
+	return base58.Encode(append(body, cksum[:]...)), nil
+}
+
+// DecodeAddress zec address string
+func DecodeAddress(address, netName string) (btcutil.Address, error) {
+	var (
+		net ChainParams
+		ok  bool
+	)
+
+	if net, ok = NetList[netName]; !ok {
+		return nil, errors.New("unknown net")
+	}
+
+	// add tex address support
+	if strings.HasPrefix(address, "tex1") || strings.HasPrefix(address, "textest1") {
+		return decodeTexAddress(address, netName)
+	}
+
+	decoded := base58.Decode(address)
+	if len(decoded) != 26 {
+		return nil, base58.ErrInvalidFormat
+	}
+
+	var cksum [4]byte
+	copy(cksum[:], decoded[len(decoded)-4:])
+
+	if addrChecksum(decoded[:len(decoded)-4]) != cksum {
+		return nil, base58.ErrChecksum
+	}
+
+	if len(decoded)-6 != ripemd160.Size {
+		return nil, errors.New("incorrect payload len")
+	}
+
+	switch {
+	case net.PubHashPrefixes[0] == decoded[0] && net.PubHashPrefixes[1] == decoded[1]:
+		addr := &ZecAddressPubKeyHash{prefix: netName}
+		copy(addr.hash[:], decoded[2:len(decoded)-4])
+		return addr, nil
+	case net.ScriptHashPrefixes[0] == decoded[0] && net.ScriptHashPrefixes[1] == decoded[1]:
+		addr := &ZecAddressScriptHash{prefix: netName}
+		copy(addr.hash[:], decoded[2:len(decoded)-4])
+		return addr, nil
+	}
+
+	return nil, errors.New("unknown address")
+}
+
+// decode tex/textest address
+func decodeTexAddress(address, netName string) (btcutil.Address, error) {
+	// 1. bech32 decode
+	hrp, data, ver, err := bech32.DecodeGeneric(address)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. must be bech32m
+	if ver != bech32.VersionM {
+		return nil, errors.New("tex address must use bech32m")
+	}
+
+	// 3. verify hrp: mainnet = tex testnet = textest
+	expectedHRP := "tex"
+	if strings.Contains(netName, "test") {
+		expectedHRP = "textest"
+	}
+	if hrp != expectedHRP {
+		return nil, errors.New("invalid tex hrp")
+	}
+
+	// 4. 5bit words -> 8bit bytes（20-byte pkHash）
+	pkh, err := bech32.ConvertBits(data, 5, 8, false)
+	if err != nil {
+		return nil, err
+	}
+	if len(pkh) != ripemd160.Size {
+		return nil, errors.New("invalid tex payload length")
+	}
+
+	// 5.  construct ZecAddressPubKeyHash
+	addr := &ZecAddressPubKeyHash{prefix: netName}
+	copy(addr.hash[:], pkh)
+
+	return addr, nil
+}
+
+// EncodeAddress returns the string encoding of a pay-to-pubkey-hash
+// address.  Part of the Address interface.
+func (a *ZecAddressPubKeyHash) EncodeAddress() (addr string) {
+	addr, _ = EncodeHash(a.hash[:], NetList[a.prefix].PubHashPrefixes)
+	return addr
+}
+
+// ScriptAddress returns the bytes to be included in a txout script to pay
+// to a pubkey hash.  Part of the Address interface.
+func (a *ZecAddressPubKeyHash) ScriptAddress() []byte {
+	return a.hash[:]
+}
+
+// IsForNet returns whether or not the pay-to-pubkey-hash address is associated
+// with the passed bitcoin cash network.
+func (a *ZecAddressPubKeyHash) IsForNet(net *chaincfg.Params) bool {
+	_, ok := NetList[net.Name]
+	if !ok {
+		return false
+	}
+	return a.prefix == net.Name
+}
+
+// String returns a human-readable string for the pay-to-pubkey-hash address.
+// This is equivalent to calling EncodeAddress, but is provided so the type can
+// be used as a fmt.Stringer.
+func (a *ZecAddressPubKeyHash) String() string {
+	return a.EncodeAddress()
+}
+
+// EncodeAddress returns the string encoding of a pay-to-pubkey-hash
+// address.  Part of the Address interface.
+func (a *ZecAddressScriptHash) EncodeAddress() (addr string) {
+	addr, _ = EncodeHash(a.hash[:], NetList[a.prefix].ScriptHashPrefixes)
+	return addr
+}
+
+// ScriptAddress returns the bytes to be included in a txout script to pay
+// to a pubkey hash.  Part of the Address interface.
+func (a *ZecAddressScriptHash) ScriptAddress() []byte {
+	return a.hash[:]
+}
+
+// IsForNet returns whether or not the pay-to-pubkey-hash address is associated
+// with the passed bitcoin cash network.
+func (a *ZecAddressScriptHash) IsForNet(net *chaincfg.Params) bool {
+	_, ok := NetList[net.Name]
+	if !ok {
+		return false
+	}
+	return a.prefix == net.Name
+}
+
+// String returns a human-readable string for the pay-to-pubkey-hash address.
+// This is equivalent to calling EncodeAddress, but is provided so the type can
+// be used as a fmt.Stringer.
+func (a *ZecAddressScriptHash) String() string {
+	return a.EncodeAddress()
+}
+
+func addrChecksum(input []byte) (cksum [4]byte) {
+	var (
+		h  = sha256.Sum256(input)
+		h2 = sha256.Sum256(h[:])
+	)
+
+	copy(cksum[:], h2[:4])
+
+	return
+}
+
+// PkHashFromAddress parses a zcash address (t1/t3/tex/textest) and returns
+// the 20-byte hash160 payload (pkHash/scriptHash), reusing DecodeAddress.
+func PkHashFromAddress(address string, net *chaincfg.Params) ([]byte, error) {
+	if net == nil {
+		return nil, errors.New("nil net params")
+	}
+
+	addr, err := DecodeAddress(address, net.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	switch a := addr.(type) {
+	case *ZecAddressPubKeyHash:
+		return a.ScriptAddress(), nil
+	case *ZecAddressScriptHash:
+		return a.ScriptAddress(), nil
+	default:
+
+		type scriptAddresser interface {
+			ScriptAddress() []byte
+		}
+		if sa, ok := addr.(scriptAddresser); ok {
+			return sa.ScriptAddress(), nil
+		}
+		return nil, errors.New("unsupported address type for pkHash")
+	}
+}

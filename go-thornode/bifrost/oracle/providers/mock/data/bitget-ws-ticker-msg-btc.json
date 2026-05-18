@@ -1,0 +1,24 @@
+{
+  "action": "snapshot",
+  "arg": { "instType": "SPOT", "channel": "ticker", "instId": "BTCUSDT" },
+  "data": [
+    {
+      "instId": "BTCUSDT",
+      "lastPr": "108769.72",
+      "open24h": "108271.88",
+      "high24h": "109203.12",
+      "low24h": "107465.06",
+      "change24h": "0.00597",
+      "bidPr": "108769.71",
+      "askPr": "108769.72",
+      "bidSz": "0.817233",
+      "askSz": "0.877004",
+      "baseVolume": "2937.150403",
+      "quoteVolume": "318608082.730925",
+      "openUtc": "108272.30",
+      "changeUtc24h": "0.00459",
+      "ts": "1752003858899"
+    }
+  ],
+  "ts": 1752003858904
+}

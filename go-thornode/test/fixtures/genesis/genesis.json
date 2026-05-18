@@ -1,0 +1,110 @@
+{
+  "ban_voters": [],
+  "chain_contracts": [],
+  "errata_tx_voters": [],
+  "keygen_blocks": [],
+  "last_chain_heights": [],
+  "last_signed_height": "0",
+  "liquidity_providers": [
+    {
+      "asset": "ETH.ETH",
+      "asset_address": "0x90f2b1ae50e6018230e90a33f98c7844a0ab635a",
+      "last_add_height": "32",
+      "last_withdraw_height": "0",
+      "pending_asset": "0",
+      "pending_rune": "0",
+      "pending_tx_Id": "8A83AEBB9313D079BB3D08E6A798DD89D3B5BBBA71B9EAA2A2B31053854C307D",
+      "rune_address": "tthor1m33k4tqk4ngwsksll4q3ppm9g6m80kp0qxtqzv",
+      "units": "50000000000"
+    }
+  ],
+  "msg_swaps": [],
+  "network": {
+    "bond_reward_rune": "16847841043",
+    "total_bond_units": "0"
+  },
+  "network_fee_voters": [
+    {
+      "block_height": "16",
+      "chain": "ETH",
+      "report_block_height": "8",
+      "signers": ["tthor1gqjc7zqg03t5jxt804262chmyxz6vn2xydy3u5"]
+    }
+  ],
+  "network_fees": [
+    {
+      "chain": "ETH",
+      "transaction_fee_rate": "1",
+      "transaction_size": "80000"
+    }
+  ],
+  "node_accounts": [
+    {
+      "active_block_height": "1",
+      "bond": "0",
+      "bond_address": "tthor1gqjc7zqg03t5jxt804262chmyxz6vn2xydy3u5",
+      "forced_to_leave": false,
+      "ip_address": "193.37.32.97",
+      "leave_score": "0",
+      "node_address": "tthor1gqjc7zqg03t5jxt804262chmyxz6vn2xydy3u5",
+      "pub_key_set": {
+        "ed25519": "tthorpub1zcjduepqqsr6gzf7vad2uens2uwf8v5kklcz2nav0kf78fkeljn63a4y0h2qqd92zk",
+        "secp256k1": "tthorpub1addwnpepq0j6krtcxn2nf8pcgsfrme0xuujj428ky927amjhv5jx4xrl36jt2lt0wcy"
+      },
+      "requested_to_leave": false,
+      "signer_membership": [],
+      "status": "Active",
+      "status_since": "0",
+      "validator_cons_pub_key": "tthorcpub1zcjduepq2rna6xpm3x9aklcvruxx4d3hd2j287m7hr92l8w0ag5g3606sgsqn3wsvj",
+      "version": "0.19.0"
+    }
+  ],
+  "observed_tx_in_voters": [],
+  "observed_tx_out_voters": [],
+  "pools": [
+    {
+      "asset": "ETH.ETH",
+      "balance_asset": "40000000000",
+      "balance_rune": "50000000000",
+      "pool_units": "50000000000",
+      "status": "Available"
+    }
+  ],
+  "reserve": "0",
+  "reserve_contributors": [],
+  "tss_keysign_fail_voters": [],
+  "tss_voters": [],
+  "tx_outs": [],
+  "vaults": [
+    {
+      "block_height": "24",
+      "chains": ["THOR", "BTC", "LTC", "BCH", "ETH", "AVAX"],
+      "coins": [
+        {
+          "amount": "40000000000",
+          "asset": "ETH.ETH"
+        }
+      ],
+      "contracts": [
+        {
+          "chain": "ETH",
+          "contract": "0xE65e9d372F8cAcc7b6dfcd4af6507851Ed31bb44"
+        },
+        {
+          "chain": "AVAX",
+          "contract": "0x17aB05351fC94a1a67Bf3f56DdbB941aE6c63E25"
+        }
+      ],
+      "inbound_tx_count": "4",
+      "membership": [
+        "tthorpub1addwnpepq0j6krtcxn2nf8pcgsfrme0xuujj428ky927amjhv5jx4xrl36jt2lt0wcy"
+      ],
+      "outbound_tx_count": "0",
+      "pending_tx_block_heights": [],
+      "pub_key": "tthorpub1addwnpepq0j6krtcxn2nf8pcgsfrme0xuujj428ky927amjhv5jx4xrl36jt2lt0wcy",
+      "status": "ActiveVault",
+      "status_since": "0",
+      "type": "AsgardVault"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "asset": "avax.avax",
+    "address": "0x00112c24ebee9c96d177a3aa2ff55dcb93a53c80",
+    "tcy_claim": 1111111111111111111
+  },
+  {
+    "asset": "btc.btc",
+    "address": "bc1qj937cw6xap470hg427p2kxl85u3ac3ps84hye3",
+    "tcy_claim": 42047799234002
+  },
+  {
+    "asset": "doge.doge",
+    "address": "tthor17gw75axcnr8747pkanye45pnrwk7p9c3uhzgff",
+    "tcy_claim": 1111
+  },
+  {
+    "asset": "doge.doge",
+    "address": "tthor17gw75axcnr8747pkanye45pnrwk7p9c3uhzgff",
+    "tcy_claim": 1111
+  }
+]

@@ -1,0 +1,21 @@
+{
+  "result": [
+    {
+      "address": "tmAbHS91acTju5QaDawZ1M5Pkbv2FFnRwUX",
+      "txid": "500468e8f504eaeee3c53f826dac132dbff2abf824b5361d10d712a199917d65",
+      "outputIndex": 0,
+      "script": "76a914b0c0b9576dab7b72e2e4cdc8fdc5abfe22c4e98f88ac",
+      "satoshis": 150000000,
+      "height": 1
+    },
+    {
+      "address": "tmAbHS91acTju5QaDawZ1M5Pkbv2FFnRwUX",
+      "txid": "a7e7eeb93a772ef97fedc547871cae75d423761b78d6eebbd3dc2b75b72ff41d",
+      "outputIndex": 0,
+      "script": "76a914b0c0b9576dab7b72e2e4cdc8fdc5abfe22c4e98f88ac",
+      "satoshis": 50000000,
+      "height": 50
+    }
+  ],
+  "error": null
+}

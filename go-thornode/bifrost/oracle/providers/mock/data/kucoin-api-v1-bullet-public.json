@@ -1,0 +1,15 @@
+{
+  "code": "200000",
+  "data": {
+    "token": "2neAiuYvAU61ZDXANAGAsiL4-iAExhsBXZxftpOeh_55i3Ysy2q2LEsEWU64mdzUOPusi34M_wGoSf7iNyEWJ6azopV1Fkhyh-QgaRrYOuDQZPYx4Ys3Z9iYB9J6i9GjsxUuhPw3Blq6rhZlGykT3Vp1phUafnulOOpts-MEmEFfDgE176QQ8boW21GeTS36JBvJHl5Vs9Y=.IxqhqVbk_kPXPr_RNv7Nhg==",
+    "instanceServers": [
+      {
+        "endpoint": "wss://ws-api-spot.kucoin.com/",
+        "encrypt": true,
+        "protocol": "websocket",
+        "pingInterval": 18000,
+        "pingTimeout": 10000
+      }
+    ]
+  }
+}

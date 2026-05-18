@@ -1,0 +1,20 @@
+{
+  "channel": "ticker",
+  "type": "snapshot",
+  "data": [
+    {
+      "symbol": "BTC/USD",
+      "bid": 109699.8,
+      "bid_qty": 13.22904477,
+      "ask": 109699.9,
+      "ask_qty": 0.87780446,
+      "last": 109699.9,
+      "volume": 620.40406747,
+      "vwap": 108923.7,
+      "low": 108129.7,
+      "high": 109699.9,
+      "change": 775.7,
+      "change_pct": 0.71
+    }
+  ]
+}

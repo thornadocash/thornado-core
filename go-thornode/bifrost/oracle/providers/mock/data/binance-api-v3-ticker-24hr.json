@@ -1,0 +1,30 @@
+[
+  {
+    "symbol": "BTCUSDT",
+    "openPrice": "108479.67000000",
+    "highPrice": "109216.56000000",
+    "lowPrice": "107429.57000000",
+    "lastPrice": "108346.90000000",
+    "volume": "8914.03923000",
+    "quoteVolume": "964989984.15336920",
+    "openTime": 1751902967009,
+    "closeTime": 1751989367009,
+    "firstId": 5067646682,
+    "lastId": 5069561744,
+    "count": 1915063
+  },
+  {
+    "symbol": "ETHUSDT",
+    "openPrice": "2537.00000000",
+    "highPrice": "2600.62000000",
+    "lowPrice": "2512.00000000",
+    "lastPrice": "2566.06000000",
+    "volume": "320389.84360000",
+    "quoteVolume": "817236678.26744100",
+    "openTime": 1751902967008,
+    "closeTime": 1751989367008,
+    "firstId": 2591238977,
+    "lastId": 2593115378,
+    "count": 1876402
+  }
+]

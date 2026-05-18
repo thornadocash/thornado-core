@@ -1,0 +1,10 @@
+{
+  "blockNumber": 69351239,
+  "blockTimeStamp": 1738705566000,
+  "contractResult": [""],
+  "fee": 2100000,
+  "id": "e1cd4454d71d8973e89155bc2c2a91aa56fd470c8ce64547ce8c69c789c21f0c",
+  "receipt": {
+    "net_fee": 100000
+  }
+}

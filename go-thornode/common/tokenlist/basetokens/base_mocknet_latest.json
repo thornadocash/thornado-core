@@ -1,0 +1,29 @@
+{
+  "name": "THORChain Base Tokenlist",
+  "tokens": [
+    {
+      "name": "Token",
+      "symbol": "TKN",
+      "address": "0x52C84043CD9c865236f11d9Fc9F56aa003c1f922",
+      "decimals": 18
+    },
+    {
+      "name": "USDCoin",
+      "symbol": "USDC",
+      "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      "decimals": 18
+    },
+    {
+      "name": "Coinbase BTC",
+      "symbol": "cbBTC",
+      "address": "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
+      "decimals": 8
+    },
+    {
+      "name": "Test token",
+      "symbol": "TKN",
+      "address": "0x17aB05351fC94a1a67Bf3f56DdbB941aE6c63E25",
+      "decimals": 18
+    }
+  ]
+}

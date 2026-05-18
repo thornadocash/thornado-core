@@ -18,13 +18,13 @@ This architecture is conceptual. None of it is implemented in the current Rust l
 
 ## One-Paragraph Summary
 
-Thornado is a `67%` FROST-controlled Bitcoin vault with a replicated state machine, permanent bonded slots, periodic churn for TSS key rotation, fixed-denomination withdrawal notes, client mirrors, and light nodes. Users request a deposit address after performing browser-friendly proof of work, deposit any amount of BTC, convert the confirmed deposit into denomination notes tied to locally held wallet material, and later redeem those notes to arbitrary withdrawal addresses. Privacy comes from note fungibility and user-controlled time between deposit and withdrawal. The committee's churn mechanism exists for keyset rotation and operator turnover, not as the primary privacy mechanism.
+Thornado is a `67%` FROST-controlled Bitcoin vault with a replicated state machine, permanent bonded slots, periodic churn for TSS key rotation, fixed-denomination withdrawal notes, client mirrors, and light nodes. Users create an HD mnemonic locally, derive fresh unlinkable deposit branches, deposit any amount of BTC, split confirmed deposits into blinded denomination authorizations, and later mint deterministic note commitments into denomination pools. The mnemonic is the user's only required recovery secret: a restored client derives candidate deposit branches and note children, scans public state for matching commitments and nullifiers, and withdraws from recovered unspent notes. Privacy comes from never exposing a stable user key, never publishing a deposit-to-note mapping, hiding note owner keys inside commitments, and user-controlled time between deposit, mint, and withdrawal. The committee's churn mechanism exists for keyset rotation and operator turnover, not as the primary privacy mechanism.
 
 ## System Layers
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  CLIENT LAYER       Mirrors, HD mnemonic, note storage, PoW │
+│  CLIENT LAYER       Mirrors, HD mnemonic, state scan, PoW    │
 ├──────────────────────────────────────────────────────────────┤
 │  NOTE LAYER         Deposit -> split -> withdraw proofs      │
 ├──────────────────────────────────────────────────────────────┤
@@ -43,11 +43,15 @@ Thornado is a `67%` FROST-controlled Bitcoin vault with a replicated state machi
 - No single node can move funds unilaterally.
 - Churn exists for key rotation and slot turnover, not for primary privacy.
 - Privacy is weak if the user deposits and withdraws immediately.
+- The committee must not see a stable user public key across deposits.
+- Public state must not reveal which notes are siblings or which deposit created a note.
 - Node slots are permanent and bonded.
 - Bonds remain inside the system during normal operation.
 - Shutdown is an explicit governance action, not an operator escape hatch.
 - Client mirrors must be vouched for and content-pinned.
 - Notes are fungible by denomination.
+- The user's HD mnemonic is the only required recovery secret.
+- No local-only note, voucher, authorization, or receipt may be required for recovery.
 
 ## Main Objects In State
 
@@ -80,7 +84,8 @@ Thornado is a `67%` FROST-controlled Bitcoin vault with a replicated state machi
 
 - Client mirror generates an HD mnemonic locally.
 - User performs proof of work before requesting a deposit address.
-- Committee returns a unique deposit address and deposit intent.
+- Request includes fresh one-use deposit material derived from the mnemonic and a local deposit index.
+- Committee returns a unique deposit address and deposit intent tied only to that one-use deposit key.
 
 ### 2. Deposit
 
@@ -91,7 +96,10 @@ Thornado is a `67%` FROST-controlled Bitcoin vault with a replicated state machi
 
 - Client converts the confirmed amount into fixed-denomination notes.
 - Example denominations include `10`, `1`, `0.1`, `0.01`, and similar descending powers.
-- Note indices are mapped onto `BIP84` paths.
+- Client derives branch/child note keys locally, largest denomination to smallest.
+- Split creates blinded denomination authorizations, not a public `deposit -> notes` record.
+- Blinded authorizations are recorded or retrievable in a form recoverable from the mnemonic.
+- Final note commitments hide their child owner keys and are inserted into denomination pools without exposing sibling linkage.
 
 ### 4. Withdraw
 
@@ -99,9 +107,17 @@ Thornado is a `67%` FROST-controlled Bitcoin vault with a replicated state machi
 - Committee validates the request in state and threshold-signs the outbound transaction.
 - Submission is intended to be gasless from the user's perspective.
 
+### Recovery
+
+- The HD mnemonic is the only required user backup.
+- A restored client derives candidate one-use deposit branches and child note commitments, scans chain and Thornado state for matches, checks spent nullifiers, and rebuilds the spendable note set.
+- Cached note metadata is allowed for speed, but must be reproducible from the mnemonic plus public chain and system state.
+
 ## Privacy Model
 
 - Deposit amount and deposit address are known to the system.
+- Deposit requests from the same user must not share a stable public identifier.
+- Note commitments from the same split must not share a public batch, branch, child, or sibling identifier.
 - The user later proves entitlement to withdraw a denomination note.
 - Notes are intended to be fungible with all other notes of the same denomination.
 - The privacy gain is determined mainly by denomination set size and the delay between deposit and withdrawal.

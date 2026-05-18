@@ -1,0 +1,19 @@
+{
+  "ch": "market.ethusdt.ticker",
+  "ts": 1752080097708,
+  "tick": {
+    "open": 2576.15,
+    "high": 2673.0,
+    "low": 2573.28,
+    "close": 2665.2,
+    "amount": 88682.25853890869,
+    "vol": 2.3317720530011293e8,
+    "count": 38972,
+    "bid": 2665.74,
+    "bidSize": 3.7627,
+    "ask": 2665.75,
+    "askSize": 0.2349,
+    "lastPrice": 2665.2,
+    "lastSize": 1.5558
+  }
+}

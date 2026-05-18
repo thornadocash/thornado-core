@@ -1,0 +1,55 @@
+{
+  "jsonrpc": "1.0",
+  "id": "1",
+  "result": {
+    "in_active_chain": true,
+    "hex": "050000800a27a726f04dec4d0000000097e23000010000000000000000000000000000000000000000000000000000000000000000ffffffff050397e23000ffffffff02a0067a07000000001976a9140d87ca39eb9cabbfdb6c91de1baab82a7addca7f88ac20bcbe000000000017a914c20cd5bdf7964ca61764db66bc2531b1792a084d87000000",
+    "height": 3203735,
+    "confirmations": 525,
+    "vin": [{ "coinbase": "0397e23000", "sequence": 4294967295 }],
+    "vout": [
+      {
+        "value": 1.254376,
+        "valueZat": 125437600,
+        "n": 0,
+        "scriptPubKey": {
+          "asm": "OP_DUP OP_HASH160 0d87ca39eb9cabbfdb6c91de1baab82a7addca7f OP_EQUALVERIFY OP_CHECKSIG",
+          "hex": "76a9140d87ca39eb9cabbfdb6c91de1baab82a7addca7f88ac",
+          "reqSigs": 1,
+          "type": "pubkeyhash",
+          "addresses": ["t1K79TgQbqu74d6rBmsMu2oFEXEwAmdYiT7"]
+        }
+      },
+      {
+        "value": 0.125,
+        "valueZat": 12500000,
+        "n": 1,
+        "scriptPubKey": {
+          "asm": "OP_HASH160 c20cd5bdf7964ca61764db66bc2531b1792a084d OP_EQUAL",
+          "hex": "a914c20cd5bdf7964ca61764db66bc2531b1792a084d87",
+          "reqSigs": 1,
+          "type": "scripthash",
+          "addresses": ["t3cFfPt1Bcvgez9ZbMBFWeZsskxTkPzGCow"]
+        }
+      }
+    ],
+    "vShieldedSpend": [],
+    "vShieldedOutput": [],
+    "vjoinsplit": [],
+    "orchard": { "actions": [], "valueBalance": 0.0, "valueBalanceZat": 0 },
+    "valueBalance": 0.0,
+    "valueBalanceZat": 0,
+    "size": 137,
+    "time": 1768335813,
+    "txid": "a7e7eeb93a772ef97fedc547871cae75d423761b78d6eebbd3dc2b75b72ff41d",
+    "authdigest": "75ca67eb6b7186080f0e02d041e4e9ae3ca4acc39e57e463497fb4f06a977492",
+    "overwintered": true,
+    "version": 5,
+    "versiongroupid": "26a7270a",
+    "locktime": 0,
+    "expiryheight": 3203735,
+    "blockhash": "0000000000d2c231aea395dfd756cbc15adf86ef95b8229aabb2609f12d35555",
+    "blocktime": 1768335813
+  },
+  "error": null
+}

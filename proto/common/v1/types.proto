@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package thornado.common.v1;
+
+option go_package = "github.com/thornado/thornado/proto/common/v1;commonv1";
+
+// Shared deterministic error codes for cross-component RPC responses.
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_OK = 1;
+  ERROR_CODE_INVALID_ARGUMENT = 2;
+  ERROR_CODE_NOT_FOUND = 3;
+  ERROR_CODE_ALREADY_EXISTS = 4;
+  ERROR_CODE_EXPIRED = 5;
+  ERROR_CODE_UNAUTHORIZED = 6;
+  ERROR_CODE_POLICY_REJECTED = 7;
+  ERROR_CODE_CRYPTO_INVALID = 8;
+  ERROR_CODE_INTERNAL = 9;
+  ERROR_CODE_UNAVAILABLE = 10;
+}
+
+enum ChainId {
+  CHAIN_ID_UNSPECIFIED = 0;
+  CHAIN_ID_BITCOIN_MAINNET = 1;
+  CHAIN_ID_BITCOIN_TESTNET = 2;
+  CHAIN_ID_BITCOIN_SIGNET = 3;
+  CHAIN_ID_BITCOIN_REGTEST = 4;
+  CHAIN_ID_THORNADO = 5;
+}
+
+message Bytes {
+  bytes value = 1;
+}
+
+message VaultId {
+  string value = 1;
+}
+
+message SessionId {
+  string value = 1;
+}
+
+message TxId {
+  bytes value = 1;
+}
+
+message BitcoinOutpoint {
+  TxId txid = 1;
+  uint32 vout = 2;
+}
+
+message BitcoinAmount {
+  uint64 sats = 1;
+}
+
+message SignerParticipant {
+  string node_id = 1;
+  uint32 participant_index = 2;
+  bytes public_key = 3;
+  string thornode_address = 4;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  bool healthy = 1;
+  string service_version = 2;
+  ErrorCode error_code = 3;
+  string message = 4;
+}

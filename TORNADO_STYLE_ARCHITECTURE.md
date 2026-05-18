@@ -36,54 +36,128 @@ Example:
 
 Each note is an independent withdrawal object.
 
-## User Secrets
+## Privacy Invariants
 
-The client generates an HD mnemonic locally.
+The user's HD mnemonic is the only required backup, but it is only a local root secret. The protocol must never expose the mnemonic, a master public key, an xpub, a reusable account key, a public branch index, or any other stable user identifier.
 
-Each note is tied to:
+Every visible object must look independent:
 
-- a denomination
-- a note index
-- a `BIP84` derivation path
-- whatever local secret material is needed for the later proof system
+- deposits from the same mnemonic are unlinkable
+- denomination notes from the same deposit are unlinkable
+- notes at adjacent branch, child, or index positions are unlinkable
+- a withdrawal nullifier is unlinkable to its note commitment until the note is spent
+- public state must not contain a `deposit -> notes` or `note -> sibling notes` mapping
 
-The user's receipt bundle is therefore local wallet material plus note metadata, not a committee-held account.
+This is the core rule:
 
-## Lifecycle
+```text
+deterministic to the wallet
+pseudorandom to everyone else
+```
 
-### 1. Deposit-Address Request
+## Deterministic Note Wallet
 
-- User opens a client mirror.
-- Client generates mnemonic locally.
+The wallet derives all secrets from the mnemonic with domain-separated private derivation. Public branch and child indexes are forbidden.
+
+```text
+root = BIP39Seed(mnemonic)
+
+deposit_secret[i] = PRF(root, "thornado/deposit", network, pool, i)
+deposit_scan_tag[i] = H("thornado/deposit-scan", deposit_secret[i])
+
+note_secret[i][j] = PRF(root, "thornado/note-key", network, pool, i, j)
+note_blind[i][j] = PRF(root, "thornado/note-blind", network, pool, i, j)
+nullifier_secret[i][j] = PRF(root, "thornado/nullifier", network, pool, i, j)
+
+note_owner_pubkey[i][j] = Pub(note_secret[i][j])
+note_commitment[i][j] = Commit(denomination, note_owner_pubkey[i][j], note_blind[i][j])
+nullifier[i][j] = PRF(nullifier_secret[i][j], "spend")
+```
+
+The note is committed to the key at its branch, child, and index, but the public state sees only the hiding commitment. It must not see the raw note owner public key, branch index, child index, or sibling set.
+
+## Private Split And Mint
+
+After a deposit confirms, the client splits the amount locally from largest denomination to smallest. The note count is bounded by the denomination ladder and the maximum supported deposit size.
+
+The split must not publish final note commitments as one grouped batch. A grouped split leaks sibling linkage even if the commitments themselves are hiding.
+
+The target flow is:
+
+1. User proves control of the confirmed deposit.
+2. User proves, in zero knowledge, that requested denomination authorizations sum to the deposit value minus fees or change.
+3. Committee issues blinded denomination authorizations.
+4. User derives final note commitments offline from mnemonic branch and child indexes.
+5. User redeems each blinded authorization to insert one final note commitment into the matching denomination pool.
+
+Blinded authorizations must not become a second backup secret. They must be recorded or retrievable in public system state as blinded records, with any client-side blinding and unblinding material derived from the mnemonic. A user who restores before redeeming authorizations must be able to recover and redeem them from the mnemonic alone.
+
+Redemption should use relays, batching, delays, or equivalent transport privacy so note insertions are not linked by request metadata. At the protocol layer, the final public state is only denomination-pool commitments and spent nullifiers.
+
+## User Flow
+
+### 1. Create Wallet
+
+- User generates one HD mnemonic locally.
+- No account is created on-chain.
+- No stable public key leaves the client.
+
+### 2. Request Deposit Address
+
+- Wallet picks local deposit branch `i`.
+- Wallet derives one-use deposit material for branch `i`.
 - User performs proof of work.
-- Committee returns a deposit address and deposit intent.
+- Committee returns a unique deposit address and deposit intent for that one deposit only.
 
-### 2. Deposit
+### 3. Deposit
 
-- User sends BTC to the returned address.
+- User sends any amount of BTC to the returned address.
 - Committee observes and confirms the deposit.
 
-### 3. Split
+### 4. Split
 
-- Client converts the confirmed amount into fixed-denomination notes.
-- Client produces the data required to establish entitlement to those notes.
-- Committee validates and records the split in state.
+- User clicks `split`.
+- Wallet decomposes the amount into fixed denominations, largest to smallest.
+- Wallet derives note child secrets for each denomination note.
+- User proves deposit ownership and value conservation without revealing the final note sibling set.
+- Committee returns blinded denomination authorizations.
+- Authorization recovery material is mnemonic-derived; no separate receipt is required.
 
-### 4. Withdraw
+### 5. Commit Notes
 
-- User chooses one note and one withdrawal address.
-- User submits a proof of entitlement for that note.
-- Committee validates the request and threshold-signs the outbound transaction.
+- Wallet creates one hiding commitment per note using the branch and child key material.
+- Each note commitment is inserted into its denomination pool.
+- Public state cannot tell which notes came from the same mnemonic, deposit, split, branch, or child range.
+
+### 6. Restore
+
+- User enters only the HD mnemonic.
+- Wallet derives candidate deposit branches and scan tags.
+- Wallet finds matching deposits, recomputes the bounded denomination split, recovers any unredeemed blinded authorizations, derives child note commitments, and scans denomination trees.
+- Wallet derives each note's nullifier and checks the public spent set.
+
+### 7. Withdraw
+
+- User chooses any recovered unspent note.
+- Wallet proves membership in the denomination pool and knowledge of the hidden note key.
+- Wallet reveals the note nullifier.
+- Committee verifies the proof and threshold-signs the outbound Bitcoin transaction.
 
 Each note can be spent independently and on its own schedule.
 
 ## Privacy Model
 
-- The system may know the deposit address and deposit amount.
-- The system should not learn the live linkage from a withdrawn note back to the user identity behind the deposit.
-- Notes of the same denomination should be fungible.
-- Immediate withdraw after deposit provides weak privacy.
-- Waiting across multiple churn cycles and larger note sets improves the anonymity picture.
+The protocol may expose a deposit address, deposit amount, denomination pool, note commitment, and spent nullifier. It must not expose any value that links those objects to a mnemonic or to each other as siblings.
+
+The system must not learn:
+
+- which deposits belong to the same user
+- which note commitments came from the same deposit
+- which notes are adjacent branch or child indexes
+- which withdrawal came from which deposit
+- any stable user public key or account identifier
+
+Timing, IP addresses, browser fingerprinting, funding-wallet history, unusual amounts, and immediate withdrawal behavior are outside the cryptographic note format. The client and relay layer must handle those separately.
 
 ## What The PDF Fixes And What It Leaves Open
 
@@ -100,7 +174,7 @@ Still open:
 - exact proof system
 - exact note secret format
 - exact spent-note marker model
-- exact client backup format
+- exact deterministic derivation format
 - exact way the committee validates split and withdraw proofs
 
 ## Relation To NWabiSabi-Rust

@@ -1,0 +1,157 @@
+syntax = "proto3";
+
+package thornado.frost.v1;
+
+option go_package = "github.com/thornado/thornado/proto/frost/v1;frostv1";
+
+import "proto/common/v1/types.proto";
+
+service FrostSigner {
+  rpc Health(thornado.common.v1.HealthRequest) returns (thornado.common.v1.HealthResponse);
+  rpc GetNodeSignerInfo(GetNodeSignerInfoRequest) returns (GetNodeSignerInfoResponse);
+  rpc StartDkg(StartDkgRequest) returns (StartDkgResponse);
+  rpc GetDkgStatus(GetDkgStatusRequest) returns (GetDkgStatusResponse);
+  rpc GetVaultPubKey(GetVaultPubKeyRequest) returns (GetVaultPubKeyResponse);
+  rpc StartSigning(StartSigningRequest) returns (StartSigningResponse);
+  rpc GetSigningStatus(GetSigningStatusRequest) returns (GetSigningStatusResponse);
+  rpc ForgetVaultShare(ForgetVaultShareRequest) returns (ForgetVaultShareResponse);
+}
+
+enum DkgStatus {
+  DKG_STATUS_UNSPECIFIED = 0;
+  DKG_STATUS_PENDING = 1;
+  DKG_STATUS_RUNNING = 2;
+  DKG_STATUS_COMPLETE = 3;
+  DKG_STATUS_FAILED = 4;
+  DKG_STATUS_EXPIRED = 5;
+}
+
+enum SigningStatus {
+  SIGNING_STATUS_UNSPECIFIED = 0;
+  SIGNING_STATUS_PENDING = 1;
+  SIGNING_STATUS_COLLECTING_NONCES = 2;
+  SIGNING_STATUS_COLLECTING_SIGNATURES = 3;
+  SIGNING_STATUS_COMPLETE = 4;
+  SIGNING_STATUS_REJECTED = 5;
+  SIGNING_STATUS_FAILED = 6;
+  SIGNING_STATUS_EXPIRED = 7;
+}
+
+message GetNodeSignerInfoRequest {}
+
+message GetNodeSignerInfoResponse {
+  string node_id = 1;
+  uint32 participant_index = 2;
+  repeated thornado.common.v1.VaultId vault_ids = 3;
+  string signer_version = 4;
+}
+
+message VaultParticipantSet {
+  repeated thornado.common.v1.SignerParticipant participants = 1;
+  uint32 threshold = 2;
+  uint64 thornode_height = 3;
+  string membership_epoch = 4;
+}
+
+message StartDkgRequest {
+  thornado.common.v1.SessionId session_id = 1;
+  thornado.common.v1.VaultId vault_id = 2;
+  VaultParticipantSet participant_set = 3;
+  thornado.common.v1.ChainId chain_id = 4;
+  uint64 expires_at_height = 5;
+}
+
+message StartDkgResponse {
+  thornado.common.v1.ErrorCode error_code = 1;
+  string message = 2;
+  DkgStatus status = 3;
+}
+
+message GetDkgStatusRequest {
+  thornado.common.v1.SessionId session_id = 1;
+}
+
+message GetDkgStatusResponse {
+  thornado.common.v1.ErrorCode error_code = 1;
+  string message = 2;
+  DkgStatus status = 3;
+  thornado.common.v1.VaultId vault_id = 4;
+  bytes group_public_key = 5;
+  bytes transcript_hash = 6;
+}
+
+message GetVaultPubKeyRequest {
+  thornado.common.v1.VaultId vault_id = 1;
+  thornado.common.v1.ChainId chain_id = 2;
+}
+
+message GetVaultPubKeyResponse {
+  thornado.common.v1.ErrorCode error_code = 1;
+  string message = 2;
+  bytes group_public_key = 3;
+  string bitcoin_address = 4;
+}
+
+message BitcoinUtxo {
+  thornado.common.v1.BitcoinOutpoint outpoint = 1;
+  thornado.common.v1.BitcoinAmount amount = 2;
+  bytes script_pubkey = 3;
+  uint32 confirmations = 4;
+}
+
+message BitcoinSigningPayload {
+  oneof payload {
+    bytes psbt = 1;
+    bytes sighash = 2;
+    bytes unsigned_tx = 3;
+  }
+  repeated BitcoinUtxo inputs = 4;
+}
+
+message SigningPolicyContext {
+  thornado.common.v1.VaultId vault_id = 1;
+  thornado.common.v1.ChainId chain_id = 2;
+  string outbound_tx_id = 3;
+  string destination_address = 4;
+  thornado.common.v1.BitcoinAmount amount = 5;
+  uint64 fee_rate_sats_per_vbyte = 6;
+  uint64 thornode_height = 7;
+  bytes expected_vault_public_key = 8;
+  VaultParticipantSet expected_signer_set = 9;
+}
+
+message StartSigningRequest {
+  thornado.common.v1.SessionId session_id = 1;
+  BitcoinSigningPayload signing_payload = 2;
+  SigningPolicyContext policy_context = 3;
+  uint64 expires_at_height = 4;
+}
+
+message StartSigningResponse {
+  thornado.common.v1.ErrorCode error_code = 1;
+  string message = 2;
+  SigningStatus status = 3;
+}
+
+message GetSigningStatusRequest {
+  thornado.common.v1.SessionId session_id = 1;
+}
+
+message GetSigningStatusResponse {
+  thornado.common.v1.ErrorCode error_code = 1;
+  string message = 2;
+  SigningStatus status = 3;
+  bytes signature = 4;
+  bytes signed_transaction = 5;
+  repeated bytes partial_signatures = 6;
+}
+
+message ForgetVaultShareRequest {
+  thornado.common.v1.VaultId vault_id = 1;
+  string reason = 2;
+}
+
+message ForgetVaultShareResponse {
+  thornado.common.v1.ErrorCode error_code = 1;
+  string message = 2;
+}

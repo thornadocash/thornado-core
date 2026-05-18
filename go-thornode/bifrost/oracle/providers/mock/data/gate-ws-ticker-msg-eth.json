@@ -1,0 +1,17 @@
+{
+  "time": 1752065533,
+  "time_ms": 1752065533747,
+  "channel": "spot.tickers",
+  "event": "update",
+  "result": {
+    "currency_pair": "ETH_USDT",
+    "last": "2663.14",
+    "lowest_ask": "2663.1",
+    "highest_bid": "2663.09",
+    "change_percentage": "3.1481",
+    "base_volume": "127295.7068",
+    "quote_volume": "332342907.41994",
+    "high_24h": "2666.39",
+    "low_24h": "2557.82"
+  }
+}

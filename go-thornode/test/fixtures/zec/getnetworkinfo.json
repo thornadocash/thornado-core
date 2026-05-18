@@ -1,0 +1,39 @@
+{
+  "result": {
+    "version": 6110050,
+    "subversion": "/MagicBean:6.11.0/",
+    "protocolversion": 170140,
+    "localservices": "0000000000000005",
+    "timeoffset": 0,
+    "connections": 192,
+    "networks": [
+      {
+        "name": "ipv4",
+        "limited": false,
+        "reachable": true,
+        "proxy": "",
+        "proxy_randomize_credentials": false
+      },
+      {
+        "name": "ipv6",
+        "limited": false,
+        "reachable": true,
+        "proxy": "",
+        "proxy_randomize_credentials": false
+      },
+      {
+        "name": "onion",
+        "limited": true,
+        "reachable": false,
+        "proxy": "",
+        "proxy_randomize_credentials": false
+      }
+    ],
+    "relayfee": 0.000001,
+    "localaddresses": [],
+    "warnings": "",
+    "warningstimestamp": 1768338553
+  },
+  "id": "",
+  "error": null
+}

@@ -1,0 +1,96 @@
+services:
+  privacy-verifier-1:
+    build:
+      context: ./mock-service
+      dockerfile: Dockerfile
+    environment:
+      MOCK_SERVICE_NAME: privacy-verifier-1
+      MOCK_PORTS: "7101"
+
+  privacy-verifier-2:
+    build:
+      context: ./mock-service
+      dockerfile: Dockerfile
+    environment:
+      MOCK_SERVICE_NAME: privacy-verifier-2
+      MOCK_PORTS: "7101"
+
+  privacy-verifier-3:
+    build:
+      context: ./mock-service
+      dockerfile: Dockerfile
+    environment:
+      MOCK_SERVICE_NAME: privacy-verifier-3
+      MOCK_PORTS: "7101"
+
+  frost-signer-1:
+    build:
+      context: ./mock-service
+      dockerfile: Dockerfile
+    environment:
+      MOCK_SERVICE_NAME: frost-signer-1
+      MOCK_PORTS: "7001"
+
+  frost-signer-2:
+    build:
+      context: ./mock-service
+      dockerfile: Dockerfile
+    environment:
+      MOCK_SERVICE_NAME: frost-signer-2
+      MOCK_PORTS: "7001"
+
+  frost-signer-3:
+    build:
+      context: ./mock-service
+      dockerfile: Dockerfile
+    environment:
+      MOCK_SERVICE_NAME: frost-signer-3
+      MOCK_PORTS: "7001"
+
+  thornode-1:
+    build:
+      context: ./mock-service
+      dockerfile: Dockerfile
+    environment:
+      MOCK_SERVICE_NAME: thornode-1
+      MOCK_PORTS: "26656,26657,1317,9090"
+
+  thornode-2:
+    build:
+      context: ./mock-service
+      dockerfile: Dockerfile
+    environment:
+      MOCK_SERVICE_NAME: thornode-2
+      MOCK_PORTS: "26656,26657,1317,9090"
+
+  thornode-3:
+    build:
+      context: ./mock-service
+      dockerfile: Dockerfile
+    environment:
+      MOCK_SERVICE_NAME: thornode-3
+      MOCK_PORTS: "26656,26657,1317,9090"
+
+  bifrost-1:
+    build:
+      context: ./mock-service
+      dockerfile: Dockerfile
+    environment:
+      MOCK_SERVICE_NAME: bifrost-1
+      MOCK_PORTS: "6040"
+
+  bifrost-2:
+    build:
+      context: ./mock-service
+      dockerfile: Dockerfile
+    environment:
+      MOCK_SERVICE_NAME: bifrost-2
+      MOCK_PORTS: "6040"
+
+  bifrost-3:
+    build:
+      context: ./mock-service
+      dockerfile: Dockerfile
+    environment:
+      MOCK_SERVICE_NAME: bifrost-3
+      MOCK_PORTS: "6040"

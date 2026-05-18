@@ -1,0 +1,17 @@
+{
+  "topic": "tickers.ETHUSDT",
+  "ts": 1752047734380,
+  "type": "snapshot",
+  "cs": 125238694645,
+  "data": {
+    "symbol": "ETHUSDT",
+    "lastPrice": "2623",
+    "highPrice24h": "2645",
+    "lowPrice24h": "2543.2",
+    "prevPrice24h": "2552.43",
+    "volume24h": "167789.48289",
+    "turnover24h": "436491014.444835",
+    "price24hPcnt": "0.0276",
+    "usdIndexPrice": "2623.239648"
+  }
+}

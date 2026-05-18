@@ -1,0 +1,13 @@
+{
+  "time": 1752065466,
+  "time_ms": 1752065466098,
+  "conn_id": "8a7f28a520ac4fce",
+  "trace_id": "5f5c6acf1c991af5d31e15a2994a33dd",
+  "channel": "spot.tickers",
+  "event": "subscribe",
+  "payload": ["BTC_USDT", "ETH_USDT"],
+  "result": {
+    "status": "success"
+  },
+  "requestId": "5f5c6acf1c991af5d31e15a2994a33dd"
+}

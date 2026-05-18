@@ -1,0 +1,69 @@
+{
+  "topic": "/market/snapshot:BTC-USDT",
+  "type": "message",
+  "subject": "trade.snapshot",
+  "data": {
+    "sequence": "20482369532",
+    "data": {
+      "askSize": 1.15470866,
+      "averagePrice": 108931.7004498,
+      "baseCurrency": "BTC",
+      "bidSize": 0.50295325,
+      "board": 0,
+      "buy": 109132.1,
+      "changePrice": 811.6,
+      "changeRate": 0.0074,
+      "close": 109132.1,
+      "datetime": 1752077022028,
+      "high": 109758.6,
+      "lastSize": 0.00327132,
+      "lastTradedPrice": 109132.1,
+      "low": 108095.5,
+      "makerCoefficient": 1.0,
+      "makerFeeRate": 0.001,
+      "marginTrade": true,
+      "mark": 0,
+      "market": "USDS",
+      "marketChange1h": {
+        "changePrice": -22.8,
+        "changeRate": -0.0002,
+        "high": 109217.3,
+        "low": 108814.2,
+        "open": 109154.9,
+        "vol": 114.86367183,
+        "volValue": 12519597.579336878
+      },
+      "marketChange24h": {
+        "changePrice": 811.6,
+        "changeRate": 0.0074,
+        "high": 109758.6,
+        "low": 108095.5,
+        "open": 108320.5,
+        "vol": 2098.5939996,
+        "volValue": 228606081.43255538
+      },
+      "marketChange4h": {
+        "changePrice": 97.1,
+        "changeRate": 0.0008,
+        "high": 109758.6,
+        "low": 108501.7,
+        "open": 109035.0,
+        "vol": 818.41614478,
+        "volValue": 89377051.64904529
+      },
+      "markets": ["USDS"],
+      "open": 108320.5,
+      "quoteCurrency": "USDT",
+      "sell": 109132.2,
+      "siteTypes": ["turkey", "global", "australia"],
+      "sort": 100,
+      "symbol": "BTC-USDT",
+      "symbolCode": "BTC-USDT",
+      "takerCoefficient": 1.0,
+      "takerFeeRate": 0.001,
+      "trading": true,
+      "vol": 2098.5939996,
+      "volValue": 228606081.43255538
+    }
+  }
+}

@@ -1,0 +1,414 @@
+image: golang:1.24.6
+
+workflow:
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_REF_PROTECTED == "true"
+    - if: $CI_PIPELINE_SOURCE == "api"
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "webide"
+
+variables:
+  DOCKER_HOST: tcp://docker:2376
+  DOCKER_TLS_CERTDIR: /certs
+  DOCKER_TLS_VERIFY: 1
+  DOCKER_CERT_PATH: $DOCKER_TLS_CERTDIR/client
+  GOMODCACHE: /go-mod-cache
+  GOCACHE: /go-build-cache
+  SAST_EXCLUDED_ANALYZERS: eslint,bandit,semgrep
+  SAST_EXCLUDED_PATHS: spec, test, tests, tmp, .cache
+
+.use_dind: &use_dind
+  image: docker:28.5.2
+  services:
+    - docker:28.5.2-dind
+
+stages:
+  - .pre
+  - fork
+  - protobuf
+  - test
+  - build
+  - long-test
+
+# Fork MR validation job
+# This job runs for all fork MRs and implements two main functions:
+# 1. Skip CI validation if only documentation/config text files are changed
+# 2. Validate that non-text changes have successful CI in the source project
+#
+# This consolidates the logic that was previously split between text_files_check
+# and fork jobs, fixing a timing issue where GitLab CI rule evaluation happened
+# before dotenv artifacts were available.
+fork:
+  stage: fork
+  rules:
+    - if: $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH && $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH != $CI_MERGE_REQUEST_PROJECT_PATH
+      when: always
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends git jq
+  script:
+    - |
+      # First, check if only text files are changed in this fork MR
+      echo "Checking if only text files are changed..."
+
+      # Fetch the target branch to compare
+      git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+
+      # Get list of changed files in the merge request
+      CHANGED_FILES=$(git diff --name-only origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME...HEAD)
+      echo "Changed files:"
+      echo "$CHANGED_FILES"
+
+      # Check if all changed files are text files (md, json, yaml, yml)
+      # Exclude specific files that are not considered text-only changes
+      EXCLUDED_FILES=".gitlab-ci.yml .trunk/trunk.yaml .trunk/configs/analyzers.yml .trunk/configs/.golangci.yaml .trunk/configs/.markdownlint.yaml .trunk/configs/.yamllint.yaml build/docker/docker-compose.yml config/default.yaml openapi/openapi.yaml"
+      TEXT_ONLY=true
+      if [ -n "$CHANGED_FILES" ]; then
+        for file in $CHANGED_FILES; do
+          if echo "$EXCLUDED_FILES" | grep -q "$file" || ! echo "$file" | grep -q '\.\(md\|json\|yaml\|yml\)$'; then
+            echo "Non-text file found: $file"
+            TEXT_ONLY=false
+            break
+          fi
+        done
+      else
+        # No files changed, consider it as non-text
+        TEXT_ONLY=false
+      fi
+
+      echo "Detected text files only: $TEXT_ONLY"
+
+      # If only text files are changed, skip the fork validation
+      if [ "$TEXT_ONLY" = "true" ]; then
+        echo "Only text files detected in fork MR. Skipping fork validation."
+        echo "Fork MR with text-only changes is allowed to proceed without CI validation."
+        exit 0
+      fi
+
+      # Continue with fork validation for non-text changes
+      echo "Non-text files detected. Proceeding with fork validation..."
+      echo Project ID: $CI_PROJECT_ID
+      echo Merge project ID: $CI_MERGE_REQUEST_PROJECT_ID
+      COMMIT_SHA=${CI_MERGE_REQUEST_SOURCE_BRANCH_SHA:-$CI_COMMIT_SHA}
+      echo Commit SHA: $COMMIT_SHA
+      if ! curl https://gitlab.com/api/v4/projects/$CI_MERGE_REQUEST_PROJECT_ID/pipelines?sha=$COMMIT_SHA | tee /dev/stderr | jq -e '.[]|select(.status=="success")'; then
+        echo
+        echo
+        echo '1. Ensure the following passes locally: `make generate lint test test-regression test-simulation`'
+        echo '2. Have a contributor run `make gitlab-trigger-ci`.'
+        echo '3. Re-run this job.'
+        exit 1
+      fi
+
+generate:
+  rules: &rules
+    - if: $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH && $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH != $CI_MERGE_REQUEST_PROJECT_PATH
+      when: never
+    - if: $CI == "true"
+      when: on_success
+  stage: protobuf
+  <<: *use_dind
+  before_script:
+    - apk -U add bash curl findutils git go jq make protoc sed wget python3
+    - echo "$DOCKER_HUB_PASSWD" | docker login -u thornode --password-stdin
+    - |
+      if [ -n "$CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX" ]; then
+        export DOCKER_MIRROR="${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/"
+        echo "$CI_DEPENDENCY_PROXY_PASSWORD" | docker login "$CI_DEPENDENCY_PROXY_SERVER" -u "$CI_DEPENDENCY_PROXY_USER" --password-stdin
+        if ! docker manifest inspect "${DOCKER_MIRROR}golang:1.24.6" >/dev/null 2>&1; then
+          echo "Dependency proxy missing golang:1.24.6; falling back to Docker Hub"
+          unset DOCKER_MIRROR
+        fi
+      fi
+  script:
+    - |
+      export PATH="$PATH:/root/go/bin"
+      make generate
+      ./scripts/lint-generated.bash
+
+unit-tests:
+  rules:
+    - if: '$CI_MERGE_REQUEST_EVENT_TYPE == "merge_train" && $CI_MERGE_REQUEST_TARGET_BRANCH_SHA == $CI_MERGE_REQUEST_DIFF_BASE_SHA'
+      when: never
+    - *rules
+  stage: test
+  coverage: /total:\s+\(statements\)\s+(\d+.\d+\%)/
+  before_script:
+    - go get github.com/boumenot/gocover-cobertura
+    - go get gotest.tools/gotestsum@v1.12.3
+  script:
+    - make test-coverage-sum
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    paths:
+      - coverage*
+
+lint:
+  rules:
+    - if: $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH && $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH != $CI_MERGE_REQUEST_PROJECT_PATH
+      when: never
+    - if: $CI_COMMIT_BRANCH == "stagenet"
+      when: never
+    - if: $CI_COMMIT_BRANCH == "chainnet"
+      when: never
+    - if: $CI_COMMIT_BRANCH == "mainnet"
+      when: never
+    - if: $CI == "true"
+      when: on_success
+  stage: test
+  # limit to 1 concurrent execution as shared trunk cache can cause internal error
+  resource_group: trunk-lint
+  variables:
+    XDG_CACHE_HOME: /trunk-cache
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
+  script:
+    - make lint-ci
+
+proto-check-formatting:
+  rules: *rules
+  stage: protobuf
+  <<: *use_dind
+  before_script:
+    - apk -U add findutils make
+  script:
+    - make proto-format-check
+
+proto-lint:
+  rules: *rules
+  stage: protobuf
+  <<: *use_dind
+  before_script:
+    - apk -U add make
+  script:
+    - make proto-lint
+
+proto-check-breaking:
+  rules: *rules
+  stage: protobuf
+  <<: *use_dind
+  before_script:
+    - apk -U add git make
+  script:
+    - make proto-check-breaking
+
+build-thornode:
+  rules: &build-thornode-rules
+    - if: $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH && $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH != $CI_MERGE_REQUEST_PROJECT_PATH
+      when: never
+    - if: $CI_COMMIT_BRANCH == "develop"
+      when: always
+    - if: $CI_COMMIT_BRANCH == "stagenet"
+      when: always
+    - if: $CI_COMMIT_BRANCH == "chainnet"
+      when: always
+    - if: $CI_COMMIT_BRANCH == "mainnet"
+      when: always
+  stage: build
+  <<: *use_dind
+  before_script:
+    # https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27384#note_497228752
+    - |
+      for i in $(seq 1 30)
+      do
+          docker info && break
+          echo "Waiting for docker to start"
+          sleep 1s
+      done
+    - apk -U add make git jq curl protoc
+    - echo "$DOCKER_HUB_PASSWD" | docker login -u thornode --password-stdin
+    - |
+      if [ -n "$CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX" ]; then
+        export DOCKER_MIRROR="${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/"
+        echo "$CI_DEPENDENCY_PROXY_PASSWORD" | docker login "$CI_DEPENDENCY_PROXY_SERVER" -u "$CI_DEPENDENCY_PROXY_USER" --password-stdin
+        if ! docker manifest inspect "${DOCKER_MIRROR}golang:1.24.6" >/dev/null 2>&1; then
+          echo "Dependency proxy missing golang:1.24.6; falling back to Docker Hub"
+          unset DOCKER_MIRROR
+        fi
+      fi
+    - make docker-gitlab-login
+  script:
+    - make docker-gitlab-build
+    - make docker-gitlab-push
+    # also push mocknet from develop
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "develop" ]; then
+        BUILDTAG=mocknet BRANCH=mocknet make docker-gitlab-build
+        BUILDTAG=mocknet BRANCH=mocknet make docker-gitlab-push
+      fi
+
+chain-evm:
+  rules:
+    - changes:
+        paths:
+          - chain/evm/**/*
+  stage: test
+  image: node:18
+  script:
+    - cd chain/evm/
+    - yarn install --non-interactive
+    - yarn hardhat test
+
+go-tss:
+  rules:
+    - changes:
+        paths:
+          - bifrost/tss/go-tss/**/*
+  stage: test
+  script:
+    - make test-go-tss
+
+pages:
+  rules:
+    - if: $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH && $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH != $CI_MERGE_REQUEST_PROJECT_PATH
+      when: never
+    - if: $CI_COMMIT_BRANCH == "develop"
+      when: always
+  stage: build
+  image: rust:1.90.0
+  artifacts:
+    paths:
+      - public
+  script:
+    - make docs-generate
+
+build-thorscan:
+  rules: *build-thornode-rules
+  stage: build
+  <<: *use_dind
+  script:
+    - apk -U add make
+    - make thorscan-build
+    - make thorscan-gitlab-push
+
+build-events:
+  rules: *build-thornode-rules
+  stage: build
+  <<: *use_dind
+  script:
+    - apk -U add make
+    - make events-build
+    - make events-gitlab-push
+
+test-simulation:
+  rules:
+    - if: '$CI_MERGE_REQUEST_EVENT_TYPE == "merge_train" && $CI_MERGE_REQUEST_TARGET_BRANCH_SHA == $CI_MERGE_REQUEST_DIFF_BASE_SHA'
+      when: never
+    - *rules
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - scheduler_failure
+      - script_failure
+  stage: long-test
+  <<: *use_dind
+  artifacts:
+    when: on_failure
+    name: $CI_JOB_NAME-$CI_COMMIT_REF_NAME
+    paths:
+      - ./logs/
+  environment:
+    name: integration
+  before_script:
+    - apk -U add git make protoc bash go
+    - echo "$DOCKER_HUB_PASSWD" | docker login -u thornode --password-stdin
+    - |
+      if [ -n "$CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX" ]; then
+        export DOCKER_MIRROR="${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/"
+        echo "$CI_DEPENDENCY_PROXY_PASSWORD" | docker login "$CI_DEPENDENCY_PROXY_SERVER" -u "$CI_DEPENDENCY_PROXY_USER" --password-stdin
+        if ! docker manifest inspect "${DOCKER_MIRROR}golang:1.24.6" >/dev/null 2>&1; then
+          echo "Dependency proxy missing golang:1.24.6; falling back to Docker Hub"
+          unset DOCKER_MIRROR
+        fi
+      fi
+    - |
+      PLUGIN="$HOME/.docker/cli-plugins/docker-compose"
+      mkdir -p $(dirname $PLUGIN)
+      wget https://github.com/docker/compose/releases/download/v2.28.1/docker-compose-linux-x86_64 -O $PLUGIN
+      chmod +x $PLUGIN
+  script:
+    - make test-simulation-cluster
+  after_script:
+    - make test-simulation-events
+    - mkdir logs
+    - docker ps -a >./logs/ps.log 2>&1
+    - |
+      for name in $(docker ps --format '{{.Names}}'); do
+        docker logs "$name" >"./logs/$name.log" 2>&1
+      done
+
+test-regression:
+  rules:
+    - if: '$CI_MERGE_REQUEST_EVENT_TYPE == "merge_train" && $CI_MERGE_REQUEST_TARGET_BRANCH_SHA == $CI_MERGE_REQUEST_DIFF_BASE_SHA'
+      when: never
+    - *rules
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - scheduler_failure
+      - script_failure
+  stage: long-test
+  <<: *use_dind
+  environment:
+    name: integration
+  variables:
+    DOCKER_BUILDKIT: "1"
+    TIME_FACTOR: "2"
+    PARALLELISM: "6"
+    FAIL_FAST: "true"
+  before_script:
+    - apk -U add make git bash
+    - echo "$DOCKER_HUB_PASSWD" | docker login -u thornode --password-stdin
+    - |
+      if [ -n "$CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX" ]; then
+        export DOCKER_MIRROR="${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/"
+        echo "$CI_DEPENDENCY_PROXY_PASSWORD" | docker login "$CI_DEPENDENCY_PROXY_SERVER" -u "$CI_DEPENDENCY_PROXY_USER" --password-stdin
+        if ! docker manifest inspect "${DOCKER_MIRROR}golang:1.24.6" >/dev/null 2>&1; then
+          echo "Dependency proxy missing golang:1.24.6; falling back to Docker Hub"
+          unset DOCKER_MIRROR
+        fi
+      fi
+  script:
+    - make test-regression
+    - |
+      CHANGES=$(git status --porcelain test/regression/mnt/exports/ test/regression/mnt/blocks/)
+      if [ -n "$CHANGES" ]; then
+        echo "Detected uncommitted regression test exports or blocks:"
+        echo "$CHANGES"
+        echo "Please run 'make test-regression' locally and commit the changes."
+        exit 1
+      fi
+
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+
+# NOTE: The following included jobs have internal rule definitions that need to be
+# overwritten for them to trigger on merge requests. We overwrite all with the default
+# workflow rule set.
+
+secret_detection:
+  stage: test
+  rules: *rules
+
+semgrep:
+  stage: test
+  rules: *rules
+  image: returntocorp/semgrep-agent:v1
+  script: semgrep-agent --gitlab-json > gl-sast-report.json || true
+  variables:
+    SEMGREP_RULES: >-
+      https://semgrep.dev/s/heimdallthor:insecure-logging
+  artifacts:
+    reports:
+      sast: gl-sast-report.json

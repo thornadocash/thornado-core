@@ -1,0 +1,21 @@
+{
+  "method": "ticker.update",
+  "params": [
+    {
+      "symbol": "ETH_USDT",
+      "open_24h": "2575.9",
+      "low_24h": "2558.13",
+      "high_24h": "2665.01",
+      "base_volume_24h": "115867.1528",
+      "quote_volume_24h": "302473317.778789",
+      "last": "2662",
+      "last_qty": "0.2125",
+      "best_bid": "2661.99",
+      "best_bid_size": "0.06",
+      "best_ask": "2662.01",
+      "best_ask_size": "0.0576",
+      "timestamp": 1752064628088
+    }
+  ],
+  "id": null
+}

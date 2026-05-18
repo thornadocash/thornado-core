@@ -1,0 +1,19 @@
+{
+  "bond_reward_rune": "6085863936063",
+  "total_bond_units": "1679790",
+  "available_pools_rune": "5869965246279656",
+  "vaults_liquidity_rune": "8028368778656998",
+  "effective_security_bond": "6619387866931122",
+  "total_reserve": "7408673425582185",
+  "vaults_migrating": false,
+  "gas_spent_rune": "179282527796318",
+  "gas_withheld_rune": "231180386614277",
+  "outbound_fee_multiplier": "1000",
+  "native_outbound_fee_rune": "2000000",
+  "native_tx_fee_rune": "2000000",
+  "tns_register_fee_rune": "1000000000",
+  "tns_fee_per_block_rune": "20",
+  "rune_price_in_tor": "124858977",
+  "tor_price_in_rune": "80090357",
+  "tor_price_halted": false
+}
