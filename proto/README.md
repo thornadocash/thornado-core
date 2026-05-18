@@ -1,12 +1,12 @@
 # Thornado Protobuf Contracts
 
-This directory owns shared cross-component schemas for the Thornado split architecture.
+This directory owns shared cross-component schemas for Thornado services.
 
 ## Ownership
 
-- `proto/common/v1/` contains types shared by Go THORNode, Go Bifrost, Rust FROST signer, Rust privacy, and fixtures.
+- `proto/common/v1/` contains types shared by Go THORNode, Go Bifrost, Rust FROST signer, Shielder, and fixtures.
 - `proto/frost/v1/` contains the signer sidecar API used by Bifrost or Thornode orchestration.
-- `proto/privacy/v1/` contains the deterministic privacy verifier API and helper request shapes.
+- `proto/shielder/v1/` contains the deterministic Shielder API and helper request shapes.
 
 Workstream owners may propose interface changes in their own directories first. Contract changes should land here only after the affected Go and Rust consumers agree on compatibility.
 

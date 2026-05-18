@@ -39,50 +39,50 @@ services:
       timeout: 3s
       retries: 30
 
-  privacy-verifier-1:
+  shielder-1:
     profiles: ["mock", "crypto"]
     build:
-      context: ../rust-privacy
+      context: ../shielder
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      PRIVACY_VERIFIER_MODE: ${PRIVACY_VERIFIER_MODE:-mock}
-      PRIVACY_VERIFIER_GRPC_ADDR: 0.0.0.0:7101
-      PRIVACY_VERIFIER_NODE_ID: privacy-verifier-1
+      SHIELDER_MODE: ${SHIELDER_MODE:-mock}
+      SHIELDER_GRPC_ADDR: 0.0.0.0:7101
+      SHIELDER_NODE_ID: shielder-1
     ports:
       - "7101:7101"
     volumes:
-      - ./logs/privacy-verifier-1:/logs
+      - ./logs/shielder-1:/logs
 
-  privacy-verifier-2:
+  shielder-2:
     profiles: ["three-node"]
     build:
-      context: ../rust-privacy
+      context: ../shielder
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      PRIVACY_VERIFIER_MODE: ${PRIVACY_VERIFIER_MODE:-mock}
-      PRIVACY_VERIFIER_GRPC_ADDR: 0.0.0.0:7101
-      PRIVACY_VERIFIER_NODE_ID: privacy-verifier-2
+      SHIELDER_MODE: ${SHIELDER_MODE:-mock}
+      SHIELDER_GRPC_ADDR: 0.0.0.0:7101
+      SHIELDER_NODE_ID: shielder-2
     ports:
       - "7102:7101"
     volumes:
-      - ./logs/privacy-verifier-2:/logs
+      - ./logs/shielder-2:/logs
 
-  privacy-verifier-3:
+  shielder-3:
     profiles: ["three-node"]
     build:
-      context: ../rust-privacy
+      context: ../shielder
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      PRIVACY_VERIFIER_MODE: ${PRIVACY_VERIFIER_MODE:-mock}
-      PRIVACY_VERIFIER_GRPC_ADDR: 0.0.0.0:7101
-      PRIVACY_VERIFIER_NODE_ID: privacy-verifier-3
+      SHIELDER_MODE: ${SHIELDER_MODE:-mock}
+      SHIELDER_GRPC_ADDR: 0.0.0.0:7101
+      SHIELDER_NODE_ID: shielder-3
     ports:
       - "7103:7101"
     volumes:
-      - ./logs/privacy-verifier-3:/logs
+      - ./logs/shielder-3:/logs
 
   frost-signer-1:
     profiles: ["mock", "crypto"]
@@ -144,11 +144,11 @@ services:
       <<: *common-env
       THORNODE_MONIKER: thornode-1
       THORNODE_HOME: /var/lib/thornado/thornode
-      PRIVACY_VERIFIER_ENDPOINT: http://privacy-verifier-1:7101
+      SHIELDER_ENDPOINT: http://shielder-1:7101
     depends_on:
       bitcoind-regtest:
         condition: service_healthy
-      privacy-verifier-1:
+      shielder-1:
         condition: service_started
     ports:
       - "26656:26656"
@@ -168,9 +168,9 @@ services:
       <<: *common-env
       THORNODE_MONIKER: thornode-2
       THORNODE_HOME: /var/lib/thornado/thornode
-      PRIVACY_VERIFIER_ENDPOINT: http://privacy-verifier-2:7101
+      SHIELDER_ENDPOINT: http://shielder-2:7101
     depends_on:
-      privacy-verifier-2:
+      shielder-2:
         condition: service_started
     ports:
       - "26756:26656"
@@ -190,9 +190,9 @@ services:
       <<: *common-env
       THORNODE_MONIKER: thornode-3
       THORNODE_HOME: /var/lib/thornado/thornode
-      PRIVACY_VERIFIER_ENDPOINT: http://privacy-verifier-3:7101
+      SHIELDER_ENDPOINT: http://shielder-3:7101
     depends_on:
-      privacy-verifier-3:
+      shielder-3:
         condition: service_started
     ports:
       - "26856:26656"

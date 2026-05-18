@@ -4,7 +4,7 @@ Fixtures in this directory define cross-language behavior consumed by Go and Rus
 
 Required fixture families:
 
-- `privacy/`: commitment computation, nullifier computation, valid and invalid withdrawal proofs, verifying key hashes.
+- `shielder/`: commitment computation, nullifier computation, valid and invalid withdrawal proofs, verifying key hashes.
 - `frost/`: DKG transcript hashes, vault participant sets, signing sessions, partial signatures, aggregate signatures.
 - `bitcoin/`: outbound signing payloads, PSBT or sighash packages, UTXO metadata, expected signature verification results.
 

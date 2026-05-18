@@ -1,6 +1,6 @@
-# Privacy Fixtures
+# Shielder Fixtures
 
-This directory will hold deterministic privacy verifier fixtures.
+This directory will hold deterministic Shielder fixtures.
 
 Initial fixture targets:
 

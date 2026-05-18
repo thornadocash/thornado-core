@@ -3,7 +3,7 @@
 Agent: Agent 1, Go THORNode fork workstream.
 
 Scope: Phase 0 inventory only. No THORNode modules were removed in this pass.
-`FORK-PLAN.md` was read from the main checkout and was not modified.
+The canonical cross-component design now lives in the root `ARCHITECTURE.md`.
 
 ## Fork Baseline
 
@@ -156,7 +156,7 @@ them until callers are mapped and build gates exist.
   deposits or failed withdrawals, but current behavior is tied to swap flows.
 - `handler_migrate.go`, `manager_scheduled_migration*`, `ragnarok`, and
   `consolidate`: may be needed for vault migration and retirement, but current
-  semantics include old THORChain economic cleanup.
+  semantics include legacy THORChain economic cleanup.
 - Gas manager: keep for outbound fee accounting, but remove multi-chain/swap
   fee branches after Bitcoin-only dependencies are clear.
 - Oracle/price feed: unknown until Bitcoin fee, solvency, and denomination
@@ -229,7 +229,7 @@ them until callers are mapped and build gates exist.
 - Keeper dependencies: node accounts, vaults, network, Mimir, pool/economic
   state in current upstream.
 - Keep the upgrade mechanism, but every historical migration touching removed
-  economics must be reviewed before old mainnet state import is supported.
+  economics must be reviewed before legacy mainnet state import is supported.
 
 ## First Refactor Order
 
@@ -244,9 +244,9 @@ them until callers are mapped and build gates exist.
 
 ## Shared Interface Notes
 
-- Need a stable `proto/privacy/v1` withdrawal verification contract before
+- Need a stable `proto/shielder/v1` withdrawal verification contract before
   production `x/privacy` validation is finalized.
 - Need a stable FROST signer public key/session model before replacing current
   TSS keygen/keysign semantics.
 - These needs are noted here only; this workstream did not edit `proto/`,
-  `rust-frost-signer/`, `rust-privacy/`, or `go-bifrost/`.
+  `rust-frost-signer/`, `shielder/`, or `go-bifrost/`.

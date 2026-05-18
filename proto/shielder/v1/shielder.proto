@@ -1,14 +1,14 @@
 syntax = "proto3";
 
-package thornado.privacy.v1;
+package thornado.shielder.v1;
 
-option go_package = "github.com/thornado/thornado/proto/privacy/v1;privacyv1";
+option go_package = "github.com/thornado/thornado/proto/shielder/v1;shielderv1";
 
 import "proto/common/v1/types.proto";
 
-service PrivacyVerifier {
+service Shielder {
   rpc Health(thornado.common.v1.HealthRequest) returns (thornado.common.v1.HealthResponse);
-  rpc GetVerifierInfo(GetVerifierInfoRequest) returns (GetVerifierInfoResponse);
+  rpc GetShielderInfo(GetShielderInfoRequest) returns (GetShielderInfoResponse);
   rpc VerifyWithdrawal(VerifyWithdrawalRequest) returns (VerifyWithdrawalResponse);
   rpc ComputeCommitment(ComputeCommitmentRequest) returns (ComputeCommitmentResponse);
   rpc ComputeNullifier(ComputeNullifierRequest) returns (ComputeNullifierResponse);
@@ -50,7 +50,7 @@ message ProofSystemVersion {
   string value = 1;
 }
 
-message GetVerifierInfoRequest {}
+message GetShielderInfoRequest {}
 
 message AcceptedVerifyingKey {
   VerifyingKeyId id = 1;
@@ -59,8 +59,8 @@ message AcceptedVerifyingKey {
   bool active = 4;
 }
 
-message GetVerifierInfoResponse {
-  string verifier_version = 1;
+message GetShielderInfoResponse {
+  string shielder_version = 1;
   repeated AcceptedVerifyingKey verifying_keys = 2;
 }
 
@@ -82,7 +82,7 @@ message VerifyWithdrawalResponse {
   bool valid = 1;
   thornado.common.v1.ErrorCode error_code = 2;
   string message = 3;
-  string verifier_version = 4;
+  string shielder_version = 4;
   VerifyingKeyHash verifying_key_hash = 5;
 }
 

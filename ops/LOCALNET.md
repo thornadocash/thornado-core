@@ -1,8 +1,8 @@
 # Thornado Localnet Plan
 
-This document defines the target localnet for the forked Thornado architecture.
+This document defines the target localnet for the forked Thornado services.
 It is a coordination contract for the Go THORNode, Go Bifrost, Rust FROST
-signer, Rust privacy, proto, and ops workstreams.
+signer, Shielder, proto, and ops workstreams.
 
 ## Goals
 
@@ -19,7 +19,7 @@ start localnet
   -> send regtest BTC deposit
   -> Bifrost observes deposit
   -> Thornode accepts observation
-  -> privacy module records commitment/root
+  -> Shielder records commitment/root
   -> client generates withdrawal proof
   -> Thornode verifies proof
   -> nullifier is marked spent
@@ -52,9 +52,9 @@ frost-signer-1
 frost-signer-2
 frost-signer-3
 
-privacy-verifier-1
-privacy-verifier-2
-privacy-verifier-3
+shielder-1
+shielder-2
+shielder-3
 
 client
 ```
@@ -89,9 +89,9 @@ Default port map:
 | frost-signer-1 | 7001 | 7001 | FROST signer gRPC |
 | frost-signer-2 | 7001 | 7002 | FROST signer gRPC |
 | frost-signer-3 | 7001 | 7003 | FROST signer gRPC |
-| privacy-verifier-1 | 7101 | 7101 | Privacy verifier gRPC |
-| privacy-verifier-2 | 7101 | 7102 | Privacy verifier gRPC |
-| privacy-verifier-3 | 7101 | 7103 | Privacy verifier gRPC |
+| shielder-1 | 7101 | 7101 | Shielder gRPC |
+| shielder-2 | 7101 | 7102 | Shielder gRPC |
+| shielder-3 | 7101 | 7103 | Shielder gRPC |
 
 Host ports are for local debugging only. Containers should communicate through
 Docker DNS names and internal ports.
@@ -127,9 +127,9 @@ ops/logs/
   frost-signer-1/
   frost-signer-2/
   frost-signer-3/
-  privacy-verifier-1/
-  privacy-verifier-2/
-  privacy-verifier-3/
+  shielder-1/
+  shielder-2/
+  shielder-3/
   smoke/
 ```
 
@@ -140,7 +140,7 @@ ops/logs/
 Start services in this order:
 
 1. `bitcoind-regtest`
-2. `privacy-verifier-*`
+2. `shielder-*`
 3. `frost-signer-*`
 4. `thornode-*`
 5. `bifrost-*`
@@ -148,7 +148,7 @@ Start services in this order:
 
 Reasoning:
 
-- Thornode startup can validate privacy verifier availability in sidecar mode.
+- Thornode startup can validate shielder availability in sidecar mode.
 - Bifrost should start after Thornode RPC/API endpoints are available.
 - FROST signers should be online before keygen/churn tests.
 - The client should only run after all service health checks pass.
@@ -178,7 +178,7 @@ frost-signer:
   reports storage status
   reports dev/mock/real mode
 
-privacy-verifier:
+shielder:
   grpc Health
   reports verifier version
   reports available verifying key hashes
@@ -197,7 +197,7 @@ Purpose: prove service boundaries.
 Expected behavior:
 
 - FROST signer returns deterministic mock vault pubkeys/signatures.
-- Privacy verifier returns deterministic fixture-based valid/invalid results.
+- Shielder returns deterministic fixture-based valid/invalid results.
 - Thornode and Bifrost exercise real request paths but not real cryptography.
 
 This is the first integration target.
@@ -210,13 +210,13 @@ Bitcoin regtest bootstrap.
 
 ### Crypto Mode
 
-Purpose: prove real FROST and real privacy verification.
+Purpose: prove real FROST and real Shielder verification.
 
 Expected behavior:
 
 - FROST DKG creates real vault pubkeys.
 - FROST signer produces valid Bitcoin signatures.
-- Privacy verifier validates real proof fixtures.
+- Shielder validates real proof fixtures.
 - Bitcoin runs on regtest.
 
 This mode should use the same service names and ports as mock mode.
@@ -264,9 +264,9 @@ Required checks:
 
 - compose stack starts
 - bitcoind is reachable
-- mock privacy verifier is reachable
+- mock shielder is reachable
 - mock FROST signer is reachable
-- Thornode can call privacy verifier
+- Thornode can call shielder
 - Bifrost can call FROST signer
 - logs are collected on failure
 
@@ -300,11 +300,11 @@ Required checks:
 - Bitcoin node confirms transaction
 - Thornode records outbound completion
 
-### Gate 5: Privacy Proof
+### Gate 5: Shielder Proof
 
 Required checks:
 
-- privacy verifier reports expected verifying key hash
+- shielder reports expected verifying key hash
 - valid withdrawal proof passes
 - invalid proof fails
 - duplicate nullifier fails
@@ -346,8 +346,8 @@ Symptoms:
 Debug:
 
 ```bash
-docker compose -f ops/docker-compose.localnet.yml ps privacy-verifier-1
-docker compose -f ops/docker-compose.localnet.yml logs privacy-verifier-1 thornode-1
+docker compose -f ops/docker-compose.localnet.yml ps shielder-1
+docker compose -f ops/docker-compose.localnet.yml logs shielder-1 thornode-1
 ```
 
 ### Bifrost cannot reach signer
@@ -388,7 +388,7 @@ Symptoms:
 Debug:
 
 ```bash
-docker compose -f ops/docker-compose.localnet.yml logs thornode-1 privacy-verifier-1
+docker compose -f ops/docker-compose.localnet.yml logs thornode-1 shielder-1
 ```
 
 Check:
@@ -417,7 +417,7 @@ and recovery rules belong to the signer workstream and hardening phase.
 - exact Thornode health endpoint names
 - exact Bifrost health endpoint names
 - gRPC health protocol package for Rust services
-- whether privacy verifier is sidecar or embedded in production
+- whether shielder is sidecar or embedded in production
 - whether Bifrost or Thornode coordinates FROST DKG
 - final Bitcoin deposit memo/address scheme
 - final client/relayer process responsibilities

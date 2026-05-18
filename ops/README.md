@@ -1,18 +1,18 @@
 # Thornado Ops
 
 This directory owns localnet and operations planning for the split Thornado
-architecture:
+service topology:
 
 - Go THORNode fork
 - Go Bitcoin-only Bifrost fork
 - Rust FROST signer sidecars
-- Rust privacy verifier sidecar or embedded verifier
+- Rust Shielder sidecar or embedded Shielder
 - Bitcoin regtest
 
 The files here are intentionally isolated from the current root Docker setup.
-They describe the target localnet shape for the forked architecture and should
+They describe the target localnet shape for the forked services and should
 not assume that `go-thornode/`, `go-bifrost/`, `rust-frost-signer/`, or
-`rust-privacy/` already exist.
+`shielder/` already exist.
 
 ## Files
 
@@ -29,7 +29,7 @@ not assume that `go-thornode/`, `go-bifrost/`, `rust-frost-signer/`, or
 ## Quick Start
 
 Mock mode is the default. It uses real `bitcoind` plus ops-owned mock services
-for Thornode, Bifrost, FROST signer, and privacy verifier.
+for Thornode, Bifrost, FROST signer, and Shielder.
 
 ```bash
 ops/scripts/localnet-up.sh
@@ -56,5 +56,5 @@ cp ops/env.localnet.example ops/env.localnet
 Ops owns service composition, startup order, health checks, scripts, logs, and
 operator runbooks.
 
-Ops does not own Go THORNode logic, Go Bifrost logic, FROST internals, privacy
-verification internals, or protobuf schema design.
+Ops does not own Go THORNode logic, Go Bifrost logic, FROST internals, Shielder
+internals, or protobuf schema design.

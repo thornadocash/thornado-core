@@ -130,4 +130,4 @@ The mock signer:
 
 Mock signatures are not valid Bitcoin signatures and must not be used for broadcast tests that expect real network validation.
 
-The current implementation keeps the older `InMemoryStore::start_dev_signing` mock for early Bifrost tests, but the service path now uses the existing real FROST engine from `thornado-core`.
+The current implementation keeps the legacy `InMemoryStore::start_dev_signing` mock for early Bifrost tests, but the service path now uses the existing real FROST engine from `thornado-core`.

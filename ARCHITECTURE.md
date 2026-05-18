@@ -1,171 +1,152 @@
 # Architecture
 
-## Status
+This is the canonical technical architecture for Thornado. Other docs should describe local operation, generated APIs, or package-specific usage; they should not define a competing system design.
 
-Canonical design document aligned to `THORNADO.pdf`.
+## Summary
 
-This document is the top-level summary for the Thornado design in this repository. When design notes disagree, this file is authoritative.
+Thornado is a Bitcoin privacy and custody system built from a replicated node state machine, Bitcoin observation and broadcast services, FROST-controlled vault signing, fixed-denomination private notes, and a client distribution layer. Users deposit BTC, split confirmed value into denomination notes, and later withdraw notes independently. Node operators run the consensus, Bitcoin, signer, and mirror infrastructure that keeps the system available.
 
-Related documents:
+Privacy comes from denomination pools, unlinkable note commitments, nullifier-based spends, and user-controlled delay between deposit, split, and withdrawal. Churn rotates vault keysets and operator membership; it is not the primary anonymity mechanism.
 
-- [`TECHNICAL_BRIEFING_DISTRIBUTED_CUSTODIAL_MIXER.md`](TECHNICAL_BRIEFING_DISTRIBUTED_CUSTODIAL_MIXER.md) — product and governance briefing
-- [`FROST_MPC_NETWORK_INTEGRATION_PLAN.md`](FROST_MPC_NETWORK_INTEGRATION_PLAN.md) — implementation roadmap
-- [`BFT_CONSENSUS_DESIGN.md`](BFT_CONSENSUS_DESIGN.md) — replicated-state requirements
-- [`THRESHOLD_MPC_STACK_ANALYSIS.md`](THRESHOLD_MPC_STACK_ANALYSIS.md) — cryptographic surfaces
-- [`TORNADO_STYLE_ARCHITECTURE.md`](TORNADO_STYLE_ARCHITECTURE.md) — note and withdrawal architecture
+## Component Map
 
-This architecture is conceptual. None of it is implemented in the current Rust library.
+```text
+Client / Wallet
+  -> Mirror / Light Node
+  -> Thornode State Machine
+  -> Bifrost Bitcoin Observer
+  -> FROST Signer Sidecars
+  -> Bitcoin Network
 
-## One-Paragraph Summary
-
-Thornado is a `67%` FROST-controlled Bitcoin vault with a replicated state machine, permanent bonded slots, periodic churn for TSS key rotation, fixed-denomination withdrawal notes, client mirrors, and light nodes. Users create an HD mnemonic locally, derive fresh unlinkable deposit branches, deposit any amount of BTC, split confirmed deposits into blinded denomination authorizations, and later mint deterministic note commitments into denomination pools. The mnemonic is the user's only required recovery secret: a restored client derives candidate deposit branches and note children, scans public state for matching commitments and nullifiers, and withdraws from recovered unspent notes. Privacy comes from never exposing a stable user key, never publishing a deposit-to-note mapping, hiding note owner keys inside commitments, and user-controlled time between deposit, mint, and withdrawal. The committee's churn mechanism exists for keyset rotation and operator turnover, not as the primary privacy mechanism.
-
-## System Layers
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│  CLIENT LAYER       Mirrors, HD mnemonic, state scan, PoW    │
-├──────────────────────────────────────────────────────────────┤
-│  NOTE LAYER         Deposit -> split -> withdraw proofs      │
-├──────────────────────────────────────────────────────────────┤
-│  STATE LAYER        Deposits, notes, churn, slots, fees,     │
-│                    penalties, shutdown                       │
-├──────────────────────────────────────────────────────────────┤
-│  CUSTODY LAYER      FROST threshold signing for Bitcoin      │
-├──────────────────────────────────────────────────────────────┤
-│  BITCOIN LAYER      Deposit UTXOs, withdrawals, churn txs,   │
-│                    bitcoind integration                      │
-└──────────────────────────────────────────────────────────────┘
+Shared:
+  -> Protobuf contracts
+  -> Shielder proof engine
+  -> Ops localnet
+  -> Deterministic fixtures
 ```
 
-## Core Invariants
+## Repository Layout
 
-- No single node can move funds unilaterally.
-- Churn exists for key rotation and slot turnover, not for primary privacy.
-- Privacy is weak if the user deposits and withdraws immediately.
-- The committee must not see a stable user public key across deposits.
-- Public state must not reveal which notes are siblings or which deposit created a note.
-- Node slots are permanent and bonded.
-- Bonds remain inside the system during normal operation.
-- Shutdown is an explicit governance action, not an operator escape hatch.
-- Client mirrors must be vouched for and content-pinned.
-- Notes are fungible by denomination.
-- The user's HD mnemonic is the only required recovery secret.
-- No local-only note, voucher, authorization, or receipt may be required for recovery.
+- `crates/thornado-core`: Rust cryptography, note primitives, proof helpers, FROST engine bindings, and shared domain logic.
+- `crates/thornado-node`: Rust node executable for local or experimental node workflows.
+- `crates/thornado-abci`: ABCI boundary for replicated state integration.
+- `crates/thornado-bitcoin`: Bitcoin transaction, script, address, and backend integration helpers.
+- `crates/thornado-store`: persistence abstractions and local storage.
+- `crates/thornado-cli`: operator and developer CLI.
+- `crates/thornado-web-wasm`: browser-facing WASM package for wallet/proof workflows.
+- `go-thornode`: Go consensus application and Bifrost fork used for replicated state, node lifecycle, queues, and Bitcoin observation.
+- `rust-frost-signer`: local signer sidecar for FROST DKG, vault shares, signing sessions, and signer policy checks.
+- `proto`: shared cross-component protobuf contracts.
+- `circuits`: reference zero-knowledge circuit material.
+- `ops`: localnet composition, scripts, mock services, and runbooks.
+- `test-fixtures`: deterministic Bitcoin, FROST, and Shielder fixtures.
 
-## Main Objects In State
+## Thornode State Machine
 
-- `Slot`
-- `Bond`
-- `ChurnEpoch`
-- `StandbyNode`
-- `DepositIntent`
-- `ObservedDeposit`
-- `ClaimedDeposit`
-- `Note`
-- `WithdrawalRequest`
-- `FeeBucket`
-- `MirrorRegistration`
-- `PenaltyRecord`
-- `ShutdownVote`
+Thornode is the canonical state owner. It records deposits, note commitments, spent nullifiers, outbound queues, vault membership, signer epochs, slot ownership, bond accounting, penalties, fee buckets, mirror registrations, and shutdown state.
 
-## Committee Model
+The state machine validates:
 
-- The signing threshold is `67%`.
-- One node may remain in standby for a churn cycle.
-- Churn happens on a fixed interval, currently `7 days`.
-- Offline nodes lose observation and signing rights for the missed cycle.
-- Offline nodes pay a `1%` penalty for a fully missed churn cycle.
-- Slots can be sold in an auction market and handed over through churn-out / churn-in.
+- deposit-address issuance and proof-of-work admission;
+- Bitcoin deposit observations and finality;
+- split authorization from confirmed deposit value into denomination notes;
+- note commitment insertion into denomination pools;
+- withdrawal proof validity and nullifier freshness;
+- outbound queue selection and fee accounting;
+- node churn, standby status, penalties, and slot transfers;
+- vault epoch changes and signer set commitments;
+- governance and shutdown transitions.
 
-## User Flow
+Consensus state must be deterministic. Transport details, local signer storage, Bitcoin RPC failures, and mirror availability checks may influence submitted messages, but the accepted state transitions must be reproducible by every node.
 
-### 1. Request Deposit Slot
+## Bitcoin And Bifrost
 
-- Client mirror generates an HD mnemonic locally.
-- User performs proof of work before requesting a deposit address.
-- Request includes fresh one-use deposit material derived from the mnemonic and a local deposit index.
-- Committee returns a unique deposit address and deposit intent tied only to that one-use deposit key.
+Bifrost owns Bitcoin chain integration. It watches deposit addresses and vault UTXOs, reports observations to Thornode, builds outbound transactions from approved queues, broadcasts signed transactions, tracks confirmations, and reports solvency.
 
-### 2. Deposit
+Bitcoin responsibilities:
 
-- User deposits any amount of BTC.
-- Committee observes and confirms the deposit in replicated state.
+- derive or request deposit addresses from the active vault policy;
+- monitor mempool and confirmed blocks;
+- normalize UTXO observations into Thornode messages;
+- construct withdrawal, sweep, and churn transactions;
+- coordinate signing with FROST signer sidecars;
+- rebroadcast and retry transactions as needed;
+- report vault balances and stuck outbound state.
 
-### 3. Split
+## FROST Custody Layer
 
-- Client converts the confirmed amount into fixed-denomination notes.
-- Example denominations include `10`, `1`, `0.1`, `0.01`, and similar descending powers.
-- Client derives branch/child note keys locally, largest denomination to smallest.
-- Split creates blinded denomination authorizations, not a public `deposit -> notes` record.
-- Blinded authorizations are recorded or retrievable in a form recoverable from the mnemonic.
-- Final note commitments hide their child owner keys and are inserted into denomination pools without exposing sibling linkage.
+Vault funds are controlled by a FROST threshold key. No single node can move funds. Thornode decides whether a transaction is authorized; signer sidecars decide whether their local policy permits producing a partial signature for that authorized request.
 
-### 4. Withdraw
+The signer sidecar owns:
 
-- User presents a note proof and a withdrawal address.
-- Committee validates the request in state and threshold-signs the outbound transaction.
-- Submission is intended to be gasless from the user's perspective.
+- local participant identity;
+- encrypted FROST shares;
+- DKG session state and transcripts;
+- nonce commitments and signing sessions;
+- partial signatures and optional aggregation;
+- local audit logs and share backup policy.
 
-### Recovery
+The signer does not own membership, slash/jail state, outbound queue selection, withdrawal authorization, Bitcoin observation, or note state.
 
-- The HD mnemonic is the only required user backup.
-- A restored client derives candidate one-use deposit branches and child note commitments, scans chain and Thornado state for matches, checks spent nullifiers, and rebuilds the spendable note set.
-- Cached note metadata is allowed for speed, but must be reproducible from the mnemonic plus public chain and system state.
+The target threshold is `67%` of the active signer set. Churn creates a new signer epoch and vault keyset, then moves custody under the new epoch through explicit state-machine transitions and Bitcoin transactions.
 
-## Privacy Model
+## Note And Privacy Layer
 
-- Deposit amount and deposit address are known to the system.
-- Deposit requests from the same user must not share a stable public identifier.
-- Note commitments from the same split must not share a public batch, branch, child, or sibling identifier.
-- The user later proves entitlement to withdraw a denomination note.
-- Notes are intended to be fungible with all other notes of the same denomination.
-- The privacy gain is determined mainly by denomination set size and the delay between deposit and withdrawal.
+Deposits are split into fixed-denomination notes. A note is represented publicly by a hiding commitment in a denomination pool. Spending a note reveals a nullifier, not the deposit or sibling notes that created it.
 
-## Fee Model
+Required privacy invariants:
 
-- Fees are charged only on outbound activity.
-- The reference outbound handling fee in the PDF is `100,000 sats`.
-- Fees accumulate into buckets.
-- Node operators claim bucket payouts through an anonymous proof flow.
+- no stable user public key is exposed;
+- deposit branches are one-use;
+- note commitments from the same split are unlinkable;
+- public state does not contain a deposit-to-note mapping;
+- nullifiers prevent double spend without revealing the original deposit;
+- notes are fungible within the same denomination pool.
 
-## Governance
+The wallet derives deposit and note secrets from a local mnemonic using domain-separated private derivation. Recovery must require only the mnemonic plus public Bitcoin and Thornado state.
 
-- `67%` of nodes can vote to shut down the system.
-- Shutdown enters a `30-day` maintenance mode.
-- No new deposits are accepted during maintenance mode.
-- Principal is returned to nodes.
-- Fees and abandoned deposits are split equally under the shutdown rule.
+## Client, Mirrors, And Light Nodes
 
-## Mirror and Light-Node Model
+The browser client handles mnemonic generation, deposit requests, note derivation, split proofs, withdrawal proofs, state scanning, and recovery. It should never send mnemonic material, reusable account keys, raw note secrets, or branch indexes to a server.
 
-- Nodes vouch for mirrors using SSL and known content hashes.
-- Mirrors are checked weekly.
-- Mirror downtime contributes to penalties.
-- Clients attach to light nodes for broadcast and state queries.
-- Release distribution should use a registry and pinned release hash.
+Mirrors distribute the client. Nodes vouch for mirrors by release hash and availability checks. Light nodes provide client-facing state queries and transaction submission without becoming custody authorities.
 
-## Mapping to This Repository
+The client distribution layer must reduce phishing and stale-client risk by pinning releases, checking mirror availability, and making the expected client hash visible to operators and nodes.
 
-The current repository provides useful cryptographic building blocks, but not the Thornado system itself.
+## Shared Protobuf Contracts
 
-What exists today:
+`proto` is the compatibility boundary between Go services, Rust services, fixtures, and tests. Packages are versioned by path. Existing field numbers must not be reused. Consensus-facing callers must depend on structured error codes, not transport-specific strings.
 
-- local proof machinery
-- local cryptographic primitives
-- a single-process issuer/client library
+Primary contracts:
 
-What Thornado still needs:
+- `proto/common/v1`: shared identifiers, byte encodings, amounts, and error codes;
+- `proto/frost/v1`: signer sidecar API;
+- `proto/shielder/v1`: Shielder API.
 
-- FROST vault runtime
-- replicated state machine
-- Bitcoin integration
-- note proof model
-- slot and bond subsystem
-- mirror and light-node infrastructure
-- fee bucket claims
-- shutdown and penalty logic
+## Fee And Operator Economics
 
-## Immediate Implication
+Fees are charged on outbound activity. Fees accumulate into buckets that operators can claim through a proof flow that should avoid linking a claim to a specific operator where possible.
 
-The target architecture is larger than "distributed WabiSabi." Thornado is a FROST vault plus a note state machine plus a slot economy plus a client-distribution network.
+Node slots are bonded. Slot ownership, handoff, penalties, and shutdown accounting live in Thornode state. Bonds do not leave normal operation except through explicit system rules such as approved shutdown or defined slot-transfer settlement.
+
+## Governance And Shutdown
+
+Governance controls operational parameters such as outbound fee size, churn interval, fee bucket size, signer thresholds, mirror policy, and shutdown state.
+
+Shutdown is an explicit state-machine mode. During shutdown, new deposits stop, pending withdrawals and recovery paths are handled by policy, node principal is returned according to system rules, and remaining fees or abandoned funds are distributed by the shutdown rule.
+
+## Localnet And Testing
+
+`ops` defines the local deployment shape. Mock mode lets service boundaries boot before all real implementations are wired. Crypto mode uses buildable Go and Rust services.
+
+The test stack should cover:
+
+- Bitcoin deposit observation and reorg handling;
+- split and withdrawal proof verification;
+- nullifier uniqueness;
+- FROST DKG and signing under dropout;
+- churn and signer epoch transitions;
+- outbound queue construction and broadcast retry;
+- bond, slot, penalty, and shutdown accounting;
+- mirror registration and health checks;
+- mnemonic-only wallet recovery.
