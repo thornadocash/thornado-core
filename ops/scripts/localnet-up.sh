@@ -14,13 +14,13 @@ fi
 
 echo "Starting Thornado localnet with profiles: ${COMPOSE_PROFILES}"
 if [[ "${COMPOSE_PROFILES}" == *mock* ]]; then
-  echo "Using ops mock-service override for unfinished Go/Rust services."
+  echo "Using ops mock-service containers for Thornode and Bifrost boundaries."
 fi
 
 if [[ "${SKIP_PREFLIGHT}" != "1" ]]; then
   if ! missing_build_contexts; then
     echo
-    echo "The split fork directories are not present yet."
+    echo "Required build context is not present yet."
     echo "Use --skip-preflight only if you intentionally want Docker Compose to fail at build time."
     exit 1
   fi

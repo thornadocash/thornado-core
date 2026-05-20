@@ -1,0 +1,13 @@
+[package]
+name = "thornado-ffi"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thornado-shielder = { path = "../thornado-shielder" }

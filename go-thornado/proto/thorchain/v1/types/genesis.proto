@@ -1,0 +1,7 @@
+syntax = "proto3";
+package types;
+
+option go_package = "github.com/thornadocash/go-thornado/x/thorchain/types";
+
+// GenesisState defines the capability module's genesis state.
+message GenesisState {}

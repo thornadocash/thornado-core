@@ -1,8 +1,8 @@
 name: thornado-localnet
 
-# Target compose shape for the forked architecture.
-# Placeholder build contexts are intentionally left in place so each workstream
-# can make its service real without changing service names or network topology.
+# Current localnet shape. go-thornado is the only Go tree; Bifrost lives inside
+# it, and Shielder is currently a Rust library wrapped from Go rather than a
+# separate service.
 
 x-common-env: &common-env
   THORNADO_LOCALNET: "1"
@@ -39,117 +39,20 @@ services:
       timeout: 3s
       retries: 30
 
-  shielder-1:
-    profiles: ["mock", "crypto"]
-    build:
-      context: ../shielder
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      SHIELDER_MODE: ${SHIELDER_MODE:-mock}
-      SHIELDER_GRPC_ADDR: 0.0.0.0:7101
-      SHIELDER_NODE_ID: shielder-1
-    ports:
-      - "7101:7101"
-    volumes:
-      - ./logs/shielder-1:/logs
-
-  shielder-2:
-    profiles: ["three-node"]
-    build:
-      context: ../shielder
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      SHIELDER_MODE: ${SHIELDER_MODE:-mock}
-      SHIELDER_GRPC_ADDR: 0.0.0.0:7101
-      SHIELDER_NODE_ID: shielder-2
-    ports:
-      - "7102:7101"
-    volumes:
-      - ./logs/shielder-2:/logs
-
-  shielder-3:
-    profiles: ["three-node"]
-    build:
-      context: ../shielder
-      dockerfile: Dockerfile
-    environment:
-      <<: *common-env
-      SHIELDER_MODE: ${SHIELDER_MODE:-mock}
-      SHIELDER_GRPC_ADDR: 0.0.0.0:7101
-      SHIELDER_NODE_ID: shielder-3
-    ports:
-      - "7103:7101"
-    volumes:
-      - ./logs/shielder-3:/logs
-
-  frost-signer-1:
-    profiles: ["mock", "crypto"]
-    build:
-      context: ../rust-frost-signer
-      dockerfile: Dockerfile
-    environment:
-      <<: [*common-env, *bitcoin-env]
-      FROST_SIGNER_MODE: ${FROST_SIGNER_MODE:-mock}
-      FROST_SIGNER_GRPC_ADDR: 0.0.0.0:7001
-      FROST_SIGNER_NODE_ID: frost-signer-1
-      FROST_SIGNER_DATA_DIR: /var/lib/thornado/frost-signer
-    ports:
-      - "7001:7001"
-    volumes:
-      - thornado-frost-signer-1:/var/lib/thornado/frost-signer
-      - ./logs/frost-signer-1:/logs
-
-  frost-signer-2:
-    profiles: ["three-node"]
-    build:
-      context: ../rust-frost-signer
-      dockerfile: Dockerfile
-    environment:
-      <<: [*common-env, *bitcoin-env]
-      FROST_SIGNER_MODE: ${FROST_SIGNER_MODE:-mock}
-      FROST_SIGNER_GRPC_ADDR: 0.0.0.0:7001
-      FROST_SIGNER_NODE_ID: frost-signer-2
-      FROST_SIGNER_DATA_DIR: /var/lib/thornado/frost-signer
-    ports:
-      - "7002:7001"
-    volumes:
-      - thornado-frost-signer-2:/var/lib/thornado/frost-signer
-      - ./logs/frost-signer-2:/logs
-
-  frost-signer-3:
-    profiles: ["three-node"]
-    build:
-      context: ../rust-frost-signer
-      dockerfile: Dockerfile
-    environment:
-      <<: [*common-env, *bitcoin-env]
-      FROST_SIGNER_MODE: ${FROST_SIGNER_MODE:-mock}
-      FROST_SIGNER_GRPC_ADDR: 0.0.0.0:7001
-      FROST_SIGNER_NODE_ID: frost-signer-3
-      FROST_SIGNER_DATA_DIR: /var/lib/thornado/frost-signer
-    ports:
-      - "7003:7001"
-    volumes:
-      - thornado-frost-signer-3:/var/lib/thornado/frost-signer
-      - ./logs/frost-signer-3:/logs
-
   thornode-1:
-    profiles: ["mock", "crypto"]
+    profiles: ["mock"]
     build:
-      context: ../go-thornode
+      context: ./mock-service
       dockerfile: Dockerfile
     environment:
       <<: *common-env
+      MOCK_SERVICE_NAME: thornode-1
+      MOCK_PORTS: "26656,26657,1317,9090"
       THORNODE_MONIKER: thornode-1
       THORNODE_HOME: /var/lib/thornado/thornode
-      SHIELDER_ENDPOINT: http://shielder-1:7101
     depends_on:
       bitcoind-regtest:
         condition: service_healthy
-      shielder-1:
-        condition: service_started
     ports:
       - "26656:26656"
       - "26657:26657"
@@ -162,16 +65,14 @@ services:
   thornode-2:
     profiles: ["three-node"]
     build:
-      context: ../go-thornode
+      context: ./mock-service
       dockerfile: Dockerfile
     environment:
       <<: *common-env
+      MOCK_SERVICE_NAME: thornode-2
+      MOCK_PORTS: "26656,26657,1317,9090"
       THORNODE_MONIKER: thornode-2
       THORNODE_HOME: /var/lib/thornado/thornode
-      SHIELDER_ENDPOINT: http://shielder-2:7101
-    depends_on:
-      shielder-2:
-        condition: service_started
     ports:
       - "26756:26656"
       - "26757:26657"
@@ -184,16 +85,14 @@ services:
   thornode-3:
     profiles: ["three-node"]
     build:
-      context: ../go-thornode
+      context: ./mock-service
       dockerfile: Dockerfile
     environment:
       <<: *common-env
+      MOCK_SERVICE_NAME: thornode-3
+      MOCK_PORTS: "26656,26657,1317,9090"
       THORNODE_MONIKER: thornode-3
       THORNODE_HOME: /var/lib/thornado/thornode
-      SHIELDER_ENDPOINT: http://shielder-3:7101
-    depends_on:
-      shielder-3:
-        condition: service_started
     ports:
       - "26856:26656"
       - "26857:26657"
@@ -204,23 +103,22 @@ services:
       - ./logs/thornode-3:/logs
 
   bifrost-1:
-    profiles: ["mock", "crypto"]
+    profiles: ["mock"]
     build:
-      context: ../go-bifrost
+      context: ./mock-service
       dockerfile: Dockerfile
     environment:
       <<: [*common-env, *bitcoin-env]
+      MOCK_SERVICE_NAME: bifrost-1
+      MOCK_PORTS: "6040"
       BIFROST_NODE_ID: bifrost-1
       BIFROST_HOME: /var/lib/thornado/bifrost
       THORNODE_ENDPOINT: http://thornode-1:1317
       THORNODE_GRPC_ENDPOINT: thornode-1:9090
-      FROST_SIGNER_ENDPOINT: http://frost-signer-1:7001
     depends_on:
       bitcoind-regtest:
         condition: service_healthy
       thornode-1:
-        condition: service_started
-      frost-signer-1:
         condition: service_started
     ports:
       - "6040:6040"
@@ -231,18 +129,17 @@ services:
   bifrost-2:
     profiles: ["three-node"]
     build:
-      context: ../go-bifrost
+      context: ./mock-service
       dockerfile: Dockerfile
     environment:
       <<: [*common-env, *bitcoin-env]
+      MOCK_SERVICE_NAME: bifrost-2
+      MOCK_PORTS: "6040"
       BIFROST_NODE_ID: bifrost-2
       BIFROST_HOME: /var/lib/thornado/bifrost
       THORNODE_ENDPOINT: http://thornode-2:1317
       THORNODE_GRPC_ENDPOINT: thornode-2:9090
-      FROST_SIGNER_ENDPOINT: http://frost-signer-2:7001
     depends_on:
-      frost-signer-2:
-        condition: service_started
       thornode-2:
         condition: service_started
     ports:
@@ -254,18 +151,17 @@ services:
   bifrost-3:
     profiles: ["three-node"]
     build:
-      context: ../go-bifrost
+      context: ./mock-service
       dockerfile: Dockerfile
     environment:
       <<: [*common-env, *bitcoin-env]
+      MOCK_SERVICE_NAME: bifrost-3
+      MOCK_PORTS: "6040"
       BIFROST_NODE_ID: bifrost-3
       BIFROST_HOME: /var/lib/thornado/bifrost
       THORNODE_ENDPOINT: http://thornode-3:1317
       THORNODE_GRPC_ENDPOINT: thornode-3:9090
-      FROST_SIGNER_ENDPOINT: http://frost-signer-3:7001
     depends_on:
-      frost-signer-3:
-        condition: service_started
       thornode-3:
         condition: service_started
     ports:
@@ -295,6 +191,3 @@ volumes:
   thornado-bifrost-1:
   thornado-bifrost-2:
   thornado-bifrost-3:
-  thornado-frost-signer-1:
-  thornado-frost-signer-2:
-  thornado-frost-signer-3:

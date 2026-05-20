@@ -1,11 +1,7 @@
 [workspace]
 members = [
-    "crates/thornado-abci",
-    "crates/thornado-bitcoin",
-    "crates/thornado-core",
-    "crates/thornado-cli",
-    "crates/thornado-node",
-    "crates/thornado-store",
+    "crates/thornado-shielder",
+    "crates/thornado-ffi",
     "crates/thornado-web-wasm",
 ]
 resolver = "2"
@@ -17,7 +13,6 @@ license = "MIT"
 [workspace.dependencies]
 anyhow = "1"
 axum = "0.7"
-base64 = "0.22"
 bitcoin = { version = "0.32", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 frost-core = "3"
@@ -37,8 +32,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 shardtree = "0.6"
 sha2 = "0.10"
-tendermint-abci = "0.40"
-tendermint-proto = "0.40"
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal"] }
 tower = "0.5"

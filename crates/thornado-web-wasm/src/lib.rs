@@ -1,15 +1,20 @@
 #![allow(dead_code)]
 
+use bitcoin::secp256k1::ecdsa::Signature as SecpSignature;
+use bitcoin::secp256k1::{
+    Message as SecpMessage, PublicKey as SecpPublicKey, Secp256k1, SecretKey,
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use wasm_bindgen::prelude::*;
 
-#[path = "../../thornado-core/src/orchard.rs"]
+#[path = "../../thornado-shielder/src/orchard.rs"]
 mod orchard;
 
 type Result<T> = std::result::Result<T, Error>;
 
 const DOMAIN: &str = "thornado-mvp-v1";
+const HARDENED_CHILD_OFFSET: u64 = 1 << 31;
 const DEFAULT_DENOMINATIONS_SATS: [u64; 4] = [1_000_000_000, 100_000_000, 10_000_000, 1_000_000];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,7 +23,7 @@ pub enum Error {
     InvalidProof,
     UnknownCommitment,
     UnknownMerkleRoot,
-    Zk(String),
+    Shielder(String),
 }
 
 impl std::fmt::Display for Error {
@@ -28,7 +33,7 @@ impl std::fmt::Display for Error {
             Error::InvalidProof => write!(f, "invalid proof"),
             Error::UnknownCommitment => write!(f, "unknown commitment"),
             Error::UnknownMerkleRoot => write!(f, "unknown merkle root"),
-            Error::Zk(message) => write!(f, "{message}"),
+            Error::Shielder(message) => write!(f, "{message}"),
         }
     }
 }
@@ -42,8 +47,16 @@ pub struct NoteCommitment {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SplitAuthorization {
+    pub deposit_pubkey: String,
+    pub signature: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NoteReceipt {
     pub deposit_id: String,
+    #[serde(default = "default_deposit_index")]
+    pub deposit_index: u64,
     pub denomination_sats: u64,
     pub index: u64,
     #[serde(default)]
@@ -53,6 +66,10 @@ pub struct NoteReceipt {
     pub commitment: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub orchard: Option<orchard::OrchardNoteReceipt>,
+}
+
+fn default_deposit_index() -> u64 {
+    1
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -94,17 +111,73 @@ pub fn derive_split_receipt_json(
     amount_sats: u64,
     client_seed: &str,
 ) -> std::result::Result<String, JsValue> {
-    let receipt = derive_split_receipt(deposit_id, amount_sats, client_seed).map_err(js_error)?;
+    let receipt = derive_split_receipt_for_deposit(deposit_id, 1, amount_sats, client_seed)
+        .map_err(js_error)?;
+    serde_json::to_string(&receipt).map_err(|error| JsValue::from_str(&error.to_string()))
+}
+
+#[wasm_bindgen]
+pub fn derive_split_receipt_for_deposit_json(
+    deposit_id: &str,
+    deposit_index: u64,
+    amount_sats: u64,
+    client_seed: &str,
+) -> std::result::Result<String, JsValue> {
+    let receipt =
+        derive_split_receipt_for_deposit(deposit_id, deposit_index, amount_sats, client_seed)
+            .map_err(js_error)?;
     serde_json::to_string(&receipt).map_err(|error| JsValue::from_str(&error.to_string()))
 }
 
 #[wasm_bindgen]
 pub fn client_pubkey_from_secret_json(client_seed: &str) -> std::result::Result<String, JsValue> {
-    Ok(client_pubkey_from_secret(client_seed))
+    Ok(client_pubkey_for_deposit(client_seed, 1))
 }
 
 #[wasm_bindgen]
-pub fn zk_withdrawal_from_receipt_json(
+pub fn client_pubkey_for_deposit_json(
+    client_seed: &str,
+    deposit_index: u64,
+) -> std::result::Result<String, JsValue> {
+    Ok(client_pubkey_for_deposit(client_seed, deposit_index))
+}
+
+#[wasm_bindgen]
+pub fn split_authorization_json(
+    client_seed: &str,
+    deposit_id: &str,
+    amount_sats: u64,
+    note_commitments_json: &str,
+) -> std::result::Result<String, JsValue> {
+    let note_commitments: Vec<NoteCommitment> = serde_json::from_str(note_commitments_json)
+        .map_err(|error| JsValue::from_str(&error.to_string()))?;
+    let authorization =
+        split_authorization_for_deposit(client_seed, 1, deposit_id, amount_sats, &note_commitments);
+    serde_json::to_string(&authorization).map_err(|error| JsValue::from_str(&error.to_string()))
+}
+
+#[wasm_bindgen]
+pub fn split_authorization_for_deposit_json(
+    client_seed: &str,
+    deposit_index: u64,
+    deposit_id: &str,
+    amount_sats: u64,
+    note_commitments_json: &str,
+) -> std::result::Result<String, JsValue> {
+    let note_commitments: Vec<NoteCommitment> = serde_json::from_str(note_commitments_json)
+        .map_err(|error| JsValue::from_str(&error.to_string()))?;
+    let authorization = split_authorization_for_deposit(
+        client_seed,
+        deposit_index,
+        deposit_id,
+        amount_sats,
+        &note_commitments,
+    );
+    serde_json::to_string(&authorization).map_err(|error| JsValue::from_str(&error.to_string()))
+}
+
+#[wasm_bindgen]
+pub fn shielder_withdrawal_from_receipt_json(
     note_json: &str,
     client_seed: &str,
     leaves_json: &str,
@@ -116,7 +189,7 @@ pub fn zk_withdrawal_from_receipt_json(
     let leaves: Vec<String> =
         serde_json::from_str(leaves_json).map_err(|error| JsValue::from_str(&error.to_string()))?;
     let (proof, public) =
-        zk_withdrawal_from_receipt(&note, client_seed, &leaves, recipient, fee_sats)
+        shielder_withdrawal_from_receipt(&note, client_seed, &leaves, recipient, fee_sats)
             .map_err(js_error)?;
     serde_json::to_string(&(proof, public)).map_err(|error| JsValue::from_str(&error.to_string()))
 }
@@ -133,8 +206,9 @@ pub fn verify_withdrawal_json(
     verify_withdrawal(&proof, &public).map_err(js_error)
 }
 
-fn derive_split_receipt(
+fn derive_split_receipt_for_deposit(
     deposit_id: &str,
+    deposit_index: u64,
     amount_sats: u64,
     client_seed: &str,
 ) -> Result<SplitReceipt> {
@@ -142,27 +216,28 @@ fn derive_split_receipt(
     let mut notes = Vec::new();
     for (index, denomination) in denominations.iter().copied().enumerate() {
         let index = index as u64;
+        let child_secret =
+            note_child_secret_for_deposit(client_seed, deposit_index, deposit_id, index + 1);
         let nullifier = hash_parts(&[
             DOMAIN,
             "receipt-nullifier",
-            client_seed,
-            deposit_id,
-            &index.to_string(),
+            &child_secret,
+            &denomination.to_string(),
         ]);
         let secret = hash_parts(&[
             DOMAIN,
             "receipt-secret",
-            client_seed,
-            deposit_id,
-            &index.to_string(),
+            &child_secret,
+            &denomination.to_string(),
         ]);
         let (commitment, orchard_note) =
-            orchard::create_orchard_note(client_seed, deposit_id, index, denomination)?;
+            orchard::create_orchard_note(&child_secret, deposit_id, index, denomination)?;
         notes.push(NoteReceipt {
             deposit_id: deposit_id.to_string(),
+            deposit_index,
             denomination_sats: denomination,
             index,
-            owner_pubkey: client_pubkey_from_secret(client_seed),
+            owner_pubkey: String::new(),
             nullifier,
             secret,
             commitment,
@@ -178,7 +253,7 @@ fn derive_split_receipt(
     })
 }
 
-fn zk_withdrawal_from_receipt(
+fn shielder_withdrawal_from_receipt(
     receipt: &NoteReceipt,
     client_seed: &str,
     leaves: &[String],
@@ -199,8 +274,14 @@ fn zk_withdrawal_from_receipt(
     };
     let public_context = orchard_public_context(&public);
     let orchard_note = receipt.orchard.as_ref().ok_or(Error::InvalidProof)?;
-    let (orchard_proof, nullifier_hash, merkle_root) = orchard::prove_orchard_withdrawal(
+    let child_secret = note_child_secret_for_deposit(
         client_seed,
+        receipt.deposit_index,
+        &receipt.deposit_id,
+        receipt.index + 1,
+    );
+    let (orchard_proof, nullifier_hash, merkle_root) = orchard::prove_orchard_withdrawal(
+        &child_secret,
         orchard_note,
         leaves,
         &receipt.commitment,
@@ -268,16 +349,103 @@ fn hash_parts(parts: &[&str]) -> String {
     hex::encode(hash_parts_bytes(parts))
 }
 
-fn note_owner_secret(client_seed: &str) -> String {
-    hash_parts(&[DOMAIN, "receipt-owner-secret", client_seed])
-}
-
-fn client_pubkey_from_secret(client_seed: &str) -> String {
+fn note_child_secret_for_deposit(
+    client_seed: &str,
+    deposit_index: u64,
+    deposit_id: &str,
+    index: u64,
+) -> String {
+    let hardened_index = hardened_child_index(index);
     hash_parts(&[
         DOMAIN,
-        "receipt-owner-pubkey",
-        &note_owner_secret(client_seed),
+        "note-child-secret",
+        "m/tc84'/btc'/deposit'/note'",
+        client_seed,
+        &hardened_child_index(deposit_index).to_string(),
+        deposit_id,
+        &hardened_index.to_string(),
     ])
+}
+
+fn client_pubkey_for_deposit(client_seed: &str, deposit_index: u64) -> String {
+    deposit_owner_pubkey(&deposit_owner_secret_for_deposit(
+        client_seed,
+        deposit_index,
+    ))
+}
+
+fn deposit_owner_secret_for_deposit(client_seed: &str, deposit_index: u64) -> String {
+    hex::encode(deposit_secret_key(client_seed, deposit_index).secret_bytes())
+}
+
+fn deposit_owner_pubkey(owner_secret: &str) -> String {
+    let secret_bytes = hex::decode(owner_secret).unwrap_or_default();
+    let Ok(secret_key) = SecretKey::from_slice(&secret_bytes) else {
+        return String::new();
+    };
+    let secp = Secp256k1::new();
+    SecpPublicKey::from_secret_key(&secp, &secret_key).to_string()
+}
+
+fn split_authorization_for_deposit(
+    client_seed: &str,
+    deposit_index: u64,
+    deposit_id: &str,
+    amount_sats: u64,
+    note_commitments: &[NoteCommitment],
+) -> SplitAuthorization {
+    let deposit_pubkey = client_pubkey_for_deposit(client_seed, deposit_index);
+    let secp = Secp256k1::new();
+    let secret_key = deposit_secret_key(client_seed, deposit_index);
+    let message =
+        split_authorization_message(&deposit_pubkey, deposit_id, amount_sats, note_commitments);
+    let signature: SecpSignature = secp.sign_ecdsa(&message, &secret_key);
+    SplitAuthorization {
+        signature: hex::encode(signature.serialize_der()),
+        deposit_pubkey,
+    }
+}
+
+fn split_authorization_message(
+    deposit_pubkey: &str,
+    deposit_id: &str,
+    amount_sats: u64,
+    note_commitments: &[NoteCommitment],
+) -> SecpMessage {
+    let commitments_json =
+        serde_json::to_string(note_commitments).expect("note commitments should serialize");
+    let digest = hash_parts_bytes(&[
+        DOMAIN,
+        "split-authorization",
+        deposit_pubkey,
+        deposit_id,
+        &amount_sats.to_string(),
+        &commitments_json,
+    ]);
+    SecpMessage::from_digest_slice(&digest).expect("sha256 digest has secp256k1 message length")
+}
+
+fn deposit_secret_key(client_seed: &str, deposit_index: u64) -> SecretKey {
+    for counter in 0_u32..u32::MAX {
+        let digest = hash_parts_bytes(&[
+            DOMAIN,
+            "deposit-owner-secret",
+            "m/tc84'/btc'/deposit'/0'",
+            client_seed,
+            &hardened_child_index(deposit_index).to_string(),
+            &counter.to_string(),
+        ]);
+        if let Ok(secret_key) = SecretKey::from_slice(&digest) {
+            return secret_key;
+        }
+    }
+    unreachable!("sha256 should produce a valid secp256k1 secret key")
+}
+
+fn hardened_child_index(index: u64) -> u64 {
+    HARDENED_CHILD_OFFSET
+        .checked_add(index)
+        .expect("hardened child index overflow")
 }
 
 fn hash_parts_bytes(parts: &[&str]) -> Vec<u8> {

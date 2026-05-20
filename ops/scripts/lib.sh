@@ -184,7 +184,7 @@ missing_build_contexts() {
     return 0
   fi
 
-  for dir in go-thornode go-bifrost rust-frost-signer shielder; do
+  for dir in go-thornado; do
     if [[ ! -d "${ROOT_DIR}/${dir}" ]]; then
       echo "Missing build context: ${ROOT_DIR}/${dir}" >&2
       missing=1

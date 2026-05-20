@@ -1,0 +1,20 @@
+syntax = "proto3";
+package types;
+
+option go_package = "github.com/thornadocash/go-thornado/x/thorchain/types";
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) = false;
+option (gogoproto.goproto_getters_all) = false;
+
+import "gogoproto/gogo.proto";
+
+message ErrataTxVoter {
+  string tx_id = 1 [
+    (gogoproto.casttype) = "github.com/thornadocash/go-thornado/common.TxID",
+    (gogoproto.customname) = "TxID"
+  ];
+  string chain = 2 [ (gogoproto.casttype) =
+                         "github.com/thornadocash/go-thornado/common.Chain" ];
+  int64 block_height = 3;
+  repeated string signers = 4;
+}
