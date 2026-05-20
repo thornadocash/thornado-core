@@ -65,20 +65,6 @@ func (vm *NetworkMgr) processGenesisSetup(ctx cosmos.Context) error {
 		supportChains := common.Chains{
 			common.THORChain,
 			common.BTCChain,
-			common.LTCChain,
-			common.BCHChain,
-			common.ETHChain,
-			common.DOGEChain,
-			common.AVAXChain,
-			common.GAIAChain,
-			common.NOBLEChain,
-			common.BSCChain,
-			common.BASEChain,
-			common.TRONChain,
-			common.XRPChain,
-			common.SOLChain,
-			common.POLChain,
-			common.ZECChain,
 		}
 		pubSet := active[0].PubKeySet
 		vault := NewVaultV2(0, ActiveVault, AsgardVault, pubSet.Secp256k1, supportChains.Strings(), vm.k.GetChainContracts(ctx, supportChains), pubSet.Ed25519)
@@ -223,11 +209,6 @@ func (vm *NetworkMgr) spawnDerivedAssets(ctx cosmos.Context, mgr Manager) error 
 	for _, chain := range active[0].GetChains() {
 		// no derived asset for thorchain
 		if chain.IsTHORChain() {
-			continue
-		}
-
-		// skip any ethereum L2s with ETH as the gas asset
-		if !chain.Equals(common.ETHChain) && chain.GetGasAsset().Symbol.Equals("ETH") {
 			continue
 		}
 
@@ -606,11 +587,6 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 				if coin.IsNative() {
 					continue
 				}
-				// ERC20 RUNE will be burned when it reach router contract
-				if coin.IsRune() && coin.Asset.GetChain().Equals(common.ETHChain) {
-					continue
-				}
-
 				if coin.Amount.Equal(cosmos.ZeroUint()) {
 					continue
 				}
@@ -728,11 +704,7 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 							continue
 						}
 
-						if chain.Equals(common.XRPChain) || chain.Equals(common.SOLChain) {
-							ctx.Logger().Info("left coin is account reserve, thus burn it", "coin", coin, "gas", gasAmount)
-						} else {
-							ctx.Logger().Info("left coin is not enough to pay for gas, thus burn it", "coin", coin, "gas", gasAmount)
-						}
+						ctx.Logger().Info("left coin is not enough to pay for gas, thus burn it", "coin", coin, "gas", gasAmount)
 						vault.SubFunds(common.Coins{
 							coin,
 						})
@@ -762,16 +734,6 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 						continue
 					}
 
-					// on the final migration round(s), deduct amt by 1 XRP (1e8) so that we don't try to transfer any of the account reserve
-					// the account reserve balance will be burned on the next migration round
-					if nth >= migrationRounds && (chain.Equals(common.XRPChain) || chain.Equals(common.SOLChain)) {
-						if amt.GT(dustThreshold) {
-							amt = common.SafeSub(amt, dustThreshold)
-						} else {
-							// if amt <= dustThreshold / XRP/SOL reserve requirement, skip the transaction
-							continue
-						}
-					}
 				}
 				toi := TxOutItem{
 					Chain:            chain,

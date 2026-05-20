@@ -206,15 +206,3 @@ snapshot-interval = {{ .StateSync.SnapshotInterval }}
 
 # snapshot-keep-recent specifies the number of recent snapshots to keep and serve (0 to keep all).
 snapshot-keep-recent = {{ .StateSync.SnapshotKeepRecent }}
-
-###############################################################################
-###                           WASM Configuration                            ###
-###############################################################################
-
-[wasm]
-# This is the maximum sdk gas (wasm and storage) that we allow for any x/wasm "smart" queries
-query_gas_limit = {{ .Wasm.QueryGasLimit }}
-
-# This defines the memory size for Wasm modules that we can keep cached to speed-up instantiation
-# The value is in MiB not bytes
-memory_cache_size = {{ .Wasm.MemoryCacheSize }}

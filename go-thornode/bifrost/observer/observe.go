@@ -12,8 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"gitlab.com/thorchain/thornode/v3/bifrost/oracle"
-
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
@@ -38,10 +36,6 @@ const signedTxOutCacheSize = 10_000
 // deckRefreshTime is the time to wait before reconciling txIn status.
 const deckRefreshTime = 1 * time.Second
 
-// defaultOracleUpdateInterval is the interval in which new oracle prices
-// are computed and gossiped via p2p
-const defaultOracleUpdateInterval = 1 * time.Second
-
 type txInKey struct {
 	chain  common.Chain
 	height int64
@@ -58,7 +52,6 @@ func TxInKey(txIn *types.TxIn) txInKey {
 type Observer struct {
 	logger                zerolog.Logger
 	chains                map[common.Chain]chainclients.ChainClient
-	oracle                *oracle.Oracle
 	stopChan              chan struct{}
 	pubkeyMgr             *pubkeymanager.PubKeyManager
 	onDeck                map[txInKey]*types.TxIn
@@ -68,7 +61,6 @@ type Observer struct {
 	globalErrataQueue     chan types.ErrataBlock
 	globalSolvencyQueue   chan types.Solvency
 	globalNetworkFeeQueue chan common.NetworkFee
-	globalPriceFeedQueue  chan common.PriceFeed
 	m                     *metrics.Metrics
 	errCounter            *prometheus.CounterVec
 	thorchainBridge       thorclient.ThorchainBridge
@@ -125,15 +117,9 @@ func NewObserver(pubkeyMgr *pubkeymanager.PubKeyManager,
 		return nil, fmt.Errorf("failed to create signed tx out cache: %w", err)
 	}
 
-	priceOracle, err := oracle.NewOracle(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("fail to create oracle instance: %w", err)
-	}
-
 	return &Observer{
 		logger:                logger,
 		chains:                chains,
-		oracle:                priceOracle,
 		stopChan:              make(chan struct{}),
 		m:                     m,
 		pubkeyMgr:             pubkeyMgr,
@@ -144,7 +130,6 @@ func NewObserver(pubkeyMgr *pubkeymanager.PubKeyManager,
 		globalErrataQueue:     make(chan types.ErrataBlock),
 		globalSolvencyQueue:   make(chan types.Solvency),
 		globalNetworkFeeQueue: make(chan common.NetworkFee),
-		globalPriceFeedQueue:  make(chan common.PriceFeed),
 		errCounter:            m.GetCounterVec(metrics.ObserverError),
 		thorchainBridge:       thorchainBridge,
 		storage:               storage,
@@ -170,15 +155,12 @@ func (o *Observer) Start(ctx context.Context) error {
 	for _, chain := range o.chains {
 		chain.Start(o.globalTxsQueue, o.globalErrataQueue, o.globalSolvencyQueue, o.globalNetworkFeeQueue)
 	}
-	o.oracle.Start()
-	go o.processOracle()
 	go o.processTxIns()
 	go o.processErrataTx(ctx)
 	go o.processSolvencyQueue(ctx)
 	go o.processNetworkFeeQueue(ctx)
 	go o.deck(ctx)
 	go o.attestationGossip.Start(ctx)
-	go o.processPriceFeedQueue(ctx)
 	return nil
 }
 
@@ -820,31 +802,10 @@ func (o *Observer) processNetworkFeeQueue(ctx context.Context) {
 	}
 }
 
-func (o *Observer) processPriceFeedQueue(ctx context.Context) {
-	for {
-		select {
-		case <-o.stopChan:
-			return
-		case priceFeed := <-o.globalPriceFeedQueue:
-			if err := priceFeed.Valid(); err != nil {
-				o.logger.Warn().Err(err).Msg("invalid price feed")
-				continue
-			}
-			if err := o.attestationGossip.AttestPriceFeed(ctx, priceFeed); err != nil {
-				if err.Error() != "skipping attest price feed: not active" {
-					o.logger.Err(err).Msg("fail to send price feed")
-				}
-			}
-		}
-	}
-}
-
 // Stop the observer
 func (o *Observer) Stop() error {
 	o.logger.Debug().Msg("request to stop observer")
 	defer o.logger.Debug().Msg("observer stopped")
-
-	o.oracle.Stop()
 
 	for _, chain := range o.chains {
 		chain.Stop()
@@ -859,78 +820,4 @@ func (o *Observer) Stop() error {
 	}
 
 	return o.m.Stop()
-}
-
-func (o *Observer) processOracle() {
-	updateInterval, haltOracle := o.getOracleMimirs()
-
-	go func() {
-		ticker := time.NewTicker(updateInterval)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-o.stopChan:
-				return
-			case <-ticker.C:
-				if !haltOracle {
-					prices, version := o.oracle.GetPrices()
-					if len(prices) == 0 {
-						continue
-					}
-
-					pf := common.PriceFeed{
-						Version: version,
-						Time:    time.Now().UnixMilli(),
-						Rates:   prices,
-					}
-
-					o.globalPriceFeedQueue <- pf
-				}
-
-				var newInterval time.Duration
-				newInterval, haltOracle = o.getOracleMimirs()
-				if newInterval != updateInterval {
-					updateInterval = newInterval
-					ticker.Stop()
-					ticker = time.NewTicker(updateInterval)
-				}
-			}
-		}
-	}()
-}
-
-func (o *Observer) getOracleMimirs() (time.Duration, bool) {
-	interval := defaultOracleUpdateInterval
-	halt := false
-
-	mimirs := []constants.ConstantName{
-		constants.HaltOracle,
-		constants.OracleUpdateInterval,
-	}
-
-	for _, mimir := range mimirs {
-		value, err := o.thorchainBridge.GetMimir(mimir.String())
-		if err != nil {
-			o.logger.
-				Warn().
-				Err(err).
-				Msgf("fail to get mimir: %s", mimir.String())
-			continue
-		}
-
-		if value <= 0 {
-			continue
-		}
-
-		switch mimir {
-		case constants.HaltOracle:
-			halt = true
-		case constants.OracleUpdateInterval:
-			interval = time.Duration(value) * time.Millisecond
-		default:
-		}
-	}
-
-	return interval, halt
 }

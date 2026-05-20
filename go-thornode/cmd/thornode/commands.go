@@ -9,7 +9,6 @@ import (
 
 	cmtcfg "github.com/cometbft/cometbft/config"
 	dbm "github.com/cosmos/cosmos-db"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cast"
 	"github.com/spf13/cobra"
@@ -53,11 +52,6 @@ import (
 
 	"gitlab.com/thorchain/thornode/v3/x/thorchain/client/cli"
 	"gitlab.com/thorchain/thornode/v3/x/thorchain/ebifrost"
-
-	"github.com/CosmWasm/wasmd/x/wasm"
-	wasmcli "github.com/CosmWasm/wasmd/x/wasm/client/cli"
-	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 )
 
 // initCometBFTConfig helps to override default CometBFT Config values.
@@ -79,7 +73,6 @@ func initAppConfig() (string, interface{}) {
 
 	type CustomAppConfig struct {
 		serverconfig.Config
-		Wasm     wasmtypes.NodeConfig    `mapstructure:"wasm"`
 		EBifrost ebifrost.EBifrostConfig `mapstructure:"ebifrost"`
 	}
 
@@ -103,11 +96,9 @@ func initAppConfig() (string, interface{}) {
 
 	customAppConfig := CustomAppConfig{
 		Config: *srvCfg,
-		Wasm:   wasmtypes.DefaultNodeConfig(),
 	}
 
 	customAppTemplate := serverconfig.DefaultConfigTemplate
-	customAppTemplate += wasmtypes.DefaultConfigTemplate()
 	customAppTemplate += ebifrost.DefaultConfigTemplate()
 
 	return customAppTemplate, customAppConfig
@@ -136,7 +127,6 @@ func initRootCmd(
 	)
 
 	server.AddCommands(rootCmd, app.DefaultNodeHome, newApp, appExport, addModuleInitFlags)
-	wasmcli.ExtendUnsafeResetAllCmd(rootCmd)
 
 	// add keybase, auxiliary RPC, query, genesis, and tx child commands
 	rootCmd.AddCommand(
@@ -173,7 +163,6 @@ func addModuleInitFlags(startCmd *cobra.Command) {
 		serverCtx.Logger = NewConsensusFailureLogger(serverCtx.Logger)
 		return server.SetCmdServerContext(startCmd, serverCtx)
 	}
-	wasm.AddModuleInitFlags(startCmd)
 	ebifrost.AddModuleInitFlags(startCmd)
 }
 
@@ -297,20 +286,14 @@ func newApp(
 ) servertypes.Application {
 	baseappOptions := DefaultBaseappOptions(appOpts)
 
-	var wasmOpts []wasmkeeper.Option
-	if cast.ToBool(appOpts.Get("telemetry.enabled")) {
-		wasmOpts = append(wasmOpts, wasmkeeper.WithVMCacheMetrics(prometheus.DefaultRegisterer))
-	}
-
 	return app.NewChainApp(
 		logger, db, traceStore, true,
 		appOpts,
-		wasmOpts,
 		baseappOptions...,
 	)
 }
 
-// appExport creates a new wasm app (optionally at a given height) and exports state.
+// appExport creates a new app (optionally at a given height) and exports state.
 func appExport(
 	logger log.Logger,
 	db dbm.DB,
@@ -337,7 +320,6 @@ func appExport(
 	// overwrite the FlagInvCheckPeriod
 	viperAppOpts.Set(server.FlagInvCheckPeriod, 1)
 	appOpts = viperAppOpts
-	var emptyWasmOpts []wasmkeeper.Option
 
 	chainApp = app.NewChainApp(
 		logger,
@@ -345,7 +327,6 @@ func appExport(
 		traceStore,
 		height == -1,
 		appOpts,
-		emptyWasmOpts,
 	)
 
 	if height != -1 {

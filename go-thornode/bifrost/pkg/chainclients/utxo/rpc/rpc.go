@@ -15,11 +15,9 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/rs/zerolog"
-	"gitlab.com/thorchain/thornode/v3/bifrost/pkg/chainclients/utxo/rpc/zec"
 	"gitlab.com/thorchain/thornode/v3/common"
 )
 
-// op-geth rpc uses 10s timeouts
 const ZecClientTimeout = time.Second * 10
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -75,18 +73,7 @@ func NewClient(host, user, password string, maxRetries int, timeout time.Duratio
 	}
 
 	var err error
-
-	switch chain {
-	case common.ZECChain:
-		header := http.Header{}
-		err = authFn(header)
-		if err != nil {
-			return nil, err
-		}
-		client.client = zec.NewClient(host, ZecClientTimeout, header)
-	default:
-		client.client, err = rpc.DialOptions(context.Background(), host, rpc.WithHTTPAuth(authFn))
-	}
+	client.client, err = rpc.DialOptions(context.Background(), host, rpc.WithHTTPAuth(authFn))
 
 	if err != nil {
 		return nil, err
@@ -272,43 +259,9 @@ func (c *Client) CreateWallet(name string) error {
 // ListUnspent returns all unspent outputs with between min and max confirmations.
 func (c *Client) ListUnspent(address string) ([]btcjson.ListUnspentResult, error) {
 	var unspent []btcjson.ListUnspentResult
-	var err error
-
-	switch c.chain {
-	case common.ZECChain:
-		var height int64
-		height, err = c.GetBlockCount()
-		if err != nil {
-			return nil, err
-		}
-
-		var utxos []struct {
-			Txid     string `json:"txid"`
-			Address  string `json:"address"`
-			Index    uint32 `json:"outputIndex"`
-			Script   string `json:"script"`
-			Satoshis uint64 `json:"satoshis"`
-			Height   int64  `json:"height"`
-		}
-
-		err = c.Call(&utxos, "getaddressutxos", []any{address}...)
-
-		for _, utxo := range utxos {
-			unspent = append(unspent, btcjson.ListUnspentResult{
-				TxID:          utxo.Txid,
-				Vout:          utxo.Index,
-				Address:       utxo.Address,
-				ScriptPubKey:  utxo.Script,
-				Amount:        float64(utxo.Satoshis) / 1e8,
-				Confirmations: height - utxo.Height,
-				Spendable:     true,
-			})
-		}
-	default:
-		const minConfirm = 0
-		const maxConfirm = 9999999
-		err = c.Call(&unspent, "listunspent", minConfirm, maxConfirm, []string{address})
-	}
+	const minConfirm = 0
+	const maxConfirm = 9999999
+	err := c.Call(&unspent, "listunspent", minConfirm, maxConfirm, []string{address})
 
 	return unspent, extractBTCError(err)
 }

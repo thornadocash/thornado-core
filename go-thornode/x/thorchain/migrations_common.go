@@ -252,9 +252,7 @@ func (m Migrator) CommonMigrate8to9(ctx sdk.Context) error {
 		}
 	}
 
-	// Special case TRON.TRX to target 10% multiplier
-	// https://gitlab.com/thorchain/thornode/-/issues/2239#note_2690577110
-	return processAsset(common.TRXAsset, cosmos.NewUint(1_000))
+	return nil
 }
 
 // BurnReserveAndReduceMaxSupply implements ADR-023: burns reserve down to 9.3M RUNE

@@ -21,9 +21,6 @@ import (
 	appparams "gitlab.com/thorchain/thornode/v3/app/params"
 	prefix "gitlab.com/thorchain/thornode/v3/cmd"
 	thorconfig "gitlab.com/thorchain/thornode/v3/config"
-
-	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 )
 
 // NewRootCmd creates a new root command for chain app. It is called once in the
@@ -33,7 +30,6 @@ func NewRootCmd() *cobra.Command {
 	cfg.SetBech32PrefixForAccount(prefix.Bech32PrefixAccAddr, prefix.Bech32PrefixAccPub)
 	cfg.SetBech32PrefixForValidator(prefix.Bech32PrefixValAddr, prefix.Bech32PrefixValPub)
 	cfg.SetBech32PrefixForConsensusNode(prefix.Bech32PrefixConsAddr, prefix.Bech32PrefixConsPub)
-	cfg.SetAddressVerifier(wasmtypes.VerifyAddressLen())
 	cfg.SetCoinType(prefix.THORChainCoinType)
 	cfg.SetPurpose(prefix.THORChainCoinPurpose)
 	cfg.Seal()
@@ -41,7 +37,6 @@ func NewRootCmd() *cobra.Command {
 	// note, this is not necessary when using app wiring, as depinject can be directly used (see root_v2.go)
 	tempApp := app.NewChainApp(
 		log.NewNopLogger(), dbm.NewMemDB(), nil, false, app.NewTestAppOptionsWithFlagHome(tempDir()),
-		[]wasmkeeper.Option{},
 	)
 	encodingConfig := params.EncodingConfig{
 		InterfaceRegistry: tempApp.InterfaceRegistry(),

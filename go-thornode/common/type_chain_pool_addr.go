@@ -9,21 +9,21 @@ type ChainPoolInfo struct {
 	PoolAddress Address `json:"pool_address"`
 }
 
-// EmptyChainPoolInfo everything is empty
-var EmptyChainPoolInfo ChainPoolInfo
+// NoChainPoolInfo everything is empty
+var NoChainPoolInfo ChainPoolInfo
 
 // NewChainPoolInfo create a new instance of ChainPoolInfo
 func NewChainPoolInfo(chain Chain, pubKey PubKey) (ChainPoolInfo, error) {
 	if chain.IsEmpty() {
-		return EmptyChainPoolInfo, fmt.Errorf("chain is empty")
+		return NoChainPoolInfo, fmt.Errorf("chain is empty")
 	}
 	if pubKey.IsEmpty() {
-		return EmptyChainPoolInfo, fmt.Errorf("pubkey is empty")
+		return NoChainPoolInfo, fmt.Errorf("pubkey is empty")
 	}
 
 	addr, err := pubKey.GetAddress(chain)
 	if err != nil {
-		return EmptyChainPoolInfo, fmt.Errorf("fail to get address for chain %s,%w", chain, err)
+		return NoChainPoolInfo, fmt.Errorf("fail to get address for chain %s,%w", chain, err)
 	}
 
 	return ChainPoolInfo{

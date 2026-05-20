@@ -38,7 +38,7 @@ func (mpa *MockPoolAddressValidator) Start() error                              
 func (mpa *MockPoolAddressValidator) Stop() error                                              { return errors.New("kaboom") }
 
 func (mpa *MockPoolAddressValidator) IsValidPoolAddress(addr string, chain common.Chain) (bool, common.ChainPoolInfo) {
-	return false, common.EmptyChainPoolInfo
+	return false, common.NoChainPoolInfo
 }
 
 func (mpa *MockPoolAddressValidator) RegisterCallback(callback OnNewPubKey) {

@@ -3,10 +3,6 @@ package app
 import (
 	"errors"
 
-	corestoretypes "cosmossdk.io/core/store"
-
-	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"github.com/cosmos/cosmos-sdk/x/auth/ante"
@@ -24,11 +20,6 @@ import (
 type HandlerOptions struct {
 	ante.HandlerOptions
 
-	NodeConfig *wasmtypes.NodeConfig
-	WasmKeeper *wasmkeeper.Keeper
-
-	TXCounterStoreService corestoretypes.KVStoreService
-
 	BypassMinFeeMsgTypes []string
 
 	THORChainKeeper keeper.Keeper
@@ -45,17 +36,8 @@ func NewAnteHandler(options HandlerOptions) (sdk.AnteHandler, error) {
 	if options.SignModeHandler == nil {
 		return nil, errors.New("sign mode handler is required for ante builder")
 	}
-	if options.NodeConfig == nil {
-		return nil, errors.New("wasm config is required for ante builder")
-	}
-	if options.WasmKeeper == nil {
-		return nil, errors.New("wasm keeper is required for ante builder")
-	}
 	if options.THORChainKeeper == nil {
 		return nil, errors.New("thorchain keeper is required for ante builder")
-	}
-	if options.TXCounterStoreService == nil {
-		return nil, errors.New("wasm store service is required for ante builder")
 	}
 
 	anteDecorators := []sdk.AnteDecorator{
@@ -66,10 +48,6 @@ func NewAnteHandler(options HandlerOptions) (sdk.AnteHandler, error) {
 
 		// replace gas meter immediately after setting up ctx
 		thorchain.NewGasDecorator(options.THORChainKeeper),
-
-		wasmkeeper.NewLimitSimulationGasDecorator(options.NodeConfig.SimulationGasLimit), // after setup context to enforce limits early
-		wasmkeeper.NewCountTXDecorator(options.TXCounterStoreService),
-		wasmkeeper.NewGasRegisterDecorator(options.WasmKeeper.GetGasRegister()),
 
 		ante.NewExtensionOptionsDecorator(options.ExtensionOptionChecker),
 		ante.NewValidateBasicDecorator(),

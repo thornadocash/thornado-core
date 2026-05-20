@@ -1,8 +1,6 @@
 package common
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -15,19 +13,6 @@ import (
 	"github.com/btcsuite/btcutil/bech32"
 	"github.com/cometbft/cometbft/crypto"
 	"github.com/cosmos/cosmos-sdk/crypto/codec"
-	dogchaincfg "github.com/eager7/dogd/chaincfg"
-	"github.com/eager7/dogutil"
-	eth "github.com/ethereum/go-ethereum/crypto"
-	bchchaincfg "github.com/gcash/bchd/chaincfg"
-	"github.com/gcash/bchutil"
-	ltcchaincfg "github.com/ltcsuite/ltcd/chaincfg"
-	"github.com/ltcsuite/ltcutil"
-	"github.com/mr-tron/base58"
-	"gitlab.com/thorchain/thornode/v3/bifrost/pkg/chainclients/utxo/zecutil"
-	"golang.org/x/crypto/blake2b"
-
-	adacommon "github.com/blinklabs-io/gouroboros/ledger/common"
-	xrpkm "gitlab.com/thorchain/thornode/v3/bifrost/pkg/chainclients/xrp/keymanager"
 
 	"gitlab.com/thorchain/thornode/v3/common/cosmos"
 )
@@ -101,16 +86,6 @@ func (p PubKey) Secp256K1() (*btcec.PublicKey, error) {
 	return btcec.ParsePubKey(pk.Bytes(), btcec.S256())
 }
 
-// EVMPubkeyToAddress converts a pubkey of an EVM chain to the corresponding address
-func (p PubKey) EVMPubkeyToAddress() (Address, error) {
-	pub, err := p.Secp256K1()
-	if err != nil {
-		return NoAddress, err
-	}
-	str := strings.ToLower(eth.PubkeyToAddress(*pub.ToECDSA()).String())
-	return NewAddress(str)
-}
-
 // GetAddress will return an address for the given chain
 func (p PubKey) GetAddress(chain Chain) (Address, error) {
 	if p.IsEmpty() {
@@ -129,13 +104,7 @@ func (p PubKey) GetAddress(chain Chain) (Address, error) {
 	chainNetwork := CurrentChainNetwork
 	var addressString string
 	switch chain {
-	case XRPChain:
-		pk, err := p.Secp256K1()
-		if err != nil {
-			return NoAddress, fmt.Errorf("get pub key secp256k1, %w", err)
-		}
-		addressString = xrpkm.MasterPubKeyToAccountID(pk.SerializeCompressed())
-	case GAIAChain, THORChain, NOBLEChain:
+	case THORChain:
 		pk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, string(p))
 		if err != nil {
 			return NoAddress, err
@@ -162,152 +131,8 @@ func (p PubKey) GetAddress(chain Chain) (Address, error) {
 			return NoAddress, fmt.Errorf("fail to bech32 encode the address, err: %w", err)
 		}
 		addressString = addr.String()
-	case LTCChain:
-		pk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, string(p))
-		if err != nil {
-			return NoAddress, err
-		}
-		var net *ltcchaincfg.Params
-		switch chainNetwork {
-		case MockNet:
-			net = &ltcchaincfg.RegressionNetParams
-		case MainNet, StageNet, ChainNet:
-			net = &ltcchaincfg.MainNetParams
-		}
-		addr, err := ltcutil.NewAddressWitnessPubKeyHash(pk.Address().Bytes(), net)
-		if err != nil {
-			return NoAddress, fmt.Errorf("fail to bech32 encode the address, err: %w", err)
-		}
-		addressString = addr.String()
-	case DOGEChain:
-		pk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, string(p))
-		if err != nil {
-			return NoAddress, err
-		}
-		var net *dogchaincfg.Params
-		switch chainNetwork {
-		case MockNet:
-			net = &dogchaincfg.RegressionNetParams
-		case MainNet, StageNet, ChainNet:
-			net = &dogchaincfg.MainNetParams
-		}
-		addr, err := dogutil.NewAddressPubKeyHash(pk.Address().Bytes(), net)
-		if err != nil {
-			return NoAddress, fmt.Errorf("fail to encode the address, err: %w", err)
-		}
-		addressString = addr.String()
-	case BCHChain:
-		pk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, string(p))
-		if err != nil {
-			return NoAddress, err
-		}
-		var net *bchchaincfg.Params
-		switch chainNetwork {
-		case MockNet:
-			net = &bchchaincfg.RegressionNetParams
-		case MainNet, StageNet, ChainNet:
-			net = &bchchaincfg.MainNetParams
-		}
-		addr, err := bchutil.NewAddressPubKeyHash(pk.Address().Bytes(), net)
-		if err != nil {
-			return NoAddress, fmt.Errorf("fail to encode the address, err: %w", err)
-		}
-		addressString = addr.String()
-	case SOLChain:
-		pk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, p.String())
-		if err != nil {
-			return NoAddress, err
-		}
-
-		pubBz := pk.Bytes()
-		if len(pubBz) != 32 {
-			return NoAddress, fmt.Errorf("invalid pubkey length %d", len(pubBz))
-		}
-
-		// Encode the public key to base58 to get the Solana address
-		addressString = base58.Encode(pubBz)
-	case TRONChain:
-		pub, err := p.Secp256K1()
-		if err != nil {
-			return NoAddress, err
-		}
-
-		addr := eth.PubkeyToAddress(*pub.ToECDSA()).Bytes()
-		addr = append([]byte{65}, addr...)
-
-		sha256sum := func(data []byte) []byte {
-			h := sha256.New()
-			h.Write(data)
-			return h.Sum(nil)
-		}
-
-		checksum := sha256sum(sha256sum(addr))
-
-		addressString = base58.Encode(append(addr, checksum[:4]...))
-	case ZECChain:
-		pk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, p.String())
-		if err != nil {
-			return NoAddress, fmt.Errorf("fail to get pubkey from bech32: %w", err)
-		}
-
-		var prefix string
-		switch chainNetwork {
-		case MockNet:
-			prefix = "testnet3"
-		case MainNet, StageNet, ChainNet:
-			prefix = "mainnet"
-		}
-
-		var bz [20]byte
-		copy(bz[:], pk.Address().Bytes())
-
-		addressString = zecutil.NewAddressPubKeyHash(bz, prefix).String()
-	case SUIChain:
-		pk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, p.String())
-		if err != nil {
-			return NoAddress, err
-		}
-
-		pub := append([]byte{0x00}, pk.Bytes()...)
-
-		hash := blake2b.Sum256(pub)
-
-		addressString = "0x" + hex.EncodeToString(hash[:])
-	case ADAChain:
-		pk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, p.String())
-		if err != nil {
-			return NoAddress, err
-		}
-
-		var network uint8
-		switch chainNetwork {
-		case MockNet:
-			network = adacommon.AddressNetworkTestnet
-		default:
-			network = adacommon.AddressNetworkMainnet
-		}
-
-		addr, err := adacommon.NewAddressFromParts(
-			adacommon.AddressTypeKeyNone,
-			network,
-			pk.Bytes(),
-			nil,
-		)
-		if err != nil {
-			return NoAddress, err
-		}
-
-		addressString = addr.String()
 	default:
-		// Only EVM chains remain.
-		if !chain.IsEVM() {
-			return NoAddress, nil
-		}
-		addr, err := p.EVMPubkeyToAddress()
-		if err != nil {
-			return addr, err
-		}
-		addressString = addr.String()
+		return NoAddress, nil
 	}
 
 	address, err := NewAddress(addressString)

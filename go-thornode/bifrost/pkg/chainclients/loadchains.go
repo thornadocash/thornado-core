@@ -1,20 +1,15 @@
 package chainclients
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"gitlab.com/thorchain/thornode/v3/bifrost/tss/go-tss/tss"
 
 	"gitlab.com/thorchain/thornode/v3/bifrost/metrics"
-	"gitlab.com/thorchain/thornode/v3/bifrost/pkg/chainclients/ethereum"
-	"gitlab.com/thorchain/thornode/v3/bifrost/pkg/chainclients/evm"
-	"gitlab.com/thorchain/thornode/v3/bifrost/pkg/chainclients/gaia"
 	"gitlab.com/thorchain/thornode/v3/bifrost/pkg/chainclients/shared/types"
-	"gitlab.com/thorchain/thornode/v3/bifrost/pkg/chainclients/solana"
-	"gitlab.com/thorchain/thornode/v3/bifrost/pkg/chainclients/tron"
 	"gitlab.com/thorchain/thornode/v3/bifrost/pkg/chainclients/utxo"
-	"gitlab.com/thorchain/thornode/v3/bifrost/pkg/chainclients/xrp"
 	"gitlab.com/thorchain/thornode/v3/bifrost/pubkeymanager"
 	"gitlab.com/thorchain/thornode/v3/bifrost/thorclient"
 	"gitlab.com/thorchain/thornode/v3/common"
@@ -31,7 +26,6 @@ func LoadChains(thorKeys *thorclient.Keys,
 	thorchainBridge thorclient.ThorchainBridge,
 	m *metrics.Metrics,
 	pubKeyValidator pubkeymanager.PubKeyValidator,
-	poolMgr thorclient.PoolManager,
 ) (chains map[common.Chain]ChainClient, restart chan struct{}) {
 	logger := log.Logger.With().Str("module", "bifrost").Logger()
 
@@ -40,25 +34,10 @@ func LoadChains(thorKeys *thorclient.Keys,
 	failedChains := []common.Chain{}
 
 	loadChain := func(chain config.BifrostChainConfiguration) (ChainClient, error) {
-		switch chain.ChainID {
-		case common.ETHChain:
-			return ethereum.NewClient(thorKeys, chain, server, thorchainBridge, m, pubKeyValidator, poolMgr)
-		case common.AVAXChain, common.BSCChain, common.BASEChain, common.POLChain:
-			return evm.NewEVMClient(thorKeys, chain, server, thorchainBridge, m, pubKeyValidator, poolMgr)
-		case common.GAIAChain, common.NOBLEChain:
-			return gaia.NewCosmosClient(thorKeys, chain, server, thorchainBridge, m, pubKeyValidator)
-		case common.BTCChain, common.BCHChain, common.LTCChain, common.DOGEChain, common.ZECChain:
-			return utxo.NewClient(thorKeys, chain, server, thorchainBridge, m)
-		case common.TRONChain:
-			return tron.NewTronClient(thorKeys, chain, server, thorchainBridge, m, pubKeyValidator, poolMgr)
-		case common.XRPChain:
-			return xrp.NewClient(thorKeys, chain, server, thorchainBridge, m)
-		case common.SOLChain:
-			return solana.NewSOLClient(thorKeys, chain, server, thorchainBridge, m, pubKeyValidator, poolMgr)
-		default:
-			log.Fatal().Msgf("chain %s is not supported", chain.ChainID)
-			return nil, nil
+		if chain.ChainID != common.BTCChain {
+			return nil, fmt.Errorf("chain %s is not supported by thornado bifrost", chain.ChainID)
 		}
+		return utxo.NewClient(thorKeys, chain, server, thorchainBridge, m)
 	}
 
 	for _, chain := range cfg {
@@ -74,14 +53,8 @@ func LoadChains(thorKeys *thorclient.Keys,
 			continue
 		}
 
-		// Not needed for Zcash bechause it doesn't use listunspent for utxo
-		// retrieval, which is not supported by zebrad (replacement for the
-		// deprecated zcashd)
 		// trunk-ignore-all(golangci-lint/forcetypeassert)
-		switch chain.ChainID {
-		case common.BTCChain, common.BCHChain, common.LTCChain, common.DOGEChain:
-			pubKeyValidator.RegisterCallback(client.(*utxo.Client).RegisterPublicKey)
-		}
+		pubKeyValidator.RegisterCallback(client.(*utxo.Client).RegisterPublicKey)
 		chains[chain.ChainID] = client
 	}
 

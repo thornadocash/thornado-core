@@ -47,7 +47,7 @@ func GetMetricForTest(c *C, chain common.Chain) *metrics.Metrics {
 		ListenPort:   9000,
 		ReadTimeout:  time.Second,
 		WriteTimeout: time.Second,
-		Chains:       common.Chains{common.DOGEChain, common.BCHChain, common.LTCChain, common.BTCChain},
+		Chains:       common.Chains{common.BTCChain},
 	})
 	c.Assert(m, NotNil)
 	c.Assert(err, IsNil)
@@ -70,9 +70,7 @@ func httpTestHandler(c *C, rw http.ResponseWriter, fixture string) {
 // an attacker crafts a bare multisig [victim_pubkey, attacker_pubkey] and signs
 // with their own key, causing getSender to attribute the tx to the victim
 // (first pubkey's address). P2SH/P2WSH-wrapped multisig is not affected since
-// those scriptPubKeys return a single 3xxx/bc1q address. The same check applies
-// uniformly to BTC, LTC, DOGE, BCH, and ZEC — each chain's isValidUTXO rejects
-// MultiSigTy and accepts single-address/single-sig types.
+// those scriptPubKeys return a single 3xxx/bc1q address.
 func assertSenderUTXOValidation(c *C, client *Client) {
 	const multisigTxid = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	// 1-of-1 bare multisig: OP_1 <pubkey> OP_1 OP_CHECKMULTISIG

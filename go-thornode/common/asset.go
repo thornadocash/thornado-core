@@ -14,45 +14,14 @@ import (
 
 var (
 	// EmptyAsset empty asset, not valid
-	EmptyAsset = Asset{Chain: EmptyChain, Symbol: "", Ticker: "", Synth: false}
-	// ATOMAsset ATOM
-	ATOMAsset = Asset{Chain: GAIAChain, Symbol: "ATOM", Ticker: "ATOM", Synth: false}
-	// BNBBEP20Asset BNB
-	BNBBEP20Asset = Asset{Chain: BSCChain, Symbol: "BNB", Ticker: "BNB", Synth: false}
+	EmptyAsset = Asset{Symbol: "", Ticker: "", Synth: false}
 	// BTCAsset BTC
 	BTCAsset = Asset{Chain: BTCChain, Symbol: "BTC", Ticker: "BTC", Synth: false}
-	// LTCAsset BTC
-	LTCAsset = Asset{Chain: LTCChain, Symbol: "LTC", Ticker: "LTC", Synth: false}
-	// BCHAsset BCH
-	BCHAsset = Asset{Chain: BCHChain, Symbol: "BCH", Ticker: "BCH", Synth: false}
-	// DOGEAsset DOGE
-	DOGEAsset = Asset{Chain: DOGEChain, Symbol: "DOGE", Ticker: "DOGE", Synth: false}
-	// ETHAsset ETH
-	ETHAsset = Asset{Chain: ETHChain, Symbol: "ETH", Ticker: "ETH", Synth: false}
-	// BaseAsset ETH
-	BaseETHAsset = Asset{Chain: BASEChain, Symbol: "ETH", Ticker: "ETH", Synth: false}
-	// AVAXAsset AVAX
-	AVAXAsset = Asset{Chain: AVAXChain, Symbol: "AVAX", Ticker: "AVAX", Synth: false}
-	// TRXAsset TRON
-	TRXAsset = Asset{Chain: TRONChain, Symbol: "TRX", Ticker: "TRX", Synth: false}
-	// XRPAsset XRP
-	XRPAsset = Asset{Chain: XRPChain, Symbol: "XRP", Ticker: "XRP", Synth: false}
-	// SOLAsset SOL
-	SOLAsset = Asset{Chain: SOLChain, Symbol: "SOL", Ticker: "SOL", Synth: false}
-	// ZECAsset ZEC
-	ZECAsset = Asset{Chain: ZECChain, Symbol: "ZEC", Ticker: "ZEC", Synth: false}
-	// POLAsset POL
-	POLAsset = Asset{Chain: POLChain, Symbol: "POL", Ticker: "POL", Synth: false}
-	// SUIAsset SUI
-	SUIAsset = Asset{Chain: SUIChain, Symbol: "SUI", Ticker: "SUI", Synth: false}
-	// ADAAsset ADA
-	ADAAsset = Asset{Chain: ADAChain, Symbol: "ADA", Ticker: "ADA", Synth: false}
 	// RuneNative RUNE on thorchain
 	RuneNative = Asset{Chain: THORChain, Symbol: "RUNE", Ticker: "RUNE", Synth: false}
 	TCY        = Asset{Chain: THORChain, Symbol: "TCY", Ticker: "TCY", Synth: false}
 	TOR        = Asset{Chain: THORChain, Symbol: "TOR", Ticker: "TOR", Synth: false}
 	THORBTC    = Asset{Chain: THORChain, Symbol: "BTC", Ticker: "BTC", Synth: false}
-	USDCAsset  = Asset{Chain: NOBLEChain, Symbol: "USDC", Ticker: "USDC", Synth: false}
 	// Whitelisted assets
 	RUJI = Asset{Chain: THORChain, Symbol: "RUJI", Ticker: "RUJI", Synth: false}
 	NAMI = Asset{Chain: THORChain, Symbol: "NAMI", Ticker: "NAMI", Synth: false}
@@ -120,23 +89,8 @@ func NewAssetWithShortCodes(version semver.Version, input string) (Asset, error)
 func NewAssetWithShortCodesV3_1_0(input string) (Asset, error) {
 	shorts := make(map[string]string)
 
-	shorts[ATOMAsset.ShortCode()] = ATOMAsset.String()
-	shorts[AVAXAsset.ShortCode()] = AVAXAsset.String()
-	shorts[BCHAsset.ShortCode()] = BCHAsset.String()
-	shorts[BNBBEP20Asset.ShortCode()] = BNBBEP20Asset.String()
 	shorts[BTCAsset.ShortCode()] = BTCAsset.String()
-	shorts[DOGEAsset.ShortCode()] = DOGEAsset.String()
-	shorts[ETHAsset.ShortCode()] = ETHAsset.String()
-	shorts[LTCAsset.ShortCode()] = LTCAsset.String()
-	shorts[SOLAsset.ShortCode()] = SOLAsset.String()
 	shorts[RuneNative.ShortCode()] = RuneNative.String()
-	shorts[BaseETHAsset.ShortCode()] = BaseETHAsset.String()
-	shorts[TRXAsset.ShortCode()] = TRXAsset.String()
-	shorts[XRPAsset.ShortCode()] = XRPAsset.String()
-	shorts[POLAsset.ShortCode()] = POLAsset.String()
-	shorts[SUIAsset.ShortCode()] = SUIAsset.String()
-	shorts[ADAAsset.ShortCode()] = ADAAsset.String()
-	shorts[ZECAsset.ShortCode()] = ZECAsset.String()
 
 	long, ok := shorts[input]
 	if ok {
@@ -317,37 +271,6 @@ func (a Asset) ShortCode() string {
 		return "r"
 	case "BTC.BTC":
 		return "b"
-	case "ETH.ETH":
-		return "e"
-	case "GAIA.ATOM":
-		return "g"
-	case "DOGE.DOGE":
-		return "d"
-	case "LTC.LTC":
-		return "l"
-	case "BCH.BCH":
-		return "c"
-	case "AVAX.AVAX":
-		return "a"
-	case "BSC.BNB":
-		return "s"
-	case "BASE.ETH":
-		return "f"
-	case "TRON.TRX":
-		return "tr"
-	case "XRP.XRP":
-		return "x"
-	case "SOL.SOL":
-		return "o"
-	case "ZEC.ZEC":
-		return "z"
-	case "POL.POL":
-		return "p"
-	case "SUI.SUI":
-		return "u"
-	case "ADA.ADA":
-		return "ad"
-
 	default:
 		return ""
 	}

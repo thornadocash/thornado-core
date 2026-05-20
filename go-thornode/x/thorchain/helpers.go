@@ -38,9 +38,6 @@ func refundTx(ctx cosmos.Context, tx ObservedTx, mgr Manager, refundCode uint32,
 			continue
 		}
 
-		if coin.IsRune() && coin.Asset.GetChain().Equals(common.ETHChain) {
-			continue
-		}
 		pool, err := mgr.Keeper().GetPool(ctx, coin.Asset.GetLayer1Asset())
 		if err != nil {
 			return fmt.Errorf("fail to get pool: %w", err)
@@ -1312,12 +1309,7 @@ func IsPeriodLastBlock(ctx cosmos.Context, blocksPerPeriod int64) bool {
 }
 
 func isTronZeroGasTx(tx ObservedTx) bool {
-	if !tx.Tx.Chain.Equals(common.TRONChain) {
-		return false
-	}
-
-	gasAmount := tx.Tx.Gas.ToCoins().GetCoin(common.TRXAsset).Amount
-	return gasAmount.Equal(cosmos.NewUint(1))
+	return false
 }
 
 // leadingZeros pads a string with leading zeros to reach the specified length.

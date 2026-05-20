@@ -361,7 +361,7 @@ func (b *thorchainBridge) GetInboundOutbound(txIns common.ObservedTxs) (common.O
 
 	// spilt our txs into inbound vs outbound txs
 	for _, tx := range txIns {
-		chain := common.EmptyChain
+		var chain common.Chain
 		if len(tx.Tx.Coins) > 0 {
 			chain = tx.Tx.Coins[0].Asset.Chain
 		}

@@ -21,7 +21,6 @@ import "types/msg_tss_pool.proto";
 import "types/msg_version.proto";
 import "types/msg_upgrade.proto";
 import "types/msg_maint.proto";
-import "cosmwasm/wasm/v1/tx.proto";
 
 option go_package = "gitlab.com/thorchain/thornode/v3/x/thorchain/types";
 
@@ -52,26 +51,6 @@ service Msg {
   rpc ApproveUpgrade(MsgApproveUpgrade) returns (MsgEmpty);
   rpc RejectUpgrade(MsgRejectUpgrade) returns (MsgEmpty);
   rpc PriceFeedQuorumBatch(MsgPriceFeedQuorumBatch) returns (MsgEmpty);
-
-  // CosmWasm interface cloned in order so that we can register the x/thorchain
-  // message server as the server for x/wasm messages, and route through version
-  // control
-  rpc StoreCode(cosmwasm.wasm.v1.MsgStoreCode)
-      returns (cosmwasm.wasm.v1.MsgStoreCodeResponse);
-  rpc InstantiateContract(cosmwasm.wasm.v1.MsgInstantiateContract)
-      returns (cosmwasm.wasm.v1.MsgInstantiateContractResponse);
-  rpc InstantiateContract2(cosmwasm.wasm.v1.MsgInstantiateContract2)
-      returns (cosmwasm.wasm.v1.MsgInstantiateContract2Response);
-  rpc ExecuteContract(cosmwasm.wasm.v1.MsgExecuteContract)
-      returns (cosmwasm.wasm.v1.MsgExecuteContractResponse);
-  rpc MigrateContract(cosmwasm.wasm.v1.MsgMigrateContract)
-      returns (cosmwasm.wasm.v1.MsgMigrateContractResponse);
-  rpc SudoContract(cosmwasm.wasm.v1.MsgSudoContract)
-      returns (cosmwasm.wasm.v1.MsgSudoContractResponse);
-  rpc UpdateAdmin(cosmwasm.wasm.v1.MsgUpdateAdmin)
-      returns (cosmwasm.wasm.v1.MsgUpdateAdminResponse);
-  rpc ClearAdmin(cosmwasm.wasm.v1.MsgClearAdmin)
-      returns (cosmwasm.wasm.v1.MsgClearAdminResponse);
 }
 
 // MsgEmpty is the return type for all current Msg Server messages

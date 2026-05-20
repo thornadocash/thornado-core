@@ -9,11 +9,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
-	bchtxscript "gitlab.com/thorchain/thornode/v3/bifrost/txscript/bchd-txscript"
-	dogetxscript "gitlab.com/thorchain/thornode/v3/bifrost/txscript/dogd-txscript"
-	ltctxscript "gitlab.com/thorchain/thornode/v3/bifrost/txscript/ltcd-txscript"
 	btctxscript "gitlab.com/thorchain/thornode/v3/bifrost/txscript/txscript"
 
 	btypes "gitlab.com/thorchain/thornode/v3/bifrost/blockscanner/types"
@@ -229,39 +225,15 @@ func (c *Client) updateNetworkInfo() {
 }
 
 func (c *Client) sendNetworkFee(height int64) error {
-	// get block stats
-	var feeRate uint64
-	switch c.cfg.ChainID {
-	case common.BCHChain:
-		// BCH is a special case since the response uses floats
-		hash, err := c.rpc.GetBlockHash(height)
-		if err != nil {
-			return fmt.Errorf("fail to get block hash: %w", err)
-		}
-		type BlockStats struct {
-			AverageFeeRate float64 `json:"avgfeerate"`
-		}
-		var bs BlockStats
-		err = c.rpc.Call(&bs, "getblockstats", hash)
-		if err != nil {
-			return fmt.Errorf("fail to get block stats: %w", err)
-		}
-		feeRate = uint64(bs.AverageFeeRate * common.One)
-
-	case common.LTCChain, common.BTCChain:
-		hash, err := c.rpc.GetBlockHash(height)
-		if err != nil {
-			return fmt.Errorf("fail to get block hash: %w", err)
-		}
-		bs, err := c.rpc.GetBlockStats(hash)
-		if err != nil {
-			return fmt.Errorf("fail to get block stats: %w", err)
-		}
-		feeRate = uint64(bs.AverageFeeRate)
-
-	default:
-		c.log.Fatal().Msg("unsupported chain")
+	hash, err := c.rpc.GetBlockHash(height)
+	if err != nil {
+		return fmt.Errorf("fail to get block hash: %w", err)
 	}
+	bs, err := c.rpc.GetBlockStats(hash)
+	if err != nil {
+		return fmt.Errorf("fail to get block stats: %w", err)
+	}
+	feeRate := uint64(bs.AverageFeeRate)
 
 	if feeRate == 0 {
 		return nil
@@ -335,30 +307,19 @@ func (c *Client) sendNetworkFeeFromBlock(blockResult *btcjson.GetBlockVerboseTxR
 	transactionSize := c.cfg.UTXO.EstimatedAverageTxSize
 	var feeRateSats uint64
 
-	if c.GetChain() == common.ZECChain {
-		// ZEC uses ZIP-317 static fee calculation, independent of block contents.
-		// Report static 'worst case' scenario with the maximum possible
-		// amounts of inputs and max memo size of 80 chars, which counts as
-		// 5 actions and will likely always be lower that max inputs.
-		tx := wire.MsgTx{TxIn: make([]*wire.TxIn, c.getMaximumUtxosToSpend()-1)}
-		memo := strings.Repeat("X", 80)
-		feeRateSats = c.getGasCoinZEC(&tx, memo).Amount.Uint64()
-		transactionSize = 1
-	} else {
-		// skip updating network fee if there are no utxos (except coinbase) in the block
-		if totalVSize == 0 {
-			return nil
-		}
-		amt, err := btcutil.NewAmount(total - c.cfg.ChainID.DefaultCoinbase())
-		if err != nil {
-			return fmt.Errorf("fail to parse total block fee amount, err: %w", err)
-		}
+	// skip updating network fee if there are no utxos (except coinbase) in the block
+	if totalVSize == 0 {
+		return nil
+	}
+	amt, err := btcutil.NewAmount(total - c.cfg.ChainID.DefaultCoinbase())
+	if err != nil {
+		return fmt.Errorf("fail to parse total block fee amount, err: %w", err)
+	}
 
-		// average fee rate in sats/vbyte or default min relay fee
-		feeRateSats = uint64(amt.ToUnit(btcutil.AmountSatoshi) / float64(totalVSize))
-		if c.cfg.UTXO.DefaultMinRelayFeeSats > feeRateSats {
-			feeRateSats = c.cfg.UTXO.DefaultMinRelayFeeSats
-		}
+	// average fee rate in sats/vbyte or default min relay fee
+	feeRateSats = uint64(amt.ToUnit(btcutil.AmountSatoshi) / float64(totalVSize))
+	if c.cfg.UTXO.DefaultMinRelayFeeSats > feeRateSats {
+		feeRateSats = c.cfg.UTXO.DefaultMinRelayFeeSats
 	}
 
 	// round to prevent fee observation noise
@@ -409,64 +370,16 @@ func (c *Client) isValidUTXO(hexPubKey string) bool {
 		return false
 	}
 
-	switch c.cfg.ChainID {
-	case common.DOGEChain:
-		scriptType, addresses, requireSigs, err := dogetxscript.ExtractPkScriptAddrs(buf, c.getChainCfgDOGE())
-		if err != nil {
-			c.log.Err(err).Msg("fail to extract pub key script")
-			return false
-		}
-		switch scriptType {
-		case dogetxscript.MultiSigTy:
-			return false
-		default:
-			return len(addresses) == 1 && requireSigs == 1
-		}
-	case common.BCHChain:
-		scriptType, addresses, requireSigs, err := bchtxscript.ExtractPkScriptAddrs(buf, c.getChainCfgBCH())
-		if err != nil {
-			c.log.Err(err).Msg("fail to extract pub key script")
-			return false
-		}
-		switch scriptType {
-		case bchtxscript.MultiSigTy:
-			return false
-
-		default:
-			return len(addresses) == 1 && requireSigs == 1
-		}
-
-	case common.LTCChain:
-		scriptType, addresses, requireSigs, err := ltctxscript.ExtractPkScriptAddrs(buf, c.getChainCfgLTC())
-		if err != nil {
-			c.log.Err(err).Msg("fail to extract pub key script")
-			return false
-		}
-		switch scriptType {
-		case ltctxscript.MultiSigTy:
-			return false
-		default:
-			return len(addresses) == 1 && requireSigs == 1
-		}
-
-	case common.BTCChain, common.ZECChain:
-		// there is no specific txscript package for zcash and vaults are
-		// using p2pkh only, which is compatible to btc
-		scriptType, addresses, requireSigs, err := btctxscript.ExtractPkScriptAddrs(buf, c.getChainCfgBTC())
-		if err != nil {
-			c.log.Err(err).Msg("fail to extract pub key script")
-			return false
-		}
-		switch scriptType {
-		case btctxscript.MultiSigTy:
-			return false
-		default:
-			return len(addresses) == 1 && requireSigs == 1
-		}
-
-	default:
-		c.log.Fatal().Msg("unsupported chain")
+	scriptType, addresses, requireSigs, err := btctxscript.ExtractPkScriptAddrs(buf, c.getChainCfgBTC())
+	if err != nil {
+		c.log.Err(err).Msg("fail to extract pub key script")
 		return false
+	}
+	switch scriptType {
+	case btctxscript.MultiSigTy:
+		return false
+	default:
+		return len(addresses) == 1 && requireSigs == 1
 	}
 }
 
@@ -515,11 +428,6 @@ func (c *Client) getTxIn(tx *btcjson.TxRawResult, height int64, isMemPool bool, 
 	addresses := c.getAddressesFromScriptPubKey(output.ScriptPubKey)
 	toAddr := addresses[0]
 
-	// strip BCH address prefixes
-	if c.cfg.ChainID.Equals(common.BCHChain) {
-		toAddr = c.stripBCHAddress(toAddr)
-	}
-
 	isInbound := c.isAsgardAddress(toAddr)
 	if isInbound {
 		// only inbound UTXO need to be validated against multi-sig
@@ -548,15 +456,6 @@ func (c *Client) getTxIn(tx *btcjson.TxRawResult, height int64, isMemPool bool, 
 		Memo: memo,
 		Gas:  gas,
 	}, nil
-}
-
-// stripBCHAddress removes prefix on bch addresses.
-func (c *Client) stripBCHAddress(addr string) string {
-	split := strings.Split(addr, ":")
-	if len(split) > 1 {
-		return split[1]
-	}
-	return split[0]
 }
 
 func (c *Client) getVinZeroTxs(block *btcjson.GetBlockVerboseTxResult) (map[string]*btcjson.TxRawResult, error) {
@@ -759,9 +658,6 @@ func (c *Client) getOutput(sender string, tx *btcjson.TxRawResult, consolidate b
 			continue
 		}
 		receiver := addresses[0]
-		if c.cfg.ChainID.Equals(common.BCHChain) {
-			receiver = c.stripBCHAddress(receiver)
-		}
 		// To be observed, either the sender or receiver must be an observed THORChain vault;
 		// if the sender is a vault then assume the first Vout is the output (and a later Vout could be change).
 		// If the sender isn't a vault, then do do not for instance
@@ -846,29 +742,16 @@ func (c *Client) getSender(tx *btcjson.TxRawResult, vinZeroTxs map[string]*btcjs
 	}
 	address := addresses[0]
 
-	if c.cfg.ChainID.Equals(common.BCHChain) {
-		address = c.stripBCHAddress(address)
-	}
 	return address, nil
 }
 
 func (c *Client) getAddressesFromScriptPubKey(scriptPubKey btcjson.ScriptPubKeyResult) []string {
-	if c.cfg.ChainID.Equals(common.BTCChain) {
-		return c.getAddressesFromScriptPubKeyBTC(scriptPubKey)
-	}
-	return scriptPubKey.Addresses
+	return c.getAddressesFromScriptPubKeyBTC(scriptPubKey)
 }
 
 // getMemo returns memo for a btc tx, using vout OP_RETURN
 func (c *Client) getMemo(tx *btcjson.TxRawResult) (string, error) {
 	var memo string
-
-	if c.cfg.ChainID.Equals(common.ZECChain) {
-		if len(tx.Vin) == 0 || len(tx.Vout) == 0 {
-			c.log.Error().Str("txid", tx.Txid).Msg("shielded tx")
-			return "", nil
-		}
-	}
 
 	for _, vOut := range tx.Vout {
 		switch strings.ToLower(vOut.ScriptPubKey.Type) {
@@ -884,22 +767,7 @@ func (c *Client) getMemo(tx *btcjson.TxRawResult) (string, error) {
 			continue
 		}
 
-		var asm string
-		switch c.cfg.ChainID {
-		case common.DOGEChain:
-			asm, err = dogetxscript.DisasmString(buf)
-		case common.BCHChain:
-			asm, err = bchtxscript.DisasmString(buf)
-		case common.LTCChain:
-			asm, err = ltctxscript.DisasmString(buf)
-		case common.BTCChain:
-			asm, err = btctxscript.DisasmString(buf)
-		case common.ZECChain:
-			asm, err = btctxscript.DisasmString(buf)
-
-		default:
-			c.log.Fatal().Msg("unsupported chain")
-		}
+		asm, err := btctxscript.DisasmString(buf)
 
 		if err != nil {
 			c.log.Err(err).Msg("fail to disasm script pubkey")
@@ -1071,7 +939,7 @@ func (c *Client) getGas(tx *btcjson.TxRawResult, isInbound bool) (common.Gas, er
 }
 
 func (c *Client) getCoinbaseValue(blockHeight int64) (int64, error) {
-	// TODO: this is inefficient, in particular for dogecoin, investigate coinbase cache
+	// TODO: this is inefficient; investigate coinbase cache
 	result, err := c.getBlock(blockHeight)
 	if err != nil {
 		return 0, fmt.Errorf("fail to get block verbose tx: %w", err)

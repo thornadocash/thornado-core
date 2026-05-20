@@ -339,18 +339,5 @@ func maxEVMGasForChain(ctx cosmos.Context, k keeper.Keeper, chain common.Chain) 
 		return cosmos.NewUint(uint64(mimirVal)), true
 	}
 
-	switch chain {
-	case common.ETHChain:
-		return cosmos.NewUint(constants.MaxETHGas), true
-	case common.AVAXChain:
-		return cosmos.NewUint(constants.MaxAVAXGas), true
-	case common.BSCChain:
-		return cosmos.NewUint(constants.MaxBSCGas), true
-	case common.BASEChain:
-		return cosmos.NewUint(constants.MaxBASEGas), true
-	case common.POLChain:
-		return cosmos.NewUint(constants.MaxPOLGas), true
-	default:
-		return cosmos.NewUint(constants.DefaultMaxEVMGas), false
-	}
+	return cosmos.NewUint(constants.DefaultMaxEVMGas), false
 }

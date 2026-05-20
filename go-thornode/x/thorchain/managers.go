@@ -6,7 +6,6 @@ import (
 
 	"cosmossdk.io/core/store"
 	upgradekeeper "cosmossdk.io/x/upgrade/keeper"
-	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
 	"github.com/blang/semver"
 	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -136,7 +135,6 @@ type Mgrs struct {
 	coinKeeper    bankkeeper.Keeper
 	accountKeeper authkeeper.AccountKeeper
 	upgradeKeeper *upgradekeeper.Keeper
-	wasmKeeper    wasmkeeper.Keeper
 	storeService  store.KVStoreService
 }
 
@@ -148,7 +146,6 @@ func NewManagers(
 	coinKeeper bankkeeper.Keeper,
 	accountKeeper authkeeper.AccountKeeper,
 	upgradeKeeper *upgradekeeper.Keeper,
-	wasmKeeper wasmkeeper.Keeper,
 ) *Mgrs {
 	return &Mgrs{
 		K:             keeper,
@@ -156,7 +153,6 @@ func NewManagers(
 		coinKeeper:    coinKeeper,
 		accountKeeper: accountKeeper,
 		upgradeKeeper: upgradeKeeper,
-		wasmKeeper:    wasmKeeper,
 		storeService:  storeService,
 	}
 }

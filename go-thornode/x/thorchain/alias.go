@@ -4,7 +4,6 @@ import (
 	proto "github.com/cosmos/gogoproto/proto"
 
 	"gitlab.com/thorchain/thornode/v3/common"
-	"gitlab.com/thorchain/thornode/v3/x/thorchain/aggregators"
 	mem "gitlab.com/thorchain/thornode/v3/x/thorchain/memo"
 	"gitlab.com/thorchain/thornode/v3/x/thorchain/types"
 )
@@ -215,7 +214,6 @@ var (
 	NewMsgRejectUpgrade            = types.NewMsgRejectUpgrade
 	NewMsgSetIPAddress             = types.NewMsgSetIPAddress
 	NewMsgNetworkFee               = types.NewMsgNetworkFee
-	NewMsgWasmExec                 = types.NewMsgWasmExec
 	NewNetworkFee                  = types.NewNetworkFee
 	NewTHORName                    = types.NewTHORName
 	NewReferenceMemo               = types.NewReferenceMemo
@@ -263,9 +261,6 @@ var (
 	NewRagnarokMemo        = mem.NewRagnarokMemo
 	NewMigrateMemo         = mem.NewMigrateMemo
 	NewReferenceReadMemo   = mem.NewReferenceReadMemo
-
-	FetchDexAggregator         = aggregators.FetchDexAggregator
-	FetchDexAggregatorGasLimit = aggregators.FetchDexAggregatorGasLimit
 )
 
 type (
@@ -313,7 +308,6 @@ type (
 	MsgSolvency               = types.MsgSolvency
 	MsgRunePoolDeposit        = types.MsgRunePoolDeposit
 	MsgRunePoolWithdraw       = types.MsgRunePoolWithdraw
-	MsgWasmExec               = types.MsgWasmExec
 	MsgSwitch                 = types.MsgSwitch
 	MsgTCYClaim               = types.MsgTCYClaim
 	MsgTCYStake               = types.MsgTCYStake
@@ -399,20 +393,20 @@ type (
 	ContractInfo             = types.ContractInfo
 
 	// Memo
-		RefundMemo                 = mem.RefundMemo
-		MigrateMemo                = mem.MigrateMemo
-		RagnarokMemo               = mem.RagnarokMemo
-	BondMemo                   = mem.BondMemo
-	UnbondMemo                 = mem.UnbondMemo
-	RebondMemo                 = mem.RebondMemo
-	OutboundMemo               = mem.OutboundMemo
-	LeaveMemo                  = mem.LeaveMemo
-	MaintMemo                  = mem.MaintMemo
-		NoOpMemo                   = mem.NoOpMemo
-		ConsolidateMemo            = mem.ConsolidateMemo
-		ReferenceWriteMemo         = mem.ReferenceWriteMemo
-		ReferenceReadMemo          = mem.ReferenceReadMemo
-		OperatorRotateMemo         = mem.OperatorRotateMemo
+	RefundMemo         = mem.RefundMemo
+	MigrateMemo        = mem.MigrateMemo
+	RagnarokMemo       = mem.RagnarokMemo
+	BondMemo           = mem.BondMemo
+	UnbondMemo         = mem.UnbondMemo
+	RebondMemo         = mem.RebondMemo
+	OutboundMemo       = mem.OutboundMemo
+	LeaveMemo          = mem.LeaveMemo
+	MaintMemo          = mem.MaintMemo
+	NoOpMemo           = mem.NoOpMemo
+	ConsolidateMemo    = mem.ConsolidateMemo
+	ReferenceWriteMemo = mem.ReferenceWriteMemo
+	ReferenceReadMemo  = mem.ReferenceReadMemo
+	OperatorRotateMemo = mem.OperatorRotateMemo
 
 	// Proto
 	ProtoStrings = types.ProtoStrings

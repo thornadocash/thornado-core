@@ -148,24 +148,6 @@ func (tos *TxOutStorage) TryAddTxOutItem(ctx cosmos.Context, mgr Manager, toi Tx
 		return true, nil
 	}
 
-	// EVM outbounds to the null address should be dropped and a security event emitted
-	if toi.Chain.IsEVM() && toi.ToAddress.Equals(common.EVMNullAddress) {
-		ctx.Logger().Error("evm outbound to null address", "txout", toi)
-		etx := common.Tx{
-			ID:        toi.InHash,
-			Chain:     toi.Chain,
-			ToAddress: toi.ToAddress,
-			Coins:     common.Coins{toi.Coin},
-			Gas:       toi.MaxGas,
-			Memo:      toi.Memo,
-		}
-		event := NewEventSecurity(etx, "evm outbound to null address")
-		if err := tos.eventMgr.EmitEvent(ctx, event); err != nil {
-			ctx.Logger().Error("failed to emit security event", "error", err)
-		}
-		return true, nil
-	}
-
 	cacheCtx, commit := ctx.CacheContext()
 
 	// Deduct affiliate fee from outbound amount
@@ -341,36 +323,6 @@ func (tos *TxOutStorage) UnSafeAddTxOutItem(ctx cosmos.Context, mgr Manager, toi
 		return nil
 	}
 
-	// EVM outbounds to the null address should be dropped and a security event emitted
-	if toi.Chain.IsEVM() && toi.ToAddress.Equals(common.EVMNullAddress) {
-		ctx.Logger().Error("evm outbound to null address in UnSafeAddTxOutItem", "txout", toi)
-		etx := common.Tx{
-			ID:        toi.InHash,
-			Chain:     toi.Chain,
-			ToAddress: toi.ToAddress,
-			Coins:     common.Coins{toi.Coin},
-			Gas:       toi.MaxGas,
-			Memo:      toi.Memo,
-		}
-		event := NewEventSecurity(etx, "evm outbound to null address in UnSafeAddTxOutItem")
-		if err := tos.eventMgr.EmitEvent(ctx, event); err != nil {
-			ctx.Logger().Error("failed to emit security event", "error", err)
-		}
-		return nil
-	}
-
-	// BCH chain will convert legacy address to new format automatically , thus when observe it back can't be associated with the original inbound
-	// so here convert the legacy address to new format
-	if toi.Chain.Equals(common.BCHChain) {
-		newBCHAddress, err := common.ConvertToNewBCHAddressFormat(toi.ToAddress)
-		if err != nil {
-			return fmt.Errorf("fail to convert BCH address to new format: %w", err)
-		}
-		if newBCHAddress.IsEmpty() {
-			return fmt.Errorf("empty to address , can't send out")
-		}
-		toi.ToAddress = newBCHAddress
-	}
 	return tos.addToBlockOut(ctx, mgr, toi, height)
 }
 
@@ -530,14 +482,6 @@ func (tos *TxOutStorage) DiscoverOutbounds(ctx cosmos.Context, transactionFeeAmo
 			}
 		}
 
-		// XRP wallets must keep 1 XRP (the dust threshold) in the wallet
-		if toi.Coin.Asset.Equals(common.XRPAsset) {
-			vaultCoinAmount = common.SafeSub(vaultCoinAmount, common.XRPChain.DustThreshold())
-			if vaultCoinAmount.IsZero() {
-				continue
-			}
-		}
-
 		toi.VaultPubKey = vault.PubKey
 		toi.VaultPubKeyEddsa = vault.PubKeyEddsa
 
@@ -638,21 +582,6 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 	}
 	if !toi.ToAddress.IsChain(toi.Chain) {
 		return outputs, cosmos.ZeroUint(), fmt.Errorf("to address(%s), is not of chain(%s)", toi.ToAddress, toi.Chain)
-	}
-
-	// BCH chain will convert legacy address to new format automatically , thus when observe it back can't be associated with the original inbound
-	// so here convert the legacy address to new format
-	var newBCHAddress common.Address
-	var err error
-	if toi.Chain.Equals(common.BCHChain) {
-		newBCHAddress, err = common.ConvertToNewBCHAddressFormat(toi.ToAddress)
-		if err != nil {
-			return outputs, cosmos.ZeroUint(), fmt.Errorf("fail to convert BCH address to new format: %w", err)
-		}
-		if newBCHAddress.IsEmpty() {
-			return outputs, cosmos.ZeroUint(), fmt.Errorf("empty to address , can't send out")
-		}
-		toi.ToAddress = newBCHAddress
 	}
 
 	// ensure amount is rounded to appropriate decimals

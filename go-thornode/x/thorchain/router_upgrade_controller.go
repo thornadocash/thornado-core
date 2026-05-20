@@ -30,23 +30,12 @@ func NewRouterUpgradeController(mgr Manager) *RouterUpgradeController {
 
 // getChainOldAndNewRouters returns the old a new router addresses
 func (r *RouterUpgradeController) getChainOldAndNewRouters(chain common.Chain) (string, string, error) {
-	switch chain {
-	case common.ETHChain:
-		return ethOldRouter, ethNewRouter, nil
-	case common.AVAXChain:
-		return avaxOldRouter, avaxNewRouter, nil
-	case common.BSCChain:
-		return bscOldRouter, bscNewRouter, nil
-	case common.BASEChain:
-		return baseOldRouter, baseNewRouter, nil
-	default:
-		return "", "", fmt.Errorf("Failed to get old and new routers for chain %s: invalid chain", chain)
-	}
+	return "", "", fmt.Errorf("router upgrades are disabled for BTC-only Thornado: %s", chain)
 }
 
 // getRouterChains gets the chains that have routers for the current version
 func (r *RouterUpgradeController) getRouterChains(version semver.Version) ([]common.Chain, error) {
-	return []common.Chain{common.ETHChain, common.AVAXChain, common.BSCChain, common.BASEChain}, nil
+	return nil, nil
 }
 
 // upgradeContract updates a chain's router in the KVStore if needed

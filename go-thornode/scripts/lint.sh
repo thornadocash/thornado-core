@@ -23,13 +23,10 @@ fi
 go mod verify
 
 ./scripts/lint-handlers.bash
-./scripts/lint-tokens.bash
 
 go run tools/analyze/main.go -rand -map_iteration ./common/... ./constants/... ./x/...
 
 go run tools/analyze/main.go -float_comparison ./...
-
-go run tools/lint-whitelist-tokens/main.go
 
 # ensure upgrades in app/upgrades only match the current version
 for dir in app/upgrades/*/; do

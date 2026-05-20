@@ -17,7 +17,7 @@ var _ = Suite(&Test{})
 
 func (Test) TestAllChainsReturned(c *C) {
 	b := Bifrost{}
-	c.Assert(len(b.GetChains()), Equals, reflect.TypeOf(b.Chains).NumField())
+	c.Assert(len(b.GetChains()), Equals, 1)
 }
 
 func (Test) TestAllDefaultDefined(c *C) {

@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,14 +8,11 @@ import (
 	storetypes "cosmossdk.io/store/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/evm/crypto/ethsecp256k1"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
-
-	"cosmossdk.io/math"
 )
 
 func TestNewAnteHandlerNilAccountKeeper(t *testing.T) {
@@ -71,22 +67,6 @@ func TestMsgServiceRouterAddCustomRoute(t *testing.T) {
 	msr.AddCustomRoute("test.service.v1", handler)
 
 	require.NotNil(t, msr.customRoutes["test.service.v1"])
-}
-
-func TestNewCustomWasmModule(t *testing.T) {
-	mod := NewCustomWasmModule(nil)
-	// RegisterServices is a no-op
-	mod.RegisterServices(nil)
-}
-
-func TestNewWasmBankKeeper(t *testing.T) {
-	wbk := NewWasmBankKeeper(nil)
-	// IsSendEnabledCoins always returns nil
-	err := wbk.IsSendEnabledCoins(context.Background())
-	require.NoError(t, err)
-
-	err = wbk.IsSendEnabledCoins(context.Background(), sdk.NewCoin("rune", math.NewInt(100)))
-	require.NoError(t, err)
 }
 
 func TestRegisterSwaggerAPIDisabled(t *testing.T) {

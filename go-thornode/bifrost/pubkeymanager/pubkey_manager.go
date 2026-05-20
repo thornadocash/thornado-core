@@ -300,12 +300,12 @@ func (pkm *PubKeyManager) updatePubKeys() {
 func matchAddress(addr string, chain common.Chain, key common.PubKey) (bool, common.ChainPoolInfo) {
 	cpi, err := common.NewChainPoolInfo(chain, key)
 	if err != nil {
-		return false, common.EmptyChainPoolInfo
+		return false, common.NoChainPoolInfo
 	}
 	if strings.EqualFold(cpi.PoolAddress.String(), addr) {
 		return true, cpi
 	}
-	return false, common.EmptyChainPoolInfo
+	return false, common.NoChainPoolInfo
 }
 
 // IsValidPoolAddress check whether the given address is a pool addr
@@ -324,7 +324,7 @@ func (pkm *PubKeyManager) IsValidPoolAddress(addr string, chain common.Chain) (b
 			return ok, cpi
 		}
 	}
-	return false, common.EmptyChainPoolInfo
+	return false, common.NoChainPoolInfo
 }
 
 // getPubkeys from THORChain

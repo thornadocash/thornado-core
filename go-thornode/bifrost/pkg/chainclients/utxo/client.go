@@ -107,11 +107,7 @@ func NewClient(
 ) (*Client, error) {
 	// verify the chain is supported
 	supported := map[common.Chain]bool{
-		common.DOGEChain: true,
-		common.BCHChain:  true,
-		common.LTCChain:  true,
-		common.BTCChain:  true,
-		common.ZECChain:  true,
+		common.BTCChain: true,
 	}
 	if !supported[cfg.ChainID] {
 		return nil, fmt.Errorf("unsupported utxo chain: %s", cfg.ChainID)
@@ -134,9 +130,9 @@ func NewClient(
 	}
 
 	// node key setup
-	tssKeysign, err := tss.NewKeySign(server, bridge)
+	tssKeysign, err := newVaultSigner(server, bridge, logger)
 	if err != nil {
-		return nil, fmt.Errorf("fail to create tss signer: %w", err)
+		return nil, fmt.Errorf("fail to create vault signer: %w", err)
 	}
 	thorPrivateKey, err := thorKeys.GetPrivateKey()
 	if err != nil {
@@ -166,11 +162,9 @@ func NewClient(
 	}
 
 	// import the node local address in the daemon wallet
-	if !c.cfg.ChainID.Equals(common.ZECChain) {
-		err = c.RegisterPublicKey(c.nodePubKey)
-		if err != nil {
-			return nil, fmt.Errorf("fail to register (%s): %w", c.nodePubKey, err)
-		}
+	err = c.RegisterPublicKey(c.nodePubKey)
+	if err != nil {
+		return nil, fmt.Errorf("fail to register (%s): %w", c.nodePubKey, err)
 	}
 
 	var path string // fallback to in memory storage if unset
@@ -225,9 +219,6 @@ func (c *Client) GetHeight() (int64, error) {
 // GetNetworkFee returns current chain network fee according to Bifrost.
 func (c *Client) GetNetworkFee() (transactionSize, transactionFeeRate uint64) {
 	transactionSize = c.cfg.UTXO.EstimatedAverageTxSize
-	if c.GetChain() == common.ZECChain {
-		transactionSize = 1
-	}
 	return transactionSize, c.lastFeeRate.Load()
 }
 
@@ -301,14 +292,10 @@ func (c *Client) RegisterPublicKey(pubkey common.PubKey) error {
 		return fmt.Errorf("fail to get address from pubkey(%s): %w", pubkey, err)
 	}
 
-	// litecoin does not have a default wallet so we need to create one
-	switch c.cfg.ChainID {
-	case common.LTCChain, common.BTCChain:
-		err = c.rpc.CreateWallet("")
-		if err != nil {
-			c.log.Info().Err(err).Msg("fail to create wallet")
-			return err
-		}
+	err = c.rpc.CreateWallet("")
+	if err != nil {
+		c.log.Info().Err(err).Msg("fail to create wallet")
+		return err
 	}
 
 	err = c.rpc.ImportAddress(addr.String())
@@ -494,14 +481,7 @@ func (c *Client) FetchTxs(height, chainHeight int64) (types.TxIn, error) {
 
 	// report network fee and solvency if within flexibility blocks of tip
 	if chainHeight-height <= c.cfg.BlockScanner.ObservationFlexibilityBlocks {
-		switch c.cfg.ChainID {
-		case common.DOGEChain, common.ZECChain:
-			err = c.sendNetworkFeeFromBlock(block)
-		case common.BCHChain, common.LTCChain, common.BTCChain:
-			err = c.sendNetworkFee(height)
-		default:
-			c.log.Fatal().Msg("unsupported chain")
-		}
+		err = c.sendNetworkFee(height)
 		if err != nil {
 			c.log.Err(err).Msg("fail to send network fee")
 		}
@@ -517,15 +497,6 @@ func (c *Client) FetchTxs(height, chainHeight int64) (types.TxIn, error) {
 	if c.consolidateInProgress.CompareAndSwap(false, true) {
 		c.wg.Add(1)
 		go c.consolidateUTXOs()
-	}
-
-	if c.cfg.ChainID == common.ZECChain {
-		// expire old utxos from cache
-		expireHeight := height - int64(ZecTxExpiry)
-		err = c.temporalStorage.PruneSpentUtxos(expireHeight)
-		if err != nil {
-			c.log.Err(err).Msg("fail to prune spent utxos")
-		}
 	}
 
 	return txIn, nil
@@ -731,17 +702,7 @@ func (c *Client) shouldReportSolvency(height int64) bool {
 		return false
 	}
 
-	switch c.cfg.ChainID {
-	case common.DOGEChain, common.ZECChain:
-		return height%10 == 0
-	case common.BCHChain, common.BTCChain:
-		return true
-	case common.LTCChain:
-		return height-lastHeight > 5 && height%5 == 0
-	default:
-		c.log.Fatal().Msg("unsupported chain")
-		return false
-	}
+	return true
 }
 
 // ReportSolvency reports solvency for all asgard vaults.
@@ -759,11 +720,7 @@ func (c *Client) ReportSolvency(height int64) error {
 		return fmt.Errorf("fail to get asgards: %w", err)
 	}
 
-	txSize := c.cfg.UTXO.EstimatedAverageTxSize
-	if c.GetChain() == common.ZECChain {
-		txSize = 1 // ZEC lastFeeRate is already the full ZIP-317 fee, not a per-byte rate
-	}
-	currentGasFee := cosmos.NewUint(3 * txSize * c.lastFeeRate.Load())
+	currentGasFee := cosmos.NewUint(3 * c.cfg.UTXO.EstimatedAverageTxSize * c.lastFeeRate.Load())
 
 	// report insolvent asgard vaults,
 	// or else all if the chain is halted and all are solvent

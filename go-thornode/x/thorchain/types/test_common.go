@@ -76,12 +76,12 @@ func GetRandomObservedTx() common.ObservedTx {
 
 func GetRandomTxOutItem() TxOutItem {
 	return TxOutItem{
-		Chain:       common.ETHChain,
-		ToAddress:   GetRandomETHAddress(),
+		Chain:       common.BTCChain,
+		ToAddress:   GetRandomBTCAddress(),
 		VaultPubKey: GetRandomPubKey(),
-		Coin:        common.NewCoin(common.ETHAsset, cosmos.NewUint(100000)),
+		Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(100000)),
 		Memo:        "OUT:xyz",
-		MaxGas:      common.Gas{common.NewCoin(common.ETHAsset, cosmos.NewUint(100))},
+		MaxGas:      common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(100))},
 		InHash:      GetRandomTxHash(),
 	}
 }
@@ -101,11 +101,11 @@ func GetRandomObservedTxVoter() ObservedTxVoter {
 func GetRandomTx() common.Tx {
 	return common.NewTx(
 		GetRandomTxHash(),
-		GetRandomETHAddress(),
-		GetRandomETHAddress(),
-		common.Coins{common.NewCoin(common.ETHAsset, cosmos.OneUint())},
+		GetRandomBTCAddress(),
+		GetRandomBTCAddress(),
+		common.Coins{common.NewCoin(common.BTCAsset, cosmos.OneUint())},
 		common.Gas{
-			{Asset: common.ETHAsset, Amount: cosmos.NewUint(37500)},
+			{Asset: common.BTCAsset, Amount: cosmos.NewUint(37500)},
 		},
 		"",
 	)
@@ -138,18 +138,12 @@ func GetRandomTHORAddress() common.Address {
 	return thor
 }
 
-// GetRandomETHAddress get a random ETH address for test purpose
 func GetRandomETHAddress() common.Address {
-	pKey := GetRandomPubKey()
-	addr, _ := pKey.GetAddress(common.ETHChain)
-	return addr
+	return GetRandomBTCAddress()
 }
 
 func GetRandomGAIAAddress() common.Address {
-	name := common.RandHexString(10)
-	str, _ := common.ConvertAndEncode("cosmos", crypto.AddressHash([]byte(name)))
-	gaia, _ := common.NewAddress(str)
-	return gaia
+	return GetRandomTHORAddress()
 }
 
 func GetRandomBTCAddress() common.Address {
@@ -159,21 +153,15 @@ func GetRandomBTCAddress() common.Address {
 }
 
 func GetRandomLTCAddress() common.Address {
-	pubKey := GetRandomPubKey()
-	addr, _ := pubKey.GetAddress(common.LTCChain)
-	return addr
+	return GetRandomBTCAddress()
 }
 
 func GetRandomDOGEAddress() common.Address {
-	pubKey := GetRandomPubKey()
-	addr, _ := pubKey.GetAddress(common.DOGEChain)
-	return addr
+	return GetRandomBTCAddress()
 }
 
 func GetRandomBCHAddress() common.Address {
-	pubKey := GetRandomPubKey()
-	addr, _ := pubKey.GetAddress(common.BCHChain)
-	return addr
+	return GetRandomBTCAddress()
 }
 
 // GetRandomTxHash create a random txHash used for test purpose
@@ -188,7 +176,7 @@ func GetRandomPubKeySet() common.PubKeySet {
 }
 
 func GetRandomVault() Vault {
-	return NewVaultV2(32, VaultStatus_ActiveVault, VaultType_AsgardVault, GetRandomPubKey(), common.Chains{common.ETHChain, common.DOGEChain, common.BTCChain}.Strings(), []ChainContract{}, GetRandomEd25519PubKey())
+	return NewVaultV2(32, VaultStatus_ActiveVault, VaultType_AsgardVault, GetRandomPubKey(), common.Chains{common.BTCChain}.Strings(), []ChainContract{}, GetRandomEd25519PubKey())
 }
 
 func GetRandomPubKey() common.PubKey {

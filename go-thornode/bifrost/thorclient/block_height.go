@@ -38,7 +38,8 @@ func (b *thorchainBridge) GetLastSignedOutHeight(chain common.Chain) (int64, err
 
 // GetBlockHeight returns the current height for thorchain blocks
 func (b *thorchainBridge) GetBlockHeight() (int64, error) {
-	latestBlocks, err := b.getLastBlock(common.EmptyChain)
+	var chain common.Chain
+	latestBlocks, err := b.getLastBlock(chain)
 	if err != nil {
 		return 0, fmt.Errorf("failed to GetThorchainHeight: %w", err)
 	}

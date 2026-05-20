@@ -3,7 +3,6 @@ package thorchain
 import (
 	math "math"
 
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/blang/semver"
 
 	storetypes "cosmossdk.io/store/types"
@@ -189,15 +188,7 @@ func (ad AnteDecorator) anteHandleMessage(ctx sdk.Context, version semver.Versio
 			}
 		}
 		return SendAnteHandler(ctx, version, ad.keeper, m)
-	case *wasmtypes.MsgStoreCode,
-		*wasmtypes.MsgInstantiateContract,
-		*wasmtypes.MsgInstantiateContract2,
-		*wasmtypes.MsgExecuteContract,
-		*wasmtypes.MsgMigrateContract,
-		*wasmtypes.MsgSudoContract,
-		*wasmtypes.MsgUpdateAdmin,
-		*wasmtypes.MsgClearAdmin,
-		*authz.MsgGrant,
+	case *authz.MsgGrant,
 		*authz.MsgRevoke,
 		*authz.MsgExec:
 		return ctx, nil

@@ -31,9 +31,6 @@ import (
 
 	"gitlab.com/thorchain/thornode/v3/x/thorchain/client/cli"
 	"gitlab.com/thorchain/thornode/v3/x/thorchain/types"
-
-	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 )
 
 // type check to ensure the interface is properly implemented
@@ -155,7 +152,6 @@ func (am AppModule) QuerierRoute() string {
 func (am AppModule) RegisterServices(cfg module.Configurator) {
 	types.RegisterMsgServer(cfg.MsgServer(), am.msgServer)
 	types.RegisterQueryServer(cfg.QueryServer(), am.queryServer)
-	wasmtypes.RegisterQueryServer(cfg.QueryServer(), wasmkeeper.Querier(&am.mgr.wasmKeeper))
 
 	m := NewMigrator(am.mgr)
 	if err := cfg.RegisterMigration(types.ModuleName, 13, m.Migrate13to14); err != nil {

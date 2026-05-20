@@ -15,7 +15,6 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
-	wasm "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/blang/semver"
 	tmhttp "github.com/cometbft/cometbft/rpc/client/http"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -187,15 +186,6 @@ func getVaultChainAddresses(ctx cosmos.Context, vault Vault) []*types.VaultAddre
 		if err != nil {
 			ctx.Logger().Error("fail to get address", "chain", c.String(), "error", err)
 			continue
-		}
-
-		// use tex address for deposits
-		if c == common.ZECChain {
-			addr, err = addr.ToTexAddress()
-			if err != nil {
-				ctx.Logger().Error("fail convert address", "chain", c.String(), "error", err)
-				continue
-			}
 		}
 
 		result = append(result,
@@ -565,18 +555,10 @@ func (qs queryServer) queryInboundAddresses(ctx cosmos.Context, _ *types.QueryIn
 			return nil, fmt.Errorf("fail to get pubkey for chain: %w", err)
 		}
 
-		address := vaultAddress
-		if chain == common.ZECChain {
-			address, err = address.ToTexAddress()
-			if err != nil {
-				ctx.Logger().Error("fail convert address", "chain", chain.String(), "error", err)
-			}
-		}
-
 		addr := types.QueryInboundAddressResponse{
 			Chain:                chain.String(),
 			PubKey:               pubKey.String(),
-			Address:              address.String(),
+			Address:              vaultAddress.String(),
 			Router:               cc.Router.String(),
 			Halted:               isGlobalTradingPaused || isChainTradingPaused,
 			GlobalTradingPaused:  isGlobalTradingPaused,
@@ -3534,63 +3516,9 @@ func (qs queryServer) querySupply(ctx cosmos.Context, req *types.QuerySupplyRequ
 }
 
 func (qs queryServer) queryContractInfo(ctx cosmos.Context, req *types.QueryContractInfoRequest) (*types.QueryContractInfoResponse, error) {
-	address, err := cosmos.AccAddressFromBech32(req.Address)
-	if err != nil {
-		return nil, fmt.Errorf("invalid address: %w", err)
-	}
-
-	if qs.mgr.wasmKeeper.GetContractInfo(ctx, address) == nil {
-		return nil, fmt.Errorf("no wasm contract at address %s", req.Address)
-	}
-
-	data := qs.mgr.wasmKeeper.QueryRaw(ctx, address, []byte("contract_info"))
-	if len(data) == 0 {
-		return nil, fmt.Errorf("contract does not expose contract_info")
-	}
-
-	var info ContractInfo
-
-	err = json.Unmarshal(data, &info)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal contract info: %w", err)
-	}
-
-	info.Address = req.Address
-
-	return &types.QueryContractInfoResponse{Info: &info}, nil
+	return nil, errors.New("wasm contract queries are not part of the Thornado custody fork")
 }
 
 func (qs queryServer) queryContractInfos(ctx cosmos.Context, req *types.QueryContractInfosRequest) (*types.QueryContractInfosResponse, error) {
-	var infos []*ContractInfo
-
-	qs.mgr.wasmKeeper.IterateContractInfo(ctx, func(address sdk.AccAddress, _ wasm.ContractInfo) bool {
-		data := qs.mgr.wasmKeeper.QueryRaw(ctx, address, []byte("contract_info"))
-		if len(data) == 0 {
-			return false
-		}
-
-		var info ContractInfo
-
-		err := json.Unmarshal(data, &info)
-		if err != nil {
-			log.Debug().Err(err).Msg("failed to unmarshal contract info")
-			return false
-		}
-
-		if !strings.HasPrefix(info.Contract, req.Contract) {
-			return false
-		}
-
-		if !strings.HasPrefix(info.Version, req.Version) {
-			return false
-		}
-
-		info.Address = address.String()
-
-		infos = append(infos, &info)
-
-		return false
-	})
-
-	return &types.QueryContractInfosResponse{Infos: infos}, nil
+	return nil, errors.New("wasm contract queries are not part of the Thornado custody fork")
 }

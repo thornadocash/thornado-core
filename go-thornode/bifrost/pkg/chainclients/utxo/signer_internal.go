@@ -9,17 +9,7 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
-	"gitlab.com/thorchain/thornode/v3/bifrost/pkg/chainclients/utxo/zecutil"
-
-	"github.com/eager7/dogutil"
-	dogetxscript "gitlab.com/thorchain/thornode/v3/bifrost/txscript/dogd-txscript"
 	"gitlab.com/thorchain/thornode/v3/constants"
-
-	"github.com/gcash/bchutil"
-	bchtxscript "gitlab.com/thorchain/thornode/v3/bifrost/txscript/bchd-txscript"
-
-	"github.com/ltcsuite/ltcutil"
-	ltctxscript "gitlab.com/thorchain/thornode/v3/bifrost/txscript/ltcd-txscript"
 
 	"github.com/btcsuite/btcutil"
 	btctxscript "gitlab.com/thorchain/thornode/v3/bifrost/txscript/txscript"
@@ -126,21 +116,6 @@ func (c *Client) getUtxoToSpend(pubkey common.PubKey, total btcutil.Amount, swee
 			}
 		}
 
-		if c.cfg.ChainID == common.ZECChain {
-			id := formatUtxoKey(item.TxID, item.Vout)
-
-			var found bool
-			found, err = c.temporalStorage.HasSpentUtxo(id)
-			if err != nil {
-				c.log.Err(err).Msg("failed to check spent utxo")
-				continue
-			}
-
-			if found {
-				continue
-			}
-		}
-
 		result = append(result, item)
 		amt, err := btcutil.NewAmount(item.Amount)
 		if err != nil {
@@ -190,24 +165,6 @@ func (c *Client) vinsUnspent(tx stypes.TxOutItem, vins []*wire.TxIn) (bool, erro
 	allUnspent := true
 	for _, vin := range vins {
 		key := formatUtxoKey(vin.PreviousOutPoint.Hash.String(), vin.PreviousOutPoint.Index)
-		if c.cfg.ChainID == common.ZECChain {
-			var found bool
-			found, err = c.temporalStorage.HasSpentUtxo(key)
-			if err != nil {
-				return false, fmt.Errorf("fail to check spent utxo(%s): %w", key, err)
-			}
-
-			if found {
-				c.log.Warn().
-					Stringer("in_hash", tx.InHash).
-					Str("txid", vin.PreviousOutPoint.Hash.String()).
-					Uint32("vout", vin.PreviousOutPoint.Index).
-					Msg("vin is marked spent in local cache")
-				allUnspent = false
-				continue
-			}
-		}
-
 		if !unspent[key] {
 			c.log.Warn().
 				Stringer("in_hash", tx.InHash).
@@ -244,8 +201,7 @@ func (c *Client) isSelfTransaction(txID string) bool {
 
 func (c *Client) getPaymentAmount(tx stypes.TxOutItem) btcutil.Amount {
 	amtToPay := tx.Coins.GetCoin(c.cfg.ChainID.GetGasAsset()).Amount.Uint64()
-	// ZEC gas is calculated differently, see getUtxoToSpend()
-	if !tx.MaxGas.IsEmpty() && c.cfg.ChainID != common.ZECChain {
+	if !tx.MaxGas.IsEmpty() {
 		gasAmt := tx.MaxGas.ToCoins().GetCoin(c.cfg.ChainID.GetGasAsset()).Amount
 		amtToPay += gasAmt.Uint64()
 	}
@@ -259,47 +215,12 @@ func (c *Client) getSourceScript(tx stypes.TxOutItem) ([]byte, error) {
 		return nil, fmt.Errorf("fail to get source address: %w", err)
 	}
 
-	switch c.cfg.ChainID {
-	case common.DOGEChain:
-		var addr dogutil.Address
-		addr, err = dogutil.DecodeAddress(sourceAddr.String(), c.getChainCfgDOGE())
-		if err != nil {
-			return nil, fmt.Errorf("fail to decode source address(%s): %w", sourceAddr.String(), err)
-		}
-		return dogetxscript.PayToAddrScript(addr)
-	case common.BCHChain:
-		var addr bchutil.Address
-		addr, err = bchutil.DecodeAddress(sourceAddr.String(), c.getChainCfgBCH())
-		if err != nil {
-			return nil, fmt.Errorf("fail to decode source address(%s): %w", sourceAddr.String(), err)
-		}
-		return bchtxscript.PayToAddrScript(addr)
-	case common.LTCChain:
-		var addr ltcutil.Address
-		addr, err = ltctxscript.DecodeAddress(sourceAddr.String(), c.getChainCfgLTC())
-		if err != nil {
-			return nil, fmt.Errorf("fail to decode source address(%s): %w", sourceAddr.String(), err)
-		}
-		return ltctxscript.PayToAddrScript(addr)
-	case common.BTCChain:
-		var addr btcutil.Address
-		addr, err = btcutil.DecodeAddress(sourceAddr.String(), c.getChainCfgBTC())
-		if err != nil {
-			return nil, fmt.Errorf("fail to decode source address(%s): %w", sourceAddr.String(), err)
-		}
-		return btctxscript.PayToAddrScript(addr)
-	case common.ZECChain:
-		params := c.getChainCfgZEC()
-		var addr btcutil.Address
-		addr, err := zecutil.DecodeAddress(sourceAddr.String(), params.Name)
-		if err != nil {
-			return nil, fmt.Errorf("fail to decode source address(%s): %w", sourceAddr.String(), err)
-		}
-		return zecutil.PayToAddrScript(addr)
-	default:
-		c.log.Fatal().Msg("unsupported chain")
-		return nil, nil
+	var addr btcutil.Address
+	addr, err = btcutil.DecodeAddress(sourceAddr.String(), c.getChainCfgBTC())
+	if err != nil {
+		return nil, fmt.Errorf("fail to decode source address(%s): %w", sourceAddr.String(), err)
 	}
+	return btctxscript.PayToAddrScript(addr)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -322,19 +243,9 @@ func (c *Client) estimateTxSize(txes []btcjson.ListUnspentResult, memoScripts []
 		outpoint := wire.NewOutPoint(hash, utxo.Vout)
 		txIn := wire.NewTxIn(outpoint, nil, nil)
 
-		// Add realistic scriptSig/witness data for accurate size estimation
-		if c.isSegwitChain() {
-			// For segwit chains (BTC, LTC), inputs have empty scriptSig but witness data
-			// Typical P2WPKH witness: [signature (71-73 bytes), pubkey (33 bytes)]
-			txIn.Witness = make([][]byte, 2)
-			txIn.Witness[0] = make([]byte, 72) // signature
-			txIn.Witness[1] = make([]byte, 33) // pubkey
-		} else {
-			// For non-segwit chains (DOGE, BCH), inputs have scriptSig
-			// Typical P2PKH scriptSig: [signature (71-73 bytes), pubkey (33 bytes)]
-			// Script format: <sig> <pubkey>
-			txIn.SignatureScript = make([]byte, 107) // ~72 + 33 + 2 bytes overhead
-		}
+		txIn.Witness = make([][]byte, 2)
+		txIn.Witness[0] = make([]byte, 72)
+		txIn.Witness[1] = make([]byte, 33)
 
 		tx.AddTxIn(txIn)
 	}
@@ -356,30 +267,14 @@ func (c *Client) estimateTxSize(txes []btcjson.ListUnspentResult, memoScripts []
 		}
 	}
 
-	// Calculate size based on chain type
-	if c.isSegwitChain() {
-		// For segwit chains, calculate virtual size (weight/4)
-		strippedSize := tx.SerializeSizeStripped()
-		totalSize := tx.SerializeSize()
-		// Virtual size = (base_size * 3 + total_size) / 4
-		return int64((strippedSize*3 + totalSize + 3) / 4) // +3 for proper rounding
-	}
-
-	// For non-segwit chains, return actual serialized size
-	return int64(tx.SerializeSize())
+	strippedSize := tx.SerializeSizeStripped()
+	totalSize := tx.SerializeSize()
+	return int64((strippedSize*3 + totalSize + 3) / 4)
 }
 
 // isSegwitChain returns true if the chain supports segwit transactions
 func (c *Client) isSegwitChain() bool {
-	switch c.cfg.ChainID {
-	case common.BTCChain, common.LTCChain:
-		return true
-	case common.DOGEChain, common.BCHChain, common.ZECChain:
-		return false
-	default:
-		c.log.Fatal().Msgf("unsupported chain: %s", c.cfg.ChainID)
-		return false
-	}
+	return true
 }
 
 func (c *Client) getGasCoin(tx stypes.TxOutItem, vSize int64) common.Coin {
@@ -410,22 +305,6 @@ func (c *Client) getGasCoin(tx stypes.TxOutItem, vSize int64) common.Coin {
 	}
 
 	return common.NewCoin(c.cfg.ChainID.GetGasAsset(), cosmos.NewUint(uint64(gasRate*vSize)))
-}
-
-func (c *Client) getGasCoinZEC(tx *wire.MsgTx, memo string) common.Coin {
-	// https://zips.z.cash/zip-0317
-	// 8 bytes value + 1 byte length + OP_RETURN + OP_PUSHBYTES/DATA
-	// -> 8 + 1 + 1 + 2 (using two bytes for OP_PUSHDATA2 for simplicity)
-	var actionsMemo int
-	if len(memo) > 0 {
-		bytesOpReturn := 12 + len(memo)
-		actionsMemo = (bytesOpReturn + 34 - 1) / 34
-	}
-
-	// assume 2 tx out: one to customer + one back to self
-	amount := 5000*max(len(tx.TxIn), 2+actionsMemo) + ZecExtraFee
-
-	return common.NewCoin(common.ZECAsset, cosmos.NewUint(uint64(amount)))
 }
 
 func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx, map[string]int64, error) {
@@ -463,81 +342,17 @@ func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx,
 		totalAmt += int64(amt)
 	}
 
-	var buf []byte
-	var nullDataScripts [][]byte
-	switch c.cfg.ChainID {
-	case common.DOGEChain:
-		var outputAddr dogutil.Address
-		outputAddr, err = dogutil.DecodeAddress(tx.ToAddress.String(), c.getChainCfgDOGE())
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to decode next address: %w", err)
-		}
-		buf, err = dogetxscript.PayToAddrScript(outputAddr)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to get pay to address script: %w", err)
-		}
-		nullDataScripts, err = MemoToScripts(tx.Memo, dogetxscript.MaxDataCarrierSize, dogetxscript.NullDataScript, dogetxscript.PayToWitnessScript)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to generate null data script: %w", err)
-		}
-	case common.BCHChain:
-		var outputAddr bchutil.Address
-		outputAddr, err = bchutil.DecodeAddress(tx.ToAddress.String(), c.getChainCfgBCH())
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to decode next address: %w", err)
-		}
-		buf, err = bchtxscript.PayToAddrScript(outputAddr)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to get pay to address script: %w", err)
-		}
-		nullDataScripts, err = MemoToScripts(tx.Memo, bchtxscript.MaxDataCarrierSize, bchtxscript.NullDataScript, bchtxscript.PayToWitnessScript)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to generate null data script: %w", err)
-		}
-	case common.LTCChain:
-		var outputAddr ltcutil.Address
-		outputAddr, err = ltctxscript.DecodeAddress(tx.ToAddress.String(), c.getChainCfgLTC())
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to decode next address: %w", err)
-		}
-		buf, err = ltctxscript.PayToAddrScript(outputAddr)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to get pay to address script: %w", err)
-		}
-		nullDataScripts, err = MemoToScripts(tx.Memo, ltctxscript.MaxDataCarrierSize, ltctxscript.NullDataScript, ltctxscript.PayToWitnessScript)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to generate null data script: %w", err)
-		}
-	case common.BTCChain:
-		var outputAddr btcutil.Address
-		outputAddr, err = btcutil.DecodeAddress(tx.ToAddress.String(), c.getChainCfgBTC())
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to decode next address: %w", err)
-		}
-		buf, err = btctxscript.PayToAddrScript(outputAddr)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to get pay to address script: %w", err)
-		}
-		nullDataScripts, err = MemoToScripts(tx.Memo, btctxscript.MaxDataCarrierSize, btctxscript.NullDataScript, btctxscript.PayToWitnessScript)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to generate null data script: %w", err)
-		}
-	case common.ZECChain:
-		var outputAddr btcutil.Address
-		outputAddr, err = zecutil.DecodeAddress(tx.ToAddress.String(), c.getChainCfgZEC().Name)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to decode next address: %w", err)
-		}
-		buf, err = zecutil.PayToAddrScript(outputAddr)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to get pay to address script: %w", err)
-		}
-		nullDataScripts, err = MemoToScripts(tx.Memo, btctxscript.MaxDataCarrierSize, btctxscript.NullDataScript, btctxscript.PayToWitnessScript)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to generate null data script: %w", err)
-		}
-	default:
-		c.log.Fatal().Msg("unsupported chain")
+	outputAddr, err := btcutil.DecodeAddress(tx.ToAddress.String(), c.getChainCfgBTC())
+	if err != nil {
+		return nil, nil, fmt.Errorf("fail to decode next address: %w", err)
+	}
+	buf, err := btctxscript.PayToAddrScript(outputAddr)
+	if err != nil {
+		return nil, nil, fmt.Errorf("fail to get pay to address script: %w", err)
+	}
+	nullDataScripts, err := MemoToScripts(tx.Memo, btctxscript.MaxDataCarrierSize, btctxscript.NullDataScript, btctxscript.PayToWitnessScript)
+	if err != nil {
+		return nil, nil, fmt.Errorf("fail to generate null data script: %w", err)
 	}
 
 	// For memoless outbounds, allow empty nullDataScripts
@@ -562,13 +377,7 @@ func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx,
 
 	coinToCustomer := tx.Coins.GetCoin(c.cfg.ChainID.GetGasAsset())
 
-	var gasCoin common.Coin
-	switch c.cfg.ChainID {
-	case common.ZECChain:
-		gasCoin = c.getGasCoinZEC(redeemTx, memo.String())
-	default:
-		gasCoin = c.getGasCoin(tx, totalSize)
-	}
+	gasCoin := c.getGasCoin(tx, totalSize)
 
 	// maxFee in sats
 	maxFeeSats := totalSize * c.cfg.UTXO.MaxSatsPerVByte

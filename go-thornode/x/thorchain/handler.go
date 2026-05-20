@@ -2,13 +2,11 @@ package thorchain
 
 import (
 	"fmt"
-	"strings"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"gitlab.com/thorchain/thornode/v3/common"
 	"gitlab.com/thorchain/thornode/v3/common/cosmos"
-	"gitlab.com/thorchain/thornode/v3/common/tokenlist"
 	"gitlab.com/thorchain/thornode/v3/x/thorchain/keeper"
 	"gitlab.com/thorchain/thornode/v3/x/thorchain/types"
 )
@@ -16,11 +14,6 @@ import (
 // MsgHandler is an interface expect all handler to implement
 type MsgHandler interface {
 	Run(ctx cosmos.Context, msg cosmos.Msg) (*cosmos.Result, error)
-}
-
-// SwapHandlerWithEmit is a specialized interface for handlers that need to return emit values
-type SwapHandlerWithEmit interface {
-	RunWithEmit(ctx cosmos.Context, msg cosmos.Msg) (*cosmos.Result, cosmos.Uint, error)
 }
 
 // NewInternalHandler returns a handler for "thorchain" internal type messages.
@@ -155,91 +148,4 @@ func processOneTxIn(ctx cosmos.Context, keeper keeper.Keeper, tx ObservedTx, sig
 	}
 
 	return newMsg, newMsgV.ValidateBasic()
-}
-
-func fuzzyAssetMatch(ctx cosmos.Context, keeper keeper.Keeper, origAsset common.Asset) common.Asset {
-	asset := origAsset.GetLayer1Asset()
-	// if it's already an exact match with successfully-added liquidity, return it immediately
-	pool, err := keeper.GetPool(ctx, asset)
-	if err != nil {
-		return origAsset
-	}
-	// Only check BalanceRune after checking the error so that no panic if there were an error.
-	if !pool.BalanceRune.IsZero() {
-		return origAsset
-	}
-
-	parts := strings.Split(asset.Symbol.String(), "-")
-	hasNoSymbol := len(parts) < 2 || len(parts[1]) == 0
-	var symbol string
-	if !hasNoSymbol {
-		symbol = strings.ToLower(parts[1])
-	}
-	winner := NewPool()
-	// if no asset found, return original asset
-	winner.Asset = origAsset
-	iterator := keeper.GetPoolIterator(ctx)
-	defer iterator.Close()
-	for ; iterator.Valid(); iterator.Next() {
-		if err = keeper.Cdc().Unmarshal(iterator.Value(), &pool); err != nil {
-			ctx.Logger().Error("fail to fetch pool", "asset", asset, "err", err)
-			continue
-		}
-
-		// check chain match
-		if !asset.Chain.Equals(pool.Asset.Chain) {
-			continue
-		}
-
-		// check ticker match
-		if !asset.Ticker.Equals(pool.Asset.Ticker) {
-			continue
-		}
-
-		// check if no symbol given (ie "USDT" or "USDT-")
-		if hasNoSymbol {
-			// Use LTE rather than LT so this function can only return origAsset or a match
-			if winner.BalanceRune.LTE(pool.BalanceRune) {
-				winner = pool
-			}
-			continue
-		}
-
-		if strings.HasSuffix(strings.ToLower(pool.Asset.Symbol.String()), symbol) {
-			// Use LTE rather than LT so this function can only return origAsset or a match
-			if winner.BalanceRune.LTE(pool.BalanceRune) {
-				winner = pool
-			}
-			continue
-		}
-	}
-	// Since the Chain and Ticker must already match, replace just the Symbol with the winner's,
-	// keeping other fields like Synth and Trade the same as the original.
-	origAsset.Symbol = winner.Asset.Symbol
-	return origAsset
-}
-
-func externalAssetMatch(chain common.Chain, hint string) string {
-	if len(hint) == 0 {
-		return hint
-	}
-	if chain.IsEVM() {
-		// find all potential matches
-		firstMatch := ""
-		addrHint := strings.ToLower(hint)
-		for _, token := range tokenlist.GetEVMTokenList(chain).Tokens {
-			if strings.HasSuffix(strings.ToLower(token.Address), addrHint) {
-				// store first found address
-				if firstMatch == "" {
-					firstMatch = token.Address
-				} else {
-					return hint
-				}
-			}
-		}
-		if firstMatch != "" {
-			return firstMatch
-		}
-	}
-	return hint
 }

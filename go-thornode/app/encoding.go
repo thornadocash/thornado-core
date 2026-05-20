@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"cosmossdk.io/log"
-	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
 	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
@@ -32,7 +31,6 @@ func MakeEncodingConfig() params.EncodingConfig {
 		nil,
 		false,
 		NewTestAppOptionsWithFlagHome(dir),
-		[]wasmkeeper.Option{},
 	)
 	return makeEncodingConfig(tempApp)
 }

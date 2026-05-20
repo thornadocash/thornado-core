@@ -97,26 +97,6 @@ func Init() {
 		"BLOCK_SCANNER_BACKOFF",
 	))
 	assert(viper.BindEnv(
-		"bifrost.chains.doge.block_scanner.block_height_discover_back_off",
-		"BLOCK_SCANNER_BACKOFF",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.ltc.block_scanner.block_height_discover_back_off",
-		"BLOCK_SCANNER_BACKOFF",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.bch.block_scanner.block_height_discover_back_off",
-		"BLOCK_SCANNER_BACKOFF",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.eth.block_scanner.block_height_discover_back_off",
-		"BLOCK_SCANNER_BACKOFF",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.sol.block_scanner.block_height_discover_back_off",
-		"BLOCK_SCANNER_BACKOFF",
-	))
-	assert(viper.BindEnv(
 		"bifrost.signer.block_scanner.block_height_discover_back_off",
 		"THOR_BLOCK_TIME",
 	))
@@ -140,75 +120,6 @@ func Init() {
 		"bifrost.chains.BTC.block_scanner.start_block_height",
 		"BTC_START_BLOCK_HEIGHT",
 	))
-	assert(viper.BindEnv(
-		"bifrost.chains.ETH.rpc_host",
-		"ETH_HOST",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.ETH.block_scanner.start_block_height",
-		"ETH_START_BLOCK_HEIGHT",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.AVAX.rpc_host",
-		"AVAX_HOST",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.AVAX.block_scanner.start_block_height",
-		"AVAX_START_BLOCK_HEIGHT",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.DOGE.rpc_host",
-		"DOGE_HOST",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.DOGE.block_scanner.start_block_height",
-		"DOGE_START_BLOCK_HEIGHT",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.GAIA.rpc_host",
-		"GAIA_HOST",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.GAIA.block_scanner.start_block_height",
-		"GAIA_START_BLOCK_HEIGHT",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.LTC.rpc_host",
-		"LTC_HOST",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.LTC.block_scanner.start_block_height",
-		"LTC_START_BLOCK_HEIGHT",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.BCH.rpc_host",
-		"BCH_HOST",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.BCH.block_scanner.start_block_height",
-		"BCH_START_BLOCK_HEIGHT",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.GAIA.cosmos_grpc_host",
-		"GAIA_GRPC_HOST",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.GAIA.block_scanner.cosmos_grpc_host",
-		"GAIA_GRPC_HOST",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.GAIA.cosmos_grpc_tls",
-		"GAIA_GRPC_TLS",
-	))
-	assert(viper.BindEnv(
-		"bifrost.chains.GAIA.block_scanner.cosmos_grpc_tls",
-		"GAIA_GRPC_TLS",
-	))
-	assert(viper.BindEnv("bifrost.chains.GAIA.disabled", "GAIA_DISABLED"))
-	assert(viper.BindEnv("bifrost.chains.DOGE.disabled", "DOGE_DISABLED"))
-	assert(viper.BindEnv("bifrost.chains.LTC.disabled", "LTC_DISABLED"))
-	assert(viper.BindEnv("bifrost.chains.AVAX.disabled", "AVAX_DISABLED"))
-	assert(viper.BindEnv("bifrost.chains.AVAX.block_scanner.gas_cache_size", "AVAX_GAS_CACHE_SIZE"))
 	assert(viper.BindEnv("thor.cosmos.halt_height", "HARDFORK_BLOCK_HEIGHT"))
 
 	// always override from environment
@@ -456,11 +367,6 @@ type Thornode struct {
 			SnapshotInterval   int64 `mapstructure:"snapshot_interval"`
 			SnapshotKeepRecent int64 `mapstructure:"snapshot_keep_recent"`
 		} `mapstructure:"state_sync"`
-
-		Wasm struct {
-			QueryGasLimit   int64 `mapstructure:"query_gas_limit"`
-			MemoryCacheSize int64 `mapstructure:"memory_cache_size"`
-		} `mapstructure:"wasm"`
 	} `mapstructure:"cosmos"`
 
 	// Tendermint contains values used in templating the Tendermint config.toml.
@@ -519,94 +425,16 @@ type Bifrost struct {
 	AttestationGossip BifrostAttestationGossipConfig `mapstructure:"attestation_gossip"`
 	Metrics           BifrostMetricsConfiguration    `mapstructure:"metrics"`
 	Chains            struct {
-		AVAX  BifrostChainConfiguration `mapstructure:"avax"`
-		BCH   BifrostChainConfiguration `mapstructure:"bch"`
-		BSC   BifrostChainConfiguration `mapstructure:"bsc"`
-		BTC   BifrostChainConfiguration `mapstructure:"btc"`
-		DOGE  BifrostChainConfiguration `mapstructure:"doge"`
-		ETH   BifrostChainConfiguration `mapstructure:"eth"`
-		GAIA  BifrostChainConfiguration `mapstructure:"gaia"`
-		NOBLE BifrostChainConfiguration `mapstructure:"noble"`
-		LTC   BifrostChainConfiguration `mapstructure:"ltc"`
-		BASE  BifrostChainConfiguration `mapstructure:"base"`
-		TRON  BifrostChainConfiguration `mapstructure:"tron"`
-		XRP   BifrostChainConfiguration `mapstructure:"xrp"`
-		SOL   BifrostChainConfiguration `mapstructure:"sol"`
-		POL   BifrostChainConfiguration `mapstructure:"pol"`
-		ZEC   BifrostChainConfiguration `mapstructure:"zec"`
-		SUI   BifrostChainConfiguration `mapstructure:"sui"`
-		ADA   BifrostChainConfiguration `mapstructure:"ada"`
+		BTC BifrostChainConfiguration `mapstructure:"btc"`
 	} `mapstructure:"chains"`
-	TSS             BifrostTSSConfiguration    `mapstructure:"tss"`
-	ObserverLevelDB LevelDBOptions             `mapstructure:"observer_leveldb"`
-	ObserverWorkers int                        `mapstructure:"observer_workers"`
-	Oracle          BifrostOracleConfiguration `mapstructure:"oracle"`
-	Providers       struct {
-		Binance   BifrostOracleProviderConfiguration `mapstructure:"binance"`
-		Bitfinex  BifrostOracleProviderConfiguration `mapstructure:"bitfinex"`
-		Bitget    BifrostOracleProviderConfiguration `mapstructure:"bitget"`
-		Bitmart   BifrostOracleProviderConfiguration `mapstructure:"bitmart"`
-		Bitstamp  BifrostOracleProviderConfiguration `mapstructure:"bitstamp"`
-		Bybit     BifrostOracleProviderConfiguration `mapstructure:"bybit"`
-		Coinbase  BifrostOracleProviderConfiguration `mapstructure:"coinbase"`
-		Coinw     BifrostOracleProviderConfiguration `mapstructure:"coinw"`
-		Crypto    BifrostOracleProviderConfiguration `mapstructure:"crypto"`
-		Digifinex BifrostOracleProviderConfiguration `mapstructure:"digifinex"`
-		Gate      BifrostOracleProviderConfiguration `mapstructure:"gate"`
-		Gemini    BifrostOracleProviderConfiguration `mapstructure:"gemini"`
-		Htx       BifrostOracleProviderConfiguration `mapstructure:"htx"`
-		Kraken    BifrostOracleProviderConfiguration `mapstructure:"kraken"`
-		Kucoin    BifrostOracleProviderConfiguration `mapstructure:"kucoin"`
-		Lbank     BifrostOracleProviderConfiguration `mapstructure:"lbank"`
-		Mexc      BifrostOracleProviderConfiguration `mapstructure:"mexc"`
-		Okx       BifrostOracleProviderConfiguration `mapstructure:"okx"`
-		Thorchain BifrostOracleProviderConfiguration `mapstructure:"thorchain"`
-	} `mapstructure:"providers"`
+	TSS             BifrostTSSConfiguration `mapstructure:"tss"`
+	ObserverLevelDB LevelDBOptions          `mapstructure:"observer_leveldb"`
+	ObserverWorkers int                     `mapstructure:"observer_workers"`
 }
 
 func (b Bifrost) GetChains() map[common.Chain]BifrostChainConfiguration {
 	return map[common.Chain]BifrostChainConfiguration{
-		common.AVAXChain:  b.Chains.AVAX,
-		common.BCHChain:   b.Chains.BCH,
-		common.BSCChain:   b.Chains.BSC,
-		common.BTCChain:   b.Chains.BTC,
-		common.DOGEChain:  b.Chains.DOGE,
-		common.ETHChain:   b.Chains.ETH,
-		common.GAIAChain:  b.Chains.GAIA,
-		common.NOBLEChain: b.Chains.NOBLE,
-		common.LTCChain:   b.Chains.LTC,
-		common.BASEChain:  b.Chains.BASE,
-		common.TRONChain:  b.Chains.TRON,
-		common.XRPChain:   b.Chains.XRP,
-		common.SOLChain:   b.Chains.SOL,
-		common.POLChain:   b.Chains.POL,
-		common.ZECChain:   b.Chains.ZEC,
-		common.SUIChain:   b.Chains.SUI,
-		common.ADAChain:   b.Chains.ADA,
-	}
-}
-
-func (b Bifrost) GetProviders() map[string]BifrostOracleProviderConfiguration {
-	return map[string]BifrostOracleProviderConfiguration{
-		common.ProviderBinance:   b.Providers.Binance,
-		common.ProviderBitfinex:  b.Providers.Bitfinex,
-		common.ProviderBitget:    b.Providers.Bitget,
-		common.ProviderBitmart:   b.Providers.Bitmart,
-		common.ProviderBitstamp:  b.Providers.Bitstamp,
-		common.ProviderBybit:     b.Providers.Bybit,
-		common.ProviderCoinbase:  b.Providers.Coinbase,
-		common.ProviderCoinw:     b.Providers.Coinw,
-		common.ProviderCrypto:    b.Providers.Crypto,
-		common.ProviderDigifinex: b.Providers.Digifinex,
-		common.ProviderGate:      b.Providers.Gate,
-		common.ProviderGemini:    b.Providers.Gemini,
-		common.ProviderHtx:       b.Providers.Htx,
-		common.ProviderKraken:    b.Providers.Kraken,
-		common.ProviderKucoin:    b.Providers.Kucoin,
-		common.ProviderLbank:     b.Providers.Lbank,
-		common.ProviderMexc:      b.Providers.Mexc,
-		common.ProviderOkx:       b.Providers.Okx,
-		common.ProviderThorchain: b.Providers.Thorchain,
+		common.BTCChain: b.Chains.BTC,
 	}
 }
 
@@ -753,31 +581,6 @@ type BifrostChainConfiguration struct {
 	// will be provided to the backend in an Authorization header.
 	AuthorizationBearer string `mapstructure:"authorization_bearer"`
 
-	// EVM contains EVM chain specific configuration.
-	EVM struct {
-		// MaxGasTipPercentage is the percentage of the max fee to set for the max tip cap on
-		// dynamic fee EVM transactions.
-		MaxGasTipPercentage int `mapstructure:"max_gas_tip_percentage"`
-
-		// TokenMaxGasMultiplier is a multiplier applied to max gas for outbounds which are
-		// not the gas asset. This compensates for variance in gas units when contracts for
-		// pool assets use more than the configured MaxGasLimit gas units in transferOut.
-		TokenMaxGasMultiplier int64 `mapstructure:"token_max_gas_multiplier"`
-
-		// AggregatorMaxGasMultiplier is a multiplier applied to max gas for outbounds which
-		// swap out via an aggregator contract. This compensates for variance in gas units when
-		// aggregator swaps outs use more than the configured MaxGasLimit gas units.
-		AggregatorMaxGasMultiplier int64 `mapstructure:"aggregator_max_gas_multiplier"`
-
-		// ExtraL1GasFee is an extra 1e8 amount deducted from the scheduled max gas to
-		// account for the Ethereum gas fee on Ethereum L2s.
-		ExtraL1GasFee int64 `mapstructure:"extra_l1_gas_fee"`
-
-		// ReconstructLiabilitiesConcurrency is the number of concurrent workers to use
-		// when reconstructing liabilities for EVM chains.
-		ReconstructLiabilitiesConcurrency int `mapstructure:"reconstruct_liabilities_concurrency"`
-	} `mapstructure:"evm"`
-
 	// UTXO contains UTXO chain specific configuration.
 	UTXO struct {
 		// BlockCacheCount is the number of blocks to cache in storage.
@@ -839,34 +642,19 @@ type BifrostChainConfiguration struct {
 }
 
 func (b *BifrostChainConfiguration) Validate() {
-	switch b.ChainID {
-	case common.TRONChain:
-		if b.APIHost == "" {
-			log.Fatal().
-				Str("chain", b.ChainID.String()).
-				Msg("api host is required")
-		}
-	default:
-		if b.RPCHost == "" {
-			log.Fatal().
-				Str("chain", b.ChainID.String()).
-				Msg("rpc host is required")
-		}
+	if b.RPCHost == "" {
+		log.Fatal().
+			Str("chain", b.ChainID.String()).
+			Msg("rpc host is required")
 	}
 
-	// Validate MaxMempoolAncestors for UTXO chains
-	switch b.ChainID {
-	case common.BTCChain, common.LTCChain, common.DOGEChain:
-		// Bitcoin, Litecoin, and Dogecoin have a mempool ancestor/descendant limit of 25
-		// Config value should be <= 25 (GetMempoolEntry counts include the tx itself)
+	if b.ChainID.Equals(common.BTCChain) {
 		if b.UTXO.MaxMempoolAncestors > 25 {
 			log.Fatal().
 				Str("chain", b.ChainID.String()).
 				Int64("max_mempool_ancestors", b.UTXO.MaxMempoolAncestors).
 				Msg("max_mempool_ancestors exceeds chain limit of 25")
 		}
-	case common.BCHChain:
-		// BCH removed ancestor limits in May 2021, so any value (including 0) is valid
 	}
 }
 
@@ -954,26 +742,6 @@ type BifrostBlockScannerConfiguration struct {
 
 	// MaxReorgRescanBlocks is the maximum number of blocks to rescan during a reorg.
 	MaxReorgRescanBlocks int64 `mapstructure:"max_reorg_rescan_blocks"`
-
-	// ReferenceAddress is needed for calculating TRC20 fees on Tron blockchain
-	// The default address is pre-funded with 1 TRX & 1 USDT, see config.yaml
-	ReferenceAddress string `mapstructure:"reference_address"`
-
-	// Solana contains Solana-specific scanner configuration.
-	Solana struct {
-		// ScanInterval is the duration between each scan of the vaults.
-		ScanInterval time.Duration `mapstructure:"scan_interval"`
-
-		// ScanInactiveVaults indicates whether to scan inactive vaults. This is most likely
-		// cost-prohibitive on Solana due to the cost of provider RPC calls.
-		ScanInactiveVaults bool `mapstructure:"scan_inactive_vaults"`
-
-		// FeeUpdateInterval is the number of slots between network fee updates.
-		FeeUpdateInterval uint64 `mapstructure:"fee_update_interval"`
-
-		// FeeSampleSlots is the number of slots to sample for network fee calculation.
-		FeeSampleSlots uint64 `mapstructure:"fee_sample_slots"`
-	} `mapstructure:"solana"`
 }
 
 type BifrostClientConfiguration struct {
@@ -1002,25 +770,6 @@ type BifrostTSSConfiguration struct {
 	InfoAddress                  string   `mapstructure:"info_address"`
 	ExternalIP                   string   `mapstructure:"external_ip"`
 	MaxKeyshareRecoverScanBlocks int64    `mapstructure:"max_keyshare_recover_scan_blocks"`
-}
-
-type BifrostOracleConfiguration struct {
-	LogLevel string `mapstructure:"log_level"`
-	Enabled  bool   `mapstructure:"enabled"`
-	// DetailedMetrics enables tracking rates and 24h trading volume  of each
-	// trading pair on each provider, as well as final USD rates and internal
-	// weightings
-	DetailedMetrics bool `mapstructure:"detailed_metrics"`
-}
-
-type BifrostOracleProviderConfiguration struct {
-	Name            string        `mapstructure:"name"`
-	Disabled        bool          `mapstructure:"disabled"`
-	PollingInterval time.Duration `mapstructure:"polling_interval"`
-	ApiEndpoints    []string      `mapstructure:"api_endpoints"`
-	WsEndpoints     []string      `mapstructure:"ws_endpoints"`
-	Pairs           []string      `mapstructure:"pairs"`
-	SymbolMapping   []string      `mapstructure:"symbol_mapping"`
 }
 
 func (c BifrostTSSConfiguration) GetP2PPort() int {

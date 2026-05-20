@@ -37,7 +37,7 @@ const (
 	CodeNoLiquidityUnitLeft      uint32 = 135
 	CodeWithdrawWithin24Hours    uint32 = 136
 	CodeWithdrawFail             uint32 = 137
-	CodeEmptyChain               uint32 = 138
+	CodeInvalidChain             uint32 = 138
 	CodeWithdrawLockup           uint32 = 139
 	CodeTCYClaimFailValidation   uint32 = 140
 	CodeTCYStakeFailValidation   uint32 = 141

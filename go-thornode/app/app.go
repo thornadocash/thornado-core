@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sort"
 	"sync"
 
@@ -22,7 +21,6 @@ import (
 	"cosmossdk.io/x/upgrade"
 	upgradekeeper "cosmossdk.io/x/upgrade/keeper"
 	upgradetypes "cosmossdk.io/x/upgrade/types"
-	wasmvmtypes "github.com/CosmWasm/wasmvm/v2/types"
 	abci "github.com/cometbft/cometbft/abci/types"
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	dbm "github.com/cosmos/cosmos-db"
@@ -75,11 +73,7 @@ import (
 	"github.com/cosmos/gogoproto/proto"
 	"github.com/spf13/cast"
 
-	"github.com/CosmWasm/wasmd/x/wasm"
-	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	appparams "gitlab.com/thorchain/thornode/v3/app/params"
-	"gitlab.com/thorchain/thornode/v3/constants"
 	"gitlab.com/thorchain/thornode/v3/openapi"
 	"gitlab.com/thorchain/thornode/v3/x/thorchain"
 	"gitlab.com/thorchain/thornode/v3/x/thorchain/ebifrost"
@@ -87,14 +81,6 @@ import (
 	thorchainkeeperabci "gitlab.com/thorchain/thornode/v3/x/thorchain/keeper/abci"
 	thorchainkeeperv1 "gitlab.com/thorchain/thornode/v3/x/thorchain/keeper/v1"
 	thorchaintypes "gitlab.com/thorchain/thornode/v3/x/thorchain/types"
-
-	"gitlab.com/thorchain/thornode/v3/x/denom"
-	denomkeeper "gitlab.com/thorchain/thornode/v3/x/denom/keeper"
-	denomtypes "gitlab.com/thorchain/thornode/v3/x/denom/types"
-
-	"gitlab.com/thorchain/thornode/v3/x/scheduler"
-	schedulerkeeper "gitlab.com/thorchain/thornode/v3/x/scheduler/keeper"
-	schedulertypes "gitlab.com/thorchain/thornode/v3/x/scheduler/types"
 
 	evm "github.com/cosmos/evm/encoding/codec"
 	"github.com/cosmos/evm/ethereum/eip712"
@@ -115,24 +101,15 @@ var (
 
 // module account permissions
 var maccPerms = map[string][]string{
-	authtypes.FeeCollectorName:       nil,
-	minttypes.ModuleName:             {authtypes.Minter},
-	stakingtypes.BondedPoolName:      {authtypes.Burner, authtypes.Staking},
-	stakingtypes.NotBondedPoolName:   {authtypes.Burner, authtypes.Staking},
-	thorchain.ModuleName:             {authtypes.Minter, authtypes.Burner},
-	thorchain.AsgardName:             {},
-	thorchain.BondName:               {},
-	thorchain.ReserveName:            {},
-	thorchain.LendingName:            {},
-	thorchain.AffiliateCollectorName: {},
-	thorchain.TreasuryName:           {},
-	thorchain.RUNEPoolName:           {},
-	wasmtypes.ModuleName:             {authtypes.Burner},
-	denomtypes.ModuleName:            {authtypes.Minter, authtypes.Burner},
-	schedulertypes.ModuleName:        {},
-	thorchain.TCYClaimingName:        {},
-	thorchain.TCYStakeName:           {},
-	thorchain.POLReserveName:         {},
+	authtypes.FeeCollectorName:     nil,
+	minttypes.ModuleName:           {authtypes.Minter},
+	stakingtypes.BondedPoolName:    {authtypes.Burner, authtypes.Staking},
+	stakingtypes.NotBondedPoolName: {authtypes.Burner, authtypes.Staking},
+	thorchain.ModuleName:           {authtypes.Minter, authtypes.Burner},
+	thorchain.AsgardName:           {},
+	thorchain.BondName:             {},
+	thorchain.ReserveName:          {},
+	thorchain.TreasuryName:         {},
 }
 
 var (
@@ -166,10 +143,7 @@ type THORChainApp struct {
 	ThorchainKeeper  thorchainkeeper.Keeper
 	EnshrinedBifrost *ebifrost.EnshrinedBifrost
 
-	DenomKeeper      denomkeeper.Keeper
 	msgServiceRouter *MsgServiceRouter // router for redirecting Msg service messages
-	WasmKeeper       wasmkeeper.Keeper
-	SchedulerKeeper  schedulerkeeper.Keeper
 
 	// the module manager
 	ModuleManager      *module.Manager
@@ -190,7 +164,6 @@ func NewChainApp(
 	traceStore io.Writer,
 	loadLatest bool,
 	appOpts servertypes.AppOptions,
-	wasmOpts []wasmkeeper.Option,
 	baseAppOptions ...func(*baseapp.BaseApp),
 ) *THORChainApp {
 	ebifrostConfig, err := ebifrost.ReadEBifrostConfig(appOpts)
@@ -198,7 +171,6 @@ func NewChainApp(
 		panic(fmt.Sprintf("error while reading ebifrost config: %s", err))
 	}
 
-	wasmtypes.MaxWasmSize = WasmMaxSize
 	ec := appparams.MakeEncodingConfig()
 	interfaceRegistry := ec.InterfaceRegistry
 	// This is needed for the EIP712 txs because currently is using
@@ -258,9 +230,6 @@ func NewChainApp(
 		upgradetypes.StoreKey,
 		// non sdk store keys
 		thorchaintypes.StoreKey,
-		wasmtypes.StoreKey,
-		denomtypes.StoreKey,
-		schedulertypes.StoreKey,
 	)
 
 	tkeys := storetypes.NewTransientStoreKeys(paramstypes.TStoreKey)
@@ -374,73 +343,14 @@ func NewChainApp(
 		app.appCodec, runtime.NewKVStoreService(keys[thorchaintypes.StoreKey]), app.BankKeeper, app.AccountKeeper, app.UpgradeKeeper,
 	)
 
-	wasmDir := filepath.Join(homePath, "data") // "wasm" subdirectory created here
-	nodeConfig, err := wasm.ReadNodeConfig(appOpts)
-	if err != nil {
-		panic(fmt.Sprintf("error while reading wasm config: %s", err))
-	}
-
-	grpcQuerier := wasmkeeper.AcceptListGrpcQuerier(
-		wasmAcceptedQueries,
-		app.BaseApp.GRPCQueryRouter(),
-		app.appCodec)
-	wrappedGrpcQuerier := func(ctx sdk.Context, request *wasmvmtypes.GrpcQuery) (proto.Message, error) {
-		ctx = ctx.WithValue(constants.CtxWASMQuery, true)
-		return grpcQuerier(ctx, request)
-	}
-
-	wasmOpts = append(wasmOpts,
-		wasmkeeper.WithQueryPlugins(
-			&wasmkeeper.QueryPlugins{
-				Grpc: wrappedGrpcQuerier,
-			},
-		),
-		wasmkeeper.WithGasRegister(WasmGasRegister),
-	)
-
-	// The last arguments can contain custom message handlers, and custom query handlers,
-	// if we want to allow any custom callbacks
-	app.WasmKeeper = wasmkeeper.NewKeeper(
-		app.appCodec,
-		runtime.NewKVStoreService(keys[wasmtypes.StoreKey]),
-		app.AccountKeeper,
-		NewWasmBankKeeper(app.BankKeeper),
-		app.StakingKeeper,
-		nil, nil, nil, nil, nil, nil,
-		app.MsgServiceRouter(),
-		app.BaseApp.GRPCQueryRouter(),
-		wasmDir,
-		nodeConfig,
-		wasmtypes.VMConfig{},
-		wasmkeeper.BuiltInCapabilities(),
-		authtypes.NewModuleAddress(thorchain.ModuleName).String(),
-		wasmOpts...,
-	)
-
-	app.DenomKeeper = denomkeeper.NewKeeper(
-		app.appCodec,
-		runtime.NewKVStoreService(keys[denomtypes.StoreKey]),
-		app.AccountKeeper,
-		app.BankKeeper.WithMintCoinsRestriction(denomtypes.NewDenomMintCoinsRestriction()),
-		authtypes.NewModuleAddress(thorchain.ModuleName).String(),
-	)
-
-	app.SchedulerKeeper = schedulerkeeper.NewKeeper(
-		app.appCodec,
-		runtime.NewKVStoreService(keys[schedulertypes.StoreKey]),
-		wasmkeeper.NewDefaultPermissionKeeper(&app.WasmKeeper),
-		authtypes.NewModuleAddress(thorchain.ModuleName).String(),
-	)
-
 	// --- Module Options ---
 	telemetryEnabled := cast.ToBool(appOpts.Get("telemetry.enabled"))
 	testApp := cast.ToBool(appOpts.Get(TestApp))
 
-	mgrs := thorchain.NewManagers(app.ThorchainKeeper, app.appCodec, runtime.NewKVStoreService(keys[thorchaintypes.StoreKey]), app.BankKeeper, app.AccountKeeper, app.UpgradeKeeper, app.WasmKeeper)
+	mgrs := thorchain.NewManagers(app.ThorchainKeeper, app.appCodec, runtime.NewKVStoreService(keys[thorchaintypes.StoreKey]), app.BankKeeper, app.AccountKeeper, app.UpgradeKeeper)
 	app.msgServiceRouter.AddCustomRoute("cosmos.bank.v1beta1.Msg", thorchain.NewBankSendHandler(thorchain.NewSendHandler(mgrs)))
 
 	thorchainModule := thorchain.NewAppModule(mgrs, telemetryEnabled, testApp)
-
 	app.EnshrinedBifrost = ebifrost.NewEnshrinedBifrost(app.appCodec, logger, ebifrostConfig)
 
 	defaultProposalHandler := baseapp.NewDefaultProposalHandler(bApp.Mempool(), bApp)
@@ -465,18 +375,6 @@ func NewChainApp(
 	// trunk-ignore(golangci-lint/staticcheck): deprecated TODO: SDK 0.53 cleanup
 	paramsModule := params.NewAppModule(app.ParamsKeeper)
 	upgradeModule := upgrade.NewAppModule(app.UpgradeKeeper, app.AccountKeeper.AddressCodec())
-	wasmModule := wasm.NewAppModule(
-		app.appCodec,
-		&app.WasmKeeper,
-		app.StakingKeeper,
-		app.AccountKeeper,
-		app.BankKeeper,
-		app.MsgServiceRouter().MsgServiceRouter,
-		app.GetSubspace(wasmtypes.ModuleName),
-	)
-	customWasmModule := NewCustomWasmModule(&wasmModule)
-	denomModule := denom.NewAppModule(app.appCodec, app.DenomKeeper, app.AccountKeeper, app.BankKeeper)
-	schedulerModule := scheduler.NewAppModule(app.appCodec, app.SchedulerKeeper)
 
 	app.ModuleManager = module.NewManager(
 		genutilModule,
@@ -488,9 +386,6 @@ func NewChainApp(
 		consensusModule,
 		// non sdk modules
 		thorchainModule,
-		customWasmModule,
-		denomModule,
-		schedulerModule,
 	)
 
 	// BasicModuleManager defines the module BasicManager is in charge of setting up basic,
@@ -508,9 +403,6 @@ func NewChainApp(
 		mint.NewAppModule(app.appCodec, app.MintKeeper, app.AccountKeeper, nil, app.GetSubspace(minttypes.ModuleName)),
 		// non sdk modules
 		thorchainModule,
-		wasmModule,
-		denomModule,
-		schedulerModule,
 	)
 	app.BasicModuleManager.RegisterLegacyAminoCodec(app.legacyAmino)
 	app.BasicModuleManager.RegisterInterfaces(interfaceRegistry)
@@ -527,7 +419,6 @@ func NewChainApp(
 
 		// additional non simd modules
 		thorchaintypes.ModuleName,
-		wasmtypes.ModuleName,
 	)
 
 	app.ModuleManager.SetOrderEndBlockers(
@@ -535,19 +426,12 @@ func NewChainApp(
 		authz.ModuleName,
 
 		// additional non simd modules
-		schedulertypes.ModuleName,
 		thorchaintypes.ModuleName,
-		wasmtypes.ModuleName,
 	)
 
 	// NOTE: The genutils module must occur after staking so that pools are
 	// properly initialized with tokens from genesis accounts.
 	// NOTE: The genutils module must also occur after auth so that it can access the params from auth.
-	// NOTE: Capability module must occur first so that it can initialize any capabilities
-	// so that other modules that want to create or claim capabilities afterwards in InitChain
-	// can do so safely.
-	// NOTE: wasm module should be at the end as it can call other module functionality direct or via message dispatching during
-	// genesis phase. For example bank transfer, auth account check, staking, ...
 	genesisModuleOrder := []string{
 		// simd modules
 		authtypes.ModuleName,
@@ -558,9 +442,6 @@ func NewChainApp(
 		upgradetypes.ModuleName,
 		consensusparamtypes.ModuleName,
 		thorchaintypes.ModuleName,
-		wasmtypes.ModuleName,
-		denomtypes.ModuleName,
-		schedulertypes.ModuleName,
 	}
 	app.ModuleManager.SetOrderInitGenesis(genesisModuleOrder...)
 	app.ModuleManager.SetOrderExportGenesis(genesisModuleOrder...)
@@ -618,25 +499,13 @@ func NewChainApp(
 				SignModeHandler: txConfig.SignModeHandler(),
 				SigGasConsumer:  SigGasConsumer,
 			},
-			THORChainKeeper:       app.ThorchainKeeper,
-			NodeConfig:            &nodeConfig,
-			WasmKeeper:            &app.WasmKeeper,
-			TXCounterStoreService: runtime.NewKVStoreService(keys[wasmtypes.StoreKey]),
+			THORChainKeeper: app.ThorchainKeeper,
 		},
 	)
 	if err != nil {
 		panic(fmt.Errorf("failed to create AnteHandler: %s", err))
 	}
 	app.SetAnteHandler(anteHandler)
-
-	if manager := app.BaseApp.SnapshotManager(); manager != nil {
-		err = manager.RegisterExtensions(
-			wasmkeeper.NewWasmSnapshotter(app.BaseApp.CommitMultiStore(), &app.WasmKeeper),
-		)
-		if err != nil {
-			panic(fmt.Errorf("failed to register snapshot extension: %s", err))
-		}
-	}
 
 	// In v0.46, the SDK introduces _postHandlers_. PostHandlers are like
 	// antehandlers, but are run _after_ the `runMsgs` execution. They are also
@@ -669,14 +538,6 @@ func NewChainApp(
 	if loadLatest {
 		if err = app.LoadLatestVersion(); err != nil {
 			panic(fmt.Errorf("error loading last version: %w", err))
-		}
-
-		ctx := app.BaseApp.NewUncachedContext(true, tmproto.Header{})
-		_ = ctx
-
-		// Initialize pinned codes in wasmvm as they are not persisted there
-		if err := app.WasmKeeper.InitializePinnedCodes(ctx); err != nil {
-			panic(fmt.Sprintf("failed initialize pinned codes %s", err))
 		}
 	}
 
@@ -967,7 +828,6 @@ func initParamsKeeper(appCodec codec.BinaryCodec, legacyAmino *codec.LegacyAmino
 	paramsKeeper.Subspace(banktypes.ModuleName)
 	paramsKeeper.Subspace(stakingtypes.ModuleName)
 	paramsKeeper.Subspace(minttypes.ModuleName)
-	paramsKeeper.Subspace(wasmtypes.ModuleName)
 
 	return paramsKeeper
 }

@@ -33,7 +33,7 @@ func (k KVStore) IsTradingHalt(ctx cosmos.Context, msg cosmos.Msg) bool {
 
 	switch m := msg.(type) {
 	case *MsgSwap:
-		source := common.EmptyChain
+		var source common.Chain
 		sourceAsset := common.EmptyAsset
 		if len(m.Tx.Coins) > 0 {
 			sourceAsset = m.Tx.Coins[0].Asset

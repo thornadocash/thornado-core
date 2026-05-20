@@ -1,46 +1,9 @@
 package common
 
-import (
-	"math/big"
-	"sort"
-
-	"gitlab.com/thorchain/thornode/v3/common/cosmos"
-)
+import "sort"
 
 // Gas coins
 type Gas Coins
-
-var (
-	evmTransferFee = cosmos.NewUint(21000)
-	evmGasPerByte  = cosmos.NewUint(68)
-)
-
-func GetEVMGasFee(chain Chain, gasPrice *big.Int, msgLen uint64) Gas {
-	gasBytes := evmGasPerByte.MulUint64(msgLen)
-	return Gas{
-		{Asset: chain.GetGasAsset(), Amount: evmTransferFee.Add(gasBytes).Mul(cosmos.NewUintFromBigInt(gasPrice))},
-	}
-}
-
-func MakeEVMGas(chain Chain, gasPrice *big.Int, gas uint64, layer1Fee *big.Int) Gas {
-	unroundedGasAmt := cosmos.NewUint(gas).Mul(cosmos.NewUintFromBigInt(gasPrice))
-
-	// If there's a separate layer1Fee (for instance for BASEChain), add it before rounding.
-	if layer1Fee != nil {
-		unroundedGasAmt = unroundedGasAmt.Add(cosmos.NewUintFromBigInt(layer1Fee))
-	}
-
-	roundedGasAmt := unroundedGasAmt.QuoUint64(1e10) // EVM's 1e18 / 1e10 -> THORChain's 1e8
-	if unroundedGasAmt.GT(roundedGasAmt.MulUint64(1e10)) || roundedGasAmt.IsZero() {
-		// Round gas amount up rather than down,
-		// to increase rather than decrease solvency.
-		roundedGasAmt = roundedGasAmt.Add(cosmos.OneUint())
-	}
-
-	return Gas{
-		{Asset: chain.GetGasAsset(), Amount: roundedGasAmt},
-	}
-}
 
 // Valid return nil when it is valid, otherwise return an error
 func (g Gas) Valid() error {

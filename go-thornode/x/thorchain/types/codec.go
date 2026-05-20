@@ -18,15 +18,11 @@ func init() {
 
 // RegisterCodec register the msg types for amino
 func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
-	cdc.RegisterConcrete(&MsgSwap{}, ModuleName+"/Swap", nil)
 	cdc.RegisterConcrete(&MsgTssPool{}, ModuleName+"/TssPool", nil)
 	cdc.RegisterConcrete(&MsgTssKeysignFail{}, ModuleName+"/TssKeysignFail", nil)
-	cdc.RegisterConcrete(&MsgAddLiquidity{}, ModuleName+"/AddLiquidity", nil)
-	cdc.RegisterConcrete(&MsgWithdrawLiquidity{}, ModuleName+"/WidthdrawLiquidity", nil)
 	cdc.RegisterConcrete(&MsgObservedTxIn{}, ModuleName+"/ObservedTxIn", nil)
 	cdc.RegisterConcrete(&MsgObservedTxQuorum{}, ModuleName+"/ObservedTxQuorum", nil)
 	cdc.RegisterConcrete(&MsgObservedTxOut{}, ModuleName+"/ObservedTxOut", nil)
-	cdc.RegisterConcrete(&MsgDonate{}, ModuleName+"/MsgDonate", nil)
 	cdc.RegisterConcrete(&MsgBond{}, ModuleName+"/MsgBond", nil)
 	cdc.RegisterConcrete(&MsgUnBond{}, ModuleName+"/MsgUnBond", nil)
 	cdc.RegisterConcrete(&MsgLeave{}, ModuleName+"/MsgLeave", nil)
@@ -38,7 +34,6 @@ func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(&MsgRejectUpgrade{}, ModuleName+"/MsgRejectUpgrade", nil)
 	cdc.RegisterConcrete(&MsgSetNodeKeys{}, ModuleName+"/MsgSetNodeKeys", nil)
 	cdc.RegisterConcrete(&MsgSetIPAddress{}, ModuleName+"/MsgSetIPAddress", nil)
-	cdc.RegisterConcrete(&MsgReserveContributor{}, ModuleName+"/MsgReserveContributor", nil)
 	cdc.RegisterConcrete(&MsgErrataTx{}, ModuleName+"/MsgErrataTx", nil)
 	cdc.RegisterConcrete(&MsgErrataTxQuorum{}, ModuleName+"/MsgErrataTxQuorum", nil)
 	cdc.RegisterConcrete(&MsgBan{}, ModuleName+"/MsgBan", nil)
@@ -53,16 +48,7 @@ func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(&MsgNodePauseChain{}, ModuleName+"/MsgNodePauseChain", nil)
 	cdc.RegisterConcrete(&MsgSolvency{}, ModuleName+"/MsgSolvency", nil)
 	cdc.RegisterConcrete(&MsgSolvencyQuorum{}, ModuleName+"/MsgSolvencyQuorum", nil)
-	cdc.RegisterConcrete(&MsgManageTHORName{}, ModuleName+"/MsgManageTHORName", nil)
 	cdc.RegisterConcrete(&MsgReferenceMemo{}, "thorchain/MsgReferenceMemo", nil)
-	cdc.RegisterConcrete(&MsgTradeAccountDeposit{}, ModuleName+"/MsgTradeAccountDeposit", nil)
-	cdc.RegisterConcrete(&MsgTradeAccountWithdrawal{}, ModuleName+"/MsgTradeAccountWithdrawal", nil)
-	cdc.RegisterConcrete(&MsgModifyLimitSwap{}, ModuleName+"/MsgModifyLimitSwap", nil)
-	cdc.RegisterConcrete(&MsgSecuredAssetDeposit{}, ModuleName+"/MsgSecuredAssetDeposit", nil)
-	cdc.RegisterConcrete(&MsgSecuredAssetWithdraw{}, ModuleName+"/MsgSecuredAssetWithdraw", nil)
-	cdc.RegisterConcrete(&MsgTCYClaim{}, ModuleName+"/MsgTCYClaim", nil)
-	cdc.RegisterConcrete(&MsgTCYStake{}, ModuleName+"/MsgTCYStake", nil)
-	cdc.RegisterConcrete(&MsgTCYUnstake{}, ModuleName+"/MsgTCYUnstake", nil)
 	cdc.RegisterConcrete(&MsgPriceFeedQuorumBatch{}, ModuleName+"/MsgPriceFeedQuorumBatch", nil)
 }
 
@@ -70,15 +56,11 @@ func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 	registry.RegisterImplementations(
 		(*sdk.Msg)(nil),
-		&MsgSwap{},
 		&MsgTssPool{},
 		&MsgTssKeysignFail{},
-		&MsgAddLiquidity{},
-		&MsgWithdrawLiquidity{},
 		&MsgObservedTxIn{},
 		&MsgObservedTxOut{},
 		&MsgObservedTxQuorum{},
-		&MsgDonate{},
 		&MsgBond{},
 		&MsgUnBond{},
 		&MsgLeave{},
@@ -90,7 +72,6 @@ func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		&MsgRejectUpgrade{},
 		&MsgSetNodeKeys{},
 		&MsgSetIPAddress{},
-		&MsgReserveContributor{},
 		&MsgErrataTx{},
 		&MsgErrataTxQuorum{},
 		&MsgBan{},
@@ -103,18 +84,9 @@ func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		&MsgRefundTx{},
 		&MsgSend{},
 		&MsgNodePauseChain{},
-		&MsgManageTHORName{},
 		&MsgSolvency{},
 		&MsgReferenceMemo{},
 		&MsgSolvencyQuorum{},
-		&MsgTradeAccountDeposit{},
-		&MsgTradeAccountWithdrawal{},
-		&MsgModifyLimitSwap{},
-		&MsgSecuredAssetDeposit{},
-		&MsgSecuredAssetWithdraw{},
-		&MsgTCYClaim{},
-		&MsgTCYStake{},
-		&MsgTCYUnstake{},
 		&MsgPriceFeedQuorumBatch{},
 	)
 
@@ -127,7 +99,6 @@ func DefineCustomGetSigners(signingOptions *signing.Options) {
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgErrataTx"), MsgErrataCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgErrataTxQuorum"), MsgErrataTxQuorumCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgMimir"), MsgMimirCustomGetSigners)
-	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgModifyLimitSwap"), MsgModifyLimitSwapCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNetworkFee"), MsgNetworkFeeCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNetworkFeeQuorum"), MsgNetworkFeeQuorumCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNodePauseChain"), MsgNodePauseChainCustomGetSigners)
