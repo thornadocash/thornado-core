@@ -21,7 +21,9 @@ const (
 	// MinKeysharesBackupEntropy was selected based on a few spot checks of the entropy in
 	// encrypted keyshares for mocknet, which were always greater than 7, this is just a
 	// sanity check and is safe to set lower.
-	MinKeysharesBackupEntropy float64 = 7
+	MinKeysharesBackupEntropy   float64 = 7
+	MinKeysharesBackupSize      int     = 1024
+	MinFrostKeysharesBackupSize int     = 256
 )
 
 // MatchMnemonic will match substrings that look like a 12+ word mnemonic.
@@ -171,7 +173,7 @@ func (m *MsgTssPool) ValidateBasic() error {
 		}
 
 		// sanity check encrypted keyshares are over 1Kb
-		if len(m.KeysharesBackup) < 1024 {
+		if len(m.KeysharesBackup) < MinKeysharesBackupSize {
 			return cosmos.ErrUnknownRequest("invalid keyshares backup")
 		}
 
@@ -188,7 +190,7 @@ func (m *MsgTssPool) ValidateBasic() error {
 			return cosmos.ErrUnknownRequest("invalid eddsa keyshares backup")
 		}
 
-		if len(m.KeysharesBackupEddsa) < 1024 {
+		if len(m.KeysharesBackupEddsa) < MinKeysharesBackupSize {
 			return cosmos.ErrUnknownRequest("invalid eddsa keyshares backup")
 		}
 
@@ -196,6 +198,22 @@ func (m *MsgTssPool) ValidateBasic() error {
 		// analyze-ignore(float-comparison)
 		if entropy < MinKeysharesBackupEntropy {
 			return cosmos.ErrUnknownRequest("invalid eddsa keyshares backup")
+		}
+	}
+
+	if len(m.KeysharesBackupFrost) != 0 {
+		if MatchMnemonic.Match(m.KeysharesBackupFrost) {
+			return cosmos.ErrUnknownRequest("invalid frost keyshares backup")
+		}
+
+		if len(m.KeysharesBackupFrost) < MinFrostKeysharesBackupSize {
+			return cosmos.ErrUnknownRequest("invalid frost keyshares backup")
+		}
+
+		entropy := common.Entropy(m.KeysharesBackupFrost)
+		// analyze-ignore(float-comparison)
+		if entropy < MinKeysharesBackupEntropy {
+			return cosmos.ErrUnknownRequest("invalid frost keyshares backup")
 		}
 	}
 

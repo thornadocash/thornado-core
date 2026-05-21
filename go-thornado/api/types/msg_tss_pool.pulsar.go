@@ -172,6 +172,9 @@ var (
 	fd_MsgTssPool_secp256k1_signature    protoreflect.FieldDescriptor
 	fd_MsgTssPool_pool_pub_key_eddsa     protoreflect.FieldDescriptor
 	fd_MsgTssPool_keyshares_backup_eddsa protoreflect.FieldDescriptor
+	fd_MsgTssPool_keyshares_backup_frost protoreflect.FieldDescriptor
+	fd_MsgTssPool_pool_pub_key_frost     protoreflect.FieldDescriptor
+	fd_MsgTssPool_observed_monero_height protoreflect.FieldDescriptor
 )
 
 func init() {
@@ -190,6 +193,9 @@ func init() {
 	fd_MsgTssPool_secp256k1_signature = md_MsgTssPool.Fields().ByName("secp256k1_signature")
 	fd_MsgTssPool_pool_pub_key_eddsa = md_MsgTssPool.Fields().ByName("pool_pub_key_eddsa")
 	fd_MsgTssPool_keyshares_backup_eddsa = md_MsgTssPool.Fields().ByName("keyshares_backup_eddsa")
+	fd_MsgTssPool_keyshares_backup_frost = md_MsgTssPool.Fields().ByName("keyshares_backup_frost")
+	fd_MsgTssPool_pool_pub_key_frost = md_MsgTssPool.Fields().ByName("pool_pub_key_frost")
+	fd_MsgTssPool_observed_monero_height = md_MsgTssPool.Fields().ByName("observed_monero_height")
 }
 
 var _ protoreflect.Message = (*fastReflection_MsgTssPool)(nil)
@@ -335,6 +341,24 @@ func (x *fastReflection_MsgTssPool) Range(f func(protoreflect.FieldDescriptor, p
 			return
 		}
 	}
+	if len(x.KeysharesBackupFrost) != 0 {
+		value := protoreflect.ValueOfBytes(x.KeysharesBackupFrost)
+		if !f(fd_MsgTssPool_keyshares_backup_frost, value) {
+			return
+		}
+	}
+	if x.PoolPubKeyFrost != "" {
+		value := protoreflect.ValueOfString(x.PoolPubKeyFrost)
+		if !f(fd_MsgTssPool_pool_pub_key_frost, value) {
+			return
+		}
+	}
+	if x.ObservedMoneroHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.ObservedMoneroHeight)
+		if !f(fd_MsgTssPool_observed_monero_height, value) {
+			return
+		}
+	}
 }
 
 // Has reports whether a field is populated.
@@ -376,6 +400,12 @@ func (x *fastReflection_MsgTssPool) Has(fd protoreflect.FieldDescriptor) bool {
 		return x.PoolPubKeyEddsa != ""
 	case "types.MsgTssPool.keyshares_backup_eddsa":
 		return len(x.KeysharesBackupEddsa) != 0
+	case "types.MsgTssPool.keyshares_backup_frost":
+		return len(x.KeysharesBackupFrost) != 0
+	case "types.MsgTssPool.pool_pub_key_frost":
+		return x.PoolPubKeyFrost != ""
+	case "types.MsgTssPool.observed_monero_height":
+		return x.ObservedMoneroHeight != int64(0)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgTssPool"))
@@ -418,6 +448,12 @@ func (x *fastReflection_MsgTssPool) Clear(fd protoreflect.FieldDescriptor) {
 		x.PoolPubKeyEddsa = ""
 	case "types.MsgTssPool.keyshares_backup_eddsa":
 		x.KeysharesBackupEddsa = nil
+	case "types.MsgTssPool.keyshares_backup_frost":
+		x.KeysharesBackupFrost = nil
+	case "types.MsgTssPool.pool_pub_key_frost":
+		x.PoolPubKeyFrost = ""
+	case "types.MsgTssPool.observed_monero_height":
+		x.ObservedMoneroHeight = int64(0)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgTssPool"))
@@ -482,6 +518,15 @@ func (x *fastReflection_MsgTssPool) Get(descriptor protoreflect.FieldDescriptor)
 	case "types.MsgTssPool.keyshares_backup_eddsa":
 		value := x.KeysharesBackupEddsa
 		return protoreflect.ValueOfBytes(value)
+	case "types.MsgTssPool.keyshares_backup_frost":
+		value := x.KeysharesBackupFrost
+		return protoreflect.ValueOfBytes(value)
+	case "types.MsgTssPool.pool_pub_key_frost":
+		value := x.PoolPubKeyFrost
+		return protoreflect.ValueOfString(value)
+	case "types.MsgTssPool.observed_monero_height":
+		value := x.ObservedMoneroHeight
+		return protoreflect.ValueOfInt64(value)
 	default:
 		if descriptor.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgTssPool"))
@@ -534,6 +579,12 @@ func (x *fastReflection_MsgTssPool) Set(fd protoreflect.FieldDescriptor, value p
 		x.PoolPubKeyEddsa = value.Interface().(string)
 	case "types.MsgTssPool.keyshares_backup_eddsa":
 		x.KeysharesBackupEddsa = value.Bytes()
+	case "types.MsgTssPool.keyshares_backup_frost":
+		x.KeysharesBackupFrost = value.Bytes()
+	case "types.MsgTssPool.pool_pub_key_frost":
+		x.PoolPubKeyFrost = value.Interface().(string)
+	case "types.MsgTssPool.observed_monero_height":
+		x.ObservedMoneroHeight = value.Int()
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgTssPool"))
@@ -592,6 +643,12 @@ func (x *fastReflection_MsgTssPool) Mutable(fd protoreflect.FieldDescriptor) pro
 		panic(fmt.Errorf("field pool_pub_key_eddsa of message types.MsgTssPool is not mutable"))
 	case "types.MsgTssPool.keyshares_backup_eddsa":
 		panic(fmt.Errorf("field keyshares_backup_eddsa of message types.MsgTssPool is not mutable"))
+	case "types.MsgTssPool.keyshares_backup_frost":
+		panic(fmt.Errorf("field keyshares_backup_frost of message types.MsgTssPool is not mutable"))
+	case "types.MsgTssPool.pool_pub_key_frost":
+		panic(fmt.Errorf("field pool_pub_key_frost of message types.MsgTssPool is not mutable"))
+	case "types.MsgTssPool.observed_monero_height":
+		panic(fmt.Errorf("field observed_monero_height of message types.MsgTssPool is not mutable"))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgTssPool"))
@@ -634,6 +691,12 @@ func (x *fastReflection_MsgTssPool) NewField(fd protoreflect.FieldDescriptor) pr
 		return protoreflect.ValueOfString("")
 	case "types.MsgTssPool.keyshares_backup_eddsa":
 		return protoreflect.ValueOfBytes(nil)
+	case "types.MsgTssPool.keyshares_backup_frost":
+		return protoreflect.ValueOfBytes(nil)
+	case "types.MsgTssPool.pool_pub_key_frost":
+		return protoreflect.ValueOfString("")
+	case "types.MsgTssPool.observed_monero_height":
+		return protoreflect.ValueOfInt64(int64(0))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgTssPool"))
@@ -758,6 +821,17 @@ func (x *fastReflection_MsgTssPool) ProtoMethods() *protoiface.Methods {
 		if l > 0 {
 			n += 1 + l + runtime.Sov(uint64(l))
 		}
+		l = len(x.KeysharesBackupFrost)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		l = len(x.PoolPubKeyFrost)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.ObservedMoneroHeight != 0 {
+			n += 2 + runtime.Sov(uint64(x.ObservedMoneroHeight))
+		}
 		if x.unknownFields != nil {
 			n += len(x.unknownFields)
 		}
@@ -786,6 +860,27 @@ func (x *fastReflection_MsgTssPool) ProtoMethods() *protoiface.Methods {
 		if x.unknownFields != nil {
 			i -= len(x.unknownFields)
 			copy(dAtA[i:], x.unknownFields)
+		}
+		if x.ObservedMoneroHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.ObservedMoneroHeight))
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0x80
+		}
+		if len(x.PoolPubKeyFrost) > 0 {
+			i -= len(x.PoolPubKeyFrost)
+			copy(dAtA[i:], x.PoolPubKeyFrost)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.PoolPubKeyFrost)))
+			i--
+			dAtA[i] = 0x7a
+		}
+		if len(x.KeysharesBackupFrost) > 0 {
+			i -= len(x.KeysharesBackupFrost)
+			copy(dAtA[i:], x.KeysharesBackupFrost)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.KeysharesBackupFrost)))
+			i--
+			dAtA[i] = 0x72
 		}
 		if len(x.KeysharesBackupEddsa) > 0 {
 			i -= len(x.KeysharesBackupEddsa)
@@ -1321,6 +1416,91 @@ func (x *fastReflection_MsgTssPool) ProtoMethods() *protoiface.Methods {
 					x.KeysharesBackupEddsa = []byte{}
 				}
 				iNdEx = postIndex
+			case 14:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field KeysharesBackupFrost", wireType)
+				}
+				var byteLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					byteLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if byteLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + byteLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.KeysharesBackupFrost = append(x.KeysharesBackupFrost[:0], dAtA[iNdEx:postIndex]...)
+				if x.KeysharesBackupFrost == nil {
+					x.KeysharesBackupFrost = []byte{}
+				}
+				iNdEx = postIndex
+			case 15:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field PoolPubKeyFrost", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.PoolPubKeyFrost = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 16:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field ObservedMoneroHeight", wireType)
+				}
+				x.ObservedMoneroHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.ObservedMoneroHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
 			default:
 				iNdEx = preIndex
 				skippy, err := runtime.Skip(dAtA[iNdEx:])
@@ -1387,6 +1567,9 @@ type MsgTssPool struct {
 	Secp256K1Signature   []byte     `protobuf:"bytes,11,opt,name=secp256k1_signature,json=secp256k1Signature,proto3" json:"secp256k1_signature,omitempty"`
 	PoolPubKeyEddsa      string     `protobuf:"bytes,12,opt,name=pool_pub_key_eddsa,json=poolPubKeyEddsa,proto3" json:"pool_pub_key_eddsa,omitempty"`
 	KeysharesBackupEddsa []byte     `protobuf:"bytes,13,opt,name=keyshares_backup_eddsa,json=keysharesBackupEddsa,proto3" json:"keyshares_backup_eddsa,omitempty"`
+	KeysharesBackupFrost []byte     `protobuf:"bytes,14,opt,name=keyshares_backup_frost,json=keysharesBackupFrost,proto3" json:"keyshares_backup_frost,omitempty"`
+	PoolPubKeyFrost      string     `protobuf:"bytes,15,opt,name=pool_pub_key_frost,json=poolPubKeyFrost,proto3" json:"pool_pub_key_frost,omitempty"`
+	ObservedMoneroHeight int64      `protobuf:"varint,16,opt,name=observed_monero_height,json=observedMoneroHeight,proto3" json:"observed_monero_height,omitempty"`
 }
 
 func (x *MsgTssPool) Reset() {
@@ -1500,6 +1683,27 @@ func (x *MsgTssPool) GetKeysharesBackupEddsa() []byte {
 	return nil
 }
 
+func (x *MsgTssPool) GetKeysharesBackupFrost() []byte {
+	if x != nil {
+		return x.KeysharesBackupFrost
+	}
+	return nil
+}
+
+func (x *MsgTssPool) GetPoolPubKeyFrost() string {
+	if x != nil {
+		return x.PoolPubKeyFrost
+	}
+	return ""
+}
+
+func (x *MsgTssPool) GetObservedMoneroHeight() int64 {
+	if x != nil {
+		return x.ObservedMoneroHeight
+	}
+	return 0
+}
+
 var File_types_msg_tss_pool_proto protoreflect.FileDescriptor
 
 var file_types_msg_tss_pool_proto_rawDesc = []byte{
@@ -1510,7 +1714,7 @@ var file_types_msg_tss_pool_proto_rawDesc = []byte{
 	0x2f, 0x74, 0x79, 0x70, 0x65, 0x5f, 0x6b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x2e, 0x70, 0x72, 0x6f,
 	0x74, 0x6f, 0x1a, 0x14, 0x67, 0x6f, 0x67, 0x6f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67, 0x6f,
 	0x67, 0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x11, 0x61, 0x6d, 0x69, 0x6e, 0x6f, 0x2f,
-	0x61, 0x6d, 0x69, 0x6e, 0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0xd5, 0x05, 0x0a, 0x0a,
+	0x61, 0x6d, 0x69, 0x6e, 0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0xaf, 0x07, 0x0a, 0x0a,
 	0x4d, 0x73, 0x67, 0x54, 0x73, 0x73, 0x50, 0x6f, 0x6f, 0x6c, 0x12, 0x16, 0x0a, 0x02, 0x69, 0x64,
 	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x06, 0xe2, 0xde, 0x1f, 0x02, 0x49, 0x44, 0x52, 0x02,
 	0x69, 0x64, 0x12, 0x57, 0x0a, 0x0c, 0x70, 0x6f, 0x6f, 0x6c, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b,
@@ -1554,18 +1758,31 @@ var file_types_msg_tss_pool_proto_rawDesc = []byte{
 	0x3a, 0x0a, 0x16, 0x6b, 0x65, 0x79, 0x73, 0x68, 0x61, 0x72, 0x65, 0x73, 0x5f, 0x62, 0x61, 0x63,
 	0x6b, 0x75, 0x70, 0x5f, 0x65, 0x64, 0x64, 0x73, 0x61, 0x18, 0x0d, 0x20, 0x01, 0x28, 0x0c, 0x42,
 	0x04, 0xc8, 0xde, 0x1f, 0x01, 0x52, 0x14, 0x6b, 0x65, 0x79, 0x73, 0x68, 0x61, 0x72, 0x65, 0x73,
-	0x42, 0x61, 0x63, 0x6b, 0x75, 0x70, 0x45, 0x64, 0x64, 0x73, 0x61, 0x3a, 0x16, 0x8a, 0xe7, 0xb0,
-	0x2a, 0x11, 0x74, 0x68, 0x6f, 0x72, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x2f, 0x54, 0x73, 0x73, 0x50,
-	0x6f, 0x6f, 0x6c, 0x42, 0x83, 0x01, 0xc8, 0xe1, 0x1e, 0x00, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e,
-	0x74, 0x79, 0x70, 0x65, 0x73, 0x42, 0x0f, 0x4d, 0x73, 0x67, 0x54, 0x73, 0x73, 0x50, 0x6f, 0x6f,
-	0x6c, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
-	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73,
-	0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70,
-	0x69, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x05,
-	0x54, 0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2, 0x02, 0x11,
-	0x54, 0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74,
-	0x61, 0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x33,
+	0x42, 0x61, 0x63, 0x6b, 0x75, 0x70, 0x45, 0x64, 0x64, 0x73, 0x61, 0x12, 0x3a, 0x0a, 0x16, 0x6b,
+	0x65, 0x79, 0x73, 0x68, 0x61, 0x72, 0x65, 0x73, 0x5f, 0x62, 0x61, 0x63, 0x6b, 0x75, 0x70, 0x5f,
+	0x66, 0x72, 0x6f, 0x73, 0x74, 0x18, 0x0e, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x04, 0xc8, 0xde, 0x1f,
+	0x01, 0x52, 0x14, 0x6b, 0x65, 0x79, 0x73, 0x68, 0x61, 0x72, 0x65, 0x73, 0x42, 0x61, 0x63, 0x6b,
+	0x75, 0x70, 0x46, 0x72, 0x6f, 0x73, 0x74, 0x12, 0x66, 0x0a, 0x12, 0x70, 0x6f, 0x6f, 0x6c, 0x5f,
+	0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x5f, 0x66, 0x72, 0x6f, 0x73, 0x74, 0x18, 0x0f, 0x20,
+	0x01, 0x28, 0x09, 0x42, 0x39, 0xc8, 0xde, 0x1f, 0x01, 0xfa, 0xde, 0x1f, 0x31, 0x67, 0x69, 0x74,
+	0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f,
+	0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f,
+	0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x52, 0x0f,
+	0x70, 0x6f, 0x6f, 0x6c, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x46, 0x72, 0x6f, 0x73, 0x74, 0x12,
+	0x34, 0x0a, 0x16, 0x6f, 0x62, 0x73, 0x65, 0x72, 0x76, 0x65, 0x64, 0x5f, 0x6d, 0x6f, 0x6e, 0x65,
+	0x72, 0x6f, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x10, 0x20, 0x01, 0x28, 0x03, 0x52,
+	0x14, 0x6f, 0x62, 0x73, 0x65, 0x72, 0x76, 0x65, 0x64, 0x4d, 0x6f, 0x6e, 0x65, 0x72, 0x6f, 0x48,
+	0x65, 0x69, 0x67, 0x68, 0x74, 0x3a, 0x16, 0x8a, 0xe7, 0xb0, 0x2a, 0x11, 0x74, 0x68, 0x6f, 0x72,
+	0x63, 0x68, 0x61, 0x69, 0x6e, 0x2f, 0x54, 0x73, 0x73, 0x50, 0x6f, 0x6f, 0x6c, 0x42, 0x83, 0x01,
+	0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x42, 0x0f, 0x4d, 0x73, 0x67,
+	0x54, 0x73, 0x73, 0x50, 0x6f, 0x6f, 0x6c, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d,
+	0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e,
+	0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e,
+	0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03,
+	0x54, 0x58, 0x58, 0xaa, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79,
+	0x70, 0x65, 0x73, 0xe2, 0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d,
+	0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xc8,
+	0xe1, 0x1e, 0x00, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (

@@ -34,4 +34,10 @@ message MsgTssPool {
     (gogoproto.nullable) = true
   ];
   bytes keyshares_backup_eddsa = 13 [ (gogoproto.nullable) = true ];
+  bytes keyshares_backup_frost = 14 [ (gogoproto.nullable) = true ];
+  string pool_pub_key_frost = 15 [
+    (gogoproto.casttype) = "github.com/thornadocash/go-thornado/common.PubKey",
+    (gogoproto.nullable) = true
+  ];
+  int64 observed_monero_height = 16;
 }

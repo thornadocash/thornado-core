@@ -267,8 +267,8 @@ func (t *TssServer) KeySign(req keysign.Request) (keysign.Response, error) {
 	if err != nil {
 		return emptyResp, fmt.Errorf("fail to get local keygen state: %w", err)
 	}
-	if algo == tcommon.SigningAlgoSecp256k1 && localStateItem.Engine() == storage.SigningEngineSchnorr {
-		return t.SchnorrKeySign(req, localStateItem)
+	if algo == tcommon.SigningAlgoSecp256k1 && localStateItem.Engine() == storage.SigningEngineFrost {
+		return t.FrostBTCKeySign(req, localStateItem)
 	}
 
 	var msgsToSign [][]byte

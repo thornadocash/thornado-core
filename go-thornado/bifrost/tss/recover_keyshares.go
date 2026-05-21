@@ -3,6 +3,7 @@ package tss
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -15,9 +16,11 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/thornadocash/go-thornado/app"
+	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/thorclient"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
+	frostsession "github.com/thornadocash/go-thornado/frost/go-wrappers/go-frost/sessions"
 	"github.com/thornadocash/go-thornado/x/thorchain/ebifrost"
 	"github.com/thornadocash/go-thornado/x/thorchain/types"
 )
@@ -73,6 +76,7 @@ func RecoverKeyShares(conf config.Bifrost, thorchain thorclient.ThorchainBridge)
 	// walk backward from the churn height until we find the TssPool message we sent
 	var keysharesEncBytes []byte
 	var keysharesEncBytesEddsa []byte
+	var keysharesEncBytesFrost []byte
 	var vaultEddsa common.PubKey
 	cdc := thorclient.MakeCodec()
 	dec := ebifrost.TxDecoder(cdc, tx.DefaultTxDecoder(cdc))
@@ -102,6 +106,7 @@ func RecoverKeyShares(conf config.Bifrost, thorchain thorclient.ThorchainBridge)
 						}
 						keysharesEncBytes = m.KeysharesBackup
 						keysharesEncBytesEddsa = m.KeysharesBackupEddsa
+						keysharesEncBytesFrost = m.KeysharesBackupFrost
 						vaultEddsa = m.PoolPubKeyEddsa
 						goto finish
 					}
@@ -112,14 +117,22 @@ func RecoverKeyShares(conf config.Bifrost, thorchain thorclient.ThorchainBridge)
 	}
 
 finish:
+	seedPhrase := os.Getenv("SIGNER_SEED_PHRASE")
+
+	if len(keysharesEncBytesFrost) > 0 {
+		if err = writeRecoveredFrostLocalState(keysharesPath, keysharesEncBytesFrost, seedPhrase, vault); err != nil {
+			return fmt.Errorf("failed to recover frost key shares: %w", err)
+		}
+		log.Info().Str("path", keysharesPath).Msgf("recovered frost key shares for %s", na.NodeAddress)
+		return nil
+	}
+
 	// open ecdsa key shares file
 	f, err := os.OpenFile(keysharesPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to open keyshares file: %w", err)
 	}
 	defer f.Close()
-
-	seedPhrase := os.Getenv("SIGNER_SEED_PHRASE")
 
 	// decrypt and decompress into place
 	var decrypted []byte
@@ -177,4 +190,27 @@ finish:
 	log.Info().Str("path", keysharesPath).Msgf("recovered key shares for %s", na.NodeAddress)
 
 	return nil
+}
+
+func writeRecoveredFrostLocalState(path string, encrypted []byte, seedPhrase string, pubKey common.PubKey) error {
+	rawKeyshares, err := DecryptRawKeyshares(encrypted, seedPhrase)
+	if err != nil {
+		return err
+	}
+	decoded, err := frostsession.DecodeKeyshare(rawKeyshares)
+	if err != nil {
+		return err
+	}
+	state := storage.KeygenLocalState{
+		PubKey:          pubKey.String(),
+		LocalData:       rawKeyshares,
+		ParticipantKeys: decoded.Participants,
+		LocalPartyKey:   decoded.Participant,
+		SigningEngine:   storage.SigningEngineFrost,
+	}
+	buf, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, buf, 0o600)
 }

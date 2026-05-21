@@ -179,7 +179,82 @@ func EncryptKeyshares(path, passphrase string) ([]byte, error) {
 	return tripleEncrypted, nil
 }
 
-// EncryptKeyshares decrypts the provided encrypted keyshares using the passphrase.
+// EncryptRawKeyshares encrypts raw key bytes using the same triple-encryption
+// scheme as EncryptKeyshares but without JSON parsing.
+func EncryptRawKeyshares(raw []byte, passphrase string) ([]byte, error) {
+	if passphrase == "" {
+		return nil, errors.New("failed keyshare encrypt: signer seed phrase is not set")
+	}
+	if len(raw) == 0 {
+		return nil, errors.New("failed keyshare encrypt: raw bytes are empty")
+	}
+
+	agePassphrase := hex.EncodeToString(saltAndHash(passphrase, SaltAge))
+	recipient, err := age.NewScryptRecipient(agePassphrase)
+	if err != nil {
+		return nil, fmt.Errorf("failed keyshare encrypt - cannot create recipient: %w", err)
+	}
+	recipient.SetWorkFactor(AgeWorkFactor)
+
+	encryptedBytes := new(bytes.Buffer)
+	enc, err := age.Encrypt(encryptedBytes, recipient)
+	if err != nil {
+		return nil, fmt.Errorf("failed keyshare encrypt - cannot create encrypt writer: %w", err)
+	}
+	cmpEnc := lzma.NewWriterLevel(enc, lzma.BestCompression)
+	n, err := cmpEnc.Write(raw)
+	if err != nil {
+		return nil, fmt.Errorf("failed keyshare encrypt - cannot compress raw bytes: %w", err)
+	}
+	if n != len(raw) {
+		return nil, fmt.Errorf("failed keyshare encrypt - failed to write all bytes")
+	}
+	if err = cmpEnc.Close(); err != nil {
+		return nil, fmt.Errorf("failed keyshare encrypt - failed to close compression: %w", err)
+	}
+	if err = enc.Close(); err != nil {
+		return nil, fmt.Errorf("failed keyshare encrypt - failed to close encrypt writer: %w", err)
+	}
+
+	doubleEncrypted, err := encryptAES(saltAndHash(passphrase, SaltAES), encryptedBytes.Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("failed keyshare encrypt - cannot aes encrypt: %w", err)
+	}
+	chaCha, err := chacha20poly1305.NewX(saltAndHash(passphrase, SaltChaCha))
+	if err != nil {
+		return nil, fmt.Errorf("failed keyshare encrypt - cannot create chacha: %w", err)
+	}
+	tripleEncrypted, err := encryptAEAD(chaCha, doubleEncrypted)
+	if err != nil {
+		return nil, fmt.Errorf("failed keyshare encrypt - cannot chacha encrypt: %w", err)
+	}
+
+	decrypted, err := DecryptRawKeyshares(tripleEncrypted, passphrase)
+	if err != nil {
+		return nil, fmt.Errorf("failed keyshare encrypt - round-trip verify failed: %w", err)
+	}
+	if !bytes.Equal(raw, decrypted) {
+		return nil, errors.New("failed keyshare encrypt - round-trip mismatch")
+	}
+
+	return tripleEncrypted, nil
+}
+
+// DecryptRawKeyshares decrypts raw keyshare bytes encrypted with EncryptRawKeyshares.
+func DecryptRawKeyshares(encrypted []byte, passphrase string) ([]byte, error) {
+	compressed, err := DecryptKeyshares(encrypted, passphrase)
+	if err != nil {
+		return nil, err
+	}
+	cmpDec := lzma.NewReader(bytes.NewReader(compressed))
+	raw, readErr := io.ReadAll(cmpDec)
+	if readErr != nil {
+		return nil, fmt.Errorf("failed to decompress raw keyshares: %w", readErr)
+	}
+	return raw, nil
+}
+
+// DecryptKeyshares decrypts the provided encrypted keyshares using the passphrase.
 func DecryptKeyshares(encrypted []byte, passphrase string) ([]byte, error) {
 	// decrypt third pass (twofish)
 	chaCha, err := chacha20poly1305.NewX(saltAndHash(passphrase, SaltChaCha))

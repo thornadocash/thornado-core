@@ -181,8 +181,8 @@ func (t *TssServer) Keygen(req keygen.Request) (keygen.Response, error) {
 }
 
 func (t *TssServer) KeygenAllAlgo(req keygen.Request) ([]keygen.Response, error) {
-	if req.Engine == storage.SigningEngineSchnorr {
-		ecdsaResp, err := t.SchnorrKeygen(req)
+	if req.Engine == storage.SigningEngineFrost {
+		ecdsaResp, err := t.FrostBTCKeygen(req)
 		if err != nil {
 			return []keygen.Response{ecdsaResp}, nil
 		}

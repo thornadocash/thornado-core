@@ -105,11 +105,11 @@ func (kg *KeyGen) GenerateNewKey(keygenBlockHeight int64, pKeys common.PubKeys, 
 	keyGenReq := keygen.Request{
 		Keys: keys,
 	}
-	enableSchnorr, err := kg.bridge.GetMimir(constants.MimirKeyEnableFrostBTC)
+	enableFrost, err := kg.bridge.GetMimir(constants.MimirKeyEnableFrostBTC)
 	if err != nil {
 		kg.logger.Err(err).Msg("fail to get EnableFrostBTC mimir")
-	} else if enableSchnorr == 1 && schnorrKeygenChains(chains) {
-		keyGenReq.Engine = storage.SigningEngineSchnorr
+	} else if enableFrost == 1 && frostKeygenChains(chains) {
+		keyGenReq.Engine = storage.SigningEngineFrost
 	}
 	currentVersion := kg.getVersion()
 	keyGenReq.Version = currentVersion.String()
@@ -239,7 +239,7 @@ func dedupeKeygenBlameNodes(blames []types.Blame) []types.Blame {
 	return result
 }
 
-func schnorrKeygenChains(chains common.Chains) bool {
+func frostKeygenChains(chains common.Chains) bool {
 	if !chains.Has(common.BTCChain) {
 		return false
 	}

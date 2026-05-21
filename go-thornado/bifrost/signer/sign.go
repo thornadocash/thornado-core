@@ -2,6 +2,8 @@ package signer
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -14,10 +16,13 @@ import (
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/btcsuite/btcd/btcec"
+	btcecV2 "github.com/btcsuite/btcd/btcec/v2"
+	btcschnorr "github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cenkalti/backoff"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	tssp "github.com/thornadocash/go-thornado/bifrost/tss/go-tss/tss"
 
 	"github.com/thornadocash/go-thornado/app"
@@ -440,6 +445,15 @@ func (s *Signer) secp256k1VerificationSignature(pk common.PubKey) []byte {
 		return nil
 	}
 
+	if s.tssServer.LocalStateEngine(pk.String()) == storage.SigningEngineFrost {
+		if err := schnorrVerificationSignature(pk, sigBytes); err != nil {
+			s.logger.Error().Err(err).Msg("schnorr check signature verification failed")
+		} else {
+			s.logger.Info().Msg("schnorr check signature verified")
+		}
+		return sigBytes
+	}
+
 	// build the signature
 	r := new(big.Int).SetBytes(sigBytes[:32])
 	ss := new(big.Int).SetBytes(sigBytes[32:])
@@ -459,6 +473,33 @@ func (s *Signer) secp256k1VerificationSignature(pk common.PubKey) []byte {
 	return sigBytes
 }
 
+func schnorrVerificationSignature(pk common.PubKey, sigBytes []byte) error {
+	if len(sigBytes) != btcschnorr.SignatureSize {
+		return fmt.Errorf("invalid schnorr signature length: %d", len(sigBytes))
+	}
+	spk, err := pk.Secp256K1()
+	if err != nil {
+		return fmt.Errorf("fail to get secp256k1 pubkey: %w", err)
+	}
+	pubKey, err := btcecV2.ParsePubKey(spk.SerializeCompressed())
+	if err != nil {
+		return fmt.Errorf("fail to parse schnorr pubkey: %w", err)
+	}
+	signature, err := btcschnorr.ParseSignature(sigBytes)
+	if err != nil {
+		return fmt.Errorf("invalid schnorr signature: %w", err)
+	}
+	data := []byte(pk.String())
+	if len(data) != sha256.Size {
+		digest := sha256.Sum256(data)
+		data = digest[:]
+	}
+	if !signature.Verify(data, pubKey) {
+		return fmt.Errorf("schnorr signature verification failed")
+	}
+	return nil
+}
+
 func (s *Signer) sendKeygenToThorchain(height int64, poolPk common.PubKey, secp256k1Signature []byte, blame []ttypes.Blame, input common.PubKeys, keygenType ttypes.KeygenType, keygenTime int64, poolPubKeyEddsa common.PubKey) error {
 	// collect supported chains in the configuration
 	chains := common.Chains{
@@ -473,15 +514,25 @@ func (s *Signer) sendKeygenToThorchain(height int64, poolPk common.PubKey, secp2
 	// make a best effort to add encrypted keyshares to the message
 	var keyshares []byte
 	var keysharesEddsa []byte
+	var keysharesFrost []byte
 	var err error
 	if s.cfg.Signer.BackupKeyshares {
 		if !poolPk.IsEmpty() {
-			keyshares, err = tss.EncryptKeyshares(
-				filepath.Join(app.DefaultNodeHome, fmt.Sprintf("localstate-%s.json", poolPk)),
-				os.Getenv("SIGNER_SEED_PHRASE"),
-			)
-			if err != nil {
-				s.logger.Error().Err(err).Msg("fail to encrypt secp256k1 keyshares")
+			keysharePath := filepath.Join(app.DefaultNodeHome, fmt.Sprintf("localstate-%s.json", poolPk))
+			frostRaw, isFrost, readErr := frostKeyshareRawFromLocalStatePath(keysharePath)
+			switch {
+			case readErr != nil:
+				s.logger.Error().Err(readErr).Msg("fail to read keyshares")
+			case isFrost:
+				keysharesFrost, err = tss.EncryptRawKeyshares(frostRaw, os.Getenv("SIGNER_SEED_PHRASE"))
+				if err != nil {
+					s.logger.Error().Err(err).Msg("fail to encrypt frost keyshares")
+				}
+			default:
+				keyshares, err = tss.EncryptKeyshares(keysharePath, os.Getenv("SIGNER_SEED_PHRASE"))
+				if err != nil {
+					s.logger.Error().Err(err).Msg("fail to encrypt secp256k1 keyshares")
+				}
 			}
 		}
 		if !poolPubKeyEddsa.IsEmpty() {
@@ -495,7 +546,18 @@ func (s *Signer) sendKeygenToThorchain(height int64, poolPk common.PubKey, secp2
 		}
 	}
 
-	keygenMsg, err := s.thorchainBridge.GetKeygenStdTx(poolPk, secp256k1Signature, keyshares, blame, input, keygenType, chains, height, keygenTime, poolPubKeyEddsa, keysharesEddsa)
+	var keygenMsg sdktypes.Msg
+	if len(keysharesFrost) > 0 {
+		if bridge, ok := s.thorchainBridge.(interface {
+			GetKeygenStdTxWithFrost(common.PubKey, []byte, []byte, []ttypes.Blame, common.PubKeys, ttypes.KeygenType, common.Chains, int64, int64, common.PubKey, []byte, []byte) (sdktypes.Msg, error)
+		}); ok {
+			keygenMsg, err = bridge.GetKeygenStdTxWithFrost(poolPk, secp256k1Signature, keyshares, blame, input, keygenType, chains, height, keygenTime, poolPubKeyEddsa, keysharesEddsa, keysharesFrost)
+		} else {
+			keygenMsg, err = s.thorchainBridge.GetKeygenStdTx(poolPk, secp256k1Signature, keyshares, blame, input, keygenType, chains, height, keygenTime, poolPubKeyEddsa, keysharesEddsa)
+		}
+	} else {
+		keygenMsg, err = s.thorchainBridge.GetKeygenStdTx(poolPk, secp256k1Signature, keyshares, blame, input, keygenType, chains, height, keygenTime, poolPubKeyEddsa, keysharesEddsa)
+	}
 	if err != nil {
 		return fmt.Errorf("fail to get keygen id: %w", err)
 	}
@@ -513,6 +575,24 @@ func (s *Signer) sendKeygenToThorchain(height int64, poolPk common.PubKey, secp2
 		s.logger.Info().Stringer("txid", txID).Int64("block", height).Msg("sent keygen tx to thorchain")
 		return nil
 	}, bf)
+}
+
+func frostKeyshareRawFromLocalStatePath(path string) ([]byte, bool, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, false, err
+	}
+	var state storage.KeygenLocalState
+	if err := json.Unmarshal(raw, &state); err != nil {
+		return nil, false, err
+	}
+	if state.Engine() != storage.SigningEngineFrost {
+		return nil, false, nil
+	}
+	if len(state.LocalData) == 0 {
+		return nil, true, fmt.Errorf("frost local state has empty local data")
+	}
+	return state.LocalData, true, nil
 }
 
 // signAndBroadcast will sign the tx and broadcast it to the corresponding chain. On

@@ -44,19 +44,19 @@ func (c *Client) getBitcoinVaultAddress(pubkey common.PubKey) (common.Address, e
 	return common.NewAddress(addr.String())
 }
 
-type schnorrEngineReader interface {
+type frostEngineReader interface {
 	LocalStateEngine(poolPubKey string) string
 }
 
-func (c *Client) isSchnorrVault(pubkey common.PubKey) bool {
+func (c *Client) isFrostVault(pubkey common.PubKey) bool {
 	if c.cfg.ChainID != common.BTCChain {
 		return false
 	}
-	reader, ok := c.tssKeySigner.(schnorrEngineReader)
+	reader, ok := c.tssKeySigner.(frostEngineReader)
 	if !ok {
 		return false
 	}
-	return reader.LocalStateEngine(pubkey.String()) == storage.SigningEngineSchnorr
+	return reader.LocalStateEngine(pubkey.String()) == storage.SigningEngineFrost
 }
 
 func (c *Client) schnorrVaultPubKey(pubkey common.PubKey) (*btcec.PublicKey, error) {
@@ -96,7 +96,7 @@ func (c *Client) getSchnorrSourceScriptAtPath(pubkey common.PubKey, pathIndex ui
 }
 
 func (c *Client) signUTXOBTC(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, amount int64, sourceScript []byte, idx int) error {
-	if c.isSchnorrVault(tx.VaultPubKey) {
+	if c.isFrostVault(tx.VaultPubKey) {
 		return c.signTaprootUTXOBTC(redeemTx, tx, amount, sourceScript, idx)
 	}
 
