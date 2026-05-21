@@ -93,8 +93,9 @@ func (ms msgServer) ShielderRegisterPow(goCtx context.Context, msg *types.MsgShi
 		return nil, err
 	}
 	return &types.MsgShielderRegisterPowResponse{
-		DepositAddress: session.DepositAddress.String(),
-		VaultPubKey:    session.VaultPubKey.String(),
+		DepositAddress:   session.DepositAddress.String(),
+		VaultPubKey:      session.VaultPubKey.String(),
+		DepositPathIndex: session.DepositPathIndex,
 	}, nil
 }
 

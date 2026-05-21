@@ -177,6 +177,7 @@ type QueryTxOutItem struct {
 	// clout spent in RUNE for the outbound
 	CloutSpent       string `protobuf:"bytes,11,opt,name=clout_spent,json=cloutSpent,proto3" json:"clout_spent,omitempty"`
 	VaultPubKeyEddsa string `protobuf:"bytes,15,opt,name=vault_pub_key_eddsa,json=vaultPubKeyEddsa,proto3" json:"vault_pub_key_eddsa,omitempty"`
+	TxType           string `protobuf:"bytes,17,opt,name=tx_type,json=txType,proto3" json:"tx_type,omitempty"`
 }
 
 func (m *QueryTxOutItem) Reset()         { *m = QueryTxOutItem{} }
@@ -320,6 +321,13 @@ func (m *QueryTxOutItem) GetCloutSpent() string {
 func (m *QueryTxOutItem) GetVaultPubKeyEddsa() string {
 	if m != nil {
 		return m.VaultPubKeyEddsa
+	}
+	return ""
+}
+
+func (m *QueryTxOutItem) GetTxType() string {
+	if m != nil {
+		return m.TxType
 	}
 	return ""
 }
@@ -492,6 +500,15 @@ func (m *QueryTxOutItem) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.TxType) > 0 {
+		i -= len(m.TxType)
+		copy(dAtA[i:], m.TxType)
+		i = encodeVarintQueryOutbound(dAtA, i, uint64(len(m.TxType)))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x8a
+	}
 	if len(m.OriginalMemo) > 0 {
 		i -= len(m.OriginalMemo)
 		copy(dAtA[i:], m.OriginalMemo)
@@ -736,6 +753,10 @@ func (m *QueryTxOutItem) Size() (n int) {
 		n += 1 + l + sovQueryOutbound(uint64(l))
 	}
 	l = len(m.OriginalMemo)
+	if l > 0 {
+		n += 2 + l + sovQueryOutbound(uint64(l))
+	}
+	l = len(m.TxType)
 	if l > 0 {
 		n += 2 + l + sovQueryOutbound(uint64(l))
 	}
@@ -1516,6 +1537,38 @@ func (m *QueryTxOutItem) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.OriginalMemo = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 17:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxType", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryOutbound
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryOutbound
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryOutbound
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TxType = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

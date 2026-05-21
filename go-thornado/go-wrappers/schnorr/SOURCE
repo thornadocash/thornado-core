@@ -1,0 +1,4 @@
+upstream=https://github.com/ZcashFoundation/frost
+crate=frost-secp256k1-tr
+release=3.0.0
+notes=libgoschnorr is a tightly scoped Rust FFI wrapper around frost-secp256k1-tr.

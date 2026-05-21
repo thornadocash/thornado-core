@@ -38,4 +38,5 @@ message QueryTxOutItem {
   // clout spent in RUNE for the outbound
   string clout_spent = 11;
   string vault_pub_key_eddsa = 15;
+  string tx_type = 17;
 }

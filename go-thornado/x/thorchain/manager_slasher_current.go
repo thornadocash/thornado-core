@@ -15,7 +15,6 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thorchain/keeper"
-	mem "github.com/thornadocash/go-thornado/x/thorchain/memo"
 	"github.com/thornadocash/go-thornado/x/thorchain/types"
 )
 
@@ -264,29 +263,12 @@ func (s *SlasherImpl) LackSigning(ctx cosmos.Context, mgr Manager) error {
 				}
 			}
 
-			memo, _ := ParseMemoWithTHORNames(ctx, s.keeper, toi.GetMemo()) // ignore err
-			if memo.IsInternal() {
-				// there is a different mechanism for rescheduling outbound
-				// transactions for migration transactions
-				continue
-			}
 			var voter ObservedTxVoter
-			if memo.IsType(TxRagnarok) {
-				// A Ragnarok outbound has no ObservedTxInVoter,
-				// so check MaxOutboundAttempts against the memo height.
-				ragnarokHeight := memo.GetBlockHeight()
-				// Though a negative is not expected to cause problems,
-				// nevertheless keep the default 0 as the minimum.
-				if ragnarokHeight > 0 {
-					voter.FinalisedHeight = ragnarokHeight
-				}
-			} else {
-				voter, err = s.keeper.GetObservedTxInVoter(ctx, toi.InHash)
-				if err != nil {
-					ctx.Logger().Error("fail to get observed tx voter", "error", err)
-					resultErr = fmt.Errorf("failed to get observed tx voter: %w", err)
-					continue
-				}
+			voter, err = s.keeper.GetObservedTxInVoter(ctx, toi.InHash)
+			if err != nil {
+				ctx.Logger().Error("fail to get observed tx voter", "error", err)
+				resultErr = fmt.Errorf("failed to get observed tx voter: %w", err)
+				continue
 			}
 
 			// If vault is inactive, check if it still has sufficient funds to fulfill
@@ -353,17 +335,11 @@ func (s *SlasherImpl) LackSigning(ctx cosmos.Context, mgr Manager) error {
 						continue
 					}
 
-					// For user-facing outbounds (refund, outbound, ragnarok), send to treasury recovery
-					if memo.IsOutbound() {
-						treasuryErr := s.sendFailedOutboundToTreasury(ctx, mgr, toi, vault, memo)
-						if treasuryErr != nil {
-							ctx.Logger().Error("failed to send outbound to treasury recovery", "error", treasuryErr, "hash", toi.InHash)
-						} else {
-							txs.TxArray[i].OutHash = common.BlankTxID
-						}
+					treasuryErr := s.sendFailedOutboundToTreasury(ctx, mgr, toi, vault)
+					if treasuryErr != nil {
+						ctx.Logger().Error("failed to send outbound to treasury recovery", "error", treasuryErr, "hash", toi.InHash)
 					} else {
-						// For non-outbound transactions (shouldn't happen often), just log and drop
-						ctx.Logger().Info("txn dropped, too many attempts (non-outbound)", "hash", toi.InHash)
+						txs.TxArray[i].OutHash = common.BlankTxID
 					}
 					continue
 				}
@@ -438,40 +414,30 @@ func (s *SlasherImpl) LackSigning(ctx cosmos.Context, mgr Manager) error {
 						}
 						vault = available[rep%len(available)]
 					}
-					if !memo.IsType(TxRagnarok) {
-						// update original toi action in observed tx
-						// check observedTx has done status. Skip if it does already.
-						voterTx := voter.GetTx(NodeAccounts{})
-						if voterTx.IsDone(len(voter.Actions)) {
-							if len(voterTx.OutHashes) > 0 && len(voterTx.GetOutHashes()) > 0 {
-								txs.TxArray[i].OutHash = voterTx.GetOutHashes()[0]
-							}
-							continue
+					voterTx := voter.GetTx(NodeAccounts{})
+					if voterTx.IsDone(len(voter.Actions)) {
+						if len(voterTx.OutHashes) > 0 && len(voterTx.GetOutHashes()) > 0 {
+							txs.TxArray[i].OutHash = voterTx.GetOutHashes()[0]
 						}
-
-						// update the actions in the voter with the new vault pubkey
-						for i, action := range voter.Actions {
-							if action.Equals(toi) {
-								voter.Actions[i].VaultPubKey = vault.PubKey
-								voter.Actions[i].VaultPubKeyEddsa = vault.PubKeyEddsa
-								if toi.Aggregator != "" || toi.AggregatorTargetAsset != "" || toi.AggregatorTargetLimit != nil {
-									ctx.Logger().Info("clearing aggregator fields on outbound reassignment", "hash", toi.InHash)
-
-									// Here, simultaneously clear the Aggregator information for a reassigned TxOutItem and its Actions item
-									// so that a SwapOut will send the THORChain output asset instead of cycling and swallowingif
-									// (and maybe failing with slashes) if something goes wrong.
-									toi.Aggregator = ""
-									toi.AggregatorTargetAsset = ""
-									toi.AggregatorTargetLimit = nil
-									voter.Actions[i].Aggregator = ""
-									voter.Actions[i].AggregatorTargetAsset = ""
-									voter.Actions[i].AggregatorTargetLimit = nil
-								}
-							}
-						}
-						s.keeper.SetObservedTxInVoter(ctx, voter)
-
+						continue
 					}
+
+					for i, action := range voter.Actions {
+						if action.Equals(toi) {
+							voter.Actions[i].VaultPubKey = vault.PubKey
+							voter.Actions[i].VaultPubKeyEddsa = vault.PubKeyEddsa
+							if toi.Aggregator != "" || toi.AggregatorTargetAsset != "" || toi.AggregatorTargetLimit != nil {
+								ctx.Logger().Info("clearing aggregator fields on outbound reassignment", "hash", toi.InHash)
+								toi.Aggregator = ""
+								toi.AggregatorTargetAsset = ""
+								toi.AggregatorTargetLimit = nil
+								voter.Actions[i].Aggregator = ""
+								voter.Actions[i].AggregatorTargetAsset = ""
+								voter.Actions[i].AggregatorTargetLimit = nil
+							}
+						}
+					}
+					s.keeper.SetObservedTxInVoter(ctx, voter)
 					// Save the toi to as a new toi, select Asgard to send it this time.
 					toi.VaultPubKey = vault.PubKey
 					toi.VaultPubKeyEddsa = vault.PubKeyEddsa
@@ -528,11 +494,10 @@ func (s *SlasherImpl) LackSigning(ctx cosmos.Context, mgr Manager) error {
 // sendFailedOutboundToTreasury records failed outbound recovery without the
 // removed swap queue. A dedicated Thornado treasury recovery path should replace
 // this before production shutdown or abandoned-deposit handling is finalized.
-func (s *SlasherImpl) sendFailedOutboundToTreasury(ctx cosmos.Context, mgr Manager, toi TxOutItem, vault Vault, memo mem.Memo) error {
+func (s *SlasherImpl) sendFailedOutboundToTreasury(ctx cosmos.Context, mgr Manager, toi TxOutItem, vault Vault) error {
 	ctx.Logger().Info("max attempts reached for outbound; swap-based treasury recovery removed",
 		"hash", toi.InHash,
 		"coin", toi.Coin,
-		"memo_type", memo.GetType(),
 		"vault", vault.PubKey)
 	return nil
 }

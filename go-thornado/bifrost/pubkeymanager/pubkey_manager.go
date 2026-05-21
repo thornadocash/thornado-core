@@ -17,6 +17,7 @@ import (
 
 // OnNewPubKey is a function that used as a callback , if somehow we need to do additional process when a new pubkey get added
 type OnNewPubKey func(pk common.PubKey) error
+type OnNewPubKeyPath func(pk common.PubKey, pathIndex uint64) error
 
 // PubKeyValidator define the method that can be used to interact with public keys
 type PubKeyValidator interface {
@@ -30,6 +31,7 @@ type PubKeyValidator interface {
 	GetPubKeys() common.PubKeys
 	GetAlgoPubKeys(algo common.SigningAlgo, includeInactive bool) common.PubKeys
 	RegisterCallback(callback OnNewPubKey)
+	RegisterPathCallback(callback OnNewPubKeyPath)
 	GetContracts(chain common.Chain, includeInactive bool) []common.Address
 	GetContract(chain common.Chain, pk common.PubKey) common.Address
 }
@@ -46,26 +48,30 @@ type pubKeyInfo struct {
 
 // PubKeyManager manager an always up to date pubkeys , which implement PubKeyValidator interface
 type PubKeyManager struct {
-	bridge     thorclient.ThorchainBridge
-	pubkeys    []pubKeyInfo
-	rwMutex    *sync.RWMutex
-	logger     zerolog.Logger
-	errCounter *prometheus.CounterVec
-	m          *metrics.Metrics
-	stopChan   chan struct{}
-	callback   []OnNewPubKey
+	bridge           thorclient.ThorchainBridge
+	pubkeys          []pubKeyInfo
+	rwMutex          *sync.RWMutex
+	logger           zerolog.Logger
+	errCounter       *prometheus.CounterVec
+	m                *metrics.Metrics
+	stopChan         chan struct{}
+	callback         []OnNewPubKey
+	pathCallback     []OnNewPubKeyPath
+	depositAddresses map[string]common.ChainPoolInfo
 }
 
 // NewPubKeyManager create a new instance of PubKeyManager
 func NewPubKeyManager(bridge thorclient.ThorchainBridge, m *metrics.Metrics) (*PubKeyManager, error) {
 	return &PubKeyManager{
-		logger:     log.With().Str("module", "public_key_mgr").Logger(),
-		bridge:     bridge,
-		errCounter: m.GetCounterVec(metrics.PubKeyManagerError),
-		m:          m,
-		stopChan:   make(chan struct{}),
-		rwMutex:    &sync.RWMutex{},
-		callback:   []OnNewPubKey{},
+		logger:           log.With().Str("module", "public_key_mgr").Logger(),
+		bridge:           bridge,
+		errCounter:       m.GetCounterVec(metrics.PubKeyManagerError),
+		m:                m,
+		stopChan:         make(chan struct{}),
+		rwMutex:          &sync.RWMutex{},
+		callback:         []OnNewPubKey{},
+		pathCallback:     []OnNewPubKeyPath{},
+		depositAddresses: map[string]common.ChainPoolInfo{},
 	}, nil
 }
 
@@ -195,7 +201,26 @@ func (pkm *PubKeyManager) addPubKeyInternal(pk common.PubKey, signer bool, algo 
 			Contracts:   map[common.Chain]common.Address{},
 			Inactive:    inactive,
 		})
+		if algo == common.SigningAlgoSecp256k1 {
+			pkm.addDepositAddressLookaheadNoLock(pk)
+		}
 		pkm.fireCallback(pk)
+	}
+}
+
+func (pkm *PubKeyManager) addDepositAddressLookaheadNoLock(pk common.PubKey) {
+	for pathIndex := uint64(common.FirstDepositPathIndex); pathIndex <= common.DepositAddressLookahead; pathIndex++ {
+		addr, err := common.DeriveBTCTaprootAddress(pk, pathIndex)
+		if err != nil {
+			pkm.logger.Error().Err(err).Str("pubkey", pk.String()).Uint64("path_index", pathIndex).Msg("fail to derive shielder deposit address")
+			continue
+		}
+		pkm.depositAddresses[strings.ToLower(addr.String())] = common.ChainPoolInfo{
+			Chain:       common.BTCChain,
+			PubKey:      pk,
+			PoolAddress: addr,
+		}
+		pkm.firePathCallback(pk, pathIndex)
 	}
 }
 
@@ -313,6 +338,12 @@ func (pkm *PubKeyManager) IsValidPoolAddress(addr string, chain common.Chain) (b
 	pkm.rwMutex.RLock()
 	defer pkm.rwMutex.RUnlock()
 
+	if chain.Equals(common.BTCChain) {
+		if cpi, ok := pkm.depositAddresses[strings.ToLower(addr)]; ok {
+			return true, cpi
+		}
+	}
+
 	for _, pk := range pkm.pubkeys {
 		// skip pubkeys with a different algo than the chain
 		if chain.GetSigningAlgo() != pk.Algo {
@@ -337,6 +368,10 @@ func (pkm *PubKeyManager) RegisterCallback(callback OnNewPubKey) {
 	pkm.callback = append(pkm.callback, callback)
 }
 
+func (pkm *PubKeyManager) RegisterPathCallback(callback OnNewPubKeyPath) {
+	pkm.pathCallback = append(pkm.pathCallback, callback)
+}
+
 func (pkm *PubKeyManager) fireCallback(pk common.PubKey) {
 	// fire callbacks in parallel and wait for all to complete
 	wg := sync.WaitGroup{}
@@ -345,6 +380,20 @@ func (pkm *PubKeyManager) fireCallback(pk common.PubKey) {
 		go func(item OnNewPubKey) {
 			if err := item(pk); err != nil {
 				pkm.logger.Err(err).Msg("fail to call callback")
+			}
+			wg.Done()
+		}(item)
+	}
+	wg.Wait()
+}
+
+func (pkm *PubKeyManager) firePathCallback(pk common.PubKey, pathIndex uint64) {
+	wg := sync.WaitGroup{}
+	for _, item := range pkm.pathCallback {
+		wg.Add(1)
+		go func(item OnNewPubKeyPath) {
+			if err := item(pk, pathIndex); err != nil {
+				pkm.logger.Err(err).Uint64("path_index", pathIndex).Msg("fail to call path callback")
 			}
 			wg.Done()
 		}(item)

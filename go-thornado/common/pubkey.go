@@ -8,8 +8,6 @@ import (
 	"sync"
 
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/bech32"
 	"github.com/cometbft/cometbft/crypto"
 	"github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -115,20 +113,9 @@ func (p PubKey) GetAddress(chain Chain) (Address, error) {
 		}
 		addressString = str
 	case BTCChain:
-		pk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, string(p))
+		addr, err := DeriveBTCTaprootAddress(p, MainVaultPathIndex)
 		if err != nil {
-			return NoAddress, err
-		}
-		var net *chaincfg.Params
-		switch chainNetwork {
-		case MockNet:
-			net = &chaincfg.RegressionNetParams
-		case MainNet, StageNet, ChainNet:
-			net = &chaincfg.MainNetParams
-		}
-		addr, err := btcutil.NewAddressWitnessPubKeyHash(pk.Address().Bytes(), net)
-		if err != nil {
-			return NoAddress, fmt.Errorf("fail to bech32 encode the address, err: %w", err)
+			return NoAddress, fmt.Errorf("fail to derive taproot address, err: %w", err)
 		}
 		addressString = addr.String()
 	default:

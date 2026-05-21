@@ -373,6 +373,9 @@ func (b *thorchainBridge) GetInboundOutbound(txIns common.ObservedTxs) (common.O
 		}
 		vaultToAddress := tx.Tx.ToAddress.Equals(obAddr)
 		vaultFromAddress := tx.Tx.FromAddress.Equals(obAddr)
+		if chain.Equals(common.BTCChain) && !vaultFromAddress {
+			vaultFromAddress = isDerivedBTCVaultAddress(tx.Tx.FromAddress, tx.ObservedPubKey)
+		}
 		var inInboundArray, inOutboundArray bool
 		if vaultToAddress {
 			inInboundArray = inbound.Contains(tx)
@@ -387,6 +390,10 @@ func (b *thorchainBridge) GetInboundOutbound(txIns common.ObservedTxs) (common.O
 		// for consolidate UTXO tx, both From & To address will be the asgard address
 		// thus here we need to make sure that one add to inbound , the other add to outbound
 		switch {
+		case vaultToAddress && vaultFromAddress && !tx.Tx.FromAddress.Equals(tx.Tx.ToAddress):
+			if !inOutboundArray {
+				outbound = append(outbound, tx)
+			}
 		case !vaultToAddress && !vaultFromAddress:
 			// Neither ToAddress nor FromAddress matches obAddr, so drop it.
 			b.logger.Error().Msgf("chain (%s) tx (%s) observedaddress (%s) does not match its toaddress (%s) or fromaddress (%s)", tx.Tx.Chain, tx.Tx.ID, obAddr, tx.Tx.ToAddress, tx.Tx.FromAddress)
@@ -410,6 +417,19 @@ func (b *thorchainBridge) GetInboundOutbound(txIns common.ObservedTxs) (common.O
 	}
 
 	return inbound, outbound, nil
+}
+
+func isDerivedBTCVaultAddress(addr common.Address, pubkey common.PubKey) bool {
+	for pathIndex := uint64(common.FirstDepositPathIndex); pathIndex <= common.DepositAddressLookahead; pathIndex++ {
+		derived, err := common.DeriveBTCTaprootAddress(pubkey, pathIndex)
+		if err != nil {
+			return false
+		}
+		if addr.Equals(derived) {
+			return true
+		}
+	}
+	return false
 }
 
 // EnsureNodeWhitelistedWithTimeout check node is whitelisted with timeout retry

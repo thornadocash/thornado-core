@@ -1,11 +1,9 @@
 package thorchain
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"sort"
-	"strings"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/blang/semver"
@@ -172,47 +170,19 @@ func (tos *TxOutStorage) TryAddTxOutItem(ctx cosmos.Context, mgr Manager, toi Tx
 // isAffiliateFeeExemptOutbound returns true if the outbound memo indicates a
 // transaction type that is exempt from affiliate fees.
 func (tos *TxOutStorage) isAffiliateFeeExemptOutbound(memo string) bool {
-	return strings.HasPrefix(memo, constants.MemoPrefixRefund) ||
-		strings.HasPrefix(memo, constants.MemoPrefixMigrate)
+	return true
 }
 
 // isAffiliateFeeExemptInbound returns true if the inbound memo indicates a transaction
 // type that is exempt from affiliate fees.
 func (tos *TxOutStorage) isAffiliateFeeExemptInbound(memo string) bool {
-	return memo == "" || strings.HasPrefix(memo, constants.MemoPrefixPreferredAssetSwap)
+	return true
 }
 
 // takeAffiliateFee - take affiliate fee from outbound amount using the inbound memo.
 // should not skim fees for refunds. returns the outbound amount less the affiliate
 // fee(s)
 func (tos *TxOutStorage) takeAffiliateFee(ctx cosmos.Context, mgr Manager, toi TxOutItem) (cosmos.Uint, error) {
-	if tos.isAffiliateFeeExemptOutbound(toi.Memo) {
-		return toi.Coin.Amount, nil
-	}
-
-	// Get inbound tx
-	// Skip affiliate fee for protocol-generated swaps that have no observed transaction
-	inboundVoter, err := tos.keeper.GetObservedTxInVoter(ctx, toi.InHash)
-	if err != nil {
-		return toi.Coin.Amount, nil
-	}
-	if tos.isAffiliateFeeExemptInbound(inboundVoter.Tx.Tx.Memo) {
-		return toi.Coin.Amount, nil
-	}
-
-	memo, err := ParseMemoWithTHORNames(ctx, tos.keeper, inboundVoter.Tx.Tx.Memo)
-	if err != nil {
-		return toi.Coin.Amount, fmt.Errorf("fail to parse memo: %w", err)
-	}
-
-	// If the current outbound asset is RUNE and the original target asset is NOT RUNE, we
-	// know this is the affiliate fee outbound. In this case we should skip taking an
-	// additional fee. For swaps to RUNE the affiliate fee will be paid out as a direct
-	// RUNE transfer with no txout manager outbound, so it won't get back to this check.
-	if toi.Coin.Asset.IsRune() && !memo.GetAsset().IsRune() {
-		return toi.Coin.Amount, nil
-	}
-
 	return toi.Coin.Amount, nil
 }
 
@@ -550,32 +520,13 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 	var outputs []TxOutItem
 	var remaining cosmos.Uint
 
-	// Default the memo to the standard outbound memo
-	if toi.Memo == "" {
-		toi.Memo = NewOutboundMemo(toi.InHash).String()
-	}
-
 	// Ensure the InHash is set
 	if toi.InHash.IsEmpty() {
 		toi.InHash = common.BlankTxID
-	} else {
-		// fetch inbound txn memo, and append arbitrary data (if applicable)
-		inboundVoter, err := tos.keeper.GetObservedTxInVoter(ctx, toi.InHash)
-		if err == nil {
-			parts := strings.SplitN(inboundVoter.Tx.Tx.Memo, "|", 2)
-			if len(parts) == 2 {
-				toi.Memo = fmt.Sprintf("%s|%s", toi.Memo, parts[1])
-				maxMemoLength := toi.Chain.MaxMemoLength()
-				if len(toi.Memo) > maxMemoLength {
-					toi.Memo = toi.Memo[:maxMemoLength]
-				}
-			}
-		}
 	}
 
-	// Apply memoless outbound logic if enabled
-	enableMemolessOutbound := tos.keeper.GetConfigInt64(ctx, constants.EnableMemolessOutbound)
-	applyMemolessOutboundLogic(tos.keeper.GetVersion(), &toi, enableMemolessOutbound)
+	toi.OriginalMemo = toi.Memo
+	toi.Memo = ""
 
 	if toi.ToAddress.IsEmpty() {
 		return outputs, cosmos.ZeroUint(), fmt.Errorf("empty to address, can't send out")
@@ -679,9 +630,7 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 			outputs[i].GasRate = gasRate
 		}
 
-		// If the memo is unparsable, or Ragnarok, don't deduct an outbound fee.
-		memo, err := ParseMemoWithTHORNames(ctx, tos.keeper, outputs[i].GetMemo())
-		feeDeduction := (err == nil && !memo.IsType(TxRagnarok))
+		feeDeduction := true
 
 		// THORChain txouts by nature allow fee deduction, but InactiveVault outbounds
 		// require either no deduction or gas cost deduction instead.
@@ -709,9 +658,7 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 			}
 		}
 
-		// Deduct OutboundTransactionFee from TOI and add to Reserve.
-		// Migrate transaction coins remain in their pools and their gas costs are covered by the Reserve.
-		if feeDeduction && !memo.IsType(TxMigrate) && !toi.ToAddress.Equals(lendAddr) {
+		if feeDeduction && !toi.ToAddress.Equals(lendAddr) {
 			if outputs[i].Coin.Asset.IsRune() {
 				runeFee := transactionFeeAmount // Fee is the prescribed RUNE fee
 				if runeFee.GT(outputs[i].Coin.Amount) {
@@ -744,25 +691,6 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 				// This prevents pool balance corruption and fee event inconsistency
 				if coinAmountAfterFee.IsZero() {
 					ctx.Logger().Info("tx out item would have zero coin after fee, checking if withdrawal", "tx_out", outputs[i].String())
-					// Need to determine whether the outbound is triggered by a withdrawal request
-					if !outputs[i].InHash.IsEmpty() && !outputs[i].InHash.Equals(common.BlankTxID) {
-						inboundVoter, err := tos.keeper.GetObservedTxInVoter(ctx, outputs[i].InHash)
-						if err != nil {
-							ctx.Logger().Error("fail to get observed txin voter", "error", err)
-							continue
-						}
-						if inboundVoter.Tx.IsEmpty() {
-							continue
-						}
-						inboundMemo, err := ParseMemoWithTHORNames(ctx, tos.keeper, inboundVoter.Tx.Tx.Memo)
-						if err != nil {
-							ctx.Logger().Error("fail to parse inbound transaction memo", "error", err)
-							continue
-						}
-						if inboundMemo.IsType(TxWithdraw) {
-							return nil, cosmos.ZeroUint(), errors.New("tx out item has zero coin")
-						}
-					}
 					continue
 				}
 
@@ -809,28 +737,6 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 		if outputs[i].Coin.IsEmpty() {
 			ctx.Logger().Info("tx out item has zero coin", "tx_out", outputs[i].String())
 
-			// Need to determinate whether the outbound is triggered by a withdrawal request
-			// if the outbound is trigger by withdrawal request, and emit asset is not enough to pay for the fee
-			// this need to return with an error , thus handler_withdraw can restore LP's LPUnits
-			// and also the fee event will not be emitted
-			if !outputs[i].InHash.IsEmpty() && !outputs[i].InHash.Equals(common.BlankTxID) {
-				inboundVoter, err := tos.keeper.GetObservedTxInVoter(ctx, outputs[i].InHash)
-				if err != nil {
-					ctx.Logger().Error("fail to get observed txin voter", "error", err)
-					continue
-				}
-				if inboundVoter.Tx.IsEmpty() {
-					continue
-				}
-				inboundMemo, err := ParseMemoWithTHORNames(ctx, tos.keeper, inboundVoter.Tx.Tx.Memo)
-				if err != nil {
-					ctx.Logger().Error("fail to parse inbound transaction memo", "error", err)
-					continue
-				}
-				if inboundMemo.IsType(TxWithdraw) {
-					return nil, cosmos.ZeroUint(), errors.New("tx out item has zero coin")
-				}
-			}
 			continue
 		}
 
@@ -920,16 +826,16 @@ func (tos *TxOutStorage) addToBlockOut(ctx cosmos.Context, mgr Manager, item TxO
 		cloutSpent := cosmos.ZeroUint()
 		item.CloutSpent = &cloutSpent
 	}
+	item.TxType = item.GetTxType()
 
 	vault, err := tos.keeper.GetVault(ctx, item.VaultPubKey)
 	if err != nil {
 		ctx.Logger().Error("fail to get vault", "error", err)
 	}
-	memo, _ := ParseMemo(mgr.GetVersion(), item.GetMemo()) // ignore err
 	labels := []metrics.Label{
 		telemetry.NewLabel("vault_type", vault.Type.String()),
 		telemetry.NewLabel("pubkey", item.VaultPubKey.String()),
-		telemetry.NewLabel("memo_type", memo.GetType().String()),
+		telemetry.NewLabel("memo_type", "disabled"),
 	}
 	telemetry.SetGaugeWithLabels([]string{"thornode", "vault", "out_txn"}, float32(1), labels)
 
@@ -1037,13 +943,6 @@ func (tos *TxOutStorage) splitClout(ctx cosmos.Context, swapperCloutLimit, clout
 }
 
 func (tos *TxOutStorage) CalcTxOutHeight(ctx cosmos.Context, version semver.Version, toi TxOutItem) (int64, cosmos.Uint, error) {
-	// non-outbound transactions are skipped. This is so this code does not
-	// affect internal transactions (ie consolidation and migrate txs)
-	memo, _ := ParseMemo(version, toi.GetMemo()) // ignore err
-	if !memo.IsType(TxRefund) && !memo.IsType(TxOutbound) {
-		return ctx.BlockHeight(), cosmos.ZeroUint(), nil
-	}
-
 	minTxOutVolumeThreshold := tos.keeper.GetConfigInt64(ctx, constants.MinTxOutVolumeThreshold)
 	txOutDelayRate := tos.keeper.GetConfigInt64(ctx, constants.TxOutDelayRate)
 	txOutDelayMax := tos.keeper.GetConfigInt64(ctx, constants.TxOutDelayMax)

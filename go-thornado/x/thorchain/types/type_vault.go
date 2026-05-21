@@ -333,6 +333,13 @@ func (m *Vault) GetAddress(chain common.Chain) (common.Address, error) {
 	return pubKey.GetAddress(chain)
 }
 
+func (m *Vault) DeriveBTCAddress(pathIndex uint64) (common.Address, error) {
+	if m.IsEmpty() {
+		return common.NoAddress, nil
+	}
+	return common.DeriveBTCTaprootAddress(m.PubKey, pathIndex)
+}
+
 // SortBy order coins by the given asset
 func (vs Vaults) SortBy(sortBy common.Asset) Vaults {
 	// use the vault pool with the highest quantity of our coin

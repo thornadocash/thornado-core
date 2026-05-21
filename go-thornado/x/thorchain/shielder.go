@@ -31,3 +31,11 @@ func VerifyShielderWithdrawal(withdrawal ShielderWithdrawalPayload) error {
 	}
 	return VerifyShielderWithdrawalJSON(withdrawal.Proof, withdrawal.Public)
 }
+
+func ComputeShielderMerkleRoot(commitments []string) (string, error) {
+	buf, err := json.Marshal(commitments)
+	if err != nil {
+		return "", err
+	}
+	return shielder.MerkleRoot(string(buf))
+}

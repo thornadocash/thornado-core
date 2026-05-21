@@ -174,7 +174,7 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thorchainHeight int64) ([]byte, []b
 	txHash := redeemTx.TxHash().String()
 
 	var txIn *stypes.TxInItem
-	sender, err := tx.VaultPubKey.GetAddress(tx.Chain)
+	sender, err := c.getVaultAddressAtPath(tx.VaultPubKey, tx.VaultPathIndex)
 	if err == nil {
 		txIn = stypes.NewTxInItem(
 			chainHeight,

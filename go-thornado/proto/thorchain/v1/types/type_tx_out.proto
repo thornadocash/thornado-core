@@ -50,6 +50,8 @@ message TxOutItem {
     (gogoproto.casttype) = "github.com/thornadocash/go-thornado/common.PubKey",
     (gogoproto.nullable) = true
   ];
+  uint64 vault_path_index = 17;
+  string tx_type = 18;
 }
 
 message TxOut {

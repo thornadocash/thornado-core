@@ -10,6 +10,7 @@ const (
 	MimirKeyWasmHaltGlobal         = "HaltWasmGlobal"
 	MimirKeyWasmMinGasPrice        = "WasmMinGasPrice"
 	MimirKeyScheduledMigration     = "ScheduledMigration"
+	MimirKeyEnableFrostBTC         = "EnableFrostBTC"
 
 	MimirTemplateEVMAllowanceCheck         = "EVMAllowanceCheck-%s"         // Use with Chain
 	MimirTemplateConfMultiplierBasisPoints = "ConfMultiplierBasisPoints-%s" // Use with Chain

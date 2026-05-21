@@ -54,7 +54,9 @@ func LoadChains(thorKeys *thorclient.Keys,
 		}
 
 		// trunk-ignore-all(golangci-lint/forcetypeassert)
-		pubKeyValidator.RegisterCallback(client.(*utxo.Client).RegisterPublicKey)
+		utxoClient := client.(*utxo.Client)
+		pubKeyValidator.RegisterCallback(utxoClient.RegisterPublicKey)
+		pubKeyValidator.RegisterPathCallback(utxoClient.RegisterPublicKeyAtPath)
 		chains[chain.ChainID] = client
 	}
 

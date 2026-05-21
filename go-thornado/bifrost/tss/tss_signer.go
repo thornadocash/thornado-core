@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/tendermint/btcd/btcec"
+	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/thorclient"
 	"github.com/thornadocash/go-thornado/bifrost/tss/go-tss/keysign"
 	"github.com/thornadocash/go-thornado/common"
@@ -28,6 +29,10 @@ const (
 
 type tssServer interface {
 	KeySign(req keysign.Request) (keysign.Response, error)
+}
+
+type localStateEngineReader interface {
+	LocalStateEngine(poolPubKey string) string
 }
 
 // KeySign is a proxy between signer and TSS
@@ -91,8 +96,20 @@ func (s *KeySign) Stop() {
 	close(s.taskQueue)
 }
 
+func (s *KeySign) LocalStateEngine(poolPubKey string) string {
+	reader, ok := s.server.(localStateEngineReader)
+	if !ok {
+		return storage.SigningEngineGG20
+	}
+	return reader.LocalStateEngine(poolPubKey)
+}
+
 // RemoteSign send the request to local task queue
 func (s *KeySign) RemoteSign(msg []byte, algo common.SigningAlgo, poolPubKey string) ([]byte, []byte, error) {
+	return s.RemoteSignWithPath(msg, algo, poolPubKey, common.MainVaultPathIndex)
+}
+
+func (s *KeySign) RemoteSignWithPath(msg []byte, algo common.SigningAlgo, poolPubKey string, pathIndex uint64) ([]byte, []byte, error) {
 	if len(msg) == 0 {
 		return nil, nil, nil
 	}
@@ -102,6 +119,7 @@ func (s *KeySign) RemoteSign(msg []byte, algo common.SigningAlgo, poolPubKey str
 		Algo:       algo,
 		PoolPubKey: poolPubKey,
 		Msg:        encodedMsg,
+		PathIndex:  pathIndex,
 		Resp:       make(chan tssKeySignResult, 1),
 	}
 	s.taskQueue <- &task
@@ -125,6 +143,15 @@ func (s *KeySign) RemoteSign(msg []byte, algo common.SigningAlgo, poolPubKey str
 			return nil, nil, nil
 		}
 		s.logger.Debug().Str("R", resp.R).Str("S", resp.S).Str("recovery", resp.RecoveryID).Msg("tss result")
+		if resp.R == "" && resp.RecoveryID == "" {
+			sBytes, err := base64.StdEncoding.DecodeString(resp.S)
+			if err != nil {
+				return nil, nil, fmt.Errorf("fail to decode schnorr tss signature: %w", err)
+			}
+			if len(sBytes) == 64 {
+				return sBytes, nil, nil
+			}
+		}
 		data, err := getSignature(resp.R, resp.S)
 		if err != nil {
 			return nil, nil, fmt.Errorf("fail to decode tss signature: %w", err)
@@ -143,6 +170,7 @@ type tssKeySignTask struct {
 	PoolPubKey string
 	Algo       common.SigningAlgo
 	Msg        string
+	PathIndex  uint64
 	Resp       chan tssKeySignResult
 }
 
@@ -189,6 +217,9 @@ func (s *KeySign) processKeySignTasks() {
 				// The order of messages in the slice is non-deterministic due to goroutine execution timing.
 				// All bifrosts MUST send messages in the same order for TSS signature pairing to work correctly.
 				sort.SliceStable(v, func(i, j int) bool {
+					if v[i].Msg == v[j].Msg {
+						return v[i].PathIndex < v[j].PathIndex
+					}
 					return v[i].Msg < v[j].Msg
 				})
 
@@ -290,13 +321,16 @@ func (s *KeySign) setTssKeySignTasksFail(tasks []*tssKeySignTask, err error) {
 func (s *KeySign) toLocalTSSSigner(poolPubKey string, algo common.SigningAlgo, tasks []*tssKeySignTask) {
 	defer s.wg.Done()
 	var msgToSign []string
+	var pathIndexes []uint64
 	for _, item := range tasks {
 		msgToSign = append(msgToSign, item.Msg)
+		pathIndexes = append(pathIndexes, item.PathIndex)
 	}
 	tssMsg := keysign.Request{
-		Algo:       string(algo),
-		PoolPubKey: poolPubKey,
-		Messages:   msgToSign,
+		Algo:        string(algo),
+		PoolPubKey:  poolPubKey,
+		Messages:    msgToSign,
+		PathIndexes: pathIndexes,
 	}
 	currentVersion := s.getVersion()
 	tssMsg.Version = currentVersion.String()

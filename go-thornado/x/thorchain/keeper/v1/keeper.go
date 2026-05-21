@@ -105,8 +105,12 @@ const (
 	prefixVolume                    types.DbPrefix = "volume/"
 	prefixShielderSession           types.DbPrefix = "shielder_session/"
 	prefixShielderPowToken          types.DbPrefix = "shielder_pow/"
+	prefixShielderDepositAddress    types.DbPrefix = "shielder_deposit_address/"
+	prefixVaultDepositPathIndex     types.DbPrefix = "vault_deposit_path_index/"
 	prefixShielderDeposit           types.DbPrefix = "shielder_deposit/"
 	prefixShielderCommitment        types.DbPrefix = "shielder_commitment/"
+	prefixShielderDenomCommitment   types.DbPrefix = "shielder_denom_commitment/"
+	prefixShielderMerkleRoot        types.DbPrefix = "shielder_merkle_root/"
 	prefixShielderWithdrawal        types.DbPrefix = "shielder_withdrawal/"
 	prefixShielderNullifier         types.DbPrefix = "shielder_nullifier/"
 )

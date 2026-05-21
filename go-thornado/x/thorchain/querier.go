@@ -1899,26 +1899,6 @@ func checkPending(ctx cosmos.Context, keeper keeper.Keeper, voter ObservedTxVote
 		}
 	}
 
-	memo, err := ParseMemoWithTHORNames(ctx, keeper, voter.Tx.Tx.Memo)
-	if err != nil {
-		// If unable to parse, assume not a (valid) swap or limit swap memo.
-		return
-	}
-
-	memoType := memo.GetType()
-	// If the memo asset is a synth, as with Savers add liquidity or withdraw, a swap is assumed to be involved.
-	if memoType == TxSwap || memoType == TxLimitSwap || memo.GetAsset().IsSyntheticAsset() {
-		isSwap = true
-		// Only check the KVStore when the inbound transaction has already been finalised
-		// and when there haven't been any Actions planned.
-		// This will also check the KVStore when an inbound transaction has no output,
-		// such as the output being not enough to cover a fee.
-		if voter.FinalisedHeight != 0 && len(voter.Actions) == 0 {
-			// Use of Swap Queue or Adv Swap Queue depends on Mimir key AdvSwapQueueBooks rather than memo type, so check both.
-			isPending = pending
-		}
-	}
-
 	return
 }
 
@@ -2339,12 +2319,7 @@ func (qs queryServer) queryQueue(ctx cosmos.Context, _ *types.QueryQueueRequest)
 		}
 		for _, tx := range txs.TxArray {
 			if tx.OutHash.IsEmpty() {
-				memo, _ := ParseMemoWithTHORNames(ctx, qs.mgr.Keeper(), tx.Memo)
-				if memo.IsInternal() {
-					query.Internal++
-				} else if memo.IsOutbound() {
-					query.Outbound++
-				}
+				query.Outbound++
 			}
 		}
 	}
@@ -3245,6 +3220,7 @@ func castTxOutItem(toi TxOutItem, height int64) *types.QueryTxOutItem {
 		AggregatorTargetAsset: toi.AggregatorTargetAsset,
 		AggregatorTargetLimit: toi.AggregatorTargetLimit.String(),
 		CloutSpent:            toi.CloutSpent.String(),
+		TxType:                toi.GetTxType(),
 	}
 }
 

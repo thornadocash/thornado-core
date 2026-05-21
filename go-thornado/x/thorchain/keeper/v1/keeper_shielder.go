@@ -3,12 +3,14 @@ package keeperv1
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/cosmos/cosmos-sdk/runtime"
 
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
+	kvTypes "github.com/thornadocash/go-thornado/x/thorchain/keeper/types"
 	"github.com/thornadocash/go-thornado/x/thorchain/types"
 )
 
@@ -65,6 +67,55 @@ func (k KVStore) GetShielderSessionByPowToken(ctx cosmos.Context, powToken strin
 	return k.GetShielderSession(ctx, addr)
 }
 
+func (k KVStore) SetShielderDepositAddress(ctx cosmos.Context, record types.ShielderDepositAddress) error {
+	if err := record.Valid(); err != nil {
+		return err
+	}
+	return k.setShielderJSON(ctx, k.GetKey(prefixShielderDepositAddress, record.Key()), record)
+}
+
+func (k KVStore) GetShielderDepositAddress(ctx cosmos.Context, address common.Address) (types.ShielderDepositAddress, error) {
+	record := types.ShielderDepositAddress{Address: address}
+	_, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderDepositAddress, address.String()), &record)
+	return record, err
+}
+
+func (k KVStore) GetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey) (uint64, error) {
+	if vaultPubKey.IsEmpty() {
+		return 0, fmt.Errorf("missing vault pubkey")
+	}
+	var index uint64
+	found, err := k.getShielderJSON(ctx, k.GetKey(prefixVaultDepositPathIndex, vaultPubKey.String()), &index)
+	if err != nil {
+		return 0, err
+	}
+	if !found || index == 0 {
+		return common.FirstDepositPathIndex, nil
+	}
+	return index, nil
+}
+
+func (k KVStore) SetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey, index uint64) error {
+	if vaultPubKey.IsEmpty() {
+		return fmt.Errorf("missing vault pubkey")
+	}
+	if index == 0 {
+		return fmt.Errorf("vault deposit path index cannot be zero")
+	}
+	return k.setShielderJSON(ctx, k.GetKey(prefixVaultDepositPathIndex, vaultPubKey.String()), index)
+}
+
+func (k KVStore) AllocateVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey) (uint64, error) {
+	index, err := k.GetNextVaultDepositPathIndex(ctx, vaultPubKey)
+	if err != nil {
+		return 0, err
+	}
+	if err := k.SetNextVaultDepositPathIndex(ctx, vaultPubKey, index+1); err != nil {
+		return 0, err
+	}
+	return index, nil
+}
+
 func (k KVStore) SetShielderDeposit(ctx cosmos.Context, deposit types.ShielderDeposit) error {
 	if err := deposit.Valid(); err != nil {
 		return err
@@ -91,6 +142,74 @@ func (k KVStore) SetShielderCommitment(ctx cosmos.Context, commitment string, de
 
 func (k KVStore) ShielderCommitmentExists(ctx cosmos.Context, commitment string) bool {
 	return k.has(ctx, k.GetKey(prefixShielderCommitment, strings.TrimSpace(commitment)))
+}
+
+func (k KVStore) SetShielderDenominationCommitment(ctx cosmos.Context, denominationSats uint64, commitment string, depositID common.TxID) error {
+	commitment = strings.TrimSpace(commitment)
+	if denominationSats == 0 {
+		return fmt.Errorf("missing shielder commitment denomination")
+	}
+	if commitment == "" {
+		return fmt.Errorf("missing shielder commitment")
+	}
+	if depositID.IsEmpty() {
+		return fmt.Errorf("missing shielder commitment deposit id")
+	}
+	return k.setShielderJSON(ctx, shielderDenominationCommitmentKey(denominationSats, commitment), depositID.String())
+}
+
+func (k KVStore) GetShielderDenominationCommitments(ctx cosmos.Context, denominationSats uint64) ([]string, error) {
+	if denominationSats == 0 {
+		return nil, fmt.Errorf("missing shielder commitment denomination")
+	}
+	iter := k.getIterator(ctx, kvTypes.DbPrefix(shielderDenominationPrefix(denominationSats)))
+	defer iter.Close()
+
+	var commitments []string
+	for ; iter.Valid(); iter.Next() {
+		key := string(iter.Key())
+		idx := strings.LastIndex(key, "/")
+		if idx < 0 || idx == len(key)-1 {
+			continue
+		}
+		commitments = append(commitments, key[idx+1:])
+	}
+	sort.Strings(commitments)
+	return commitments, nil
+}
+
+func (k KVStore) SetShielderMerkleRoot(ctx cosmos.Context, denominationSats uint64, root string) error {
+	root = strings.TrimSpace(root)
+	if denominationSats == 0 {
+		return fmt.Errorf("missing shielder merkle root denomination")
+	}
+	if root == "" {
+		return fmt.Errorf("missing shielder merkle root")
+	}
+	return k.setShielderJSON(ctx, shielderMerkleRootKey(denominationSats, root), true)
+}
+
+func (k KVStore) ShielderMerkleRootExists(ctx cosmos.Context, denominationSats uint64, root string) bool {
+	if denominationSats == 0 {
+		return false
+	}
+	root = strings.TrimSpace(root)
+	if root == "" {
+		return false
+	}
+	return k.has(ctx, shielderMerkleRootKey(denominationSats, root))
+}
+
+func shielderDenominationPrefix(denominationSats uint64) string {
+	return fmt.Sprintf("%s%020d/", prefixShielderDenomCommitment, denominationSats)
+}
+
+func shielderDenominationCommitmentKey(denominationSats uint64, commitment string) []byte {
+	return []byte(shielderDenominationPrefix(denominationSats) + strings.ToUpper(strings.TrimSpace(commitment)))
+}
+
+func shielderMerkleRootKey(denominationSats uint64, root string) []byte {
+	return []byte(fmt.Sprintf("%s%020d/%s", prefixShielderMerkleRoot, denominationSats, strings.ToUpper(strings.TrimSpace(root))))
 }
 
 func (k KVStore) SetShielderWithdrawal(ctx cosmos.Context, withdrawal types.ShielderWithdrawal) error {

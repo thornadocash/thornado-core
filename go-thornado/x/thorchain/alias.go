@@ -4,7 +4,6 @@ import (
 	proto "github.com/cosmos/gogoproto/proto"
 
 	"github.com/thornadocash/go-thornado/common"
-	mem "github.com/thornadocash/go-thornado/x/thorchain/memo"
 	"github.com/thornadocash/go-thornado/x/thorchain/types"
 )
 
@@ -76,29 +75,6 @@ const (
 	// Mint/Burn type
 	MintSupplyType = types.MintBurnSupplyType_mint
 	BurnSupplyType = types.MintBurnSupplyType_burn
-
-	// Memos
-	TxSwap              = mem.TxSwap
-	TxLimitSwap         = mem.TxLimitSwap
-	TxModifyLimitSwap   = mem.TxModifyLimitSwap
-	TxAdd               = mem.TxAdd
-	TxBond              = mem.TxBond
-	TxMigrate           = mem.TxMigrate
-	TxRagnarok          = mem.TxRagnarok
-	TxReserve           = mem.TxReserve
-	TxOutbound          = mem.TxOutbound
-	TxRefund            = mem.TxRefund
-	TxUnBond            = mem.TxUnbond
-	TxRebond            = mem.TxRebond
-	TxLeave             = mem.TxLeave
-	TxMaint             = mem.TxMaint
-	TxWithdraw          = mem.TxWithdraw
-	TxTHORName          = mem.TxTHORName
-	TxReferenceReadMemo = mem.TxReferenceReadMemo
-	TxTCYClaim          = mem.TxTCYClaim
-	TxTCYStake          = mem.TxTCYStake
-	TxTCYUnstake        = mem.TxTCYUnstake
-	TxOperatorRotate    = mem.TxOperatorRotate
 )
 
 var (
@@ -254,16 +230,6 @@ var (
 	NewMsgShielderRegisterPow       = types.NewMsgShielderRegisterPow
 	NewMsgShielderPostCommitments   = types.NewMsgShielderPostCommitments
 	NewMsgShielderRequestWithdrawal = types.NewMsgShielderRequestWithdrawal
-
-	// Memo
-	ParseMemo              = mem.ParseMemo
-	ParseMemoWithTHORNames = mem.ParseMemoWithTHORNames
-	FetchAddress           = mem.FetchAddress
-	NewRefundMemo          = mem.NewRefundMemo
-	NewOutboundMemo        = mem.NewOutboundMemo
-	NewRagnarokMemo        = mem.NewRagnarokMemo
-	NewMigrateMemo         = mem.NewMigrateMemo
-	NewReferenceReadMemo   = mem.NewReferenceReadMemo
 )
 
 type (
@@ -400,22 +366,6 @@ type (
 	ShielderSession          = types.ShielderSession
 	ShielderDeposit          = types.ShielderDeposit
 	ShielderWithdrawal       = types.ShielderWithdrawal
-
-	// Memo
-	RefundMemo         = mem.RefundMemo
-	MigrateMemo        = mem.MigrateMemo
-	RagnarokMemo       = mem.RagnarokMemo
-	BondMemo           = mem.BondMemo
-	UnbondMemo         = mem.UnbondMemo
-	RebondMemo         = mem.RebondMemo
-	OutboundMemo       = mem.OutboundMemo
-	LeaveMemo          = mem.LeaveMemo
-	MaintMemo          = mem.MaintMemo
-	NoOpMemo           = mem.NoOpMemo
-	ConsolidateMemo    = mem.ConsolidateMemo
-	ReferenceWriteMemo = mem.ReferenceWriteMemo
-	ReferenceReadMemo  = mem.ReferenceReadMemo
-	OperatorRotateMemo = mem.OperatorRotateMemo
 
 	// Proto
 	ProtoStrings = types.ProtoStrings

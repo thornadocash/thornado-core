@@ -225,10 +225,19 @@ type KeeperShielder interface {
 	SetShielderSession(ctx cosmos.Context, session types.ShielderSession) error
 	GetShielderSession(ctx cosmos.Context, owner cosmos.AccAddress) (types.ShielderSession, error)
 	GetShielderSessionByPowToken(ctx cosmos.Context, powToken string) (types.ShielderSession, error)
+	SetShielderDepositAddress(ctx cosmos.Context, record types.ShielderDepositAddress) error
+	GetShielderDepositAddress(ctx cosmos.Context, address common.Address) (types.ShielderDepositAddress, error)
+	GetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey) (uint64, error)
+	SetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey, index uint64) error
+	AllocateVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey) (uint64, error)
 	SetShielderDeposit(ctx cosmos.Context, deposit types.ShielderDeposit) error
 	GetShielderDeposit(ctx cosmos.Context, depositID common.TxID) (types.ShielderDeposit, error)
 	SetShielderCommitment(ctx cosmos.Context, commitment string, depositID common.TxID) error
 	ShielderCommitmentExists(ctx cosmos.Context, commitment string) bool
+	SetShielderDenominationCommitment(ctx cosmos.Context, denominationSats uint64, commitment string, depositID common.TxID) error
+	GetShielderDenominationCommitments(ctx cosmos.Context, denominationSats uint64) ([]string, error)
+	SetShielderMerkleRoot(ctx cosmos.Context, denominationSats uint64, root string) error
+	ShielderMerkleRootExists(ctx cosmos.Context, denominationSats uint64, root string) bool
 	SetShielderWithdrawal(ctx cosmos.Context, withdrawal types.ShielderWithdrawal) error
 	GetShielderWithdrawal(ctx cosmos.Context, withdrawalID string) (types.ShielderWithdrawal, error)
 	SetShielderNullifierSpent(ctx cosmos.Context, nullifierHash string, withdrawalID string) error

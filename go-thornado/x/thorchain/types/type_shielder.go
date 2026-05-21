@@ -17,13 +17,14 @@ const (
 )
 
 type ShielderSession struct {
-	Owner          cosmos.AccAddress `json:"owner"`
-	PowToken       string            `json:"pow_token"`
-	DepositAddress common.Address    `json:"deposit_address"`
-	VaultPubKey    common.PubKey     `json:"vault_pub_key"`
-	CreatedHeight  int64             `json:"created_height"`
-	Status         string            `json:"status"`
-	DepositID      common.TxID       `json:"deposit_id,omitempty"`
+	Owner            cosmos.AccAddress `json:"owner"`
+	PowToken         string            `json:"pow_token"`
+	DepositAddress   common.Address    `json:"deposit_address"`
+	VaultPubKey      common.PubKey     `json:"vault_pub_key"`
+	DepositPathIndex uint64            `json:"deposit_path_index"`
+	CreatedHeight    int64             `json:"created_height"`
+	Status           string            `json:"status"`
+	DepositID        common.TxID       `json:"deposit_id,omitempty"`
 }
 
 func (m ShielderSession) Key() string {
@@ -47,14 +48,15 @@ func (m ShielderSession) Valid() error {
 }
 
 type ShielderDeposit struct {
-	DepositID      common.TxID       `json:"deposit_id"`
-	Owner          cosmos.AccAddress `json:"owner"`
-	AmountSats     uint64            `json:"amount_sats"`
-	DepositAddress common.Address    `json:"deposit_address"`
-	VaultPubKey    common.PubKey     `json:"vault_pub_key"`
-	MatchedHeight  int64             `json:"matched_height"`
-	Status         string            `json:"status"`
-	Commitments    []string          `json:"commitments,omitempty"`
+	DepositID        common.TxID       `json:"deposit_id"`
+	Owner            cosmos.AccAddress `json:"owner"`
+	AmountSats       uint64            `json:"amount_sats"`
+	DepositAddress   common.Address    `json:"deposit_address"`
+	VaultPubKey      common.PubKey     `json:"vault_pub_key"`
+	DepositPathIndex uint64            `json:"deposit_path_index"`
+	MatchedHeight    int64             `json:"matched_height"`
+	Status           string            `json:"status"`
+	Commitments      []string          `json:"commitments,omitempty"`
 }
 
 func (m ShielderDeposit) Key() string {
@@ -76,6 +78,38 @@ func (m ShielderDeposit) Valid() error {
 	}
 	if m.VaultPubKey.IsEmpty() {
 		return fmt.Errorf("missing shielder deposit vault pubkey")
+	}
+	return nil
+}
+
+type ShielderDepositAddress struct {
+	Address       common.Address    `json:"address"`
+	VaultPubKey   common.PubKey     `json:"vault_pub_key"`
+	PathIndex     uint64            `json:"path_index"`
+	Owner         cosmos.AccAddress `json:"owner"`
+	PowToken      string            `json:"pow_token"`
+	CreatedHeight int64             `json:"created_height"`
+}
+
+func (m ShielderDepositAddress) Key() string {
+	return m.Address.String()
+}
+
+func (m ShielderDepositAddress) Valid() error {
+	if m.Address.IsEmpty() {
+		return fmt.Errorf("missing shielder deposit address")
+	}
+	if m.VaultPubKey.IsEmpty() {
+		return fmt.Errorf("missing shielder deposit address vault pubkey")
+	}
+	if m.PathIndex == common.MainVaultPathIndex {
+		return fmt.Errorf("shielder deposit address path index cannot be zero")
+	}
+	if m.Owner.Empty() {
+		return fmt.Errorf("missing shielder deposit address owner")
+	}
+	if strings.TrimSpace(m.PowToken) == "" {
+		return fmt.Errorf("missing shielder deposit address pow token")
 	}
 	return nil
 }

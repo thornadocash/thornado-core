@@ -45,6 +45,8 @@ type TxOutItem struct {
 	AggregatorTargetLimit *cosmossdk_io_math.Uint                            `protobuf:"bytes,13,opt,name=aggregator_target_limit,json=aggregatorTargetLimit,proto3,customtype=cosmossdk.io/math.Uint" json:"aggregator_target_limit,omitempty"`
 	CloutSpent            *cosmossdk_io_math.Uint                            `protobuf:"bytes,14,opt,name=clout_spent,json=cloutSpent,proto3,customtype=cosmossdk.io/math.Uint" json:"clout_spent,omitempty"`
 	VaultPubKeyEddsa      github_com_thornadocash_go_thornado_common.PubKey  `protobuf:"bytes,15,opt,name=vault_pub_key_eddsa,json=vaultPubKeyEddsa,proto3,casttype=github.com/thornadocash/go-thornado/common.PubKey" json:"vault_pub_key_eddsa,omitempty"`
+	VaultPathIndex        uint64                                             `protobuf:"varint,17,opt,name=vault_path_index,json=vaultPathIndex,proto3" json:"vault_path_index,omitempty"`
+	TxType                string                                             `protobuf:"bytes,18,opt,name=tx_type,json=txType,proto3" json:"tx_type,omitempty"`
 }
 
 func (m *TxOutItem) Reset()      { *m = TxOutItem{} }
@@ -190,6 +192,15 @@ func (m *TxOutItem) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.TxType) > 0 {
+		i -= len(m.TxType)
+		copy(dAtA[i:], m.TxType)
+		i = encodeVarintTypeTxOut(dAtA, i, uint64(len(m.TxType)))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x92
+	}
 	if len(m.OriginalMemo) > 0 {
 		i -= len(m.OriginalMemo)
 		copy(dAtA[i:], m.OriginalMemo)
@@ -198,6 +209,13 @@ func (m *TxOutItem) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		dAtA[i] = 0x1
 		i--
 		dAtA[i] = 0x82
+	}
+	if m.VaultPathIndex != 0 {
+		i = encodeVarintTypeTxOut(dAtA, i, uint64(m.VaultPathIndex))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x88
 	}
 	if len(m.VaultPubKeyEddsa) > 0 {
 		i -= len(m.VaultPubKeyEddsa)
@@ -444,6 +462,13 @@ func (m *TxOutItem) Size() (n int) {
 		n += 1 + l + sovTypeTxOut(uint64(l))
 	}
 	l = len(m.OriginalMemo)
+	if l > 0 {
+		n += 2 + l + sovTypeTxOut(uint64(l))
+	}
+	if m.VaultPathIndex != 0 {
+		n += 2 + sovTypeTxOut(uint64(m.VaultPathIndex))
+	}
+	l = len(m.TxType)
 	if l > 0 {
 		n += 2 + l + sovTypeTxOut(uint64(l))
 	}
@@ -1004,6 +1029,57 @@ func (m *TxOutItem) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.VaultPubKeyEddsa = github_com_thornadocash_go_thornado_common.PubKey(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 17:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field VaultPathIndex", wireType)
+			}
+			m.VaultPathIndex = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypeTxOut
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.VaultPathIndex |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 18:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxType", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypeTxOut
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypeTxOut
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypeTxOut
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TxType = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 16:
 			if wireType != 2 {

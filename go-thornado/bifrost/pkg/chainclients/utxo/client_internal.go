@@ -19,7 +19,6 @@ import (
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
-	mem "github.com/thornadocash/go-thornado/x/thorchain/memo"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -405,18 +404,7 @@ func (c *Client) getTxIn(tx *btcjson.TxRawResult, height int64, isMemPool bool, 
 	if err != nil {
 		return types.TxInItem{}, fmt.Errorf("fail to get sender from tx: %w", err)
 	}
-	memo, err := c.getMemo(tx)
-	if err != nil {
-		return types.TxInItem{}, fmt.Errorf("fail to get memo from tx: %w", err)
-	}
-	if len([]byte(memo)) > constants.MaxMemoSize {
-		return types.TxInItem{}, fmt.Errorf("memo (%s) longer than max allow length (%d)", memo, constants.MaxMemoSize)
-	}
-	m, err := mem.ParseMemo(common.LatestVersion, memo)
-	if err != nil {
-		c.log.Debug().Err(err).Str("memo", memo).Msg("fail to parse memo")
-	}
-	output, err := c.getOutput(sender, tx, m.IsType(mem.TxConsolidate))
+	output, err := c.getOutput(sender, tx, false)
 	if err != nil {
 		if errors.Is(err, btypes.ErrFailOutputMatchCriteria) {
 			c.log.Debug().Int64("height", height).Str("txid", tx.Hash).Msg("ignore tx not matching format")
@@ -453,7 +441,7 @@ func (c *Client) getTxIn(tx *btcjson.TxRawResult, height int64, isMemPool bool, 
 		Coins: common.Coins{
 			common.NewCoin(c.cfg.ChainID.GetGasAsset(), cosmos.NewUint(amt)),
 		},
-		Memo: memo,
+		Memo: "",
 		Gas:  gas,
 	}, nil
 }

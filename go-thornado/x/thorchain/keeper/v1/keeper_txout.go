@@ -38,6 +38,7 @@ func (k KVStore) AppendTxOut(ctx cosmos.Context, height int64, item TxOutItem) e
 	if err != nil {
 		return err
 	}
+	item.TxType = item.GetTxType()
 	block.TxArray = append(block.TxArray, item)
 	return k.SetTxOut(ctx, block)
 }

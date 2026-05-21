@@ -455,6 +455,10 @@ func (vm *NetworkMgr) EndBlock(ctx cosmos.Context, mgr Manager) error {
 		ctx.Logger().Error("fail to migrate funds", "error", err)
 	}
 
+	if err := vm.consolidateActiveBTCVaults(ctx, mgr); err != nil {
+		ctx.Logger().Error("fail to schedule bitcoin vault consolidation", "error", err)
+	}
+
 	if err := vm.processOverSolvency(ctx, mgr); err != nil {
 		ctx.Logger().Error("fail to process post-churn solvency", "error", err)
 	}
@@ -469,6 +473,90 @@ func (vm *NetworkMgr) EndBlock(ctx cosmos.Context, mgr Manager) error {
 		vm.distributeTCYStake(ctx, mgr)
 	}
 	return nil
+}
+
+func (vm *NetworkMgr) consolidateActiveBTCVaults(ctx cosmos.Context, mgr Manager) error {
+	vaults, err := vm.k.GetAsgardVaultsByStatus(ctx, ActiveVault)
+	if err != nil {
+		return err
+	}
+
+	threshold, err := vm.k.GetMimir(ctx, "MaxUTXOsToSpend")
+	if err != nil || threshold <= 0 {
+		threshold = 15
+	}
+	if threshold < 2 {
+		threshold = 2
+	}
+
+	for _, vault := range vaults {
+		if vault.InboundTxCount < threshold {
+			continue
+		}
+		if vaultHasPendingTxType(ctx, mgr.Keeper(), vault.PubKey, types.TxOutTypeConsolidate) {
+			continue
+		}
+		coin := vault.GetCoin(common.BTCAsset)
+		if coin.IsEmpty() || coin.Amount.IsZero() {
+			continue
+		}
+		maxGasCoin, err := mgr.GasMgr().GetMaxGas(ctx, common.BTCChain)
+		if err != nil {
+			return fmt.Errorf("fail to get bitcoin consolidate max gas: %w", err)
+		}
+		if coin.Amount.LTE(maxGasCoin.Amount) {
+			continue
+		}
+		rootAddr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
+		if err != nil {
+			return err
+		}
+		gasRate := int64(1)
+		if nf, err := vm.k.GetNetworkFee(ctx, common.BTCChain); err == nil && nf.TransactionFeeRate > 0 {
+			gasRate = int64(nf.TransactionFeeRate)
+		}
+		item := TxOutItem{
+			Chain:            common.BTCChain,
+			ToAddress:        rootAddr,
+			VaultPubKey:      vault.PubKey,
+			VaultPubKeyEddsa: vault.PubKeyEddsa,
+			Coin:             common.NewCoin(common.BTCAsset, coin.Amount.Sub(maxGasCoin.Amount)),
+			MaxGas:           common.Gas{maxGasCoin},
+			GasRate:          gasRate,
+			InHash:           common.BlankTxID,
+			ModuleName:       AsgardName,
+			VaultPathIndex:   common.MainVaultPathIndex,
+			TxType:           types.TxOutTypeConsolidate,
+		}
+		if err := mgr.TxOutStore().UnSafeAddTxOutItem(ctx, mgr, item, ctx.BlockHeight()); err != nil {
+			return fmt.Errorf("fail to add bitcoin consolidate txout: %w", err)
+		}
+		vault.InboundTxCount = 0
+		if err := vm.k.SetVault(ctx, vault); err != nil {
+			return fmt.Errorf("fail to reset vault inbound tx count: %w", err)
+		}
+	}
+	return nil
+}
+
+func vaultHasPendingTxType(ctx cosmos.Context, k keeper.Keeper, pubkey common.PubKey, txType string) bool {
+	signingPeriod := k.GetConstants().GetInt64Value(constants.SigningTransactionPeriod)
+	startHeight := ctx.BlockHeight() - signingPeriod
+	if startHeight < 1 {
+		startHeight = 1
+	}
+	for height := startHeight; height <= ctx.BlockHeight()+signingPeriod; height++ {
+		blockOut, err := k.GetTxOut(ctx, height)
+		if err != nil {
+			continue
+		}
+		for _, item := range blockOut.TxArray {
+			if item.OutHash.IsEmpty() && item.VaultPubKey.Equals(pubkey) && item.GetTxType() == txType {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
@@ -745,7 +833,8 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 						Asset:  coin.Asset,
 						Amount: amt,
 					},
-					Memo: NewMigrateMemo(ctx.BlockHeight()).String(),
+					Memo:   "",
+					TxType: types.TxOutTypeMigrate,
 				}
 				ok, err := vm.txOutStore.TryAddTxOutItem(ctx, mgr, toi, cosmos.ZeroUint())
 				if err != nil && !errors.Is(err, ErrNotEnoughToPayFee) {

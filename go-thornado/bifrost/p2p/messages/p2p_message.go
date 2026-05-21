@@ -23,6 +23,12 @@ const (
 	TSSControlMsg
 	// TSSTaskDone is the message of Tss process notification
 	TSSTaskDone
+	// TSSSchnorrKeyGenMsg is a Schnorr/FROST keygen protocol message.
+	TSSSchnorrKeyGenMsg
+	// TSSSchnorrKeySignMsg is a Schnorr/FROST keysign protocol message.
+	TSSSchnorrKeySignMsg
+	// TSSSchnorrKeySignResultMsg is a Schnorr/FROST keysign result message.
+	TSSSchnorrKeySignResultMsg
 	// Unknown is the message indicates the undefined message type
 	Unknown
 )
@@ -38,6 +44,12 @@ func (msgType THORChainTSSMessageType) String() string {
 		return "TSSKeyGenVerMsg"
 	case TSSKeySignVerMsg:
 		return "TSSKeySignVerMsg"
+	case TSSSchnorrKeyGenMsg:
+		return "TSSSchnorrKeyGenMsg"
+	case TSSSchnorrKeySignMsg:
+		return "TSSSchnorrKeySignMsg"
+	case TSSSchnorrKeySignResultMsg:
+		return "TSSSchnorrKeySignResultMsg"
 	default:
 		return "Unknown"
 	}

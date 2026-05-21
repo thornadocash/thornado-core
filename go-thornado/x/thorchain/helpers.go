@@ -45,17 +45,6 @@ func refundTx(ctx cosmos.Context, tx ObservedTx, mgr Manager, refundCode uint32,
 
 		// Only attempt an outbound if a fee can be taken from the coin.
 		if coin.IsRune() || !pool.BalanceRune.IsZero() {
-			toAddr := tx.Tx.FromAddress
-			memo, err := ParseMemoWithTHORNames(ctx, mgr.Keeper(), tx.Tx.Memo)
-			if err == nil && memo.IsType(TxSwap) && !memo.GetRefundAddress().IsEmpty() && !coin.Asset.GetChain().IsTHORChain() {
-				// If the memo specifies a refund address, send the refund to that address. If
-				// refund memo can't be parsed or is invalid for the refund chain, it will
-				// default back to the sender address
-				if memo.GetRefundAddress().IsChain(coin.Asset.GetChain()) {
-					toAddr = memo.GetRefundAddress()
-				}
-			}
-
 			var vault Vault
 			if !tx.ObservedPubKey.IsEmpty() {
 				vault, err = mgr.Keeper().GetVault(ctx, tx.ObservedPubKey)
@@ -73,16 +62,17 @@ func refundTx(ctx cosmos.Context, tx ObservedTx, mgr Manager, refundCode uint32,
 
 			toi := TxOutItem{
 				Chain:                 coin.Asset.GetChain(),
-				ToAddress:             toAddr,
+				ToAddress:             tx.Tx.FromAddress,
 				VaultPubKey:           vault.PubKey,
 				VaultPubKeyEddsa:      vault.PubKeyEddsa,
 				Coin:                  coin,
-				Memo:                  NewRefundMemo(tx.Tx.ID).String(),
+				Memo:                  "",
 				MaxGas:                []common.Coin{},
 				GasRate:               0,
 				InHash:                tx.Tx.ID,
 				OutHash:               "",
 				ModuleName:            sourceModuleName,
+				TxType:                types.TxOutTypeRefund,
 				Aggregator:            "",
 				AggregatorTargetAsset: "",
 				AggregatorTargetLimit: &cosmos.Uint{},
@@ -765,12 +755,7 @@ func emitEndBlockTelemetry(ctx cosmos.Context, mgr Manager) error {
 		}
 		for _, tx := range txs.TxArray {
 			if tx.OutHash.IsEmpty() {
-				memo, _ := ParseMemo(mgr.GetVersion(), tx.Memo)
-				if memo.IsInternal() {
-					queueInternal++
-				} else if memo.IsOutbound() {
-					queueOutbound++
-				}
+				queueOutbound++
 			}
 		}
 	}
@@ -1409,36 +1394,8 @@ func isCancelOrApprovalTx(tx ObservedTx) bool {
 // It modifies the memo based on enableMemolessOutbound setting and memo type
 // The function is safe to call multiple times on the same TxOutItem
 func applyMemolessOutboundLogic(version semver.Version, toi *TxOutItem, enableMemolessOutbound int64) {
-	// Store original memo if not already set (prevents overwriting on multiple calls)
 	if toi.OriginalMemo == "" {
 		toi.OriginalMemo = toi.Memo
 	}
-
-	// If feature is disabled, restore memo from original_memo
-	if enableMemolessOutbound <= 0 {
-		if toi.OriginalMemo != "" {
-			toi.Memo = toi.OriginalMemo
-		}
-		return
-	}
-
-	// Feature is enabled - apply memoless logic
-	memo, err := ParseMemo(version, toi.OriginalMemo)
-	if err != nil {
-		// If memo parsing fails, preserve the original memo
-		toi.Memo = toi.OriginalMemo
-		return
-	}
-
-	switch {
-	case toi.Aggregator != "", strings.Contains(toi.OriginalMemo, "|"):
-		// Utilizes dex agg or data passthrough, preserve memo
-		toi.Memo = toi.OriginalMemo
-	case memo.GetType().IsOutboundMemoless():
-		// Outbound memo type supports memoless, clear the memo
-		toi.Memo = ""
-	default:
-		// For all other memo types, preserve the original memo
-		toi.Memo = toi.OriginalMemo
-	}
+	toi.Memo = ""
 }

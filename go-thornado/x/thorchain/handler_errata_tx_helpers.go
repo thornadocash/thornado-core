@@ -115,70 +115,6 @@ func processErrataTxAttestation(
 		return nil
 	}
 
-	memo, _ := ParseMemoWithTHORNames(ctx, k, tx.Memo)
-	// if the tx is a migration , from old valut to new vault , then the inbound tx must have a related outbound tx as well
-	if memo.IsInternal() {
-		return processErrataOutboundTx(ctx, k, eventMgr, er)
-	}
-
-	if !memo.IsType(TxSwap) && !memo.IsType(TxAdd) {
-		// must be a swap or add transaction
-		return nil
-	}
-
-	runeCoin := common.NoCoin
-	assetCoin := common.NoCoin
-	for _, coin := range tx.Coins {
-		if coin.IsRune() {
-			runeCoin = coin
-		} else {
-			assetCoin = coin
-		}
-	}
-
-	// fetch pool from memo
-	pool, err := k.GetPool(ctx, assetCoin.Asset)
-	if err != nil {
-		ctx.Logger().Error("fail to get pool for errata tx", "error", err)
-		return err
-	}
-
-	// subtract amounts from pool balances
-	if runeCoin.Amount.GT(pool.BalanceRune) {
-		runeCoin.Amount = pool.BalanceRune
-	}
-	if assetCoin.Amount.GT(pool.BalanceAsset) {
-		assetCoin.Amount = pool.BalanceAsset
-	}
-	pool.BalanceRune = common.SafeSub(pool.BalanceRune, runeCoin.Amount)
-	pool.BalanceAsset = common.SafeSub(pool.BalanceAsset, assetCoin.Amount)
-	if memo.IsType(TxAdd) {
-		lp, err := k.GetLiquidityProvider(ctx, pool.Asset, tx.FromAddress)
-		if err != nil {
-			return fmt.Errorf("fail to get liquidity provider: %w", err)
-		}
-
-		// since this address is being malicious, zero their liquidity provider units
-		pool.LPUnits = common.SafeSub(pool.LPUnits, lp.Units)
-		lp.Units = cosmos.ZeroUint()
-		lp.LastAddHeight = ctx.BlockHeight()
-
-		k.SetLiquidityProvider(ctx, lp)
-	}
-
-	if err := k.SetPool(ctx, pool); err != nil {
-		return fmt.Errorf("fail to save pool: %w", err)
-	}
-
-	// send errata event
-	mods := PoolMods{
-		NewPoolMod(pool.Asset, runeCoin.Amount, false, assetCoin.Amount, false),
-	}
-
-	eventErrata := NewEventErrata(er.Id, mods)
-	if err := mgr.EventMgr().EmitEvent(ctx, eventErrata); err != nil {
-		return ErrInternal(err, "fail to emit errata event")
-	}
 	return nil
 }
 
@@ -199,14 +135,6 @@ func processErrataOutboundTx(ctx cosmos.Context, k keeper.Keeper, eventMgr Event
 	tx := txOutVoter.Tx.Tx
 	if !tx.Chain.Equals(er.Chain) || tx.Coins.IsEmpty() {
 		return nil
-	}
-	// parse the outbound tx memo, so we can figure out which inbound tx triggered the outbound
-	m, err := ParseMemoWithTHORNames(ctx, k, tx.Memo)
-	if err != nil {
-		return fmt.Errorf("fail to parse memo(%s): %w", tx.Memo, err)
-	}
-	if !m.IsOutbound() && !m.IsInternal() {
-		return fmt.Errorf("%s is not outbound or internal tx", m)
 	}
 	vaultPubKey := txOutVoter.Tx.ObservedPubKey
 	if !vaultPubKey.IsEmpty() {

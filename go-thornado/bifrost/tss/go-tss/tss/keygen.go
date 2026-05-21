@@ -9,6 +9,7 @@ import (
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p/conversion"
 	"github.com/thornadocash/go-thornado/bifrost/p2p/messages"
+	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/tss/go-tss/blame"
 	"github.com/thornadocash/go-thornado/bifrost/tss/go-tss/common"
 	"github.com/thornadocash/go-thornado/bifrost/tss/go-tss/keygen"
@@ -180,6 +181,21 @@ func (t *TssServer) Keygen(req keygen.Request) (keygen.Response, error) {
 }
 
 func (t *TssServer) KeygenAllAlgo(req keygen.Request) ([]keygen.Response, error) {
+	if req.Engine == storage.SigningEngineSchnorr {
+		ecdsaResp, err := t.SchnorrKeygen(req)
+		if err != nil {
+			return []keygen.Response{ecdsaResp}, nil
+		}
+		eddsaReq := req
+		eddsaReq.Engine = storage.SigningEngineGG20
+		eddsaReq.Algo = tcommon.SigningAlgoEd25519
+		eddsaResp, err := t.Keygen(eddsaReq)
+		if err != nil {
+			return []keygen.Response{ecdsaResp, eddsaResp}, nil
+		}
+		return []keygen.Response{ecdsaResp, eddsaResp}, nil
+	}
+
 	// this is the algo we currently support
 	algos := []tcommon.SigningAlgo{tcommon.SigningAlgoSecp256k1, tcommon.SigningAlgoEd25519}
 	t.tssKeyGenLocker.Lock()

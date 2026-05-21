@@ -2919,6 +2919,16 @@ components:
         out_hash:
           type: string
           example: "0D0B2FDB6DAD6E5FD3C5E46D39128F9DA15E96F0B2CC054CE059EA3532B150FB"
+        tx_type:
+          type: string
+          enum:
+            - out
+            - migrate
+            - refund
+            - sweep
+            - consolidate
+          description: Thornado outbound category for testing and observability.
+          example: "out"
         chain:
           type: string
           example: "ETH"

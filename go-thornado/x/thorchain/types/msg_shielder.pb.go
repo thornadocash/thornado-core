@@ -78,8 +78,9 @@ func (m *MsgShielderRegisterPow) GetSigner() github_com_cosmos_cosmos_sdk_types.
 }
 
 type MsgShielderRegisterPowResponse struct {
-	DepositAddress string `protobuf:"bytes,1,opt,name=deposit_address,json=depositAddress,proto3" json:"deposit_address,omitempty"`
-	VaultPubKey    string `protobuf:"bytes,2,opt,name=vault_pub_key,json=vaultPubKey,proto3" json:"vault_pub_key,omitempty"`
+	DepositAddress   string `protobuf:"bytes,1,opt,name=deposit_address,json=depositAddress,proto3" json:"deposit_address,omitempty"`
+	VaultPubKey      string `protobuf:"bytes,2,opt,name=vault_pub_key,json=vaultPubKey,proto3" json:"vault_pub_key,omitempty"`
+	DepositPathIndex uint64 `protobuf:"varint,3,opt,name=deposit_path_index,json=depositPathIndex,proto3" json:"deposit_path_index,omitempty"`
 }
 
 func (m *MsgShielderRegisterPowResponse) Reset()         { *m = MsgShielderRegisterPowResponse{} }
@@ -127,6 +128,13 @@ func (m *MsgShielderRegisterPowResponse) GetVaultPubKey() string {
 		return m.VaultPubKey
 	}
 	return ""
+}
+
+func (m *MsgShielderRegisterPowResponse) GetDepositPathIndex() uint64 {
+	if m != nil {
+		return m.DepositPathIndex
+	}
+	return 0
 }
 
 type MsgShielderPostCommitments struct {
@@ -457,6 +465,11 @@ func (m *MsgShielderRegisterPowResponse) MarshalToSizedBuffer(dAtA []byte) (int,
 	_ = i
 	var l int
 	_ = l
+	if m.DepositPathIndex != 0 {
+		i = encodeVarintMsgShielder(dAtA, i, uint64(m.DepositPathIndex))
+		i--
+		dAtA[i] = 0x18
+	}
 	if len(m.VaultPubKey) > 0 {
 		i -= len(m.VaultPubKey)
 		copy(dAtA[i:], m.VaultPubKey)
@@ -679,6 +692,9 @@ func (m *MsgShielderRegisterPowResponse) Size() (n int) {
 	l = len(m.VaultPubKey)
 	if l > 0 {
 		n += 1 + l + sovMsgShielder(uint64(l))
+	}
+	if m.DepositPathIndex != 0 {
+		n += 1 + sovMsgShielder(uint64(m.DepositPathIndex))
 	}
 	return n
 }
@@ -976,6 +992,25 @@ func (m *MsgShielderRegisterPowResponse) Unmarshal(dAtA []byte) error {
 			}
 			m.VaultPubKey = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DepositPathIndex", wireType)
+			}
+			m.DepositPathIndex = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMsgShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.DepositPathIndex |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipMsgShielder(dAtA[iNdEx:])

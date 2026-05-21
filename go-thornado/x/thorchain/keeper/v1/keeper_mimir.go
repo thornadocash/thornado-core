@@ -116,6 +116,7 @@ func (k KVStore) IsOperationalMimir(key string) bool {
 		constants.OverSolvencyCheckInterval.String(),
 		constants.OverSolvencyToTreasuryBps.String(),
 		constants.MimirKeyScheduledMigration,
+		constants.MimirKeyEnableFrostBTC,
 		constants.MaxRetiredVaultRecoveryAttempts.String(),
 		constants.P2PGateDisabled.String(),
 		constants.EnableMemolessOutbound.String(),

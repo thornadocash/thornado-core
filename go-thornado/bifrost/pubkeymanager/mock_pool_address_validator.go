@@ -44,6 +44,9 @@ func (mpa *MockPoolAddressValidator) IsValidPoolAddress(addr string, chain commo
 func (mpa *MockPoolAddressValidator) RegisterCallback(callback OnNewPubKey) {
 }
 
+func (mpa *MockPoolAddressValidator) RegisterPathCallback(callback OnNewPubKeyPath) {
+}
+
 func (mpa *MockPoolAddressValidator) GetContracts(chain common.Chain, includeInactive bool) []common.Address {
 	return nil
 }

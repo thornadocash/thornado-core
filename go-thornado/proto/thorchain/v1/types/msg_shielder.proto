@@ -19,6 +19,7 @@ message MsgShielderRegisterPow {
 message MsgShielderRegisterPowResponse {
   string deposit_address = 1;
   string vault_pub_key = 2;
+  uint64 deposit_path_index = 3;
 }
 
 message MsgShielderPostCommitments {

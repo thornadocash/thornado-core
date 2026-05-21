@@ -14,6 +14,7 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thorchain/keeper"
+	"github.com/thornadocash/go-thornado/x/thorchain/types"
 )
 
 // ValidatorMgr is to manage a list of validators , and rotate them
@@ -802,8 +803,9 @@ func (vm *ValidatorMgr) ragnarokBond(ctx cosmos.Context, nth int64, mgr Manager)
 			ToAddress:  na.BondAddress,
 			InHash:     common.BlankTxID,
 			Coin:       common.NewCoin(common.RuneAsset(), amt),
-			Memo:       NewRagnarokMemo(ctx.BlockHeight()).String(),
+			Memo:       "",
 			ModuleName: BondName,
+			TxType:     types.TxOutTypeRefund,
 		}
 		ok, err := vm.txOutStore.TryAddTxOutItem(ctx, mgr, txOutItem, cosmos.ZeroUint())
 		if err != nil {

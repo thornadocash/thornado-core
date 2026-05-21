@@ -935,6 +935,61 @@ func (k KVStoreDummy) SetVolume(_ cosmos.Context, _ Volume) error {
 	return nil
 }
 
+func (k KVStoreDummy) SetShielderSession(_ cosmos.Context, _ types.ShielderSession) error { return nil }
+func (k KVStoreDummy) GetShielderSession(_ cosmos.Context, _ cosmos.AccAddress) (types.ShielderSession, error) {
+	return types.ShielderSession{}, nil
+}
+func (k KVStoreDummy) GetShielderSessionByPowToken(_ cosmos.Context, _ string) (types.ShielderSession, error) {
+	return types.ShielderSession{}, nil
+}
+func (k KVStoreDummy) SetShielderDepositAddress(_ cosmos.Context, _ types.ShielderDepositAddress) error {
+	return nil
+}
+func (k KVStoreDummy) GetShielderDepositAddress(_ cosmos.Context, _ common.Address) (types.ShielderDepositAddress, error) {
+	return types.ShielderDepositAddress{}, nil
+}
+func (k KVStoreDummy) GetNextVaultDepositPathIndex(_ cosmos.Context, _ common.PubKey) (uint64, error) {
+	return common.FirstDepositPathIndex, nil
+}
+func (k KVStoreDummy) SetNextVaultDepositPathIndex(_ cosmos.Context, _ common.PubKey, _ uint64) error {
+	return nil
+}
+func (k KVStoreDummy) AllocateVaultDepositPathIndex(_ cosmos.Context, _ common.PubKey) (uint64, error) {
+	return common.FirstDepositPathIndex, nil
+}
+func (k KVStoreDummy) SetShielderDeposit(_ cosmos.Context, _ types.ShielderDeposit) error {
+	return nil
+}
+func (k KVStoreDummy) GetShielderDeposit(_ cosmos.Context, _ common.TxID) (types.ShielderDeposit, error) {
+	return types.ShielderDeposit{}, nil
+}
+func (k KVStoreDummy) SetShielderCommitment(_ cosmos.Context, _ string, _ common.TxID) error {
+	return nil
+}
+func (k KVStoreDummy) ShielderCommitmentExists(_ cosmos.Context, _ string) bool { return false }
+func (k KVStoreDummy) SetShielderDenominationCommitment(_ cosmos.Context, _ uint64, _ string, _ common.TxID) error {
+	return nil
+}
+func (k KVStoreDummy) GetShielderDenominationCommitments(_ cosmos.Context, _ uint64) ([]string, error) {
+	return nil, nil
+}
+func (k KVStoreDummy) SetShielderMerkleRoot(_ cosmos.Context, _ uint64, _ string) error {
+	return nil
+}
+func (k KVStoreDummy) ShielderMerkleRootExists(_ cosmos.Context, _ uint64, _ string) bool {
+	return false
+}
+func (k KVStoreDummy) SetShielderWithdrawal(_ cosmos.Context, _ types.ShielderWithdrawal) error {
+	return nil
+}
+func (k KVStoreDummy) GetShielderWithdrawal(_ cosmos.Context, _ string) (types.ShielderWithdrawal, error) {
+	return types.ShielderWithdrawal{}, nil
+}
+func (k KVStoreDummy) SetShielderNullifierSpent(_ cosmos.Context, _, _ string) error {
+	return nil
+}
+func (k KVStoreDummy) ShielderNullifierSpent(_ cosmos.Context, _ string) bool { return false }
+
 // a mock cosmos.Iterator implementation for testing purposes
 type DummyIterator struct {
 	cosmos.Iterator

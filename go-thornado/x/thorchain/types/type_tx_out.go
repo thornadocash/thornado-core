@@ -8,6 +8,29 @@ import (
 	"strings"
 )
 
+const (
+	TxOutTypeOut         = "out"
+	TxOutTypeMigrate     = "migrate"
+	TxOutTypeRefund      = "refund"
+	TxOutTypeSweep       = "sweep"
+	TxOutTypeConsolidate = "consolidate"
+)
+
+func NormalizeTxOutType(txType string) string {
+	switch strings.ToLower(strings.TrimSpace(txType)) {
+	case TxOutTypeMigrate:
+		return TxOutTypeMigrate
+	case TxOutTypeRefund:
+		return TxOutTypeRefund
+	case TxOutTypeSweep:
+		return TxOutTypeSweep
+	case TxOutTypeConsolidate:
+		return TxOutTypeConsolidate
+	default:
+		return TxOutTypeOut
+	}
+}
+
 // Valid check whether TxOutItem hold valid information
 func (m TxOutItem) Valid() error {
 	if m.Chain.IsEmpty() {
@@ -88,6 +111,10 @@ func (toi TxOutItem) GetMemo() string {
 		return toi.OriginalMemo
 	}
 	return toi.Memo
+}
+
+func (toi TxOutItem) GetTxType() string {
+	return NormalizeTxOutType(toi.TxType)
 }
 
 // Hash returns a sha256 hash that uniquely represents the TxOutItem.

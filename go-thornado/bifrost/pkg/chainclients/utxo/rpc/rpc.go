@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -237,6 +238,45 @@ func (c *Client) ImportAddress(address string) error {
 	return extractBTCError(err)
 }
 
+// ImportDescriptorAddress imports a descriptor wallet watch-only address.
+func (c *Client) ImportDescriptorAddress(address string) error {
+	desc := fmt.Sprintf("addr(%s)", address)
+	var descriptorInfo struct {
+		Descriptor string `json:"descriptor"`
+	}
+	err := c.Call(&descriptorInfo, "getdescriptorinfo", desc)
+	if err != nil {
+		return extractBTCError(err)
+	}
+	if descriptorInfo.Descriptor != "" {
+		desc = descriptorInfo.Descriptor
+	}
+
+	var results []struct {
+		Success bool              `json:"success"`
+		Error   *btcjson.RPCError `json:"error,omitempty"`
+	}
+	err = c.Call(&results, "importdescriptors", []map[string]any{
+		{
+			"desc":      desc,
+			"timestamp": "now",
+		},
+	})
+	if err != nil {
+		return extractBTCError(err)
+	}
+	if len(results) != 1 {
+		return fmt.Errorf("unexpected importdescriptors response length: %d", len(results))
+	}
+	if !results[0].Success {
+		if results[0].Error != nil {
+			return results[0].Error
+		}
+		return errors.New("importdescriptors failed")
+	}
+	return nil
+}
+
 // ImportAddressRescan imports the address with rescan.
 func (c *Client) ImportAddressRescan(address string) error {
 	err := c.Call(nil, "importaddress", address, "", true)
@@ -245,7 +285,9 @@ func (c *Client) ImportAddressRescan(address string) error {
 
 // CreateWallet creates a new wallet.
 func (c *Client) CreateWallet(name string) error {
-	err := c.Call(nil, "createwallet", name, false, false, "", false, false)
+	descriptors := c.chain == common.BTCChain
+	disablePrivateKeys := c.chain == common.BTCChain
+	err := c.Call(nil, "createwallet", name, disablePrivateKeys, false, "", false, descriptors)
 	err = extractBTCError(err)
 
 	// ignore code -4 (wallet already exists)

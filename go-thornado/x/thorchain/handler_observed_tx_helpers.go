@@ -175,43 +175,11 @@ func handleObservedTxInQuorum(
 
 	voter.Tx.Tx.Memo = tx.Tx.Memo
 
-	// add memo for memoless transactions (after consensus is reached)
-	if len(tx.Tx.Coins) > 0 {
-		// Use the asset from the first coin for reference memo lookup
-		refAsset := tx.Tx.Coins[0].Asset
-
-		// Generate reference memo for memoless transactions
-		if strings.TrimSpace(voter.Tx.Tx.Memo) == "" {
-			var referenceID string
-			referenceID, err = generateReferenceMemoID(ctx, mgr, refAsset, tx)
-			if err != nil {
-				ctx.Logger().Error("failed to generate reference memo", "error", err, "txid", tx.Tx.ID.String())
-				// Continue without reference memo - will likely be refunded later due to empty memo
-			} else {
-				// Use ReferenceReadMemo's CreateMemo function
-				// Note: Reference memo expiry and duplicate usage validation is handled later in fetchMemoFromReference
-				refMemo := NewReferenceReadMemo(referenceID)
-				voter.Tx.Tx.Memo = refMemo.CreateMemo()
-			}
-		}
-
-	}
-
-	// memo errors are ignored here and will be caught later in processing,
-	// after vault update, voter setup, etc and the coin will be refunded
-	memo, _ := ParseMemoWithTHORNames(ctx, k, tx.Tx.Memo)
-
 	hasFinalised := voter.HasFinalised(activeNodeAccounts)
 
-	// Update vault balances from inbounds with Migrate memos immediately,
-	// to minimise any gap between outbound and inbound observations.
-	// TODO: In future somehow update both balances in a single action,
-	// so the ActiveVault balance increase is guaranteed to never be early nor late?
-	if hasFinalised || memo.IsType(TxMigrate) {
+	if hasFinalised {
 		if vault.IsAsgard() && !voter.UpdatedVault {
 			if !tx.Tx.FromAddress.Equals(tx.Tx.ToAddress) {
-				// Don't add to or subtract from vault balances when the sender and recipient are the same
-				// (particularly avoid Consolidate SafeSub zeroing of vault balances).
 				vault.AddFunds(tx.Tx.Coins)
 				vault.InboundTxCount++
 			}
@@ -234,14 +202,6 @@ func handleObservedTxInQuorum(
 		return nil
 	}
 
-	if memo.IsOutbound() || memo.IsInternal() {
-		// do not process outbound handlers here, or internal handlers
-		return nil
-	}
-
-	// add addresses to observing addresses. This is used to detect
-	// active/inactive observing node accounts
-
 	mgr.ObMgr().AppendObserver(tx.Tx.Chain, voter.Tx.GetSigners())
 
 	if !hasFinalised {
@@ -261,15 +221,7 @@ func handleObservedTxInQuorum(
 		"observed_vault_pubkey", tx.ObservedPubKey.String(),
 	)
 
-	if vault.Status == InactiveVault {
-		ctx.Logger().Error("observed tx on inactive vault", "tx", tx.String())
-		if newErr := refundTx(ctx, tx, mgr, CodeInvalidVault, "observed inbound tx to an inactive vault", ""); newErr != nil {
-			ctx.Logger().Error("fail to refund", "error", newErr)
-		}
-		return nil
-	}
-
-	if deposit, matchErr := MatchShielderDeposit(ctx, k, voter.Tx); matchErr == nil {
+	if deposit, matchErr := MatchShielderDeposit(ctx, mgr, voter.Tx); matchErr == nil {
 		voter.SetDone()
 		k.SetObservedTxInVoter(ctx, voter)
 		ctx.Logger().Info("shielder deposit matched",
@@ -281,48 +233,32 @@ func handleObservedTxInQuorum(
 		return nil
 	}
 
-	// Resolve reference memo if needed before processing
-	if len(tx.Tx.Coins) > 0 {
-		asset := tx.Tx.Coins[0].Asset
-		resolvedMemo := fetchMemoFromReference(ctx, mgr, asset, voter.Tx.Tx, voter.UnfinalizedHeight)
-		preMemo := voter.Tx.Tx.Memo
-		voter.Tx.Tx.Memo = resolvedMemo
-		ctx.Logger().Info("reference memo conversion", "pre", preMemo, "post", voter.Tx.Tx.Memo, "asset", asset)
-		k.SetObservedTxInVoter(ctx, voter)
+	if tx.Tx.Chain.Equals(common.BTCChain) {
+		rootAddr, rootErr := common.DeriveBTCTaprootAddress(tx.ObservedPubKey, common.MainVaultPathIndex)
+		currentVault, _, currentErr := currentBTCVaultAddress(ctx, k)
+		if rootErr == nil && currentErr == nil && tx.Tx.ToAddress.Equals(rootAddr) && !tx.ObservedPubKey.Equals(currentVault.PubKey) {
+			if err := queueVaultPathSweep(ctx, mgr, voter.Tx, tx.ObservedPubKey, common.MainVaultPathIndex); err != nil {
+				ctx.Logger().Error("fail to queue old root vault sweep", "error", err, "tx", tx.String())
+			} else {
+				voter.SetDone()
+				k.SetObservedTxInVoter(ctx, voter)
+				return nil
+			}
+		}
 	}
 
-	// construct msg from memo
-	m, txErr := processOneTxIn(ctx, k, voter.Tx, signer)
-	if txErr != nil {
-		ctx.Logger().Error("fail to process inbound tx", "error", txErr.Error(), "tx hash", tx.Tx.ID.String())
-		if newErr := refundTx(ctx, tx, mgr, CodeInvalidMemo, txErr.Error(), ""); nil != newErr {
+	if vault.Status == InactiveVault {
+		ctx.Logger().Error("observed tx on inactive vault", "tx", tx.String())
+		if newErr := refundTx(ctx, tx, mgr, CodeInvalidVault, "observed inbound tx to an inactive vault", ""); newErr != nil {
 			ctx.Logger().Error("fail to refund", "error", newErr)
 		}
 		return nil
 	}
 
-	mCtx := ctx
+	ctx.Logger().Info("observed inbound did not match a shielder deposit", "chain", tx.Tx.Chain, "id", tx.Tx.ID)
 
-	_, err = handler(mCtx, m)
-	if err != nil {
-		if err = refundTx(ctx, tx, mgr, CodeTxFail, err.Error(), ""); err != nil {
-			return fmt.Errorf("fail to refund: %w", err)
-		}
-		return nil
-	}
-
-	// if an outbound is not expected, mark the voter as done
-	if !memo.GetType().HasOutbound() {
-		// retrieve the voter from store in case the handler caused a change
-		voter, err = k.GetObservedTxInVoter(ctx, tx.Tx.ID)
-		if err != nil {
-			return fmt.Errorf("fail to get voter")
-		}
-		voter.SetDone()
-		k.SetObservedTxInVoter(ctx, voter)
-	}
-
-	ctx.Logger().Info("tx in processed", "chain", tx.Tx.Chain, "id", tx.Tx.ID, "finalized", tx.IsFinal())
+	voter.SetDone()
+	k.SetObservedTxInVoter(ctx, voter)
 
 	return nil
 }
@@ -367,15 +303,6 @@ func processTxOutAttestation(
 		}
 		// A duplicate message, so do nothing further.
 		return voter, ok
-	}
-
-	// Outbound memos can have | data passthrough,
-	// so linked TxID extracted with memo parsing and GetTxID
-	// rather than strings.Split .
-	if memo, err := ParseMemoWithTHORNames(ctx, k, tx.Tx.Memo); err != nil {
-		ctx.Logger().Error("fail to parse outbound memo", "error", err, "memo", tx.Tx.Memo)
-	} else if inhash := memo.GetTxID(); !inhash.IsEmpty() {
-		k.SetObservedLink(ctx, inhash, tx.Tx.ID)
 	}
 
 	if voter.HasFinalised(nas) {
@@ -628,65 +555,16 @@ func handleObservedTxOutQuorum(
 		return nil
 	}
 
-	// if memo isn't valid or its an inbound memo, slash the vault
-	memo, _ := ParseMemoWithTHORNames(ctx, k, tx.Tx.Memo)
-	if memo.IsInbound() {
-		vault, err := k.GetVault(ctx, tx.ObservedPubKey)
-		if err != nil {
-			ctx.Logger().Error("fail to get vault", "error", err)
-			return nil
-		}
-		toSlash := make(common.Coins, len(tx.Tx.Coins))
-		copy(toSlash, tx.Tx.Coins)
-		toSlash = toSlash.Add(tx.Tx.Gas.ToCoins()...)
-
-		slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
-			telemetry.NewLabel("reason", "sent_extra_funds"),
-			telemetry.NewLabel("chain", string(tx.Tx.Chain)),
-		}))
-
-		if err := mgr.Slasher().SlashVault(slashCtx, tx.ObservedPubKey, toSlash, mgr); err != nil {
-			ctx.Logger().Error("fail to slash account for sending extra fund", "error", err)
-		}
-		vault.SubFunds(toSlash)
-		if err := k.SetVault(ctx, vault); err != nil {
-			ctx.Logger().Error("fail to save vault", "error", err)
-		}
-
-		return nil
-	}
-
-	// Process the handler if we can get the consensus tx.
-	// Even if the handler fails, vault accounting must still happen because
-	// the outbound transaction is irrevocable (funds already left the vault).
 	vaultSlash := false
 	txOut := voter.GetTx(activeNodeAccounts) // get consensus tx, in case our for loop is incorrect
 	if txOut == nil || txOut.IsEmpty() {
 		ctx.Logger().Error("fail to get consensus tx from voter", "txid", tx.Tx.ID)
-		// Continue with vault accounting below - outbound is irrevocable
 	} else {
-		txOut.Tx.Memo = tx.Tx.Memo
-
-		// For memoless outbounds, look up the original memo from the scheduled TxOutItem
-		if txOut.Tx.Memo == "" {
-			if originalMemo := findOriginalMemoForOutbound(ctx, mgr, tx); originalMemo != "" {
-				txOut.Tx.Memo = originalMemo
-				ctx.Logger().Info("resolved memoless outbound", "original_memo", originalMemo, "txid", tx.Tx.ID)
-			}
-		}
-
 		if tx.Tx.Chain.IsEmpty() {
 			ctx.Logger().Error("fail to process txOut: chain is empty", "tx", tx.Tx.String())
-		} else if m, mErr := processOneTxIn(ctx, k, *txOut, signer); mErr != nil {
-			ctx.Logger().Error("fail to process txOut",
-				"error", mErr,
-				"tx", tx.Tx.String())
 		} else {
-			// add addresses to observing addresses. This is used to detect
-			// active/inactive observing node accounts
 			mgr.ObMgr().AppendObserver(tx.Tx.Chain, txOut.GetSigners())
 
-			// emit tss keysign metrics
 			if tx.KeysignMs > 0 {
 				keysignMetric, kmErr := k.GetTssKeysignMetric(ctx, tx.Tx.ID)
 				if kmErr != nil {
@@ -695,19 +573,6 @@ func handleObservedTxOutQuorum(
 					evt := NewEventTssKeysignMetric(keysignMetric.TxID, keysignMetric.GetMedianTime())
 					if emitErr := mgr.EventMgr().EmitEvent(ctx, evt); emitErr != nil {
 						ctx.Logger().Error("fail to emit tss metric event", "error", emitErr)
-					}
-				}
-			}
-
-			res, hErr := handler(ctx, m)
-			if hErr != nil {
-				ctx.Logger().Error("handler failed:", "error", hErr)
-				// Continue with vault accounting - outbound is irrevocable
-			} else if res != nil && res.Events != nil {
-				for _, ev := range res.Events {
-					if ev.Type == "vault-slash" {
-						vaultSlash = true
-						break
 					}
 				}
 			}
@@ -736,17 +601,13 @@ func handleObservedTxOutQuorum(
 
 		// Don't add to or subtract from vault balances when the sender and recipient are the same
 		// (particularly avoid Consolidate SafeSub zeroing of vault balances).
-		if !tx.Tx.FromAddress.Equals(tx.Tx.ToAddress) {
+		// Child deposit sweeps are internal to the same vault key, so only gas leaves the vault.
+		if !tx.Tx.FromAddress.Equals(tx.Tx.ToAddress) && !isBTCChildSweepToRoot(tx, vault.PubKey) {
 			// skip deducting funds for outbound fake gas
 			if !isOutboundFakeGasTx(tx) {
 				vault.SubFunds(tx.Tx.Coins)
 			}
 			vault.OutboundTxCount++
-		}
-
-		if vault.IsAsgard() && memo.IsType(TxMigrate) {
-			// only remove the block height that had been specified in the memo
-			vault.RemovePendingTxBlockHeights(memo.GetBlockHeight())
 		}
 
 		if !vault.HasFunds() && vault.Status == RetiringVault {
@@ -777,6 +638,26 @@ func handleObservedTxOutQuorum(
 	ctx.Logger().Info("tx out processed", "chain", tx.Tx.Chain, "id", tx.Tx.ID, "finalized", tx.IsFinal())
 
 	return nil
+}
+
+func isBTCChildSweepToRoot(tx ObservedTx, pubkey common.PubKey) bool {
+	if !tx.Tx.Chain.Equals(common.BTCChain) || pubkey.IsEmpty() {
+		return false
+	}
+	rootAddr, err := common.DeriveBTCTaprootAddress(pubkey, common.MainVaultPathIndex)
+	if err != nil || !tx.Tx.ToAddress.Equals(rootAddr) {
+		return false
+	}
+	for pathIndex := uint64(common.FirstDepositPathIndex); pathIndex <= common.DepositAddressLookahead; pathIndex++ {
+		childAddr, err := common.DeriveBTCTaprootAddress(pubkey, pathIndex)
+		if err != nil {
+			return false
+		}
+		if tx.Tx.FromAddress.Equals(childAddr) {
+			return true
+		}
+	}
+	return false
 }
 
 // matchedOutbound holds a matching TxOutItem with its height and hash for sorting
@@ -891,101 +772,11 @@ func findOriginalMemoForOutbound(ctx cosmos.Context, mgr Manager, tx common.Obse
 
 // fetchMemoFromReference fetches memo from reference if it's a memoless transaction
 func fetchMemoFromReference(ctx cosmos.Context, mgr Manager, asset common.Asset, tx common.Tx, txObservationHeight int64) string {
-	mem, err := ParseMemoWithTHORNames(ctx, mgr.Keeper(), tx.Memo)
-	if err != nil {
-		ctx.Logger().Debug("failed to parse memo in fetchMemoFromReference", "error", err, "memo", tx.Memo, "txid", tx.ID)
-	}
-	if mem.GetType() == TxReferenceReadMemo {
-		m, ok := mem.(ReferenceReadMemo)
-		if !ok {
-			return tx.Memo
-		}
-		// Check if memoless transactions are halted
-		haltMemoless, err := mgr.Keeper().GetMimir(ctx, constants.HaltMemoless.String())
-		if err == nil && haltMemoless > 0 {
-			return ""
-		}
-
-		// Check if the reference memo exists before proceeding
-		if !mgr.Keeper().ReferenceMemoExists(ctx, asset, m.Reference) {
-			ctx.Logger().Debug("reference memo not found", "reference", m.Reference, "asset", asset)
-			return ""
-		}
-
-		refMemo, err := mgr.Keeper().GetReferenceMemo(ctx, asset, m.Reference)
-		if err != nil {
-			ctx.Logger().Error("unable to fetch pool for ref memo lookup", "error", err, "asset", asset)
-			return ""
-		}
-
-		// Ensure transaction was observed after the reference memo was created
-		if txObservationHeight <= refMemo.Height {
-			ctx.Logger().Info("transaction observed before reference memo creation", "tx_height", txObservationHeight, "memo_height", refMemo.Height, "reference", m.Reference)
-			// Track usage for audit purposes - we intentionally track all usage attempts (including failures)
-			// to maintain a record of who tried to use the reference memo, even if the attempt was invalid.
-			trackReferenceMemoUsage(ctx, mgr, asset, tx.Memo, tx.ID)
-			return ""
-		}
-
-		ttl := mgr.Keeper().GetConfigInt64(ctx, constants.MemolessTxnTTL)
-		if !refMemo.IsExpired(ctx.BlockHeight(), ttl) {
-			// Check usage limit
-			maxUse := mgr.Keeper().GetConfigInt64(ctx, constants.MemolessTxnMaxUse)
-			if maxUse > 0 && refMemo.GetUsageCount() >= maxUse {
-				ctx.Logger().Info("reference memo usage limit exceeded in fetchMemoFromReference", "reference", m.Reference, "usage_count", refMemo.GetUsageCount(), "max_use", maxUse)
-				// Track usage for audit purposes - we intentionally track all usage attempts (including failures)
-				// to maintain a record of who tried to use the reference memo, even if the attempt was invalid.
-				trackReferenceMemoUsage(ctx, mgr, asset, tx.Memo, tx.ID)
-				return ""
-			}
-
-			// Track successful usage
-			trackReferenceMemoUsage(ctx, mgr, asset, tx.Memo, tx.ID)
-			return refMemo.Memo
-		}
-
-		// Track usage for audit purposes - we intentionally track all usage attempts (including failures)
-		// to maintain a record of who tried to use the reference memo, even if the attempt was invalid (expired).
-		trackReferenceMemoUsage(ctx, mgr, asset, tx.Memo, tx.ID)
-		return ""
-	}
-	return tx.Memo
+	return ""
 }
 
 // trackReferenceMemoUsage tracks that a transaction has used a reference memo
 func trackReferenceMemoUsage(ctx cosmos.Context, mgr Manager, asset common.Asset, memo string, txID common.TxID) {
-	mem, _ := ParseMemo(mgr.GetVersion(), memo) // ignore err
-	if mem.GetType() == TxReferenceReadMemo {
-		m, ok := mem.(ReferenceReadMemo)
-		if !ok {
-			return
-		}
-
-		// Only track usage for reference memos that actually exist in state
-		if !mgr.Keeper().ReferenceMemoExists(ctx, asset, m.Reference) {
-			ctx.Logger().Debug("reference memo not found for usage tracking, skipping", "reference", m.Reference, "asset", asset)
-			return
-		}
-
-		refMemo, err := mgr.Keeper().GetReferenceMemo(ctx, asset, m.Reference)
-		if err != nil {
-			ctx.Logger().Error("fail to get reference memo for usage tracking", "error", err)
-			return
-		}
-
-		// Check if already used by this transaction
-		if refMemo.HasBeenUsedBy(txID) {
-			// Already tracked, nothing to do
-			return
-		}
-
-		// Add this transaction to the usage list (with duplicate protection)
-		if refMemo.AddUsage(txID) {
-			mgr.Keeper().SetReferenceMemo(ctx, refMemo)
-			maxUse := mgr.Keeper().GetConfigInt64(ctx, constants.MemolessTxnMaxUse)
-			ctx.Logger().Info("reference memo usage tracked", "reference", m.Reference, "usage_count", refMemo.GetUsageCount(), "max_use", maxUse, "txid", txID, "asset", asset, "memo", refMemo.Memo)
-		}
-	}
 }
 
 func generateReferenceMemoID(ctx cosmos.Context, mgr Manager, asset common.Asset, tx common.ObservedTx) (string, error) {

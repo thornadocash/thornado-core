@@ -7,7 +7,6 @@ import (
 
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
-	mem "github.com/thornadocash/go-thornado/x/thorchain/memo"
 )
 
 type TxIn struct {
@@ -182,11 +181,6 @@ func (t TxIn) GetTotalTransactionValue(asset common.Asset, excludeFrom []common.
 			}
 		}
 		if fromAsgard {
-			continue
-		}
-		// skip confirmation counting if it is internal tx
-		m, err := mem.ParseMemo(common.LatestVersion, item.Memo)
-		if err == nil && m.IsInternal() {
 			continue
 		}
 		c := item.Coins.GetCoin(asset)

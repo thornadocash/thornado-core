@@ -2,7 +2,6 @@ package utxo
 
 import (
 	"fmt"
-	"math"
 	"sort"
 	"strings"
 
@@ -17,8 +16,6 @@ import (
 	stypes "github.com/thornadocash/go-thornado/bifrost/thorclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
-	mem "github.com/thornadocash/go-thornado/x/thorchain/memo"
-	"github.com/thornadocash/go-thornado/x/thorchain/types"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -39,9 +36,9 @@ func (c *Client) getMaximumUtxosToSpend() int64 {
 
 // getAllUtxos will iterate unspend utxos for the given address and return the oldest
 // set of utxos that can cover the amount.
-func (c *Client) getUtxoToSpend(pubkey common.PubKey, total btcutil.Amount, sweepDust bool) ([]btcjson.ListUnspentResult, error) {
+func (c *Client) getUtxoToSpendAtPath(pubkey common.PubKey, pathIndex uint64, total btcutil.Amount, sweepDust bool) ([]btcjson.ListUnspentResult, error) {
 	// get all unspent utxos
-	addr, err := pubkey.GetAddress(c.cfg.ChainID)
+	addr, err := c.getVaultAddressAtPath(pubkey, pathIndex)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get address from pubkey(%s): %w", pubkey, err)
 	}
@@ -141,6 +138,10 @@ func (c *Client) getUtxoToSpend(pubkey common.PubKey, total btcutil.Amount, swee
 	return result, nil
 }
 
+func (c *Client) getUtxoToSpend(pubkey common.PubKey, total btcutil.Amount, sweepDust bool) ([]btcjson.ListUnspentResult, error) {
+	return c.getUtxoToSpendAtPath(pubkey, common.MainVaultPathIndex, total, sweepDust)
+}
+
 func formatUtxoKey(txID string, vout uint32) string {
 	return fmt.Sprintf("%s-%d", txID, vout)
 }
@@ -148,7 +149,7 @@ func formatUtxoKey(txID string, vout uint32) string {
 // vinsUnspent will return true if all the vins are unspent.
 func (c *Client) vinsUnspent(tx stypes.TxOutItem, vins []*wire.TxIn) (bool, error) {
 	// get all unspent utxos
-	addr, err := tx.VaultPubKey.GetAddress(c.cfg.ChainID)
+	addr, err := c.getVaultAddress(tx.VaultPubKey)
 	if err != nil {
 		return false, fmt.Errorf("fail to get address from pubkey(%s): %w", tx.VaultPubKey, err)
 	}
@@ -210,7 +211,10 @@ func (c *Client) getPaymentAmount(tx stypes.TxOutItem) btcutil.Amount {
 
 // getSourceScript retrieve pay to addr script from tx source
 func (c *Client) getSourceScript(tx stypes.TxOutItem) ([]byte, error) {
-	sourceAddr, err := tx.VaultPubKey.GetAddress(c.cfg.ChainID)
+	if c.cfg.ChainID.Equals(common.BTCChain) {
+		return c.getSchnorrSourceScriptAtPath(tx.VaultPubKey, tx.VaultPathIndex)
+	}
+	sourceAddr, err := c.getVaultAddress(tx.VaultPubKey)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get source address: %w", err)
 	}
@@ -308,15 +312,7 @@ func (c *Client) getGasCoin(tx stypes.TxOutItem, vSize int64) common.Coin {
 }
 
 func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx, map[string]int64, error) {
-	// Parse memo early to determine if this is a migration (used for dust UTXO inclusion)
-	isMigrate := false
-	if memoStr := tx.GetMemo(); memoStr != "" {
-		if parsedMemo, mErr := mem.ParseMemo(common.LatestVersion, memoStr); mErr == nil {
-			isMigrate = parsedMemo.GetType() == mem.TxMigrate
-		}
-	}
-
-	txes, err := c.getUtxoToSpend(tx.VaultPubKey, c.getPaymentAmount(tx), isMigrate)
+	txes, err := c.getUtxoToSpendAtPath(tx.VaultPubKey, tx.VaultPathIndex, c.getPaymentAmount(tx), false)
 	if err != nil {
 		return nil, nil, fmt.Errorf("fail to get unspent UTXO: %w", err)
 	}
@@ -360,19 +356,6 @@ func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx,
 		return nil, nil, fmt.Errorf("no null data scripts generated, memo will not be included in the transaction")
 	}
 
-	// Parse the memo to be able to identify Migrate or Consolidate outbounds.
-	// Use GetMemo() which returns OriginalMemo for memoless outbounds
-	memoForParsing := tx.GetMemo()
-	var memo mem.Memo
-	if memoForParsing == "" {
-		memo = mem.NewOutboundMemo(tx.InHash)
-	} else {
-		memo, err = mem.ParseMemo(common.LatestVersion, memoForParsing)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to parse memo: %w", err)
-		}
-	}
-
 	totalSize := c.estimateTxSize(txes, nullDataScripts, buf, sourceScript)
 
 	coinToCustomer := tx.Coins.GetCoin(c.cfg.ChainID.GetGasAsset())
@@ -403,16 +386,7 @@ func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx,
 		if gasAmtSats > maxGasCoin.Amount.Uint64() {
 			c.log.Info().Msgf("max gas: %s, however estimated gas need %d", tx.MaxGas, gasAmtSats)
 			gasAmtSats = maxGasCoin.Amount.Uint64()
-		} else if gasAmtSats < maxGasCoin.Amount.Uint64() && memo.GetType() == mem.TxMigrate {
-			// if the tx spend less gas then the estimated MaxGas , then the extra can be added to the coinToCustomer
-			gap := maxGasCoin.Amount.Uint64() - gasAmtSats
-			c.log.Info().Msgf("max gas is: %s, however only: %d is required, gap: %d goes to the vault migrated to", tx.MaxGas, gasAmtSats, gap)
-			coinToCustomer.Amount = coinToCustomer.Amount.Add(cosmos.NewUint(gap))
 		}
-	} else if memo.GetType() == mem.TxConsolidate {
-		gap := gasAmtSats
-		c.log.Info().Msgf("consolidate tx, need gas: %d", gap)
-		coinToCustomer.Amount = common.SafeSub(coinToCustomer.Amount, cosmos.NewUint(gap))
 	}
 
 	gasAmt := btcutil.Amount(gasAmtSats)
@@ -420,16 +394,31 @@ func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx,
 		c.log.Err(err).Msg("fail to save gas info to UTXO storage")
 	}
 
-	// pay to customer
-	redeemTxOut := wire.NewTxOut(int64(coinToCustomer.Amount.Uint64()), buf)
-	redeemTx.AddTxOut(redeemTxOut)
-
 	// Calculate the total cost of P2WPKH outputs for extended memos
 	p2wpkhOutputsCost := int64(0)
 	if len(nullDataScripts) > 1 {
 		// Each P2WPKH output (nullDataScripts[1:]) costs P2WPKHOutputValue()
 		p2wpkhOutputsCost = int64(len(nullDataScripts)-1) * tx.Chain.P2WPKHOutputValue()
 	}
+
+	outputAmount := int64(coinToCustomer.Amount.Uint64())
+	sourceAddr, sourceAddrErr := c.getVaultAddressAtPath(tx.VaultPubKey, tx.VaultPathIndex)
+	if sourceAddrErr != nil {
+		return nil, nil, fmt.Errorf("fail to get source address: %w", sourceAddrErr)
+	}
+	// Memoless vault-to-vault sends are Thornado custody sweeps. Spend the full
+	// selected balance to the destination so child/old vault addresses do not
+	// retain change.
+	if tx.TxType == "consolidate" || tx.Memo == "" && !tx.ToAddress.Equals(sourceAddr) {
+		outputAmount = totalAmt - int64(gasAmt) - p2wpkhOutputsCost
+		if outputAmount <= 0 {
+			return nil, nil, fmt.Errorf("not enough balance to sweep vault path: %d", outputAmount)
+		}
+	}
+
+	// pay to customer
+	redeemTxOut := wire.NewTxOut(outputAmount, buf)
+	redeemTx.AddTxOut(redeemTxOut)
 
 	// balance to ourselves
 	// add output to pay the balance back ourselves
@@ -521,120 +510,4 @@ func MemoToScripts(memo string, maxDataCarrierSize int, nullDataScript, payToWit
 	}
 
 	return scripts, nil
-}
-
-////////////////////////////////////////////////////////////////////////////////////////
-// UTXO Consolidation
-////////////////////////////////////////////////////////////////////////////////////////
-
-func (c *Client) consolidateVaultUTXOs(vault types.Vault, utxosToSpend int64) error {
-	lock := c.GetVaultLock(vault.PubKey.String())
-
-	// Hold the vault lock through broadcast to avoid local double-spend on failure/timeout.
-	lock.Lock()
-	defer lock.Unlock()
-
-	// Probe UTXO availability for consolidation.
-	// The amount used here doesn't matter , just to see whether there are more than 15 UTXO available or not
-	utxos, err := c.getUtxoToSpend(vault.PubKey, 0, false)
-	if err != nil {
-		return fmt.Errorf("get utxos to spend: %w", err)
-	}
-
-	// Doesn't have enough UTXOs, no consolidation needed.
-	if int64(len(utxos)) < utxosToSpend {
-		return nil
-	}
-
-	txOutItem, err := c.buildConsolidateTxOutItem(vault, utxos)
-	if err != nil {
-		return err
-	}
-
-	height, err := c.bridge.GetBlockHeight()
-	if err != nil {
-		return fmt.Errorf("get THORChain block height: %w", err)
-	}
-
-	rawTx, _, _, err := c.SignTx(txOutItem, height)
-	if err != nil {
-		return fmt.Errorf("sign consolidate txout item: %w", err)
-	}
-	if len(rawTx) == 0 {
-		c.log.Warn().Str("vault_pubkey", vault.PubKey.String()).Msg("signed consolidate transaction is empty, skipping broadcast")
-		return nil
-	}
-
-	txID, err := c.BroadcastTx(txOutItem, rawTx)
-	if err != nil {
-		return fmt.Errorf("broadcast consolidate tx: %w", err)
-	}
-	c.log.Info().Str("vault_pubkey", vault.PubKey.String()).Msgf("broadcast consolidate tx successfully, hash:%s", txID)
-	return nil
-}
-
-func (c *Client) buildConsolidateTxOutItem(vault types.Vault, utxos []btcjson.ListUnspentResult) (stypes.TxOutItem, error) {
-	// Convert each UTXO amount to sats before summing to avoid float accumulation drift.
-	total := btcutil.Amount(0)
-	for _, item := range utxos {
-		amt, err := btcutil.NewAmount(item.Amount)
-		if err != nil {
-			return stypes.TxOutItem{}, fmt.Errorf("convert utxo amount %f: %w", item.Amount, err)
-		}
-		total += amt
-	}
-
-	addr, err := vault.PubKey.GetAddress(c.cfg.ChainID)
-	if err != nil {
-		return stypes.TxOutItem{}, fmt.Errorf("get address for pubkey %s: %w", vault.PubKey, err)
-	}
-
-	// THORChain usually pays 1.5 of the last observed fee rate.
-	feeRate := math.Ceil(float64(c.lastFeeRate.Load()) * 3 / 2)
-
-	return stypes.TxOutItem{
-		Chain:            c.cfg.ChainID,
-		ToAddress:        addr,
-		VaultPubKey:      vault.PubKey,
-		VaultPubKeyEddsa: vault.PubKeyEddsa,
-		Coins: common.Coins{
-			common.NewCoin(c.cfg.ChainID.GetGasAsset(), cosmos.NewUint(uint64(total))),
-		},
-		Memo:    mem.NewConsolidateMemo().String(),
-		MaxGas:  nil,
-		GasRate: int64(feeRate),
-	}, nil
-}
-
-// consolidateUTXOs only required when there is a new block
-func (c *Client) consolidateUTXOs() {
-	defer func() {
-		c.wg.Done()
-		c.consolidateInProgress.Store(false)
-	}()
-
-	nodeStatus, err := c.bridge.FetchNodeStatus()
-	if err != nil {
-		c.log.Err(err).Msg("fail to get node status")
-		return
-	}
-	if nodeStatus != types.NodeStatus_Active {
-		c.log.Info().Msgf("node is not active , doesn't need to consolidate utxos")
-		return
-	}
-	vaults, err := c.bridge.GetAsgards()
-	if err != nil {
-		c.log.Err(err).Msg("fail to get current asgards")
-		return
-	}
-	utxosToSpend := c.getMaximumUtxosToSpend()
-	for _, vault := range vaults {
-		if !vault.Contains(c.nodePubKey) {
-			// Not part of this vault , don't need to consolidate UTXOs for this Vault
-			continue
-		}
-		if err = c.consolidateVaultUTXOs(vault, utxosToSpend); err != nil {
-			c.log.Err(err).Str("vault_pubkey", vault.PubKey.String()).Msg("fail to consolidate utxos for vault")
-		}
-	}
 }

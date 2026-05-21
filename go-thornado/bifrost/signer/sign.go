@@ -367,7 +367,7 @@ func (s *Signer) processKeygenBlock(keygenBlock ttypes.KeygenBlock) {
 	// NOTE: in practice there is only one keygen in the keygen block
 	for _, keygenReq := range keygenBlock.Keygens {
 		keygenStart := time.Now()
-		pubKey, blame, err := s.tssKeygen.GenerateNewKey(keygenBlock.Height, keygenReq.GetMembers())
+		pubKey, blame, err := s.tssKeygen.GenerateNewKey(keygenBlock.Height, keygenReq.GetMembers(), common.Chains{common.BTCChain})
 		if len(blame) > 0 {
 			for _, b := range blame {
 				s.logger.Error().

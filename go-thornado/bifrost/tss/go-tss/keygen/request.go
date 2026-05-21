@@ -8,6 +8,7 @@ type Request struct {
 	BlockHeight int64              `json:"block_height"`
 	Version     string             `json:"tss_version"`
 	Algo        common.SigningAlgo `json:"algo,omitempty"`
+	Engine      string             `json:"engine,omitempty"`
 }
 
 // NewRequest creeate a new instance of keygen.Request

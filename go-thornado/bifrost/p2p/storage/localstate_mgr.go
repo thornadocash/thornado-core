@@ -18,12 +18,25 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/p2p/conversion"
 )
 
+const (
+	SigningEngineGG20    = "gg20"
+	SigningEngineSchnorr = "schnorr"
+)
+
 // KeygenLocalState is a structure used to represent the data we saved locally for different keygen
 type KeygenLocalState struct {
 	PubKey          string   `json:"pub_key"`
 	LocalData       []byte   `json:"local_data"`
 	ParticipantKeys []string `json:"participant_keys"` // the participant of last key gen
 	LocalPartyKey   string   `json:"local_party_key"`
+	SigningEngine   string   `json:"signing_engine,omitempty"`
+}
+
+func (kls KeygenLocalState) Engine() string {
+	if kls.SigningEngine == "" {
+		return SigningEngineGG20
+	}
+	return kls.SigningEngine
 }
 
 // keygenLocalStateV1 is the pre-EDDSA format necessary for migration.

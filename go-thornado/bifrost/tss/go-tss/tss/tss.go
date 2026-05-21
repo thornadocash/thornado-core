@@ -125,6 +125,27 @@ func (t *TssServer) Stop() {
 	t.logger.Info().Msg("The tss and p2p server has been stopped successfully")
 }
 
+func (t *TssServer) LocalStateEngine(poolPubKey string) string {
+	if t == nil || t.stateManager == nil {
+		return storage.SigningEngineGG20
+	}
+	state, err := t.stateManager.GetLocalState(poolPubKey)
+	if err != nil {
+		return storage.SigningEngineGG20
+	}
+	return state.Engine()
+}
+
+func (t *TssServer) persistPeerAddressBook() {
+	if t == nil || t.stateManager == nil || t.p2pCommunication == nil {
+		return
+	}
+	addresses := t.p2pCommunication.ExportPeerAddress()
+	if err := t.stateManager.SaveAddressBook(addresses); err != nil {
+		t.logger.Error().Err(err).Msg("fail to save the peer addresses")
+	}
+}
+
 func (t *TssServer) setJoinPartyChan(jpc chan struct{}) {
 	t.joinPartyChan = jpc
 }

@@ -33,7 +33,6 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/config"
 	"github.com/thornadocash/go-thornado/constants"
-	mem "github.com/thornadocash/go-thornado/x/thorchain/memo"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -60,12 +59,11 @@ type Client struct {
 	signerCacheManager *signercache.CacheManager
 
 	// ---------- sync ----------
-	wg                    *sync.WaitGroup
-	signerLock            *sync.Mutex
-	vaultLocks            map[string]*sync.Mutex
-	networkFeeLock        sync.Mutex
-	solvencyLock          sync.Mutex
-	consolidateInProgress stdatomic.Bool
+	wg             *sync.WaitGroup
+	signerLock     *sync.Mutex
+	vaultLocks     map[string]*sync.Mutex
+	networkFeeLock sync.Mutex
+	solvencyLock   sync.Mutex
 
 	// ---------- scanner ----------
 	blockScanner    *blockscanner.BlockScanner
@@ -243,12 +241,27 @@ func (c *Client) GetLatestTxForVault(vault string) (string, string, error) {
 
 // GetAddress returns chain address for the given public key.
 func (c *Client) GetAddress(pubkey common.PubKey) string {
-	addr, err := pubkey.GetAddress(c.cfg.ChainID)
+	return c.GetAddressAtPath(pubkey, common.MainVaultPathIndex)
+}
+
+func (c *Client) GetAddressAtPath(pubkey common.PubKey, pathIndex uint64) string {
+	addr, err := c.getVaultAddressAtPath(pubkey, pathIndex)
 	if err != nil {
 		c.log.Error().Err(err).Str("pubkey", pubkey.String()).Msg("fail to get pool address")
 		return ""
 	}
 	return addr.String()
+}
+
+func (c *Client) getVaultAddress(pubkey common.PubKey) (common.Address, error) {
+	return c.getVaultAddressAtPath(pubkey, common.MainVaultPathIndex)
+}
+
+func (c *Client) getVaultAddressAtPath(pubkey common.PubKey, pathIndex uint64) (common.Address, error) {
+	if c.cfg.ChainID.Equals(common.BTCChain) {
+		return common.DeriveBTCTaprootAddress(pubkey, pathIndex)
+	}
+	return pubkey.GetAddress(c.cfg.ChainID)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -287,7 +300,11 @@ func (c *Client) Stop() {
 
 // RegisterPublicKey imports the provided public key in the chain daemon.
 func (c *Client) RegisterPublicKey(pubkey common.PubKey) error {
-	addr, err := pubkey.GetAddress(c.cfg.ChainID)
+	return c.RegisterPublicKeyAtPath(pubkey, common.MainVaultPathIndex)
+}
+
+func (c *Client) RegisterPublicKeyAtPath(pubkey common.PubKey, pathIndex uint64) error {
+	addr, err := c.getVaultAddressAtPath(pubkey, pathIndex)
 	if err != nil {
 		return fmt.Errorf("fail to get address from pubkey(%s): %w", pubkey, err)
 	}
@@ -298,7 +315,15 @@ func (c *Client) RegisterPublicKey(pubkey common.PubKey) error {
 		return err
 	}
 
-	err = c.rpc.ImportAddress(addr.String())
+	if c.cfg.ChainID.Equals(common.BTCChain) {
+		err = c.rpc.ImportDescriptorAddress(addr.String())
+		if err != nil {
+			c.log.Warn().Err(err).Str("addr", addr.String()).Msg("descriptor import failed, falling back to legacy importaddress")
+			err = c.rpc.ImportAddress(addr.String())
+		}
+	} else {
+		err = c.rpc.ImportAddress(addr.String())
+	}
 	if err != nil {
 		c.log.Error().Err(err).
 			Str("pubkey", pubkey.String()).
@@ -316,7 +341,7 @@ func (c *Client) GetAccount(pubkey common.PubKey, height *big.Int) (common.Accou
 	}
 
 	// get all unspent utxos
-	addr, err := pubkey.GetAddress(c.cfg.ChainID)
+	addr, err := c.getVaultAddress(pubkey)
 	if err != nil {
 		return acct, fmt.Errorf("fail to get address from pubkey(%s): %w", pubkey, err)
 	}
@@ -386,23 +411,6 @@ func (c *Client) OnObservedTxIn(txIn types.TxInItem, blockHeight int64) {
 	}
 	if err = c.temporalStorage.SaveBlockMeta(blockHeight, blockMeta); err != nil {
 		c.log.Err(err).Int64("height", blockHeight).Msgf("fail to save block meta to storage")
-	}
-	// update the signer cache
-	var m mem.Memo
-	m, err = mem.ParseMemo(common.LatestVersion, txIn.Memo)
-	if err != nil {
-		// Debug log only as ParseMemo error is expected for THORName inbounds.
-		c.log.Debug().Err(err).Msgf("fail to parse memo: %s", txIn.Memo)
-		return
-	}
-	if !m.IsOutbound() {
-		return
-	}
-	if m.GetTxID().IsEmpty() {
-		return
-	}
-	if err = c.signerCacheManager.SetSigned(txIn.CacheHash(c.GetChain(), m.GetTxID().String()), txIn.CacheVault(c.GetChain()), txIn.Tx); err != nil {
-		c.log.Err(err).Msg("fail to update signer cache")
 	}
 }
 
@@ -491,12 +499,6 @@ func (c *Client) FetchTxs(height, chainHeight int64) (types.TxIn, error) {
 				c.log.Err(err).Msg("fail to report solvency info")
 			}
 		}
-	}
-
-	// consolidate UTXOs if there is not one in progress
-	if c.consolidateInProgress.CompareAndSwap(false, true) {
-		c.wg.Add(1)
-		go c.consolidateUTXOs()
 	}
 
 	return txIn, nil
