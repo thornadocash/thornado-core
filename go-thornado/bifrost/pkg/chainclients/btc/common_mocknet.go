@@ -1,7 +1,7 @@
 //go:build mocknet
 // +build mocknet
 
-package utxo
+package btc
 
 import (
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"

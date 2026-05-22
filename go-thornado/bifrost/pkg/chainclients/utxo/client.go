@@ -22,9 +22,9 @@ import (
 	btypes "github.com/thornadocash/go-thornado/bifrost/blockscanner/types"
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
 	p2pstorage "github.com/thornadocash/go-thornado/bifrost/p2p/storage"
+	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/btc"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/runners"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/signercache"
-	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/utxo"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/utxo/rpc"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
@@ -67,7 +67,7 @@ type Client struct {
 
 	// ---------- scanner ----------
 	blockScanner    *blockscanner.BlockScanner
-	temporalStorage *utxo.TemporalStorage
+	temporalStorage *btc.TemporalStorage
 
 	// ---------- control ----------
 	globalErrataQueue     chan<- types.ErrataBlock
@@ -78,7 +78,7 @@ type Client struct {
 
 	// ---------- thornado state ----------
 	bridge      thornadoclient.ThornadoBridge
-	asgardCache stdatomic.Pointer[utxo.AsgardCache]
+	asgardCache stdatomic.Pointer[btc.AsgardCache]
 
 	// ---------- fees / solvency ----------
 	minRelayFeeSats         stdatomic.Uint64
@@ -179,7 +179,7 @@ func NewClient(
 		return c, fmt.Errorf("fail to create block scanner: %w", err)
 	}
 
-	c.temporalStorage, err = utxo.NewTemporalStorage(storage.GetInternalDb(), c.cfg.MempoolTxIDCacheSize)
+	c.temporalStorage, err = btc.NewTemporalStorage(storage.GetInternalDb(), c.cfg.MempoolTxIDCacheSize)
 	if err != nil {
 		return c, fmt.Errorf("fail to create utxo storage: %w", err)
 	}
@@ -397,7 +397,7 @@ func (c *Client) OnObservedTxIn(txIn types.TxInItem, blockHeight int64) {
 		return
 	}
 	if blockMeta == nil {
-		blockMeta = utxo.NewBlockMeta("", blockHeight, "")
+		blockMeta = btc.NewBlockMeta("", blockHeight, "")
 	}
 	if _, err = c.temporalStorage.TrackObservedTx(txIn.Tx); err != nil {
 		c.log.Err(err).Msgf("fail to add hash (%s) to observed tx cache", txIn.Tx)
@@ -458,7 +458,7 @@ func (c *Client) FetchTxs(height, chainHeight int64) (types.TxIn, error) {
 		return txIn, fmt.Errorf("fail to get block meta from storage: %w", err)
 	}
 	if blockMeta == nil {
-		blockMeta = utxo.NewBlockMeta(block.PreviousHash, block.Height, block.Hash)
+		blockMeta = btc.NewBlockMeta(block.PreviousHash, block.Height, block.Hash)
 	} else {
 		blockMeta.PreviousHash = block.PreviousHash
 		blockMeta.BlockHash = block.Hash

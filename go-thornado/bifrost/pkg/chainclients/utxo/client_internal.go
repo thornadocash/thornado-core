@@ -14,7 +14,7 @@ import (
 
 	btypes "github.com/thornadocash/go-thornado/bifrost/blockscanner/types"
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
-	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/utxo"
+	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/btc"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
@@ -26,7 +26,7 @@ import (
 ////////////////////////////////////////////////////////////////////////////////////////
 
 func (c *Client) getAsgardAddress() ([]common.Address, error) {
-	return utxo.GetAsgardAddressCached(&c.asgardCache, c.cfg.ChainID, c.bridge, constants.ThornadoBlockTime)
+	return btc.GetAsgardAddressCached(&c.asgardCache, c.cfg.ChainID, c.bridge, constants.ThornadoBlockTime)
 }
 
 func (c *Client) isAsgardAddress(addressToCheck string) bool {
@@ -196,7 +196,7 @@ func (c *Client) tryAddToMemPoolCache(hash string) bool {
 	return added
 }
 
-func (c *Client) canDeleteBlock(blockMeta *utxo.BlockMeta) bool {
+func (c *Client) canDeleteBlock(blockMeta *btc.BlockMeta) bool {
 	if blockMeta == nil {
 		return true
 	}
@@ -791,7 +791,7 @@ func (c *Client) getBlockRequiredConfirmation(txIn types.TxIn, height int64) (in
 	if err != nil {
 		c.log.Err(err).Msgf("fail to get coinbase value")
 	}
-	confMul, err := utxo.GetConfMulBasisPoint(c.GetChain().String(), c.bridge)
+	confMul, err := btc.GetConfMulBasisPoint(c.GetChain().String(), c.bridge)
 	if err != nil {
 		c.log.Err(err).Msgf("fail to get conf multiplier config value for %s", c.GetChain().String())
 	}
@@ -805,7 +805,7 @@ func (c *Client) getBlockRequiredConfirmation(txIn types.TxIn, height int64) (in
 	}
 	confValue := common.GetUncappedShare(confMul, cosmos.NewUint(constants.MaxBasisPts), cosmos.SafeUintFromInt64(totalFeeAndSubsidy))
 	confirm := totalTxValue.Quo(confValue).Uint64()
-	confirm, err = utxo.MaxConfAdjustment(confirm, c.GetChain().String(), c.bridge)
+	confirm, err = btc.MaxConfAdjustment(confirm, c.GetChain().String(), c.bridge)
 	if err != nil {
 		c.log.Err(err).Msgf("fail to get max conf value adjustment for %s", c.GetChain().String())
 	}

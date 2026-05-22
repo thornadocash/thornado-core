@@ -1,4 +1,4 @@
-package utxo
+package btc
 
 import (
 	. "gopkg.in/check.v1"

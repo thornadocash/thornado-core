@@ -13,7 +13,7 @@ import (
 	btcwire "github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 
-	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/utxo"
+	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/btc"
 	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
@@ -66,7 +66,7 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 	}
 
 	// load from checkpoint if it exists
-	checkpoint := utxo.SignCheckpoint{}
+	checkpoint := btc.SignCheckpoint{}
 	redeemTx := &btcwire.MsgTx{}
 	if tx.Checkpoint != nil {
 		if err = json.Unmarshal(tx.Checkpoint, &checkpoint); err != nil {
@@ -150,7 +150,7 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 	}
 	wg.Wait()
 	if utxoErr != nil {
-		err = utxo.PostKeysignFailure(c.bridge, tx, c.log, thornadoHeight, utxoErr)
+		err = btc.PostKeysignFailure(c.bridge, tx, c.log, thornadoHeight, utxoErr)
 		return nil, checkpointBytes, nil, fmt.Errorf("fail to sign the message: %w", err)
 	}
 
@@ -227,7 +227,7 @@ func (c *Client) BroadcastTx(txOut stypes.TxOutItem, payload []byte) (string, er
 		c.log.Err(err).Int64("height", height).Msg("fail to get blockmeta")
 	}
 	if bm == nil {
-		bm = utxo.NewBlockMeta("", height, "")
+		bm = btc.NewBlockMeta("", height, "")
 	}
 	defer func() {
 		// trunk-ignore(golangci-lint/govet): shadow
