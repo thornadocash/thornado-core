@@ -11,9 +11,9 @@ import (
 
 	storetypes "cosmossdk.io/store/types"
 
-	"github.com/thornadocash/go-thornado/x/thorchain"
-	"github.com/thornadocash/go-thornado/x/thorchain/ebifrost"
-	"github.com/thornadocash/go-thornado/x/thorchain/keeper"
+	"github.com/thornadocash/go-thornado/x/thornado"
+	"github.com/thornadocash/go-thornado/x/thornado/ebifrost"
+	"github.com/thornadocash/go-thornado/x/thornado/keeper"
 )
 
 // HandlerOptions extend the SDK's AnteHandler options
@@ -47,7 +47,7 @@ func NewAnteHandler(options HandlerOptions) (sdk.AnteHandler, error) {
 		ante.NewSetUpContextDecorator(), // outermost AnteDecorator. SetUpContext must be called first
 
 		// replace gas meter immediately after setting up ctx
-		thorchain.NewGasDecorator(options.ThornadoKeeper),
+		thornado.NewGasDecorator(options.ThornadoKeeper),
 
 		ante.NewExtensionOptionsDecorator(options.ExtensionOptionChecker),
 		ante.NewValidateBasicDecorator(),
@@ -56,7 +56,7 @@ func NewAnteHandler(options HandlerOptions) (sdk.AnteHandler, error) {
 		ante.NewConsumeGasForTxSizeDecorator(options.AccountKeeper),
 
 		// run thornado-specific msg antes
-		thorchain.NewAnteDecorator(options.ThornadoKeeper),
+		thornado.NewAnteDecorator(options.ThornadoKeeper),
 
 		ante.NewSetPubKeyDecorator(options.AccountKeeper), // SetPubKeyDecorator must be called before all signature verification decorators
 		ante.NewValidateSigCountDecorator(options.AccountKeeper),

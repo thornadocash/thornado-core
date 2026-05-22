@@ -111,7 +111,7 @@ generate:
   <<: *use_dind
   before_script:
     - apk -U add bash curl findutils git go jq make protoc sed wget python3
-    - echo "$DOCKER_HUB_PASSWD" | docker login -u thornode --password-stdin
+    - echo "$DOCKER_HUB_PASSWD" | docker login -u thornado --password-stdin
     - |
       if [ -n "$CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX" ]; then
         export DOCKER_MIRROR="${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/"
@@ -198,8 +198,8 @@ proto-check-breaking:
   script:
     - make proto-check-breaking
 
-build-thornode:
-  rules: &build-thornode-rules
+build-thornado:
+  rules: &build-thornado-rules
     - if: $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH && $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH != $CI_MERGE_REQUEST_PROJECT_PATH
       when: never
     - if: $CI_COMMIT_BRANCH == "develop"
@@ -222,7 +222,7 @@ build-thornode:
           sleep 1s
       done
     - apk -U add make git jq curl protoc
-    - echo "$DOCKER_HUB_PASSWD" | docker login -u thornode --password-stdin
+    - echo "$DOCKER_HUB_PASSWD" | docker login -u thornado --password-stdin
     - |
       if [ -n "$CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX" ]; then
         export DOCKER_MIRROR="${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/"
@@ -255,15 +255,6 @@ chain-evm:
     - yarn install --non-interactive
     - yarn hardhat test
 
-go-tss:
-  rules:
-    - changes:
-        paths:
-          - bifrost/tss/go-tss/**/*
-  stage: test
-  script:
-    - make test-go-tss
-
 pages:
   rules:
     - if: $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH && $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH != $CI_MERGE_REQUEST_PROJECT_PATH
@@ -279,7 +270,7 @@ pages:
     - make docs-generate
 
 build-thorscan:
-  rules: *build-thornode-rules
+  rules: *build-thornado-rules
   stage: build
   <<: *use_dind
   script:
@@ -288,7 +279,7 @@ build-thorscan:
     - make thorscan-gitlab-push
 
 build-events:
-  rules: *build-thornode-rules
+  rules: *build-thornado-rules
   stage: build
   <<: *use_dind
   script:
@@ -319,7 +310,7 @@ test-simulation:
     name: integration
   before_script:
     - apk -U add git make protoc bash go
-    - echo "$DOCKER_HUB_PASSWD" | docker login -u thornode --password-stdin
+    - echo "$DOCKER_HUB_PASSWD" | docker login -u thornado --password-stdin
     - |
       if [ -n "$CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX" ]; then
         export DOCKER_MIRROR="${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/"
@@ -368,7 +359,7 @@ test-regression:
     FAIL_FAST: "true"
   before_script:
     - apk -U add make git bash
-    - echo "$DOCKER_HUB_PASSWD" | docker login -u thornode --password-stdin
+    - echo "$DOCKER_HUB_PASSWD" | docker login -u thornado --password-stdin
     - |
       if [ -n "$CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX" ]; then
         export DOCKER_MIRROR="${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/"

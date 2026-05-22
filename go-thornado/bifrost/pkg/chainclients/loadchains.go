@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/thornadocash/go-thornado/bifrost/tss/go-tss/tss"
 
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
+	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/types"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/utxo"
 	"github.com/thornadocash/go-thornado/bifrost/pubkeymanager"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
 )
@@ -20,10 +20,10 @@ import (
 type ChainClient = types.ChainClient
 
 // LoadChains returns chain clients from chain configuration
-func LoadChains(thorKeys *thorclient.Keys,
+func LoadChains(thorKeys *thornadoclient.Keys,
 	cfg map[common.Chain]config.BifrostChainConfiguration,
-	server *tss.TssServer,
-	thorchainBridge thorclient.ThorchainBridge,
+	thornadoBridge thornadoclient.ThornadoBridge,
+	localState storage.LocalStateManager,
 	m *metrics.Metrics,
 	pubKeyValidator pubkeymanager.PubKeyValidator,
 ) (chains map[common.Chain]ChainClient, restart chan struct{}) {
@@ -37,7 +37,7 @@ func LoadChains(thorKeys *thorclient.Keys,
 		if chain.ChainID != common.BTCChain {
 			return nil, fmt.Errorf("chain %s is not supported by thornado bifrost", chain.ChainID)
 		}
-		return utxo.NewClient(thorKeys, chain, server, thorchainBridge, m)
+		return utxo.NewClient(thorKeys, chain, thornadoBridge, localState, m)
 	}
 
 	for _, chain := range cfg {

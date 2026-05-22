@@ -1,0 +1,235 @@
+syntax = "proto3";
+package types;
+
+option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
+
+import "google/api/annotations.proto";
+import "gogoproto/gogo.proto";
+import "types/query_account.proto";
+import "types/query_bank.proto";
+import "types/query_balance_module.proto";
+import "types/query_ban.proto";
+import "types/query_block.proto";
+import "types/query_codes.proto";
+import "types/query_constant_values.proto";
+import "types/query_contract_info.proto";
+import "types/query_eip712.proto";
+import "types/query_export.proto";
+import "types/query_inbound_address.proto";
+import "types/query_invariants.proto";
+import "types/query_keystore.proto";
+import "types/query_last_block.proto";
+import "types/query_mimir.proto";
+import "types/query_node.proto";
+import "types/query_shielder.proto";
+import "types/query_tss.proto";
+import "types/query_tx.proto";
+import "types/query_upgrade.proto";
+import "types/query_vault.proto";
+import "types/query_version.proto";
+import "types/type_ban_voter.proto";
+import "types/type_tss_metric.proto";
+
+option (gogoproto.marshaler_all) = true;
+
+service Query {
+  rpc Account(QueryAccountRequest) returns (QueryAccountResponse) {
+    option (google.api.http).get = "/auth/accounts/{address}";
+  }
+
+  rpc Balances(QueryBalancesRequest) returns (QueryBalancesResponse) {
+    option (google.api.http).get = "/bank/balances/{address}";
+  }
+
+  rpc Export(QueryExportRequest) returns (QueryExportResponse) {
+    option (google.api.http).get = "/thornado/export";
+  }
+
+  rpc Node(QueryNodeRequest) returns (QueryNodeResponse) {
+    option (google.api.http).get = "/thornado/node/{address}";
+  }
+
+  rpc Nodes(QueryNodesRequest) returns (QueryNodesResponse) {
+    option (google.api.http).get = "/thornado/nodes";
+  }
+
+  rpc Ban(QueryBanRequest) returns (BanVoter) {
+    option (google.api.http).get = "/thornado/ban/{address}";
+  }
+
+  rpc MimirValues(QueryMimirValuesRequest) returns (QueryMimirValuesResponse) {
+    option (google.api.http).get = "/thornado/mimir";
+  }
+
+  rpc MimirWithKey(QueryMimirWithKeyRequest) returns (QueryMimirWithKeyResponse) {
+    option (google.api.http).get = "/thornado/mimir/key/{key}";
+  }
+
+  rpc MimirAdminValues(QueryMimirAdminValuesRequest) returns (QueryMimirAdminValuesResponse) {
+    option (google.api.http).get = "/thornado/mimir/admin";
+  }
+
+  rpc MimirNodesAllValues(QueryMimirNodesAllValuesRequest) returns (QueryMimirNodesAllValuesResponse) {
+    option (google.api.http).get = "/thornado/mimir/nodes_all";
+  }
+
+  rpc MimirNodesValues(QueryMimirNodesValuesRequest) returns (QueryMimirNodesValuesResponse) {
+    option (google.api.http).get = "/thornado/mimir/nodes";
+  }
+
+  rpc MimirNodeValues(QueryMimirNodeValuesRequest) returns (QueryMimirNodeValuesResponse) {
+    option (google.api.http).get = "/thornado/mimir/node/{address}";
+  }
+
+  rpc InboundAddresses(QueryInboundAddressesRequest) returns (QueryInboundAddressesResponse) {
+    option (google.api.http).get = "/thornado/inbound_addresses";
+  }
+
+  rpc Version(QueryVersionRequest) returns (QueryVersionResponse) {
+    option (google.api.http).get = "/thornado/version";
+  }
+
+  rpc Invariant(QueryInvariantRequest) returns (QueryInvariantResponse) {
+    option (google.api.http).get = "/thornado/invariant/{path}";
+  }
+
+  rpc Invariants(QueryInvariantsRequest) returns (QueryInvariantsResponse) {
+    option (google.api.http).get = "/thornado/invariants";
+  }
+
+  rpc BalanceModule(QueryBalanceModuleRequest) returns (QueryBalanceModuleResponse) {
+    option (google.api.http).get = "/thornado/balance/module/{name}";
+  }
+
+  rpc ConstantValues(QueryConstantValuesRequest) returns (QueryConstantValuesResponse) {
+    option (google.api.http).get = "/thornado/constants";
+  }
+
+  rpc LastBlocks(QueryLastBlocksRequest) returns (QueryLastBlocksResponse) {
+    option (google.api.http).get = "/thornado/lastblock";
+  }
+
+  rpc ChainsLastBlock(QueryChainsLastBlockRequest) returns (QueryLastBlocksResponse) {
+    option (google.api.http).get = "/thornado/lastblock/{chain}";
+  }
+
+  rpc Vault(QueryVaultRequest) returns (QueryVaultResponse) {
+    option (google.api.http).get = "/thornado/vault/{pub_key}";
+  }
+
+  rpc AsgardVaults(QueryAsgardVaultsRequest) returns (QueryAsgardVaultsResponse) {
+    option (google.api.http).get = "/thornado/vaults/asgard";
+  }
+
+  rpc VaultsPubkeys(QueryVaultsPubkeysRequest) returns (QueryVaultsPubkeysResponse) {
+    option (google.api.http).get = "/thornado/vaults/pubkeys";
+  }
+
+  rpc VaultSolvency(QueryVaultSolvencyRequest) returns (QueryVaultSolvencyResponse) {
+    option (google.api.http).get = "/thornado/vaults/solvency";
+  }
+
+  rpc TxStages(QueryTxStagesRequest) returns (QueryTxStagesResponse) {
+    option (google.api.http).get = "/thornado/tx/stages/{tx_id}";
+  }
+
+  rpc TxStatus(QueryTxStatusRequest) returns (QueryTxStatusResponse) {
+    option (google.api.http).get = "/thornado/tx/status/{tx_id}";
+  }
+
+  rpc Tx(QueryTxRequest) returns (QueryTxResponse) {
+    option (google.api.http).get = "/thornado/tx/{tx_id}";
+  }
+
+  rpc TxVoters(QueryTxVotersRequest) returns (QueryObservedTxVoter) {
+    option (google.api.http).get = "/thornado/tx/details/{tx_id}";
+  }
+
+  rpc TxVotersOld(QueryTxVotersRequest) returns (QueryObservedTxVoter) {
+    option (google.api.http).get = "/thornado/tx/{tx_id}/signers";
+  }
+
+  rpc ShielderDeposit(QueryShielderDepositRequest) returns (QueryShielderDepositResponse) {
+    option (google.api.http).get = "/thornado/shielder/deposit/{deposit_id}";
+  }
+
+  rpc ShielderFeePool(QueryShielderFeePoolRequest) returns (QueryShielderFeePoolResponse) {
+    option (google.api.http).get = "/thornado/shielder/fees";
+  }
+
+  rpc ShielderSession(QueryShielderSessionRequest) returns (QueryShielderSessionResponse) {
+    option (google.api.http).get = "/thornado/shielder/session/{owner}";
+  }
+
+  rpc ShielderBond(QueryShielderBondRequest) returns (QueryShielderBondResponse) {
+    option (google.api.http).get = "/thornado/shielder/bond/{node_pub_key}";
+  }
+
+  rpc NodeSlotAuction(QueryNodeSlotAuctionRequest) returns (QueryNodeSlotAuctionResponse) {
+    option (google.api.http).get = "/thornado/shielder/auction/{auction_id}";
+  }
+
+  rpc NodeSlotBid(QueryNodeSlotBidRequest) returns (QueryNodeSlotBidResponse) {
+    option (google.api.http).get = "/thornado/shielder/bid/{bid_id}";
+  }
+
+  rpc VaultDepositAddress(QueryVaultDepositAddressRequest) returns (QueryVaultDepositAddressResponse) {
+    option (google.api.http).get = "/thornado/shielder/address/{address}";
+  }
+
+  rpc ShielderFeeEntitlement(QueryShielderFeeEntitlementRequest) returns (QueryShielderFeeEntitlementResponse) {
+    option (google.api.http).get = "/thornado/shielder/fee_entitlement/{node_pub_key}";
+  }
+
+  rpc Block(QueryBlockRequest) returns (QueryBlockResponse) {
+    option (google.api.http).get = "/thornado/block";
+  }
+
+  rpc TssKeygenMetric(QueryTssKeygenMetricRequest) returns (QueryTssKeygenMetricResponse) {
+    option (google.api.http).get = "/thornado/metric/keygen/{pub_key}";
+  }
+
+  rpc TssMetric(QueryTssMetricRequest) returns (QueryTssMetricResponse) {
+    option (google.api.http).get = "/thornado/metrics";
+  }
+
+  rpc Keysign(QueryKeysignRequest) returns (QueryKeysignResponse) {
+    option (google.api.http).get = "/thornado/keysign/{height}";
+  }
+
+  rpc KeysignPubkey(QueryKeysignPubkeyRequest) returns (QueryKeysignResponse) {
+    option (google.api.http).get = "/thornado/keysign/{height}/{pub_key}";
+  }
+
+  rpc Keygen(QueryKeygenRequest) returns (QueryKeygenResponse) {
+    option (google.api.http).get = "/thornado/keygen/{height}/{pub_key}";
+  }
+
+  rpc UpgradeProposals(QueryUpgradeProposalsRequest) returns (QueryUpgradeProposalsResponse) {
+    option (google.api.http).get = "/thornado/upgrade_proposals";
+  }
+
+  rpc UpgradeProposal(QueryUpgradeProposalRequest) returns (QueryUpgradeProposalResponse) {
+    option (google.api.http).get = "/thornado/upgrade_proposal/{name}";
+  }
+
+  rpc UpgradeVotes(QueryUpgradeVotesRequest) returns (QueryUpgradeVotesResponse) {
+    option (google.api.http).get = "/thornado/upgrade_votes/{name}";
+  }
+
+  rpc Codes(QueryCodesRequest) returns (QueryCodesResponse) {
+    option (google.api.http).get = "/thornado/codes";
+  }
+
+  rpc Eip712TypedData(QueryEip712TypedDataRequest) returns (QueryEip712TypedDataResponse) {
+    option (google.api.http).get = "/thornado/eip715/tx";
+  }
+
+  rpc ContractInfos(QueryContractInfosRequest) returns (QueryContractInfosResponse) {
+    option (google.api.http).get = "/thornado/contracts";
+  }
+
+  rpc ContractInfo(QueryContractInfoRequest) returns (QueryContractInfoResponse) {
+    option (google.api.http).get = "/thornado/contract/{address}";
+  }
+}

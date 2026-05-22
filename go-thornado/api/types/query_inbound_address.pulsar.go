@@ -2171,7 +2171,7 @@ type QueryInboundAddressResponse struct {
 	// Returns true if LP actions are paused for this chain
 	ChainLpActionsPaused bool `protobuf:"varint,8,opt,name=chain_lp_actions_paused,json=chainLpActionsPaused,proto3" json:"chain_lp_actions_paused,omitempty"`
 	// The chain's observed fee rate in 1e8 format, before the 1.5x that makes an
-	// outbound more likely to have a sufficient gas rate.  Used by validators to
+	// outbound more likely to have a sufficient gas rate.  Used by nodes to
 	// check whether they need to report a fee change.
 	ObservedFeeRate string `protobuf:"bytes,14,opt,name=observed_fee_rate,json=observedFeeRate,proto3" json:"observed_fee_rate,omitempty"`
 	// The minimum fee rate used by vaults to send outbound TXs. The actual fee

@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"fmt"
+
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-peerstore/addr"
 )
@@ -13,7 +15,7 @@ func (s *MockLocalStateManager) SaveLocalState(state KeygenLocalState) error {
 }
 
 func (s *MockLocalStateManager) GetLocalState(pubKey string) (KeygenLocalState, error) {
-	return KeygenLocalState{}, nil
+	return KeygenLocalState{}, fmt.Errorf("missing local state: %s", pubKey)
 }
 
 func (s *MockLocalStateManager) SaveAddressBook(address map[peer.ID]addr.AddrList) error {

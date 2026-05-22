@@ -15,6 +15,7 @@ typedef struct {
 
 int gofrost_keygen(const uint8_t* ptr, size_t len, GoFrostBuf* out);
 int gofrost_sign(const uint8_t* ptr, size_t len, GoFrostBuf* out);
+int gofrost_sign_taproot_tweak(const uint8_t* ptr, size_t len, GoFrostBuf* out);
 int gofrost_verify(const uint8_t* ptr, size_t len, GoFrostBuf* out);
 int gofrost_keygen_session_new(const uint8_t* ptr, size_t len, int32_t* handle_out, GoFrostBuf* err_out);
 int gofrost_sign_session_new(const uint8_t* ptr, size_t len, int32_t* handle_out, GoFrostBuf* err_out);
@@ -82,8 +83,9 @@ type keygenOutput struct {
 }
 
 type signInput struct {
-	Share   string `json:"share"`
-	Message string `json:"message"`
+	Share      string `json:"share"`
+	Message    string `json:"message"`
+	MerkleRoot string `json:"merkle_root,omitempty"`
 }
 
 type signOutput struct {
@@ -212,6 +214,17 @@ func SessionFree(handle Handle) error {
 }
 
 func Sign(shareBytes, msg []byte) ([]byte, error) {
+	return signWith(shareBytes, msg, nil)
+}
+
+func SignTaprootTweak(shareBytes, msg, merkleRoot []byte) ([]byte, error) {
+	if len(merkleRoot) == 0 {
+		return signWith(shareBytes, msg, nil)
+	}
+	return signWith(shareBytes, msg, merkleRoot)
+}
+
+func signWith(shareBytes, msg, merkleRoot []byte) ([]byte, error) {
 	if len(msg) != 32 {
 		return nil, fmt.Errorf("FROST messages must be 32 bytes, got %d", len(msg))
 	}
@@ -219,8 +232,13 @@ func Sign(shareBytes, msg []byte) ([]byte, error) {
 		Share:   base64.StdEncoding.EncodeToString(shareBytes),
 		Message: base64.StdEncoding.EncodeToString(msg),
 	}
+	call := callSign
+	if len(merkleRoot) != 0 {
+		input.MerkleRoot = base64.StdEncoding.EncodeToString(merkleRoot)
+		call = callSignTaprootTweak
+	}
 	var output signOutput
-	if err := callSign(input, &output); err != nil {
+	if err := call(input, &output); err != nil {
 		return nil, err
 	}
 	sig, err := base64.StdEncoding.DecodeString(output.Signature)
@@ -270,6 +288,12 @@ func callKeygen(input any, output any) error {
 func callSign(input any, output any) error {
 	return callJSON(func(ptr *C.uint8_t, len C.size_t, out *C.GoFrostBuf) C.int {
 		return C.gofrost_sign(ptr, len, out)
+	}, input, output)
+}
+
+func callSignTaprootTweak(input any, output any) error {
+	return callJSON(func(ptr *C.uint8_t, len C.size_t, out *C.GoFrostBuf) C.int {
+		return C.gofrost_sign_taproot_tweak(ptr, len, out)
 	}, input, output)
 }
 

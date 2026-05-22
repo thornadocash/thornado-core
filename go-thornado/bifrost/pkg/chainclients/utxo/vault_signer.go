@@ -1,185 +1,136 @@
 package utxo
 
 import (
-	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"strings"
-	"time"
 
+	btcschnorr "github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cometbft/cometbft/crypto"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/rs/zerolog"
 
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
-	"github.com/thornadocash/go-thornado/bifrost/tss"
-	gotss "github.com/thornadocash/go-thornado/bifrost/tss/go-tss/tss"
-	"github.com/thornadocash/go-thornado/common"
-	ttypes "github.com/thornadocash/go-thornado/x/thorchain/types"
-)
+	frostsessions "github.com/thornadocash/go-thornado/frost/go-wrappers/go-frost/sessions"
 
-const (
-	frostSignerEndpointEnv = "FROST_SIGNER_ENDPOINT"
-	frostSignerTimeoutEnv  = "FROST_SIGNER_TIMEOUT"
-	defaultFrostTimeout    = 30 * time.Second
+	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
+	"github.com/thornadocash/go-thornado/bifrost/tss"
+	"github.com/thornadocash/go-thornado/common"
+	ttypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 type frostVaultSigner struct {
-	tss.ThorchainKeyManager
-	endpoint string
-	client   *http.Client
-	log      zerolog.Logger
+	localState storage.LocalStateManager
+	log        zerolog.Logger
 }
 
-type frostSignRequest struct {
-	Withdrawal frostWithdrawalRequest `json:"withdrawal"`
-}
-
-type frostWithdrawalRequest struct {
-	WithdrawalID  string `json:"withdrawal_id"`
-	Recipient     string `json:"recipient"`
-	AmountSats    uint64 `json:"amount_sats"`
-	FeeSats       uint64 `json:"fee_sats"`
-	NullifierHash string `json:"nullifier_hash"`
-}
-
-type frostSignResponse struct {
-	Scheme         string `json:"scheme"`
-	Signer         string `json:"signer"`
-	MessageDigest  string `json:"message_digest"`
-	GroupPublicKey string `json:"group_public_key"`
-	Signature      string `json:"signature"`
-}
-
-func newVaultSigner(server *gotss.TssServer, bridge thorclient.ThorchainBridge, log zerolog.Logger) (tss.ThorchainKeyManager, error) {
-	keysign, err := tss.NewKeySign(server, bridge)
-	if err != nil {
-		return nil, err
+func newVaultSigner(_ thornadoclient.ThornadoBridge, localState storage.LocalStateManager, log zerolog.Logger) (tss.ThornadoKeyManager, error) {
+	if localState == nil {
+		return nil, fmt.Errorf("FROST local state manager is required")
 	}
-
-	endpoint := strings.TrimRight(os.Getenv(frostSignerEndpointEnv), "/")
-	if endpoint == "" {
-		return keysign, nil
-	}
-
 	return &frostVaultSigner{
-		ThorchainKeyManager: keysign,
-		endpoint:            endpoint,
-		client: &http.Client{
-			Timeout: frostSignerTimeout(),
-		},
-		log: log,
+		localState: localState,
+		log:        log,
 	}, nil
 }
 
-func frostSignerTimeout() time.Duration {
-	raw := strings.TrimSpace(os.Getenv(frostSignerTimeoutEnv))
-	if raw == "" {
-		return defaultFrostTimeout
-	}
-	timeout, err := time.ParseDuration(raw)
-	if err != nil || timeout <= 0 {
-		return defaultFrostTimeout
-	}
-	return timeout
+func (s *frostVaultSigner) RemoteSign(msg []byte, algo common.SigningAlgo, poolPubKey string) ([]byte, []byte, error) {
+	return s.RemoteSignWithPath(msg, algo, poolPubKey, common.MainVaultPathIndex)
 }
 
-func (s *frostVaultSigner) RemoteSign(msg []byte, algo common.SigningAlgo, poolPubKey string) ([]byte, []byte, error) {
+func (s *frostVaultSigner) RemoteSignWithPath(msg []byte, algo common.SigningAlgo, poolPubKey string, pathIndex uint64) ([]byte, []byte, error) {
 	if algo != common.SigningAlgoSecp256k1 {
 		return nil, nil, tss.NewKeysignError(ttypes.Blame{
 			FailReason: fmt.Sprintf("FROST signer only supports secp256k1, got %s", algo),
 		})
 	}
-
-	payload, err := json.Marshal(frostSignRequest{
-		Withdrawal: frostWithdrawalRequest{
-			WithdrawalID:  frostSessionID(poolPubKey, msg),
-			Recipient:     "thornado-bifrost-raw-payload",
-			AmountSats:    0,
-			FeeSats:       0,
-			NullifierHash: hex.EncodeToString(msg),
-		},
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, s.endpoint+"/v1/sign", bytes.NewReader(payload))
-	if err != nil {
-		return nil, nil, err
-	}
-	req.Header.Set("content-type", "application/json")
-
-	resp, err := s.client.Do(req)
+	state, err := s.localState.GetLocalState(poolPubKey)
 	if err != nil {
 		return nil, nil, tss.NewKeysignError(ttypes.Blame{FailReason: err.Error()})
 	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
-	if err != nil {
-		return nil, nil, err
-	}
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+	if state.Engine() != storage.SigningEngineFrost {
 		return nil, nil, tss.NewKeysignError(ttypes.Blame{
-			FailReason: fmt.Sprintf("FROST signer rejected request: status=%d body=%s", resp.StatusCode, strings.TrimSpace(string(body))),
+			FailReason: fmt.Sprintf("vault %s is not a FROST keyshare", poolPubKey),
+		})
+	}
+	if len(state.LocalData) == 0 {
+		return nil, nil, tss.NewKeysignError(ttypes.Blame{
+			FailReason: fmt.Sprintf("vault %s has empty FROST keyshare data", poolPubKey),
 		})
 	}
 
-	var result frostSignResponse
-	if err := json.Unmarshal(body, &result); err != nil {
+	pubKey, err := common.NewPubKey(poolPubKey)
+	if err != nil {
 		return nil, nil, err
 	}
-	signature, err := hex.DecodeString(result.Signature)
+	tweakRoot, err := common.VaultPathTweakRoot(pubKey, pathIndex)
 	if err != nil {
-		return nil, nil, fmt.Errorf("decode FROST signature: %w", err)
+		return nil, nil, err
 	}
-	if len(signature) != 64 {
-		return nil, nil, fmt.Errorf("FROST signature must be 64 bytes, got %d", len(signature))
+	signature, err := frostsessions.SignTaprootTweak(state.LocalData, msg, tweakRoot)
+	if err != nil {
+		return nil, nil, tss.NewKeysignError(ttypes.Blame{FailReason: err.Error()})
+	}
+	if pathIndex == common.MainVaultPathIndex {
+		secpPubKey, err := pubKey.Secp256K1()
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := frostsessions.Verify(secpPubKey.SerializeCompressed(), msg, signature); err != nil {
+			return nil, nil, err
+		}
+	} else if err := verifyTaprootSignature(pubKey, pathIndex, msg, signature); err != nil {
+		return nil, nil, err
 	}
 
-	s.log.Debug().
-		Str("scheme", result.Scheme).
-		Str("signer", result.Signer).
-		Str("pool_pub_key", poolPubKey).
-		Msg("received FROST vault signature")
+	s.log.Debug().Str("pool_pub_key", poolPubKey).Msg("created FROST vault signature")
 	return signature, nil, nil
 }
 
-func frostSessionID(poolPubKey string, msg []byte) string {
-	sum := sha256.Sum256(append([]byte(poolPubKey), msg...))
-	return hex.EncodeToString(sum[:])
+func (s *frostVaultSigner) LocalStateEngine(poolPubKey string) string {
+	state, err := s.localState.GetLocalState(poolPubKey)
+	if err != nil {
+		return ""
+	}
+	return state.Engine()
+}
+
+func verifyTaprootSignature(pubKey common.PubKey, pathIndex uint64, msg, signature []byte) error {
+	tweakedPubKey, err := common.DeriveBTCTaprootPubKey(pubKey, pathIndex)
+	if err != nil {
+		return err
+	}
+	parsedPubKey, err := btcschnorr.ParsePubKey(tweakedPubKey)
+	if err != nil {
+		return err
+	}
+	parsedSignature, err := btcschnorr.ParseSignature(signature)
+	if err != nil {
+		return err
+	}
+	if !parsedSignature.Verify(msg, parsedPubKey) {
+		return fmt.Errorf("BIP340 signature verification failed for path index %d", pathIndex)
+	}
+	return nil
 }
 
 func (s *frostVaultSigner) GetPrivKey() crypto.PrivKey {
-	return s.ThorchainKeyManager.GetPrivKey()
+	return nil
 }
 
 func (s *frostVaultSigner) GetAddr() sdk.AccAddress {
-	return s.ThorchainKeyManager.GetAddr()
+	return nil
 }
 
 func (s *frostVaultSigner) ExportAsMnemonic() (string, error) {
-	return s.ThorchainKeyManager.ExportAsMnemonic()
+	return "", fmt.Errorf("FROST vault signer does not expose mnemonic export")
 }
 
 func (s *frostVaultSigner) ExportAsPrivateKey() (string, error) {
-	return s.ThorchainKeyManager.ExportAsPrivateKey()
+	return "", fmt.Errorf("FROST vault signer does not expose private key export")
 }
 
 func (s *frostVaultSigner) ExportAsKeyStore(password string) (*tss.EncryptedKeyJSON, error) {
-	return s.ThorchainKeyManager.ExportAsKeyStore(password)
+	return nil, fmt.Errorf("FROST vault signer does not expose keystore export")
 }
 
-func (s *frostVaultSigner) Start() {
-	s.ThorchainKeyManager.Start()
-}
-
-func (s *frostVaultSigner) Stop() {
-	s.ThorchainKeyManager.Stop()
-}
+func (s *frostVaultSigner) Start() {}
+func (s *frostVaultSigner) Stop()  {}

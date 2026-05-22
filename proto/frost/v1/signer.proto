@@ -49,7 +49,7 @@ message GetNodeSignerInfoResponse {
 message VaultParticipantSet {
   repeated thornado.common.v1.SignerParticipant participants = 1;
   uint32 threshold = 2;
-  uint64 thornode_height = 3;
+  uint64 thornado_height = 3;
   string membership_epoch = 4;
 }
 
@@ -115,7 +115,7 @@ message SigningPolicyContext {
   string destination_address = 4;
   thornado.common.v1.BitcoinAmount amount = 5;
   uint64 fee_rate_sats_per_vbyte = 6;
-  uint64 thornode_height = 7;
+  uint64 thornado_height = 7;
   bytes expected_vault_public_key = 8;
   VaultParticipantSet expected_signer_set = 9;
 }

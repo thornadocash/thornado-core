@@ -15,7 +15,7 @@ import (
 	btypes "github.com/thornadocash/go-thornado/bifrost/blockscanner/types"
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/utxo"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient/types"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
@@ -455,25 +455,19 @@ func (c *Client) getVinZeroTxs(block *btcjson.GetBlockVerboseTxResult) (map[stri
 	// create our batches
 	batches := [][]string{}
 	batch := []string{}
-	var count, ignoreCount, failMemoSkipCount, skipDustCount int // just for debug logs
+	var count, ignoreCount, skipDustCount int // just for debug logs
 	for i := range block.Tx {
 		if c.ignoreTx(&block.Tx[i], block.Height) {
 			ignoreCount++
 			continue
 		}
 
-		// skip if sum of vout value is under thorchain dust threshold
+		// skip if sum of vout value is under thornado dust threshold
 		voutSats, err := sumVoutSats(&block.Tx[i])
 		if err != nil {
 			c.log.Error().Err(err).Str("txid", block.Tx[i].Txid).Msg("fail to sum vout sats")
 		} else if voutSats < dustThreshold {
 			skipDustCount++
-			continue
-		}
-
-		memo, err := c.getMemo(&block.Tx[i])
-		if err != nil || len(memo) > constants.MaxMemoSize {
-			failMemoSkipCount++
 			continue
 		}
 
@@ -491,7 +485,6 @@ func (c *Client) getVinZeroTxs(block *btcjson.GetBlockVerboseTxResult) (map[stri
 	c.log.Debug().
 		Int64("height", block.Height).
 		Int("ignoreCount", ignoreCount).
-		Int("failMemoSkipCount", failMemoSkipCount).
 		Int("skipDustCount", skipDustCount).
 		Int("count", count).
 		Int("batchSize", c.cfg.UTXO.TransactionBatchSize).
@@ -591,22 +584,23 @@ func (c *Client) extractTxs(block *btcjson.GetBlockVerboseTxResult) (types.TxIn,
 	return txIn, nil
 }
 
-// ignoreTx checks if we can already ignore a tx according to preset rules
-// Allow up to 10 Vouts with value and 2 OP_RETURN Vouts (for getMemo appending).
+// ignoreTx checks if we can already ignore a tx according to preset rules.
 func (c *Client) ignoreTx(tx *btcjson.TxRawResult, height int64) bool {
-	if len(tx.Vin) == 0 || len(tx.Vout) == 0 || len(tx.Vout) > 12 {
+	if len(tx.Vin) == 0 || len(tx.Vout) == 0 || len(tx.Vout) > 10 {
 		return true
 	}
 	if tx.Vin[0].Txid == "" {
 		return true
 	}
-	// LockTime <= current height doesn't affect spendability,
-	// and most wallets for users doing Memoless Savers deposits automatically set LockTime to the current height.
+	// LockTime <= current height doesn't affect spendability.
 	if tx.LockTime > uint32(height) {
 		return true
 	}
 	countWithOutput := 0
 	for _, vout := range tx.Vout {
+		if strings.EqualFold(vout.ScriptPubKey.Type, "nulldata") {
+			return true
+		}
 		// analyze-ignore(float-comparison)
 		if vout.Value > 0 {
 			countWithOutput++
@@ -632,9 +626,6 @@ func (c *Client) ignoreTx(tx *btcjson.TxRawResult, height int64) bool {
 func (c *Client) getOutput(sender string, tx *btcjson.TxRawResult, consolidate bool) (btcjson.Vout, error) {
 	isSenderAsgard := c.isAsgardAddress(sender)
 	for _, vout := range tx.Vout {
-		if strings.EqualFold(vout.ScriptPubKey.Type, "nulldata") {
-			continue
-		}
 		// analyze-ignore(float-comparison)
 		if vout.Value <= 0 {
 			continue
@@ -737,160 +728,6 @@ func (c *Client) getAddressesFromScriptPubKey(scriptPubKey btcjson.ScriptPubKeyR
 	return c.getAddressesFromScriptPubKeyBTC(scriptPubKey)
 }
 
-// getMemo returns memo for a btc tx, using vout OP_RETURN
-func (c *Client) getMemo(tx *btcjson.TxRawResult) (string, error) {
-	var memo string
-
-	for _, vOut := range tx.Vout {
-		switch strings.ToLower(vOut.ScriptPubKey.Type) {
-		case "witness_v0_keyhash", "pubkeyhash", "nulldata":
-			// do nothing
-		default:
-			continue
-		}
-
-		buf, err := hex.DecodeString(vOut.ScriptPubKey.Hex)
-		if err != nil {
-			c.log.Err(err).Msg("fail to hex decode scriptPubKey")
-			continue
-		}
-
-		asm, err := btctxscript.DisasmString(buf)
-
-		if err != nil {
-			c.log.Err(err).Msg("fail to disasm script pubkey")
-			continue
-		}
-		fields := strings.Fields(asm)
-
-		if len(fields) < 2 {
-			// we need at least OP_RETURN + data, or 0 + address
-			continue
-		}
-
-		if fields[0] == "OP_RETURN" {
-			// skip "0" field to avoid log noise
-			if fields[1] == "0" {
-				continue
-			}
-
-			var decoded string
-			decoded, err = c.decodeHexString(fields[1])
-			if err != nil {
-				// silently return no memo to reduce log noise
-				return "", nil
-			}
-			memo += decoded
-			continue
-		}
-
-		// don't inspect further non OP_RETURN outputs unless we found one
-		if len(memo) < constants.MaxOpReturnDataSize {
-			continue
-		}
-
-		// marker can be at position >= 79 for a single / multiple OP_RETURN_
-		if strings.LastIndex(memo, "^") < constants.MaxOpReturnDataSize-1 {
-			// no continuation marker found
-			continue
-		}
-
-		var pubkey string
-
-		switch len(fields) {
-		case 2:
-			// Pay-to-witness-public-key-hash (P2WPKH) script format
-			// Format: <0> <20-byte-key-hash>
-			if fields[0] != "0" {
-				continue
-			}
-
-			pubkey = fields[1]
-		case 5:
-			// Pay-to-public-key-hash (P2PKH) script format
-			// Format: OP_DUP OP_HASH160 <20-byte-key-hash> OP_EQUALVERIFY OP_CHECKSIG
-			requiredOps := []string{
-				"OP_DUP", "OP_HASH160", fields[2],
-				"OP_EQUALVERIFY", "OP_CHECKSIG",
-			}
-
-			isValidScript := true
-			for i := 0; i < 4; i++ {
-				if fields[i] != requiredOps[i] {
-					isValidScript = false
-					break
-				}
-			}
-
-			if !isValidScript {
-				continue
-			}
-
-			pubkey = fields[2]
-		default:
-			continue
-		}
-
-		// process pubkey
-
-		// pubkey hash is ripemd-160, which is 20 bytes, 40 chars in hex
-		if len(pubkey) != 40 {
-			continue
-		}
-
-		// remove trailing zeros, if found
-		pubkey = c.regexpRemoveTrailingZeros.ReplaceAllString(pubkey, "")
-
-		decoded, err := c.decodeHexString(pubkey)
-		if err != nil {
-			// silently return no memo to reduce log noise
-			return "", nil
-		}
-		memo += decoded
-
-		// if pubkey has been stripped (was ending with "00") stop processing
-		if len(pubkey) != 40 {
-			break
-		}
-
-		// if memo > max size, stop processing
-		if len(memo) >= constants.MaxMemoSize {
-			break
-		}
-	}
-
-	if strings.LastIndex(memo, "^") >= constants.MaxOpReturnDataSize-1 {
-		memo = strings.Replace(memo, "^", "", 1)
-	}
-
-	return memo, nil
-}
-
-// decodeHexString decodes a provided hex string and returns the result
-// as string or "" if the decoding failed
-func (c *Client) decodeHexString(hexString string) (string, error) {
-	errMsg := "fail to decode data: " + hexString
-
-	decoded, err := hex.DecodeString(hexString)
-	if err != nil {
-		c.log.Debug().Err(err).Msg(errMsg)
-		return "", err
-	}
-
-	// check for non alphanumeric chars
-	// only allow letters: a-z A-Z, numbers, space and the following symbols:
-	// !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~
-	for i, b := range decoded {
-		if b < 0x20 || b > 0x7E {
-			err := fmt.Errorf("invalid hex value at position %d: 0x%X", i, b)
-			c.log.Debug().Err(err).Msg(errMsg)
-			return "", err
-		}
-	}
-
-	return string(decoded), nil
-}
-
 // getGas returns gas for a tx (sum vin - sum vout)
 func (c *Client) getGas(tx *btcjson.TxRawResult, isInbound bool) (common.Gas, error) {
 	var sumVin uint64 = 0
@@ -908,12 +745,6 @@ func (c *Client) getGas(tx *btcjson.TxRawResult, isInbound bool) (common.Gas, er
 	}
 	var sumVout uint64 = 0
 	for _, vout := range tx.Vout {
-		// Ignore all values after the first OP_RETURN on outbounds to consider the values
-		// in the extra p2wpkh outputs as part of the gas and avoid insolvency.
-		if !isInbound && strings.ToLower(vout.ScriptPubKey.Type) == "nulldata" {
-			break
-		}
-
 		amount, err := btcutil.NewAmount(vout.Value)
 		if err != nil {
 			return nil, err

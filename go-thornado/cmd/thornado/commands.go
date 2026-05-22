@@ -50,8 +50,8 @@ import (
 	"github.com/thornadocash/go-thornado/config"
 	thorlog "github.com/thornadocash/go-thornado/log"
 
-	"github.com/thornadocash/go-thornado/x/thorchain/client/cli"
-	"github.com/thornadocash/go-thornado/x/thorchain/ebifrost"
+	"github.com/thornadocash/go-thornado/x/thornado/client/cli"
+	"github.com/thornadocash/go-thornado/x/thornado/ebifrost"
 )
 
 // initCometBFTConfig helps to override default CometBFT Config values.

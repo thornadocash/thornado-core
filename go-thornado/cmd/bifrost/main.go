@@ -16,8 +16,6 @@ import (
 	flag "github.com/spf13/pflag"
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p"
-	"github.com/thornadocash/go-thornado/bifrost/tss/go-tss/common"
-	"github.com/thornadocash/go-thornado/bifrost/tss/go-tss/tss"
 
 	"github.com/thornadocash/go-thornado/app"
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
@@ -25,8 +23,7 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients"
 	"github.com/thornadocash/go-thornado/bifrost/pubkeymanager"
 	"github.com/thornadocash/go-thornado/bifrost/signer"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
-	btss "github.com/thornadocash/go-thornado/bifrost/tss"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/cmd"
 	tcommon "github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
@@ -74,22 +71,22 @@ func main() {
 	if len(cfg.Thornado.SignerPasswd) == 0 {
 		log.Fatal().Msg("signer password is empty")
 	}
-	kb, _, err := thorclient.GetKeyringKeybase(cfg.Thornado.ChainHomeFolder, cfg.Thornado.SignerName, cfg.Thornado.SignerPasswd)
+	kb, _, err := thornadoclient.GetKeyringKeybase(cfg.Thornado.ChainHomeFolder, cfg.Thornado.SignerName, cfg.Thornado.SignerPasswd)
 	if err != nil {
 		log.Fatal().Err(err).Msg("fail to get keyring keybase")
 	}
 
-	k := thorclient.NewKeysWithKeybase(kb, cfg.Thornado.SignerName, cfg.Thornado.SignerPasswd)
+	k := thornadoclient.NewKeysWithKeybase(kb, cfg.Thornado.SignerName, cfg.Thornado.SignerPasswd)
 	// thornado bridge
-	thorchainBridge, err := thorclient.NewThorchainBridge(cfg.Thornado, m, k)
+	thornadoBridge, err := thornadoclient.NewThornadoBridge(cfg.Thornado, m, k)
 	if err != nil {
 		log.Fatal().Err(err).Msg("fail to create new thornado bridge")
 	}
-	if err = thorchainBridge.EnsureNodeWhitelistedWithTimeout(); err != nil {
+	if err = thornadoBridge.EnsureNodeWhitelistedWithTimeout(); err != nil {
 		log.Fatal().Err(err).Msg("node account is not whitelisted, can't start")
 	}
 	// PubKey Manager
-	pubkeyMgr, err := pubkeymanager.NewPubKeyManager(thorchainBridge, m)
+	pubkeyMgr, err := pubkeymanager.NewPubKeyManager(thornadoBridge, m)
 	if err != nil {
 		log.Fatal().Err(err).Msg("fail to create pubkey manager")
 	}
@@ -97,25 +94,13 @@ func main() {
 		log.Fatal().Err(err).Msg("fail to start pubkey manager")
 	}
 
-	// automatically attempt to recover TSS keyshares if they are missing
-	if err = btss.RecoverKeyShares(cfg, thorchainBridge); err != nil {
-		log.Error().Err(err).Msg("fail to recover key shares")
-	}
-
-	// setup TSS signing
+	// setup FROST signing transport identity
 	priKey, err := k.GetPrivateKey()
 	if err != nil {
 		log.Fatal().Err(err).Msg("fail to get secp256k1 private key")
 	}
 
 	tmPrivateKey := tcommon.CosmosPrivateKeyToTMPrivateKey(priKey)
-
-	priKeyEddsa, err := k.GetPrivateKeyEDDSA()
-	if err != nil {
-		log.Fatal().Err(err).Msg("fail to get eddsa private key")
-	}
-
-	tmPrivateKeyEddsa := tcommon.CosmosPrivateKeyToTMPrivateKey(priKeyEddsa)
 
 	consts := constants.NewConstantValue()
 	jailTimeKeygen := time.Duration(consts.GetInt64Value(constants.JailTimeKeygen)) * constants.ThornadoBlockTime
@@ -138,32 +123,10 @@ func main() {
 		cfg.TSS,
 		tmPrivateKey,
 		app.DefaultNodeHome,
-		thorchainBridge,
+		thornadoBridge,
 	)
 	if err != nil {
 		log.Fatal().Err(err).Msg("fail to start p2p")
-	}
-
-	tssIns, err := tss.NewTss(
-		comm,
-		stateManager,
-		tmPrivateKey,
-		tmPrivateKeyEddsa,
-		common.TssConfig{
-			EnableMonitor:   true,
-			KeyGenTimeout:   cfg.Signer.KeygenTimeout,
-			KeySignTimeout:  cfg.Signer.KeysignTimeout,
-			PartyTimeout:    cfg.Signer.PartyTimeout,
-			PreParamTimeout: cfg.Signer.PreParamTimeout,
-		},
-		nil,
-	)
-	if err != nil {
-		log.Fatal().Err(err).Msg("fail to create tss instance")
-	}
-
-	if err = tssIns.Start(); err != nil {
-		log.Err(err).Msg("fail to start tss instance")
 	}
 
 	cfgChains := cfg.GetChains()
@@ -181,12 +144,12 @@ func main() {
 			chainCfg.RPCHost = fmt.Sprintf("http://%s", chainCfg.RPCHost)
 		}
 	}
-	chains, restart := chainclients.LoadChains(k, cfgChains, tssIns, thorchainBridge, m, pubkeyMgr)
+	chains, restart := chainclients.LoadChains(k, cfgChains, thornadoBridge, stateManager, m, pubkeyMgr)
 	if len(chains) == 0 {
 		log.Fatal().Msg("fail to load any chains")
 	}
 	tssKeysignMetricMgr := metrics.NewTssKeysignMetricMgr()
-	healthServer := NewHealthServer(cfg.TSS.InfoAddress, tssIns, chains)
+	healthServer := NewHealthServer(cfg.TSS.InfoAddress, comm.GetHost().ID().String(), chains)
 	go func() {
 		defer log.Info().Msg("health server exit")
 		if err = healthServer.Start(); err != nil {
@@ -197,10 +160,10 @@ func main() {
 	ctx := context.Background()
 
 	// start observer notifier
-	ag, err := observer.NewAttestationGossip(comm.GetHost(), k, cfg.Thornado.ChainEBifrost, thorchainBridge, m, cfg.AttestationGossip)
+	ag, err := observer.NewAttestationGossip(comm.GetHost(), k, cfg.Thornado.ChainEBifrost, thornadoBridge, m, cfg.AttestationGossip)
 
 	// start observer
-	obs, err := observer.NewObserver(pubkeyMgr, chains, thorchainBridge, m, cfgChains[tcommon.BTCChain].BlockScanner.DBPath, tssKeysignMetricMgr, ag, *deckDump)
+	obs, err := observer.NewObserver(pubkeyMgr, chains, thornadoBridge, m, cfgChains[tcommon.BTCChain].BlockScanner.DBPath, tssKeysignMetricMgr, ag, *deckDump)
 	if err != nil {
 		log.Fatal().Err(err).Msg("fail to create observer")
 	}
@@ -213,7 +176,7 @@ func main() {
 	ag.SetObserverHandleObservedTxCommitted(obs)
 
 	// start signer
-	sign, err := signer.NewSigner(cfg, thorchainBridge, k, pubkeyMgr, tssIns, chains, m, tssKeysignMetricMgr, obs)
+	sign, err := signer.NewSigner(cfg, thornadoBridge, k, stateManager, pubkeyMgr, chains, m, tssKeysignMetricMgr, obs)
 	if err != nil {
 		log.Fatal().Err(err).Msg("fail to create instance of signer")
 	}
@@ -238,8 +201,6 @@ func main() {
 	if err = sign.Stop(); err != nil {
 		log.Fatal().Err(err).Msg("fail to stop signer")
 	}
-	// stop go tss
-	tssIns.Stop()
 	if err = healthServer.Stop(); err != nil {
 		log.Fatal().Err(err).Msg("fail to stop health server")
 	}
@@ -277,7 +238,4 @@ func initLog(level string, pretty bool) {
 		logLevel = golog.LevelPanic
 	}
 	golog.SetAllLoggers(logLevel)
-	if err = golog.SetLogLevel("tss-lib", level); err != nil {
-		log.Fatal().Err(err).Msg("fail to set tss-lib loglevel")
-	}
 }

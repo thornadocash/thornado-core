@@ -5,7 +5,7 @@ import (
 
 	tssMessages "github.com/thornadocash/go-thornado/bifrost/p2p/messages"
 
-	"github.com/thornadocash/go-thornado/x/thorchain/types"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 // KeysignError is a custom error create to include which party to blame

@@ -48,6 +48,14 @@ const (
 	Query_Tx_FullMethodName                     = "/types.Query/Tx"
 	Query_TxVoters_FullMethodName               = "/types.Query/TxVoters"
 	Query_TxVotersOld_FullMethodName            = "/types.Query/TxVotersOld"
+	Query_ShielderDeposit_FullMethodName        = "/types.Query/ShielderDeposit"
+	Query_ShielderFeePool_FullMethodName        = "/types.Query/ShielderFeePool"
+	Query_ShielderSession_FullMethodName        = "/types.Query/ShielderSession"
+	Query_ShielderBond_FullMethodName           = "/types.Query/ShielderBond"
+	Query_NodeSlotAuction_FullMethodName        = "/types.Query/NodeSlotAuction"
+	Query_NodeSlotBid_FullMethodName            = "/types.Query/NodeSlotBid"
+	Query_VaultDepositAddress_FullMethodName    = "/types.Query/VaultDepositAddress"
+	Query_ShielderFeeEntitlement_FullMethodName = "/types.Query/ShielderFeeEntitlement"
 	Query_Block_FullMethodName                  = "/types.Query/Block"
 	Query_TssKeygenMetric_FullMethodName        = "/types.Query/TssKeygenMetric"
 	Query_TssMetric_FullMethodName              = "/types.Query/TssMetric"
@@ -59,9 +67,6 @@ const (
 	Query_UpgradeVotes_FullMethodName           = "/types.Query/UpgradeVotes"
 	Query_Codes_FullMethodName                  = "/types.Query/Codes"
 	Query_Eip712TypedData_FullMethodName        = "/types.Query/Eip712TypedData"
-	Query_ReferenceMemo_FullMethodName          = "/types.Query/ReferenceMemo"
-	Query_ReferenceMemoByHash_FullMethodName    = "/types.Query/ReferenceMemoByHash"
-	Query_ReferenceMemoPreflight_FullMethodName = "/types.Query/ReferenceMemoPreflight"
 	Query_ContractInfos_FullMethodName          = "/types.Query/ContractInfos"
 	Query_ContractInfo_FullMethodName           = "/types.Query/ContractInfo"
 )
@@ -99,6 +104,14 @@ type QueryClient interface {
 	Tx(ctx context.Context, in *QueryTxRequest, opts ...grpc.CallOption) (*QueryTxResponse, error)
 	TxVoters(ctx context.Context, in *QueryTxVotersRequest, opts ...grpc.CallOption) (*QueryObservedTxVoter, error)
 	TxVotersOld(ctx context.Context, in *QueryTxVotersRequest, opts ...grpc.CallOption) (*QueryObservedTxVoter, error)
+	ShielderDeposit(ctx context.Context, in *QueryShielderDepositRequest, opts ...grpc.CallOption) (*QueryShielderDepositResponse, error)
+	ShielderFeePool(ctx context.Context, in *QueryShielderFeePoolRequest, opts ...grpc.CallOption) (*QueryShielderFeePoolResponse, error)
+	ShielderSession(ctx context.Context, in *QueryShielderSessionRequest, opts ...grpc.CallOption) (*QueryShielderSessionResponse, error)
+	ShielderBond(ctx context.Context, in *QueryShielderBondRequest, opts ...grpc.CallOption) (*QueryShielderBondResponse, error)
+	NodeSlotAuction(ctx context.Context, in *QueryNodeSlotAuctionRequest, opts ...grpc.CallOption) (*QueryNodeSlotAuctionResponse, error)
+	NodeSlotBid(ctx context.Context, in *QueryNodeSlotBidRequest, opts ...grpc.CallOption) (*QueryNodeSlotBidResponse, error)
+	VaultDepositAddress(ctx context.Context, in *QueryVaultDepositAddressRequest, opts ...grpc.CallOption) (*QueryVaultDepositAddressResponse, error)
+	ShielderFeeEntitlement(ctx context.Context, in *QueryShielderFeeEntitlementRequest, opts ...grpc.CallOption) (*QueryShielderFeeEntitlementResponse, error)
 	Block(ctx context.Context, in *QueryBlockRequest, opts ...grpc.CallOption) (*QueryBlockResponse, error)
 	TssKeygenMetric(ctx context.Context, in *QueryTssKeygenMetricRequest, opts ...grpc.CallOption) (*QueryTssKeygenMetricResponse, error)
 	TssMetric(ctx context.Context, in *QueryTssMetricRequest, opts ...grpc.CallOption) (*QueryTssMetricResponse, error)
@@ -110,9 +123,6 @@ type QueryClient interface {
 	UpgradeVotes(ctx context.Context, in *QueryUpgradeVotesRequest, opts ...grpc.CallOption) (*QueryUpgradeVotesResponse, error)
 	Codes(ctx context.Context, in *QueryCodesRequest, opts ...grpc.CallOption) (*QueryCodesResponse, error)
 	Eip712TypedData(ctx context.Context, in *QueryEip712TypedDataRequest, opts ...grpc.CallOption) (*QueryEip712TypedDataResponse, error)
-	ReferenceMemo(ctx context.Context, in *QueryReferenceMemoRequest, opts ...grpc.CallOption) (*QueryReferenceMemoResponse, error)
-	ReferenceMemoByHash(ctx context.Context, in *QueryReferenceMemoByHashRequest, opts ...grpc.CallOption) (*QueryReferenceMemoByHashResponse, error)
-	ReferenceMemoPreflight(ctx context.Context, in *QueryReferenceMemoPreflightRequest, opts ...grpc.CallOption) (*QueryReferenceMemoPreflightResponse, error)
 	ContractInfos(ctx context.Context, in *QueryContractInfosRequest, opts ...grpc.CallOption) (*QueryContractInfosResponse, error)
 	ContractInfo(ctx context.Context, in *QueryContractInfoRequest, opts ...grpc.CallOption) (*QueryContractInfoResponse, error)
 }
@@ -386,6 +396,78 @@ func (c *queryClient) TxVotersOld(ctx context.Context, in *QueryTxVotersRequest,
 	return out, nil
 }
 
+func (c *queryClient) ShielderDeposit(ctx context.Context, in *QueryShielderDepositRequest, opts ...grpc.CallOption) (*QueryShielderDepositResponse, error) {
+	out := new(QueryShielderDepositResponse)
+	err := c.cc.Invoke(ctx, Query_ShielderDeposit_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) ShielderFeePool(ctx context.Context, in *QueryShielderFeePoolRequest, opts ...grpc.CallOption) (*QueryShielderFeePoolResponse, error) {
+	out := new(QueryShielderFeePoolResponse)
+	err := c.cc.Invoke(ctx, Query_ShielderFeePool_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) ShielderSession(ctx context.Context, in *QueryShielderSessionRequest, opts ...grpc.CallOption) (*QueryShielderSessionResponse, error) {
+	out := new(QueryShielderSessionResponse)
+	err := c.cc.Invoke(ctx, Query_ShielderSession_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) ShielderBond(ctx context.Context, in *QueryShielderBondRequest, opts ...grpc.CallOption) (*QueryShielderBondResponse, error) {
+	out := new(QueryShielderBondResponse)
+	err := c.cc.Invoke(ctx, Query_ShielderBond_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) NodeSlotAuction(ctx context.Context, in *QueryNodeSlotAuctionRequest, opts ...grpc.CallOption) (*QueryNodeSlotAuctionResponse, error) {
+	out := new(QueryNodeSlotAuctionResponse)
+	err := c.cc.Invoke(ctx, Query_NodeSlotAuction_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) NodeSlotBid(ctx context.Context, in *QueryNodeSlotBidRequest, opts ...grpc.CallOption) (*QueryNodeSlotBidResponse, error) {
+	out := new(QueryNodeSlotBidResponse)
+	err := c.cc.Invoke(ctx, Query_NodeSlotBid_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) VaultDepositAddress(ctx context.Context, in *QueryVaultDepositAddressRequest, opts ...grpc.CallOption) (*QueryVaultDepositAddressResponse, error) {
+	out := new(QueryVaultDepositAddressResponse)
+	err := c.cc.Invoke(ctx, Query_VaultDepositAddress_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) ShielderFeeEntitlement(ctx context.Context, in *QueryShielderFeeEntitlementRequest, opts ...grpc.CallOption) (*QueryShielderFeeEntitlementResponse, error) {
+	out := new(QueryShielderFeeEntitlementResponse)
+	err := c.cc.Invoke(ctx, Query_ShielderFeeEntitlement_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *queryClient) Block(ctx context.Context, in *QueryBlockRequest, opts ...grpc.CallOption) (*QueryBlockResponse, error) {
 	out := new(QueryBlockResponse)
 	err := c.cc.Invoke(ctx, Query_Block_FullMethodName, in, out, opts...)
@@ -485,33 +567,6 @@ func (c *queryClient) Eip712TypedData(ctx context.Context, in *QueryEip712TypedD
 	return out, nil
 }
 
-func (c *queryClient) ReferenceMemo(ctx context.Context, in *QueryReferenceMemoRequest, opts ...grpc.CallOption) (*QueryReferenceMemoResponse, error) {
-	out := new(QueryReferenceMemoResponse)
-	err := c.cc.Invoke(ctx, Query_ReferenceMemo_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) ReferenceMemoByHash(ctx context.Context, in *QueryReferenceMemoByHashRequest, opts ...grpc.CallOption) (*QueryReferenceMemoByHashResponse, error) {
-	out := new(QueryReferenceMemoByHashResponse)
-	err := c.cc.Invoke(ctx, Query_ReferenceMemoByHash_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) ReferenceMemoPreflight(ctx context.Context, in *QueryReferenceMemoPreflightRequest, opts ...grpc.CallOption) (*QueryReferenceMemoPreflightResponse, error) {
-	out := new(QueryReferenceMemoPreflightResponse)
-	err := c.cc.Invoke(ctx, Query_ReferenceMemoPreflight_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *queryClient) ContractInfos(ctx context.Context, in *QueryContractInfosRequest, opts ...grpc.CallOption) (*QueryContractInfosResponse, error) {
 	out := new(QueryContractInfosResponse)
 	err := c.cc.Invoke(ctx, Query_ContractInfos_FullMethodName, in, out, opts...)
@@ -563,6 +618,14 @@ type QueryServer interface {
 	Tx(context.Context, *QueryTxRequest) (*QueryTxResponse, error)
 	TxVoters(context.Context, *QueryTxVotersRequest) (*QueryObservedTxVoter, error)
 	TxVotersOld(context.Context, *QueryTxVotersRequest) (*QueryObservedTxVoter, error)
+	ShielderDeposit(context.Context, *QueryShielderDepositRequest) (*QueryShielderDepositResponse, error)
+	ShielderFeePool(context.Context, *QueryShielderFeePoolRequest) (*QueryShielderFeePoolResponse, error)
+	ShielderSession(context.Context, *QueryShielderSessionRequest) (*QueryShielderSessionResponse, error)
+	ShielderBond(context.Context, *QueryShielderBondRequest) (*QueryShielderBondResponse, error)
+	NodeSlotAuction(context.Context, *QueryNodeSlotAuctionRequest) (*QueryNodeSlotAuctionResponse, error)
+	NodeSlotBid(context.Context, *QueryNodeSlotBidRequest) (*QueryNodeSlotBidResponse, error)
+	VaultDepositAddress(context.Context, *QueryVaultDepositAddressRequest) (*QueryVaultDepositAddressResponse, error)
+	ShielderFeeEntitlement(context.Context, *QueryShielderFeeEntitlementRequest) (*QueryShielderFeeEntitlementResponse, error)
 	Block(context.Context, *QueryBlockRequest) (*QueryBlockResponse, error)
 	TssKeygenMetric(context.Context, *QueryTssKeygenMetricRequest) (*QueryTssKeygenMetricResponse, error)
 	TssMetric(context.Context, *QueryTssMetricRequest) (*QueryTssMetricResponse, error)
@@ -574,9 +637,6 @@ type QueryServer interface {
 	UpgradeVotes(context.Context, *QueryUpgradeVotesRequest) (*QueryUpgradeVotesResponse, error)
 	Codes(context.Context, *QueryCodesRequest) (*QueryCodesResponse, error)
 	Eip712TypedData(context.Context, *QueryEip712TypedDataRequest) (*QueryEip712TypedDataResponse, error)
-	ReferenceMemo(context.Context, *QueryReferenceMemoRequest) (*QueryReferenceMemoResponse, error)
-	ReferenceMemoByHash(context.Context, *QueryReferenceMemoByHashRequest) (*QueryReferenceMemoByHashResponse, error)
-	ReferenceMemoPreflight(context.Context, *QueryReferenceMemoPreflightRequest) (*QueryReferenceMemoPreflightResponse, error)
 	ContractInfos(context.Context, *QueryContractInfosRequest) (*QueryContractInfosResponse, error)
 	ContractInfo(context.Context, *QueryContractInfoRequest) (*QueryContractInfoResponse, error)
 	mustEmbedUnimplementedQueryServer()
@@ -673,6 +733,30 @@ func (UnimplementedQueryServer) TxVoters(context.Context, *QueryTxVotersRequest)
 func (UnimplementedQueryServer) TxVotersOld(context.Context, *QueryTxVotersRequest) (*QueryObservedTxVoter, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method TxVotersOld not implemented")
 }
+func (UnimplementedQueryServer) ShielderDeposit(context.Context, *QueryShielderDepositRequest) (*QueryShielderDepositResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShielderDeposit not implemented")
+}
+func (UnimplementedQueryServer) ShielderFeePool(context.Context, *QueryShielderFeePoolRequest) (*QueryShielderFeePoolResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShielderFeePool not implemented")
+}
+func (UnimplementedQueryServer) ShielderSession(context.Context, *QueryShielderSessionRequest) (*QueryShielderSessionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShielderSession not implemented")
+}
+func (UnimplementedQueryServer) ShielderBond(context.Context, *QueryShielderBondRequest) (*QueryShielderBondResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShielderBond not implemented")
+}
+func (UnimplementedQueryServer) NodeSlotAuction(context.Context, *QueryNodeSlotAuctionRequest) (*QueryNodeSlotAuctionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NodeSlotAuction not implemented")
+}
+func (UnimplementedQueryServer) NodeSlotBid(context.Context, *QueryNodeSlotBidRequest) (*QueryNodeSlotBidResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NodeSlotBid not implemented")
+}
+func (UnimplementedQueryServer) VaultDepositAddress(context.Context, *QueryVaultDepositAddressRequest) (*QueryVaultDepositAddressResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VaultDepositAddress not implemented")
+}
+func (UnimplementedQueryServer) ShielderFeeEntitlement(context.Context, *QueryShielderFeeEntitlementRequest) (*QueryShielderFeeEntitlementResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShielderFeeEntitlement not implemented")
+}
 func (UnimplementedQueryServer) Block(context.Context, *QueryBlockRequest) (*QueryBlockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Block not implemented")
 }
@@ -705,15 +789,6 @@ func (UnimplementedQueryServer) Codes(context.Context, *QueryCodesRequest) (*Que
 }
 func (UnimplementedQueryServer) Eip712TypedData(context.Context, *QueryEip712TypedDataRequest) (*QueryEip712TypedDataResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Eip712TypedData not implemented")
-}
-func (UnimplementedQueryServer) ReferenceMemo(context.Context, *QueryReferenceMemoRequest) (*QueryReferenceMemoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReferenceMemo not implemented")
-}
-func (UnimplementedQueryServer) ReferenceMemoByHash(context.Context, *QueryReferenceMemoByHashRequest) (*QueryReferenceMemoByHashResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReferenceMemoByHash not implemented")
-}
-func (UnimplementedQueryServer) ReferenceMemoPreflight(context.Context, *QueryReferenceMemoPreflightRequest) (*QueryReferenceMemoPreflightResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReferenceMemoPreflight not implemented")
 }
 func (UnimplementedQueryServer) ContractInfos(context.Context, *QueryContractInfosRequest) (*QueryContractInfosResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ContractInfos not implemented")
@@ -1256,6 +1331,150 @@ func _Query_TxVotersOld_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_ShielderDeposit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryShielderDepositRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).ShielderDeposit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_ShielderDeposit_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).ShielderDeposit(ctx, req.(*QueryShielderDepositRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_ShielderFeePool_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryShielderFeePoolRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).ShielderFeePool(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_ShielderFeePool_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).ShielderFeePool(ctx, req.(*QueryShielderFeePoolRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_ShielderSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryShielderSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).ShielderSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_ShielderSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).ShielderSession(ctx, req.(*QueryShielderSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_ShielderBond_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryShielderBondRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).ShielderBond(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_ShielderBond_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).ShielderBond(ctx, req.(*QueryShielderBondRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_NodeSlotAuction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryNodeSlotAuctionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).NodeSlotAuction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_NodeSlotAuction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).NodeSlotAuction(ctx, req.(*QueryNodeSlotAuctionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_NodeSlotBid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryNodeSlotBidRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).NodeSlotBid(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_NodeSlotBid_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).NodeSlotBid(ctx, req.(*QueryNodeSlotBidRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_VaultDepositAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryVaultDepositAddressRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).VaultDepositAddress(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_VaultDepositAddress_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).VaultDepositAddress(ctx, req.(*QueryVaultDepositAddressRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_ShielderFeeEntitlement_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryShielderFeeEntitlementRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).ShielderFeeEntitlement(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_ShielderFeeEntitlement_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).ShielderFeeEntitlement(ctx, req.(*QueryShielderFeeEntitlementRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Query_Block_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(QueryBlockRequest)
 	if err := dec(in); err != nil {
@@ -1454,60 +1673,6 @@ func _Query_Eip712TypedData_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_ReferenceMemo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryReferenceMemoRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).ReferenceMemo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_ReferenceMemo_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ReferenceMemo(ctx, req.(*QueryReferenceMemoRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_ReferenceMemoByHash_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryReferenceMemoByHashRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).ReferenceMemoByHash(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_ReferenceMemoByHash_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ReferenceMemoByHash(ctx, req.(*QueryReferenceMemoByHashRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_ReferenceMemoPreflight_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryReferenceMemoPreflightRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).ReferenceMemoPreflight(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_ReferenceMemoPreflight_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ReferenceMemoPreflight(ctx, req.(*QueryReferenceMemoPreflightRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Query_ContractInfos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(QueryContractInfosRequest)
 	if err := dec(in); err != nil {
@@ -1668,6 +1833,38 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Query_TxVotersOld_Handler,
 		},
 		{
+			MethodName: "ShielderDeposit",
+			Handler:    _Query_ShielderDeposit_Handler,
+		},
+		{
+			MethodName: "ShielderFeePool",
+			Handler:    _Query_ShielderFeePool_Handler,
+		},
+		{
+			MethodName: "ShielderSession",
+			Handler:    _Query_ShielderSession_Handler,
+		},
+		{
+			MethodName: "ShielderBond",
+			Handler:    _Query_ShielderBond_Handler,
+		},
+		{
+			MethodName: "NodeSlotAuction",
+			Handler:    _Query_NodeSlotAuction_Handler,
+		},
+		{
+			MethodName: "NodeSlotBid",
+			Handler:    _Query_NodeSlotBid_Handler,
+		},
+		{
+			MethodName: "VaultDepositAddress",
+			Handler:    _Query_VaultDepositAddress_Handler,
+		},
+		{
+			MethodName: "ShielderFeeEntitlement",
+			Handler:    _Query_ShielderFeeEntitlement_Handler,
+		},
+		{
 			MethodName: "Block",
 			Handler:    _Query_Block_Handler,
 		},
@@ -1710,18 +1907,6 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Eip712TypedData",
 			Handler:    _Query_Eip712TypedData_Handler,
-		},
-		{
-			MethodName: "ReferenceMemo",
-			Handler:    _Query_ReferenceMemo_Handler,
-		},
-		{
-			MethodName: "ReferenceMemoByHash",
-			Handler:    _Query_ReferenceMemoByHash_Handler,
-		},
-		{
-			MethodName: "ReferenceMemoPreflight",
-			Handler:    _Query_ReferenceMemoPreflight_Handler,
 		},
 		{
 			MethodName: "ContractInfos",

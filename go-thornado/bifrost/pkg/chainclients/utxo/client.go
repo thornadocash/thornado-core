@@ -21,14 +21,14 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/blockscanner"
 	btypes "github.com/thornadocash/go-thornado/bifrost/blockscanner/types"
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
+	p2pstorage "github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/runners"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/signercache"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/utxo"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/utxo/rpc"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient/types"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/bifrost/tss"
-	gotss "github.com/thornadocash/go-thornado/bifrost/tss/go-tss/tss"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/config"
@@ -55,7 +55,7 @@ type Client struct {
 	// ---------- signing ----------
 	nodePubKey         common.PubKey
 	nodePrivKey        *btcec.PrivateKey
-	tssKeySigner       tss.ThorchainKeyManager
+	tssKeySigner       tss.ThornadoKeyManager
 	signerCacheManager *signercache.CacheManager
 
 	// ---------- sync ----------
@@ -77,7 +77,7 @@ type Client struct {
 	currentBlockHeight    stdatomic.Int64
 
 	// ---------- thornado state ----------
-	bridge      thorclient.ThorchainBridge
+	bridge      thornadoclient.ThornadoBridge
 	asgardCache stdatomic.Pointer[utxo.AsgardCache]
 
 	// ---------- fees / solvency ----------
@@ -97,10 +97,10 @@ type Client struct {
 
 // NewClient generates a new Client
 func NewClient(
-	thorKeys *thorclient.Keys,
+	thorKeys *thornadoclient.Keys,
 	cfg config.BifrostChainConfiguration,
-	server *gotss.TssServer,
-	bridge thorclient.ThorchainBridge,
+	bridge thornadoclient.ThornadoBridge,
+	localState p2pstorage.LocalStateManager,
 	m *metrics.Metrics,
 ) (*Client, error) {
 	// verify the chain is supported
@@ -128,7 +128,7 @@ func NewClient(
 	}
 
 	// node key setup
-	tssKeysign, err := newVaultSigner(server, bridge, logger)
+	tssKeysign, err := newVaultSigner(bridge, localState, logger)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create vault signer: %w", err)
 	}
@@ -619,7 +619,7 @@ func (c *Client) FetchMemPool(height int64) (types.TxIn, error) {
 ////////////////////////////////////////////////////////////////////////////////////////
 
 // GetConfirmationCount returns the number of blocks required before processing in
-// Thorchain.
+// Thornado.
 func (c *Client) GetConfirmationCount(txIn types.TxIn) int64 {
 	// if there are no txs, nothing will be reported
 	if len(txIn.TxArray) == 0 {
@@ -644,7 +644,7 @@ func (c *Client) GetConfirmationCount(txIn types.TxIn) int64 {
 }
 
 // ConfirmationCountReady will be called by the observer before sending the txIn to
-// Thorchain. It will return true if the scanner height is greater than or equal to the
+// Thornado. It will return true if the scanner height is greater than or equal to the
 // observed block height + confirmation required.
 // https://medium.com/coinmonks/1confvalue-a-simple-pow-confirmation-rule-of-thumb-a8d9c6c483dd
 func (c *Client) ConfirmationCountReady(txIn types.TxIn) bool {

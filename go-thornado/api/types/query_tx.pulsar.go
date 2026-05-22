@@ -10031,11 +10031,11 @@ type QueryTxResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	ObservedTx *QueryObservedTx `protobuf:"bytes,1,opt,name=observed_tx,json=observedTx,proto3" json:"observed_tx,omitempty"`
-	// the thorchain height at which the inbound reached consensus
+	// the thornado height at which the inbound reached consensus
 	ConsensusHeight int64 `protobuf:"varint,2,opt,name=consensus_height,json=consensusHeight,proto3" json:"consensus_height,omitempty"`
-	// the thorchain height at which the outbound was finalised
+	// the thornado height at which the outbound was finalised
 	FinalisedHeight int64 `protobuf:"varint,3,opt,name=finalised_height,json=finalisedHeight,proto3" json:"finalised_height,omitempty"`
-	// the thorchain height for which the outbound was scheduled
+	// the thornado height for which the outbound was scheduled
 	OutboundHeight int64             `protobuf:"varint,4,opt,name=outbound_height,json=outboundHeight,proto3" json:"outbound_height,omitempty"`
 	KeysignMetric  *TssKeysignMetric `protobuf:"bytes,5,opt,name=keysign_metric,json=keysignMetric,proto3" json:"keysign_metric,omitempty"`
 }
@@ -10493,7 +10493,7 @@ type InboundConfirmationCountedStage struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// the THORChain block height when confirmation counting began
+	// the Thornado block height when confirmation counting began
 	CountingStartHeight int64 `protobuf:"varint,1,opt,name=counting_start_height,json=countingStartHeight,proto3" json:"counting_start_height,omitempty"`
 	// the external source chain for which confirmation counting takes place
 	Chain string `protobuf:"bytes,2,opt,name=chain,proto3" json:"chain,omitempty"`
@@ -10576,7 +10576,7 @@ type InboundFinalisedStage struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// returns true if the inbound transaction has been finalised (THORChain
+	// returns true if the inbound transaction has been finalised (Thornado
 	// agreeing it exists)
 	Completed bool `protobuf:"varint,1,opt,name=completed,proto3" json:"completed,omitempty"`
 }
@@ -10613,7 +10613,7 @@ type OutboundDelayStage struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// the number of remaining THORChain blocks the outbound will be delayed
+	// the number of remaining Thornado blocks the outbound will be delayed
 	RemainingDelayBlocks int64 `protobuf:"varint,1,opt,name=remaining_delay_blocks,json=remainingDelayBlocks,proto3" json:"remaining_delay_blocks,omitempty"`
 	// the estimated remaining seconds of the outbound delay before it will be
 	// sent
@@ -10668,9 +10668,9 @@ type OutboundSignedStage struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// THORChain height for which the external outbound is scheduled
+	// Thornado height for which the external outbound is scheduled
 	ScheduledOutboundHeight int64 `protobuf:"varint,1,opt,name=scheduled_outbound_height,json=scheduledOutboundHeight,proto3" json:"scheduled_outbound_height,omitempty"`
-	// THORChain blocks since the scheduled outbound height
+	// Thornado blocks since the scheduled outbound height
 	BlocksSinceScheduled *ProtoInt64 `protobuf:"bytes,2,opt,name=blocks_since_scheduled,json=blocksSinceScheduled,proto3" json:"blocks_since_scheduled,omitempty"`
 	// returns true if an external transaction has been signed and broadcast (and
 	// observed in its mempool)

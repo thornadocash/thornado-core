@@ -36,7 +36,7 @@ func TestNewCommunicationWithInvalidExternalIP(t *testing.T) {
 }
 
 func TestNewCommunicationWithBridge(t *testing.T) {
-	bridge := NewMockThorchainBridge()
+	bridge := NewMockThornadoBridge()
 	comm, err := NewCommunication(&Config{Port: 7789, RendezvousString: "test"}, nil, bridge)
 	assert.NoError(t, err)
 	assert.NotNil(t, comm)
@@ -160,9 +160,9 @@ func (CommunicationTestSuite) TestBroadcastAndProcessBroadcast(c *C) {
 }
 
 func (CommunicationTestSuite) TestStopWithNodeGater(c *C) {
-	bridge := NewMockThorchainBridge()
+	bridge := NewMockThornadoBridge()
 	bridge.SetConstants(map[string]int64{
-		"MinimumBondInRune": 100_000_000,
+		"BondStartAmountSats": 100_000_000,
 	})
 	comm, err := NewCommunication(&Config{Port: 6692, RendezvousString: "testgater"}, nil, bridge)
 	c.Assert(err, IsNil)

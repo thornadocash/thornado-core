@@ -57,7 +57,7 @@ message SignerParticipant {
   string node_id = 1;
   uint32 participant_index = 2;
   bytes public_key = 3;
-  string thornode_address = 4;
+  string thornado_address = 4;
 }
 
 message HealthRequest {}

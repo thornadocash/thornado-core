@@ -14,7 +14,7 @@ import (
 	"github.com/btcsuite/btcutil"
 
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/utxo"
-	stypes "github.com/thornadocash/go-thornado/bifrost/thorclient/types"
+	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 
@@ -27,7 +27,7 @@ import (
 
 // SignTx builds and signs the outbound transaction. Returns the signed transaction, a
 // serialized checkpoint on error, and an error.
-func (c *Client) SignTx(tx stypes.TxOutItem, thorchainHeight int64) ([]byte, []byte, *stypes.TxInItem, error) {
+func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []byte, *stypes.TxInItem, error) {
 	if !tx.Chain.Equals(c.cfg.ChainID) {
 		return nil, nil, nil, errors.New("wrong chain")
 	}
@@ -150,7 +150,7 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thorchainHeight int64) ([]byte, []b
 	}
 	wg.Wait()
 	if utxoErr != nil {
-		err = utxo.PostKeysignFailure(c.bridge, tx, c.log, thorchainHeight, utxoErr)
+		err = utxo.PostKeysignFailure(c.bridge, tx, c.log, thornadoHeight, utxoErr)
 		return nil, checkpointBytes, nil, fmt.Errorf("fail to sign the message: %w", err)
 	}
 
@@ -179,7 +179,7 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thorchainHeight int64) ([]byte, []b
 		txIn = stypes.NewTxInItem(
 			chainHeight,
 			txHash,
-			tx.Memo,
+			"",
 			sender.String(),
 			tx.ToAddress.String(),
 			common.NewCoins(

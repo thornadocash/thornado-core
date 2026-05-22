@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/thornadocash/go-thornado/common/cosmos"
-	"github.com/thornadocash/go-thornado/constants"
 )
 
 type (
@@ -98,30 +97,6 @@ func (tx TxID) String() string {
 
 // Txs a list of Tx
 type Txs []Tx
-
-// GetRagnarokTx return a tx used for ragnarok
-func GetRagnarokTx(chain Chain, fromAddr, toAddr Address) Tx {
-	blankAsset := Asset{
-		Chain:  chain,
-		Symbol: "BLANK",
-		Ticker: "BLANK",
-	}
-	return Tx{
-		Chain:       chain,
-		ID:          BlankTxID,
-		FromAddress: fromAddr,
-		ToAddress:   toAddr,
-		Coins: Coins{
-			// used for ragnarok, so doesn't really matter
-			NewCoin(blankAsset, cosmos.OneUint()),
-		},
-		Gas: Gas{
-			// used for ragnarok, so doesn't really matter
-			NewCoin(blankAsset, cosmos.OneUint()),
-		},
-		Memo: "Ragnarok",
-	}
-}
 
 // NewTx create a new instance of Tx based on the input information
 func NewTx(txID TxID, from, to Address, coins Coins, gas Gas, memo string) Tx {
@@ -236,9 +211,8 @@ func (tx Tx) Valid() error {
 	if err := tx.Gas.Valid(); err != nil {
 		return err
 	}
-	// relax this check from 150 -> 180
-	if len([]byte(tx.Memo)) > constants.MaxMemoSize {
-		return fmt.Errorf("memo must not exceed %d bytes: %d", constants.MaxMemoSize, len([]byte(tx.Memo)))
+	if tx.Memo != "" {
+		return fmt.Errorf("transaction memo is disabled")
 	}
 	return nil
 }

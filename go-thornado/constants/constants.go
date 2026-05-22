@@ -1,4 +1,4 @@
-// Package constants  contains all the constants used by thorchain
+// Package constants  contains all the constants used by thornado
 // by default all the settings in this is for mainnet
 package constants
 
@@ -24,19 +24,8 @@ var SWVersion, _ = semver.Make(Version)
 // max basis points
 const MaxBasisPts = uint64(10_000)
 
-// MaxMemoSize Maximum Memo Size
-const MaxMemoSize = 250
-
 // MaxDepositSaltSize limits MsgDeposit salt length in bytes.
 const MaxDepositSaltSize = 64
-
-// TODO: remove on hard fork.
-// StreamingSwapMinBPFee multiplier. This is used to allow decimal points for
-// streaming swap math
-const StreamingSwapMinBPFeeMulti = int64(100)
-
-// "width" of a volume bucket (15min)
-const VolumeBucketSeconds = int64(900)
 
 // used to preserve precision when determining dollar-denominated config values.
 const DollarMulti = 1e9
@@ -47,19 +36,10 @@ const (
 	MaxAVAXGas = 100e8
 	MaxBSCGas  = 50000000
 	MaxBASEGas = 50000000
-	MaxPOLGas  = 50000000
 
 	// DefaultMaxEVMGas is a conservative default for EVM chains not explicitly listed above.
 	DefaultMaxEVMGas = 50000000
 )
-
-// max amount of data that can be provided with OP_RETURN (bytes)
-const MaxOpReturnDataSize = 80
-
-// when using fake transactions to encode further memo information, support up
-// to eight fake addresses (20 bytes each):
-// 80 (op_return) + 8 * 20 (addresses) - 1 ('^' marker)
-const MaxMemoSizeUtxoExtended = MaxOpReturnDataSize - 1 + 8*20
 
 // The provided key must be comparable and should not be of type string or any other built-in type to avoid collisions between packages using context. Users of WithValue should define their own types for keys. To avoid allocating when assigning to an interface{}, context keys often have concrete type struct{}. Alternatively, exported context key variables' static type should be a pointer or interface.
 type contextKey string

@@ -17,9 +17,8 @@ var (
 	EmptyAsset = Asset{Symbol: "", Ticker: "", Synth: false}
 	// BTCAsset BTC
 	BTCAsset = Asset{Chain: BTCChain, Symbol: "BTC", Ticker: "BTC", Synth: false}
-	// RuneNative RUNE on thorchain
+	// RuneNative RUNE on thornado
 	RuneNative = Asset{Chain: Thornado, Symbol: "RUNE", Ticker: "RUNE", Synth: false}
-	TCY        = Asset{Chain: Thornado, Symbol: "TCY", Ticker: "TCY", Synth: false}
 	TOR        = Asset{Chain: Thornado, Symbol: "TOR", Ticker: "TOR", Synth: false}
 	THORBTC    = Asset{Chain: Thornado, Symbol: "BTC", Ticker: "BTC", Synth: false}
 	// Whitelisted assets
@@ -110,13 +109,13 @@ func (a Asset) Valid() error {
 	if (a.Synth && a.Trade) || (a.Trade && a.Secured) || (a.Secured && a.Synth) {
 		return fmt.Errorf("assets can only be one of trade, synth or secured")
 	}
-	if a.Synth && a.Chain.IsTHORChain() {
+	if a.Synth && a.Chain.IsThornado() {
 		return fmt.Errorf("synth asset cannot have chain THOR: %s", a)
 	}
-	if a.Trade && a.Chain.IsTHORChain() {
+	if a.Trade && a.Chain.IsThornado() {
 		return fmt.Errorf("trade asset cannot have chain THOR: %s", a)
 	}
-	if a.Secured && a.Chain.IsTHORChain() {
+	if a.Secured && a.Chain.IsThornado() {
 		return fmt.Errorf("secured asset cannot have chain THOR: %s", a)
 	}
 	return nil
@@ -217,7 +216,7 @@ func (a Asset) IsVaultAsset() bool {
 
 // Check if asset is a derived asset
 func (a Asset) IsDerivedAsset() bool {
-	return !a.Synth && !a.Trade && !a.Secured && a.GetChain().IsTHORChain() && !a.IsRune() && !a.IsTCY() && !a.IsWhitelisted()
+	return !a.Synth && !a.Trade && !a.Secured && a.GetChain().IsThornado() && !a.IsRune() && !a.IsWhitelisted()
 }
 
 // Native return native asset, only relevant on Thornado
@@ -227,8 +226,6 @@ func (a Asset) Native() string {
 		return "rune"
 	case a.Equals(TOR):
 		return "tor"
-	case a.Equals(TCY):
-		return "tcy"
 	case a.Equals(RUJI):
 		return "x/ruji"
 	case a.Equals(NAMI):
@@ -290,11 +287,6 @@ func (a Asset) IsRune() bool {
 	return RuneAsset().Equals(a)
 }
 
-// IsTCY is a helper function, return true only when the asset represents TCY
-func (a Asset) IsTCY() bool {
-	return TCY.Equals(a)
-}
-
 // IsWhitelisted is a helper function, return true when the asset is whitelisted for a base layer pool
 func (a Asset) IsWhitelisted() bool {
 	whitelist := map[Asset]bool{
@@ -310,7 +302,7 @@ func (a Asset) IsWhitelisted() bool {
 // IsNative is a helper function, returns true when the asset is a native
 // asset to Thornado (ie rune, a synth, etc)
 func (a Asset) IsNative() bool {
-	return a.GetChain().IsTHORChain()
+	return a.GetChain().IsThornado()
 }
 
 func (a Asset) IsExternalL1Asset() bool {

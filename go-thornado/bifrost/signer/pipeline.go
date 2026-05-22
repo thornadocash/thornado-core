@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/common"
-	"github.com/thornadocash/go-thornado/x/thorchain/types"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -100,7 +100,7 @@ func newPipeline(concurrency int64) (*pipeline, error) {
 // The signing routines will be spawned in a goroutine, and this function will not
 // block on their completion. The spawned routines will release the corresponding vault
 // status semaphore and vault/chain lock when they are complete.
-func (p *pipeline) SpawnSignings(s pipelineSigner, bridge thorclient.ThorchainBridge) {
+func (p *pipeline) SpawnSignings(s pipelineSigner, bridge thornadoclient.ThornadoBridge) {
 	allItems := s.storageList()
 
 	// gather all vault/chain combinations with an out item in retry

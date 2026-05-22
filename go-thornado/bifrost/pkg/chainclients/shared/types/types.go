@@ -3,7 +3,7 @@ package types
 import (
 	"math/big"
 
-	"github.com/thornadocash/go-thornado/bifrost/thorclient/types"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
 )

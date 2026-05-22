@@ -5,7 +5,7 @@ set -e
 GO_MOD_PACKAGE="github.com/thornadocash/go-thornado"
 
 echo "Generating gogo proto code"
-cd proto/thorchain/v1
+cd proto/thornado/v1
 proto_dirs=$(find . -path -prune -o -name '*.proto' -print0 | xargs -0 -n1 dirname | sort | uniq)
 for dir in $proto_dirs; do
   # shellcheck disable=SC2044
@@ -30,7 +30,7 @@ rm -rf gitlab.com
 
 # Copy files over for dep injection
 rm -rf ../../api && mkdir ../../api
-mv thorchain ../../api/.
+mv thornado ../../api/.
 mv types ../../api/.
 mv common ../../api/.
 mv bifrost ../../api/.

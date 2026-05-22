@@ -1,0 +1,11 @@
+syntax = "proto3";
+package types;
+
+option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
+
+import "gogoproto/gogo.proto";
+
+message OraclePrice {
+  string symbol = 1;
+  string price = 2;
+}

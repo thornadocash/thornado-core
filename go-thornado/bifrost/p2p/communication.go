@@ -27,7 +27,7 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/p2p/conversion"
 	"github.com/thornadocash/go-thornado/bifrost/p2p/messages"
 	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 )
 
 var (
@@ -64,7 +64,7 @@ type Communication struct {
 	host             host.Host
 	wg               *sync.WaitGroup
 	stopChan         chan struct{} // channel to indicate whether we should stop
-	subscribers      map[messages.THORChainTSSMessageType]*MessageIDSubscriber
+	subscribers      map[messages.ThornadoTSSMessageType]*MessageIDSubscriber
 	subscriberLocker *sync.Mutex
 	streamCount      int64
 	BroadcastMsgChan chan *messages.BroadcastMsgChan
@@ -94,7 +94,7 @@ func StartP2PWithBridge(
 	cfg P2PConfig,
 	priKey tcrypto.PrivKey,
 	baseFolder string,
-	bridge thorclient.ThorchainBridge,
+	bridge thornadoclient.ThornadoBridge,
 ) (*Communication, *storage.FileStateMgr, error) {
 	stateManager, err := storage.NewFileStateMgr(baseFolder)
 	if err != nil {
@@ -118,7 +118,7 @@ func StartP2PWithBridge(
 }
 
 // NewCommunication create a new instance of Communication
-func NewCommunication(cfg P2PConfig, stateManager *storage.FileStateMgr, bridge thorclient.ThorchainBridge) (*Communication, error) {
+func NewCommunication(cfg P2PConfig, stateManager *storage.FileStateMgr, bridge thornadoclient.ThornadoBridge) (*Communication, error) {
 	port, externalIP := cfg.GetP2PPort(), cfg.GetExternalIP()
 	addr, err := maddr.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port))
 	if err != nil {
@@ -139,7 +139,7 @@ func NewCommunication(cfg P2PConfig, stateManager *storage.FileStateMgr, bridge 
 		listenAddr:       addr,
 		wg:               &sync.WaitGroup{},
 		stopChan:         make(chan struct{}),
-		subscribers:      make(map[messages.THORChainTSSMessageType]*MessageIDSubscriber),
+		subscribers:      make(map[messages.ThornadoTSSMessageType]*MessageIDSubscriber),
 		subscriberLocker: &sync.Mutex{},
 		streamCount:      0,
 		BroadcastMsgChan: make(chan *messages.BroadcastMsgChan, 1024),
@@ -488,7 +488,7 @@ func (c *Communication) Stop() error {
 	return nil
 }
 
-func (c *Communication) SetSubscribe(topic messages.THORChainTSSMessageType, msgID string, channel chan *Message) {
+func (c *Communication) SetSubscribe(topic messages.ThornadoTSSMessageType, msgID string, channel chan *Message) {
 	c.subscriberLocker.Lock()
 	defer c.subscriberLocker.Unlock()
 
@@ -500,7 +500,7 @@ func (c *Communication) SetSubscribe(topic messages.THORChainTSSMessageType, msg
 	messageIDSubscribers.Subscribe(msgID, channel)
 }
 
-func (c *Communication) getSubscriber(topic messages.THORChainTSSMessageType, msgID string) chan *Message {
+func (c *Communication) getSubscriber(topic messages.ThornadoTSSMessageType, msgID string) chan *Message {
 	c.subscriberLocker.Lock()
 	defer c.subscriberLocker.Unlock()
 	messageIDSubscribers, ok := c.subscribers[topic]
@@ -511,7 +511,7 @@ func (c *Communication) getSubscriber(topic messages.THORChainTSSMessageType, ms
 	return messageIDSubscribers.GetSubscriber(msgID)
 }
 
-func (c *Communication) CancelSubscribe(topic messages.THORChainTSSMessageType, msgID string) {
+func (c *Communication) CancelSubscribe(topic messages.ThornadoTSSMessageType, msgID string) {
 	c.subscriberLocker.Lock()
 	defer c.subscriberLocker.Unlock()
 

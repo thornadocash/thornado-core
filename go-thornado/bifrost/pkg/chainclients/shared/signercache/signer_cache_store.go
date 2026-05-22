@@ -30,7 +30,7 @@ const (
 // HasSignedWithExpiry surfaces the expiry so callers (e.g. the Solana client) can
 // gate chain-side verification on it. Cache entries are never invalidated on read
 // — a past-expiry entry may still correspond to a broadcast that did land but
-// whose observation hasn't reached thorchain consensus. Invalidation happens
+// whose observation hasn't reached thornado consensus. Invalidation happens
 // explicitly via RemoveSigned, after the caller confirms the recorded broadcast
 // is absent from the chain.
 const signedExpiryBytes = 8
@@ -102,7 +102,7 @@ func (s *CacheStore) HasSigned(hash string) bool {
 // Entries are never removed on read. Invalidation happens explicitly via
 // RemoveSigned, and callers that re-sign based on expiry must first verify the
 // recorded broadcast is absent from the chain: deleting on expiry alone can
-// double-spend when thorchain observation consensus lags actual on-chain inclusion.
+// double-spend when thornado observation consensus lags actual on-chain inclusion.
 func (s *CacheStore) HasSignedWithExpiry(hash string) (signed, expired bool) {
 	key := s.getSignedKey(hash)
 	value, err := s.db.Get([]byte(key), nil)

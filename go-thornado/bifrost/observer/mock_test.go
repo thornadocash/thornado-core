@@ -18,10 +18,10 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"google.golang.org/grpc"
 
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/common"
-	"github.com/thornadocash/go-thornado/x/thorchain/ebifrost"
-	stypes "github.com/thornadocash/go-thornado/x/thorchain/types"
+	"github.com/thornadocash/go-thornado/x/thornado/ebifrost"
+	stypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 // Mock implementations of external dependencies
@@ -170,7 +170,7 @@ func (m *MockPeerstore) UpdateAddrs(p peer.ID, oldTTL, newTTL time.Duration) {
 }
 
 type MockKeys struct {
-	thorclient.Keys
+	thornadoclient.Keys
 	privKey *secp256k1.PrivKey
 }
 
@@ -222,16 +222,16 @@ func (m *MockGRPCClient) SendQuorumPriceFeedBatch(ctx context.Context, batch *co
 	return &ebifrost.SendQuorumPriceFeedBatchResult{}, nil
 }
 
-type MockThorchainBridge struct {
-	thorclient.ThorchainBridge
+type MockThornadoBridge struct {
+	thornadoclient.ThornadoBridge
 	getKeysignPartyFunc func(pubKey common.PubKey) (common.PubKeys, error)
 }
 
-func (m *MockThorchainBridge) GetKeysignParty(pubKey common.PubKey) (common.PubKeys, error) {
+func (m *MockThornadoBridge) GetKeysignParty(pubKey common.PubKey) (common.PubKeys, error) {
 	return m.getKeysignPartyFunc(pubKey)
 }
 
-func (m *MockThorchainBridge) GetMimir(key string) (int64, error) {
+func (m *MockThornadoBridge) GetMimir(key string) (int64, error) {
 	return 0, nil
 }
 
@@ -330,30 +330,30 @@ func NewMockEventClient() *MockEventClient {
 	}
 }
 
-// MockThorchainBridge2 implements a broader set of ThorchainBridge methods for observer tests
-type MockThorchainBridge2 struct {
-	thorclient.ThorchainBridge
+// MockThornadoBridge2 implements a broader set of ThornadoBridge methods for observer tests
+type MockThornadoBridge2 struct {
+	thornadoclient.ThornadoBridge
 	nodeStatus   stypes.NodeStatus
 	activeNodes  common.PubKeys
 	getMimirFunc func(key string) (int64, error)
 }
 
-func (m *MockThorchainBridge2) FetchNodeStatus() (stypes.NodeStatus, error) {
+func (m *MockThornadoBridge2) FetchNodeStatus() (stypes.NodeStatus, error) {
 	return m.nodeStatus, nil
 }
 
-func (m *MockThorchainBridge2) FetchActiveNodes() ([]common.PubKey, error) {
+func (m *MockThornadoBridge2) FetchActiveNodes() ([]common.PubKey, error) {
 	return m.activeNodes, nil
 }
 
-func (m *MockThorchainBridge2) GetMimir(key string) (int64, error) {
+func (m *MockThornadoBridge2) GetMimir(key string) (int64, error) {
 	if m.getMimirFunc != nil {
 		return m.getMimirFunc(key)
 	}
 	return 0, nil
 }
 
-func (m *MockThorchainBridge2) GetKeysignParty(pubKey common.PubKey) (common.PubKeys, error) {
+func (m *MockThornadoBridge2) GetKeysignParty(pubKey common.PubKey) (common.PubKeys, error) {
 	return nil, nil
 }
 

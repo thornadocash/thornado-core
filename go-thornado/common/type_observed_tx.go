@@ -138,8 +138,7 @@ func (m *ObservedTx) Sign(signer cosmos.AccAddress) bool {
 
 // SetDone check the ObservedTx status, update it's status to done if the outbound tx had been processed
 func (m *ObservedTx) SetDone(hash TxID, numOuts int) {
-	// As an Asset->RUNE affiliate fee could also be RUNE,
-	// allow multiple blank TxID OutHashes.
+	// Allow multiple blank TxID OutHashes.
 	// SetDone is still expected to only be called once (per ObservedTx) for each.
 	if !hash.Equals(BlankTxID) {
 		for _, done := range m.GetOutHashes() {

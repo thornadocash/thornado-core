@@ -10,7 +10,7 @@ import (
 	. "gopkg.in/check.v1"
 
 	"github.com/thornadocash/go-thornado/common/crypto/ed25519"
-	"github.com/thornadocash/go-thornado/x/thorchain"
+	"github.com/thornadocash/go-thornado/x/thornado"
 )
 
 func TestPackage(t *testing.T) { TestingT(t) }
@@ -20,11 +20,11 @@ type ED25519TestSuite struct{}
 var _ = Suite(&ED25519TestSuite{})
 
 func (s *ED25519TestSuite) SetUpTest(c *C) {
-	thorchain.SetupConfigForTest()
+	thornado.SetupConfigForTest()
 }
 
 func (*ED25519TestSuite) TestGetEd25519Keys(c *C) {
-	thorchain.SetupConfigForTest()
+	thornado.SetupConfigForTest()
 	mnemonic := `grape safe sound obtain bachelor festival profit iron meat moon exit garbage chapter promote noble grocery blood letter junk click mesh arm shop decorate`
 	result, err := ed25519.DeriveKeypairFromMnemonic(mnemonic, "", ed25519.HDPath)
 	c.Assert(err, IsNil)

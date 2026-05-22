@@ -17,7 +17,7 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	btctxscript "github.com/thornadocash/go-thornado/bifrost/txscript/txscript"
 
-	stypes "github.com/thornadocash/go-thornado/bifrost/thorclient/types"
+	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 )
 

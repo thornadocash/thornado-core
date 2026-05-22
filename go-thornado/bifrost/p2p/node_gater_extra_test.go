@@ -8,21 +8,20 @@ import (
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p/conversion"
 	"github.com/thornadocash/go-thornado/common"
-	"github.com/thornadocash/go-thornado/constants"
-	"github.com/thornadocash/go-thornado/x/thorchain/types"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 type NodeGaterExtraTestSuite struct {
-	mockBridge *MockThorchainBridge
+	mockBridge *MockThornadoBridge
 }
 
 var _ = Suite(&NodeGaterExtraTestSuite{})
 
 func (s *NodeGaterExtraTestSuite) SetUpTest(c *C) {
 	conversion.SetupBech32Prefix()
-	s.mockBridge = NewMockThorchainBridge()
+	s.mockBridge = NewMockThornadoBridge()
 	s.mockBridge.SetConstants(map[string]int64{
-		constants.MinimumBondInRune.String(): 100_000_000,
+		"BondStartAmountSats": 100_000_000,
 	})
 }
 
@@ -30,7 +29,7 @@ func (s *NodeGaterExtraTestSuite) TestGetMinimumBondFromMimir(c *C) {
 	gater := NewNodeGater(s.mockBridge, time.Minute)
 
 	// Set mimir override
-	s.mockBridge.SetMimir(constants.MinimumBondInRune.String(), 50_000_000)
+	s.mockBridge.SetMimir("BondStartAmountSats", 50_000_000)
 
 	bond, err := gater.getMinimumBond()
 	c.Assert(err, IsNil)
@@ -48,12 +47,12 @@ func (s *NodeGaterExtraTestSuite) TestGetMinimumBondFromConstants(c *C) {
 func (s *NodeGaterExtraTestSuite) TestGetMinimumBondConstantsError(c *C) {
 	gater := NewNodeGater(s.mockBridge, time.Minute)
 
-	// No mimir override, and constants returns empty (missing key)
+	// No mimir override falls back to Thornado's fixed 1 BTC start bond.
 	s.mockBridge.SetConstants(map[string]int64{})
 
-	_, err := gater.getMinimumBond()
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "MinimumBondInRune not found in constants")
+	bond, err := gater.getMinimumBond()
+	c.Assert(err, IsNil)
+	c.Assert(bond, Equals, int64(100_000_000))
 }
 
 func (s *NodeGaterExtraTestSuite) TestGetMinimumBondMimirError(c *C) {

@@ -12,7 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"github.com/cosmos/cosmos-sdk/x/auth/tx"
 
-	"github.com/thornadocash/go-thornado/x/thorchain/ebifrost"
+	"github.com/thornadocash/go-thornado/x/thornado/ebifrost"
 )
 
 func TxConfig(cdc codec.Codec, textualCoinMetadataQueryFn textual.CoinMetadataQueryFn) (client.TxConfig, error) {

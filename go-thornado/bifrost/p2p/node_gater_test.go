@@ -15,22 +15,21 @@ import (
 	. "gopkg.in/check.v1"
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p/conversion"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
-	tctypes "github.com/thornadocash/go-thornado/bifrost/thorclient/types"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
+	tctypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
-	"github.com/thornadocash/go-thornado/constants"
-	"github.com/thornadocash/go-thornado/x/thorchain/types"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 type NodeGaterTestSuite struct {
-	mockBridge *MockThorchainBridge
+	mockBridge *MockThornadoBridge
 }
 
 var _ = Suite(&NodeGaterTestSuite{})
 
-// MockThorchainBridge is a mock implementation of ThorchainBridge for testing
-type MockThorchainBridge struct {
+// MockThornadoBridge is a mock implementation of ThornadoBridge for testing
+type MockThornadoBridge struct {
 	mu                sync.RWMutex
 	nodeAccounts      []*types.QueryNodeResponse
 	nodeAccountsError error
@@ -39,13 +38,13 @@ type MockThorchainBridge struct {
 	constants         map[string]int64
 }
 
-func NewMockThorchainBridge() *MockThorchainBridge {
-	return &MockThorchainBridge{
+func NewMockThornadoBridge() *MockThornadoBridge {
+	return &MockThornadoBridge{
 		mimirValues: make(map[string]int64),
 	}
 }
 
-func (m *MockThorchainBridge) GetNodeAccounts() ([]*types.QueryNodeResponse, error) {
+func (m *MockThornadoBridge) GetNodeAccounts() ([]*types.QueryNodeResponse, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	if m.nodeAccountsError != nil {
@@ -54,7 +53,7 @@ func (m *MockThorchainBridge) GetNodeAccounts() ([]*types.QueryNodeResponse, err
 	return m.nodeAccounts, nil
 }
 
-func (m *MockThorchainBridge) GetMimir(key string) (int64, error) {
+func (m *MockThornadoBridge) GetMimir(key string) (int64, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	if m.mimirError != nil {
@@ -67,44 +66,44 @@ func (m *MockThorchainBridge) GetMimir(key string) (int64, error) {
 	return val, nil
 }
 
-func (m *MockThorchainBridge) SetNodeAccounts(accounts []*types.QueryNodeResponse) {
+func (m *MockThornadoBridge) SetNodeAccounts(accounts []*types.QueryNodeResponse) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.nodeAccounts = accounts
 }
 
-func (m *MockThorchainBridge) SetNodeAccountsError(err error) {
+func (m *MockThornadoBridge) SetNodeAccountsError(err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.nodeAccountsError = err
 }
 
-func (m *MockThorchainBridge) SetMimir(key string, value int64) {
+func (m *MockThornadoBridge) SetMimir(key string, value int64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.mimirValues[key] = value
 }
 
-func (m *MockThorchainBridge) SetMimirError(err error) {
+func (m *MockThornadoBridge) SetMimirError(err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.mimirError = err
 }
 
-// Stub implementations for the rest of the ThorchainBridge interface
-func (m *MockThorchainBridge) EnsureNodeWhitelisted() error            { return nil }
-func (m *MockThorchainBridge) EnsureNodeWhitelistedWithTimeout() error { return nil }
-func (m *MockThorchainBridge) FetchNodeStatus() (types.NodeStatus, error) {
+// Stub implementations for the rest of the ThornadoBridge interface
+func (m *MockThornadoBridge) EnsureNodeWhitelisted() error            { return nil }
+func (m *MockThornadoBridge) EnsureNodeWhitelistedWithTimeout() error { return nil }
+func (m *MockThornadoBridge) FetchNodeStatus() (types.NodeStatus, error) {
 	return types.NodeStatus_Unknown, nil
 }
-func (m *MockThorchainBridge) FetchActiveNodes() ([]common.PubKey, error)  { return nil, nil }
-func (m *MockThorchainBridge) GetAsgards() (types.Vaults, error)           { return nil, nil }
-func (m *MockThorchainBridge) GetVault(pubkey string) (types.Vault, error) { return types.Vault{}, nil }
-func (m *MockThorchainBridge) GetConfig() config.BifrostClientConfiguration {
+func (m *MockThornadoBridge) FetchActiveNodes() ([]common.PubKey, error)  { return nil, nil }
+func (m *MockThornadoBridge) GetAsgards() (types.Vaults, error)           { return nil, nil }
+func (m *MockThornadoBridge) GetVault(pubkey string) (types.Vault, error) { return types.Vault{}, nil }
+func (m *MockThornadoBridge) GetConfig() config.BifrostClientConfiguration {
 	return config.BifrostClientConfiguration{}
 }
 
-func (m *MockThorchainBridge) GetConstants() (map[string]int64, error) {
+func (m *MockThornadoBridge) GetConstants() (map[string]int64, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	if m.constants != nil {
@@ -113,92 +112,88 @@ func (m *MockThorchainBridge) GetConstants() (map[string]int64, error) {
 	return map[string]int64{}, nil
 }
 
-func (m *MockThorchainBridge) SetConstants(c map[string]int64) {
+func (m *MockThornadoBridge) SetConstants(c map[string]int64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.constants = c
 }
-func (m *MockThorchainBridge) GetContext() client.Context { return client.Context{} }
-func (m *MockThorchainBridge) GetContractAddress() ([]thorclient.PubKeyContractAddressPair, error) {
+func (m *MockThornadoBridge) GetContext() client.Context { return client.Context{} }
+func (m *MockThornadoBridge) GetContractAddress() ([]thornadoclient.PubKeyContractAddressPair, error) {
 	return nil, nil
 }
-func (m *MockThorchainBridge) GetErrataMsg(txID common.TxID, chain common.Chain) sdk.Msg { return nil }
-func (m *MockThorchainBridge) GetKeygenStdTx(poolPubKey common.PubKey, secp256k1Signature, keysharesBackup []byte, blame []types.Blame, inputPks common.PubKeys, keygenType types.KeygenType, chains common.Chains, height, keygenTime int64, poolPubKeyEddsa common.PubKey, keysharesBackupEddsa []byte) (sdk.Msg, error) {
+func (m *MockThornadoBridge) GetErrataMsg(txID common.TxID, chain common.Chain) sdk.Msg { return nil }
+func (m *MockThornadoBridge) GetKeygenStdTx(poolPubKey common.PubKey, secp256k1Signature, keysharesBackup []byte, blame []types.Blame, inputPks common.PubKeys, keygenType types.KeygenType, chains common.Chains, height, keygenTime int64, poolPubKeyEddsa common.PubKey, keysharesBackupEddsa []byte) (sdk.Msg, error) {
 	return nil, nil
 }
 
-func (m *MockThorchainBridge) GetKeysignParty(vaultPubKey common.PubKey) (common.PubKeys, error) {
+func (m *MockThornadoBridge) GetKeysignParty(vaultPubKey common.PubKey) (common.PubKeys, error) {
 	return nil, nil
 }
-func (m *MockThorchainBridge) GetMimirWithRef(template, ref string) (int64, error) { return 0, nil }
-func (m *MockThorchainBridge) GetInboundOutbound(txIns common.ObservedTxs) (common.ObservedTxs, common.ObservedTxs, error) {
+func (m *MockThornadoBridge) GetMimirWithRef(template, ref string) (int64, error) { return 0, nil }
+func (m *MockThornadoBridge) GetInboundOutbound(txIns common.ObservedTxs) (common.ObservedTxs, common.ObservedTxs, error) {
 	return nil, nil, nil
 }
-func (m *MockThorchainBridge) GetPubKeys() ([]thorclient.PubKeyContractAddressPair, error) {
+func (m *MockThornadoBridge) GetPubKeys() ([]thornadoclient.PubKeyContractAddressPair, error) {
 	return nil, nil
 }
 
-func (m *MockThorchainBridge) GetAsgardPubKeys() ([]thorclient.PubKeyContractAddressPair, error) {
+func (m *MockThornadoBridge) GetAsgardPubKeys() ([]thornadoclient.PubKeyContractAddressPair, error) {
 	return nil, nil
 }
 
-func (m *MockThorchainBridge) GetSolvencyMsg(height int64, chain common.Chain, pubKey common.PubKey, coins common.Coins) *types.MsgSolvency {
+func (m *MockThornadoBridge) GetSolvencyMsg(height int64, chain common.Chain, pubKey common.PubKey, coins common.Coins) *types.MsgSolvency {
 	return nil
 }
 
-func (m *MockThorchainBridge) GetThorchainVersion() (semver.Version, error) {
+func (m *MockThornadoBridge) GetThornadoVersion() (semver.Version, error) {
 	return semver.Version{}, nil
 }
-func (m *MockThorchainBridge) IsCatchingUp() (bool, error)                    { return false, nil }
-func (m *MockThorchainBridge) HasNetworkFee(chain common.Chain) (bool, error) { return false, nil }
-func (m *MockThorchainBridge) GetNetworkFee(chain common.Chain) (transactionSize, transactionFeeRate uint64, err error) {
+func (m *MockThornadoBridge) IsCatchingUp() (bool, error)                    { return false, nil }
+func (m *MockThornadoBridge) HasNetworkFee(chain common.Chain) (bool, error) { return false, nil }
+func (m *MockThornadoBridge) GetNetworkFee(chain common.Chain) (transactionSize, transactionFeeRate uint64, err error) {
 	return 0, 0, nil
 }
 
-func (m *MockThorchainBridge) PostKeysignFailure(blame types.Blame, height int64, memo string, coins common.Coins, pubkey common.PubKey) (common.TxID, error) {
+func (m *MockThornadoBridge) PostKeysignFailure(blame types.Blame, height int64, memo string, coins common.Coins, pubkey common.PubKey) (common.TxID, error) {
 	return "", nil
 }
 
-func (m *MockThorchainBridge) PostNetworkFee(height int64, chain common.Chain, transactionSize, transactionRate uint64) (common.TxID, error) {
+func (m *MockThornadoBridge) PostNetworkFee(height int64, chain common.Chain, transactionSize, transactionRate uint64) (common.TxID, error) {
 	return "", nil
 }
-func (m *MockThorchainBridge) RagnarokInProgress() (bool, error) { return false, nil }
-func (m *MockThorchainBridge) WaitToCatchUp() error              { return nil }
-func (m *MockThorchainBridge) GetBlockHeight() (int64, error)    { return 0, nil }
-func (m *MockThorchainBridge) GetLastObservedInHeight(chain common.Chain) (int64, error) {
+func (m *MockThornadoBridge) RagnarokInProgress() (bool, error) { return false, nil }
+func (m *MockThornadoBridge) WaitToCatchUp() error              { return nil }
+func (m *MockThornadoBridge) GetBlockHeight() (int64, error)    { return 0, nil }
+func (m *MockThornadoBridge) GetLastObservedInHeight(chain common.Chain) (int64, error) {
 	return 0, nil
 }
 
-func (m *MockThorchainBridge) GetLastSignedOutHeight(chain common.Chain) (int64, error) {
+func (m *MockThornadoBridge) GetLastSignedOutHeight(chain common.Chain) (int64, error) {
 	return 0, nil
 }
-func (m *MockThorchainBridge) Broadcast(msgs ...sdk.Msg) (common.TxID, error) { return "", nil }
-func (m *MockThorchainBridge) BroadcastWithBlocking(msgs ...sdk.Msg) (common.TxID, error) {
+func (m *MockThornadoBridge) Broadcast(msgs ...sdk.Msg) (common.TxID, error) { return "", nil }
+func (m *MockThornadoBridge) BroadcastWithBlocking(msgs ...sdk.Msg) (common.TxID, error) {
 	return "", nil
 }
 
-func (m *MockThorchainBridge) GetKeysign(blockHeight int64, pk string) (tctypes.TxOut, error) {
+func (m *MockThornadoBridge) GetKeysign(blockHeight int64, pk string) (tctypes.TxOut, error) {
 	return tctypes.TxOut{}, nil
 }
-func (m *MockThorchainBridge) GetNodeAccount(string) (*types.NodeAccount, error) { return nil, nil }
-func (m *MockThorchainBridge) GetKeygenBlock(int64, string) (types.KeygenBlock, error) {
+func (m *MockThornadoBridge) GetNodeAccount(string) (*types.NodeAccount, error) { return nil, nil }
+func (m *MockThornadoBridge) GetKeygenBlock(int64, string) (types.KeygenBlock, error) {
 	return types.KeygenBlock{}, nil
 }
 
-func (m *MockThorchainBridge) GetReferenceMemo(chain common.Chain, ref string) (string, error) {
-	return "", nil
-}
-func (m *MockThorchainBridge) GetReferenceMemoByTxHash(hash string) (string, error) { return "", nil }
-func (m *MockThorchainBridge) GetBlockTimestamp(height int64) (time.Time, error) {
+func (m *MockThornadoBridge) GetBlockTimestamp(height int64) (time.Time, error) {
 	return time.Time{}, nil
 }
 
 func (s *NodeGaterTestSuite) SetUpTest(c *C) {
 	conversion.SetupBech32Prefix()
-	s.mockBridge = NewMockThorchainBridge()
+	s.mockBridge = NewMockThornadoBridge()
 	// Set default minimum bond for tests
 	s.mockBridge.SetConstants(map[string]int64{
-		constants.MinimumBondInRune.String(): 100_000_000, // 1 RUNE
+		"BondStartAmountSats": 100_000_000, // 1 RUNE
 	})
 }
 
@@ -391,7 +386,7 @@ func (s *NodeGaterTestSuite) TestRefreshAllowlistMimirBondOverride(c *C) {
 	gater := NewNodeGater(s.mockBridge, time.Minute)
 
 	// Set mimir override for minimum bond (lower than constants)
-	s.mockBridge.SetMimir(constants.MinimumBondInRune.String(), 50_000_000)
+	s.mockBridge.SetMimir("BondStartAmountSats", 50_000_000)
 
 	s.mockBridge.SetNodeAccounts([]*types.QueryNodeResponse{
 		{
@@ -413,9 +408,6 @@ func (s *NodeGaterTestSuite) TestRefreshAllowlistMimirBondOverride(c *C) {
 func (s *NodeGaterTestSuite) TestRefreshAllowlistGatingDisabled(c *C) {
 	gater := NewNodeGater(s.mockBridge, time.Minute)
 
-	// Enable the P2PGateDisabled mimir
-	s.mockBridge.SetMimir(constants.P2PGateDisabled.String(), 1)
-
 	// Set up active nodes with bond
 	s.mockBridge.SetNodeAccounts([]*types.QueryNodeResponse{
 		{
@@ -430,10 +422,8 @@ func (s *NodeGaterTestSuite) TestRefreshAllowlistGatingDisabled(c *C) {
 
 	gater.refreshAllowlist()
 
-	// Gating is disabled, so the allowlist should not be updated
-	c.Assert(gater.gateDisabled, Equals, true)
-	// The allowlist should be empty because refresh exits early when gating is disabled
-	c.Assert(len(gater.allowedPeers), Equals, 0)
+	c.Assert(gater.gateDisabled, Equals, false)
+	c.Assert(len(gater.allowedPeers), Equals, 1)
 }
 
 func (s *NodeGaterTestSuite) TestRefreshAllowlistError(c *C) {
@@ -591,14 +581,11 @@ func (s *NodeGaterTestSuite) TestInterceptSecured(c *C) {
 func (s *NodeGaterTestSuite) TestInterceptSecuredGatingDisabled(c *C) {
 	gater := NewNodeGater(s.mockBridge, time.Minute)
 
-	// Enable the P2PGateDisabled mimir
-	s.mockBridge.SetMimir(constants.P2PGateDisabled.String(), 1)
 	gater.refreshAllowlist()
 
-	// Test inbound connection from random peer (should be allowed because gating is disabled)
 	randomPeerID := peer.ID("12D3KooWRandom")
 	allowed := gater.InterceptSecured(network.DirInbound, randomPeerID, nil)
-	c.Assert(allowed, Equals, true)
+	c.Assert(allowed, Equals, false)
 }
 
 func (s *NodeGaterTestSuite) TestInterceptUpgraded(c *C) {
@@ -647,15 +634,12 @@ func (s *NodeGaterTestSuite) TestInterceptUpgraded(c *C) {
 func (s *NodeGaterTestSuite) TestInterceptUpgradedGatingDisabled(c *C) {
 	gater := NewNodeGater(s.mockBridge, time.Minute)
 
-	// Enable the P2PGateDisabled mimir
-	s.mockBridge.SetMimir(constants.P2PGateDisabled.String(), 1)
 	gater.refreshAllowlist()
 
-	// Test inbound connection from random peer (should be allowed because gating is disabled)
 	randomPeerID := peer.ID("12D3KooWRandom")
 	mockInboundConn := &mockConn{direction: network.DirInbound, remotePeer: randomPeerID}
 	allowed, reason := gater.InterceptUpgraded(mockInboundConn)
-	c.Assert(allowed, Equals, true)
+	c.Assert(allowed, Equals, false)
 	c.Assert(int(reason), Equals, 0)
 }
 

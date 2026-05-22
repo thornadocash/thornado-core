@@ -1,7 +1,6 @@
 package utxo
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,23 +21,24 @@ import (
 	. "gopkg.in/check.v1"
 
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
+	p2pstorage "github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/utxo"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient/types"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/cmd"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/config"
-	ttypes "github.com/thornadocash/go-thornado/x/thorchain/types"
+	ttypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 type BitcoinSuite struct {
 	client *Client
 	server *httptest.Server
-	bridge thorclient.ThorchainBridge
+	bridge thornadoclient.ThornadoBridge
 	cfg    config.BifrostChainConfiguration
 	m      *metrics.Metrics
-	keys   *thorclient.Keys
+	keys   *thornadoclient.Keys
 }
 
 var _ = Suite(&BitcoinSuite{})
@@ -52,7 +52,7 @@ func (s *BitcoinSuite) SetUpSuite(c *C) {
 	kb := cKeys.NewInMemory(cdc)
 	_, _, err := kb.NewMnemonic(bob, cKeys.English, cmd.ThornadoHDPath, password, hd.Secp256k1)
 	c.Assert(err, IsNil)
-	s.keys = thorclient.NewKeysWithKeybase(kb, bob, password)
+	s.keys = thornadoclient.NewKeysWithKeybase(kb, bob, password)
 }
 
 var btcChainRPCs = map[string]map[string]interface{}{}
@@ -100,7 +100,7 @@ func (s *BitcoinSuite) SetUpTest(c *C) {
 		DisableTLS:  true,
 		HTTPostMode: true,
 		BlockScanner: config.BifrostBlockScannerConfiguration{
-			StartBlockHeight: 1, // avoids querying thorchain for block height
+			StartBlockHeight: 1, // avoids querying thornado for block height
 		},
 	}
 	s.cfg.UTXO.TransactionBatchSize = 500
@@ -185,7 +185,7 @@ func (s *BitcoinSuite) SetUpTest(c *C) {
 		} else if req.RequestURI == "/txs" {
 			_, err := rw.Write([]byte(`{"height": "1", "txhash": "AAAA000000000000000000000000000000000000000000000000000000000000", "logs": [{"success": "true", "log": ""}]}`))
 			c.Assert(err, IsNil)
-		} else if strings.HasPrefix(req.RequestURI, thorclient.AsgardVault) {
+		} else if strings.HasPrefix(req.RequestURI, thornadoclient.AsgardVault) {
 			httpTestHandler(c, rw, "../../../../test/fixtures/endpoints/vaults/asgard.json")
 		} else if req.RequestURI == "/thornado/mimir/key/MaxUTXOsToSpend" {
 			_, err := rw.Write([]byte(`-1`))
@@ -200,10 +200,10 @@ func (s *BitcoinSuite) SetUpTest(c *C) {
 	}))
 	var err error
 	cfg.ChainHost = s.server.Listener.Addr().String()
-	s.bridge, err = thorclient.NewThorchainBridge(cfg, s.m, s.keys)
+	s.bridge, err = thornadoclient.NewThornadoBridge(cfg, s.m, s.keys)
 	c.Assert(err, IsNil)
 	s.cfg.RPCHost = s.server.Listener.Addr().String()
-	s.client, err = NewClient(s.keys, s.cfg, nil, s.bridge, s.m)
+	s.client, err = NewClient(s.keys, s.cfg, s.bridge, &p2pstorage.MockLocalStateManager{}, s.m)
 	s.client.disableVinZeroBatch = true
 	s.client.globalNetworkFeeQueue = make(chan common.NetworkFee, 1)
 	c.Assert(err, IsNil)
@@ -286,350 +286,6 @@ func (s *BitcoinSuite) TestGetSender(c *C) {
 	assertSenderUTXOValidation(c, s.client)
 }
 
-func (s *BitcoinSuite) TestGetMemo(c *C) {
-	tx := btcjson.TxRawResult{
-		Vout: []btcjson.Vout{
-			{
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:       "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
-					Hex:       "6a1574686f72636861696e3a636f6e736f6c6964617465",
-					ReqSigs:   0,
-					Type:      "nulldata",
-					Addresses: nil,
-				},
-			},
-		},
-	}
-	memo, err := s.client.getMemo(&tx)
-	c.Assert(err, IsNil)
-	c.Assert(memo, Equals, "thornado:consolidate")
-
-	tx = btcjson.TxRawResult{
-		Vout: []btcjson.Vout{
-			{
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 737761703a6574682e3078633534633135313236393646334541373935366264396144343130383138654563414443466666663a30786335346331353132363936463345413739353662643961443431",
-					Type: "nulldata",
-					Hex:  "6a4c50737761703a6574682e3078633534633135313236393646334541373935366264396144343130383138654563414443466666663a30786335346331353132363936463345413739353662643961443431",
-				},
-			},
-			{
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 30383138654563414443466666663a3130303030303030303030",
-					Type: "nulldata",
-					Hex:  "6a1a30383138654563414443466666663a3130303030303030303030",
-				},
-			},
-		},
-	}
-	memo, err = s.client.getMemo(&tx)
-	c.Assert(err, IsNil)
-	c.Assert(memo, Equals, "swap:eth.0xc54c1512696F3EA7956bd9aD410818eEcADCFfff:0xc54c1512696F3EA7956bd9aD410818eEcADCFfff:10000000000")
-
-	tx = btcjson.TxRawResult{
-		Vout: []btcjson.Vout{},
-	}
-	memo, err = s.client.getMemo(&tx)
-	c.Assert(err, IsNil)
-	c.Assert(memo, Equals, "")
-
-	// OP_RETURN + data encoded in subsequent vout addresses
-	tx = btcjson.TxRawResult{
-		Vout: []btcjson.Vout{
-			{
-				// data: "swap:eth.0xc54c1512696F3EA7956bd9aD410818eEcADCFfff:0xc54c1512696F3EA7956bd9aD4^"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 737761703a6574682e3078633534633135313236393646334541373935366264396144343130383138654563414443466666663a3078633534633135313236393646334541373935366264396144345e",
-					Type: "nulldata",
-					Hex:  "6a4c50737761703a6574682e3078633534633135313236393646334541373935366264396144343130383138654563414443466666663a3078633534633135313236393646334541373935366264396144345e",
-				},
-			},
-			{
-				// data: "10818eEcADCFfff:1000"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "0 3130383138654563414443466666663a31303030",
-					Type: "witness_v0_keyhash",
-					Hex:  "00143130383138654563414443466666663a31303030",
-				},
-			},
-			{
-				// data: "0000000"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "0 3030303030303000000000000000000000000000",
-					Type: "witness_v0_keyhash",
-					Hex:  "00143030303030303000000000000000000000000000",
-				},
-			},
-		},
-	}
-	memo, err = s.client.getMemo(&tx)
-	c.Assert(err, IsNil)
-	c.Assert(memo, Equals, "swap:eth.0xc54c1512696F3EA7956bd9aD410818eEcADCFfff:0xc54c1512696F3EA7956bd9aD410818eEcADCFfff:10000000000")
-
-	// OP_RETURN + data encoded in subsequent vout addresses off different kind
-	tx = btcjson.TxRawResult{
-		Vout: []btcjson.Vout{
-			{
-				// data: "swap:eth.0xc54c1512696F3EA7956bd9aD410818eEcADCFfff:0xc54c1512696F3EA7956bd9aD4^"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 737761703a6574682e3078633534633135313236393646334541373935366264396144343130383138654563414443466666663a3078633534633135313236393646334541373935366264396144345e",
-					Type: "nulldata",
-					Hex:  "6a4c50737761703a6574682e3078633534633135313236393646334541373935366264396144343130383138654563414443466666663a3078633534633135313236393646334541373935366264396144345e",
-				},
-			},
-			{
-				// data: "10818eEcADCFfff:1000"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_DUP OP_HASH160 3130383138654563414443466666663a31303030 OP_EQUALVERIFY OP_CHECKSIG",
-					Type: "pubkeyhash",
-					Hex:  "76a9143130383138654563414443466666663a3130303088ac",
-				},
-			},
-			{
-				// data: "0000000"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "0 3030303030303000000000000000000000000000",
-					Type: "witness_v0_keyhash",
-					Hex:  "00143030303030303000000000000000000000000000",
-				},
-			},
-		},
-	}
-	memo, err = s.client.getMemo(&tx)
-	c.Assert(err, IsNil)
-	c.Assert(memo, Equals, "swap:eth.0xc54c1512696F3EA7956bd9aD410818eEcADCFfff:0xc54c1512696F3EA7956bd9aD410818eEcADCFfff:10000000000")
-
-	// OP_RETURN exactly 80 chars
-	tx = btcjson.TxRawResult{
-		Vout: []btcjson.Vout{
-			{
-				// data: "SWAP:AVAX.USDC-C48A6E:0x2BBA9D4B62A3673146C36FE3B31C36AF02648E99:0/1/0:-_/t:5/50"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 535741503a415641582e555344432d4334384136453a3078324242413944344236324133363733313436433336464533423331433336414630323634384539393a302f312f303a2d5f2f743a352f3530",
-					Type: "nulldata",
-					Hex:  "6a4c50535741503a415641582e555344432d4334384136453a3078324242413944344236324133363733313436433336464533423331433336414630323634384539393a302f312f303a2d5f2f743a352f3530",
-				},
-			},
-			{
-				// no marker at position >= 79, ignore this vout
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "0 47715D6877ACF46FAEADDFE010DBDEA83FC19577",
-					Type: "witness_v0_keyhash",
-					Hex:  "001447715D6877ACF46FAEADDFE010DBDEA83FC19577",
-				},
-			},
-		},
-	}
-	memo, err = s.client.getMemo(&tx)
-	c.Assert(err, IsNil)
-	c.Assert(memo, Equals, "SWAP:AVAX.USDC-C48A6E:0x2BBA9D4B62A3673146C36FE3B31C36AF02648E99:0/1/0:-_/t:5/50")
-
-	// OP_RETURN + OP_RETURN + data encoded in subsequent vout address
-	tx = btcjson.TxRawResult{
-		Vout: []btcjson.Vout{
-			{
-				// data: "SWAP:"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 535741503a",
-					Type: "nulldata",
-					Hex:  "6a05535741503a",
-				},
-			},
-			{
-				// no marker at position >= 79, ignore this vout
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "0 47715D6877ACF46FAEADDFE010DBDEA83FC19577",
-					Type: "witness_v0_keyhash",
-					Hex:  "001447715D6877ACF46FAEADDFE010DBDEA83FC19577",
-				},
-			},
-			{
-				// data: "ETH.USDC-0XA0B86991C6218B36C1D19D4A2E9EB0CE3606EB48:0x2BBA9D4B62A3673146C36FE3B^"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 4554482e555344432d3058413042383639393143363231384233364331443139443441324539454230434533363036454234383a3078324242413944344236324133363733313436433336464533425e",
-					Type: "nulldata",
-					Hex:  "6a4c504554482e555344432d3058413042383639393143363231384233364331443139443441324539454230434533363036454234383a3078324242413944344236324133363733313436433336464533425e",
-				},
-			},
-			{
-				// data: "31C36AF02648E99"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "0 3331433336414630323634384539390000000000",
-					Type: "witness_v0_keyhash",
-					Hex:  "00143331433336414630323634384539390000000000",
-				},
-			},
-		},
-	}
-
-	memo, err = s.client.getMemo(&tx)
-	c.Assert(err, IsNil)
-	c.Assert(memo, Equals, "SWAP:ETH.USDC-0XA0B86991C6218B36C1D19D4A2E9EB0CE3606EB48:0x2BBA9D4B62A3673146C36FE3B31C36AF02648E99")
-
-	// OP_RETURN with marker + invalid encoded data (eg. real address)
-	tx = btcjson.TxRawResult{
-		Vout: []btcjson.Vout{
-			{
-				// data: "ETH.USDC-0XA0B86991C6218B36C1D19D4A2E9EB0CE3606EB48:0x2BBA9D4B62A3673146C36FE3B^"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 4554482e555344432d3058413042383639393143363231384233364331443139443441324539454230434533363036454234383a3078324242413944344236324133363733313436433336464533425e",
-					Type: "nulldata",
-					Hex:  "6a4c504554482e555344432d3058413042383639393143363231384233364331443139443441324539454230434533363036454234383a3078324242413944344236324133363733313436433336464533425e",
-				},
-			},
-			{
-				// real address, containing non alphanumeric chars
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "0 47715D6877ACF46FAEADDFE010DBDEA83FC19577",
-					Type: "witness_v0_keyhash",
-					Hex:  "001447715D6877ACF46FAEADDFE010DBDEA83FC19577",
-				},
-			},
-		},
-	}
-
-	memo, err = s.client.getMemo(&tx)
-	c.Assert(err, IsNil)
-	c.Assert(memo, Equals, "")
-
-	// 2 x OP_RETURN with multiple markers + data encoded in subsequent vout address
-	tx = btcjson.TxRawResult{
-		Vout: []btcjson.Vout{
-			{
-				// data: "SWAP:ETH.USDC-0XA0B86991C6218B36C1D19D4A2E9EB0CE3606EB4^^8:0x2BBA9D4B62A3673146^"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 535741503a4554482e555344432d30584130423836393931433632313842333643314431394434413245394542304345333630364542345e5e383a30783242424139443442363241333637333134365e",
-					Type: "nulldata",
-					Hex:  "6a4c50535741503a4554482e555344432d30584130423836393931433632313842333643314431394434413245394542304345333630364542345e5e383a30783242424139443442363241333637333134365e",
-				},
-			},
-			{
-				// data: "^C3^6F^E3^"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 5e43335e36465e45335e",
-					Type: "nulldata",
-					Hex:  "6a0a5e43335e36465e45335e",
-				},
-			},
-			{
-				// data: "B31C36AF02648E99"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "0 4233314333364146303236343845393900000000",
-					Type: "witness_v0_keyhash",
-					Hex:  "00144233314333364146303236343845393900000000",
-				},
-			},
-		},
-	}
-
-	memo, err = s.client.getMemo(&tx)
-	c.Assert(err, IsNil)
-	c.Assert(memo, Equals, "SWAP:ETH.USDC-0XA0B86991C6218B36C1D19D4A2E9EB0CE3606EB4^8:0x2BBA9D4B62A3673146^^C3^6F^E3^B31C36AF02648E99")
-
-	// 2 x OP_RETURN every allowed chars
-	tx = btcjson.TxRawResult{
-		Vout: []btcjson.Vout{
-			{
-				// data: "!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 2122232425262728292a2b2c2d2e2f3a3b3c3d3e3f405b5c5d5e5f607b7c7d7e",
-					Type: "nulldata",
-					Hex:  "6a202122232425262728292a2b2c2d2e2f3a3b3c3d3e3f405b5c5d5e5f607b7c7d7e",
-				},
-			},
-			{
-				// data: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 303132333435363738394142434445464748494a4b4c4d4e4f505152535455565758595a6162636465666768696a6b6c6d6e6f707172737475767778797a",
-					Type: "nulldata",
-					Hex:  "6a3e303132333435363738394142434445464748494a4b4c4d4e4f505152535455565758595a6162636465666768696a6b6c6d6e6f707172737475767778797a",
-				},
-			},
-		},
-	}
-
-	memo, err = s.client.getMemo(&tx)
-	c.Assert(err, IsNil)
-	// ^ marker not removed removed
-	c.Assert(memo, Equals, "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
-
-	// OP_RETURN + data address, end parsing on first 00 terminated address
-	tx = btcjson.TxRawResult{
-		Vout: []btcjson.Vout{
-			{
-				// data: "=:ETH.USDC-0XA0B86991C6218B36C1D19D4A2E9EB0CE3606EB48:0x2BBA9D4B62A3673146C36FE^"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 3d3a4554482e555344432d3058413042383639393143363231384233364331443139443441324539454230434533363036454234383a307832424241394434423632413336373331343643333646455e",
-					Type: "nulldata",
-					Hex:  "6a4c503d3a4554482e555344432d3058413042383639393143363231384233364331443139443441324539454230434533363036454234383a307832424241394434423632413336373331343643333646455e",
-				},
-			},
-			{
-				// data: "3B31C36AF02648E99"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "0 3342333143333641463032363438453939000000",
-					Type: "witness_v0_keyhash",
-					Hex:  "00143342333143333641463032363438453939000000",
-				},
-			},
-			{
-				// previous address ending with 00, parsing already stopped
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "3342333143333641463032363438453939000000",
-					Type: "witness_v0_keyhash",
-					Hex:  "00143342333143333641463032363438453939000000",
-				},
-			},
-		},
-	}
-
-	memo, err = s.client.getMemo(&tx)
-	c.Assert(err, IsNil)
-	c.Assert(memo, Equals, "=:ETH.USDC-0XA0B86991C6218B36C1D19D4A2E9EB0CE3606EB48:0x2BBA9D4B62A3673146C36FE3B31C36AF02648E99")
-
-	// OP_RETURN + 10 data addresses,
-	// stop processing after the 9th address, MaxMemoSize (250) already reached
-	expectedMemo := "0000000000000000000000000000000000000000000000000000000000000000000000000000000"
-
-	tx = btcjson.TxRawResult{
-		Vout: []btcjson.Vout{
-			{
-				// data: "0000000000000000000000000000000000000000000000000000000000000000000000000000000^"
-				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030305e",
-					Type: "nulldata",
-					Hex:  "6a4c50303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030305e",
-				},
-			},
-		},
-	}
-
-	for i := 1; i <= 10; i++ {
-		text := strings.Repeat(fmt.Sprintf("%d", i), 20)
-		encoded := hex.EncodeToString([]byte(text))
-
-		// memo only processed up to the 9th vout
-		if i <= 9 {
-			expectedMemo += text
-		}
-
-		tx.Vout = append(tx.Vout, btcjson.Vout{
-			ScriptPubKey: btcjson.ScriptPubKeyResult{
-				Asm:  "0 " + encoded,
-				Type: "witness_v0_keyhash",
-				Hex:  "0014" + encoded,
-			},
-		})
-	}
-
-	memo, err = s.client.getMemo(&tx)
-	c.Assert(err, IsNil)
-	c.Assert(memo, Equals, expectedMemo)
-
-	// TODO:
-	// - test mixed vouts
-}
-
 func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 	var currentHeight int64 = 100
 
@@ -650,9 +306,9 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:       "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
+					Asm:       "",
 					Addresses: []string{"tb1qkq7weysjn6ljc2ywmjmwp8ttcckg8yyxjdz5k6"},
-					Type:      "nulldata",
+					Type:      "",
 				},
 			},
 		},
@@ -677,9 +333,9 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:       "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
+					Asm:       "",
 					Addresses: []string{"tb1qkq7weysjn6ljc2ywmjmwp8ttcckg8yyxjdz5k6"},
-					Type:      "nulldata",
+					Type:      "",
 				},
 			},
 		},
@@ -705,9 +361,9 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:       "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
+					Asm:       "",
 					Addresses: []string{"tb1qkq7weysjn6ljc2ywmjmwp8ttcckg8yyxjdz5k6"},
-					Type:      "nulldata",
+					Type:      "",
 				},
 			},
 		},
@@ -746,8 +402,8 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
-					Type: "nulldata",
+					Asm:  "",
+					Type: "",
 				},
 			},
 		},
@@ -772,8 +428,8 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
-					Type: "nulldata",
+					Asm:  "",
+					Type: "",
 				},
 			},
 		},
@@ -793,8 +449,8 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
-					Type: "nulldata",
+					Asm:  "",
+					Type: "",
 				},
 			},
 		},
@@ -901,8 +557,8 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
-					Type: "nulldata",
+					Asm:  "",
+					Type: "",
 				},
 			},
 		},
@@ -937,8 +593,8 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
-					Type: "nulldata",
+					Asm:  "",
+					Type: "",
 				},
 			},
 		},
@@ -946,7 +602,7 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 	ignored = s.client.ignoreTx(&tx, currentHeight)
 	c.Assert(ignored, Equals, false)
 
-	// memo at first output should not ignore
+	// data output at first position should not affect filtering
 	tx = btcjson.TxRawResult{
 		Vin: []btcjson.Vin{
 			{
@@ -957,8 +613,8 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 		Vout: []btcjson.Vout{
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
-					Type: "nulldata",
+					Asm:  "",
+					Type: "",
 				},
 			},
 			{
@@ -982,7 +638,7 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 	ignored = s.client.ignoreTx(&tx, currentHeight)
 	c.Assert(ignored, Equals, false)
 
-	// memo in the middle , should not ignore
+	// data output in the middle should not affect filtering
 	tx = btcjson.TxRawResult{
 		Vin: []btcjson.Vin{
 			{
@@ -1001,8 +657,8 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
-					Type: "nulldata",
+					Asm:  "",
+					Type: "",
 				},
 			},
 			{
@@ -1037,7 +693,7 @@ func (s *BitcoinSuite) TestGetGas(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm: "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
+					Asm: "",
 				},
 			},
 		},
@@ -1068,7 +724,7 @@ func (s *BitcoinSuite) TestGetGas(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm: "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
+					Asm: "",
 				},
 			},
 		},
@@ -1102,7 +758,7 @@ func (s *BitcoinSuite) TestOnObservedTxIn(c *C) {
 				Coins: common.Coins{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(123456789)),
 				},
-				Memo:                "MEMO",
+				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 		},
@@ -1125,7 +781,7 @@ func (s *BitcoinSuite) TestOnObservedTxIn(c *C) {
 				Coins: common.Coins{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(123456)),
 				},
-				Memo:                "MEMO",
+				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 		},
@@ -1148,7 +804,7 @@ func (s *BitcoinSuite) TestOnObservedTxIn(c *C) {
 				Coins: common.Coins{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(12345678)),
 				},
-				Memo:                "MEMO",
+				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 			{
@@ -1159,7 +815,7 @@ func (s *BitcoinSuite) TestOnObservedTxIn(c *C) {
 				Coins: common.Coins{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(123456)),
 				},
-				Memo:                "MEMO",
+				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 		},
@@ -1257,8 +913,8 @@ func (s *BitcoinSuite) TestGetOutput(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
-					Type: "nulldata",
+					Asm:  "",
+					Type: "",
 				},
 			},
 		},
@@ -1278,8 +934,8 @@ func (s *BitcoinSuite) TestGetOutput(c *C) {
 		Vout: []btcjson.Vout{
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
-					Type: "nulldata",
+					Asm:  "",
+					Type: "",
 				},
 			},
 			{
@@ -1317,8 +973,8 @@ func (s *BitcoinSuite) TestGetOutput(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
-					Type: "nulldata",
+					Asm:  "",
+					Type: "",
 				},
 			},
 			{
@@ -1356,8 +1012,8 @@ func (s *BitcoinSuite) TestGetOutput(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
-					Type: "nulldata",
+					Asm:  "",
+					Type: "",
 				},
 			},
 		},
@@ -1389,8 +1045,8 @@ func (s *BitcoinSuite) TestGetOutput(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
-					Type: "nulldata",
+					Asm:  "",
+					Type: "",
 				},
 			},
 		},
@@ -1420,8 +1076,8 @@ func (s *BitcoinSuite) TestGetOutput(c *C) {
 			},
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
-					Asm:  "OP_RETURN 74686f72636861696e3a636f6e736f6c6964617465",
-					Type: "nulldata",
+					Asm:  "",
+					Type: "",
 				},
 			},
 		},

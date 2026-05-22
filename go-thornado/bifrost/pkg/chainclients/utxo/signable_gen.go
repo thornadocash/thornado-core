@@ -18,11 +18,11 @@ import (
 
 type tssSignableBTC struct {
 	poolPubKey    common.PubKey
-	tssKeyManager tss.ThorchainKeyManager
+	tssKeyManager tss.ThornadoKeyManager
 	log           zerolog.Logger
 }
 
-func newTssSignableBTC(poolPubKey common.PubKey, tssKeyManager tss.ThorchainKeyManager, log zerolog.Logger) *tssSignableBTC {
+func newTssSignableBTC(poolPubKey common.PubKey, tssKeyManager tss.ThornadoKeyManager, log zerolog.Logger) *tssSignableBTC {
 	return &tssSignableBTC{
 		poolPubKey:    poolPubKey,
 		tssKeyManager: tssKeyManager,

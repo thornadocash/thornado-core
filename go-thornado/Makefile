@@ -7,7 +7,7 @@ ifneq ($(CHECK_ENV),)
 $(error Check environment dependencies.)
 endif
 
-.PHONY: build install test test-all test-go-tss test-network-specific format lint lint-ci generate go-generate proto-all proto-gen proto-format proto-format-check proto-lint openapi tools shielder-ffi
+.PHONY: build install test test-all test-network-specific format lint lint-ci generate go-generate proto-all proto-gen proto-format proto-format-check proto-lint openapi tools shielder-ffi
 
 COMMIT ?= $(shell git log -1 --format='%H' 2>/dev/null)
 VERSION := $(shell cat version)
@@ -15,7 +15,7 @@ TAG ?= mocknet
 BINARIES ?= ./cmd/thornado ./cmd/bifrost
 ROOT_DIR := $(abspath ..)
 PARALLELISM ?= 1
-TEST_PATHS := $(shell go list ./... | grep -v bifrost/tss/go-tss)
+TEST_PATHS := ./...
 TEST_DIR ?= ${TEST_PATHS}
 BUILD_FLAGS := -ldflags '$(ldflags)' -tags ${TAG} -trimpath
 TEST_BUILD_FLAGS := -parallel=$(PARALLELISM) -tags=mocknet
@@ -85,7 +85,7 @@ proto-format-check:
 	@find ./ -name "*.proto" -print0 | xargs -0L1 $(protoImage) clang-format --dry-run -Werror
 
 proto-lint:
-	@$(protoImage) sh -c "cd proto/thorchain/v1 && buf lint --error-format=json"
+	@$(protoImage) sh -c "cd proto/thornado/v1 && buf lint --error-format=json"
 
 ########################################################################################
 # Tests
@@ -97,9 +97,6 @@ test:
 
 test-all:
 	@go test ${TEST_BUILD_FLAGS} ${RUN_FLAG} ./...
-
-test-go-tss:
-	@go test ${TEST_BUILD_FLAGS} ${RUN_FLAG} --race ./bifrost/tss/go-tss/...
 
 test-network-specific:
 	@go test -tags stagenet ${RUN_FLAG} ./common

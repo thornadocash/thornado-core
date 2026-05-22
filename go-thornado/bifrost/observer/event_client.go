@@ -8,7 +8,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/thornadocash/go-thornado/x/thorchain/ebifrost"
+	"github.com/thornadocash/go-thornado/x/thornado/ebifrost"
 )
 
 // EventClient manages a single subscription to events

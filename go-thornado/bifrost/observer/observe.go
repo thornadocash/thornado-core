@@ -20,17 +20,16 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients"
 	"github.com/thornadocash/go-thornado/bifrost/pubkeymanager"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient/types"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
-	"github.com/thornadocash/go-thornado/constants"
-	stypes "github.com/thornadocash/go-thornado/x/thorchain/types"
+	stypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 // signedTxOutCacheSize is the number of signed tx out observations to keep in memory
 // to prevent duplicate observations. Based on historical data at the time of writing,
-// the peak of Thorchain's L1 swaps was 10k per day.
+// the peak of Thornado's L1 swaps was 10k per day.
 const signedTxOutCacheSize = 10_000
 
 // deckRefreshTime is the time to wait before reconciling txIn status.
@@ -63,7 +62,7 @@ type Observer struct {
 	globalNetworkFeeQueue chan common.NetworkFee
 	m                     *metrics.Metrics
 	errCounter            *prometheus.CounterVec
-	thorchainBridge       thorclient.ThorchainBridge
+	thornadoBridge        thornadoclient.ThornadoBridge
 	storage               *ObserverStorage
 	tssKeysignMetricMgr   *metrics.TssKeysignMetricMgr
 
@@ -85,7 +84,7 @@ type Observer struct {
 // NewObserver create a new instance of Observer for chain
 func NewObserver(pubkeyMgr *pubkeymanager.PubKeyManager,
 	chains map[common.Chain]chainclients.ChainClient,
-	thorchainBridge thorclient.ThorchainBridge,
+	thornadoBridge thornadoclient.ThornadoBridge,
 	m *metrics.Metrics, dataPath string,
 	tssKeysignMetricMgr *metrics.TssKeysignMetricMgr,
 	attestationGossip *AttestationGossip,
@@ -131,7 +130,7 @@ func NewObserver(pubkeyMgr *pubkeymanager.PubKeyManager,
 		globalSolvencyQueue:   make(chan types.Solvency),
 		globalNetworkFeeQueue: make(chan common.NetworkFee),
 		errCounter:            m.GetCounterVec(metrics.ObserverError),
-		thorchainBridge:       thorchainBridge,
+		thornadoBridge:        thornadoBridge,
 		storage:               storage,
 		tssKeysignMetricMgr:   tssKeysignMetricMgr,
 		signedTxOutCache:      signedTxOutCache,
@@ -304,7 +303,7 @@ func (o *Observer) handleObservedTxCommitted(tx common.ObservedTx) {
 
 func (o *Observer) sendDeck(ctx context.Context) {
 	// fetch and update active validator count on attestation gossip so it can calculate quorum
-	activeVals, err := o.thorchainBridge.FetchActiveNodes()
+	activeVals, err := o.thornadoBridge.FetchActiveNodes()
 	if err != nil {
 		o.logger.Error().Err(err).Msg("failed to get active node count")
 		return
@@ -312,7 +311,7 @@ func (o *Observer) sendDeck(ctx context.Context) {
 	o.attestationGossip.setActiveValidators(activeVals)
 
 	// check if node is active
-	nodeStatus, err := o.thorchainBridge.FetchNodeStatus()
+	nodeStatus, err := o.thornadoBridge.FetchNodeStatus()
 	if err != nil {
 		o.logger.Error().Err(err).Msg("failed to get node status")
 		return
@@ -406,7 +405,7 @@ func (o *Observer) sendDeck(ctx context.Context) {
 }
 
 func (o *Observer) sendToQuorumChecker(deck *types.TxIn, finalised bool, finaliseHeight int64) []int {
-	txs, invalidIndices, err := o.getThorchainTxIns(deck, finalised, finaliseHeight)
+	txs, invalidIndices, err := o.getThornadoTxIns(deck, finalised, finaliseHeight)
 	if err != nil {
 		o.logger.Error().Err(err).Msg("fail to convert txin to thornado txins")
 		return nil
@@ -417,7 +416,7 @@ func (o *Observer) sendToQuorumChecker(deck *types.TxIn, finalised bool, finalis
 		return invalidIndices
 	}
 
-	inbound, outbound, err := o.thorchainBridge.GetInboundOutbound(txs)
+	inbound, outbound, err := o.thornadoBridge.GetInboundOutbound(txs)
 	if err != nil {
 		o.logger.Error().Err(err).Msg("fail to get inbound and outbound txs")
 		return invalidIndices
@@ -628,7 +627,7 @@ func (o *Observer) processErrataTx(ctx context.Context) {
 			}
 			// filter
 			o.filterErrataTx(errataBlock)
-			o.logger.Info().Msgf("Received a errata block %+v from the Thorchain", errataBlock.Height)
+			o.logger.Info().Msgf("Received a errata block %+v from the Thornado", errataBlock.Height)
 			for _, errataTx := range errataBlock.Txs {
 				if err := o.attestationGossip.AttestErrata(ctx, common.ErrataTx{
 					Chain: errataTx.Chain,
@@ -678,9 +677,9 @@ BlockLoop:
 	}
 }
 
-// getThorchainTxIns convert to the type thorchain expected
-// maybe in later Thornado can just refactor this to use the type in thorchain
-func (o *Observer) getThorchainTxIns(txIn *types.TxIn, finalized bool, finaliseHeight int64) (common.ObservedTxs, []int, error) {
+// getThornadoTxIns convert to the type thornado expected
+// maybe in later Thornado can just refactor this to use the type in thornado
+func (o *Observer) getThornadoTxIns(txIn *types.TxIn, finalized bool, finaliseHeight int64) (common.ObservedTxs, []int, error) {
 	obsTxs := make(common.ObservedTxs, 0, len(txIn.TxArray))
 	invalidIndices := make([]int, 0)
 	o.logger.Debug().Msgf("len %d", len(txIn.TxArray))
@@ -695,8 +694,8 @@ func (o *Observer) getThorchainTxIns(txIn *types.TxIn, finalized bool, finaliseH
 			o.logger.Info().Msgf("item(%+v) , coins are empty , so ignore", item)
 			isInvalid = true
 		}
-		if len([]byte(item.Memo)) > constants.MaxMemoSize {
-			o.logger.Info().Msgf("tx (%s) memo (%s) too long", item.Tx, item.Memo)
+		if item.Memo != "" {
+			o.logger.Info().Msgf("tx (%s) memo (%s) is disabled", item.Tx, item.Memo)
 			isInvalid = true
 		}
 

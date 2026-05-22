@@ -19,12 +19,11 @@ import (
 
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
 	"github.com/thornadocash/go-thornado/bifrost/p2p/conversion"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/config"
-	"github.com/thornadocash/go-thornado/constants"
-	"github.com/thornadocash/go-thornado/x/thorchain/ebifrost"
+	"github.com/thornadocash/go-thornado/x/thornado/ebifrost"
 )
 
 const (
@@ -106,7 +105,7 @@ type AttestationGossip struct {
 
 	grpcClient  ebifrost.LocalhostBifrostClient
 	eventClient EventClientInterface
-	bridge      thorclient.ThorchainBridge
+	bridge      thornadoclient.ThornadoBridge
 
 	privKey cryptotypes.PrivKey // our private key, cached for performance
 	pubKey  []byte              // our public key, cached for performance
@@ -154,9 +153,9 @@ type cachedKeySignParty struct {
 // NewAttestationGossip create a new instance of AttestationGossip
 func NewAttestationGossip(
 	host host.Host,
-	keys *thorclient.Keys,
+	keys *thornadoclient.Keys,
 	thornadoBifrostGRPCAddress string,
-	bridge thorclient.ThorchainBridge,
+	bridge thornadoclient.ThornadoBridge,
 	m *metrics.Metrics,
 	config config.BifrostAttestationGossipConfig,
 ) (*AttestationGossip, error) {
@@ -576,30 +575,4 @@ func (s *AttestationGossip) Start(ctx context.Context) {
 }
 
 func (s *AttestationGossip) reconcileMimirConfigs() {
-	maxBatchSize, err := s.bridge.GetMimir(constants.MimirMaxBatchSize)
-	if err != nil {
-		s.logger.Error().Str("mimir", constants.MimirMaxBatchSize).Err(err).Msg("fail to get mimir value")
-	} else if maxBatchSize > 0 {
-		if maxBatchSize != s.batcher.getMaxBatchSize() {
-			s.batcher.updateMaxBatchSize(maxBatchSize)
-		}
-	}
-
-	peerConcurrentSends, err := s.bridge.GetMimir(constants.MimirPeerConcurrentSends)
-	if err != nil {
-		s.logger.Error().Str("mimir", constants.MimirPeerConcurrentSends).Err(err).Msg("fail to get mimir value")
-	} else if peerConcurrentSends > 0 {
-		if peerConcurrentSends != int64(s.batcher.peerMgr.getLimit()) {
-			s.batcher.peerMgr.updateLimit(int(peerConcurrentSends)) //nolint:staticcheck
-		}
-	}
-
-	peerConcurrentReceives, err := s.bridge.GetMimir(constants.MimirPeerConcurrentReceives)
-	if err != nil {
-		s.logger.Error().Str("mimir", constants.MimirPeerConcurrentReceives).Err(err).Msg("fail to get mimir value")
-	} else if peerConcurrentReceives > 0 {
-		if peerConcurrentReceives != int64(s.peerMgr.getLimit()) {
-			s.peerMgr.updateLimit(int(peerConcurrentReceives)) //nolint:staticcheck
-		}
-	}
 }

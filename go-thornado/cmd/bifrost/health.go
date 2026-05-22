@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -18,13 +17,12 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
-	"github.com/thornadocash/go-thornado/bifrost/tss/go-tss/tss"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
 	"github.com/thornadocash/go-thornado/constants"
 	openapi "github.com/thornadocash/go-thornado/openapi/gen"
-	"github.com/thornadocash/go-thornado/x/thorchain/types"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 // -------------------------------------------------------------------------------------
@@ -89,13 +87,13 @@ type VaultResponse struct {
 type HealthServer struct {
 	logger          zerolog.Logger
 	s               *http.Server
-	tssServer       tss.Server
+	localPeerID     string
 	chains          map[common.Chain]chainclients.ChainClient
 	providerPayload []byte
 }
 
 // NewHealthServer create a new instance of health server
-func NewHealthServer(addr string, tssServer tss.Server, chains map[common.Chain]chainclients.ChainClient) *HealthServer {
+func NewHealthServer(addr string, localPeerID string, chains map[common.Chain]chainclients.ChainClient) *HealthServer {
 	res := make(ProviderResponse)
 	for chain, client := range chains {
 		cfg := client.GetConfig()
@@ -113,7 +111,7 @@ func NewHealthServer(addr string, tssServer tss.Server, chains map[common.Chain]
 
 	hs := &HealthServer{
 		logger:          log.With().Str("module", "http").Logger(),
-		tssServer:       tssServer,
+		localPeerID:     localPeerID,
 		chains:          chains,
 		providerPayload: providerPayload,
 	}
@@ -158,8 +156,7 @@ func (s *HealthServer) versionHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *HealthServer) getP2pIDHandler(w http.ResponseWriter, _ *http.Request) {
-	localPeerID := s.tssServer.GetLocalPeerID()
-	_, err := w.Write([]byte(localPeerID))
+	_, err := w.Write([]byte(s.localPeerID))
 	if err != nil {
 		s.logger.Error().Err(err).Msg("fail to write to response")
 	}
@@ -202,66 +199,7 @@ func (s *HealthServer) p2pStatus(w http.ResponseWriter, _ *http.Request) {
 		}
 	}
 
-	// get all connected peers
-	peerInfos := s.tssServer.GetKnownPeers()
-	res.PeerCount = len(peerInfos)
-
-	// ping and http get /p2pid on all peers
-	mu := sync.Mutex{}
-	wg := sync.WaitGroup{}
-	for _, pi := range peerInfos {
-		wg.Add(1)
-		go func(pi tss.PeerInfo) {
-			peer := P2PStatusPeer{
-				StoredPeerID: pi.ID,
-				IP:           pi.Address,
-			}
-
-			defer func() {
-				mu.Lock()
-				res.Peers = append(res.Peers, peer)
-				mu.Unlock()
-				wg.Done()
-			}()
-
-			// nothing to do if no addresses
-			if pi.Address == "" {
-				return
-			}
-
-			// check if the node is in thornado
-			if node, ok := nodesByIP[pi.Address]; ok {
-				peer.Address = node.NodeAddress
-				peer.Status = node.Status
-				peer.NodesPeerID = node.PeerId
-			}
-
-			// get the peer id
-			resp, err = http.Get(fmt.Sprintf("http://%s:6040/p2pid", pi.Address))
-			status := ""
-			if resp != nil {
-				status = resp.Status
-			}
-			if err != nil {
-				peer.ReturnedPeerID = fmt.Sprintf("failed, status=\"%s\"", status)
-			} else {
-				defer resp.Body.Close()
-				var b []byte
-				b, err = io.ReadAll(resp.Body)
-				if err != nil {
-					peer.ReturnedPeerID = fmt.Sprintf("failed to read body, status=\"%s\"", status)
-				} else {
-					peer.ReturnedPeerID = string(b)
-				}
-			}
-
-			// check the p2p port
-			start := time.Now()
-			peer.P2PPortOpen = checkPortOpen(pi.Address, 5040)
-			peer.P2PDialMs = int64(time.Since(start) / time.Millisecond)
-		}(pi)
-	}
-	wg.Wait()
+	res.PeerCount = 0
 
 	// write the response
 	jsonBytes, err := json.MarshalIndent(res, "", "  ")
@@ -280,7 +218,7 @@ func (s *HealthServer) currentSigning(w http.ResponseWriter, _ *http.Request) {
 	res := make([]VaultResponse, 0)
 
 	thornado := config.GetBifrost().Thornado.ChainHost
-	url := fmt.Sprintf("http://%s%s", thornado, thorclient.AsgardVault)
+	url := fmt.Sprintf("http://%s%s", thornado, thornadoclient.AsgardVault)
 	resp, err := http.Get(url)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("fail to get thornado status")

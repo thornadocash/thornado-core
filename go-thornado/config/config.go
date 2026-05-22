@@ -192,7 +192,7 @@ func InitBifrost() {
 }
 
 func InitThornode(ctx context.Context) {
-	// Environment variables prefixed with `THORNODE` will be read by viper in cosmos-sdk
+	// Environment variables prefixed with `THORNADO` will be read by viper in cosmos-sdk
 	// initialization and overwrite configuration we apply in this package.
 	for _, env := range os.Environ() {
 		envKey := strings.Split(env, "=")[0]

@@ -13,8 +13,8 @@ import (
 
 	btypes "github.com/thornadocash/go-thornado/bifrost/blockscanner/types"
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient/types"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
 	"github.com/thornadocash/go-thornado/constants"
@@ -51,13 +51,13 @@ type BlockScanner struct {
 	globalTxsQueue        chan types.TxIn
 	globalNetworkFeeQueue chan common.NetworkFee
 	errorCounter          *prometheus.CounterVec
-	thorchainBridge       thorclient.ThorchainBridge
+	thornadoBridge       thornadoclient.ThornadoBridge
 	chainScanner          BlockScannerFetcher
 	healthy               *atomic.Bool
 }
 
 // NewBlockScanner create a new instance of BlockScanner
-func NewBlockScanner(cfg config.BifrostBlockScannerConfiguration, scannerStorage ScannerStorage, m *metrics.Metrics, thorchainBridge thorclient.ThorchainBridge, chainScanner BlockScannerFetcher) (*BlockScanner, error) {
+func NewBlockScanner(cfg config.BifrostBlockScannerConfiguration, scannerStorage ScannerStorage, m *metrics.Metrics, thornadoBridge thornadoclient.ThornadoBridge, chainScanner BlockScannerFetcher) (*BlockScanner, error) {
 	var err error
 	if scannerStorage == nil {
 		return nil, errors.New("scannerStorage is nil")
@@ -65,8 +65,8 @@ func NewBlockScanner(cfg config.BifrostBlockScannerConfiguration, scannerStorage
 	if m == nil {
 		return nil, errors.New("metrics instance is nil")
 	}
-	if thorchainBridge == nil {
-		return nil, errors.New("thorchain bridge is nil")
+	if thornadoBridge == nil {
+		return nil, errors.New("thornado bridge is nil")
 	}
 
 	logger := log.Logger.With().Str("module", "blockscanner").Str("chain", cfg.ChainID.String()).Logger()
@@ -80,7 +80,7 @@ func NewBlockScanner(cfg config.BifrostBlockScannerConfiguration, scannerStorage
 		scannerStorage:  scannerStorage,
 		metrics:         m,
 		errorCounter:    m.GetCounterVec(metrics.CommonBlockScannerError),
-		thorchainBridge: thorchainBridge,
+		thornadoBridge: thornadoBridge,
 		chainScanner:    chainScanner,
 		healthy:         &atomic.Bool{},
 	}
@@ -101,7 +101,7 @@ func (b *BlockScanner) PreviousHeight() int64 {
 
 // RollbackToLastObserved rollback the block scanner to last observed height minus flex period
 func (b *BlockScanner) RollbackToLastObserved() error {
-	lastObservedHeight, err := b.thorchainBridge.GetLastObservedInHeight(b.cfg.ChainID)
+	lastObservedHeight, err := b.thornadoBridge.GetLastObservedInHeight(b.cfg.ChainID)
 	if err != nil {
 		return fmt.Errorf("fail to get last observed height: %w", err)
 	}
@@ -110,19 +110,19 @@ func (b *BlockScanner) RollbackToLastObserved() error {
 		return nil
 	}
 
-	maxConfirmations, err := b.thorchainBridge.GetMimirWithRef(constants.MimirTemplateMaxConfirmations, b.cfg.ChainID.String())
+	maxConfirmations, err := b.thornadoBridge.GetMimirWithRef(constants.MimirTemplateMaxConfirmations, b.cfg.ChainID.String())
 	if err != nil || maxConfirmations < 0 {
 		maxConfirmations = 0
 	}
 
-	c, err := b.thorchainBridge.GetConstants()
+	c, err := b.thornadoBridge.GetConstants()
 	if err != nil {
 		return fmt.Errorf("fail to get constants: %w", err)
 	}
 
 	obsDelayFlexConst := constants.ObservationDelayFlexibility.String()
 	observerFlexWindowBlocksThor := c[obsDelayFlexConst]
-	observerFlexWindowBlocksThorMimir, err := b.thorchainBridge.GetMimir(obsDelayFlexConst)
+	observerFlexWindowBlocksThorMimir, err := b.thornadoBridge.GetMimir(obsDelayFlexConst)
 	if err == nil && observerFlexWindowBlocksThorMimir > 0 {
 		observerFlexWindowBlocksThor = observerFlexWindowBlocksThorMimir
 	}
@@ -220,7 +220,7 @@ func (b *BlockScanner) scanMempool() {
 
 // Checks current mimir settings to determine if the current chain is paused
 // either globally or specifically
-func IsChainPaused(cfg config.BifrostBlockScannerConfiguration, logger zerolog.Logger, bridge thorclient.ThorchainBridge) bool {
+func IsChainPaused(cfg config.BifrostBlockScannerConfiguration, logger zerolog.Logger, bridge thornadoclient.ThornadoBridge) bool {
 	thorHeight, err := bridge.GetBlockHeight()
 	if err != nil {
 		logger.Error().Err(err).Msg("fail to get Thornado block height")
@@ -294,7 +294,7 @@ func (b *BlockScanner) scanBlocks() {
 			currentBlock := preBlockHeight + 1
 			// check if mimir has disabled this chain
 			if time.Since(lastMimirCheck) >= constants.ThornadoBlockTime {
-				isChainPaused = IsChainPaused(b.cfg, b.logger, b.thorchainBridge)
+				isChainPaused = IsChainPaused(b.cfg, b.logger, b.thornadoBridge)
 				lastMimirCheck = time.Now()
 			}
 
@@ -412,7 +412,7 @@ func (b *BlockScanner) updateStaleNetworkFee(currentBlock int64) {
 	}
 
 	transactionSize, transactionFeeRate := b.chainScanner.GetNetworkFee()
-	thorTransactionSize, thorTransactionFeeRate, err := b.thorchainBridge.GetNetworkFee(b.cfg.ChainID)
+	thorTransactionSize, thorTransactionFeeRate, err := b.thornadoBridge.GetNetworkFee(b.cfg.ChainID)
 	if err != nil {
 		b.logger.Error().Err(err).Msg("fail to get thornado network fee")
 		return
@@ -462,14 +462,14 @@ func (b *BlockScanner) GetStartHeight() (int64, error) {
 		return b.cfg.StartBlockHeight, nil
 	}
 
-	// wait for thorchain to be caught up first
-	if err := b.thorchainBridge.WaitToCatchUp(); err != nil {
-		clog.Info().Err(err).Msg("waiting for thorchain to catch up")
+	// wait for thornado to be caught up first
+	if err := b.thornadoBridge.WaitToCatchUp(); err != nil {
+		clog.Info().Err(err).Msg("waiting for thornado to catch up")
 		return 0, err
 	}
 
-	if b.thorchainBridge != nil && b.cfg.ChainID != common.Thornado {
-		height, _ := b.thorchainBridge.GetLastObservedInHeight(b.cfg.ChainID)
+	if b.thornadoBridge != nil && b.cfg.ChainID != common.Thornado {
+		height, _ := b.thornadoBridge.GetLastObservedInHeight(b.cfg.ChainID)
 		if height > 0 {
 
 			// 2.a) Use local scanner storage height if available, up to the max lag from lastblock.

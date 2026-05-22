@@ -75,12 +75,12 @@ import (
 
 	appparams "github.com/thornadocash/go-thornado/app/params"
 	"github.com/thornadocash/go-thornado/openapi"
-	"github.com/thornadocash/go-thornado/x/thorchain"
-	"github.com/thornadocash/go-thornado/x/thorchain/ebifrost"
-	thorchainkeeper "github.com/thornadocash/go-thornado/x/thorchain/keeper"
-	thorchainkeeperabci "github.com/thornadocash/go-thornado/x/thorchain/keeper/abci"
-	thorchainkeeperv1 "github.com/thornadocash/go-thornado/x/thorchain/keeper/v1"
-	thorchaintypes "github.com/thornadocash/go-thornado/x/thorchain/types"
+	"github.com/thornadocash/go-thornado/x/thornado"
+	"github.com/thornadocash/go-thornado/x/thornado/ebifrost"
+	thornadokeeper "github.com/thornadocash/go-thornado/x/thornado/keeper"
+	thornadokeeperabci "github.com/thornadocash/go-thornado/x/thornado/keeper/abci"
+	thornadokeeperv1 "github.com/thornadocash/go-thornado/x/thornado/keeper/v1"
+	thornadotypes "github.com/thornadocash/go-thornado/x/thornado/types"
 
 	evm "github.com/cosmos/evm/encoding/codec"
 	"github.com/cosmos/evm/ethereum/eip712"
@@ -105,11 +105,11 @@ var maccPerms = map[string][]string{
 	minttypes.ModuleName:           {authtypes.Minter},
 	stakingtypes.BondedPoolName:    {authtypes.Burner, authtypes.Staking},
 	stakingtypes.NotBondedPoolName: {authtypes.Burner, authtypes.Staking},
-	thorchain.ModuleName:           {authtypes.Minter, authtypes.Burner},
-	thorchain.AsgardName:           {},
-	thorchain.BondName:             {},
-	thorchain.ReserveName:          {},
-	thorchain.TreasuryName:         {},
+	thornado.ModuleName:           {authtypes.Minter, authtypes.Burner},
+	thornado.AsgardName:           {},
+	thornado.BondName:             {},
+	thornado.ReserveName:          {},
+	thornado.TreasuryName:         {},
 }
 
 var (
@@ -140,7 +140,7 @@ type ThornadoApp struct {
 	ParamsKeeper          paramskeeper.Keeper
 	ConsensusParamsKeeper consensusparamkeeper.Keeper
 
-	ThornadoKeeper   thorchainkeeper.Keeper
+	ThornadoKeeper   thornadokeeper.Keeper
 	EnshrinedBifrost *ebifrost.EnshrinedBifrost
 
 	msgServiceRouter *MsgServiceRouter // router for redirecting Msg service messages
@@ -229,7 +229,7 @@ func NewChainApp(
 		consensusparamtypes.StoreKey,
 		upgradetypes.StoreKey,
 		// non sdk store keys
-		thorchaintypes.StoreKey,
+		thornadotypes.StoreKey,
 	)
 
 	tkeys := storetypes.NewTransientStoreKeys(paramstypes.TStoreKey)
@@ -262,7 +262,7 @@ func NewChainApp(
 	app.ConsensusParamsKeeper = consensusparamkeeper.NewKeeper(
 		app.appCodec,
 		runtime.NewKVStoreService(keys[consensusparamtypes.StoreKey]),
-		authtypes.NewModuleAddress(thorchain.ModuleName).String(),
+		authtypes.NewModuleAddress(thornado.ModuleName).String(),
 		runtime.EventService{},
 	)
 	bApp.SetParamStore(app.ConsensusParamsKeeper.ParamsStore)
@@ -276,7 +276,7 @@ func NewChainApp(
 		maccPerms,
 		authcodec.NewBech32Codec(sdk.GetConfig().GetBech32AccountAddrPrefix()),
 		sdk.GetConfig().GetBech32AccountAddrPrefix(),
-		authtypes.NewModuleAddress(thorchain.ModuleName).String(),
+		authtypes.NewModuleAddress(thornado.ModuleName).String(),
 	)
 	app.AuthzKeeper = authzkeeper.NewKeeper(
 		runtime.NewKVStoreService(keys[authzkeeper.StoreKey]),
@@ -289,7 +289,7 @@ func NewChainApp(
 		runtime.NewKVStoreService(keys[banktypes.StoreKey]),
 		app.AccountKeeper,
 		BlockedAddresses(),
-		authtypes.NewModuleAddress(thorchain.ModuleName).String(),
+		authtypes.NewModuleAddress(thornado.ModuleName).String(),
 		logger,
 	)
 
@@ -297,7 +297,7 @@ func NewChainApp(
 	if err != nil {
 		panic(err)
 	}
-	thorchaintypes.DefineCustomGetSigners(txSigningOptions)
+	thornadotypes.DefineCustomGetSigners(txSigningOptions)
 	txConfig, err := appparams.TxConfig(app.appCodec, txmodule.NewBankKeeperCoinMetadataQueryFn(app.BankKeeper))
 	if err != nil {
 		panic(err)
@@ -309,7 +309,7 @@ func NewChainApp(
 		runtime.NewKVStoreService(keys[stakingtypes.StoreKey]),
 		app.AccountKeeper,
 		app.BankKeeper,
-		authtypes.NewModuleAddress(thorchain.ModuleName).String(),
+		authtypes.NewModuleAddress(thornado.ModuleName).String(),
 		authcodec.NewBech32Codec(sdk.GetConfig().GetBech32ValidatorAddrPrefix()),
 		authcodec.NewBech32Codec(sdk.GetConfig().GetBech32ConsensusAddrPrefix()),
 	)
@@ -320,7 +320,7 @@ func NewChainApp(
 		app.AccountKeeper,
 		app.BankKeeper,
 		authtypes.FeeCollectorName,
-		authtypes.NewModuleAddress(thorchain.ModuleName).String(),
+		authtypes.NewModuleAddress(thornado.ModuleName).String(),
 	)
 
 	// get skipUpgradeHeights from the app options
@@ -336,25 +336,25 @@ func NewChainApp(
 		app.appCodec,
 		homePath,
 		app.BaseApp,
-		authtypes.NewModuleAddress(thorchain.ModuleName).String(),
+		authtypes.NewModuleAddress(thornado.ModuleName).String(),
 	)
 
-	app.ThornadoKeeper = thorchainkeeperv1.NewKeeper(
-		app.appCodec, runtime.NewKVStoreService(keys[thorchaintypes.StoreKey]), app.BankKeeper, app.AccountKeeper, app.UpgradeKeeper,
+	app.ThornadoKeeper = thornadokeeperv1.NewKeeper(
+		app.appCodec, runtime.NewKVStoreService(keys[thornadotypes.StoreKey]), app.BankKeeper, app.AccountKeeper, app.UpgradeKeeper,
 	)
 
 	// --- Module Options ---
 	telemetryEnabled := cast.ToBool(appOpts.Get("telemetry.enabled"))
 	testApp := cast.ToBool(appOpts.Get(TestApp))
 
-	mgrs := thorchain.NewManagers(app.ThornadoKeeper, app.appCodec, runtime.NewKVStoreService(keys[thorchaintypes.StoreKey]), app.BankKeeper, app.AccountKeeper, app.UpgradeKeeper)
-	app.msgServiceRouter.AddCustomRoute("cosmos.bank.v1beta1.Msg", thorchain.NewBankSendHandler(thorchain.NewSendHandler(mgrs)))
+	mgrs := thornado.NewManagers(app.ThornadoKeeper, app.appCodec, runtime.NewKVStoreService(keys[thornadotypes.StoreKey]), app.BankKeeper, app.AccountKeeper, app.UpgradeKeeper)
+	app.msgServiceRouter.AddCustomRoute("cosmos.bank.v1beta1.Msg", thornado.NewBankSendHandler(thornado.NewSendHandler(mgrs)))
 
-	thorchainModule := thorchain.NewAppModule(mgrs, telemetryEnabled, testApp)
+	thornadoModule := thornado.NewAppModule(mgrs, telemetryEnabled, testApp)
 	app.EnshrinedBifrost = ebifrost.NewEnshrinedBifrost(app.appCodec, logger, ebifrostConfig)
 
 	defaultProposalHandler := baseapp.NewDefaultProposalHandler(bApp.Mempool(), bApp)
-	eBifrostProposalHandler := thorchainkeeperabci.NewProposalHandler(
+	eBifrostProposalHandler := thornadokeeperabci.NewProposalHandler(
 		&app.ThornadoKeeper,
 		app.EnshrinedBifrost,
 		interfaceRegistry,
@@ -385,7 +385,7 @@ func NewChainApp(
 		paramsModule,
 		consensusModule,
 		// non sdk modules
-		thorchainModule,
+		thornadoModule,
 	)
 
 	// BasicModuleManager defines the module BasicManager is in charge of setting up basic,
@@ -402,7 +402,7 @@ func NewChainApp(
 		consensusModule,
 		mint.NewAppModule(app.appCodec, app.MintKeeper, app.AccountKeeper, nil, app.GetSubspace(minttypes.ModuleName)),
 		// non sdk modules
-		thorchainModule,
+		thornadoModule,
 	)
 	app.BasicModuleManager.RegisterLegacyAminoCodec(app.legacyAmino)
 	app.BasicModuleManager.RegisterInterfaces(interfaceRegistry)
@@ -418,7 +418,7 @@ func NewChainApp(
 		authz.ModuleName,
 
 		// additional non simd modules
-		thorchaintypes.ModuleName,
+		thornadotypes.ModuleName,
 	)
 
 	app.ModuleManager.SetOrderEndBlockers(
@@ -426,7 +426,7 @@ func NewChainApp(
 		authz.ModuleName,
 
 		// additional non simd modules
-		thorchaintypes.ModuleName,
+		thornadotypes.ModuleName,
 	)
 
 	// NOTE: The genutils module must occur after staking so that pools are
@@ -441,7 +441,7 @@ func NewChainApp(
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
 		consensusparamtypes.ModuleName,
-		thorchaintypes.ModuleName,
+		thornadotypes.ModuleName,
 	}
 	app.ModuleManager.SetOrderInitGenesis(genesisModuleOrder...)
 	app.ModuleManager.SetOrderExportGenesis(genesisModuleOrder...)
@@ -697,7 +697,7 @@ func (app *ThornadoApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.A
 	clientCtx := apiSvr.ClientCtx
 
 	// Must call this before registering any GRPC gateway routes
-	thorchain.CustomGRPCGatewayRouter(apiSvr)
+	thornado.CustomGRPCGatewayRouter(apiSvr)
 
 	// Register new tx routes from grpc-gateway.
 	authtx.RegisterGRPCGatewayRoutes(clientCtx, apiSvr.GRPCGatewayRouter)
@@ -726,7 +726,7 @@ func (app *ThornadoApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.A
 func RegisterSwaggerAPI(rtr *mux.Router, swaggerEnabled bool) error {
 	// Health Check Endpoint
 	rtr.HandleFunc(
-		fmt.Sprintf("/%s/ping", thorchain.ModuleName),
+		fmt.Sprintf("/%s/ping", thornado.ModuleName),
 		func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, `{"ping":"pong"}`)
 		},
@@ -737,10 +737,10 @@ func RegisterSwaggerAPI(rtr *mux.Router, swaggerEnabled bool) error {
 	}
 
 	// api doc handlers
-	rtr.HandleFunc(fmt.Sprintf("/%s/doc/openapi.yaml", thorchain.ModuleName), openapi.HandleSpecYAML)
-	rtr.HandleFunc(fmt.Sprintf("/%s/doc/openapi.json", thorchain.ModuleName), openapi.HandleSpecJSON)
-	rtr.HandleFunc(fmt.Sprintf("/%s/doc", thorchain.ModuleName), openapi.HandleSwaggerUI)
-	rtr.HandleFunc(fmt.Sprintf("/%s/doc/", thorchain.ModuleName), openapi.HandleSwaggerUI)
+	rtr.HandleFunc(fmt.Sprintf("/%s/doc/openapi.yaml", thornado.ModuleName), openapi.HandleSpecYAML)
+	rtr.HandleFunc(fmt.Sprintf("/%s/doc/openapi.json", thornado.ModuleName), openapi.HandleSpecJSON)
+	rtr.HandleFunc(fmt.Sprintf("/%s/doc", thornado.ModuleName), openapi.HandleSwaggerUI)
+	rtr.HandleFunc(fmt.Sprintf("/%s/doc/", thornado.ModuleName), openapi.HandleSwaggerUI)
 
 	return nil
 }
@@ -795,8 +795,8 @@ func BlockedAddresses() map[string]bool {
 	}
 
 	// Allow lending and treasury to receive funds
-	delete(modAccAddrs, authtypes.NewModuleAddress(thorchaintypes.LendingName).String())
-	delete(modAccAddrs, authtypes.NewModuleAddress(thorchaintypes.TreasuryName).String())
+	delete(modAccAddrs, authtypes.NewModuleAddress(thornadotypes.LendingName).String())
+	delete(modAccAddrs, authtypes.NewModuleAddress(thornadotypes.TreasuryName).String())
 
 	return modAccAddrs
 }

@@ -15,7 +15,7 @@ import (
 var ThornadoBlockTime = time.Second
 
 // CamelToSnakeUpper converts a camelCase string to SNAKE_CASE.
-// Examples: "PoolCycle" -> "POOL_CYCLE", "L1SlipMinBps" -> "L1_SLIP_MIN_BPS"
+// Examples: "BlocksPerYear" -> "BLOCKS_PER_YEAR"
 func CamelToSnakeUpper(s string) string {
 	re := regexp.MustCompile(`([a-z0-9])([A-Z])|([A-Z]+)([A-Z][a-z])`)
 	snake := re.ReplaceAllString(s, `${1}${3}_${2}${4}`)
@@ -24,58 +24,17 @@ func CamelToSnakeUpper(s string) string {
 
 func init() {
 	int64Overrides = map[ConstantName]int64{
-		// ArtificialRagnarokBlockHeight: 200,
-		DesiredValidatorSet:                 12,
-		ChurnInterval:                       60,
-		ChurnRetryInterval:                  30,
-		MinimumBondInRune:                   0,
-		MemolessTxnTTL:                      100,
-		MemolessTxnMaxUse:                   5, // higher limit for testing
-		EnableMemolessOutbound:              1, // Enable memoless outbound for mocknet testing
-		ValidatorMaxRewardRatio:             3,
-		FundMigrationInterval:               15,
-		LiquidityLockUpBlocks:               0,
-		MaxRuneSupply:                       -1,
-		JailTimeKeygen:                      10,
-		JailTimeKeysign:                     10,
-		AsgardSize:                          6,
-		StreamingSwapMinBPFee:               100, // TODO: remove on hard fork
-		EnableAdvSwapQueue:                  1,
-		AdvSwapQueueRapidSwapMax:            1, // For testing rapid swaps
-		VirtualMultSynthsBasisPoints:        20_000,
-		MinTxOutVolumeThreshold:             0,
-		MissingBlockChurnOut:                100,
-		MaxMissingBlockChurnOut:             5,
-		TxOutDelayRate:                      0,
-		MaxSynthPerPoolDepth:                3_500,
-		MaxSynthsForSaversYield:             5000,
-		AllowWideBlame:                      1,
-		TargetOutboundFeeSurplusRune:        0,
-		MaxOutboundFeeMultiplierBasisPoints: 0,
-		MinOutboundFeeMultiplierBasisPoints: 0,
-		OperationalVotesMin:                 1, // For regtest single-signer Mimir changes without Admin
-		PreferredAssetOutboundFeeMultiplier: 0,
-		TradeAccountsEnabled:                1,
-		MaxAffiliateFeeBasisPoints:          10_000,
-		RUNEPoolDepositMaturityBlocks:       0,
-		RUNEPoolMaxReserveBackstop:          0,
-		SaversEjectInterval:                 60,
-		SystemIncomeBurnRateBps:             0,
-		DevFundSystemIncomeBps:              0,
-		MarketingFundSystemIncomeBps:        0,
-		TCYStakeSystemIncomeBps:             0,
-		MultipleAffiliatesMaxCount:          5,
-		BankSendEnabled:                     1,
+		DesiredNodeSet:          12,
+		ChurnInterval:           60,
+		ChurnRetryInterval:      30,
+		JailTimeKeygen:          10,
+		JailTimeKeysign:         10,
+		MissingBlockChurnOut:    100,
+		MaxMissingBlockChurnOut: 5,
+		OperationalVotesMin:     1, // For regtest single-signer Mimir changes without Admin
 	}
-	boolOverrides = map[ConstantName]bool{
-		StrictBondLiquidityRatio: false,
-	}
-	stringOverrides = map[ConstantName]string{
-		DefaultPoolStatus:    "Available",
-		DevFundAddress:       "tthor1qk8c8sfrmfm0tkncs0zxeutc8v5mx3pjj07k4u", // addr_thor_pig in regtest
-		MarketingFundAddress: "tthor1qk8c8sfrmfm0tkncs0zxeutc8v5mx3pjj07k4u", // same as dev fund in regtest
-		OverSolvencyAddress:  "tthor1qk8c8sfrmfm0tkncs0zxeutc8v5mx3pjj07k4u", // same as dev fund in regtest
-	}
+	boolOverrides = map[ConstantName]bool{}
+	stringOverrides = map[ConstantName]string{}
 
 	v1Values := NewConstantValue()
 

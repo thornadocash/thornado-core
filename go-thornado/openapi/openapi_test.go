@@ -13,7 +13,7 @@ import (
 
 	"github.com/thornadocash/go-thornado/common"
 	gen "github.com/thornadocash/go-thornado/openapi/gen"
-	types "github.com/thornadocash/go-thornado/x/thorchain/types"
+	types "github.com/thornadocash/go-thornado/x/thornado/types"
 
 	. "gopkg.in/check.v1"
 )

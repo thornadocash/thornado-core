@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/thornadocash/go-thornado/common"
-	"github.com/thornadocash/go-thornado/x/thorchain/types"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 const priceFeedsUpdateDelay = time.Millisecond * 100

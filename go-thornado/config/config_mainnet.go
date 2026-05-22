@@ -10,7 +10,7 @@ import (
 	"os"
 
 	"github.com/rs/zerolog/log"
-	"github.com/thornadocash/go-thornado/x/thorchain/types"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 const (

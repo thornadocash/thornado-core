@@ -43,10 +43,8 @@ const (
 	Msg_RejectUpgrade_FullMethodName             = "/types.Msg/RejectUpgrade"
 	Msg_PriceFeedQuorumBatch_FullMethodName      = "/types.Msg/PriceFeedQuorumBatch"
 	Msg_ShielderRegisterPow_FullMethodName       = "/types.Msg/ShielderRegisterPow"
-	Msg_ShielderSettleDeposit_FullMethodName     = "/types.Msg/ShielderSettleDeposit"
 	Msg_ShielderPostCommitments_FullMethodName   = "/types.Msg/ShielderPostCommitments"
 	Msg_ShielderRequestWithdrawal_FullMethodName = "/types.Msg/ShielderRequestWithdrawal"
-	Msg_ShielderSettleFees_FullMethodName        = "/types.Msg/ShielderSettleFees"
 	Msg_ShielderSplitFees_FullMethodName         = "/types.Msg/ShielderSplitFees"
 	Msg_NodeSlotAuctionCreate_FullMethodName     = "/types.Msg/NodeSlotAuctionCreate"
 	Msg_NodeSlotAuctionBidPow_FullMethodName     = "/types.Msg/NodeSlotAuctionBidPow"
@@ -82,10 +80,8 @@ type MsgClient interface {
 	RejectUpgrade(ctx context.Context, in *MsgRejectUpgrade, opts ...grpc.CallOption) (*MsgEmpty, error)
 	PriceFeedQuorumBatch(ctx context.Context, in *MsgPriceFeedQuorumBatch, opts ...grpc.CallOption) (*MsgEmpty, error)
 	ShielderRegisterPow(ctx context.Context, in *MsgShielderRegisterPow, opts ...grpc.CallOption) (*MsgShielderRegisterPowResponse, error)
-	ShielderSettleDeposit(ctx context.Context, in *MsgShielderSettleDeposit, opts ...grpc.CallOption) (*MsgShielderSettleDepositResponse, error)
 	ShielderPostCommitments(ctx context.Context, in *MsgShielderPostCommitments, opts ...grpc.CallOption) (*MsgShielderPostCommitmentsResponse, error)
 	ShielderRequestWithdrawal(ctx context.Context, in *MsgShielderRequestWithdrawal, opts ...grpc.CallOption) (*MsgShielderRequestWithdrawalResponse, error)
-	ShielderSettleFees(ctx context.Context, in *MsgShielderSettleFees, opts ...grpc.CallOption) (*MsgShielderSettleDepositResponse, error)
 	ShielderSplitFees(ctx context.Context, in *MsgShielderSplitFees, opts ...grpc.CallOption) (*MsgShielderSplitFeesResponse, error)
 	NodeSlotAuctionCreate(ctx context.Context, in *MsgNodeSlotAuctionCreate, opts ...grpc.CallOption) (*MsgNodeSlotAuctionCreateResponse, error)
 	NodeSlotAuctionBidPow(ctx context.Context, in *MsgNodeSlotAuctionBidPow, opts ...grpc.CallOption) (*MsgShielderRegisterPowResponse, error)
@@ -317,15 +313,6 @@ func (c *msgClient) ShielderRegisterPow(ctx context.Context, in *MsgShielderRegi
 	return out, nil
 }
 
-func (c *msgClient) ShielderSettleDeposit(ctx context.Context, in *MsgShielderSettleDeposit, opts ...grpc.CallOption) (*MsgShielderSettleDepositResponse, error) {
-	out := new(MsgShielderSettleDepositResponse)
-	err := c.cc.Invoke(ctx, Msg_ShielderSettleDeposit_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *msgClient) ShielderPostCommitments(ctx context.Context, in *MsgShielderPostCommitments, opts ...grpc.CallOption) (*MsgShielderPostCommitmentsResponse, error) {
 	out := new(MsgShielderPostCommitmentsResponse)
 	err := c.cc.Invoke(ctx, Msg_ShielderPostCommitments_FullMethodName, in, out, opts...)
@@ -338,15 +325,6 @@ func (c *msgClient) ShielderPostCommitments(ctx context.Context, in *MsgShielder
 func (c *msgClient) ShielderRequestWithdrawal(ctx context.Context, in *MsgShielderRequestWithdrawal, opts ...grpc.CallOption) (*MsgShielderRequestWithdrawalResponse, error) {
 	out := new(MsgShielderRequestWithdrawalResponse)
 	err := c.cc.Invoke(ctx, Msg_ShielderRequestWithdrawal_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *msgClient) ShielderSettleFees(ctx context.Context, in *MsgShielderSettleFees, opts ...grpc.CallOption) (*MsgShielderSettleDepositResponse, error) {
-	out := new(MsgShielderSettleDepositResponse)
-	err := c.cc.Invoke(ctx, Msg_ShielderSettleFees_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -426,10 +404,8 @@ type MsgServer interface {
 	RejectUpgrade(context.Context, *MsgRejectUpgrade) (*MsgEmpty, error)
 	PriceFeedQuorumBatch(context.Context, *MsgPriceFeedQuorumBatch) (*MsgEmpty, error)
 	ShielderRegisterPow(context.Context, *MsgShielderRegisterPow) (*MsgShielderRegisterPowResponse, error)
-	ShielderSettleDeposit(context.Context, *MsgShielderSettleDeposit) (*MsgShielderSettleDepositResponse, error)
 	ShielderPostCommitments(context.Context, *MsgShielderPostCommitments) (*MsgShielderPostCommitmentsResponse, error)
 	ShielderRequestWithdrawal(context.Context, *MsgShielderRequestWithdrawal) (*MsgShielderRequestWithdrawalResponse, error)
-	ShielderSettleFees(context.Context, *MsgShielderSettleFees) (*MsgShielderSettleDepositResponse, error)
 	ShielderSplitFees(context.Context, *MsgShielderSplitFees) (*MsgShielderSplitFeesResponse, error)
 	NodeSlotAuctionCreate(context.Context, *MsgNodeSlotAuctionCreate) (*MsgNodeSlotAuctionCreateResponse, error)
 	NodeSlotAuctionBidPow(context.Context, *MsgNodeSlotAuctionBidPow) (*MsgShielderRegisterPowResponse, error)
@@ -514,17 +490,11 @@ func (UnimplementedMsgServer) PriceFeedQuorumBatch(context.Context, *MsgPriceFee
 func (UnimplementedMsgServer) ShielderRegisterPow(context.Context, *MsgShielderRegisterPow) (*MsgShielderRegisterPowResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderRegisterPow not implemented")
 }
-func (UnimplementedMsgServer) ShielderSettleDeposit(context.Context, *MsgShielderSettleDeposit) (*MsgShielderSettleDepositResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShielderSettleDeposit not implemented")
-}
 func (UnimplementedMsgServer) ShielderPostCommitments(context.Context, *MsgShielderPostCommitments) (*MsgShielderPostCommitmentsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderPostCommitments not implemented")
 }
 func (UnimplementedMsgServer) ShielderRequestWithdrawal(context.Context, *MsgShielderRequestWithdrawal) (*MsgShielderRequestWithdrawalResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderRequestWithdrawal not implemented")
-}
-func (UnimplementedMsgServer) ShielderSettleFees(context.Context, *MsgShielderSettleFees) (*MsgShielderSettleDepositResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShielderSettleFees not implemented")
 }
 func (UnimplementedMsgServer) ShielderSplitFees(context.Context, *MsgShielderSplitFees) (*MsgShielderSplitFeesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderSplitFees not implemented")
@@ -986,24 +956,6 @@ func _Msg_ShielderRegisterPow_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Msg_ShielderSettleDeposit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgShielderSettleDeposit)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MsgServer).ShielderSettleDeposit(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Msg_ShielderSettleDeposit_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).ShielderSettleDeposit(ctx, req.(*MsgShielderSettleDeposit))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Msg_ShielderPostCommitments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MsgShielderPostCommitments)
 	if err := dec(in); err != nil {
@@ -1036,24 +988,6 @@ func _Msg_ShielderRequestWithdrawal_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MsgServer).ShielderRequestWithdrawal(ctx, req.(*MsgShielderRequestWithdrawal))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Msg_ShielderSettleFees_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgShielderSettleFees)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MsgServer).ShielderSettleFees(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Msg_ShielderSettleFees_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).ShielderSettleFees(ctx, req.(*MsgShielderSettleFees))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1252,20 +1186,12 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Msg_ShielderRegisterPow_Handler,
 		},
 		{
-			MethodName: "ShielderSettleDeposit",
-			Handler:    _Msg_ShielderSettleDeposit_Handler,
-		},
-		{
 			MethodName: "ShielderPostCommitments",
 			Handler:    _Msg_ShielderPostCommitments_Handler,
 		},
 		{
 			MethodName: "ShielderRequestWithdrawal",
 			Handler:    _Msg_ShielderRequestWithdrawal_Handler,
-		},
-		{
-			MethodName: "ShielderSettleFees",
-			Handler:    _Msg_ShielderSettleFees_Handler,
 		},
 		{
 			MethodName: "ShielderSplitFees",

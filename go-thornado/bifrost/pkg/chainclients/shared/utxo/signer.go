@@ -6,8 +6,8 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
-	stypes "github.com/thornadocash/go-thornado/bifrost/thorclient/types"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
+	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/bifrost/tss"
 )
 
@@ -19,10 +19,10 @@ type SignCheckpoint struct {
 }
 
 func PostKeysignFailure(
-	thorchainBridge thorclient.ThorchainBridge,
+	thornadoBridge thornadoclient.ThornadoBridge,
 	tx stypes.TxOutItem,
 	logger zerolog.Logger,
-	thorchainHeight int64,
+	thornadoHeight int64,
 	utxoErr error,
 ) error {
 	// PostKeysignFailure only once per SignTx, to not broadcast duplicate messages.
@@ -34,14 +34,14 @@ func PostKeysignFailure(
 			return fmt.Errorf("fail to sign the message: %w", utxoErr)
 		}
 
-		// key sign error forward the keysign blame to thorchain
-		txID, err := thorchainBridge.PostKeysignFailure(keysignError.Blame, thorchainHeight, tx.Memo, tx.Coins, tx.VaultPubKey)
+		// key sign error forward the keysign blame to thornado
+		txID, err := thornadoBridge.PostKeysignFailure(keysignError.Blame, thornadoHeight, "", tx.Coins, tx.VaultPubKey)
 		if err != nil {
-			logger.Error().Err(err).Msg("fail to post keysign failure to thorchain")
-			utxoErr = multierror.Append(utxoErr, fmt.Errorf("fail to post keysign failure to THORChain: %w", err))
+			logger.Error().Err(err).Msg("fail to post keysign failure to thornado")
+			utxoErr = multierror.Append(utxoErr, fmt.Errorf("fail to post keysign failure to Thornado: %w", err))
 			return fmt.Errorf("fail to sign the message: %w", utxoErr)
 		}
-		logger.Info().Str("tx_id", txID.String()).Msgf("post keysign failure to thorchain")
+		logger.Info().Str("tx_id", txID.String()).Msgf("post keysign failure to thornado")
 	}
 	return utxoErr
 }

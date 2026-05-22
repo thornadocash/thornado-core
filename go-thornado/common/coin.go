@@ -92,11 +92,6 @@ func (c Coin) IsRune() bool {
 	return c.Asset.IsRune()
 }
 
-// IsTCY checks whether the coin's Asset is TCY.
-func (c Coin) IsTCY() bool {
-	return c.Asset.IsTCY()
-}
-
 // Native create a new instance of cosmos.Coin
 func (c Coin) Native() (cosmos.Coin, error) {
 	if !c.IsNative() {

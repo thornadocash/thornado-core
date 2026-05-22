@@ -8,7 +8,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	. "gopkg.in/check.v1"
 
-	"github.com/thornadocash/go-thornado/x/thorchain"
+	"github.com/thornadocash/go-thornado/x/thornado"
 )
 
 type BitcoinTemporalStorageTestSuite struct{}
@@ -51,9 +51,9 @@ func (s *BitcoinTemporalStorageTestSuite) TestTemporalStorage(c *C) {
 	nbm, err := store.GetBlockMeta(1024)
 	c.Assert(err, IsNil)
 	c.Assert(nbm, IsNil)
-	hash := thorchain.GetRandomTxHash()
+	hash := thornado.GetRandomTxHash()
 	for i := 0; i < 1024; i++ {
-		bm = NewBlockMeta(thorchain.GetRandomTxHash().String(), int64(i), thorchain.GetRandomTxHash().String())
+		bm = NewBlockMeta(thornado.GetRandomTxHash().String(), int64(i), thornado.GetRandomTxHash().String())
 		if i == 0 {
 			bm.AddSelfTransaction(hash.String())
 		}

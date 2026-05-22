@@ -11,7 +11,7 @@ import (
 	authkeeper "github.com/cosmos/cosmos-sdk/x/auth/keeper"
 	consensusparamkeeper "github.com/cosmos/cosmos-sdk/x/consensus/keeper"
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
-	thorchainKeeper "github.com/thornadocash/go-thornado/x/thorchain/keeper"
+	thornadoKeeper "github.com/thornadocash/go-thornado/x/thornado/keeper"
 )
 
 type AppKeepers struct {
@@ -19,7 +19,7 @@ type AppKeepers struct {
 	// trunk-ignore(golangci-lint/staticcheck): deprecated TODO: SDK 0.53 cleanup
 	ParamsKeeper          *paramskeeper.Keeper
 	ConsensusParamsKeeper *consensusparamkeeper.Keeper
-	ThornadoKeeper        thorchainKeeper.Keeper
+	ThornadoKeeper        thornadoKeeper.Keeper
 	Codec                 codec.Codec
 	GetStoreKey           func(storeKey string) *storetypes.KVStoreKey
 }

@@ -5,24 +5,24 @@ import (
 
 	tssMessages "github.com/thornadocash/go-thornado/bifrost/p2p/messages"
 	"github.com/thornadocash/go-thornado/common"
-	thorchaintypes "github.com/thornadocash/go-thornado/x/thorchain/types"
+	thornadotypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 func TestCanonicalTssRoundSecp256k1(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]string{
-		"thorchain.tsslib.ecdsa.keygen.KGRound1Message":     tssMessages.KEYGEN1,
-		"thorchain.tsslib.ecdsa.keygen.KGRound2Message1":    tssMessages.KEYGEN2aUnicast,
-		"thorchain.tsslib.ecdsa.signing.SignRound1Message1": tssMessages.KEYSIGN1aUnicast,
-		"thorchain.tsslib.ecdsa.signing.SignRound2Message":  tssMessages.KEYSIGN2Unicast,
+		"thornado.tsslib.ecdsa.keygen.KGRound1Message":     tssMessages.KEYGEN1,
+		"thornado.tsslib.ecdsa.keygen.KGRound2Message1":    tssMessages.KEYGEN2aUnicast,
+		"thornado.tsslib.ecdsa.signing.SignRound1Message1": tssMessages.KEYSIGN1aUnicast,
+		"thornado.tsslib.ecdsa.signing.SignRound2Message":  tssMessages.KEYSIGN2Unicast,
 		tssMessages.KEYSIGN7:                                tssMessages.KEYSIGN7,
-		"thorchain.tsslib.ecdsa.signing.SignRound7Message":  tssMessages.KEYSIGN7,
+		"thornado.tsslib.ecdsa.signing.SignRound7Message":  tssMessages.KEYSIGN7,
 		"unrelated-round":                                   "unrelated-round",
 	}
 
 	for in, want := range tests {
-		if got := thorchaintypes.CanonicalTssRound(in, common.SigningAlgoSecp256k1); got != want {
+		if got := thornadotypes.CanonicalTssRound(in, common.SigningAlgoSecp256k1); got != want {
 			t.Errorf("CanonicalTssRound(%q) = %q, want %q", in, got, want)
 		}
 	}
@@ -32,16 +32,16 @@ func TestCanonicalTssRoundEd25519(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]string{
-		"thorchain.tsslib.eddsa.keygen.KGRound1Message":    tssMessages.EDDSAKEYGEN1,
-		"thorchain.tsslib.eddsa.keygen.KGRound2Message2":   tssMessages.EDDSAKEYGEN2b,
-		"thorchain.tsslib.eddsa.signing.SignRound1Message": tssMessages.EDDSAKEYSIGN1,
-		"thorchain.tsslib.eddsa.signing.SignRound3Message": tssMessages.EDDSAKEYSIGN3,
+		"thornado.tsslib.eddsa.keygen.KGRound1Message":    tssMessages.EDDSAKEYGEN1,
+		"thornado.tsslib.eddsa.keygen.KGRound2Message2":   tssMessages.EDDSAKEYGEN2b,
+		"thornado.tsslib.eddsa.signing.SignRound1Message": tssMessages.EDDSAKEYSIGN1,
+		"thornado.tsslib.eddsa.signing.SignRound3Message": tssMessages.EDDSAKEYSIGN3,
 		tssMessages.EDDSAKEYSIGN2:                          tssMessages.EDDSAKEYSIGN2,
 		"unrelated-round":                                  "unrelated-round",
 	}
 
 	for in, want := range tests {
-		if got := thorchaintypes.CanonicalTssRound(in, common.SigningAlgoEd25519); got != want {
+		if got := thornadotypes.CanonicalTssRound(in, common.SigningAlgoEd25519); got != want {
 			t.Errorf("CanonicalTssRound(%q) = %q, want %q", in, got, want)
 		}
 	}
@@ -64,7 +64,7 @@ func TestKeysignErrorIsRound7(t *testing.T) {
 		},
 		{
 			name:  "raw secp round 7",
-			round: "thorchain.tsslib.ecdsa.signing.SignRound7Message",
+			round: "thornado.tsslib.ecdsa.signing.SignRound7Message",
 			want:  true,
 		},
 		{
@@ -74,7 +74,7 @@ func TestKeysignErrorIsRound7(t *testing.T) {
 		},
 		{
 			name:  "raw eddsa last round",
-			round: "thorchain.tsslib.eddsa.signing.SignRound3Message",
+			round: "thornado.tsslib.eddsa.signing.SignRound3Message",
 			want:  true,
 		},
 		{
@@ -88,7 +88,7 @@ func TestKeysignErrorIsRound7(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			err := NewKeysignError(thorchaintypes.Blame{Round: tc.round})
+			err := NewKeysignError(thornadotypes.Blame{Round: tc.round})
 			if got := err.IsRound7(); got != tc.want {
 				t.Fatalf("IsRound7(%q) = %v, want %v", tc.round, got, tc.want)
 			}

@@ -13,18 +13,14 @@ var _ = Suite(&ConstantsTestSuite{})
 
 func (ConstantsTestSuite) TestConstantName_String(c *C) {
 	constantNames := []ConstantName{
-		EmissionCurve,
 		BlocksPerYear,
-		OutboundTransactionFee,
-		PoolCycle,
 		MinimumNodesForBFT,
-		DesiredValidatorSet,
+		DesiredNodeSet,
 		ChurnInterval,
 		LackOfObservationPenalty,
 		SigningTransactionPeriod,
 		DoubleSignMaxAge,
-		MinimumBondInRune,
-		ValidatorMaxRewardRatio,
+		MinPenaltyPointsForBadNode,
 	}
 	for _, item := range constantNames {
 		c.Assert(item.String(), Not(Equals), "NA")

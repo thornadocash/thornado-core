@@ -14,7 +14,7 @@ import (
 
 	"github.com/thornadocash/go-thornado/bifrost/blockscanner"
 	"github.com/thornadocash/go-thornado/bifrost/db"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient/types"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/config"
 )
 

@@ -5,7 +5,7 @@ import (
 
 	. "gopkg.in/check.v1"
 
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/constants"
 )
 
@@ -16,7 +16,7 @@ var _ = Suite(&ConstantsProviderSuite{})
 // ----- mock bridges for constants provider tests -----
 
 type mockBridgeConstants struct {
-	thorclient.ThorchainBridge
+	thornadoclient.ThornadoBridge
 	constants map[string]int64
 	err       error
 }

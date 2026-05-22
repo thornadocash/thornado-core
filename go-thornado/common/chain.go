@@ -8,7 +8,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/thornadocash/go-thornado/common/cosmos"
-	"github.com/thornadocash/go-thornado/constants"
 )
 
 const (
@@ -64,7 +63,7 @@ func (c Chain) Equals(c2 Chain) bool {
 	return strings.EqualFold(c.String(), c2.String())
 }
 
-func (c Chain) IsTHORChain() bool {
+func (c Chain) IsThornado() bool {
 	return c.Equals(Thornado)
 }
 
@@ -133,16 +132,16 @@ func (c Chain) GetGasUnits() (gasRateUnits string, gasRateUnitsPerOne cosmos.Uin
 	}
 }
 
-// NativeGasToThorchain converts native gas units to Thornado units (1e8).
-func (c Chain) NativeGasToThorchain(native cosmos.Uint) cosmos.Uint {
+// NativeGasToThornado converts native gas units to Thornado units (1e8).
+func (c Chain) NativeGasToThornado(native cosmos.Uint) cosmos.Uint {
 	_, gasRateUnitsPerOne := c.GetGasUnits()
 	return native.MulUint64(One).Quo(gasRateUnitsPerOne)
 }
 
-// ThorchainToNativeGas converts Thornado units (1e8) to native gas units.
-func (c Chain) ThorchainToNativeGas(thorchain cosmos.Uint) cosmos.Uint {
+// ThornadoToNativeGas converts Thornado units (1e8) to native gas units.
+func (c Chain) ThornadoToNativeGas(thornado cosmos.Uint) cosmos.Uint {
 	_, gasRateUnitsPerOne := c.GetGasUnits()
-	return thorchain.Mul(gasRateUnitsPerOne).QuoUint64(One)
+	return thornado.Mul(gasRateUnitsPerOne).QuoUint64(One)
 }
 
 // GetGasAssetDecimal returns decimals for the gas asset of the given chain. Currently
@@ -186,10 +185,6 @@ func (c Chain) AddressPrefix(cn ChainNetwork) string {
 }
 
 // DustThreshold returns the min dust threshold for each chain
-// The min dust threshold defines the lower end of the withdraw range of memoless savers txs
-// The native coin value provided in a memoless tx defines a basis points amount of Withdraw or Add to a savers position as follows:
-// Withdraw range: (dust_threshold + 1) -> (dust_threshold + 10_000)
-// Add range: dust_threshold -> Inf
 // NOTE: these should all be in 8 decimal places
 func (c Chain) DustThreshold() cosmos.Uint {
 	switch c {
@@ -200,7 +195,7 @@ func (c Chain) DustThreshold() cosmos.Uint {
 	}
 }
 
-// P2WPKHOutputValue returns the value for P2WPKH outputs used for memo data
+// P2WPKHOutputValue returns the dust value for auxiliary P2WPKH outputs.
 func (c Chain) P2WPKHOutputValue() int64 {
 	switch c {
 	case BTCChain:
@@ -211,16 +206,9 @@ func (c Chain) P2WPKHOutputValue() int64 {
 	}
 }
 
-// MaxMemoLength returns the max memo length for each chain.
+// MaxMemoLength returns zero because Thornado does not accept transaction memos.
 func (c Chain) MaxMemoLength() int {
-	switch c {
-	case BTCChain:
-		return constants.MaxOpReturnDataSize
-	default:
-		// Default to the max memo size that we will process, regardless
-		// of any higher memo size capable on other chains.
-		return constants.MaxMemoSize
-	}
+	return 0
 }
 
 // DefaultCoinbase returns the default coinbase address for each chain, returns 0 if no
@@ -249,7 +237,7 @@ func (c Chain) ApproximateBlockMilliseconds() int64 {
 func (c Chain) InboundNotes() string {
 	switch c {
 	case BTCChain:
-		return "First output should be to inbound_address, second output should be change back to self, third output should be OP_RETURN, limited to 80 bytes. Do not send below the dust threshold. Do not use exotic spend scripts, locks or address formats."
+		return "First output should be to inbound_address, second output should be change back to self. Do not include data outputs, send below the dust threshold, or use exotic spend scripts, locks, or address formats."
 	case Thornado:
 		return "Broadcast a MsgDeposit to the Thornado network with the appropriate memo. Do not use multi-in, multi-out transactions."
 	default:

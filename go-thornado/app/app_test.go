@@ -1,6 +1,6 @@
 package app
 
-// TODO: add tests below with thorchain's setup (non-typical cosmos chain)
+// TODO: add tests below with thornado's setup (non-typical cosmos chain)
 
 import (
 	"encoding/base64"

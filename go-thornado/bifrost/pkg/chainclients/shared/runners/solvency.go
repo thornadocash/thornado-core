@@ -7,11 +7,11 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
-	"github.com/thornadocash/go-thornado/x/thorchain/types"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 // SolvencyCheckProvider methods that a SolvencyChecker implementation should have
@@ -25,7 +25,7 @@ type SolvencyCheckProvider interface {
 // not report current solvency status to Thornado anymore, this method is to ensure that the chain client will continue to do solvency check even when the chain has been halted
 func SolvencyCheckRunner(chain common.Chain,
 	provider SolvencyCheckProvider,
-	bridge thorclient.ThorchainBridge,
+	bridge thornadoclient.ThornadoBridge,
 	stopper <-chan struct{},
 	wg *sync.WaitGroup,
 	backOffDuration time.Duration,

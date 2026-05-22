@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/thornadocash/go-thornado/bifrost/observer"
 	"github.com/thornadocash/go-thornado/common"
-	"github.com/thornadocash/go-thornado/x/thorchain/ebifrost"
+	"github.com/thornadocash/go-thornado/x/thornado/ebifrost"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )

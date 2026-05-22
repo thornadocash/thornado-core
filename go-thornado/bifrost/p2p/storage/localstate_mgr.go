@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/binance-chain/tss-lib/ecdsa/keygen"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-peerstore/addr"
 	maddr "github.com/multiformats/go-multiaddr"
@@ -35,24 +34,12 @@ type KeygenLocalState struct {
 
 func (kls KeygenLocalState) Engine() string {
 	if kls.SigningEngine == "" {
-		return SigningEngineGG20
+		return SigningEngineFrost
 	}
 	return kls.SigningEngine
 }
 
-// keygenLocalStateV1 is the pre-EDDSA format necessary for migration.
-// TODO: remove after network has churned with new format.
-type keygenLocalStateV1 struct {
-	PubKey          string                    `json:"pub_key"`
-	LocalData       keygen.LocalPartySaveData `json:"local_data"`
-	ParticipantKeys []string                  `json:"participant_keys"`
-	LocalPartyKey   string                    `json:"local_party_key"`
-}
-
-// UnmarshalJSON implements custom JSON unmarshaling to handle format migration.
-// TODO: remove after network has churned with new format.
 func (kls *KeygenLocalState) UnmarshalJSON(data []byte) error {
-	// attempt unmarshal as the new format
 	type Alias KeygenLocalState
 	aux := &struct {
 		*Alias
@@ -60,28 +47,7 @@ func (kls *KeygenLocalState) UnmarshalJSON(data []byte) error {
 		Alias: (*Alias)(kls),
 	}
 
-	if err := json.Unmarshal(data, aux); err == nil {
-		return nil
-	}
-
-	// if that fails, attempt unmarshal as the old format
-	var oldState keygenLocalStateV1
-	if err := json.Unmarshal(data, &oldState); err != nil {
-		return fmt.Errorf("failed to unmarshal both new and old KeygenLocalState formats: %w", err)
-	}
-
-	// marshal the local data to bytes for the new format
-	localDataBytes, err := json.Marshal(oldState.LocalData)
-	if err != nil {
-		return fmt.Errorf("failed to marshal LocalPartySaveData: %w", err)
-	}
-
-	kls.PubKey = oldState.PubKey
-	kls.LocalData = localDataBytes
-	kls.ParticipantKeys = oldState.ParticipantKeys
-	kls.LocalPartyKey = oldState.LocalPartyKey
-
-	return nil
+	return json.Unmarshal(data, aux)
 }
 
 // LocalStateManager provide necessary methods to manage the local state, save it , and read it back

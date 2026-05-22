@@ -10,7 +10,7 @@ get_instances() {
   grep --no-filename -E -o "$PATTERN" "$@" || true
 }
 
-handlers=$(find x/thorchain/ -name "handler_*.go")
+handlers=$(find x/thornado/ -name "handler_*.go")
 
 for f in $handlers; do
   if [[ $f == *"_test"* ]]; then

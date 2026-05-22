@@ -2,11 +2,9 @@ package signer
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,15 +13,11 @@ import (
 
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/btcsuite/btcd/btcec"
-	btcecV2 "github.com/btcsuite/btcd/btcec/v2"
-	btcschnorr "github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cenkalti/backoff"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
-	tssp "github.com/thornadocash/go-thornado/bifrost/tss/go-tss/tss"
 
 	"github.com/thornadocash/go-thornado/app"
 	"github.com/thornadocash/go-thornado/bifrost/blockscanner"
@@ -31,53 +25,52 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/observer"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients"
 	"github.com/thornadocash/go-thornado/bifrost/pubkeymanager"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient/types"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/bifrost/tss"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
 	"github.com/thornadocash/go-thornado/constants"
-	ttypes "github.com/thornadocash/go-thornado/x/thorchain/types"
+	ttypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 // Signer will pull the tx out from thornado and then forward it to chain
 type Signer struct {
-	logger                zerolog.Logger
-	cfg                   config.Bifrost
-	wg                    *sync.WaitGroup
-	thorchainBridge       thorclient.ThorchainBridge
-	stopChan              chan struct{}
-	blockScanner          *blockscanner.BlockScanner
-	thorchainBlockScanner *ThorchainBlockScan
-	chains                map[common.Chain]chainclients.ChainClient
-	storage               SignerStorage
-	m                     *metrics.Metrics
-	errCounter            *prometheus.CounterVec
-	tssKeygen             *tss.KeyGen
-	tssServer             *tssp.TssServer
-	pubkeyMgr             pubkeymanager.PubKeyValidator
-	constantsProvider     *ConstantsProvider
-	localPubKeyECDSA      common.PubKey
-	localPubKeyEDDSA      common.PubKey
-	tssKeysignMetricMgr   *metrics.TssKeysignMetricMgr
-	observer              *observer.Observer
-	pipeline              *pipeline
+	logger               zerolog.Logger
+	cfg                  config.Bifrost
+	wg                   *sync.WaitGroup
+	thornadoBridge       thornadoclient.ThornadoBridge
+	stopChan             chan struct{}
+	blockScanner         *blockscanner.BlockScanner
+	thornadoBlockScanner *ThornadoBlockScan
+	chains               map[common.Chain]chainclients.ChainClient
+	storage              SignerStorage
+	m                    *metrics.Metrics
+	errCounter           *prometheus.CounterVec
+	tssKeygen            *tss.KeyGen
+	pubkeyMgr            pubkeymanager.PubKeyValidator
+	constantsProvider    *ConstantsProvider
+	localPubKeyECDSA     common.PubKey
+	localPubKeyEDDSA     common.PubKey
+	tssKeysignMetricMgr  *metrics.TssKeysignMetricMgr
+	observer             *observer.Observer
+	pipeline             *pipeline
 }
 
 // NewSigner create a new instance of signer
 func NewSigner(cfg config.Bifrost,
-	thorchainBridge thorclient.ThorchainBridge,
-	thorKeys *thorclient.Keys,
+	thornadoBridge thornadoclient.ThornadoBridge,
+	thorKeys *thornadoclient.Keys,
+	localState storage.LocalStateManager,
 	pubkeyMgr pubkeymanager.PubKeyValidator,
-	tssServer *tssp.TssServer,
 	chains map[common.Chain]chainclients.ChainClient,
 	m *metrics.Metrics,
 	tssKeysignMetricMgr *metrics.TssKeysignMetricMgr,
 	obs *observer.Observer,
 ) (*Signer, error) {
-	storage, err := NewSignerStore(cfg.Signer.SignerDbPath, cfg.Signer.LevelDB, thorchainBridge.GetConfig().SignerPasswd)
+	storage, err := NewSignerStore(cfg.Signer.SignerDbPath, cfg.Signer.LevelDB, thornadoBridge.GetConfig().SignerPasswd)
 	if err != nil {
-		return nil, fmt.Errorf("fail to create thorchain scan storage: %w", err)
+		return nil, fmt.Errorf("fail to create thornado scan storage: %w", err)
 	}
 	if tssKeysignMetricMgr == nil {
 		return nil, fmt.Errorf("fail to create signer , tss keysign metric manager is nil")
@@ -89,7 +82,7 @@ func NewSigner(cfg config.Bifrost,
 		if err != nil {
 			return nil, fmt.Errorf("failed to get address from thorKeys signer: %w", err)
 		}
-		na, err = thorchainBridge.GetNodeAccount(signerAddr.String())
+		na, err = thornadoBridge.GetNodeAccount(signerAddr.String())
 		if err != nil {
 			return nil, fmt.Errorf("fail to get node account from thornado,err:%w", err)
 		}
@@ -113,41 +106,40 @@ func NewSigner(cfg config.Bifrost,
 	cfg.Signer.BlockScanner.ChainID = common.Thornado // hard code to thornado
 
 	// Create pubkey manager and add our private key
-	thorchainBlockScanner, err := NewThorchainBlockScan(cfg.Signer.BlockScanner, storage, thorchainBridge, m, pubkeyMgr)
+	thornadoBlockScanner, err := NewThornadoBlockScan(cfg.Signer.BlockScanner, storage, thornadoBridge, m, pubkeyMgr)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create thornado block scan: %w", err)
 	}
 
-	blockScanner, err := blockscanner.NewBlockScanner(cfg.Signer.BlockScanner, storage, m, thorchainBridge, thorchainBlockScanner)
+	blockScanner, err := blockscanner.NewBlockScanner(cfg.Signer.BlockScanner, storage, m, thornadoBridge, thornadoBlockScanner)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create block scanner: %w", err)
 	}
 
-	kg, err := tss.NewTssKeyGen(thorKeys, tssServer, thorchainBridge)
+	kg, err := tss.NewTssKeyGen(thorKeys, localState, thornadoBridge)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create Tss Key gen,err:%w", err)
 	}
-	constantProvider := NewConstantsProvider(thorchainBridge)
+	constantProvider := NewConstantsProvider(thornadoBridge)
 	return &Signer{
-		logger:                log.With().Str("module", "signer").Logger(),
-		cfg:                   cfg,
-		wg:                    &sync.WaitGroup{},
-		stopChan:              make(chan struct{}),
-		blockScanner:          blockScanner,
-		thorchainBlockScanner: thorchainBlockScanner,
-		chains:                chains,
-		m:                     m,
-		storage:               storage,
-		errCounter:            m.GetCounterVec(metrics.SignerError),
-		pubkeyMgr:             pubkeyMgr,
-		thorchainBridge:       thorchainBridge,
-		tssKeygen:             kg,
-		tssServer:             tssServer,
-		constantsProvider:     constantProvider,
-		localPubKeyECDSA:      na.PubKeySet.Secp256k1,
-		localPubKeyEDDSA:      na.PubKeySet.Ed25519,
-		tssKeysignMetricMgr:   tssKeysignMetricMgr,
-		observer:              obs,
+		logger:               log.With().Str("module", "signer").Logger(),
+		cfg:                  cfg,
+		wg:                   &sync.WaitGroup{},
+		stopChan:             make(chan struct{}),
+		blockScanner:         blockScanner,
+		thornadoBlockScanner: thornadoBlockScanner,
+		chains:               chains,
+		m:                    m,
+		storage:              storage,
+		errCounter:           m.GetCounterVec(metrics.SignerError),
+		pubkeyMgr:            pubkeyMgr,
+		thornadoBridge:       thornadoBridge,
+		tssKeygen:            kg,
+		constantsProvider:    constantProvider,
+		localPubKeyECDSA:     na.PubKeySet.Secp256k1,
+		localPubKeyEDDSA:     na.PubKeySet.Ed25519,
+		tssKeysignMetricMgr:  tssKeysignMetricMgr,
+		observer:             obs,
 	}, nil
 }
 
@@ -163,10 +155,10 @@ func (s *Signer) getChain(chainID common.Chain) (chainclients.ChainClient, error
 // Start signer process
 func (s *Signer) Start() error {
 	s.wg.Add(1)
-	go s.processTxnOut(s.thorchainBlockScanner.GetTxOutMessages(), 1)
+	go s.processTxnOut(s.thornadoBlockScanner.GetTxOutMessages(), 1)
 
 	s.wg.Add(1)
-	go s.processKeygen(s.thorchainBlockScanner.GetKeygenMessages())
+	go s.processKeygen(s.thornadoBlockScanner.GetKeygenMessages())
 
 	s.wg.Add(1)
 	go s.signTransactions()
@@ -191,7 +183,7 @@ func (s *Signer) signTransactions() {
 			return
 		default:
 			// When Thornado is catching up , bifrost might get stale data from thornado , thus it shall pause signing
-			catchingUp, err := s.thorchainBridge.IsCatchingUp()
+			catchingUp, err := s.thornadoBridge.IsCatchingUp()
 			if err != nil {
 				s.logger.Error().Err(err).Msg("fail to get thornado sync status")
 				time.Sleep(constants.ThornadoBlockTime)
@@ -223,16 +215,7 @@ func runWithContext(ctx context.Context, fn func() ([]byte, *types.TxInItem, err
 }
 
 func (s *Signer) processTransactions() {
-	signerConcurrency, err := s.thorchainBridge.GetMimir(constants.SignerConcurrency.String())
-	if err != nil {
-		s.logger.Error().Err(err).Msg("fail to get signer concurrency mimir")
-		return
-	}
-
-	// default to 10 if unset
-	if signerConcurrency <= 0 {
-		signerConcurrency = 10
-	}
+	const signerConcurrency = int64(10)
 
 	// if previously set to different concurrency, drain existing signings
 	if s.pipeline != nil && s.pipeline.concurrency != signerConcurrency {
@@ -242,6 +225,7 @@ func (s *Signer) processTransactions() {
 
 	// if not set, or set to different concurrency, create new pipeline
 	if s.pipeline == nil {
+		var err error
 		s.pipeline, err = newPipeline(signerConcurrency)
 		if err != nil {
 			s.logger.Error().Err(err).Msg("fail to create new pipeline")
@@ -250,7 +234,7 @@ func (s *Signer) processTransactions() {
 	}
 
 	// process transactions
-	s.pipeline.SpawnSignings(s, s.thorchainBridge)
+	s.pipeline.SpawnSignings(s, s.thornadoBridge)
 }
 
 // processTxnOut processes outbound TxOuts and save them to storage
@@ -266,7 +250,7 @@ func (s *Signer) processTxnOut(ch <-chan types.TxOut, idx int) {
 			if !more {
 				return
 			}
-			s.logger.Info().Msgf("Received a TxOut Array of %v from the Thorchain", txOut)
+			s.logger.Info().Msgf("Received a TxOut Array of %v from the Thornado", txOut)
 			items := make([]TxOutStoreItem, 0, len(txOut.TxArray))
 
 			for i, tx := range txOut.TxArray {
@@ -298,7 +282,7 @@ func (s *Signer) processKeygen(ch <-chan ttypes.KeygenBlock) {
 }
 
 func (s *Signer) scheduleKeygenRetry(keygenBlock ttypes.KeygenBlock) bool {
-	churnRetryInterval, err := s.thorchainBridge.GetMimir(constants.ChurnRetryInterval.String())
+	churnRetryInterval, err := s.thornadoBridge.GetMimir(constants.ChurnRetryInterval.String())
 	if err != nil {
 		s.logger.Error().Err(err).Msg("fail to get churn retry mimir")
 		return false
@@ -306,7 +290,7 @@ func (s *Signer) scheduleKeygenRetry(keygenBlock ttypes.KeygenBlock) bool {
 	if churnRetryInterval <= 0 {
 		churnRetryInterval = constants.NewConstantValue().GetInt64Value(constants.ChurnRetryInterval)
 	}
-	keygenRetryInterval, err := s.thorchainBridge.GetMimir(constants.KeygenRetryInterval.String())
+	keygenRetryInterval, err := s.thornadoBridge.GetMimir(constants.KeygenRetryInterval.String())
 	if err != nil {
 		s.logger.Error().Err(err).Msg("fail to get keygen retries mimir")
 		return false
@@ -325,7 +309,7 @@ func (s *Signer) scheduleKeygenRetry(keygenBlock ttypes.KeygenBlock) bool {
 		return false
 	}
 
-	height, err := s.thorchainBridge.GetBlockHeight()
+	height, err := s.thornadoBridge.GetBlockHeight()
 	if err != nil {
 		s.logger.Error().Err(err).Msg("fail to get last chain height")
 		return false
@@ -343,7 +327,7 @@ func (s *Signer) scheduleKeygenRetry(keygenBlock ttypes.KeygenBlock) bool {
 		// every block, try to start processing again
 		for {
 			time.Sleep(constants.ThornadoBlockTime)
-			currentHeight, err := s.thorchainBridge.GetBlockHeight()
+			currentHeight, err := s.thornadoBridge.GetBlockHeight()
 			if err != nil {
 				s.logger.Error().Err(err).Msg("fail to get last chain height")
 			}
@@ -389,7 +373,7 @@ func (s *Signer) processKeygenBlock(keygenBlock ttypes.KeygenBlock) {
 		}
 
 		// re-enqueue the keygen block to retry if we failed to generate a key
-		if pubKey.Secp256k1.IsEmpty() || pubKey.Ed25519.IsEmpty() {
+		if pubKey.Secp256k1.IsEmpty() {
 			if s.scheduleKeygenRetry(keygenBlock) {
 				return
 			}
@@ -399,7 +383,7 @@ func (s *Signer) processKeygenBlock(keygenBlock ttypes.KeygenBlock) {
 		// generate a verification signature to ensure we can sign with the new key
 		secp256k1Sig := s.secp256k1VerificationSignature(pubKey.Secp256k1)
 
-		if err = s.sendKeygenToThorchain(keygenBlock.Height, pubKey.Secp256k1, secp256k1Sig, blame, keygenReq.GetMembers(), keygenReq.Type, keygenTime, pubKey.Ed25519); err != nil {
+		if err = s.sendKeygenToThornado(keygenBlock.Height, pubKey.Secp256k1, secp256k1Sig, blame, keygenReq.GetMembers(), keygenReq.Type, keygenTime, pubKey.Ed25519); err != nil {
 			s.errCounter.WithLabelValues("fail_to_broadcast_keygen", "").Inc()
 			s.logger.Error().Err(err).Msg("fail to broadcast keygen")
 		}
@@ -417,90 +401,11 @@ func (s *Signer) processKeygenBlock(keygenBlock ttypes.KeygenBlock) {
 	}
 }
 
-// secp256k1VerificationSignature will make a best effort to sign the public key with
-// its own private key as a sanity check to ensure parties are able to sign. The
-// signature will be included in the TssPool message if successful, and verified by
-// Thornado before the keygen is accepted.
 func (s *Signer) secp256k1VerificationSignature(pk common.PubKey) []byte {
-	// create keysign instance
-	ks, err := tss.NewKeySign(s.tssServer, s.thorchainBridge)
-	if err != nil {
-		s.logger.Error().Err(err).Msg("fail to create keysign for secp256k1 check signing")
-		return nil
-	}
-	ks.Start()
-	defer ks.Stop()
-
-	// sign the public key with its own private key
-	data := []byte(pk.String())
-	sigBytes, _, err := ks.RemoteSign(data, common.SigningAlgoSecp256k1, pk.String())
-	if err != nil {
-		// this is expected in some cases if we were not in the signing party
-		s.logger.Info().Err(err).Msg("fail secp256k1 check signing")
-		return nil
-
-	} else if sigBytes == nil {
-		// This is expected in other cases when not in the signing party,
-		// when RemoteSign's len(resp.R) and len(resp.S) are both nil.
-		return nil
-	}
-
-	if s.tssServer.LocalStateEngine(pk.String()) == storage.SigningEngineFrost {
-		if err := schnorrVerificationSignature(pk, sigBytes); err != nil {
-			s.logger.Error().Err(err).Msg("schnorr check signature verification failed")
-		} else {
-			s.logger.Info().Msg("schnorr check signature verified")
-		}
-		return sigBytes
-	}
-
-	// build the signature
-	r := new(big.Int).SetBytes(sigBytes[:32])
-	ss := new(big.Int).SetBytes(sigBytes[32:])
-	signature := &btcec.Signature{R: r, S: ss}
-
-	// verify the signature (thornado will also verify and reject if invalid)
-	spk, err := pk.Secp256K1()
-	if err != nil {
-		s.logger.Error().Err(err).Msg("fail to get secp256k1 pubkey")
-	}
-	if !signature.Verify(data, spk) {
-		s.logger.Error().Msg("secp256k1 check signature verification failed")
-	} else {
-		s.logger.Info().Msg("secp256k1 check signature verified")
-	}
-
-	return sigBytes
-}
-
-func schnorrVerificationSignature(pk common.PubKey, sigBytes []byte) error {
-	if len(sigBytes) != btcschnorr.SignatureSize {
-		return fmt.Errorf("invalid schnorr signature length: %d", len(sigBytes))
-	}
-	spk, err := pk.Secp256K1()
-	if err != nil {
-		return fmt.Errorf("fail to get secp256k1 pubkey: %w", err)
-	}
-	pubKey, err := btcecV2.ParsePubKey(spk.SerializeCompressed())
-	if err != nil {
-		return fmt.Errorf("fail to parse schnorr pubkey: %w", err)
-	}
-	signature, err := btcschnorr.ParseSignature(sigBytes)
-	if err != nil {
-		return fmt.Errorf("invalid schnorr signature: %w", err)
-	}
-	data := []byte(pk.String())
-	if len(data) != sha256.Size {
-		digest := sha256.Sum256(data)
-		data = digest[:]
-	}
-	if !signature.Verify(data, pubKey) {
-		return fmt.Errorf("schnorr signature verification failed")
-	}
 	return nil
 }
 
-func (s *Signer) sendKeygenToThorchain(height int64, poolPk common.PubKey, secp256k1Signature []byte, blame []ttypes.Blame, input common.PubKeys, keygenType ttypes.KeygenType, keygenTime int64, poolPubKeyEddsa common.PubKey) error {
+func (s *Signer) sendKeygenToThornado(height int64, poolPk common.PubKey, secp256k1Signature []byte, blame []ttypes.Blame, input common.PubKeys, keygenType ttypes.KeygenType, keygenTime int64, poolPubKeyEddsa common.PubKey) error {
 	// collect supported chains in the configuration
 	chains := common.Chains{
 		common.Thornado,
@@ -548,15 +453,15 @@ func (s *Signer) sendKeygenToThorchain(height int64, poolPk common.PubKey, secp2
 
 	var keygenMsg sdktypes.Msg
 	if len(keysharesFrost) > 0 {
-		if bridge, ok := s.thorchainBridge.(interface {
+		if bridge, ok := s.thornadoBridge.(interface {
 			GetKeygenStdTxWithFrost(common.PubKey, []byte, []byte, []ttypes.Blame, common.PubKeys, ttypes.KeygenType, common.Chains, int64, int64, common.PubKey, []byte, []byte) (sdktypes.Msg, error)
 		}); ok {
 			keygenMsg, err = bridge.GetKeygenStdTxWithFrost(poolPk, secp256k1Signature, keyshares, blame, input, keygenType, chains, height, keygenTime, poolPubKeyEddsa, keysharesEddsa, keysharesFrost)
 		} else {
-			keygenMsg, err = s.thorchainBridge.GetKeygenStdTx(poolPk, secp256k1Signature, keyshares, blame, input, keygenType, chains, height, keygenTime, poolPubKeyEddsa, keysharesEddsa)
+			keygenMsg, err = s.thornadoBridge.GetKeygenStdTx(poolPk, secp256k1Signature, keyshares, blame, input, keygenType, chains, height, keygenTime, poolPubKeyEddsa, keysharesEddsa)
 		}
 	} else {
-		keygenMsg, err = s.thorchainBridge.GetKeygenStdTx(poolPk, secp256k1Signature, keyshares, blame, input, keygenType, chains, height, keygenTime, poolPubKeyEddsa, keysharesEddsa)
+		keygenMsg, err = s.thornadoBridge.GetKeygenStdTx(poolPk, secp256k1Signature, keyshares, blame, input, keygenType, chains, height, keygenTime, poolPubKeyEddsa, keysharesEddsa)
 	}
 	if err != nil {
 		return fmt.Errorf("fail to get keygen id: %w", err)
@@ -566,10 +471,10 @@ func (s *Signer) sendKeygenToThorchain(height int64, poolPk common.PubKey, secp2
 	bf := backoff.NewExponentialBackOff()
 	bf.MaxElapsedTime = time.Minute
 	return backoff.Retry(func() error {
-		txID, err := s.thorchainBridge.Broadcast(keygenMsg)
+		txID, err := s.thornadoBridge.Broadcast(keygenMsg)
 		if err != nil {
 			s.logger.Warn().Err(err).Msg("fail to send keygen tx to thornado")
-			s.errCounter.WithLabelValues("fail_to_send_to_thorchain", strHeight).Inc()
+			s.errCounter.WithLabelValues("fail_to_send_to_thornado", strHeight).Inc()
 			return fmt.Errorf("fail to send the tx to thornado: %w", err)
 		}
 		s.logger.Info().Stringer("txid", txID).Int64("block", height).Msg("sent keygen tx to thornado")
@@ -609,7 +514,7 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 		tx.Checkpoint = item.Checkpoint
 	}
 
-	blockHeight, err := s.thorchainBridge.GetBlockHeight()
+	blockHeight, err := s.thornadoBridge.GetBlockHeight()
 	if err != nil {
 		s.logger.Error().Err(err).Msgf("fail to get block height")
 		return nil, nil, err
@@ -626,7 +531,7 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 	if item.Round7Retry {
 		mimirKey := "MAXOUTBOUNDATTEMPTS"
 		var maxOutboundAttemptsMimir int64
-		maxOutboundAttemptsMimir, err = s.thorchainBridge.GetMimir(mimirKey)
+		maxOutboundAttemptsMimir, err = s.thornadoBridge.GetMimir(mimirKey)
 		if err != nil {
 			s.logger.Err(err).Msgf("fail to get %s", mimirKey)
 			return nil, nil, err
@@ -643,7 +548,7 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 
 		// determine if the round 7 retry is for an inactive vault
 		var vault ttypes.Vault
-		vault, err = s.thorchainBridge.GetVault(item.TxOutItem.VaultPubKey.String())
+		vault, err = s.thornadoBridge.GetVault(item.TxOutItem.VaultPubKey.String())
 		if err != nil {
 			log.Err(err).
 				Stringer("vault_pubkey", item.TxOutItem.VaultPubKey).
@@ -668,7 +573,7 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 		return nil, nil, err
 	}
 	mimirKey := "HALTSIGNING"
-	haltSigningGlobalMimir, err := s.thorchainBridge.GetMimir(mimirKey)
+	haltSigningGlobalMimir, err := s.thornadoBridge.GetMimir(mimirKey)
 	if err != nil {
 		s.logger.Err(err).Msgf("fail to get %s", mimirKey)
 		return nil, nil, err
@@ -678,7 +583,7 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 		return nil, nil, nil
 	}
 	mimirKey = fmt.Sprintf(constants.MimirTemplateHaltSigning, tx.Chain)
-	haltSigningMimir, err := s.thorchainBridge.GetMimir(mimirKey)
+	haltSigningMimir, err := s.thornadoBridge.GetMimir(mimirKey)
 	if err != nil {
 		s.logger.Err(err).Msgf("fail to get %s", mimirKey)
 		return nil, nil, err
@@ -722,7 +627,7 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 	// been signed already, and we can skip. This helps us not get stuck on
 	// a task that we'll never sign, because 2/3rds already has and will
 	// never be available to sign again.
-	txOut, err := s.thorchainBridge.GetKeysign(height, tx.VaultPubKey.String())
+	txOut, err := s.thornadoBridge.GetKeysign(height, tx.VaultPubKey.String())
 	if err != nil {
 		s.logger.Error().Err(err).Msg("fail to get keysign items")
 		return nil, nil, err

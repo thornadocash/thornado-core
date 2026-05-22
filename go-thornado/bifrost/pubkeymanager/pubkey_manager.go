@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/constants"
 )
@@ -48,7 +48,7 @@ type pubKeyInfo struct {
 
 // PubKeyManager manager an always up to date pubkeys , which implement PubKeyValidator interface
 type PubKeyManager struct {
-	bridge           thorclient.ThorchainBridge
+	bridge           thornadoclient.ThornadoBridge
 	pubkeys          []pubKeyInfo
 	rwMutex          *sync.RWMutex
 	logger           zerolog.Logger
@@ -61,7 +61,7 @@ type PubKeyManager struct {
 }
 
 // NewPubKeyManager create a new instance of PubKeyManager
-func NewPubKeyManager(bridge thorclient.ThorchainBridge, m *metrics.Metrics) (*PubKeyManager, error) {
+func NewPubKeyManager(bridge thornadoclient.ThornadoBridge, m *metrics.Metrics) (*PubKeyManager, error) {
 	return &PubKeyManager{
 		logger:           log.With().Str("module", "public_key_mgr").Logger(),
 		bridge:           bridge,
@@ -89,7 +89,7 @@ func (pkm *PubKeyManager) Stop() error {
 	return nil
 }
 
-func (pkm *PubKeyManager) updateContractAddresses(pairs []thorclient.PubKeyContractAddressPair) {
+func (pkm *PubKeyManager) updateContractAddresses(pairs []thornadoclient.PubKeyContractAddressPair) {
 	pkm.rwMutex.Lock()
 	defer pkm.rwMutex.Unlock()
 	for _, pair := range pairs {
@@ -359,7 +359,7 @@ func (pkm *PubKeyManager) IsValidPoolAddress(addr string, chain common.Chain) (b
 }
 
 // getPubkeys from Thornado
-func (pkm *PubKeyManager) getPubkeys() ([]thorclient.PubKeyContractAddressPair, error) {
+func (pkm *PubKeyManager) getPubkeys() ([]thornadoclient.PubKeyContractAddressPair, error) {
 	return pkm.bridge.GetPubKeys()
 }
 

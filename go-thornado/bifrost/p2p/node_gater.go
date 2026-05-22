@@ -15,18 +15,17 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p/conversion"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
-	"github.com/thornadocash/go-thornado/constants"
-	"github.com/thornadocash/go-thornado/x/thorchain/types"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
-// NodeGater implements ConnectionGater to restrict P2P connections to only THORChain validator nodes.
-// It periodically fetches the list of active node accounts from THORChain and caches their peer IDs.
+// NodeGater implements ConnectionGater to restrict P2P connections to only Thornado validator nodes.
+// It periodically fetches the list of active node accounts from Thornado and caches their peer IDs.
 type NodeGater struct {
-	bridge          thorclient.ThorchainBridge
+	bridge          thornadoclient.ThornadoBridge
 	logger          zerolog.Logger
 	allowedPeers    map[peer.ID]string // maps peer ID to node address
-	gateDisabled    bool               // when true, gating is bypassed (controlled by P2PGateDisabled mimir)
+	gateDisabled    bool
 	mu              sync.RWMutex
 	refreshInterval time.Duration
 	stopChan        chan struct{}
@@ -34,9 +33,9 @@ type NodeGater struct {
 	wg              sync.WaitGroup
 }
 
-// NewNodeGater creates a new ConnectionGater that only allows connections from THORChain nodes.
-// refreshInterval determines how often the node list is refreshed from THORChain (e.g., 60 seconds).
-func NewNodeGater(bridge thorclient.ThorchainBridge, refreshInterval time.Duration) *NodeGater {
+// NewNodeGater creates a new ConnectionGater that only allows connections from Thornado nodes.
+// refreshInterval determines how often the node list is refreshed from Thornado (e.g., 60 seconds).
+func NewNodeGater(bridge thornadoclient.ThornadoBridge, refreshInterval time.Duration) *NodeGater {
 	gater := &NodeGater{
 		bridge:          bridge,
 		logger:          log.With().Str("module", "node_gater").Logger(),
@@ -86,28 +85,12 @@ func (g *NodeGater) Stop() {
 	}
 }
 
-// refreshAllowlist fetches the current list of node accounts from THORChain
+// refreshAllowlist fetches the current list of node accounts from Thornado
 // and updates the allowlist of peer IDs that are permitted to connect.
 // Allows any node with bond >= the current minimum bond requirement.
 // This ensures nodes that are jailed or otherwise temporarily excluded from
 // preflight checks can still maintain p2p connectivity and recover.
-// Checks P2PGateDisabled mimir to determine if gating should be bypassed.
 func (g *NodeGater) refreshAllowlist() {
-	// Check if gating is disabled via mimir
-	mimirValue, err := g.bridge.GetMimir(constants.P2PGateDisabled.String())
-	if err != nil {
-		g.logger.Warn().Err(err).Msg("failed to fetch P2PGateDisabled mimir, assuming gating enabled")
-	} else {
-		g.mu.Lock()
-		g.gateDisabled = mimirValue > 0
-		g.mu.Unlock()
-	}
-
-	if mimirValue > 0 {
-		g.logger.Info().Int64("mimir_value", mimirValue).Msg("P2P gating disabled by mimir")
-		return
-	}
-
 	nodes, err := g.bridge.GetNodeAccounts()
 	if err != nil {
 		g.logger.Error().Err(err).Msg("failed to fetch node accounts, keeping existing allowlist")
@@ -147,26 +130,12 @@ func (g *NodeGater) refreshAllowlist() {
 }
 
 // getMinimumBond fetches the current minimum bond requirement.
-// It first checks for a mimir override, then falls back to the constants.
 func (g *NodeGater) getMinimumBond() (int64, error) {
-	// Check for mimir override first
-	mimirBond, err := g.bridge.GetMimir(constants.MinimumBondInRune.String())
+	mimirBond, err := g.bridge.GetMimir("BondStartAmountSats")
 	if err == nil && mimirBond > 0 {
 		return mimirBond, nil
 	}
-
-	// Fall back to constants
-	consts, err := g.bridge.GetConstants()
-	if err != nil {
-		return 0, fmt.Errorf("failed to get constants: %w", err)
-	}
-
-	minBond, ok := consts[constants.MinimumBondInRune.String()]
-	if !ok {
-		return 0, fmt.Errorf("MinimumBondInRune not found in constants")
-	}
-
-	return minBond, nil
+	return 100_000_000, nil
 }
 
 // addNodeToAllowlist converts a node's pubkey to a peer ID and adds it to the allowlist

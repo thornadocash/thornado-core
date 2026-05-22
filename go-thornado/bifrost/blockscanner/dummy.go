@@ -1,6 +1,6 @@
 package blockscanner
 
-import "github.com/thornadocash/go-thornado/bifrost/thorclient/types"
+import "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 
 type DummyFetcher struct {
 	Tx  types.TxIn

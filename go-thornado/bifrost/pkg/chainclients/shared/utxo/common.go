@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/common"
 )
 
@@ -15,7 +15,7 @@ type AsgardCache struct {
 	FetchedAt time.Time
 }
 
-func GetAsgardAddress(chain common.Chain, bridge thorclient.ThorchainBridge) ([]common.Address, error) {
+func GetAsgardAddress(chain common.Chain, bridge thornadoclient.ThornadoBridge) ([]common.Address, error) {
 	vaults, err := bridge.GetAsgardPubKeys()
 	if err != nil {
 		return nil, fmt.Errorf("fail to get asgards : %w", err)
@@ -39,12 +39,12 @@ func GetAsgardAddress(chain common.Chain, bridge thorclient.ThorchainBridge) ([]
 }
 
 // GetAsgardAddressCached returns asgard addresses from a per-client cache when fresh,
-// otherwise refreshes the cache from THORChain and preserves last-known addresses when
+// otherwise refreshes the cache from Thornado and preserves last-known addresses when
 // refresh fails or returns an empty set.
 //
 // When refresh fails and stale cache exists, cached addresses are returned together with
 // the refresh error so callers can decide whether/how to surface it.
-func GetAsgardAddressCached(cache *atomic.Pointer[AsgardCache], chain common.Chain, bridge thorclient.ThorchainBridge, ttl time.Duration) ([]common.Address, error) {
+func GetAsgardAddressCached(cache *atomic.Pointer[AsgardCache], chain common.Chain, bridge thornadoclient.ThornadoBridge, ttl time.Duration) ([]common.Address, error) {
 	cached := cache.Load()
 	if cached != nil && time.Since(cached.FetchedAt) < ttl {
 		return cached.Addresses, nil

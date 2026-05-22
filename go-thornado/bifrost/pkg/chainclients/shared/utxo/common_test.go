@@ -8,7 +8,7 @@ import (
 	"github.com/cometbft/cometbft/crypto/secp256k1"
 	. "gopkg.in/check.v1"
 
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/common"
 )
 
@@ -17,13 +17,13 @@ type AsgardCacheTestSuite struct{}
 var _ = Suite(&AsgardCacheTestSuite{})
 
 type mockAsgardBridge struct {
-	thorclient.ThorchainBridge
-	asgardPubKeys []thorclient.PubKeyContractAddressPair
+	thornadoclient.ThornadoBridge
+	asgardPubKeys []thornadoclient.PubKeyContractAddressPair
 	err           error
 	calls         int
 }
 
-func (m *mockAsgardBridge) GetAsgardPubKeys() ([]thorclient.PubKeyContractAddressPair, error) {
+func (m *mockAsgardBridge) GetAsgardPubKeys() ([]thornadoclient.PubKeyContractAddressPair, error) {
 	m.calls++
 	if m.err != nil {
 		return nil, m.err
@@ -31,11 +31,11 @@ func (m *mockAsgardBridge) GetAsgardPubKeys() ([]thorclient.PubKeyContractAddres
 	return m.asgardPubKeys, nil
 }
 
-func makeAsgardPubKeyPair(c *C) thorclient.PubKeyContractAddressPair {
+func makeAsgardPubKeyPair(c *C) thornadoclient.PubKeyContractAddressPair {
 	pubKey, err := common.NewPubKeyFromCrypto(secp256k1.GenPrivKey().PubKey())
 	c.Assert(err, IsNil)
 
-	return thorclient.PubKeyContractAddressPair{
+	return thornadoclient.PubKeyContractAddressPair{
 		PubKey: pubKey,
 		Algo:   common.SigningAlgoSecp256k1,
 	}
@@ -75,7 +75,7 @@ func (s *AsgardCacheTestSuite) TestGetAsgardAddressCachedRefreshSuccess(c *C) {
 
 	var cache atomic.Pointer[AsgardCache]
 	bridge := &mockAsgardBridge{
-		asgardPubKeys: []thorclient.PubKeyContractAddressPair{pair},
+		asgardPubKeys: []thornadoclient.PubKeyContractAddressPair{pair},
 	}
 
 	addresses, err := GetAsgardAddressCached(&cache, chain, bridge, time.Second)

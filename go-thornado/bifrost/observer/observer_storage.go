@@ -9,7 +9,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 
 	"github.com/thornadocash/go-thornado/bifrost/db"
-	"github.com/thornadocash/go-thornado/bifrost/thorclient/types"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/config"
 )
 

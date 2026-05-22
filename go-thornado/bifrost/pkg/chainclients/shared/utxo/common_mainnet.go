@@ -4,12 +4,12 @@
 package utxo
 
 import (
-	"github.com/thornadocash/go-thornado/bifrost/thorclient"
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
 )
 
-func GetConfMulBasisPoint(chain string, bridge thorclient.ThorchainBridge) (cosmos.Uint, error) {
+func GetConfMulBasisPoint(chain string, bridge thornadoclient.ThornadoBridge) (cosmos.Uint, error) {
 	confMultiplier, err := bridge.GetMimirWithRef(constants.MimirTemplateConfMultiplierBasisPoints, chain)
 	// should never be negative
 	if err != nil || confMultiplier <= 0 {
@@ -18,7 +18,7 @@ func GetConfMulBasisPoint(chain string, bridge thorclient.ThorchainBridge) (cosm
 	return cosmos.NewUint(uint64(confMultiplier)), nil
 }
 
-func MaxConfAdjustment(confirm uint64, chain string, bridge thorclient.ThorchainBridge) (uint64, error) {
+func MaxConfAdjustment(confirm uint64, chain string, bridge thornadoclient.ThornadoBridge) (uint64, error) {
 	maxConfirmations, err := bridge.GetMimirWithRef(constants.MimirTemplateMaxConfirmations, chain)
 	if err != nil {
 		return confirm, err

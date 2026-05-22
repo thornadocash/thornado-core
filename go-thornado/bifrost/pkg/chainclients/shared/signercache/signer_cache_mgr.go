@@ -62,7 +62,7 @@ func (cm *CacheManager) SetSigned(txOutItemHash, vaultKey, transactionHash strin
 // GetSignedTxHash surfaces the tx hash so callers can verify on-chain inclusion
 // before clearing the entry. The entry is never removed on read — only by explicit
 // RemoveSigned after chain-side verification — because deleting on expiry alone
-// can double-spend if thorchain observation consensus lags actual inclusion.
+// can double-spend if thornado observation consensus lags actual inclusion.
 func (cm *CacheManager) SetSignedWithExpiry(txOutItemHash, vaultKey, transactionHash string, expiryUnixMs int64) error {
 	if err := cm.storageAccessor.SetSignedWithExpiry(txOutItemHash, expiryUnixMs, transactionHash); err != nil {
 		cm.logger.Err(err).

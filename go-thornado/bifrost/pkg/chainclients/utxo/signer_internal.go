@@ -8,12 +8,11 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/thornadocash/go-thornado/constants"
 
 	"github.com/btcsuite/btcutil"
 	btctxscript "github.com/thornadocash/go-thornado/bifrost/txscript/txscript"
 
-	stypes "github.com/thornadocash/go-thornado/bifrost/thorclient/types"
+	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 )
@@ -234,7 +233,7 @@ func (c *Client) getSourceScript(tx stypes.TxOutItem) ([]byte, error) {
 // estimateTxSize builds a dummy transaction with the given inputs and outputs and
 // returns the exact virtual size (vbytes) according to BIP141.
 // For non-segwit chains, it returns the actual serialized size.
-func (c *Client) estimateTxSize(txes []btcjson.ListUnspentResult, memoScripts [][]byte, customerScript, changeScript []byte) int64 {
+func (c *Client) estimateTxSize(txes []btcjson.ListUnspentResult, customerScript, changeScript []byte) int64 {
 	tx := wire.NewMsgTx(wire.TxVersion)
 
 	// Add inputs with realistic witness/scriptSig data for size estimation
@@ -259,17 +258,6 @@ func (c *Client) estimateTxSize(txes []btcjson.ListUnspentResult, memoScripts []
 
 	// Add change output (will be added if balance > 0)
 	tx.AddTxOut(wire.NewTxOut(0, changeScript))
-
-	// Add memo outputs
-	if len(memoScripts) > 0 {
-		// First script is OP_RETURN (value = 0)
-		tx.AddTxOut(wire.NewTxOut(0, memoScripts[0]))
-
-		// Additional scripts are P2WPKH/P2PKH outputs with dust value
-		for _, script := range memoScripts[1:] {
-			tx.AddTxOut(wire.NewTxOut(0, script)) // value doesn't affect size
-		}
-	}
 
 	strippedSize := tx.SerializeSizeStripped()
 	totalSize := tx.SerializeSize()
@@ -346,17 +334,8 @@ func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx,
 	if err != nil {
 		return nil, nil, fmt.Errorf("fail to get pay to address script: %w", err)
 	}
-	nullDataScripts, err := MemoToScripts(tx.Memo, btctxscript.MaxDataCarrierSize, btctxscript.NullDataScript, btctxscript.PayToWitnessScript)
-	if err != nil {
-		return nil, nil, fmt.Errorf("fail to generate null data script: %w", err)
-	}
 
-	// For memoless outbounds, allow empty nullDataScripts
-	if len(nullDataScripts) == 0 && len(tx.Memo) != 0 {
-		return nil, nil, fmt.Errorf("no null data scripts generated, memo will not be included in the transaction")
-	}
-
-	totalSize := c.estimateTxSize(txes, nullDataScripts, buf, sourceScript)
+	totalSize := c.estimateTxSize(txes, buf, sourceScript)
 
 	coinToCustomer := tx.Coins.GetCoin(c.cfg.ChainID.GetGasAsset())
 
@@ -394,23 +373,16 @@ func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx,
 		c.log.Err(err).Msg("fail to save gas info to UTXO storage")
 	}
 
-	// Calculate the total cost of P2WPKH outputs for extended memos
-	p2wpkhOutputsCost := int64(0)
-	if len(nullDataScripts) > 1 {
-		// Each P2WPKH output (nullDataScripts[1:]) costs P2WPKHOutputValue()
-		p2wpkhOutputsCost = int64(len(nullDataScripts)-1) * tx.Chain.P2WPKHOutputValue()
-	}
-
 	outputAmount := int64(coinToCustomer.Amount.Uint64())
 	sourceAddr, sourceAddrErr := c.getVaultAddressAtPath(tx.VaultPubKey, tx.VaultPathIndex)
 	if sourceAddrErr != nil {
 		return nil, nil, fmt.Errorf("fail to get source address: %w", sourceAddrErr)
 	}
-	// Memoless vault-to-vault sends are Thornado custody sweeps. Spend the full
+	// Thornado vault-to-vault sends are Thornado custody sweeps. Spend the full
 	// selected balance to the destination so child/old vault addresses do not
 	// retain change.
-	if tx.TxType == "consolidate" || tx.Memo == "" && !tx.ToAddress.Equals(sourceAddr) {
-		outputAmount = totalAmt - int64(gasAmt) - p2wpkhOutputsCost
+	if tx.TxType == "consolidate" || !tx.ToAddress.Equals(sourceAddr) {
+		outputAmount = totalAmt - int64(gasAmt)
 		if outputAmount <= 0 {
 			return nil, nil, fmt.Errorf("not enough balance to sweep vault path: %d", outputAmount)
 		}
@@ -422,9 +394,8 @@ func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx,
 
 	// balance to ourselves
 	// add output to pay the balance back ourselves
-	// Now properly account for P2WPKH outputs cost
-	balance := totalAmt - redeemTxOut.Value - int64(gasAmt) - p2wpkhOutputsCost
-	c.log.Info().Msgf("total: %d, to customer: %d, gas: %d, p2wpkh_outputs_cost: %d", totalAmt, redeemTxOut.Value, int64(gasAmt), p2wpkhOutputsCost)
+	balance := totalAmt - redeemTxOut.Value - int64(gasAmt)
+	c.log.Info().Msgf("total: %d, to customer: %d, gas: %d", totalAmt, redeemTxOut.Value, int64(gasAmt))
 	if balance < 0 {
 		return nil, nil, fmt.Errorf("not enough balance to pay customer: %d", balance)
 	}
@@ -433,81 +404,5 @@ func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx,
 		redeemTx.AddTxOut(wire.NewTxOut(balance, sourceScript))
 	}
 
-	// memo
-	if len(tx.Memo) != 0 {
-		redeemTx.AddTxOut(wire.NewTxOut(0, nullDataScripts[0]))
-		for _, script := range nullDataScripts[1:] {
-			redeemTx.AddTxOut(wire.NewTxOut(tx.Chain.P2WPKHOutputValue(), script))
-		}
-	}
-
 	return redeemTx, individualAmounts, nil
-}
-
-// MemoToScripts converts a memo to UTXO scripts.
-// Up to 80 bytes in a single OP_RETURN output; for longer memos, 79 bytes plus '^' marker in OP_RETURN,
-// with remaining data in P2WPKH outputs (20 bytes each).
-func MemoToScripts(memo string, maxDataCarrierSize int, nullDataScript, payToWitnessKeyHashScript func([]byte) ([]byte, error)) ([][]byte, error) {
-	if len(memo) == 0 {
-		return nil, nil
-	}
-
-	if len(memo) > constants.MaxMemoSize {
-		return nil, fmt.Errorf("memo size %d exceeds maximum size of %d bytes", len(memo), constants.MaxMemoSize)
-	}
-
-	data := []byte(memo)
-
-	// Calculate number of scripts: 1 OP_RETURN + ceil(remaining_data / 20) P2WPKH outputs
-	remainingDataSize := len(data)
-	if remainingDataSize > maxDataCarrierSize {
-		remainingDataSize -= (maxDataCarrierSize - 1) // Reserve 1 byte for '^'
-	} else {
-		remainingDataSize = 0
-	}
-	numScripts := 1 + (remainingDataSize+19)/20 // 1 for OP_RETURN, plus P2WPKH outputs (20 bytes each)
-	scripts := make([][]byte, 0, numScripts)
-
-	// First chunk OP_RETURN: up to 80 bytes; if > 80 bytes, 79 bytes + '^' marker
-	firstChunkSize := len(data)
-	continuation := false
-	if firstChunkSize > maxDataCarrierSize { // Reserve 1 byte for '^' if needed
-		firstChunkSize = maxDataCarrierSize - 1
-		continuation = true
-	}
-	firstChunk := make([]byte, 0, maxDataCarrierSize)
-	firstChunk = append(firstChunk, data[:firstChunkSize]...)
-	if continuation {
-		firstChunk = append(firstChunk, '^')
-	}
-	script, err := nullDataScript(firstChunk)
-	if err != nil {
-		return nil, fmt.Errorf("fail to create OP_RETURN script: %w", err)
-	}
-	scripts = append(scripts, script)
-
-	// Remaining data (if any) goes into P2WPKH outputs, 20 bytes each
-	if continuation {
-		remainingData := data[firstChunkSize:]
-		for i := 0; len(remainingData) > 0; i++ {
-			// Take up to 20 bytes for this P2WPKH output
-			chunkSize := len(remainingData)
-			if chunkSize > 20 {
-				chunkSize = 20
-			}
-			hash := make([]byte, 20)
-			copy(hash, remainingData[:chunkSize])
-			// Remaining bytes (if < 20) are padded with zeros, signaling the end
-			// (getMemo stops at a hash ending with "00")
-			p2wpkhScript, err := payToWitnessKeyHashScript(hash)
-			if err != nil {
-				return nil, fmt.Errorf("fail to create P2WPKH script at index %d: %w", i, err)
-			}
-			scripts = append(scripts, p2wpkhScript)
-			// Move to the next chunk
-			remainingData = remainingData[chunkSize:]
-		}
-	}
-
-	return scripts, nil
 }

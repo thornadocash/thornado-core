@@ -1,80 +1,115 @@
 package utxo
 
 import (
-	"encoding/hex"
-	"net/http"
-	"net/http/httptest"
+	"crypto/sha256"
+	"fmt"
 	"testing"
-	"time"
 
+	cmtsecp256k1 "github.com/cometbft/cometbft/crypto/secp256k1"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-peerstore/addr"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 
+	frostsessions "github.com/thornadocash/go-thornado/frost/go-wrappers/go-frost/sessions"
+
+	p2pstorage "github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/tss"
 	"github.com/thornadocash/go-thornado/common"
 )
 
 func TestFrostVaultSignerRemoteSignSuccess(t *testing.T) {
-	expected := make([]byte, 64)
-	for i := range expected {
-		expected[i] = byte(i + 1)
-	}
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/v1/sign", r.URL.Path)
-		require.Equal(t, http.MethodPost, r.Method)
-		w.Header().Set("content-type", "application/json")
-		_, _ = w.Write([]byte(`{"scheme":"frost-secp256k1-sha256","signer":"frost-4-of-5","signature":"` + hex.EncodeToString(expected) + `"}`))
-	}))
-	defer server.Close()
-
-	signer := &frostVaultSigner{
-		ThorchainKeyManager: &tss.MockThorchainKeyManager{},
-		endpoint:            server.URL,
-		client:              server.Client(),
-		log:                 zerolog.Nop(),
-	}
-
-	signature, _, err := signer.RemoteSign([]byte("payload"), common.SigningAlgoSecp256k1, "vault-pubkey")
+	participants := []string{"node-a", "node-b", "node-c"}
+	shares, pubKeyBytes, err := frostsessions.KeygenWithThreshold(participants, 2)
 	require.NoError(t, err)
-	require.Equal(t, expected, signature)
-}
 
-func TestFrostVaultSignerRemoteSignRejection(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "policy rejected", http.StatusForbidden)
-	}))
-	defer server.Close()
+	poolPubKey, err := common.NewPubKeyFromCrypto(cmtsecp256k1.PubKey(pubKeyBytes))
+	require.NoError(t, err)
 
+	state := &memoryLocalState{states: map[string]p2pstorage.KeygenLocalState{
+		poolPubKey.String(): {
+			PubKey:          poolPubKey.String(),
+			LocalData:       shares["node-a"],
+			ParticipantKeys: participants,
+			LocalPartyKey:   "node-a",
+			SigningEngine:   p2pstorage.SigningEngineFrost,
+		},
+	}}
 	signer := &frostVaultSigner{
-		ThorchainKeyManager: &tss.MockThorchainKeyManager{},
-		endpoint:            server.URL,
-		client:              server.Client(),
-		log:                 zerolog.Nop(),
+		localState: state,
+		log:        zerolog.Nop(),
 	}
 
-	_, _, err := signer.RemoteSign([]byte("payload"), common.SigningAlgoSecp256k1, "vault-pubkey")
+	digest := sha256.Sum256([]byte("payload"))
+	signature, _, err := signer.RemoteSign(digest[:], common.SigningAlgoSecp256k1, poolPubKey.String())
+	require.NoError(t, err)
+
+	secpPubKey, err := poolPubKey.Secp256K1()
+	require.NoError(t, err)
+	require.NoError(t, frostsessions.Verify(secpPubKey.SerializeCompressed(), digest[:], signature))
+}
+
+func TestFrostVaultSignerRemoteSignMissingState(t *testing.T) {
+	signer := &frostVaultSigner{
+		localState: &memoryLocalState{states: map[string]p2pstorage.KeygenLocalState{}},
+		log:        zerolog.Nop(),
+	}
+
+	_, _, err := signer.RemoteSign(make([]byte, 32), common.SigningAlgoSecp256k1, "missing")
 	require.Error(t, err)
 	var keysignErr tss.KeysignError
 	require.ErrorAs(t, err, &keysignErr)
-	require.Contains(t, keysignErr.Blame.FailReason, "FROST signer rejected request")
 }
 
-func TestFrostVaultSignerRemoteSignTimeout(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(50 * time.Millisecond)
-	}))
-	defer server.Close()
+func TestFrostVaultSignerRemoteSignWithPathSuccess(t *testing.T) {
+	participants := []string{"node-a", "node-b", "node-c"}
+	shares, pubKeyBytes, err := frostsessions.KeygenWithThreshold(participants, 2)
+	require.NoError(t, err)
 
+	poolPubKey, err := common.NewPubKeyFromCrypto(cmtsecp256k1.PubKey(pubKeyBytes))
+	require.NoError(t, err)
+
+	state := &memoryLocalState{states: map[string]p2pstorage.KeygenLocalState{
+		poolPubKey.String(): {
+			PubKey:          poolPubKey.String(),
+			LocalData:       shares["node-a"],
+			ParticipantKeys: participants,
+			LocalPartyKey:   "node-a",
+			SigningEngine:   p2pstorage.SigningEngineFrost,
+		},
+	}}
 	signer := &frostVaultSigner{
-		ThorchainKeyManager: &tss.MockThorchainKeyManager{},
-		endpoint:            server.URL,
-		client:              &http.Client{Timeout: time.Millisecond},
-		log:                 zerolog.Nop(),
+		localState: state,
+		log:        zerolog.Nop(),
 	}
 
-	_, _, err := signer.RemoteSign([]byte("payload"), common.SigningAlgoSecp256k1, "vault-pubkey")
-	require.Error(t, err)
-	var keysignErr tss.KeysignError
-	require.ErrorAs(t, err, &keysignErr)
+	digest := sha256.Sum256([]byte("deposit-sweep"))
+	signature, _, err := signer.RemoteSignWithPath(digest[:], common.SigningAlgoSecp256k1, poolPubKey.String(), common.FirstDepositPathIndex)
+	require.NoError(t, err)
+	require.NoError(t, verifyTaprootSignature(poolPubKey, common.FirstDepositPathIndex, digest[:], signature))
+}
+
+type memoryLocalState struct {
+	states map[string]p2pstorage.KeygenLocalState
+}
+
+func (s *memoryLocalState) SaveLocalState(state p2pstorage.KeygenLocalState) error {
+	s.states[state.PubKey] = state
+	return nil
+}
+
+func (s *memoryLocalState) GetLocalState(pubKey string) (p2pstorage.KeygenLocalState, error) {
+	state, ok := s.states[pubKey]
+	if !ok {
+		return p2pstorage.KeygenLocalState{}, fmt.Errorf("missing local state")
+	}
+	return state, nil
+}
+
+func (s *memoryLocalState) SaveAddressBook(map[peer.ID]addr.AddrList) error {
+	return nil
+}
+
+func (s *memoryLocalState) RetrieveP2PAddresses() (addr.AddrList, error) {
+	return nil, nil
 }

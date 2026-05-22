@@ -10,7 +10,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/module"
 
 	"github.com/thornadocash/go-thornado/app/upgrades"
-	keeperv1 "github.com/thornadocash/go-thornado/x/thorchain/keeper/v1"
+	keeperv1 "github.com/thornadocash/go-thornado/x/thornado/keeper/v1"
 )
 
 // NewUpgrade constructor
@@ -38,7 +38,7 @@ func CreateUpgradeHandler(
 		// This is a Thornado specific upgrade step that should be
 		// done in every upgrade handler and before any thornado module migrations.
 		ctx := sdk.UnwrapSDKContext(goCtx)
-		if err := keeperv1.UpdateActiveValidatorVersions(ctx, ak.ThornadoKeeper, plan.Name); err != nil {
+		if err := keeperv1.UpdateActiveNodeVersions(ctx, ak.ThornadoKeeper, plan.Name); err != nil {
 			return nil, fmt.Errorf("failed to update active validator versions: %w", err)
 		}
 
