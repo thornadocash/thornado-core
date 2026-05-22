@@ -16,9 +16,9 @@ import (
 
 // PlannedOutTx struct for PlannedOutTx
 type PlannedOutTx struct {
-	Chain string `json:"chain"`
+	Chain     string `json:"chain"`
 	ToAddress string `json:"to_address"`
-	Coin Coin `json:"coin"`
+	Coin      Coin   `json:"coin"`
 	// returns true if the planned transaction has a refund memo
 	Refund bool `json:"refund"`
 }
@@ -192,5 +192,3 @@ func (v *NullablePlannedOutTx) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

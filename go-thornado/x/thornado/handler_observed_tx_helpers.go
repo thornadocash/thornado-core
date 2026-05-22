@@ -28,9 +28,9 @@ func processTxInAttestation(
 	k := mgr.Keeper()
 	slasher := mgr.Slasher()
 
-	observeSlashPoints := mgr.GetConstants().GetInt64Value(constants.ObserveSlashPoints)
-	lackOfObservationPenalty := mgr.GetConstants().GetInt64Value(constants.LackOfObservationPenalty)
-	observeFlex := k.GetConfigInt64(ctx, constants.ObservationDelayFlexibility)
+	observeSlashPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
+	lackOfObservationPenalty := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_MissPenaltyPoints)
+	observeFlex := k.GetConfigInt64(ctx, constants.Observation_DelayFlexibilityBlocks)
 
 	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
 		telemetry.NewLabel("reason", "failed_observe_txin"),
@@ -44,8 +44,8 @@ func processTxInAttestation(
 	}
 
 	// As an observation requires processing by all nodes no matter what,
-	// any observation should increment ObserveSlashPoints,
-	// to be decremented only if contributing to or within ObservationDelayFlexibility of consensus.
+	// any observation should increment Observation_SubmitPenaltyPoints,
+	// to be decremented only if contributing to or within Observation_DelayFlexibilityBlocks of consensus.
 	slasher.IncSlashPoints(slashCtx, observeSlashPoints, signer)
 
 	if !voter.Add(tx, signer) {
@@ -275,9 +275,9 @@ func processTxOutAttestation(
 	k := mgr.Keeper()
 	slasher := mgr.Slasher()
 
-	observeSlashPoints := mgr.GetConstants().GetInt64Value(constants.ObserveSlashPoints)
-	lackOfObservationPenalty := mgr.GetConstants().GetInt64Value(constants.LackOfObservationPenalty)
-	observeFlex := k.GetConfigInt64(ctx, constants.ObservationDelayFlexibility)
+	observeSlashPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
+	lackOfObservationPenalty := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_MissPenaltyPoints)
+	observeFlex := k.GetConfigInt64(ctx, constants.Observation_DelayFlexibilityBlocks)
 	ok := false
 
 	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
@@ -291,8 +291,8 @@ func processTxOutAttestation(
 	}
 
 	// As an observation requires processing by all nodes no matter what,
-	// any observation should increment ObserveSlashPoints,
-	// to be decremented only if contributing to or within ObservationDelayFlexibility of consensus.
+	// any observation should increment Observation_SubmitPenaltyPoints,
+	// to be decremented only if contributing to or within Observation_DelayFlexibilityBlocks of consensus.
 	slasher.IncSlashPoints(slashCtx, observeSlashPoints, signer)
 
 	if !voter.Add(tx, signer) {

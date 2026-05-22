@@ -8,14 +8,13 @@ import (
 
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
-	"github.com/thornadocash/go-thornado/constants"
 )
 
 // Vaults a list of vault
 type Vaults []Vault
 
 // NewVault create a new instance of vault
-func NewVault(height int64, status VaultStatus, vtype VaultType, pk common.PubKey, chains []string, routers []ChainContract) Vault {
+func NewVault(height int64, status VaultStatus, vtype VaultType, pk common.PubKey, chains []string) Vault {
 	return Vault{
 		BlockHeight: height,
 		StatusSince: height,
@@ -24,7 +23,6 @@ func NewVault(height int64, status VaultStatus, vtype VaultType, pk common.PubKe
 		Type:        vtype,
 		Status:      status,
 		Chains:      chains,
-		Routers:     routers,
 	}
 }
 
@@ -184,30 +182,6 @@ func (m Vault) GetMembers(activeObservers []cosmos.AccAddress) (common.PubKeys, 
 	return signers, nil
 }
 
-// GetContract return the contract that match the request chain
-func (v Vault) GetContract(chain common.Chain) ChainContract {
-	for _, item := range v.Routers {
-		if item.Chain.Equals(chain) {
-			return item
-		}
-	}
-	return ChainContract{}
-}
-
-// UpdateContract update the chain contract
-func (v *Vault) UpdateContract(chainContract ChainContract) {
-	exist := false
-	for i, item := range v.Routers {
-		if item.Chain.Equals(chainContract.Chain) {
-			v.Routers[i] = chainContract
-			exist = true
-		}
-	}
-	if !exist {
-		v.Routers = append(v.Routers, chainContract)
-	}
-}
-
 // AddFunds add given coins into vault
 func (m *Vault) AddFunds(coins common.Coins) {
 	for _, coin := range coins {
@@ -272,10 +246,10 @@ func (m *Vault) DeductVaultPendingOutbounds(pendingOutbounds []TxOutItem) {
 }
 
 // AppendPendingTxBlockHeights will add current block height into the list , also remove the block height that is too old
-func (m *Vault) AppendPendingTxBlockHeights(blockHeight int64, constAccessor constants.ConstantValues) {
+func (m *Vault) AppendPendingTxBlockHeights(blockHeight, signingPeriod int64) {
 	heights := []int64{blockHeight}
 	for _, item := range m.PendingTxBlockHeights {
-		if (blockHeight - item) <= constAccessor.GetInt64Value(constants.SigningTransactionPeriod) {
+		if (blockHeight - item) <= signingPeriod {
 			heights = append(heights, item)
 		}
 	}
@@ -297,7 +271,7 @@ func (m *Vault) RemovePendingTxBlockHeights(blockHeight int64) {
 }
 
 // LenPendingTxBlockHeights count how many outstanding block heights in the vault
-// if the a block height is older than SigningTransactionPeriod , it will ignore
+// if the a block height is older than Keysign_PeriodBlocks , it will ignore
 func (m *Vault) LenPendingTxBlockHeights(currentBlockHeight, maxBlocks int64) int {
 	total := 0
 	for _, item := range m.PendingTxBlockHeights {

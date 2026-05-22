@@ -16,7 +16,7 @@ import (
 
 // KeysignMetrics struct for KeysignMetrics
 type KeysignMetrics struct {
-	TxId *string `json:"tx_id,omitempty"`
+	TxId         *string     `json:"tx_id,omitempty"`
 	NodeTssTimes []TssMetric `json:"node_tss_times,omitempty"`
 }
 
@@ -147,5 +147,3 @@ func (v *NullableKeysignMetrics) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

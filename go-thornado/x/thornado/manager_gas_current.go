@@ -16,12 +16,12 @@ type GasMgr struct {
 	gasEvent          *EventGas
 	outAssetGas       []OutAssetGas
 	gasCount          map[common.Asset]int64
-	constantsAccessor constants.ConstantValues
+	constantsAccessor constants.ConfigValues
 	keeper            keeper.Keeper
 }
 
 // newGasMgr create a new instance of GasMgr
-func newGasMgr(constantsAccessor constants.ConstantValues, k keeper.Keeper) *GasMgr {
+func newGasMgr(constantsAccessor constants.ConfigValues, k keeper.Keeper) *GasMgr {
 	return &GasMgr{
 		gasEvent:          NewEventGas(),
 		outAssetGas:       []OutAssetGas{},
@@ -207,11 +207,6 @@ func (gm *GasMgr) EndBlock(ctx cosmos.Context, keeper keeper.Keeper, eventManage
 	gm.reset() // do not remove, will cause consensus failures
 }
 
-// ProcessGas to subsidise the gas asset pools with RUNE for the gas they have spent
+// ProcessGas records per-block gas accounting.
 func (gm *GasMgr) ProcessGas(ctx cosmos.Context, keeper keeper.Keeper) {
-	for i := range gm.outAssetGas {
-		if err := keeper.AddToOutboundFeeSpentRune(ctx, gm.outAssetGas[i].outAsset, cosmos.ZeroUint()); err != nil {
-			ctx.Logger().Error("fail to add to outbound fee spent rune", "outbound asset", gm.outAssetGas[i].outAsset, "error", err)
-		}
-	}
 }

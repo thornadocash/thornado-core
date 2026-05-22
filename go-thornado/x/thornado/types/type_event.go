@@ -28,8 +28,8 @@ const (
 	RewardEventType                 = "rewards"
 	ScheduledOutboundEventType      = "scheduled_outbound"
 	SecurityEventType               = "security"
-	SetMimirEventType               = "set_mimir"
-	SetNodeMimirEventType           = "set_node_mimir"
+	SetConfigEventType              = "set_config"
+	SetNodeConfigEventType          = "set_node_config"
 	SlashEventType                  = "slash"
 	SlashPointEventType             = "slash_points"
 	SwapEventType                   = "swap"
@@ -666,21 +666,21 @@ func (m *EventPoolBalanceChanged) Events() (cosmos.Events, error) {
 	return cosmos.Events{evt}, nil
 }
 
-func NewEventSetMimir(key, value string) *EventSetMimir {
-	// NewEventSetMimir create a new instance of EventSetMimir
-	return &EventSetMimir{
+func NewEventSetConfig(key, value string) *EventSetConfig {
+	// NewEventSetConfig create a new instance of EventSetConfig
+	return &EventSetConfig{
 		Key:   key,
 		Value: value,
 	}
 }
 
 // Type return a string which represent the type of this event
-func (m *EventSetMimir) Type() string {
-	return SetMimirEventType
+func (m *EventSetConfig) Type() string {
+	return SetConfigEventType
 }
 
 // Events return cosmos sdk events
-func (m *EventSetMimir) Events() (cosmos.Events, error) {
+func (m *EventSetConfig) Events() (cosmos.Events, error) {
 	evt := cosmos.NewEvent(m.Type(),
 		cosmos.NewAttribute("key", m.Key),
 		cosmos.NewAttribute("value", m.Value),
@@ -712,9 +712,9 @@ func (m *EventMintBurn) Events() (cosmos.Events, error) {
 	return cosmos.Events{evt}, nil
 }
 
-// NewEventSetNodeMimir create a new instance of EventSetNodeMimir
-func NewEventSetNodeMimir(key, value, address string) *EventSetNodeMimir {
-	return &EventSetNodeMimir{
+// NewEventSetNodeConfig create a new instance of EventSetNodeConfig
+func NewEventSetNodeConfig(key, value, address string) *EventSetNodeConfig {
+	return &EventSetNodeConfig{
 		Key:     key,
 		Value:   value,
 		Address: address,
@@ -722,12 +722,12 @@ func NewEventSetNodeMimir(key, value, address string) *EventSetNodeMimir {
 }
 
 // Type return a string which represent the type of this event
-func (m *EventSetNodeMimir) Type() string {
-	return SetNodeMimirEventType
+func (m *EventSetNodeConfig) Type() string {
+	return SetNodeConfigEventType
 }
 
 // Events return cosmos sdk events
-func (m *EventSetNodeMimir) Events() (cosmos.Events, error) {
+func (m *EventSetNodeConfig) Events() (cosmos.Events, error) {
 	evt := cosmos.NewEvent(m.Type(),
 		cosmos.NewAttribute("key", m.Key),
 		cosmos.NewAttribute("value", m.Value),

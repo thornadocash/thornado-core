@@ -16,18 +16,18 @@ import (
 
 // TxOutItem struct for TxOutItem
 type TxOutItem struct {
-	Height *int64 `json:"height,omitempty"`
-	InHash *string `json:"in_hash,omitempty"`
-	OutHash *string `json:"out_hash,omitempty"`
-	Chain string `json:"chain"`
-	ToAddress string `json:"to_address"`
-	VaultPubKey *string `json:"vault_pub_key,omitempty"`
+	Height           *int64  `json:"height,omitempty"`
+	InHash           *string `json:"in_hash,omitempty"`
+	OutHash          *string `json:"out_hash,omitempty"`
+	Chain            string  `json:"chain"`
+	ToAddress        string  `json:"to_address"`
+	VaultPubKey      *string `json:"vault_pub_key,omitempty"`
 	VaultPubKeyEddsa *string `json:"vault_pub_key_eddsa,omitempty"`
-	Coin Coin `json:"coin"`
-	MaxGas []Coin `json:"max_gas"`
-	GasRate *int64 `json:"gas_rate,omitempty"`
-	Memo *string `json:"memo,omitempty"`
-	OriginalMemo *string `json:"original_memo,omitempty"`
+	Coin             Coin    `json:"coin"`
+	MaxGas           []Coin  `json:"max_gas"`
+	GasRate          *int64  `json:"gas_rate,omitempty"`
+	Memo             *string `json:"memo,omitempty"`
+	OriginalMemo     *string `json:"original_memo,omitempty"`
 	// whitelisted DEX Aggregator contract address
 	Aggregator *string `json:"aggregator,omitempty"`
 	// target asset for the aggregator contract to attempt a swap to
@@ -627,4 +627,3 @@ func (v *NullableTxOutItem) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-

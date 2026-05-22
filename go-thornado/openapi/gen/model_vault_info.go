@@ -16,9 +16,8 @@ import (
 
 // VaultInfo struct for VaultInfo
 type VaultInfo struct {
-	PubKey string `json:"pub_key"`
+	PubKey      string  `json:"pub_key"`
 	PubKeyEddsa *string `json:"pub_key_eddsa,omitempty"`
-	Routers []VaultRouter `json:"routers"`
 	// the list of node public keys which are members of the vault
 	Membership []string `json:"membership,omitempty"`
 }
@@ -27,10 +26,9 @@ type VaultInfo struct {
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewVaultInfo(pubKey string, routers []VaultRouter) *VaultInfo {
+func NewVaultInfo(pubKey string) *VaultInfo {
 	this := VaultInfo{}
 	this.PubKey = pubKey
-	this.Routers = routers
 	return &this
 }
 
@@ -98,30 +96,6 @@ func (o *VaultInfo) SetPubKeyEddsa(v string) {
 	o.PubKeyEddsa = &v
 }
 
-// GetRouters returns the Routers field value
-func (o *VaultInfo) GetRouters() []VaultRouter {
-	if o == nil {
-		var ret []VaultRouter
-		return ret
-	}
-
-	return o.Routers
-}
-
-// GetRoutersOk returns a tuple with the Routers field value
-// and a boolean to check if the value has been set.
-func (o *VaultInfo) GetRoutersOk() ([]VaultRouter, bool) {
-	if o == nil {
-		return nil, false
-	}
-	return o.Routers, true
-}
-
-// SetRouters sets field value
-func (o *VaultInfo) SetRouters(v []VaultRouter) {
-	o.Routers = v
-}
-
 // GetMembership returns the Membership field value if set, zero value otherwise.
 func (o *VaultInfo) GetMembership() []string {
 	if o == nil || o.Membership == nil {
@@ -161,9 +135,6 @@ func (o VaultInfo) MarshalJSON_deprecated() ([]byte, error) {
 	}
 	if o.PubKeyEddsa != nil {
 		toSerialize["pub_key_eddsa"] = o.PubKeyEddsa
-	}
-	if true {
-		toSerialize["routers"] = o.Routers
 	}
 	if o.Membership != nil {
 		toSerialize["membership"] = o.Membership
@@ -206,5 +177,3 @@ func (v *NullableVaultInfo) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

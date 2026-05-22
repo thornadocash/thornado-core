@@ -82,7 +82,7 @@ func unsafeAddRefundOutbound(ctx cosmos.Context, mgr *Mgrs, inHash, destAddr str
 // 		return
 // 	}
 // 	if len(activeAsgards) > 1 {
-// 		signingTransactionPeriod := mgr.GetConstants().GetInt64Value(constants.SigningTransactionPeriod)
+// 		signingTransactionPeriod := mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)
 // 		activeAsgards = mgr.Keeper().SortBySecurity(ctx, activeAsgards, signingTransactionPeriod)
 // 	}
 // 	vaultPubKey := activeAsgards[0].PubKey

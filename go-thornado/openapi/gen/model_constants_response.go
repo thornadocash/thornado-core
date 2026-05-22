@@ -16,8 +16,8 @@ import (
 
 // ConstantsResponse struct for ConstantsResponse
 type ConstantsResponse struct {
-	Int64Values *map[string]string `json:"int_64_values,omitempty"`
-	BoolValues *map[string]string `json:"bool_values,omitempty"`
+	Int64Values  *map[string]string `json:"int_64_values,omitempty"`
+	BoolValues   *map[string]string `json:"bool_values,omitempty"`
 	StringValues *map[string]string `json:"string_values,omitempty"`
 }
 
@@ -183,5 +183,3 @@ func (v *NullableConstantsResponse) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

@@ -23,7 +23,7 @@ const (
 	Msg_Deposit_FullMethodName                   = "/types.Msg/Deposit"
 	Msg_ErrataTx_FullMethodName                  = "/types.Msg/ErrataTx"
 	Msg_ErrataTxQuorum_FullMethodName            = "/types.Msg/ErrataTxQuorum"
-	Msg_Mimir_FullMethodName                     = "/types.Msg/Mimir"
+	Msg_Config_FullMethodName                    = "/types.Msg/Config"
 	Msg_NetworkFee_FullMethodName                = "/types.Msg/NetworkFee"
 	Msg_NetworkFeeQuorum_FullMethodName          = "/types.Msg/NetworkFeeQuorum"
 	Msg_NodePauseChain_FullMethodName            = "/types.Msg/NodePauseChain"
@@ -60,7 +60,7 @@ type MsgClient interface {
 	Deposit(ctx context.Context, in *MsgDeposit, opts ...grpc.CallOption) (*MsgEmpty, error)
 	ErrataTx(ctx context.Context, in *MsgErrataTx, opts ...grpc.CallOption) (*MsgEmpty, error)
 	ErrataTxQuorum(ctx context.Context, in *MsgErrataTxQuorum, opts ...grpc.CallOption) (*MsgEmpty, error)
-	Mimir(ctx context.Context, in *MsgMimir, opts ...grpc.CallOption) (*MsgEmpty, error)
+	Config(ctx context.Context, in *MsgConfig, opts ...grpc.CallOption) (*MsgEmpty, error)
 	NetworkFee(ctx context.Context, in *MsgNetworkFee, opts ...grpc.CallOption) (*MsgEmpty, error)
 	NetworkFeeQuorum(ctx context.Context, in *MsgNetworkFeeQuorum, opts ...grpc.CallOption) (*MsgEmpty, error)
 	NodePauseChain(ctx context.Context, in *MsgNodePauseChain, opts ...grpc.CallOption) (*MsgEmpty, error)
@@ -133,9 +133,9 @@ func (c *msgClient) ErrataTxQuorum(ctx context.Context, in *MsgErrataTxQuorum, o
 	return out, nil
 }
 
-func (c *msgClient) Mimir(ctx context.Context, in *MsgMimir, opts ...grpc.CallOption) (*MsgEmpty, error) {
+func (c *msgClient) Config(ctx context.Context, in *MsgConfig, opts ...grpc.CallOption) (*MsgEmpty, error) {
 	out := new(MsgEmpty)
-	err := c.cc.Invoke(ctx, Msg_Mimir_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Msg_Config_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +384,7 @@ type MsgServer interface {
 	Deposit(context.Context, *MsgDeposit) (*MsgEmpty, error)
 	ErrataTx(context.Context, *MsgErrataTx) (*MsgEmpty, error)
 	ErrataTxQuorum(context.Context, *MsgErrataTxQuorum) (*MsgEmpty, error)
-	Mimir(context.Context, *MsgMimir) (*MsgEmpty, error)
+	Config(context.Context, *MsgConfig) (*MsgEmpty, error)
 	NetworkFee(context.Context, *MsgNetworkFee) (*MsgEmpty, error)
 	NetworkFeeQuorum(context.Context, *MsgNetworkFeeQuorum) (*MsgEmpty, error)
 	NodePauseChain(context.Context, *MsgNodePauseChain) (*MsgEmpty, error)
@@ -430,8 +430,8 @@ func (UnimplementedMsgServer) ErrataTx(context.Context, *MsgErrataTx) (*MsgEmpty
 func (UnimplementedMsgServer) ErrataTxQuorum(context.Context, *MsgErrataTxQuorum) (*MsgEmpty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ErrataTxQuorum not implemented")
 }
-func (UnimplementedMsgServer) Mimir(context.Context, *MsgMimir) (*MsgEmpty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Mimir not implemented")
+func (UnimplementedMsgServer) Config(context.Context, *MsgConfig) (*MsgEmpty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Config not implemented")
 }
 func (UnimplementedMsgServer) NetworkFee(context.Context, *MsgNetworkFee) (*MsgEmpty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NetworkFee not implemented")
@@ -596,20 +596,20 @@ func _Msg_ErrataTxQuorum_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Msg_Mimir_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgMimir)
+func _Msg_Config_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgConfig)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MsgServer).Mimir(ctx, in)
+		return srv.(MsgServer).Config(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Msg_Mimir_FullMethodName,
+		FullMethod: Msg_Config_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).Mimir(ctx, req.(*MsgMimir))
+		return srv.(MsgServer).Config(ctx, req.(*MsgConfig))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1106,8 +1106,8 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Msg_ErrataTxQuorum_Handler,
 		},
 		{
-			MethodName: "Mimir",
-			Handler:    _Msg_Mimir_Handler,
+			MethodName: "Config",
+			Handler:    _Msg_Config_Handler,
 		},
 		{
 			MethodName: "NetworkFee",

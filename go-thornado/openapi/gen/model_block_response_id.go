@@ -16,7 +16,7 @@ import (
 
 // BlockResponseId struct for BlockResponseId
 type BlockResponseId struct {
-	Hash string `json:"hash"`
+	Hash  string               `json:"hash"`
 	Parts BlockResponseIdParts `json:"parts"`
 }
 
@@ -133,5 +133,3 @@ func (v *NullableBlockResponseId) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

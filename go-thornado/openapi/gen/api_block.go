@@ -18,14 +18,13 @@ import (
 	"net/url"
 )
 
-
 // BlockApiService BlockApi service
 type BlockApiService service
 
 type ApiBlockRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *BlockApiService
-	height *int64
+	height     *int64
 }
 
 // optional block height, defaults to current tip
@@ -43,24 +42,25 @@ Block Method for Block
 
 Returns verbose details of the block.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @return ApiBlockRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiBlockRequest
 */
 func (a *BlockApiService) Block(ctx context.Context) ApiBlockRequest {
 	return ApiBlockRequest{
 		ApiService: a,
-		ctx: ctx,
+		ctx:        ctx,
 	}
 }
 
 // Execute executes the request
-//  @return BlockResponse
+//
+//	@return BlockResponse
 func (a *BlockApiService) BlockExecute(r ApiBlockRequest) (*BlockResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *BlockResponse
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *BlockResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "BlockApiService.Block")

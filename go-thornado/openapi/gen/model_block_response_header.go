@@ -16,20 +16,20 @@ import (
 
 // BlockResponseHeader struct for BlockResponseHeader
 type BlockResponseHeader struct {
-	Version BlockResponseHeaderVersion `json:"version"`
-	ChainId string `json:"chain_id"`
-	Height int64 `json:"height"`
-	Time string `json:"time"`
-	LastBlockId BlockResponseId `json:"last_block_id"`
-	LastCommitHash string `json:"last_commit_hash"`
-	DataHash string `json:"data_hash"`
-	ValidatorsHash string `json:"validators_hash"`
-	NextValidatorsHash string `json:"next_validators_hash"`
-	ConsensusHash string `json:"consensus_hash"`
-	AppHash string `json:"app_hash"`
-	LastResultsHash string `json:"last_results_hash"`
-	EvidenceHash string `json:"evidence_hash"`
-	ProposerAddress string `json:"proposer_address"`
+	Version            BlockResponseHeaderVersion `json:"version"`
+	ChainId            string                     `json:"chain_id"`
+	Height             int64                      `json:"height"`
+	Time               string                     `json:"time"`
+	LastBlockId        BlockResponseId            `json:"last_block_id"`
+	LastCommitHash     string                     `json:"last_commit_hash"`
+	DataHash           string                     `json:"data_hash"`
+	ValidatorsHash     string                     `json:"validators_hash"`
+	NextValidatorsHash string                     `json:"next_validators_hash"`
+	ConsensusHash      string                     `json:"consensus_hash"`
+	AppHash            string                     `json:"app_hash"`
+	LastResultsHash    string                     `json:"last_results_hash"`
+	EvidenceHash       string                     `json:"evidence_hash"`
+	ProposerAddress    string                     `json:"proposer_address"`
 }
 
 // NewBlockResponseHeader instantiates a new BlockResponseHeader object
@@ -481,5 +481,3 @@ func (v *NullableBlockResponseHeader) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

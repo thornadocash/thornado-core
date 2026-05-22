@@ -16,8 +16,8 @@ import (
 
 // KeysignResponse struct for KeysignResponse
 type KeysignResponse struct {
-	Keysign KeysignInfo `json:"keysign"`
-	Signature string `json:"signature"`
+	Keysign   KeysignInfo `json:"keysign"`
+	Signature string      `json:"signature"`
 }
 
 // NewKeysignResponse instantiates a new KeysignResponse object
@@ -133,5 +133,3 @@ func (v *NullableKeysignResponse) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

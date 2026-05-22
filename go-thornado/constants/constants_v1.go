@@ -1,37 +1,102 @@
 package constants
 
-// NewConstantValue get new instance of ConstantValue
-func NewConstantValue() *ConstantVals {
-	return &ConstantVals{
-		int64values: map[ConstantName]int64{
-			BlocksPerYear:               5256000,
-			MinimumNodesForBFT:          4,
-			DesiredNodeSet:              100,   // desire node set
-			ChurnInterval:               43200, // How many blocks Thornado try to rotate nodes
-			ChurnRetryInterval:          720,   // How many blocks until we retry a churn (only if we haven't had a successful churn in ChurnInterval blocks
-			MissingBlockChurnOut:        0,     // num of blocks a node needs to NOT sign between churns
-			MaxMissingBlockChurnOut:     0,     // max number of nodes to be churned out due to not signing blocks
-			MaxTrackMissingBlock:        700,   // maximum number of missing blocks to track for a block signer
-			BadNodeRedline:              3,     // redline multiplier to find a multitude of bad actors
-			LackOfObservationPenalty:    2,     // add two slash point for each block where a node does not observe
-			SigningTransactionPeriod:    300,   // how many blocks before a request to sign a tx by yggdrasil pool, is counted as delinquent.
-			DoubleSignMaxAge:            24,    // number of blocks to limit double signing a block
-			SlashPenalty:                15000, // penalty paid (in basis points) for theft of assets
-			PauseOnSlashThreshold:       0,
-			FailKeygenSlashPoints:       720,     // slash for 720 blocks , which equals 1 hour
-			FailKeysignSlashPoints:      2,       // slash for 2 blocks
-			ObserveSlashPoints:          1,       // the number of slashpoints for making an observation (redeems later if observation reaches consensus
-			DoubleBlockSignSlashPoints:  1000,    // slash points for double block sign (3-4 days (over 43200 blocks) rewards lost from 5 minutes (50 blocks))
-			MissBlockSignSlashPoints:    1,       // slash points for not signing a block
-			ObservationDelayFlexibility: 10,      // number of blocks of flexibility for a node to get their slash points taken off for making an observation
-			JailTimeKeygen:              720 * 6, // blocks a node account is jailed for failing to keygen. DO NOT drop below tss timeout
-			JailTimeKeysign:             60,      // blocks a node account is jailed for failing to keysign. DO NOT drop below tss timeout
-			NodePauseChainBlocks:        720,     // number of blocks that a node can pause/resume a global chain halt
-			MinPenaltyPointsForBadNode:  100,     // The minimum slash point
-			KeygenRetryInterval:         0,       // number of blocks to wait before retrying a keygen
-			OperationalVotesMin:         3,       // Minimum node votes to set an Operational Mimir
+// NewConfigValue get new instance of ConfigValue
+func NewConfigValue() *ConfigVals {
+	return &ConfigVals{
+		int64values: map[ConfigName]int64{
+			// Chain
+			Chain_BlocksPerYear:   5256000,
+			Chain_PauseNodeBlocks: 720,
+
+			// BlockSign
+			BlockSign_DoublePenaltyPoints: 1000,
+			BlockSign_MissPenaltyPoints:   1,
+
+			// Churn
+			Churn_IntervalBlocks:      43200,
+			Churn_RetryIntervalBlocks: 720,
+
+			// Config
+			Config_OperationalVotesMin: 3,
+
+			// BTC
+			BTC_ConfMultiplierBasisPoints: 10000,
+			BTC_ConfirmationsMin:          1,
+			BTC_DefaultSatsPerVByte:       25,
+			BTC_MaxConfirmations:          0,
+			BTC_MaxMempoolAncestors:       25,
+			BTC_MaxSatsPerVByte:           9765,
+
+			// Deposit
+			Deposit_AmountMinSats:            546,
+			Deposit_PowDifficultyMin:         0,
+			Deposit_PowExpiryBlocks:          0,
+			Deposit_SessionExpiryBlocks:      0,
+			Deposit_SweepRetryIntervalBlocks: 720,
+
+			// DoubleSign
+			DoubleSign_MaxAgeBlocks: 24,
+
+			// Halt
+			Halt_ChainGlobal:   0,
+			Halt_Churning:      0,
+			Halt_SigningGlobal: 0,
+			Halt_SolvencyCheck: 0,
+
+			// Keygen
+			Keygen_FailJailBlocks:      720 * 6,
+			Keygen_FailPenaltyPoints:   720,
+			Keygen_RetryIntervalBlocks: 0,
+
+			// Keysign
+			Keysign_FailJailBlocks:    60,
+			Keysign_FailPenaltyPoints: 2,
+			Keysign_PeriodBlocks:      300,
+
+			// Node
+			Node_BadPenaltyPointsMin:      100,
+			Node_BadRedline:               3,
+			Node_BFTMin:                   4,
+			Node_BondSlotIncrementSats:    100_000_000,
+			Node_BondStartAmountSats:      100_000_000,
+			Node_PenaltyChurnOutThreshold: 100,
+			Node_MissingBlocksChurnOut:    0,
+			Node_MissingBlocksChurnOutMax: 0,
+			Node_MissingBlocksTrackMax:    700,
+			Node_SetDesired:               100,
+
+			// NodeSale
+			NodeSale_AuctionExpiryBlocksMax: 43200,
+			NodeSale_AuctionExpiryBlocksMin: 1,
+			NodeSale_BidAmountMinSats:       546,
+
+			// Observation
+			Observation_DelayFlexibilityBlocks: 10,
+			Observation_MissPenaltyPoints:      2,
+			Observation_SubmitPenaltyPoints:    1,
+
+			// Shielder
+			Shielder_FeeShareScale:     1_000_000_000_000,
+			Shielder_NoteAmountMinSats: 546,
+
+			// Signing/slashing
+			Signer_Concurrency:       10,
+			Slash_PauseThreshold:     0,
+			Slash_PenaltyBasisPoints: 15000,
+
+			// Tx/vault operations
+			TxOut_MaxAttempts:                0,
+			UTXO_MaxSpendCount:               15,
+			Upgrade_ProposalCountMax:         3,
+			Vault_MigrationIntervalBlocks:    360,
+			Vault_MigrationRounds:            2,
+			Vault_RetiredRecoveryAttemptsMax: 100,
+
+			// Withdrawal
+			Withdrawal_FeeBasisPoints: 200,
+			Withdrawal_FeeMinSats:     10_000,
 		},
-		boolValues:   map[ConstantName]bool{},
-		stringValues: map[ConstantName]string{},
+		boolValues:   map[ConfigName]bool{},
+		stringValues: map[ConfigName]string{},
 	}
 }

@@ -231,7 +231,7 @@ func (m *MockThornadoBridge) GetKeysignParty(pubKey common.PubKey) (common.PubKe
 	return m.getKeysignPartyFunc(pubKey)
 }
 
-func (m *MockThornadoBridge) GetMimir(key string) (int64, error) {
+func (m *MockThornadoBridge) GetConfigValue(key string) (int64, error) {
 	return 0, nil
 }
 
@@ -333,9 +333,9 @@ func NewMockEventClient() *MockEventClient {
 // MockThornadoBridge2 implements a broader set of ThornadoBridge methods for observer tests
 type MockThornadoBridge2 struct {
 	thornadoclient.ThornadoBridge
-	nodeStatus   stypes.NodeStatus
-	activeNodes  common.PubKeys
-	getMimirFunc func(key string) (int64, error)
+	nodeStatus    stypes.NodeStatus
+	activeNodes   common.PubKeys
+	getConfigFunc func(key string) (int64, error)
 }
 
 func (m *MockThornadoBridge2) FetchNodeStatus() (stypes.NodeStatus, error) {
@@ -346,9 +346,9 @@ func (m *MockThornadoBridge2) FetchActiveNodes() ([]common.PubKey, error) {
 	return m.activeNodes, nil
 }
 
-func (m *MockThornadoBridge2) GetMimir(key string) (int64, error) {
-	if m.getMimirFunc != nil {
-		return m.getMimirFunc(key)
+func (m *MockThornadoBridge2) GetConfigValue(key string) (int64, error) {
+	if m.getConfigFunc != nil {
+		return m.getConfigFunc(key)
 	}
 	return 0, nil
 }

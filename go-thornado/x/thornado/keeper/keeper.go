@@ -41,15 +41,15 @@ type Keeper interface {
 
 	InvariantRoutes() []common.InvariantRoute
 
-	GetConstants() constants.ConstantValues
-	GetConfigInt64(ctx cosmos.Context, key constants.ConstantName) int64
+	GetConstants() constants.ConfigValues
+	GetConfigInt64(ctx cosmos.Context, key constants.ConfigName) int64
 
 	GetNativeTxFee(ctx cosmos.Context) cosmos.Uint
 
 	DeductNativeTxFeeFromAccount(ctx cosmos.Context, acctAddr cosmos.AccAddress) error
 
 	// Keeper Interfaces
-	KeeperConfig
+	KeeperConfigDefaults
 	KeeperLastHeight
 	KeeperNodeAccount
 	KeeperUpgrade
@@ -64,20 +64,19 @@ type Keeper interface {
 	KeeperKeygen
 	KeeperErrataTx
 	KeeperBanVoter
-	KeeperMimir
+	KeeperConfigStore
 	KeeperNetworkFee
 	KeeperObservedNetworkFeeVoter
 	KeeperOracle
-	KeeperChainContract
 	KeeperSolvencyVoter
 	KeeperHalt
 	KeeperAnchors
 	KeeperShielder
 }
 
-type KeeperConfig interface {
-	GetConstants() constants.ConstantValues
-	GetConfigInt64(ctx cosmos.Context, key constants.ConstantName) int64
+type KeeperConfigDefaults interface {
+	GetConstants() constants.ConfigValues
+	GetConfigInt64(ctx cosmos.Context, key constants.ConfigName) int64
 }
 
 type KeeperLastHeight interface {
@@ -199,14 +198,7 @@ type KeeperShielder interface {
 }
 
 type KeeperOutboundFees interface {
-	AddToOutboundFeeWithheldRune(ctx cosmos.Context, outAsset common.Asset, withheld cosmos.Uint) error
-	AddToOutboundFeeSpentRune(ctx cosmos.Context, outAsset common.Asset, spent cosmos.Uint) error
-	GetOutboundFeeWithheldRune(ctx cosmos.Context, outAsset common.Asset) (cosmos.Uint, error)
-	GetOutboundFeeWithheldRuneIterator(ctx cosmos.Context) cosmos.Iterator
-	GetOutboundFeeSpentRune(ctx cosmos.Context, outAsset common.Asset) (cosmos.Uint, error)
-	GetOutboundFeeSpentRuneIterator(ctx cosmos.Context) cosmos.Iterator
 	GetOutboundTxFee(ctx cosmos.Context) cosmos.Uint
-	GetSurplusForTargetMultiplier(ctx cosmos.Context, targetMultiplierBps cosmos.Uint) cosmos.Uint
 }
 
 type KeeperVault interface {
@@ -267,20 +259,20 @@ type KeeperErrataTx interface {
 	GetErrataTxVoter(_ cosmos.Context, _ common.TxID, _ common.Chain) (ErrataTxVoter, error)
 }
 
-type KeeperMimir interface {
-	GetMimir(_ cosmos.Context, key string) (int64, error)
-	GetMimirWithRef(_ cosmos.Context, template string, ref ...any) (int64, error)
-	SetMimir(_ cosmos.Context, key string, value int64)
-	GetNodeMimirs(ctx cosmos.Context, key string) (NodeMimirs, error)
-	SetNodeMimir(_ cosmos.Context, key string, value int64, acc cosmos.AccAddress) error
-	DeleteNodeMimirs(ctx cosmos.Context, key string)
-	PurgeOperationalNodeMimirs(ctx cosmos.Context)
-	GetMimirIterator(ctx cosmos.Context) cosmos.Iterator
-	GetNodeMimirIterator(ctx cosmos.Context) cosmos.Iterator
-	DeleteMimir(_ cosmos.Context, key string) error
+type KeeperConfigStore interface {
+	GetConfig(_ cosmos.Context, key string) (int64, error)
+	GetConfigWithRef(_ cosmos.Context, template string, ref ...any) (int64, error)
+	SetConfig(_ cosmos.Context, key string, value int64)
+	GetNodeConfigs(ctx cosmos.Context, key string) (NodeConfigs, error)
+	SetNodeConfig(_ cosmos.Context, key string, value int64, acc cosmos.AccAddress) error
+	DeleteNodeConfigs(ctx cosmos.Context, key string)
+	PurgeOperationalNodeConfigs(ctx cosmos.Context)
+	GetConfigIterator(ctx cosmos.Context) cosmos.Iterator
+	GetNodeConfigIterator(ctx cosmos.Context) cosmos.Iterator
+	DeleteConfig(_ cosmos.Context, key string) error
 	GetNodePauseChain(ctx cosmos.Context, acc cosmos.AccAddress) int64
 	SetNodePauseChain(ctx cosmos.Context, acc cosmos.AccAddress)
-	IsOperationalMimir(key string) bool
+	IsOperationalConfig(key string) bool
 }
 
 type KeeperNetworkFee interface {
@@ -293,13 +285,6 @@ type KeeperObservedNetworkFeeVoter interface {
 	SetObservedNetworkFeeVoter(ctx cosmos.Context, networkFeeVoter ObservedNetworkFeeVoter)
 	GetObservedNetworkFeeVoterIterator(ctx cosmos.Context) cosmos.Iterator
 	GetObservedNetworkFeeVoter(ctx cosmos.Context, height int64, chain common.Chain, rate, size int64) (ObservedNetworkFeeVoter, error)
-}
-
-type KeeperChainContract interface {
-	SetChainContract(ctx cosmos.Context, cc ChainContract)
-	GetChainContract(ctx cosmos.Context, chain common.Chain) (ChainContract, error)
-	GetChainContracts(ctx cosmos.Context, chains common.Chains) []ChainContract
-	GetChainContractIterator(ctx cosmos.Context) cosmos.Iterator
 }
 
 type KeeperSolvencyVoter interface {

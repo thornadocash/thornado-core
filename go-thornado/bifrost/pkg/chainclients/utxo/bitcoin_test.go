@@ -29,6 +29,7 @@ import (
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/config"
+	"github.com/thornadocash/go-thornado/constants"
 	ttypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
@@ -187,7 +188,7 @@ func (s *BitcoinSuite) SetUpTest(c *C) {
 			c.Assert(err, IsNil)
 		} else if strings.HasPrefix(req.RequestURI, thornadoclient.AsgardVault) {
 			httpTestHandler(c, rw, "../../../../test/fixtures/endpoints/vaults/asgard.json")
-		} else if req.RequestURI == "/thornado/mimir/key/MaxUTXOsToSpend" {
+		} else if req.RequestURI == "/thornado/config/key/"+constants.UTXO_MaxSpendCount.String() {
 			_, err := rw.Write([]byte(`-1`))
 			c.Assert(err, IsNil)
 		} else if req.RequestURI == "/thornado/vaults/pubkeys" {

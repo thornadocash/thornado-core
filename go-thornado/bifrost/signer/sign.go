@@ -215,7 +215,11 @@ func runWithContext(ctx context.Context, fn func() ([]byte, *types.TxInItem, err
 }
 
 func (s *Signer) processTransactions() {
-	const signerConcurrency = int64(10)
+	signerConcurrency, err := s.thornadoBridge.GetConfigValue(constants.Signer_Concurrency.String())
+	if err != nil || signerConcurrency <= 0 {
+		s.logger.Error().Err(err).Str("config", constants.Signer_Concurrency.String()).Msg("fail to get config")
+		signerConcurrency = constants.NewConfigValue().GetInt64Value(constants.Signer_Concurrency)
+	}
 
 	// if previously set to different concurrency, drain existing signings
 	if s.pipeline != nil && s.pipeline.concurrency != signerConcurrency {
@@ -225,7 +229,6 @@ func (s *Signer) processTransactions() {
 
 	// if not set, or set to different concurrency, create new pipeline
 	if s.pipeline == nil {
-		var err error
 		s.pipeline, err = newPipeline(signerConcurrency)
 		if err != nil {
 			s.logger.Error().Err(err).Msg("fail to create new pipeline")
@@ -282,17 +285,17 @@ func (s *Signer) processKeygen(ch <-chan ttypes.KeygenBlock) {
 }
 
 func (s *Signer) scheduleKeygenRetry(keygenBlock ttypes.KeygenBlock) bool {
-	churnRetryInterval, err := s.thornadoBridge.GetMimir(constants.ChurnRetryInterval.String())
+	churnRetryInterval, err := s.thornadoBridge.GetConfigValue(constants.Churn_RetryIntervalBlocks.String())
 	if err != nil {
-		s.logger.Error().Err(err).Msg("fail to get churn retry mimir")
+		s.logger.Error().Err(err).Msg("fail to get churn retry config")
 		return false
 	}
 	if churnRetryInterval <= 0 {
-		churnRetryInterval = constants.NewConstantValue().GetInt64Value(constants.ChurnRetryInterval)
+		churnRetryInterval = constants.NewConfigValue().GetInt64Value(constants.Churn_RetryIntervalBlocks)
 	}
-	keygenRetryInterval, err := s.thornadoBridge.GetMimir(constants.KeygenRetryInterval.String())
+	keygenRetryInterval, err := s.thornadoBridge.GetConfigValue(constants.Keygen_RetryIntervalBlocks.String())
 	if err != nil {
-		s.logger.Error().Err(err).Msg("fail to get keygen retries mimir")
+		s.logger.Error().Err(err).Msg("fail to get keygen retries config")
 		return false
 	}
 	if keygenRetryInterval <= 0 {
@@ -519,25 +522,25 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 		s.logger.Error().Err(err).Msgf("fail to get block height")
 		return nil, nil, err
 	}
-	signingTransactionPeriod, err := s.constantsProvider.GetInt64Value(blockHeight, constants.SigningTransactionPeriod)
+	signingTransactionPeriod, err := s.constantsProvider.GetInt64Value(blockHeight, constants.Keysign_PeriodBlocks)
 	s.logger.Debug().Msgf("signing transaction period:%d", signingTransactionPeriod)
 	if err != nil {
-		s.logger.Error().Err(err).Msgf("fail to get constant value for(%s)", constants.SigningTransactionPeriod)
+		s.logger.Error().Err(err).Msgf("fail to get constant value for(%s)", constants.Keysign_PeriodBlocks)
 		return nil, nil, err
 	}
 
 	// if in round 7 retry, discard outbound if over the max outbound attempts
 	inactiveVaultRound7Retry := false
 	if item.Round7Retry {
-		mimirKey := "MAXOUTBOUNDATTEMPTS"
-		var maxOutboundAttemptsMimir int64
-		maxOutboundAttemptsMimir, err = s.thornadoBridge.GetMimir(mimirKey)
+		configKey := constants.TxOut_MaxAttempts.String()
+		var maxOutboundAttemptsConfig int64
+		maxOutboundAttemptsConfig, err = s.thornadoBridge.GetConfigValue(configKey)
 		if err != nil {
-			s.logger.Err(err).Msgf("fail to get %s", mimirKey)
+			s.logger.Err(err).Msgf("fail to get %s", configKey)
 			return nil, nil, err
 		}
 		attempt := (blockHeight - height) / signingTransactionPeriod
-		if attempt > maxOutboundAttemptsMimir {
+		if attempt > maxOutboundAttemptsConfig {
 			s.logger.Warn().
 				Int64("outbound_height", height).
 				Int64("current_height", blockHeight).
@@ -572,23 +575,23 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 		s.logger.Error().Err(err).Msgf("not supported %s", tx.Chain.String())
 		return nil, nil, err
 	}
-	mimirKey := "HALTSIGNING"
-	haltSigningGlobalMimir, err := s.thornadoBridge.GetMimir(mimirKey)
+	configKey := constants.Halt_SigningGlobal.String()
+	haltSigningGlobalConfig, err := s.thornadoBridge.GetConfigValue(configKey)
 	if err != nil {
-		s.logger.Err(err).Msgf("fail to get %s", mimirKey)
+		s.logger.Err(err).Msgf("fail to get %s", configKey)
 		return nil, nil, err
 	}
-	if haltSigningGlobalMimir > 0 && haltSigningGlobalMimir <= blockHeight {
+	if haltSigningGlobalConfig > 0 && haltSigningGlobalConfig <= blockHeight {
 		s.logger.Info().Msg("signing has been halted globally")
 		return nil, nil, nil
 	}
-	mimirKey = fmt.Sprintf(constants.MimirTemplateHaltSigning, tx.Chain)
-	haltSigningMimir, err := s.thornadoBridge.GetMimir(mimirKey)
+	configKey = fmt.Sprintf(constants.ConfigTemplateHaltSigning, tx.Chain)
+	haltSigningConfig, err := s.thornadoBridge.GetConfigValue(configKey)
 	if err != nil {
-		s.logger.Err(err).Msgf("fail to get %s", mimirKey)
+		s.logger.Err(err).Msgf("fail to get %s", configKey)
 		return nil, nil, err
 	}
-	if haltSigningMimir > 0 && haltSigningMimir <= blockHeight {
+	if haltSigningConfig > 0 && haltSigningConfig <= blockHeight {
 		s.logger.Info().Msgf("signing for %s is halted", tx.Chain)
 		return nil, nil, nil
 	}

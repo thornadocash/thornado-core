@@ -16,12 +16,12 @@ import (
 
 // BlockResponse struct for BlockResponse
 type BlockResponse struct {
-	Id BlockResponseId `json:"id"`
-	Header BlockResponseHeader `json:"header"`
+	Id                  BlockResponseId     `json:"id"`
+	Header              BlockResponseHeader `json:"header"`
 	FinalizeBlockEvents []map[string]string `json:"finalize_block_events"`
-	BeginBlockEvents []map[string]string `json:"begin_block_events"`
-	EndBlockEvents []map[string]string `json:"end_block_events"`
-	Txs []BlockTx `json:"txs"`
+	BeginBlockEvents    []map[string]string `json:"begin_block_events"`
+	EndBlockEvents      []map[string]string `json:"end_block_events"`
+	Txs                 []BlockTx           `json:"txs"`
 }
 
 // NewBlockResponse instantiates a new BlockResponse object
@@ -251,5 +251,3 @@ func (v *NullableBlockResponse) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

@@ -395,28 +395,28 @@ func (k KVStoreDummy) GetBanVoter(_ cosmos.Context, _ cosmos.AccAddress) (BanVot
 func (k KVStoreDummy) GetBanVoterIterator(ctx cosmos.Context) cosmos.Iterator {
 	return nil
 }
-func (k KVStoreDummy) GetMimir(_ cosmos.Context, key string) (int64, error) { return 0, kaboom }
-func (k KVStoreDummy) GetMimirWithRef(_ cosmos.Context, template string, key ...any) (int64, error) {
+func (k KVStoreDummy) GetConfig(_ cosmos.Context, key string) (int64, error) { return 0, kaboom }
+func (k KVStoreDummy) GetConfigWithRef(_ cosmos.Context, template string, key ...any) (int64, error) {
 	return 0, kaboom
 }
-func (k KVStoreDummy) SetMimir(_ cosmos.Context, key string, value int64) {}
-func (k KVStoreDummy) GetNodeMimirs(ctx cosmos.Context, key string) (NodeMimirs, error) {
-	return NodeMimirs{}, kaboom
+func (k KVStoreDummy) SetConfig(_ cosmos.Context, key string, value int64) {}
+func (k KVStoreDummy) GetNodeConfigs(ctx cosmos.Context, key string) (NodeConfigs, error) {
+	return NodeConfigs{}, kaboom
 }
 
-func (k KVStoreDummy) SetNodeMimir(_ cosmos.Context, key string, value int64, acc cosmos.AccAddress) error {
+func (k KVStoreDummy) SetNodeConfig(_ cosmos.Context, key string, value int64, acc cosmos.AccAddress) error {
 	return kaboom
 }
-func (k KVStoreDummy) DeleteNodeMimirs(_ cosmos.Context, key string)           {}
-func (k KVStoreDummy) PurgeOperationalNodeMimirs(_ cosmos.Context)             {}
-func (k KVStoreDummy) DeleteMimir(_ cosmos.Context, key string) error          { return kaboom }
-func (k KVStoreDummy) GetMimirIterator(ctx cosmos.Context) cosmos.Iterator     { return nil }
-func (k KVStoreDummy) GetNodeMimirIterator(ctx cosmos.Context) cosmos.Iterator { return nil }
+func (k KVStoreDummy) DeleteNodeConfigs(_ cosmos.Context, key string)           {}
+func (k KVStoreDummy) PurgeOperationalNodeConfigs(_ cosmos.Context)             {}
+func (k KVStoreDummy) DeleteConfig(_ cosmos.Context, key string) error          { return kaboom }
+func (k KVStoreDummy) GetConfigIterator(ctx cosmos.Context) cosmos.Iterator     { return nil }
+func (k KVStoreDummy) GetNodeConfigIterator(ctx cosmos.Context) cosmos.Iterator { return nil }
 func (k KVStoreDummy) GetNodePauseChain(ctx cosmos.Context, acc cosmos.AccAddress) int64 {
 	return int64(-1)
 }
 func (k KVStoreDummy) SetNodePauseChain(ctx cosmos.Context, acc cosmos.AccAddress) {}
-func (k KVStoreDummy) IsOperationalMimir(key string) bool {
+func (k KVStoreDummy) IsOperationalConfig(key string) bool {
 	key = strings.ToUpper(key)
 	// Simplified representation.
 	return strings.Contains(key, "HALT") || strings.Contains(key, "PAUSE")
@@ -473,18 +473,6 @@ func (k KVStoreDummy) GetTssKeysignMetric(_ cosmos.Context, txID common.TxID) (*
 func (k KVStoreDummy) GetLatestTssKeysignMetric(_ cosmos.Context) (*TssKeysignMetric, error) {
 	return nil, kaboom
 }
-func (k KVStoreDummy) SetChainContract(ctx cosmos.Context, cc ChainContract) {}
-func (k KVStoreDummy) GetChainContract(ctx cosmos.Context, chain common.Chain) (ChainContract, error) {
-	return ChainContract{}, kaboom
-}
-
-func (k KVStoreDummy) GetChainContractIterator(ctx cosmos.Context) cosmos.Iterator {
-	return nil
-}
-
-func (k KVStoreDummy) GetChainContracts(ctx cosmos.Context, chains common.Chains) []ChainContract {
-	return nil
-}
 func (k KVStoreDummy) SetSolvencyVoter(_ cosmos.Context, _ SolvencyVoter) {}
 func (k KVStoreDummy) GetSolvencyVoter(_ cosmos.Context, _ common.TxID, _ common.Chain) (SolvencyVoter, error) {
 	return SolvencyVoter{}, kaboom
@@ -494,11 +482,11 @@ func (k KVStoreDummy) InvariantRoutes() []common.InvariantRoute {
 	return nil
 }
 
-func (k KVStoreDummy) GetConstants() constants.ConstantValues {
-	return constants.GetConstantValues(semver.MustParse("9999999.0.0"))
+func (k KVStoreDummy) GetConstants() constants.ConfigValues {
+	return constants.GetConfigValues(semver.MustParse("9999999.0.0"))
 }
 
-func (k KVStoreDummy) GetConfigInt64(ctx cosmos.Context, key constants.ConstantName) int64 {
+func (k KVStoreDummy) GetConfigInt64(ctx cosmos.Context, key constants.ConfigName) int64 {
 	return -1
 }
 
@@ -514,34 +502,6 @@ func (k KVStoreDummy) AnchorMedian(ctx cosmos.Context, assets []common.Asset) co
 func (k KVStoreDummy) DollarsPerRune(ctx cosmos.Context) cosmos.Uint { return cosmos.ZeroUint() }
 func (k KVStoreDummy) RunePerDollar(ctx cosmos.Context) cosmos.Uint  { return cosmos.ZeroUint() }
 func (k KVStoreDummy) GetNativeTxFee(ctx cosmos.Context) cosmos.Uint {
-	return cosmos.ZeroUint()
-}
-
-func (k KVStoreDummy) AddToOutboundFeeWithheldRune(ctx cosmos.Context, outAsset common.Asset, withheld cosmos.Uint) error {
-	return kaboom
-}
-
-func (k KVStoreDummy) AddToOutboundFeeSpentRune(ctx cosmos.Context, outAsset common.Asset, spent cosmos.Uint) error {
-	return kaboom
-}
-
-func (k KVStoreDummy) GetOutboundFeeWithheldRune(ctx cosmos.Context, outAsset common.Asset) (cosmos.Uint, error) {
-	return cosmos.ZeroUint(), kaboom
-}
-
-func (k KVStoreDummy) GetOutboundFeeWithheldRuneIterator(ctx cosmos.Context) cosmos.Iterator {
-	return nil
-}
-
-func (k KVStoreDummy) GetOutboundFeeSpentRune(ctx cosmos.Context, outAsset common.Asset) (cosmos.Uint, error) {
-	return cosmos.ZeroUint(), kaboom
-}
-
-func (k KVStoreDummy) GetOutboundFeeSpentRuneIterator(ctx cosmos.Context) cosmos.Iterator {
-	return nil
-}
-
-func (k KVStoreDummy) GetSurplusForTargetMultiplier(ctx cosmos.Context, targetMultiplierBps cosmos.Uint) cosmos.Uint {
 	return cosmos.ZeroUint()
 }
 

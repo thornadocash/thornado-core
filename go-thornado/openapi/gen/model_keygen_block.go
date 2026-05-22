@@ -17,7 +17,7 @@ import (
 // KeygenBlock struct for KeygenBlock
 type KeygenBlock struct {
 	// the height of the keygen block
-	Height *int64 `json:"height,omitempty"`
+	Height  *int64   `json:"height,omitempty"`
 	Keygens []Keygen `json:"keygens"`
 }
 
@@ -141,5 +141,3 @@ func (v *NullableKeygenBlock) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

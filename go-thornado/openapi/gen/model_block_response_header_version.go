@@ -17,7 +17,7 @@ import (
 // BlockResponseHeaderVersion struct for BlockResponseHeaderVersion
 type BlockResponseHeaderVersion struct {
 	Block string `json:"block"`
-	App string `json:"app"`
+	App   string `json:"app"`
 }
 
 // NewBlockResponseHeaderVersion instantiates a new BlockResponseHeaderVersion object
@@ -133,5 +133,3 @@ func (v *NullableBlockResponseHeaderVersion) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

@@ -42,13 +42,13 @@ func (s *ConstantsProviderSuite) TestNewConstantsProvider(c *C) {
 func (s *ConstantsProviderSuite) TestGetInt64Value_FirstCall(c *C) {
 	bridge := &mockBridgeConstants{
 		constants: map[string]int64{
-			constants.SigningTransactionPeriod.String(): 300,
-			constants.ChurnInterval.String():            43200,
+			constants.Keysign_PeriodBlocks.String(): 300,
+			constants.Churn_IntervalBlocks.String(): 43200,
 		},
 	}
 	cp := NewConstantsProvider(bridge)
 
-	val, err := cp.GetInt64Value(100, constants.SigningTransactionPeriod)
+	val, err := cp.GetInt64Value(100, constants.Keysign_PeriodBlocks)
 	c.Assert(err, IsNil)
 	c.Assert(val, Equals, int64(300))
 	c.Assert(cp.requestHeight, Equals, int64(100))
@@ -57,19 +57,19 @@ func (s *ConstantsProviderSuite) TestGetInt64Value_FirstCall(c *C) {
 func (s *ConstantsProviderSuite) TestGetInt64Value_CacheHit(c *C) {
 	bridge := &mockBridgeConstants{
 		constants: map[string]int64{
-			constants.SigningTransactionPeriod.String(): 300,
-			constants.ChurnInterval.String():            43200,
+			constants.Keysign_PeriodBlocks.String(): 300,
+			constants.Churn_IntervalBlocks.String(): 43200,
 		},
 	}
 	cp := NewConstantsProvider(bridge)
 
 	// First call populates cache
-	val, err := cp.GetInt64Value(100, constants.SigningTransactionPeriod)
+	val, err := cp.GetInt64Value(100, constants.Keysign_PeriodBlocks)
 	c.Assert(err, IsNil)
 	c.Assert(val, Equals, int64(300))
 
 	// Second call at height within churn interval should use cache
-	val, err = cp.GetInt64Value(200, constants.SigningTransactionPeriod)
+	val, err = cp.GetInt64Value(200, constants.Keysign_PeriodBlocks)
 	c.Assert(err, IsNil)
 	c.Assert(val, Equals, int64(300))
 }
@@ -77,25 +77,25 @@ func (s *ConstantsProviderSuite) TestGetInt64Value_CacheHit(c *C) {
 func (s *ConstantsProviderSuite) TestGetInt64Value_CacheExpired(c *C) {
 	bridge := &mockBridgeConstants{
 		constants: map[string]int64{
-			constants.SigningTransactionPeriod.String(): 300,
-			constants.ChurnInterval.String():            100,
+			constants.Keysign_PeriodBlocks.String(): 300,
+			constants.Churn_IntervalBlocks.String(): 100,
 		},
 	}
 	cp := NewConstantsProvider(bridge)
 
 	// First call populates cache at height 100
-	val, err := cp.GetInt64Value(100, constants.SigningTransactionPeriod)
+	val, err := cp.GetInt64Value(100, constants.Keysign_PeriodBlocks)
 	c.Assert(err, IsNil)
 	c.Assert(val, Equals, int64(300))
 
 	// Update the bridge to return new constants
 	bridge.constants = map[string]int64{
-		constants.SigningTransactionPeriod.String(): 600,
-		constants.ChurnInterval.String():            100,
+		constants.Keysign_PeriodBlocks.String(): 600,
+		constants.Churn_IntervalBlocks.String(): 100,
 	}
 
 	// Call at height 300 (200 blocks later, > churnInterval of 100) should refresh
-	val, err = cp.GetInt64Value(300, constants.SigningTransactionPeriod)
+	val, err = cp.GetInt64Value(300, constants.Keysign_PeriodBlocks)
 	c.Assert(err, IsNil)
 	c.Assert(val, Equals, int64(600))
 }
@@ -106,7 +106,7 @@ func (s *ConstantsProviderSuite) TestGetInt64Value_ErrorOnFirstCall(c *C) {
 	}
 	cp := NewConstantsProvider(bridge)
 
-	val, err := cp.GetInt64Value(100, constants.SigningTransactionPeriod)
+	val, err := cp.GetInt64Value(100, constants.Keysign_PeriodBlocks)
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Matches, ".*fail to get constants from thornado.*")
 	c.Assert(val, Equals, int64(0))
@@ -115,14 +115,14 @@ func (s *ConstantsProviderSuite) TestGetInt64Value_ErrorOnFirstCall(c *C) {
 func (s *ConstantsProviderSuite) TestGetInt64Value_ErrorOnRefresh(c *C) {
 	bridge := &mockBridgeConstants{
 		constants: map[string]int64{
-			constants.SigningTransactionPeriod.String(): 300,
-			constants.ChurnInterval.String():            100,
+			constants.Keysign_PeriodBlocks.String(): 300,
+			constants.Churn_IntervalBlocks.String(): 100,
 		},
 	}
 	cp := NewConstantsProvider(bridge)
 
 	// First call succeeds
-	val, err := cp.GetInt64Value(100, constants.SigningTransactionPeriod)
+	val, err := cp.GetInt64Value(100, constants.Keysign_PeriodBlocks)
 	c.Assert(err, IsNil)
 	c.Assert(val, Equals, int64(300))
 
@@ -130,7 +130,7 @@ func (s *ConstantsProviderSuite) TestGetInt64Value_ErrorOnRefresh(c *C) {
 	bridge.err = fmt.Errorf("timeout")
 
 	// Call at height 300 (past churn interval) should fail on refresh
-	val, err = cp.GetInt64Value(300, constants.SigningTransactionPeriod)
+	val, err = cp.GetInt64Value(300, constants.Keysign_PeriodBlocks)
 	c.Assert(err, NotNil)
 	c.Assert(val, Equals, int64(0))
 }
@@ -138,7 +138,7 @@ func (s *ConstantsProviderSuite) TestGetInt64Value_ErrorOnRefresh(c *C) {
 func (s *ConstantsProviderSuite) TestEnsureConstants_NoCacheRefreshNeeded(c *C) {
 	bridge := &mockBridgeConstants{
 		constants: map[string]int64{
-			constants.ChurnInterval.String(): 43200,
+			constants.Churn_IntervalBlocks.String(): 43200,
 		},
 	}
 	cp := NewConstantsProvider(bridge)
@@ -158,13 +158,13 @@ func (s *ConstantsProviderSuite) TestEnsureConstants_NoCacheRefreshNeeded(c *C) 
 func (s *ConstantsProviderSuite) TestGetInt64Value_MissingKey(c *C) {
 	bridge := &mockBridgeConstants{
 		constants: map[string]int64{
-			constants.ChurnInterval.String(): 43200,
+			constants.Churn_IntervalBlocks.String(): 43200,
 		},
 	}
 	cp := NewConstantsProvider(bridge)
 
 	// Ask for a key that doesn't exist in the map - should return zero value
-	val, err := cp.GetInt64Value(100, constants.SigningTransactionPeriod)
+	val, err := cp.GetInt64Value(100, constants.Keysign_PeriodBlocks)
 	c.Assert(err, IsNil)
 	c.Assert(val, Equals, int64(0))
 }

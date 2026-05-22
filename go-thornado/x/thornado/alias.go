@@ -56,7 +56,7 @@ var (
 	NewBanVoter                     = types.NewBanVoter
 	NewErrataTxVoter                = types.NewErrataTxVoter
 	NewObservedTxVoter              = types.NewObservedTxVoter
-	NewMsgMimir                     = types.NewMsgMimir
+	NewMsgConfig                    = types.NewMsgConfig
 	NewMsgNodePauseChain            = types.NewMsgNodePauseChain
 	NewMsgDeposit                   = types.NewMsgDeposit
 	NewMsgTssPool                   = types.NewMsgTssPool
@@ -90,8 +90,8 @@ var (
 	NewEventErrata                  = types.NewEventErrata
 	NewEventFee                     = types.NewEventFee
 	NewEventOutbound                = types.NewEventOutbound
-	NewEventSetMimir                = types.NewEventSetMimir
-	NewEventSetNodeMimir            = types.NewEventSetNodeMimir
+	NewEventSetConfig               = types.NewEventSetConfig
+	NewEventSetNodeConfig           = types.NewEventSetNodeConfig
 	NewEventTssKeygenSuccess        = types.NewEventTssKeygenSuccess
 	NewEventTssKeygenFailure        = types.NewEventTssKeygenFailure
 	NewEventTssKeygenMetric         = types.NewEventTssKeygenMetric
@@ -166,7 +166,7 @@ type (
 	MsgNoOp                      = types.MsgNoOp
 	MsgConsolidate               = types.MsgConsolidate
 	MsgOutboundTx                = types.MsgOutboundTx
-	MsgMimir                     = types.MsgMimir
+	MsgConfig                    = types.MsgConfig
 	MsgNodePauseChain            = types.MsgNodePauseChain
 	MsgMigrate                   = types.MsgMigrate
 	MsgRefundTx                  = types.MsgRefundTx
@@ -234,12 +234,10 @@ type (
 	OraclePrice             = types.OraclePrice
 	ObservedNetworkFeeVoter = types.ObservedNetworkFeeVoter
 	Jail                    = types.Jail
-	ChainContract           = types.ChainContract
 	Blame                   = types.Blame
 	Node                    = types.Node
-	NodeMimir               = types.NodeMimir
-	NodeMimirs              = types.NodeMimirs
-	ContractInfo            = types.ContractInfo
+	NodeConfig              = types.NodeConfig
+	NodeConfigs             = types.NodeConfigs
 	ShielderSession         = types.ShielderSession
 	ShielderDeposit         = types.ShielderDeposit
 	ShielderWithdrawal      = types.ShielderWithdrawal

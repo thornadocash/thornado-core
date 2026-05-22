@@ -19,13 +19,13 @@ import (
 // TxOutStorage is going to manage all the outgoing tx
 type TxOutStorage struct {
 	keeper        keeper.Keeper
-	constAccessor constants.ConstantValues
+	constAccessor constants.ConfigValues
 	eventMgr      EventManager
 	gasManager    GasManager
 }
 
 // newTxOutStorage will create a new instance of TxOutStore.
-func newTxOutStorage(keeper keeper.Keeper, constAccessor constants.ConstantValues, eventMgr EventManager, gasManager GasManager) *TxOutStorage {
+func newTxOutStorage(keeper keeper.Keeper, constAccessor constants.ConfigValues, eventMgr EventManager, gasManager GasManager) *TxOutStorage {
 	return &TxOutStorage{
 		keeper:        keeper,
 		eventMgr:      eventMgr,
@@ -159,7 +159,7 @@ func (tos *TxOutStorage) TryAddTxOutItem(ctx cosmos.Context, mgr Manager, toi Tx
 // return bool indicate whether the transaction had been added successful or not
 // return error indicate error
 func (tos *TxOutStorage) cachedTryAddTxOutItem(ctx cosmos.Context, mgr Manager, toi TxOutItem, minOut cosmos.Uint) (bool, error) {
-	outputs, totalOutboundFeeRune, err := tos.prepareTxOutItem(ctx, toi)
+	outputs, _, err := tos.prepareTxOutItem(ctx, toi)
 	if err != nil {
 		return false, fmt.Errorf("failed to prepare tx out item: %w", err)
 	}
@@ -238,14 +238,6 @@ func (tos *TxOutStorage) cachedTryAddTxOutItem(ctx cosmos.Context, mgr Manager, 
 		output.CloutSpent = &cloutShare
 		if err := tos.addToBlockOut(ctx, mgr, output, outboundHeight); err != nil {
 			return false, err
-		}
-	}
-
-	// Add total outbound fee to the OutboundGasWithheldRune. totalOutboundFeeRune will be 0 if these are Migration outbounds
-	// Don't count outbounds on Thornado ($RUNE and Synths)
-	if !totalOutboundFeeRune.IsZero() && !toi.Chain.IsThornado() {
-		if err := mgr.Keeper().AddToOutboundFeeWithheldRune(ctx, toi.Coin.Asset, totalOutboundFeeRune); err != nil {
-			ctx.Logger().Error("fail to add to outbound fee withheld rune", "outbound asset", toi.Coin.Asset, "error", err)
 		}
 	}
 
@@ -523,7 +515,7 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 			// to deduct balances of vaults that have outstanding txs assigned
 			pendingOutbounds := tos.keeper.GetPendingOutbounds(ctx, toi.Coin.Asset)
 
-			signingTransactionPeriod := tos.constAccessor.GetInt64Value(constants.SigningTransactionPeriod)
+			signingTransactionPeriod := tos.keeper.GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)
 
 			// ///////////// COLLECT ACTIVE ASGARD VAULTS ///////////////////
 			var activeAsgards Vaults

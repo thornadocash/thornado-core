@@ -16,7 +16,7 @@ import (
 
 // VaultAddress struct for VaultAddress
 type VaultAddress struct {
-	Chain string `json:"chain"`
+	Chain   string `json:"chain"`
 	Address string `json:"address"`
 }
 
@@ -133,5 +133,3 @@ func (v *NullableVaultAddress) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

@@ -16,14 +16,14 @@ import (
 
 // BlockTxResult struct for BlockTxResult
 type BlockTxResult struct {
-	Code *int64 `json:"code,omitempty"`
-	Data *string `json:"data,omitempty"`
-	Log *string `json:"log,omitempty"`
-	Info *string `json:"info,omitempty"`
-	GasWanted *string `json:"gas_wanted,omitempty"`
-	GasUsed *string `json:"gas_used,omitempty"`
-	Events []map[string]string `json:"events,omitempty"`
-	Codespace *string `json:"codespace,omitempty"`
+	Code      *int64              `json:"code,omitempty"`
+	Data      *string             `json:"data,omitempty"`
+	Log       *string             `json:"log,omitempty"`
+	Info      *string             `json:"info,omitempty"`
+	GasWanted *string             `json:"gas_wanted,omitempty"`
+	GasUsed   *string             `json:"gas_used,omitempty"`
+	Events    []map[string]string `json:"events,omitempty"`
+	Codespace *string             `json:"codespace,omitempty"`
 }
 
 // NewBlockTxResult instantiates a new BlockTxResult object
@@ -364,5 +364,3 @@ func (v *NullableBlockTxResult) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

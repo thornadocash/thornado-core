@@ -14,9 +14,9 @@ var (
 	GitCommit       = "null"  // sha1 revision used to build the program
 	BuildTime       = "null"  // when the executable was built
 	Version         = "0.1.0" // software version
-	int64Overrides  = map[ConstantName]int64{}
-	boolOverrides   = map[ConstantName]bool{}
-	stringOverrides = map[ConstantName]string{}
+	int64Overrides  = map[ConfigName]int64{}
+	boolOverrides   = map[ConfigName]bool{}
+	stringOverrides = map[ConfigName]string{}
 )
 
 var SWVersion, _ = semver.Make(Version)
@@ -51,22 +51,22 @@ const (
 	CtxWASMQuery      contextKey = "wasm-query"
 )
 
-// Permitted characters in Mimirs
-const MimirKeyRegex = `^[a-zA-Z0-9-]+$`
+// Permitted characters in Configs
+const ConfigKeyRegex = `^[a-zA-Z0-9-]+$`
 
-// Maximum length of a mimir (in bytes)
-// If increasing this value, be sure to adjust test/regression/suites/mimir/mimir.yaml
-const MaxMimirLength = 128
+// Maximum length of a config (in bytes)
+// If increasing this value, be sure to adjust test/regression/suites/config/config.yaml
+const MaxConfigLength = 128
 
-// ConstantVals implement ConstantValues interface
-type ConstantVals struct {
-	int64values  map[ConstantName]int64
-	boolValues   map[ConstantName]bool
-	stringValues map[ConstantName]string
+// ConfigVals implement ConfigValues interface
+type ConfigVals struct {
+	int64values  map[ConfigName]int64
+	boolValues   map[ConfigName]bool
+	stringValues map[ConfigName]string
 }
 
 // GetInt64Value get value in int64 type, if it doesn't exist then it will return the default value of int64, which is 0
-func (cv *ConstantVals) GetInt64Value(name ConstantName) int64 {
+func (cv *ConfigVals) GetInt64Value(name ConfigName) int64 {
 	// check overrides first
 	v, ok := int64Overrides[name]
 	if ok {
@@ -81,7 +81,7 @@ func (cv *ConstantVals) GetInt64Value(name ConstantName) int64 {
 }
 
 // GetBoolValue retrieve a bool constant value from the map
-func (cv *ConstantVals) GetBoolValue(name ConstantName) bool {
+func (cv *ConfigVals) GetBoolValue(name ConfigName) bool {
 	v, ok := boolOverrides[name]
 	if ok {
 		return v
@@ -94,7 +94,7 @@ func (cv *ConstantVals) GetBoolValue(name ConstantName) bool {
 }
 
 // GetStringValue retrieve a string const value from the map
-func (cv *ConstantVals) GetStringValue(name ConstantName) string {
+func (cv *ConfigVals) GetStringValue(name ConfigName) string {
 	v, ok := stringOverrides[name]
 	if ok {
 		return v
@@ -106,7 +106,7 @@ func (cv *ConstantVals) GetStringValue(name ConstantName) string {
 	return ""
 }
 
-func (cv *ConstantVals) String() string {
+func (cv *ConfigVals) String() string {
 	sb := strings.Builder{}
 	// analyze-ignore(map-iteration)
 	for k, v := range cv.int64values {
@@ -127,14 +127,14 @@ func (cv *ConstantVals) String() string {
 	return sb.String()
 }
 
-type ConstantValsByKeyname struct {
+type ConfigValsByKeyname struct {
 	Int64Values  map[string]int64  `json:"int_64_values"`
 	BoolValues   map[string]bool   `json:"bool_values"`
 	StringValues map[string]string `json:"string_values"`
 }
 
-func (cv ConstantVals) GetConstantValsByKeyname() ConstantValsByKeyname {
-	result := ConstantValsByKeyname{}
+func (cv ConfigVals) GetConfigValsByKeyname() ConfigValsByKeyname {
+	result := ConfigValsByKeyname{}
 	result.Int64Values = make(map[string]int64)
 	result.BoolValues = make(map[string]bool)
 	result.StringValues = make(map[string]string)
@@ -168,7 +168,7 @@ func (cv ConstantVals) GetConstantValsByKeyname() ConstantValsByKeyname {
 }
 
 // MarshalJSON marshal result to json format
-func (cv ConstantVals) MarshalJSON() ([]byte, error) {
-	result := cv.GetConstantValsByKeyname()
+func (cv ConfigVals) MarshalJSON() ([]byte, error) {
+	result := cv.GetConfigValsByKeyname()
 	return json.MarshalIndent(result, "", "	")
 }

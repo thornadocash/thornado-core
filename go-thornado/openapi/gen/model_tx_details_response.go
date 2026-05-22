@@ -16,17 +16,17 @@ import (
 
 // TxDetailsResponse struct for TxDetailsResponse
 type TxDetailsResponse struct {
-	TxId *string `json:"tx_id,omitempty"`
-	Tx ObservedTx `json:"tx"`
-	Txs []ObservedTx `json:"txs"`
-	Actions []TxOutItem `json:"actions"`
-	OutTxs []Tx `json:"out_txs"`
+	TxId    *string      `json:"tx_id,omitempty"`
+	Tx      ObservedTx   `json:"tx"`
+	Txs     []ObservedTx `json:"txs"`
+	Actions []TxOutItem  `json:"actions"`
+	OutTxs  []Tx         `json:"out_txs"`
 	// the thornado height at which the inbound reached consensus
 	ConsensusHeight *int64 `json:"consensus_height,omitempty"`
 	// the thornado height at which the outbound was finalised
 	FinalisedHeight *int64 `json:"finalised_height,omitempty"`
-	UpdatedVault *bool `json:"updated_vault,omitempty"`
-	Reverted *bool `json:"reverted,omitempty"`
+	UpdatedVault    *bool  `json:"updated_vault,omitempty"`
+	Reverted        *bool  `json:"reverted,omitempty"`
 	// the thornado height for which the outbound was scheduled
 	OutboundHeight *int64 `json:"outbound_height,omitempty"`
 }
@@ -410,5 +410,3 @@ func (v *NullableTxDetailsResponse) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

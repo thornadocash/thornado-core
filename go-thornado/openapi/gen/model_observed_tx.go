@@ -16,8 +16,8 @@ import (
 
 // ObservedTx struct for ObservedTx
 type ObservedTx struct {
-	Tx Tx `json:"tx"`
-	ObservedPubKey *string `json:"observed_pub_key,omitempty"`
+	Tx                  Tx      `json:"tx"`
+	ObservedPubKey      *string `json:"observed_pub_key,omitempty"`
 	ObservedPubKeyEddsa *string `json:"observed_pub_key_eddsa,omitempty"`
 	// the block height on the external source chain when the transaction was observed, not provided if chain is THOR
 	ExternalObservedHeight *int64 `json:"external_observed_height,omitempty"`
@@ -28,11 +28,11 @@ type ObservedTx struct {
 	// the aggregator target asset provided to transferOutAndCall
 	AggregatorTarget *string `json:"aggregator_target,omitempty"`
 	// the aggregator target asset limit provided to transferOutAndCall
-	AggregatorTargetLimit *string `json:"aggregator_target_limit,omitempty"`
-	Signers []string `json:"signers,omitempty"`
-	KeysignMs *int64 `json:"keysign_ms,omitempty"`
-	OutHashes []string `json:"out_hashes,omitempty"`
-	Status *string `json:"status,omitempty"`
+	AggregatorTargetLimit *string  `json:"aggregator_target_limit,omitempty"`
+	Signers               []string `json:"signers,omitempty"`
+	KeysignMs             *int64   `json:"keysign_ms,omitempty"`
+	OutHashes             []string `json:"out_hashes,omitempty"`
+	Status                *string  `json:"status,omitempty"`
 }
 
 // NewObservedTx instantiates a new ObservedTx object
@@ -505,5 +505,3 @@ func (v *NullableObservedTx) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

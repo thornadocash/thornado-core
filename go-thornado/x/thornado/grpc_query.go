@@ -70,60 +70,36 @@ func (s *queryServer) Ban(c context.Context, req *types.QueryBanRequest) (*types
 	return s.queryBan(ctx, req)
 }
 
-func (s *queryServer) MimirValues(c context.Context, req *types.QueryMimirValuesRequest) (*types.QueryMimirValuesResponse, error) {
+func (s *queryServer) ConfigValues(c context.Context, req *types.QueryConfigValuesRequest) (*types.QueryConfigValuesResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryMimirValues(ctx, req)
+	return s.queryConfigValues(ctx, req)
 }
 
-func (s *queryServer) MimirWithKey(c context.Context, req *types.QueryMimirWithKeyRequest) (*types.QueryMimirWithKeyResponse, error) {
+func (s *queryServer) ConfigNodesAllValues(c context.Context, req *types.QueryConfigNodesAllValuesRequest) (*types.QueryConfigNodesAllValuesResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryMimirWithKey(ctx, req)
+	return s.queryConfigNodesAllValues(ctx, req)
 }
 
-func (s *queryServer) MimirAdminValues(c context.Context, req *types.QueryMimirAdminValuesRequest) (*types.QueryMimirAdminValuesResponse, error) {
+func (s *queryServer) ConfigNodesValues(c context.Context, req *types.QueryConfigNodesValuesRequest) (*types.QueryConfigNodesValuesResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryMimirAdminValues(ctx, req)
+	return s.queryConfigNodesValues(ctx, req)
 }
 
-func (s *queryServer) MimirNodesAllValues(c context.Context, req *types.QueryMimirNodesAllValuesRequest) (*types.QueryMimirNodesAllValuesResponse, error) {
+func (s *queryServer) ConfigNodeValues(c context.Context, req *types.QueryConfigNodeValuesRequest) (*types.QueryConfigNodeValuesResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryMimirNodesAllValues(ctx, req)
-}
-
-func (s *queryServer) MimirNodesValues(c context.Context, req *types.QueryMimirNodesValuesRequest) (*types.QueryMimirNodesValuesResponse, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	ctx := s.unwrapSdkContext(c)
-	return s.queryMimirNodesValues(ctx, req)
-}
-
-func (s *queryServer) MimirNodeValues(c context.Context, req *types.QueryMimirNodeValuesRequest) (*types.QueryMimirNodeValuesResponse, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	ctx := s.unwrapSdkContext(c)
-	return s.queryMimirNodeValues(ctx, req)
-}
-
-func (s *queryServer) InboundAddresses(c context.Context, req *types.QueryInboundAddressesRequest) (*types.QueryInboundAddressesResponse, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	ctx := s.unwrapSdkContext(c)
-	return s.queryInboundAddresses(ctx, req)
+	return s.queryConfigNodeValues(ctx, req)
 }
 
 func (s *queryServer) Version(c context.Context, req *types.QueryVersionRequest) (*types.QueryVersionResponse, error) {
@@ -158,12 +134,12 @@ func (s *queryServer) BalanceModule(c context.Context, req *types.QueryBalanceMo
 	return s.queryBalanceModule(ctx, req)
 }
 
-func (s *queryServer) ConstantValues(c context.Context, req *types.QueryConstantValuesRequest) (*types.QueryConstantValuesResponse, error) {
+func (s *queryServer) ConfigDefaults(c context.Context, req *types.QueryConfigDefaultsRequest) (*types.QueryConfigDefaultsResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryConstantValues(ctx, req)
+	return s.queryConfigDefaults(ctx, req)
 }
 
 func (s *queryServer) LastBlocks(c context.Context, req *types.QueryLastBlocksRequest) (*types.QueryLastBlocksResponse, error) {
@@ -174,14 +150,6 @@ func (s *queryServer) LastBlocks(c context.Context, req *types.QueryLastBlocksRe
 	return s.queryLastBlockHeights(ctx, "")
 }
 
-func (s *queryServer) ChainsLastBlock(c context.Context, req *types.QueryChainsLastBlockRequest) (*types.QueryLastBlocksResponse, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	ctx := s.unwrapSdkContext(c)
-	return s.queryLastBlockHeights(ctx, req.Chain)
-}
-
 func (s *queryServer) Vault(c context.Context, req *types.QueryVaultRequest) (*types.QueryVaultResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
@@ -190,12 +158,12 @@ func (s *queryServer) Vault(c context.Context, req *types.QueryVaultRequest) (*t
 	return s.queryVault(ctx, req)
 }
 
-func (s *queryServer) AsgardVaults(c context.Context, req *types.QueryAsgardVaultsRequest) (*types.QueryAsgardVaultsResponse, error) {
+func (s *queryServer) BaseVaults(c context.Context, req *types.QueryBaseVaultsRequest) (*types.QueryBaseVaultsResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryAsgardVaults(ctx, req)
+	return s.queryBaseVaults(ctx, req)
 }
 
 func (s *queryServer) VaultsPubkeys(c context.Context, req *types.QueryVaultsPubkeysRequest) (*types.QueryVaultsPubkeysResponse, error) {
@@ -214,44 +182,20 @@ func (s *queryServer) VaultSolvency(c context.Context, req *types.QueryVaultSolv
 	return s.queryVaultSolvency(ctx, req)
 }
 
-func (s *queryServer) TxStages(c context.Context, req *types.QueryTxStagesRequest) (*types.QueryTxStagesResponse, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	ctx := s.unwrapSdkContext(c)
-	return s.queryTxStages(ctx, req)
-}
-
-func (s *queryServer) TxStatus(c context.Context, req *types.QueryTxStatusRequest) (*types.QueryTxStatusResponse, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	ctx := s.unwrapSdkContext(c)
-	return s.queryTxStatus(ctx, req)
-}
-
-func (s *queryServer) TxVoters(c context.Context, req *types.QueryTxVotersRequest) (*types.QueryObservedTxVoter, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	ctx := s.unwrapSdkContext(c)
-	return s.queryTxVoters(ctx, req)
-}
-
-func (s *queryServer) TxVotersOld(c context.Context, req *types.QueryTxVotersRequest) (*types.QueryObservedTxVoter, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	ctx := s.unwrapSdkContext(c)
-	return s.queryTxVoters(ctx, req)
-}
-
 func (s *queryServer) Tx(c context.Context, req *types.QueryTxRequest) (*types.QueryTxResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
 	return s.queryTx(ctx, req)
+}
+
+func (s *queryServer) TxOut(c context.Context, req *types.QueryTxOutRequest) (*types.QueryTxOutResponse, error) {
+	if err := checkHeightParam(req.Height); err != nil {
+		return nil, err
+	}
+	ctx := s.unwrapSdkContext(c)
+	return s.queryTxOut(ctx, req)
 }
 
 func (s *queryServer) ShielderDeposit(c context.Context, req *types.QueryShielderDepositRequest) (*types.QueryShielderDepositResponse, error) {
@@ -381,13 +325,6 @@ func (s *queryServer) UpgradeVotes(c context.Context, req *types.QueryUpgradeVot
 	return s.queryUpgradeVotes(ctx, req)
 }
 
-func (s *queryServer) Codes(c context.Context, req *types.QueryCodesRequest) (*types.QueryCodesResponse, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	return &types.QueryCodesResponse{}, nil
-}
-
 func (s *queryServer) Export(c context.Context, req *types.QueryExportRequest) (*types.QueryExportResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
@@ -417,25 +354,4 @@ func (s *queryServer) Balances(c context.Context, req *types.QueryBalancesReques
 	}
 	ctx := s.unwrapSdkContext(c)
 	return s.queryBalances(ctx, req)
-}
-
-func (s *queryServer) Eip712TypedData(c context.Context, req *types.QueryEip712TypedDataRequest) (*types.QueryEip712TypedDataResponse, error) {
-	ctx := s.unwrapSdkContext(c)
-	return s.queryEip712TypedData(ctx, req)
-}
-
-func (s *queryServer) ContractInfo(c context.Context, req *types.QueryContractInfoRequest) (*types.QueryContractInfoResponse, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	ctx := s.unwrapSdkContext(c)
-	return s.queryContractInfo(ctx, req)
-}
-
-func (s *queryServer) ContractInfos(c context.Context, req *types.QueryContractInfosRequest) (*types.QueryContractInfosResponse, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	ctx := s.unwrapSdkContext(c)
-	return s.queryContractInfos(ctx, req)
 }

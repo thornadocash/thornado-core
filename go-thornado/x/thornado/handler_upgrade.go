@@ -13,6 +13,7 @@ import (
 
 	upgradetypes "cosmossdk.io/x/upgrade/types"
 	"github.com/blang/semver"
+	"github.com/thornadocash/go-thornado/constants"
 )
 
 // ProposeUpgradeHandler is to handle the ProposeUpgrade message
@@ -83,7 +84,7 @@ func (h ProposeUpgradeHandler) validate(ctx cosmos.Context, msg *MsgProposeUpgra
 	iter := k.GetUpgradeProposalIterator(ctx)
 	defer iter.Close()
 
-	const maxProposalCount = 3
+	maxProposalCount := int(k.GetConfigInt64(ctx, constants.Upgrade_ProposalCountMax))
 	count := 0
 	for ; iter.Valid(); iter.Next() {
 		key := iter.Key()

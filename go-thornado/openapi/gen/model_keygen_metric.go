@@ -16,7 +16,7 @@ import (
 
 // KeygenMetric struct for KeygenMetric
 type KeygenMetric struct {
-	PubKey *string `json:"pub_key,omitempty"`
+	PubKey       *string            `json:"pub_key,omitempty"`
 	NodeTssTimes []NodeKeygenMetric `json:"node_tss_times"`
 }
 
@@ -140,5 +140,3 @@ func (v *NullableKeygenMetric) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

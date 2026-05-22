@@ -22,8 +22,8 @@ type TxResponse struct {
 	// the thornado height at which the outbound was finalised
 	FinalisedHeight *int64 `json:"finalised_height,omitempty"`
 	// the thornado height for which the outbound was scheduled
-	OutboundHeight *int64 `json:"outbound_height,omitempty"`
-	KeysignMetric *TssKeysignMetric `json:"keysign_metric,omitempty"`
+	OutboundHeight *int64            `json:"outbound_height,omitempty"`
+	KeysignMetric  *TssKeysignMetric `json:"keysign_metric,omitempty"`
 }
 
 // NewTxResponse instantiates a new TxResponse object
@@ -258,5 +258,3 @@ func (v *NullableTxResponse) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

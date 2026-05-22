@@ -16,8 +16,8 @@ import (
 
 // Coin struct for Coin
 type Coin struct {
-	Asset string `json:"asset"`
-	Amount string `json:"amount"`
+	Asset    string `json:"asset"`
+	Amount   string `json:"amount"`
 	Decimals *int64 `json:"decimals,omitempty"`
 }
 
@@ -169,5 +169,3 @@ func (v *NullableCoin) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

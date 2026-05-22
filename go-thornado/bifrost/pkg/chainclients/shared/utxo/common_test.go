@@ -18,12 +18,12 @@ var _ = Suite(&AsgardCacheTestSuite{})
 
 type mockAsgardBridge struct {
 	thornadoclient.ThornadoBridge
-	asgardPubKeys []thornadoclient.PubKeyContractAddressPair
+	asgardPubKeys []thornadoclient.PubKeyAddressPair
 	err           error
 	calls         int
 }
 
-func (m *mockAsgardBridge) GetAsgardPubKeys() ([]thornadoclient.PubKeyContractAddressPair, error) {
+func (m *mockAsgardBridge) GetAsgardPubKeys() ([]thornadoclient.PubKeyAddressPair, error) {
 	m.calls++
 	if m.err != nil {
 		return nil, m.err
@@ -31,11 +31,11 @@ func (m *mockAsgardBridge) GetAsgardPubKeys() ([]thornadoclient.PubKeyContractAd
 	return m.asgardPubKeys, nil
 }
 
-func makeAsgardPubKeyPair(c *C) thornadoclient.PubKeyContractAddressPair {
+func makeAsgardPubKeyPair(c *C) thornadoclient.PubKeyAddressPair {
 	pubKey, err := common.NewPubKeyFromCrypto(secp256k1.GenPrivKey().PubKey())
 	c.Assert(err, IsNil)
 
-	return thornadoclient.PubKeyContractAddressPair{
+	return thornadoclient.PubKeyAddressPair{
 		PubKey: pubKey,
 		Algo:   common.SigningAlgoSecp256k1,
 	}
@@ -75,7 +75,7 @@ func (s *AsgardCacheTestSuite) TestGetAsgardAddressCachedRefreshSuccess(c *C) {
 
 	var cache atomic.Pointer[AsgardCache]
 	bridge := &mockAsgardBridge{
-		asgardPubKeys: []thornadoclient.PubKeyContractAddressPair{pair},
+		asgardPubKeys: []thornadoclient.PubKeyAddressPair{pair},
 	}
 
 	addresses, err := GetAsgardAddressCached(&cache, chain, bridge, time.Second)

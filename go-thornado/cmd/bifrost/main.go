@@ -102,9 +102,9 @@ func main() {
 
 	tmPrivateKey := tcommon.CosmosPrivateKeyToTMPrivateKey(priKey)
 
-	consts := constants.NewConstantValue()
-	jailTimeKeygen := time.Duration(consts.GetInt64Value(constants.JailTimeKeygen)) * constants.ThornadoBlockTime
-	jailTimeKeysign := time.Duration(consts.GetInt64Value(constants.JailTimeKeysign)) * constants.ThornadoBlockTime
+	consts := constants.NewConfigValue()
+	jailTimeKeygen := time.Duration(consts.GetInt64Value(constants.Keygen_FailJailBlocks)) * constants.ThornadoBlockTime
+	jailTimeKeysign := time.Duration(consts.GetInt64Value(constants.Keysign_FailJailBlocks)) * constants.ThornadoBlockTime
 	if cfg.Signer.KeygenTimeout >= jailTimeKeygen {
 		log.Fatal().
 			Stringer("keygenTimeout", cfg.Signer.KeygenTimeout).

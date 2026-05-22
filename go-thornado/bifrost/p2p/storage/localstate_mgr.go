@@ -18,9 +18,8 @@ import (
 )
 
 const (
-	SigningEngineGG20    = "gg20"
-	SigningEngineFrost   = "frost"
-	SigningEngineSchnorr = SigningEngineFrost
+	SigningEngineGG20  = "gg20"
+	SigningEngineFrost = "frost"
 )
 
 // KeygenLocalState is a structure used to represent the data we saved locally for different keygen

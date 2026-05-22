@@ -18,12 +18,11 @@ import (
 	"net/url"
 )
 
-
 // HealthApiService HealthApi service
 type HealthApiService service
 
 type ApiPingRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *HealthApiService
 }
 
@@ -34,24 +33,25 @@ func (r ApiPingRequest) Execute() (*Ping, *http.Response, error) {
 /*
 Ping Method for Ping
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @return ApiPingRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiPingRequest
 */
 func (a *HealthApiService) Ping(ctx context.Context) ApiPingRequest {
 	return ApiPingRequest{
 		ApiService: a,
-		ctx: ctx,
+		ctx:        ctx,
 	}
 }
 
 // Execute executes the request
-//  @return Ping
+//
+//	@return Ping
 func (a *HealthApiService) PingExecute(r ApiPingRequest) (*Ping, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *Ping
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *Ping
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "HealthApiService.Ping")

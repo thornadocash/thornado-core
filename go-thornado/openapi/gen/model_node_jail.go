@@ -16,8 +16,8 @@ import (
 
 // NodeJail struct for NodeJail
 type NodeJail struct {
-	ReleaseHeight *int64 `json:"release_height,omitempty"`
-	Reason *string `json:"reason,omitempty"`
+	ReleaseHeight *int64  `json:"release_height,omitempty"`
+	Reason        *string `json:"reason,omitempty"`
 }
 
 // NewNodeJail instantiates a new NodeJail object
@@ -147,5 +147,3 @@ func (v *NullableNodeJail) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

@@ -16,9 +16,9 @@ import (
 
 // BlockTx struct for BlockTx
 type BlockTx struct {
-	Hash string `json:"hash"`
-	Tx map[string]interface{} `json:"tx"`
-	Result BlockTxResult `json:"result"`
+	Hash   string                 `json:"hash"`
+	Tx     map[string]interface{} `json:"tx"`
+	Result BlockTxResult          `json:"result"`
 }
 
 // NewBlockTx instantiates a new BlockTx object
@@ -162,5 +162,3 @@ func (v *NullableBlockTx) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

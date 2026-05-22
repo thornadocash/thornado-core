@@ -61,6 +61,15 @@ message QueryTxResponse {
   int64 outbound_height = 4;
   TssKeysignMetric keysign_metric = 5
       [ (gogoproto.jsontag) = "keysign_metric" ];
+  repeated PlannedOutTx planned_out_txs = 6;
+  repeated common.Tx out_txs = 7 [
+    (gogoproto.castrepeated) = "github.com/thornadocash/go-thornado/common.Txs",
+    (gogoproto.nullable) = false
+  ];
+  QueryTxStagesResponse stages = 8
+      [ (gogoproto.nullable) = false, (gogoproto.jsontag) = "stages" ];
+  repeated TxOutItem actions = 9
+      [ (gogoproto.nullable) = false, (gogoproto.jsontag) = "actions" ];
 }
 
 // Same as ObservedTx, but changes block_height and finalise_height (openapi
@@ -112,6 +121,14 @@ message QueryObservedTxVoter {
 message QueryTxVotersRequest {
   string tx_id = 1;
   string height = 2;
+}
+
+message QueryTxOutRequest {
+  string height = 1;
+}
+
+message QueryTxOutResponse {
+  TxOut txout = 1 [ (gogoproto.nullable) = false ];
 }
 
 message PlannedOutTx {

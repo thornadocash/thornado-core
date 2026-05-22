@@ -17,14 +17,12 @@ import (
 	tmhttp "github.com/cometbft/cometbft/rpc/client/http"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
-	"github.com/cosmos/evm/ethereum/eip712"
 	"github.com/rs/zerolog/log"
 	"github.com/thornadocash/go-thornado/bifrost/p2p/conversion"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/config"
 	"github.com/thornadocash/go-thornado/constants"
-	"github.com/thornadocash/go-thornado/x/thornado/keeper"
 	keeperv1 "github.com/thornadocash/go-thornado/x/thornado/keeper/v1"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
@@ -106,17 +104,16 @@ func (qs queryServer) queryVault(ctx cosmos.Context, req *types.QueryVaultReques
 		InboundTxCount:        v.InboundTxCount,
 		OutboundTxCount:       v.OutboundTxCount,
 		PendingTxBlockHeights: v.PendingTxBlockHeights,
-		Routers:               castVaultRouters(v.Routers),
 		Addresses:             getVaultChainAddresses(ctx, v),
 		Frozen:                v.Frozen,
 	}
 	return &resp, nil
 }
 
-func (qs queryServer) queryAsgardVaults(ctx cosmos.Context, _ *types.QueryAsgardVaultsRequest) (*types.QueryAsgardVaultsResponse, error) {
+func (qs queryServer) queryBaseVaults(ctx cosmos.Context, _ *types.QueryBaseVaultsRequest) (*types.QueryBaseVaultsResponse, error) {
 	vaults, err := qs.mgr.Keeper().GetAsgardVaults(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("fail to get asgard vaults: %w", err)
+		return nil, fmt.Errorf("fail to get base vaults: %w", err)
 	}
 
 	var vaultsWithFunds []*types.QueryVaultResponse
@@ -142,14 +139,13 @@ func (qs queryServer) queryAsgardVaults(ctx cosmos.Context, _ *types.QueryAsgard
 				InboundTxCount:        vault.InboundTxCount,
 				OutboundTxCount:       vault.OutboundTxCount,
 				PendingTxBlockHeights: vault.PendingTxBlockHeights,
-				Routers:               castVaultRouters(vault.Routers),
 				Frozen:                vault.Frozen,
 				Addresses:             getVaultChainAddresses(ctx, vault),
 			})
 		}
 	}
 
-	return &types.QueryAsgardVaultsResponse{AsgardVaults: vaultsWithFunds}, nil
+	return &types.QueryBaseVaultsResponse{BaseVaults: vaultsWithFunds}, nil
 }
 
 func getVaultChainAddresses(ctx cosmos.Context, vault Vault) []*types.VaultAddress {
@@ -207,7 +203,6 @@ func (qs queryServer) queryVaultsPubkeys(ctx cosmos.Context, _ *types.QueryVault
 				resp.Asgard = append(resp.Asgard, &types.VaultInfo{
 					PubKey:      vault.PubKey.String(),
 					PubKeyEddsa: vault.PubKeyEddsa.String(),
-					Routers:     castVaultRouters(vault.Routers),
 					Membership:  vault.Membership,
 				})
 			case InactiveVault:
@@ -231,7 +226,6 @@ func (qs queryServer) queryVaultsPubkeys(ctx cosmos.Context, _ *types.QueryVault
 					resp.Inactive = append(resp.Inactive, &types.VaultInfo{
 						PubKey:      vault.PubKey.String(),
 						PubKeyEddsa: vault.PubKeyEddsa.String(),
-						Routers:     castVaultRouters(vault.Routers),
 						Membership:  vault.Membership,
 					})
 				}
@@ -280,14 +274,13 @@ func (qs queryServer) queryInboundAddresses(ctx cosmos.Context, _ *types.QueryIn
 	}
 
 	var resp []*types.QueryInboundAddressResponse
-	constAccessor := qs.mgr.GetConstants()
-	signingTransactionPeriod := constAccessor.GetInt64Value(constants.SigningTransactionPeriod)
 
 	k := qs.mgr.Keeper()
 	if k == nil {
 		ctx.Logger().Error("keeper is nil, can't fulfill query")
 		return nil, errors.New("keeper is nil, can't fulfill query")
 	}
+	signingTransactionPeriod := k.GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)
 	// select vault that is most secure
 	vault := k.GetMostSecure(ctx, active, signingTransactionPeriod)
 
@@ -313,7 +306,6 @@ func (qs queryServer) queryInboundAddresses(ctx cosmos.Context, _ *types.QueryIn
 			ctx.Logger().Error("fail to get address for chain", "error", err)
 			return nil, fmt.Errorf("fail to get address for chain: %w", err)
 		}
-		cc := vault.GetContract(chain)
 		gasRate := qs.mgr.GasMgr().GetGasRate(ctx, chain)
 		networkFeeInfo, err := qs.mgr.GasMgr().GetNetworkFee(ctx, chain)
 		if err != nil {
@@ -335,7 +327,6 @@ func (qs queryServer) queryInboundAddresses(ctx cosmos.Context, _ *types.QueryIn
 			Chain:                chain.String(),
 			PubKey:               pubKey.String(),
 			Address:              vaultAddress.String(),
-			Router:               cc.Router.String(),
 			Halted:               isGlobalTradingPaused || isChainTradingPaused,
 			GlobalTradingPaused:  isGlobalTradingPaused,
 			ChainTradingPaused:   isChainTradingPaused,
@@ -923,9 +914,39 @@ func (qs queryServer) queryTx(ctx cosmos.Context, req *types.QueryTxRequest) (*t
 		FinalisedHeight: voter.FinalisedHeight,
 		OutboundHeight:  voter.OutboundHeight,
 		KeysignMetric:   keysignMetric,
+		OutTxs:          voter.OutTxs,
+		Actions:         voter.Actions,
+		Stages:          newTxStagesResponse(ctx, voter),
+	}
+	if voter.Actions != nil {
+		result.PlannedOutTxs = make([]*types.PlannedOutTx, len(voter.Actions))
+		for i := range voter.Actions {
+			result.PlannedOutTxs[i] = &types.PlannedOutTx{
+				Chain:     voter.Actions[i].Chain.String(),
+				ToAddress: voter.Actions[i].ToAddress.String(),
+				Coin:      &voter.Actions[i].Coin,
+				Refund:    strings.HasPrefix(voter.Actions[i].GetMemo(), "REFUND"),
+			}
+		}
 	}
 
 	return &result, nil
+}
+
+func (qs queryServer) queryTxOut(ctx cosmos.Context, req *types.QueryTxOutRequest) (*types.QueryTxOutResponse, error) {
+	height := ctx.BlockHeight()
+	if req.Height != "" {
+		parsed, err := strconv.ParseInt(req.Height, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		height = parsed
+	}
+	txOut, err := qs.mgr.Keeper().GetTxOut(ctx, height)
+	if err != nil {
+		return nil, err
+	}
+	return &types.QueryTxOutResponse{Txout: *txOut}, nil
 }
 
 func (qs queryServer) queryShielderDeposit(ctx cosmos.Context, req *types.QueryShielderDepositRequest) (*types.QueryShielderDepositResponse, error) {
@@ -1300,11 +1321,11 @@ func (qs queryServer) queryLastBlockHeights(ctx cosmos.Context, chain string) (*
 	return &types.QueryLastBlocksResponse{LastBlocks: result}, nil
 }
 
-func (qs queryServer) queryConstantValues(_ cosmos.Context, _ *types.QueryConstantValuesRequest) (*types.QueryConstantValuesResponse, error) {
+func (qs queryServer) queryConfigDefaults(_ cosmos.Context, _ *types.QueryConfigDefaultsRequest) (*types.QueryConfigDefaultsResponse, error) {
 	constAccessor := qs.mgr.GetConstants()
-	cv := constAccessor.GetConstantValsByKeyname()
+	cv := constAccessor.GetConfigValsByKeyname()
 
-	proto := types.QueryConstantValuesResponse{}
+	proto := types.QueryConfigDefaultsResponse{}
 	// analyze-ignore(map-iteration)
 	for k, v := range cv.Int64Values {
 		proto.Int_64Values = append(proto.Int_64Values, &types.Int64Constants{
@@ -1506,41 +1527,27 @@ func (qs queryServer) queryUpgradeVotes(ctx cosmos.Context, req *types.QueryUpgr
 	return &types.QueryUpgradeVotesResponse{UpgradeVotes: res}, nil
 }
 
-func (qs queryServer) queryMimirWithKey(ctx cosmos.Context, req *types.QueryMimirWithKeyRequest) (*types.QueryMimirWithKeyResponse, error) {
-	if len(req.Key) == 0 {
-		return nil, fmt.Errorf("no mimir key")
-	}
-
-	v, err := qs.mgr.Keeper().GetMimir(ctx, req.Key)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get mimir with key:%s, err : %w", req.Key, err)
-	}
-	return &types.QueryMimirWithKeyResponse{
-		Value: v,
-	}, nil
-}
-
-func (qs queryServer) queryMimirValues(ctx cosmos.Context, _ *types.QueryMimirValuesRequest) (*types.QueryMimirValuesResponse, error) {
-	resp := types.QueryMimirValuesResponse{
-		Mimirs: make([]*types.Mimir, 0),
+func (qs queryServer) queryConfigValues(ctx cosmos.Context, _ *types.QueryConfigValuesRequest) (*types.QueryConfigValuesResponse, error) {
+	resp := types.QueryConfigValuesResponse{
+		Configs: make([]*types.Config, 0),
 	}
 
 	// collect all keys with set values, not displaying those with votes but no set value
 	keeper := qs.mgr.Keeper()
-	iter := keeper.GetMimirIterator(ctx)
+	iter := keeper.GetConfigIterator(ctx)
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
-		key := strings.TrimPrefix(string(iter.Key()), "mimir//")
-		value, err := keeper.GetMimir(ctx, key)
+		key := strings.TrimPrefix(string(iter.Key()), "config//")
+		value, err := keeper.GetConfig(ctx, key)
 		if err != nil {
-			ctx.Logger().Error("fail to get mimir value", "error", err)
+			ctx.Logger().Error("fail to get config value", "error", err)
 			continue
 		}
 		if value < 0 {
-			ctx.Logger().Error("negative mimir value set", "key", key, "value", value)
+			ctx.Logger().Error("negative config value set", "key", key, "value", value)
 			continue
 		}
-		resp.Mimirs = append(resp.Mimirs, &types.Mimir{
+		resp.Configs = append(resp.Configs, &types.Config{
 			Key:   key,
 			Value: value,
 		})
@@ -1549,49 +1556,26 @@ func (qs queryServer) queryMimirValues(ctx cosmos.Context, _ *types.QueryMimirVa
 	return &resp, nil
 }
 
-func (qs queryServer) queryMimirAdminValues(ctx cosmos.Context, _ *types.QueryMimirAdminValuesRequest) (*types.QueryMimirAdminValuesResponse, error) {
-	resp := types.QueryMimirAdminValuesResponse{
-		AdminMimirs: make([]*types.Mimir, 0),
+func (qs queryServer) queryConfigNodesAllValues(ctx cosmos.Context, _ *types.QueryConfigNodesAllValuesRequest) (*types.QueryConfigNodesAllValuesResponse, error) {
+	resp := types.QueryConfigNodesAllValuesResponse{
+		Configs: make([]types.NodeConfig, 0),
 	}
 
-	iter := qs.mgr.Keeper().GetMimirIterator(ctx)
+	iter := qs.mgr.Keeper().GetNodeConfigIterator(ctx)
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
-		value := types.ProtoInt64{}
-		if err := qs.mgr.Keeper().Cdc().Unmarshal(iter.Value(), &value); err != nil {
-			ctx.Logger().Error("fail to unmarshal mimir value", "error", err)
-			return nil, fmt.Errorf("fail to unmarshal mimir value: %w", err)
-		}
-		k := strings.TrimPrefix(string(iter.Key()), "mimir//")
-		resp.AdminMimirs = append(resp.AdminMimirs, &types.Mimir{
-			Key:   k,
-			Value: value.GetValue(),
-		})
-
-	}
-	return &resp, nil
-}
-
-func (qs queryServer) queryMimirNodesAllValues(ctx cosmos.Context, _ *types.QueryMimirNodesAllValuesRequest) (*types.QueryMimirNodesAllValuesResponse, error) {
-	resp := types.QueryMimirNodesAllValuesResponse{
-		Mimirs: make([]types.NodeMimir, 0),
-	}
-
-	iter := qs.mgr.Keeper().GetNodeMimirIterator(ctx)
-	defer iter.Close()
-	for ; iter.Valid(); iter.Next() {
-		m := NodeMimirs{}
+		m := NodeConfigs{}
 		if err := qs.mgr.Keeper().Cdc().Unmarshal(iter.Value(), &m); err != nil {
-			ctx.Logger().Error("fail to unmarshal node mimir value", "error", err)
-			return nil, fmt.Errorf("fail to unmarshal node mimir value: %w", err)
+			ctx.Logger().Error("fail to unmarshal node config value", "error", err)
+			return nil, fmt.Errorf("fail to unmarshal node config value: %w", err)
 		}
-		resp.Mimirs = append(resp.Mimirs, m.Mimirs...)
+		resp.Configs = append(resp.Configs, m.Configs...)
 	}
 
 	return &resp, nil
 }
 
-func (qs queryServer) queryMimirNodesValues(ctx cosmos.Context, _ *types.QueryMimirNodesValuesRequest) (*types.QueryMimirNodesValuesResponse, error) {
+func (qs queryServer) queryConfigNodesValues(ctx cosmos.Context, _ *types.QueryConfigNodesValuesRequest) (*types.QueryConfigNodesValuesResponse, error) {
 	activeNodes, err := qs.mgr.Keeper().ListActiveNodes(ctx)
 	if err != nil {
 		ctx.Logger().Error("fail to fetch active node accounts", "error", err)
@@ -1599,21 +1583,21 @@ func (qs queryServer) queryMimirNodesValues(ctx cosmos.Context, _ *types.QueryMi
 	}
 	active := activeNodes.GetNodeAddresses()
 
-	resp := types.QueryMimirNodesValuesResponse{
-		Mimirs: make([]*types.Mimir, 0),
+	resp := types.QueryConfigNodesValuesResponse{
+		Configs: make([]*types.Config, 0),
 	}
 
-	iter := qs.mgr.Keeper().GetNodeMimirIterator(ctx)
+	iter := qs.mgr.Keeper().GetNodeConfigIterator(ctx)
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
-		mimirs := NodeMimirs{}
-		if err := qs.mgr.Keeper().Cdc().Unmarshal(iter.Value(), &mimirs); err != nil {
-			ctx.Logger().Error("fail to unmarshal node mimir value", "error", err)
-			return nil, fmt.Errorf("fail to unmarshal node mimir value: %w", err)
+		configs := NodeConfigs{}
+		if err := qs.mgr.Keeper().Cdc().Unmarshal(iter.Value(), &configs); err != nil {
+			ctx.Logger().Error("fail to unmarshal node config value", "error", err)
+			return nil, fmt.Errorf("fail to unmarshal node config value: %w", err)
 		}
-		k := strings.TrimPrefix(string(iter.Key()), "nodemimir//")
-		if v, ok := mimirs.HasSuperMajority(k, active); ok {
-			resp.Mimirs = append(resp.Mimirs, &types.Mimir{
+		k := strings.TrimPrefix(string(iter.Key()), "nodeconfig//")
+		if v, ok := configs.HasSuperMajority(k, active); ok {
+			resp.Configs = append(resp.Configs, &types.Config{
 				Key:   k,
 				Value: v,
 			})
@@ -1623,29 +1607,29 @@ func (qs queryServer) queryMimirNodesValues(ctx cosmos.Context, _ *types.QueryMi
 	return &resp, nil
 }
 
-func (qs queryServer) queryMimirNodeValues(ctx cosmos.Context, req *types.QueryMimirNodeValuesRequest) (*types.QueryMimirNodeValuesResponse, error) {
+func (qs queryServer) queryConfigNodeValues(ctx cosmos.Context, req *types.QueryConfigNodeValuesRequest) (*types.QueryConfigNodeValuesResponse, error) {
 	acc, err := cosmos.AccAddressFromBech32(req.Address)
 	if err != nil {
 		ctx.Logger().Error("fail to parse thor address", "error", err)
 		return nil, fmt.Errorf("fail to parse thor address: %w", err)
 	}
 
-	resp := types.QueryMimirNodeValuesResponse{
-		NodeMimirs: make([]*types.Mimir, 0),
+	resp := types.QueryConfigNodeValuesResponse{
+		NodeConfigs: make([]*types.Config, 0),
 	}
 
-	iter := qs.mgr.Keeper().GetNodeMimirIterator(ctx)
+	iter := qs.mgr.Keeper().GetNodeConfigIterator(ctx)
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
-		mimirs := NodeMimirs{}
-		if err := qs.mgr.Keeper().Cdc().Unmarshal(iter.Value(), &mimirs); err != nil {
-			ctx.Logger().Error("fail to unmarshal node mimir v2 value", "error", err)
-			return nil, fmt.Errorf("fail to unmarshal node mimir value: %w", err)
+		configs := NodeConfigs{}
+		if err := qs.mgr.Keeper().Cdc().Unmarshal(iter.Value(), &configs); err != nil {
+			ctx.Logger().Error("fail to unmarshal node config v2 value", "error", err)
+			return nil, fmt.Errorf("fail to unmarshal node config value: %w", err)
 		}
 
-		k := strings.TrimPrefix(string(iter.Key()), "nodemimir//")
-		if v, ok := mimirs.Get(k, acc); ok {
-			resp.NodeMimirs = append(resp.NodeMimirs, &types.Mimir{
+		k := strings.TrimPrefix(string(iter.Key()), "nodeconfig//")
+		if v, ok := configs.Get(k, acc); ok {
+			resp.NodeConfigs = append(resp.NodeConfigs, &types.Config{
 				Key:   k,
 				Value: v,
 			})
@@ -1895,22 +1879,6 @@ func castObservedTx(observedTx ObservedTx) types.QueryObservedTx {
 	}
 }
 
-func castVaultRouters(chainContracts []ChainContract) []*types.VaultRouter {
-	// Leave this nil (null rather than []) if the source is nil.
-	if chainContracts == nil {
-		return nil
-	}
-
-	routers := make([]*types.VaultRouter, len(chainContracts))
-	for i := range chainContracts {
-		routers[i] = &types.VaultRouter{
-			Chain:  chainContracts[i].Chain.String(),
-			Router: chainContracts[i].Router.String(),
-		}
-	}
-	return routers
-}
-
 func blockEvent(e sdk.Event) *types.BlockEvent {
 	event := types.BlockEvent{}
 	event.EventKvPair = append(event.EventKvPair, &types.EventKeyValuePair{
@@ -1938,44 +1906,4 @@ func eventMap(e sdk.Event) map[string]string {
 
 func simulate(ctx cosmos.Context, mgr Manager, msg sdk.Msg) (sdk.Events, error) {
 	return nil, errors.New("swap simulation is not part of the Thornado custody fork")
-}
-
-// runePerDollarIgnoreHalt mirrors keeper.RunePerDollar, ignoring halts by using
-// dollarsPerRuneIgnoreHalt to return the last known price instead of "0"
-func runePerDollarIgnoreHalt(ctx cosmos.Context, k keeper.Keeper) cosmos.Uint {
-	runePerDollar := dollarsPerRuneIgnoreHalt(ctx, k)
-
-	one := cosmos.NewUint(common.One)
-
-	return common.GetUncappedShare(one, runePerDollar, one)
-}
-
-// dollarsPerRuneIgnoreHalt mirrors keeper.DollarsPerRune, but ignoring halts if all
-// anchor chains are unavailable with them. This is used for the TOR price on pools to
-// ensure a best effort price is returned whenever possible instead of zero.
-func dollarsPerRuneIgnoreHalt(ctx cosmos.Context, k keeper.Keeper) cosmos.Uint {
-	return cosmos.ZeroUint()
-}
-
-func (qs queryServer) queryEip712TypedData(_ cosmos.Context, req *types.QueryEip712TypedDataRequest) (*types.QueryEip712TypedDataResponse, error) {
-	typedData, err := eip712.GetEIP712TypedDataForMsg(req.SignBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert to EIP-712 typed data: %w", err)
-	}
-
-	// Convert to JSON for output
-	data, err := json.Marshal(typedData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal EIP-712 typed data: %w", err)
-	}
-	return &types.QueryEip712TypedDataResponse{TypedData: string(data)}, nil
-}
-
-// querySupply returns the RUNE supply breakdown.
-func (qs queryServer) queryContractInfo(ctx cosmos.Context, req *types.QueryContractInfoRequest) (*types.QueryContractInfoResponse, error) {
-	return nil, errors.New("wasm contract queries are not part of the Thornado custody fork")
-}
-
-func (qs queryServer) queryContractInfos(ctx cosmos.Context, req *types.QueryContractInfosRequest) (*types.QueryContractInfosResponse, error) {
-	return nil, errors.New("wasm contract queries are not part of the Thornado custody fork")
 }

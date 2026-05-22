@@ -12,7 +12,7 @@ api_health.go
 api_invariants.go
 api_limit_order.go
 api_liquidity_providers.go
-api_mimir.go
+api_config.go
 api_network.go
 api_nodes.go
 api_oracle.go
@@ -96,9 +96,9 @@ docs/LiquidityProviderSummary.md
 docs/LiquidityProvidersApi.md
 docs/LockedSupply.md
 docs/MetricsResponse.md
-docs/MimirApi.md
-docs/MimirNodesResponse.md
-docs/MimirVote.md
+docs/ConfigApi.md
+docs/ConfigNodesResponse.md
+docs/ConfigVote.md
 docs/MsgSwap.md
 docs/NetworkApi.md
 docs/NetworkResponse.md
@@ -245,8 +245,8 @@ model_liquidity_provider.go
 model_liquidity_provider_summary.go
 model_locked_supply.go
 model_metrics_response.go
-model_mimir_nodes_response.go
-model_mimir_vote.go
+model_config_nodes_response.go
+model_config_vote.go
 model_msg_swap.go
 model_network_response.go
 model_node.go

@@ -30,120 +30,101 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 func init() { proto.RegisterFile("types/query.proto", fileDescriptor_3dd69a0a5972f391) }
 
 var fileDescriptor_3dd69a0a5972f391 = []byte{
-	// 1797 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x58, 0x5b, 0x6f, 0x1b, 0x37,
-	0x16, 0x8e, 0xb2, 0xeb, 0x5c, 0x18, 0x7b, 0x9d, 0xd0, 0xf1, 0x4d, 0x96, 0xe5, 0xeb, 0x3a, 0x9b,
-	0xec, 0xc6, 0x44, 0x92, 0x5d, 0x2c, 0xfa, 0x68, 0x3b, 0x29, 0x10, 0xa4, 0xb9, 0xd5, 0x97, 0xa2,
-	0x2d, 0x0a, 0x81, 0xd2, 0xd0, 0xd2, 0xd4, 0x23, 0x52, 0x19, 0x72, 0x64, 0xa9, 0xaa, 0x1e, 0x1a,
-	0xa0, 0x05, 0x8a, 0xbe, 0x14, 0x68, 0x7f, 0x45, 0xff, 0x47, 0x81, 0x3e, 0x06, 0xe8, 0x4b, 0x1f,
-	0x8b, 0xa4, 0x3f, 0xa4, 0x18, 0x0e, 0x39, 0x22, 0x67, 0x38, 0xb2, 0x1f, 0xfa, 0x22, 0x08, 0xe7,
-	0xfb, 0x78, 0xbe, 0x33, 0x67, 0xce, 0x90, 0xe7, 0x10, 0xdc, 0x10, 0xfd, 0x0e, 0xe1, 0xe8, 0x55,
-	0x44, 0xc2, 0xfe, 0x76, 0x27, 0x64, 0x82, 0xc1, 0x09, 0x69, 0x2a, 0x57, 0x9a, 0x8c, 0x35, 0x03,
-	0x82, 0x70, 0xc7, 0x47, 0x98, 0x52, 0x26, 0xb0, 0xf0, 0x19, 0xe5, 0x09, 0xa9, 0x7c, 0xb3, 0xc9,
-	0x9a, 0x4c, 0xfe, 0x45, 0xf1, 0x3f, 0x65, 0x5d, 0x34, 0xbc, 0xd5, 0x70, 0xa3, 0xc1, 0x22, 0x2a,
-	0x14, 0x34, 0x67, 0x42, 0x75, 0x4c, 0x4f, 0x94, 0x7d, 0xd5, 0xb6, 0x07, 0x98, 0x36, 0x48, 0xad,
-	0xcd, 0xbc, 0x28, 0x20, 0x8a, 0x31, 0x9b, 0x59, 0xa9, 0xcc, 0xf3, 0x96, 0x39, 0x60, 0x8d, 0x13,
-	0x17, 0xd0, 0x60, 0x1e, 0xd1, 0x31, 0xaf, 0xd9, 0x00, 0xe5, 0x02, 0x53, 0x51, 0xeb, 0xe2, 0x20,
-	0x4a, 0x29, 0x2b, 0x19, 0x8a, 0x08, 0x71, 0x43, 0xd4, 0x7c, 0x7a, 0xac, 0x9f, 0x70, 0xc1, 0x24,
-	0x10, 0xbf, 0xf3, 0xff, 0x7b, 0xf7, 0x9d, 0x48, 0xaf, 0xc3, 0x42, 0xe1, 0xd2, 0xf5, 0x69, 0x9d,
-	0x45, 0xd4, 0xab, 0x61, 0xcf, 0x0b, 0x09, 0xd7, 0xba, 0x15, 0x9b, 0xd2, 0xc5, 0xa1, 0x8f, 0xa9,
-	0xd0, 0x68, 0xd9, 0x44, 0x4f, 0x48, 0x9f, 0x0b, 0x16, 0x12, 0xd7, 0xca, 0x00, 0x73, 0x51, 0x9c,
-	0x8b, 0xb6, 0xdf, 0xf6, 0x43, 0xd7, 0xeb, 0xa0, 0xcc, 0x23, 0x2e, 0x29, 0xde, 0xf2, 0x49, 0xe0,
-	0x91, 0xd0, 0xf5, 0x22, 0x44, 0x1a, 0xfb, 0x4d, 0xcb, 0xdc, 0x73, 0x95, 0x42, 0xd4, 0x69, 0x86,
-	0x38, 0xd5, 0xb0, 0x82, 0xea, 0xe2, 0x28, 0x10, 0xae, 0x35, 0x5d, 0x12, 0x72, 0x9f, 0x51, 0x3b,
-	0xae, 0xf8, 0x37, 0xae, 0x81, 0x5a, 0x97, 0x89, 0x34, 0xae, 0x25, 0x03, 0x13, 0x9c, 0xd7, 0xda,
-	0x44, 0x84, 0x7e, 0x23, 0x01, 0xef, 0xff, 0x7c, 0x17, 0x4c, 0xbc, 0x8c, 0x1d, 0x42, 0x0f, 0x5c,
-	0xde, 0x49, 0x4a, 0x12, 0x96, 0xb7, 0xe5, 0x92, 0x6d, 0x09, 0x28, 0xe3, 0x87, 0xe4, 0x55, 0x44,
-	0xb8, 0x28, 0x2f, 0x39, 0x31, 0xde, 0x61, 0x94, 0x93, 0xf5, 0xd5, 0xd7, 0xbf, 0xfe, 0xf1, 0xc3,
-	0xc5, 0x32, 0x5c, 0x40, 0x38, 0x12, 0x2d, 0xa4, 0x4a, 0x9c, 0xa3, 0x81, 0x7a, 0x9d, 0x43, 0xd8,
-	0x04, 0x57, 0x76, 0x93, 0x2a, 0xe6, 0xd0, 0x72, 0xa5, 0xad, 0x5a, 0xa7, 0xe2, 0x06, 0x73, 0x42,
-	0xf1, 0xb7, 0x82, 0xd4, 0x87, 0x61, 0x0a, 0x7d, 0x0c, 0x2e, 0x3d, 0x92, 0x55, 0x06, 0x17, 0x4d,
-	0x4f, 0x89, 0x4d, 0x8b, 0x94, 0x5d, 0x90, 0x92, 0x58, 0x90, 0x12, 0x10, 0x5e, 0x47, 0xa2, 0xc5,
-	0x42, 0x8a, 0x3d, 0x86, 0x92, 0xb2, 0x85, 0x9f, 0x82, 0xbf, 0x3f, 0x63, 0x1e, 0x81, 0xf3, 0xe6,
-	0xea, 0xd8, 0xa2, 0xdd, 0x2e, 0xe4, 0x81, 0x5c, 0xdc, 0xa9, 0xd3, 0xb8, 0xba, 0x8c, 0xb8, 0x0f,
-	0xc1, 0x44, 0xbc, 0x82, 0xc3, 0x9c, 0x93, 0x34, 0x35, 0x8b, 0x0e, 0x44, 0xf9, 0x9f, 0x97, 0xfe,
-	0x6f, 0xc0, 0x69, 0xdb, 0x3f, 0x87, 0xcf, 0xc1, 0xdf, 0x76, 0x31, 0x85, 0x73, 0x76, 0x56, 0xa9,
-	0x76, 0x39, 0xad, 0xec, 0xbb, 0x98, 0x1e, 0xc5, 0xa5, 0xb3, 0xbe, 0x22, 0x1d, 0x2d, 0xc2, 0xf9,
-	0x91, 0xa3, 0x3a, 0xa6, 0xd6, 0x8b, 0xbc, 0xf6, 0x34, 0xfe, 0x60, 0x8e, 0xe4, 0xfe, 0x00, 0xab,
-	0xa6, 0x63, 0x03, 0xd0, 0x02, 0x2b, 0x85, 0x78, 0x71, 0xe4, 0xf2, 0x83, 0x84, 0x02, 0x4c, 0x4a,
-	0xfe, 0x47, 0xbe, 0x68, 0x3d, 0x21, 0x7d, 0x98, 0xf7, 0xa4, 0x10, 0x2d, 0xb5, 0x5a, 0x4c, 0x50,
-	0x5a, 0x6b, 0x52, 0x6b, 0x09, 0x2e, 0x66, 0xb4, 0xd0, 0x09, 0xe9, 0xa3, 0xc1, 0x09, 0xe9, 0x0f,
-	0xe1, 0x97, 0xe0, 0xba, 0x5c, 0xba, 0xe3, 0xb5, 0x7d, 0xaa, 0x9e, 0x71, 0x23, 0xe7, 0xd8, 0x40,
-	0xb5, 0xfa, 0xe6, 0x78, 0x92, 0x8a, 0x60, 0x59, 0x46, 0x30, 0x0f, 0x67, 0xb3, 0x11, 0xe0, 0x98,
-	0x0c, 0xbf, 0x2d, 0x81, 0x19, 0xb9, 0x56, 0xbe, 0xdd, 0x9d, 0x20, 0x50, 0x11, 0x6c, 0xe5, 0x9c,
-	0xdb, 0x04, 0x1d, 0xc4, 0xad, 0x33, 0x79, 0x67, 0x65, 0x42, 0x56, 0x4d, 0x0d, 0x07, 0x41, 0x9a,
-	0x09, 0xe9, 0xa1, 0x30, 0x13, 0x06, 0x5a, 0x9c, 0x09, 0x8b, 0x74, 0x56, 0x26, 0x92, 0xba, 0x7d,
-	0x5d, 0x02, 0xd3, 0xe9, 0x5a, 0xa5, 0xbe, 0xee, 0x74, 0x6c, 0x8b, 0x6f, 0x8c, 0xe5, 0x28, 0xed,
-	0x2d, 0xa9, 0xbd, 0x0a, 0xab, 0x2e, 0x6d, 0xa3, 0xd6, 0x5f, 0x97, 0xc0, 0xf5, 0xc7, 0xc9, 0xc1,
-	0xb4, 0x93, 0xd8, 0xb2, 0x39, 0xc8, 0xa2, 0xce, 0x1c, 0xe4, 0x49, 0x2a, 0x8e, 0x0d, 0x19, 0xc7,
-	0x32, 0x5c, 0x1a, 0xc5, 0x91, 0x39, 0x07, 0x09, 0x87, 0x9f, 0x81, 0xcb, 0x47, 0xc9, 0x9e, 0x6f,
-	0xef, 0xcf, 0xca, 0xe8, 0xdc, 0x9f, 0x53, 0x4c, 0x09, 0x2d, 0x4a, 0xa1, 0x19, 0x78, 0x63, 0x24,
-	0xa4, 0xce, 0x11, 0x18, 0x80, 0xab, 0x8f, 0xf5, 0xc1, 0x0a, 0x2b, 0x76, 0xd8, 0xca, 0xac, 0x25,
-	0x96, 0x0b, 0x50, 0x25, 0xb2, 0x2e, 0x45, 0x2a, 0xb0, 0x6c, 0x3e, 0x8d, 0x22, 0xa1, 0x41, 0x07,
-	0x8b, 0xd6, 0x10, 0xfa, 0x00, 0xa4, 0x0b, 0x39, 0x74, 0x3b, 0x4c, 0x93, 0x58, 0x2d, 0x82, 0x95,
-	0x60, 0x45, 0x0a, 0xce, 0xc1, 0x9b, 0x0e, 0x41, 0x0e, 0x87, 0x60, 0x4a, 0x1d, 0x1f, 0x4f, 0x65,
-	0xdb, 0x04, 0x57, 0x1d, 0x27, 0x4b, 0x02, 0x69, 0xc1, 0xb5, 0x31, 0x0c, 0xa5, 0x79, 0x4b, 0x6a,
-	0xae, 0xc1, 0x15, 0x73, 0x7f, 0x94, 0x44, 0x94, 0x74, 0x67, 0x68, 0x40, 0x71, 0x9b, 0x0c, 0xa1,
-	0x00, 0xff, 0xd8, 0x53, 0xbd, 0x94, 0x2a, 0x5f, 0xcb, 0xbb, 0x8d, 0xe9, 0x00, 0xd6, 0xc7, 0x51,
-	0x54, 0x04, 0x4b, 0x32, 0x82, 0x59, 0x38, 0x33, 0x8a, 0x40, 0x37, 0x6d, 0x1c, 0xb6, 0x00, 0xf8,
-	0x00, 0x73, 0xb1, 0x1b, 0xf7, 0x3a, 0x99, 0xfc, 0x8e, 0xec, 0xce, 0xfc, 0x9a, 0x70, 0xb1, 0x52,
-	0xdc, 0x49, 0xc9, 0x46, 0x0a, 0x7e, 0x01, 0xa6, 0xf7, 0x5a, 0xd8, 0xa7, 0x3c, 0x5d, 0x68, 0x7f,
-	0x9f, 0x19, 0xf0, 0xbc, 0x9a, 0x8e, 0x4f, 0x22, 0xd5, 0x44, 0x83, 0x46, 0xec, 0x74, 0x08, 0x6b,
-	0x60, 0xe2, 0x28, 0xee, 0x8f, 0xec, 0xb3, 0x52, 0x9a, 0x9c, 0x67, 0xa5, 0x42, 0x8a, 0xf7, 0x3e,
-	0xd9, 0x6d, 0xa1, 0x41, 0x27, 0xaa, 0xd7, 0xe4, 0x29, 0x10, 0x82, 0xc9, 0x1d, 0xde, 0xc4, 0xa1,
-	0x27, 0x57, 0x72, 0xfb, 0xec, 0x31, 0x11, 0xe7, 0xd9, 0x63, 0x13, 0x94, 0xaa, 0xe3, 0x60, 0x95,
-	0xaa, 0x1c, 0x61, 0x49, 0x87, 0x5d, 0x30, 0x95, 0x2c, 0x79, 0x11, 0xd5, 0xe3, 0x66, 0xd6, 0xae,
-	0x57, 0x0b, 0x72, 0xd6, 0x6b, 0x86, 0x51, 0xdc, 0x78, 0x28, 0xd9, 0x8e, 0x92, 0x39, 0x55, 0xba,
-	0xfb, 0x2c, 0xe8, 0x12, 0xda, 0xe8, 0x3b, 0x74, 0x35, 0x54, 0xac, 0x3b, 0x62, 0x9c, 0x91, 0x64,
-	0x8e, 0xb8, 0xd6, 0xf9, 0x1c, 0x5c, 0x39, 0xe8, 0xed, 0x0b, 0xdc, 0xcc, 0xb6, 0x84, 0xda, 0xea,
-	0x6c, 0x09, 0x47, 0x60, 0x71, 0xc5, 0x88, 0x1e, 0xe2, 0x92, 0x84, 0x06, 0xa2, 0x57, 0xf3, 0xbd,
-	0x61, 0xaa, 0x25, 0x22, 0x97, 0x96, 0x88, 0xc6, 0x68, 0x49, 0xf0, 0x2c, 0x2d, 0x11, 0x8d, 0xb4,
-	0x5e, 0x82, 0x8b, 0x07, 0x3d, 0x38, 0x6b, 0x3b, 0xd2, 0xfe, 0xe7, 0xb2, 0xe6, 0xe2, 0xbd, 0x4c,
-	0xf4, 0xec, 0xf0, 0x65, 0x83, 0x96, 0x0b, 0x3f, 0xb1, 0x3a, 0x4f, 0x81, 0xe7, 0x75, 0x4e, 0xc2,
-	0x2e, 0xf1, 0x14, 0x69, 0x7d, 0x53, 0x6a, 0x54, 0x61, 0xc5, 0xd2, 0xf0, 0x88, 0xc0, 0x7e, 0x30,
-	0x0a, 0xbf, 0x0d, 0xae, 0x69, 0xaf, 0xcf, 0x03, 0xef, 0x2f, 0x97, 0x53, 0x32, 0x88, 0xfb, 0x4d,
-	0x1a, 0x3f, 0xce, 0x77, 0x25, 0x30, 0xbd, 0xaf, 0x06, 0xaa, 0x87, 0xa4, 0xc3, 0xb8, 0x2f, 0xec,
-	0x8d, 0x24, 0x03, 0x3a, 0x0f, 0xfa, 0x1c, 0x47, 0x65, 0x15, 0xc9, 0x10, 0x6e, 0xc3, 0x5b, 0xa3,
-	0x10, 0xf4, 0xf0, 0x86, 0xbc, 0x84, 0x8b, 0x06, 0xea, 0x8f, 0x7c, 0xf8, 0xc1, 0x28, 0x98, 0xf7,
-	0x09, 0x79, 0xc1, 0x58, 0xe0, 0x0e, 0x46, 0x81, 0x63, 0x83, 0x49, 0x39, 0xc5, 0x3b, 0x40, 0x1a,
-	0xcc, 0x31, 0x21, 0x1c, 0x7e, 0x63, 0xa4, 0x62, 0x9f, 0x70, 0x79, 0x3c, 0x3b, 0xd5, 0x15, 0x38,
-	0x56, 0x3d, 0xe5, 0x28, 0xf5, 0x3b, 0x52, 0x7d, 0x13, 0xae, 0x3b, 0xd4, 0x79, 0xc2, 0x45, 0x03,
-	0x76, 0x4a, 0x49, 0x38, 0x84, 0x5f, 0x95, 0xc0, 0xa4, 0xf6, 0xb3, 0xcb, 0xa8, 0x67, 0xef, 0x7f,
-	0x26, 0xe2, 0xdc, 0xff, 0x6c, 0x82, 0xd2, 0xdf, 0x96, 0xfa, 0xff, 0x82, 0x5b, 0x0e, 0xfd, 0x3a,
-	0xa3, 0x1e, 0x1a, 0xc4, 0xcd, 0x57, 0x2d, 0xdd, 0x82, 0xe3, 0xba, 0x88, 0x5b, 0xb7, 0xfd, 0x80,
-	0x89, 0x9d, 0xa8, 0x21, 0x72, 0xc9, 0xc8, 0x80, 0xce, 0x64, 0xe4, 0x38, 0xe7, 0xa8, 0x0b, 0x9c,
-	0x70, 0xd1, 0x40, 0xfd, 0x91, 0x75, 0x71, 0x0a, 0xae, 0x69, 0x5f, 0xbb, 0xbe, 0x67, 0x4f, 0x3d,
-	0x06, 0xe0, 0x9c, 0x7a, 0x2c, 0xbc, 0xb8, 0x8d, 0x18, 0x65, 0xc3, 0xf7, 0xd0, 0xa0, 0xee, 0x7b,
-	0x52, 0xf8, 0xc7, 0x12, 0x98, 0x91, 0x3b, 0xac, 0x2a, 0x6d, 0xd5, 0x44, 0xda, 0x13, 0x81, 0x83,
-	0xe0, 0x9c, 0x08, 0x9c, 0x3c, 0x15, 0xd1, 0x7f, 0x64, 0x44, 0x5b, 0x70, 0xd3, 0x95, 0x92, 0x84,
-	0x6b, 0x74, 0xc6, 0x3f, 0x95, 0xc0, 0x9c, 0x51, 0xe7, 0x8f, 0xa8, 0xf0, 0x45, 0x40, 0xda, 0x84,
-	0x0a, 0x78, 0xbb, 0xe0, 0x5b, 0x30, 0x38, 0x3a, 0xb8, 0x3b, 0xe7, 0xa1, 0xaa, 0xf8, 0xde, 0x93,
-	0xf1, 0x3d, 0x80, 0xf7, 0xdc, 0x5f, 0x4f, 0x8d, 0x8c, 0xd6, 0x64, 0x4b, 0xe9, 0x10, 0x4c, 0x24,
-	0x0d, 0x8a, 0xd5, 0x2e, 0x58, 0x6d, 0xc9, 0xa2, 0x03, 0x29, 0x1e, 0x50, 0x93, 0x0e, 0xe8, 0xeb,
-	0x12, 0x98, 0x3e, 0xe0, 0xfc, 0x09, 0xe9, 0x37, 0x09, 0x7d, 0x2a, 0x2f, 0x57, 0xec, 0x0a, 0xcd,
-	0x80, 0xce, 0x0a, 0xcd, 0x71, 0x94, 0xea, 0x6d, 0xa9, 0xba, 0x01, 0xd7, 0x8c, 0x11, 0x45, 0x32,
-	0xe2, 0x59, 0xb5, 0x49, 0xa8, 0xd1, 0xac, 0x34, 0xc0, 0xd5, 0x03, 0xce, 0x55, 0x00, 0x95, 0x8c,
-	0x73, 0x5b, 0x7a, 0xb9, 0x00, 0x2d, 0x1e, 0x13, 0x12, 0x51, 0x0e, 0x8f, 0xc1, 0xe5, 0x27, 0xa4,
-	0x1f, 0x6f, 0xda, 0xf6, 0x14, 0xa2, 0x8c, 0xce, 0x03, 0x21, 0xc5, 0x8a, 0x07, 0x84, 0x93, 0x84,
-	0x82, 0x06, 0x2d, 0xe2, 0x37, 0x5b, 0x22, 0x9e, 0xbf, 0xa7, 0xd4, 0xb2, 0xa4, 0x93, 0xb1, 0xbb,
-	0x11, 0x0b, 0x3a, 0x97, 0xa6, 0xa3, 0xac, 0xb3, 0x9a, 0x46, 0x2a, 0x03, 0x70, 0x29, 0x79, 0x1b,
-	0xf6, 0xe5, 0x51, 0x62, 0x73, 0x5e, 0x1e, 0x69, 0x48, 0xc9, 0xfd, 0x5b, 0xca, 0xfd, 0x13, 0x6e,
-	0x58, 0x72, 0xf2, 0x7d, 0xe5, 0xd5, 0xe2, 0xf1, 0xf2, 0x30, 0xb9, 0x02, 0x7c, 0x11, 0xb2, 0x0e,
-	0xe3, 0x38, 0xc8, 0x8c, 0x97, 0x59, 0xd4, 0x39, 0x5e, 0xe6, 0x49, 0xc5, 0xdd, 0x8a, 0xba, 0x71,
-	0xac, 0x75, 0x52, 0xbd, 0xb8, 0x8a, 0x33, 0x1e, 0xec, 0x2a, 0xce, 0x80, 0xce, 0x2a, 0xce, 0x71,
-	0x8a, 0xab, 0x38, 0x1b, 0x81, 0x9e, 0x97, 0xfa, 0x60, 0x52, 0x79, 0x89, 0xbb, 0x87, 0x4c, 0xcb,
-	0x6d, 0x22, 0xce, 0x23, 0xc7, 0x26, 0x14, 0x8f, 0xf9, 0x5a, 0xbd, 0x1b, 0x13, 0xb5, 0xf4, 0x21,
-	0x98, 0xd8, 0xcb, 0x5f, 0xbd, 0xed, 0x15, 0x5e, 0xbd, 0xed, 0x9d, 0x75, 0xf5, 0x26, 0x6f, 0xd7,
-	0xe1, 0x29, 0x98, 0x7e, 0x24, 0x6f, 0xc2, 0x0f, 0xfa, 0x1d, 0xe2, 0x3d, 0xc4, 0x02, 0xdb, 0x89,
-	0xcd, 0x80, 0xce, 0xc4, 0xe6, 0x38, 0xc5, 0xa3, 0x99, 0xbc, 0x75, 0xff, 0x1f, 0x12, 0x3d, 0xf8,
-	0x0a, 0x4c, 0xed, 0xa9, 0x3b, 0xfa, 0xc7, 0xf4, 0x98, 0x65, 0x26, 0x09, 0x0b, 0x72, 0x76, 0xf4,
-	0x19, 0xc6, 0xd8, 0xb9, 0x53, 0x12, 0xe3, 0x67, 0x9d, 0x34, 0x57, 0xd9, 0x6f, 0xcf, 0x44, 0x9c,
-	0x6f, 0xcf, 0x26, 0x28, 0x3d, 0x47, 0xfb, 0xa8, 0xf5, 0x46, 0x07, 0xd1, 0xee, 0xb3, 0x5f, 0xde,
-	0x56, 0x4b, 0x6f, 0xde, 0x56, 0x4b, 0xbf, 0xbf, 0xad, 0x96, 0xbe, 0x7f, 0x57, 0xbd, 0xf0, 0xe6,
-	0x5d, 0xf5, 0xc2, 0x6f, 0xef, 0xaa, 0x17, 0x3e, 0xf9, 0x6f, 0xd3, 0x17, 0xad, 0xa8, 0xbe, 0xdd,
-	0x60, 0xed, 0xd4, 0x43, 0x03, 0xf3, 0x16, 0x6a, 0xb2, 0xbb, 0xa9, 0xc7, 0x9e, 0xd1, 0x9b, 0xc6,
-	0xf1, 0xd4, 0x2f, 0xc9, 0xeb, 0xf1, 0x07, 0x7f, 0x06, 0x00, 0x00, 0xff, 0xff, 0x58, 0xc3, 0x5c,
-	0x1f, 0x01, 0x1a, 0x00, 0x00,
+	// 1493 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x58, 0xdb, 0x6e, 0x1c, 0x45,
+	0x13, 0xce, 0xe6, 0xff, 0x9d, 0x90, 0x26, 0x89, 0xed, 0x4a, 0x7c, 0x5a, 0xdb, 0xeb, 0x53, 0xce,
+	0x80, 0x07, 0x01, 0x2f, 0xe0, 0x25, 0x41, 0x42, 0x21, 0x27, 0xec, 0x58, 0x02, 0x84, 0x56, 0xbd,
+	0x3b, 0xed, 0xdd, 0xc1, 0xe3, 0xee, 0xcd, 0x74, 0xcf, 0x66, 0xcd, 0xb2, 0x12, 0x8a, 0x04, 0x5c,
+	0x21, 0x90, 0xf2, 0x04, 0xbc, 0x0d, 0x97, 0x91, 0xb8, 0xe1, 0x12, 0x25, 0x3c, 0x08, 0x9a, 0x3e,
+	0xcc, 0x76, 0xcf, 0xf4, 0xd8, 0xb9, 0xb1, 0x56, 0xf5, 0x55, 0xd7, 0xf7, 0x4d, 0x77, 0x75, 0x55,
+	0xb5, 0xd1, 0xac, 0x38, 0xee, 0x13, 0x1e, 0x3c, 0x4b, 0x49, 0x72, 0xbc, 0xdd, 0x4f, 0x98, 0x60,
+	0x30, 0x25, 0x4d, 0xf5, 0x95, 0x2e, 0x63, 0xdd, 0x98, 0x04, 0xb8, 0x1f, 0x05, 0x98, 0x52, 0x26,
+	0xb0, 0x88, 0x18, 0xe5, 0xca, 0xa9, 0x7e, 0xb5, 0xcb, 0xba, 0x4c, 0xfe, 0x0c, 0xb2, 0x5f, 0xda,
+	0xba, 0x64, 0x45, 0x6b, 0xe1, 0x4e, 0x87, 0xa5, 0x54, 0x68, 0x68, 0xde, 0x86, 0xda, 0x98, 0x1e,
+	0x6a, 0xfb, 0xba, 0x6b, 0x8f, 0x31, 0xed, 0x90, 0xd6, 0x11, 0x0b, 0xd3, 0x98, 0x68, 0x8f, 0xb9,
+	0xc2, 0x4a, 0x6d, 0x5e, 0x70, 0xcc, 0x31, 0xeb, 0x98, 0x88, 0x1b, 0x36, 0xd0, 0x61, 0x94, 0x0b,
+	0x4c, 0x45, 0x6b, 0x80, 0xe3, 0x94, 0x18, 0xf5, 0x8b, 0xb6, 0x0b, 0x19, 0xf6, 0x59, 0x62, 0x64,
+	0xae, 0xd8, 0x48, 0x44, 0x07, 0x38, 0x89, 0x30, 0x15, 0x66, 0x5d, 0xdd, 0x46, 0x0f, 0xc9, 0x31,
+	0x17, 0x2c, 0x21, 0xbe, 0x95, 0x31, 0xe6, 0xc2, 0x11, 0xb5, 0x58, 0x10, 0x75, 0x10, 0x75, 0x7d,
+	0x1b, 0x43, 0x59, 0x48, 0x7c, 0x5c, 0xbc, 0x17, 0x91, 0x38, 0x24, 0x89, 0x6f, 0x4b, 0x04, 0xcf,
+	0x0f, 0xc5, 0x31, 0x0f, 0x7d, 0x87, 0x92, 0xf6, 0xbb, 0x09, 0xce, 0x39, 0x9c, 0x3d, 0x1c, 0xe0,
+	0x34, 0x16, 0xbe, 0x35, 0x03, 0x92, 0xf0, 0x88, 0x51, 0x57, 0x57, 0xf6, 0x37, 0x3b, 0x8d, 0xd6,
+	0x80, 0x89, 0x5c, 0xd7, 0xb2, 0x85, 0x09, 0xce, 0x5b, 0x47, 0x44, 0x24, 0x51, 0x47, 0x81, 0x1f,
+	0xfd, 0xb6, 0x85, 0xa6, 0x9e, 0x64, 0x01, 0x21, 0x44, 0xe7, 0x77, 0x54, 0x72, 0x40, 0x7d, 0x5b,
+	0x2e, 0xd9, 0x96, 0x80, 0x36, 0x7e, 0x49, 0x9e, 0xa5, 0x84, 0x8b, 0xfa, 0xb2, 0x17, 0xe3, 0x7d,
+	0x46, 0x39, 0xd9, 0x5c, 0x7f, 0xf1, 0xd7, 0xbf, 0x2f, 0xcf, 0xd6, 0x61, 0x31, 0xc0, 0xa9, 0xe8,
+	0x05, 0x3a, 0xd9, 0x78, 0x30, 0xc2, 0x61, 0x98, 0x10, 0xce, 0xc7, 0xd0, 0x45, 0xef, 0x34, 0x55,
+	0x3e, 0x71, 0x70, 0x42, 0x19, 0xab, 0xe1, 0x59, 0xf1, 0x83, 0x25, 0xa2, 0x2c, 0x6b, 0x03, 0x9d,
+	0xa2, 0x36, 0xd1, 0x57, 0xe8, 0xdc, 0x3d, 0x99, 0x43, 0xb0, 0x64, 0x47, 0x52, 0x36, 0x43, 0x52,
+	0xf7, 0x41, 0x9a, 0x62, 0x51, 0x52, 0x00, 0xcc, 0x04, 0xa2, 0xc7, 0x12, 0x8a, 0x43, 0x16, 0xa8,
+	0xa4, 0x84, 0x6f, 0xd0, 0xff, 0x1f, 0xb2, 0x90, 0xc0, 0x82, 0xbd, 0x3a, 0xb3, 0x98, 0xb0, 0x8b,
+	0x65, 0xa0, 0xa4, 0x3b, 0x0f, 0x9a, 0x65, 0x97, 0xa5, 0xfb, 0x29, 0x9a, 0xca, 0x56, 0x70, 0x28,
+	0x05, 0xc9, 0xb7, 0x66, 0xc9, 0x83, 0xe8, 0xf8, 0x0b, 0x32, 0xfe, 0x2c, 0x4c, 0xbb, 0xf1, 0x39,
+	0x3c, 0x42, 0xff, 0x6b, 0x62, 0x0a, 0xf3, 0xee, 0xae, 0x52, 0x13, 0x72, 0x5a, 0xdb, 0x9b, 0x98,
+	0xee, 0x67, 0xa9, 0xb3, 0xb9, 0x26, 0x03, 0x2d, 0xc1, 0xc2, 0x24, 0x50, 0x1b, 0x53, 0x4b, 0xe7,
+	0x21, 0xba, 0xf8, 0xa9, 0xbc, 0x31, 0xfb, 0xf2, 0x0e, 0xc3, 0x9a, 0x1d, 0xd9, 0x46, 0x0c, 0xc5,
+	0x7a, 0xb5, 0x43, 0xf5, 0x8e, 0xab, 0x4b, 0x09, 0xbf, 0xd6, 0xd0, 0x55, 0xb5, 0x44, 0x7e, 0xee,
+	0x4e, 0x1c, 0x6b, 0xd6, 0x9b, 0xe5, 0xa0, 0xae, 0x87, 0x61, 0xbf, 0x75, 0xba, 0xa3, 0x56, 0xb1,
+	0x29, 0x55, 0xac, 0x40, 0xbd, 0xa8, 0x42, 0xed, 0x64, 0x0b, 0xc7, 0x31, 0xfc, 0x58, 0x43, 0xb3,
+	0x56, 0x10, 0x2d, 0xe6, 0x5a, 0x05, 0x87, 0xab, 0xe4, 0xfa, 0x29, 0x5e, 0x5a, 0x46, 0x43, 0xca,
+	0x58, 0x84, 0x79, 0xbf, 0x0c, 0xf8, 0xb9, 0x86, 0x66, 0x26, 0xab, 0xb5, 0x82, 0x2d, 0x7f, 0x6c,
+	0x57, 0xc0, 0xb5, 0x93, 0x9d, 0x34, 0xff, 0x4d, 0xc9, 0xbf, 0x01, 0x6b, 0x5e, 0x7e, 0x2b, 0x11,
+	0xbe, 0x45, 0xe7, 0xf7, 0x55, 0x2d, 0x72, 0xeb, 0x86, 0x36, 0x7a, 0xeb, 0x46, 0x8e, 0x69, 0xb2,
+	0x25, 0x49, 0x76, 0x05, 0x66, 0x27, 0x64, 0xba, 0xbe, 0x41, 0x8c, 0x2e, 0x7c, 0x6e, 0x2a, 0x3e,
+	0x38, 0x45, 0x21, 0x37, 0x1b, 0x8a, 0xd5, 0x0a, 0xb4, 0xfa, 0x60, 0xf3, 0x5e, 0x12, 0x8c, 0xfa,
+	0x58, 0xf4, 0xc6, 0x10, 0x21, 0x94, 0x2f, 0xe4, 0xe0, 0x0f, 0x98, 0x6f, 0x64, 0xa3, 0x0a, 0xd6,
+	0x84, 0x2b, 0x92, 0x70, 0x1e, 0xae, 0x7a, 0x08, 0x39, 0x8c, 0xd1, 0x25, 0x5d, 0xd6, 0x1e, 0xc8,
+	0xc6, 0x0a, 0xeb, 0x9e, 0x8a, 0xa7, 0x20, 0x43, 0xb8, 0x71, 0x82, 0x47, 0xf5, 0xb1, 0xe9, 0xe2,
+	0x18, 0xa8, 0xfe, 0x1d, 0x8c, 0x28, 0x3e, 0x22, 0x63, 0xf8, 0x1e, 0x5d, 0x56, 0x67, 0x7f, 0x97,
+	0x1c, 0x64, 0x3d, 0x86, 0xc3, 0x46, 0x39, 0x2f, 0x0c, 0x66, 0x04, 0x6c, 0x9e, 0xe4, 0xa2, 0x15,
+	0x6c, 0x48, 0x05, 0xcb, 0xb0, 0x54, 0x4a, 0x9c, 0xd0, 0x30, 0xf5, 0x10, 0xfa, 0x02, 0x73, 0xd1,
+	0xcc, 0x5a, 0x71, 0x61, 0x97, 0x27, 0x76, 0xef, 0x2e, 0xdb, 0xb0, 0xe6, 0x5b, 0x96, 0x7c, 0x73,
+	0x70, 0x65, 0xc2, 0x97, 0x35, 0x7a, 0xd9, 0xe7, 0xa1, 0x85, 0xa6, 0xf6, 0x33, 0x4e, 0xb7, 0x9a,
+	0x4a, 0x93, 0xb7, 0x9a, 0x6a, 0xa4, 0xfa, 0x53, 0x64, 0x3f, 0x0e, 0x46, 0xfd, 0xb4, 0x9d, 0x8d,
+	0x1a, 0x63, 0xf8, 0x0e, 0xa1, 0x26, 0xe6, 0x64, 0x5f, 0x7d, 0xd8, 0xaa, 0x7b, 0x40, 0xc6, 0xee,
+	0xfd, 0x14, 0x1b, 0xd6, 0x7c, 0xab, 0x92, 0x6f, 0x01, 0xe6, 0x0a, 0x7c, 0x3c, 0x68, 0x63, 0x4e,
+	0x60, 0x80, 0x2e, 0xa9, 0x05, 0x8f, 0xd3, 0x76, 0x36, 0xe7, 0xb8, 0x19, 0xe3, 0x40, 0xde, 0x8c,
+	0x29, 0x78, 0x54, 0xb7, 0x24, 0x4d, 0xda, 0xd7, 0x34, 0xcf, 0x35, 0xef, 0x2e, 0x8b, 0x07, 0x84,
+	0x76, 0x8e, 0x3d, 0xbc, 0x06, 0xaa, 0xe6, 0x9d, 0x78, 0x9c, 0xb2, 0xb9, 0x3c, 0xe0, 0x86, 0xe7,
+	0x09, 0x3a, 0xbb, 0x37, 0x84, 0x39, 0x3b, 0xd6, 0xde, 0xd0, 0x50, 0xcc, 0x17, 0xcd, 0xd5, 0xb7,
+	0x4e, 0x0c, 0x83, 0x91, 0x18, 0xb6, 0xa2, 0x50, 0xb6, 0xd7, 0xbd, 0xe1, 0xa3, 0xb4, 0x90, 0x10,
+	0xd2, 0xe4, 0x4d, 0x08, 0x8d, 0x54, 0xb7, 0x57, 0x31, 0x64, 0xa9, 0x80, 0x17, 0x35, 0x34, 0xbd,
+	0xab, 0xc7, 0xc1, 0xbb, 0xa4, 0xcf, 0x78, 0x24, 0xc0, 0xb9, 0x2c, 0x05, 0xd0, 0x70, 0x6d, 0x9d,
+	0xe8, 0xa3, 0x59, 0x6f, 0x48, 0xd6, 0x75, 0x68, 0x4c, 0x58, 0x43, 0xe5, 0x12, 0x8c, 0xf4, 0x0f,
+	0xf9, 0x6d, 0xc9, 0x44, 0xc3, 0x67, 0x84, 0x3c, 0x66, 0x2c, 0xf6, 0x6b, 0xd0, 0xe0, 0x89, 0x1a,
+	0x72, 0x1f, 0xad, 0x61, 0x5e, 0x6a, 0x98, 0x81, 0xcb, 0x13, 0x0d, 0x07, 0x84, 0x64, 0x55, 0x2c,
+	0xe7, 0xdc, 0x25, 0x5c, 0x56, 0x6c, 0x2f, 0xa7, 0x06, 0x4f, 0xe4, 0xcc, 0x7d, 0xaa, 0x33, 0x84,
+	0x2b, 0x97, 0x60, 0xc4, 0x9e, 0x53, 0x92, 0x8c, 0x61, 0x88, 0x2e, 0x9a, 0xd5, 0x4d, 0x46, 0x43,
+	0x77, 0x0a, 0xb1, 0x11, 0xef, 0x14, 0xe2, 0x3a, 0x68, 0xd6, 0xeb, 0x92, 0x75, 0x0d, 0x56, 0xad,
+	0x0a, 0xca, 0x68, 0x18, 0x8c, 0xb2, 0xbe, 0xd7, 0xca, 0x2f, 0xfe, 0x2f, 0x35, 0x34, 0x9d, 0xb5,
+	0xcd, 0xdd, 0x98, 0x89, 0x9d, 0xb4, 0x23, 0x4a, 0x5f, 0x5e, 0x00, 0xbd, 0x5f, 0x5e, 0xf2, 0xd1,
+	0x1a, 0xde, 0x93, 0x1a, 0xae, 0xc3, 0x56, 0x61, 0x4c, 0xc4, 0xca, 0x2f, 0x18, 0xe9, 0x1f, 0xf2,
+	0xd8, 0x39, 0x7a, 0xd7, 0xc4, 0x69, 0x46, 0x21, 0x34, 0x7c, 0x04, 0xcd, 0x28, 0xdf, 0x81, 0xb5,
+	0x4a, 0x5c, 0x93, 0x6f, 0x49, 0xf2, 0x55, 0x58, 0x2e, 0x90, 0xb7, 0xa3, 0x30, 0x18, 0xb5, 0xa3,
+	0x50, 0x92, 0xbe, 0xac, 0xa1, 0x2b, 0xf2, 0x5e, 0xeb, 0x64, 0xdd, 0x51, 0xe3, 0x00, 0xdc, 0x28,
+	0x5d, 0x7c, 0xd7, 0xc1, 0xa8, 0xb8, 0x79, 0xaa, 0x5f, 0xf5, 0x56, 0x98, 0xe4, 0xd7, 0x23, 0x88,
+	0x35, 0x8b, 0xfc, 0x51, 0x43, 0xf3, 0x56, 0x06, 0xdf, 0xa3, 0x22, 0x12, 0x31, 0x39, 0x22, 0x54,
+	0xc0, 0xed, 0x8a, 0x2c, 0xb7, 0x7c, 0x8c, 0xb6, 0x3b, 0x6f, 0xe3, 0xaa, 0xe5, 0x7d, 0x28, 0xe5,
+	0xdd, 0x81, 0x5b, 0xce, 0xbd, 0x08, 0xc8, 0xc4, 0xb5, 0x98, 0x38, 0x4f, 0xd1, 0x94, 0xec, 0x60,
+	0x6e, 0x05, 0x92, 0x26, 0x6f, 0x05, 0xd2, 0x48, 0x75, 0x05, 0x52, 0x9d, 0xee, 0xa7, 0x1a, 0x9a,
+	0xde, 0xe3, 0xfc, 0x3e, 0x39, 0xee, 0x12, 0xfa, 0x40, 0x3e, 0xf1, 0xdc, 0x7c, 0x2c, 0x80, 0xde,
+	0x7c, 0x2c, 0xf9, 0x68, 0xd6, 0xdb, 0x92, 0x75, 0x0b, 0x36, 0x26, 0xac, 0xea, 0x15, 0x19, 0x1c,
+	0x4a, 0x77, 0xab, 0x21, 0x76, 0xd0, 0x85, 0x3d, 0xce, 0xb5, 0x80, 0x95, 0x42, 0x70, 0x97, 0x7a,
+	0xb5, 0x02, 0xad, 0x1e, 0x0a, 0x15, 0x29, 0x87, 0x03, 0x74, 0xfe, 0x3e, 0x39, 0xe6, 0x51, 0xb7,
+	0x30, 0x73, 0x6a, 0xa3, 0x77, 0xe6, 0xcc, 0xb1, 0xea, 0x71, 0xf0, 0x50, 0xb9, 0x04, 0xa3, 0x1e,
+	0x89, 0xba, 0x3d, 0x31, 0x86, 0x1f, 0xd0, 0x25, 0xbd, 0x4c, 0x75, 0x4d, 0xb7, 0xf3, 0x39, 0xd0,
+	0x5b, 0x71, 0xbe, 0x2f, 0x39, 0x6f, 0xc0, 0xb5, 0x6a, 0x4e, 0x6b, 0x2b, 0x63, 0x74, 0x4e, 0x9d,
+	0x86, 0xfb, 0x84, 0x55, 0x36, 0xef, 0x13, 0xd6, 0x40, 0xd5, 0x77, 0xc7, 0x9c, 0x57, 0x99, 0xed,
+	0x45, 0x0d, 0xcd, 0x3c, 0x55, 0xff, 0x88, 0x78, 0x9c, 0xb0, 0x3e, 0xe3, 0x38, 0x2e, 0x3c, 0x28,
+	0x8a, 0xa8, 0xf7, 0x41, 0x51, 0x76, 0xaa, 0x2e, 0x2b, 0xfa, 0xff, 0x1e, 0xad, 0x7e, 0xce, 0x97,
+	0x65, 0x71, 0x21, 0x82, 0x9b, 0xc5, 0x05, 0xd0, 0x9b, 0xc5, 0x25, 0x9f, 0xea, 0x2c, 0x2e, 0x2a,
+	0x30, 0xd3, 0xf1, 0x31, 0xba, 0xa8, 0xa3, 0x64, 0xcf, 0xe1, 0xc2, 0xeb, 0xd6, 0x46, 0xbc, 0x7d,
+	0xc5, 0x75, 0xa8, 0xee, 0xe2, 0x86, 0x7d, 0x90, 0x39, 0x6a, 0xea, 0xe6, 0xc3, 0x3f, 0x5f, 0x37,
+	0x6a, 0xaf, 0x5e, 0x37, 0x6a, 0xff, 0xbc, 0x6e, 0xd4, 0x7e, 0x7f, 0xd3, 0x38, 0xf3, 0xea, 0x4d,
+	0xe3, 0xcc, 0xdf, 0x6f, 0x1a, 0x67, 0xbe, 0xfe, 0xa4, 0x1b, 0x89, 0x5e, 0xda, 0xde, 0xee, 0xb0,
+	0xa3, 0x3c, 0x46, 0x07, 0xf3, 0x5e, 0xd0, 0x65, 0x1f, 0xe4, 0x31, 0x87, 0xd6, 0x68, 0x92, 0x29,
+	0x6a, 0x9f, 0x93, 0xff, 0xe8, 0xf9, 0xf8, 0xbf, 0x00, 0x00, 0x00, 0xff, 0xff, 0xd9, 0x27, 0x97,
+	0xa3, 0x55, 0x14, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -164,29 +145,22 @@ type QueryClient interface {
 	Node(ctx context.Context, in *QueryNodeRequest, opts ...grpc.CallOption) (*QueryNodeResponse, error)
 	Nodes(ctx context.Context, in *QueryNodesRequest, opts ...grpc.CallOption) (*QueryNodesResponse, error)
 	Ban(ctx context.Context, in *QueryBanRequest, opts ...grpc.CallOption) (*BanVoter, error)
-	MimirValues(ctx context.Context, in *QueryMimirValuesRequest, opts ...grpc.CallOption) (*QueryMimirValuesResponse, error)
-	MimirWithKey(ctx context.Context, in *QueryMimirWithKeyRequest, opts ...grpc.CallOption) (*QueryMimirWithKeyResponse, error)
-	MimirAdminValues(ctx context.Context, in *QueryMimirAdminValuesRequest, opts ...grpc.CallOption) (*QueryMimirAdminValuesResponse, error)
-	MimirNodesAllValues(ctx context.Context, in *QueryMimirNodesAllValuesRequest, opts ...grpc.CallOption) (*QueryMimirNodesAllValuesResponse, error)
-	MimirNodesValues(ctx context.Context, in *QueryMimirNodesValuesRequest, opts ...grpc.CallOption) (*QueryMimirNodesValuesResponse, error)
-	MimirNodeValues(ctx context.Context, in *QueryMimirNodeValuesRequest, opts ...grpc.CallOption) (*QueryMimirNodeValuesResponse, error)
-	InboundAddresses(ctx context.Context, in *QueryInboundAddressesRequest, opts ...grpc.CallOption) (*QueryInboundAddressesResponse, error)
+	ConfigValues(ctx context.Context, in *QueryConfigValuesRequest, opts ...grpc.CallOption) (*QueryConfigValuesResponse, error)
+	ConfigNodesAllValues(ctx context.Context, in *QueryConfigNodesAllValuesRequest, opts ...grpc.CallOption) (*QueryConfigNodesAllValuesResponse, error)
+	ConfigNodesValues(ctx context.Context, in *QueryConfigNodesValuesRequest, opts ...grpc.CallOption) (*QueryConfigNodesValuesResponse, error)
+	ConfigNodeValues(ctx context.Context, in *QueryConfigNodeValuesRequest, opts ...grpc.CallOption) (*QueryConfigNodeValuesResponse, error)
 	Version(ctx context.Context, in *QueryVersionRequest, opts ...grpc.CallOption) (*QueryVersionResponse, error)
 	Invariant(ctx context.Context, in *QueryInvariantRequest, opts ...grpc.CallOption) (*QueryInvariantResponse, error)
 	Invariants(ctx context.Context, in *QueryInvariantsRequest, opts ...grpc.CallOption) (*QueryInvariantsResponse, error)
 	BalanceModule(ctx context.Context, in *QueryBalanceModuleRequest, opts ...grpc.CallOption) (*QueryBalanceModuleResponse, error)
-	ConstantValues(ctx context.Context, in *QueryConstantValuesRequest, opts ...grpc.CallOption) (*QueryConstantValuesResponse, error)
+	ConfigDefaults(ctx context.Context, in *QueryConfigDefaultsRequest, opts ...grpc.CallOption) (*QueryConfigDefaultsResponse, error)
 	LastBlocks(ctx context.Context, in *QueryLastBlocksRequest, opts ...grpc.CallOption) (*QueryLastBlocksResponse, error)
-	ChainsLastBlock(ctx context.Context, in *QueryChainsLastBlockRequest, opts ...grpc.CallOption) (*QueryLastBlocksResponse, error)
 	Vault(ctx context.Context, in *QueryVaultRequest, opts ...grpc.CallOption) (*QueryVaultResponse, error)
-	AsgardVaults(ctx context.Context, in *QueryAsgardVaultsRequest, opts ...grpc.CallOption) (*QueryAsgardVaultsResponse, error)
+	BaseVaults(ctx context.Context, in *QueryBaseVaultsRequest, opts ...grpc.CallOption) (*QueryBaseVaultsResponse, error)
 	VaultsPubkeys(ctx context.Context, in *QueryVaultsPubkeysRequest, opts ...grpc.CallOption) (*QueryVaultsPubkeysResponse, error)
 	VaultSolvency(ctx context.Context, in *QueryVaultSolvencyRequest, opts ...grpc.CallOption) (*QueryVaultSolvencyResponse, error)
-	TxStages(ctx context.Context, in *QueryTxStagesRequest, opts ...grpc.CallOption) (*QueryTxStagesResponse, error)
-	TxStatus(ctx context.Context, in *QueryTxStatusRequest, opts ...grpc.CallOption) (*QueryTxStatusResponse, error)
 	Tx(ctx context.Context, in *QueryTxRequest, opts ...grpc.CallOption) (*QueryTxResponse, error)
-	TxVoters(ctx context.Context, in *QueryTxVotersRequest, opts ...grpc.CallOption) (*QueryObservedTxVoter, error)
-	TxVotersOld(ctx context.Context, in *QueryTxVotersRequest, opts ...grpc.CallOption) (*QueryObservedTxVoter, error)
+	TxOut(ctx context.Context, in *QueryTxOutRequest, opts ...grpc.CallOption) (*QueryTxOutResponse, error)
 	ShielderDeposit(ctx context.Context, in *QueryShielderDepositRequest, opts ...grpc.CallOption) (*QueryShielderDepositResponse, error)
 	ShielderFeePool(ctx context.Context, in *QueryShielderFeePoolRequest, opts ...grpc.CallOption) (*QueryShielderFeePoolResponse, error)
 	ShielderSession(ctx context.Context, in *QueryShielderSessionRequest, opts ...grpc.CallOption) (*QueryShielderSessionResponse, error)
@@ -204,10 +178,6 @@ type QueryClient interface {
 	UpgradeProposals(ctx context.Context, in *QueryUpgradeProposalsRequest, opts ...grpc.CallOption) (*QueryUpgradeProposalsResponse, error)
 	UpgradeProposal(ctx context.Context, in *QueryUpgradeProposalRequest, opts ...grpc.CallOption) (*QueryUpgradeProposalResponse, error)
 	UpgradeVotes(ctx context.Context, in *QueryUpgradeVotesRequest, opts ...grpc.CallOption) (*QueryUpgradeVotesResponse, error)
-	Codes(ctx context.Context, in *QueryCodesRequest, opts ...grpc.CallOption) (*QueryCodesResponse, error)
-	Eip712TypedData(ctx context.Context, in *QueryEip712TypedDataRequest, opts ...grpc.CallOption) (*QueryEip712TypedDataResponse, error)
-	ContractInfos(ctx context.Context, in *QueryContractInfosRequest, opts ...grpc.CallOption) (*QueryContractInfosResponse, error)
-	ContractInfo(ctx context.Context, in *QueryContractInfoRequest, opts ...grpc.CallOption) (*QueryContractInfoResponse, error)
 }
 
 type queryClient struct {
@@ -272,63 +242,36 @@ func (c *queryClient) Ban(ctx context.Context, in *QueryBanRequest, opts ...grpc
 	return out, nil
 }
 
-func (c *queryClient) MimirValues(ctx context.Context, in *QueryMimirValuesRequest, opts ...grpc.CallOption) (*QueryMimirValuesResponse, error) {
-	out := new(QueryMimirValuesResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/MimirValues", in, out, opts...)
+func (c *queryClient) ConfigValues(ctx context.Context, in *QueryConfigValuesRequest, opts ...grpc.CallOption) (*QueryConfigValuesResponse, error) {
+	out := new(QueryConfigValuesResponse)
+	err := c.cc.Invoke(ctx, "/types.Query/ConfigValues", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queryClient) MimirWithKey(ctx context.Context, in *QueryMimirWithKeyRequest, opts ...grpc.CallOption) (*QueryMimirWithKeyResponse, error) {
-	out := new(QueryMimirWithKeyResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/MimirWithKey", in, out, opts...)
+func (c *queryClient) ConfigNodesAllValues(ctx context.Context, in *QueryConfigNodesAllValuesRequest, opts ...grpc.CallOption) (*QueryConfigNodesAllValuesResponse, error) {
+	out := new(QueryConfigNodesAllValuesResponse)
+	err := c.cc.Invoke(ctx, "/types.Query/ConfigNodesAllValues", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queryClient) MimirAdminValues(ctx context.Context, in *QueryMimirAdminValuesRequest, opts ...grpc.CallOption) (*QueryMimirAdminValuesResponse, error) {
-	out := new(QueryMimirAdminValuesResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/MimirAdminValues", in, out, opts...)
+func (c *queryClient) ConfigNodesValues(ctx context.Context, in *QueryConfigNodesValuesRequest, opts ...grpc.CallOption) (*QueryConfigNodesValuesResponse, error) {
+	out := new(QueryConfigNodesValuesResponse)
+	err := c.cc.Invoke(ctx, "/types.Query/ConfigNodesValues", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queryClient) MimirNodesAllValues(ctx context.Context, in *QueryMimirNodesAllValuesRequest, opts ...grpc.CallOption) (*QueryMimirNodesAllValuesResponse, error) {
-	out := new(QueryMimirNodesAllValuesResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/MimirNodesAllValues", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) MimirNodesValues(ctx context.Context, in *QueryMimirNodesValuesRequest, opts ...grpc.CallOption) (*QueryMimirNodesValuesResponse, error) {
-	out := new(QueryMimirNodesValuesResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/MimirNodesValues", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) MimirNodeValues(ctx context.Context, in *QueryMimirNodeValuesRequest, opts ...grpc.CallOption) (*QueryMimirNodeValuesResponse, error) {
-	out := new(QueryMimirNodeValuesResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/MimirNodeValues", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) InboundAddresses(ctx context.Context, in *QueryInboundAddressesRequest, opts ...grpc.CallOption) (*QueryInboundAddressesResponse, error) {
-	out := new(QueryInboundAddressesResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/InboundAddresses", in, out, opts...)
+func (c *queryClient) ConfigNodeValues(ctx context.Context, in *QueryConfigNodeValuesRequest, opts ...grpc.CallOption) (*QueryConfigNodeValuesResponse, error) {
+	out := new(QueryConfigNodeValuesResponse)
+	err := c.cc.Invoke(ctx, "/types.Query/ConfigNodeValues", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -371,9 +314,9 @@ func (c *queryClient) BalanceModule(ctx context.Context, in *QueryBalanceModuleR
 	return out, nil
 }
 
-func (c *queryClient) ConstantValues(ctx context.Context, in *QueryConstantValuesRequest, opts ...grpc.CallOption) (*QueryConstantValuesResponse, error) {
-	out := new(QueryConstantValuesResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/ConstantValues", in, out, opts...)
+func (c *queryClient) ConfigDefaults(ctx context.Context, in *QueryConfigDefaultsRequest, opts ...grpc.CallOption) (*QueryConfigDefaultsResponse, error) {
+	out := new(QueryConfigDefaultsResponse)
+	err := c.cc.Invoke(ctx, "/types.Query/ConfigDefaults", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -389,15 +332,6 @@ func (c *queryClient) LastBlocks(ctx context.Context, in *QueryLastBlocksRequest
 	return out, nil
 }
 
-func (c *queryClient) ChainsLastBlock(ctx context.Context, in *QueryChainsLastBlockRequest, opts ...grpc.CallOption) (*QueryLastBlocksResponse, error) {
-	out := new(QueryLastBlocksResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/ChainsLastBlock", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *queryClient) Vault(ctx context.Context, in *QueryVaultRequest, opts ...grpc.CallOption) (*QueryVaultResponse, error) {
 	out := new(QueryVaultResponse)
 	err := c.cc.Invoke(ctx, "/types.Query/Vault", in, out, opts...)
@@ -407,9 +341,9 @@ func (c *queryClient) Vault(ctx context.Context, in *QueryVaultRequest, opts ...
 	return out, nil
 }
 
-func (c *queryClient) AsgardVaults(ctx context.Context, in *QueryAsgardVaultsRequest, opts ...grpc.CallOption) (*QueryAsgardVaultsResponse, error) {
-	out := new(QueryAsgardVaultsResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/AsgardVaults", in, out, opts...)
+func (c *queryClient) BaseVaults(ctx context.Context, in *QueryBaseVaultsRequest, opts ...grpc.CallOption) (*QueryBaseVaultsResponse, error) {
+	out := new(QueryBaseVaultsResponse)
+	err := c.cc.Invoke(ctx, "/types.Query/BaseVaults", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -434,24 +368,6 @@ func (c *queryClient) VaultSolvency(ctx context.Context, in *QueryVaultSolvencyR
 	return out, nil
 }
 
-func (c *queryClient) TxStages(ctx context.Context, in *QueryTxStagesRequest, opts ...grpc.CallOption) (*QueryTxStagesResponse, error) {
-	out := new(QueryTxStagesResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/TxStages", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) TxStatus(ctx context.Context, in *QueryTxStatusRequest, opts ...grpc.CallOption) (*QueryTxStatusResponse, error) {
-	out := new(QueryTxStatusResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/TxStatus", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *queryClient) Tx(ctx context.Context, in *QueryTxRequest, opts ...grpc.CallOption) (*QueryTxResponse, error) {
 	out := new(QueryTxResponse)
 	err := c.cc.Invoke(ctx, "/types.Query/Tx", in, out, opts...)
@@ -461,18 +377,9 @@ func (c *queryClient) Tx(ctx context.Context, in *QueryTxRequest, opts ...grpc.C
 	return out, nil
 }
 
-func (c *queryClient) TxVoters(ctx context.Context, in *QueryTxVotersRequest, opts ...grpc.CallOption) (*QueryObservedTxVoter, error) {
-	out := new(QueryObservedTxVoter)
-	err := c.cc.Invoke(ctx, "/types.Query/TxVoters", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) TxVotersOld(ctx context.Context, in *QueryTxVotersRequest, opts ...grpc.CallOption) (*QueryObservedTxVoter, error) {
-	out := new(QueryObservedTxVoter)
-	err := c.cc.Invoke(ctx, "/types.Query/TxVotersOld", in, out, opts...)
+func (c *queryClient) TxOut(ctx context.Context, in *QueryTxOutRequest, opts ...grpc.CallOption) (*QueryTxOutResponse, error) {
+	out := new(QueryTxOutResponse)
+	err := c.cc.Invoke(ctx, "/types.Query/TxOut", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -632,42 +539,6 @@ func (c *queryClient) UpgradeVotes(ctx context.Context, in *QueryUpgradeVotesReq
 	return out, nil
 }
 
-func (c *queryClient) Codes(ctx context.Context, in *QueryCodesRequest, opts ...grpc.CallOption) (*QueryCodesResponse, error) {
-	out := new(QueryCodesResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/Codes", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) Eip712TypedData(ctx context.Context, in *QueryEip712TypedDataRequest, opts ...grpc.CallOption) (*QueryEip712TypedDataResponse, error) {
-	out := new(QueryEip712TypedDataResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/Eip712TypedData", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) ContractInfos(ctx context.Context, in *QueryContractInfosRequest, opts ...grpc.CallOption) (*QueryContractInfosResponse, error) {
-	out := new(QueryContractInfosResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/ContractInfos", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) ContractInfo(ctx context.Context, in *QueryContractInfoRequest, opts ...grpc.CallOption) (*QueryContractInfoResponse, error) {
-	out := new(QueryContractInfoResponse)
-	err := c.cc.Invoke(ctx, "/types.Query/ContractInfo", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // QueryServer is the server API for Query service.
 type QueryServer interface {
 	Account(context.Context, *QueryAccountRequest) (*QueryAccountResponse, error)
@@ -676,29 +547,22 @@ type QueryServer interface {
 	Node(context.Context, *QueryNodeRequest) (*QueryNodeResponse, error)
 	Nodes(context.Context, *QueryNodesRequest) (*QueryNodesResponse, error)
 	Ban(context.Context, *QueryBanRequest) (*BanVoter, error)
-	MimirValues(context.Context, *QueryMimirValuesRequest) (*QueryMimirValuesResponse, error)
-	MimirWithKey(context.Context, *QueryMimirWithKeyRequest) (*QueryMimirWithKeyResponse, error)
-	MimirAdminValues(context.Context, *QueryMimirAdminValuesRequest) (*QueryMimirAdminValuesResponse, error)
-	MimirNodesAllValues(context.Context, *QueryMimirNodesAllValuesRequest) (*QueryMimirNodesAllValuesResponse, error)
-	MimirNodesValues(context.Context, *QueryMimirNodesValuesRequest) (*QueryMimirNodesValuesResponse, error)
-	MimirNodeValues(context.Context, *QueryMimirNodeValuesRequest) (*QueryMimirNodeValuesResponse, error)
-	InboundAddresses(context.Context, *QueryInboundAddressesRequest) (*QueryInboundAddressesResponse, error)
+	ConfigValues(context.Context, *QueryConfigValuesRequest) (*QueryConfigValuesResponse, error)
+	ConfigNodesAllValues(context.Context, *QueryConfigNodesAllValuesRequest) (*QueryConfigNodesAllValuesResponse, error)
+	ConfigNodesValues(context.Context, *QueryConfigNodesValuesRequest) (*QueryConfigNodesValuesResponse, error)
+	ConfigNodeValues(context.Context, *QueryConfigNodeValuesRequest) (*QueryConfigNodeValuesResponse, error)
 	Version(context.Context, *QueryVersionRequest) (*QueryVersionResponse, error)
 	Invariant(context.Context, *QueryInvariantRequest) (*QueryInvariantResponse, error)
 	Invariants(context.Context, *QueryInvariantsRequest) (*QueryInvariantsResponse, error)
 	BalanceModule(context.Context, *QueryBalanceModuleRequest) (*QueryBalanceModuleResponse, error)
-	ConstantValues(context.Context, *QueryConstantValuesRequest) (*QueryConstantValuesResponse, error)
+	ConfigDefaults(context.Context, *QueryConfigDefaultsRequest) (*QueryConfigDefaultsResponse, error)
 	LastBlocks(context.Context, *QueryLastBlocksRequest) (*QueryLastBlocksResponse, error)
-	ChainsLastBlock(context.Context, *QueryChainsLastBlockRequest) (*QueryLastBlocksResponse, error)
 	Vault(context.Context, *QueryVaultRequest) (*QueryVaultResponse, error)
-	AsgardVaults(context.Context, *QueryAsgardVaultsRequest) (*QueryAsgardVaultsResponse, error)
+	BaseVaults(context.Context, *QueryBaseVaultsRequest) (*QueryBaseVaultsResponse, error)
 	VaultsPubkeys(context.Context, *QueryVaultsPubkeysRequest) (*QueryVaultsPubkeysResponse, error)
 	VaultSolvency(context.Context, *QueryVaultSolvencyRequest) (*QueryVaultSolvencyResponse, error)
-	TxStages(context.Context, *QueryTxStagesRequest) (*QueryTxStagesResponse, error)
-	TxStatus(context.Context, *QueryTxStatusRequest) (*QueryTxStatusResponse, error)
 	Tx(context.Context, *QueryTxRequest) (*QueryTxResponse, error)
-	TxVoters(context.Context, *QueryTxVotersRequest) (*QueryObservedTxVoter, error)
-	TxVotersOld(context.Context, *QueryTxVotersRequest) (*QueryObservedTxVoter, error)
+	TxOut(context.Context, *QueryTxOutRequest) (*QueryTxOutResponse, error)
 	ShielderDeposit(context.Context, *QueryShielderDepositRequest) (*QueryShielderDepositResponse, error)
 	ShielderFeePool(context.Context, *QueryShielderFeePoolRequest) (*QueryShielderFeePoolResponse, error)
 	ShielderSession(context.Context, *QueryShielderSessionRequest) (*QueryShielderSessionResponse, error)
@@ -716,10 +580,6 @@ type QueryServer interface {
 	UpgradeProposals(context.Context, *QueryUpgradeProposalsRequest) (*QueryUpgradeProposalsResponse, error)
 	UpgradeProposal(context.Context, *QueryUpgradeProposalRequest) (*QueryUpgradeProposalResponse, error)
 	UpgradeVotes(context.Context, *QueryUpgradeVotesRequest) (*QueryUpgradeVotesResponse, error)
-	Codes(context.Context, *QueryCodesRequest) (*QueryCodesResponse, error)
-	Eip712TypedData(context.Context, *QueryEip712TypedDataRequest) (*QueryEip712TypedDataResponse, error)
-	ContractInfos(context.Context, *QueryContractInfosRequest) (*QueryContractInfosResponse, error)
-	ContractInfo(context.Context, *QueryContractInfoRequest) (*QueryContractInfoResponse, error)
 }
 
 // UnimplementedQueryServer can be embedded to have forward compatible implementations.
@@ -744,26 +604,17 @@ func (*UnimplementedQueryServer) Nodes(ctx context.Context, req *QueryNodesReque
 func (*UnimplementedQueryServer) Ban(ctx context.Context, req *QueryBanRequest) (*BanVoter, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ban not implemented")
 }
-func (*UnimplementedQueryServer) MimirValues(ctx context.Context, req *QueryMimirValuesRequest) (*QueryMimirValuesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MimirValues not implemented")
+func (*UnimplementedQueryServer) ConfigValues(ctx context.Context, req *QueryConfigValuesRequest) (*QueryConfigValuesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfigValues not implemented")
 }
-func (*UnimplementedQueryServer) MimirWithKey(ctx context.Context, req *QueryMimirWithKeyRequest) (*QueryMimirWithKeyResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MimirWithKey not implemented")
+func (*UnimplementedQueryServer) ConfigNodesAllValues(ctx context.Context, req *QueryConfigNodesAllValuesRequest) (*QueryConfigNodesAllValuesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfigNodesAllValues not implemented")
 }
-func (*UnimplementedQueryServer) MimirAdminValues(ctx context.Context, req *QueryMimirAdminValuesRequest) (*QueryMimirAdminValuesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MimirAdminValues not implemented")
+func (*UnimplementedQueryServer) ConfigNodesValues(ctx context.Context, req *QueryConfigNodesValuesRequest) (*QueryConfigNodesValuesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfigNodesValues not implemented")
 }
-func (*UnimplementedQueryServer) MimirNodesAllValues(ctx context.Context, req *QueryMimirNodesAllValuesRequest) (*QueryMimirNodesAllValuesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MimirNodesAllValues not implemented")
-}
-func (*UnimplementedQueryServer) MimirNodesValues(ctx context.Context, req *QueryMimirNodesValuesRequest) (*QueryMimirNodesValuesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MimirNodesValues not implemented")
-}
-func (*UnimplementedQueryServer) MimirNodeValues(ctx context.Context, req *QueryMimirNodeValuesRequest) (*QueryMimirNodeValuesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MimirNodeValues not implemented")
-}
-func (*UnimplementedQueryServer) InboundAddresses(ctx context.Context, req *QueryInboundAddressesRequest) (*QueryInboundAddressesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method InboundAddresses not implemented")
+func (*UnimplementedQueryServer) ConfigNodeValues(ctx context.Context, req *QueryConfigNodeValuesRequest) (*QueryConfigNodeValuesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfigNodeValues not implemented")
 }
 func (*UnimplementedQueryServer) Version(ctx context.Context, req *QueryVersionRequest) (*QueryVersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Version not implemented")
@@ -777,20 +628,17 @@ func (*UnimplementedQueryServer) Invariants(ctx context.Context, req *QueryInvar
 func (*UnimplementedQueryServer) BalanceModule(ctx context.Context, req *QueryBalanceModuleRequest) (*QueryBalanceModuleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BalanceModule not implemented")
 }
-func (*UnimplementedQueryServer) ConstantValues(ctx context.Context, req *QueryConstantValuesRequest) (*QueryConstantValuesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ConstantValues not implemented")
+func (*UnimplementedQueryServer) ConfigDefaults(ctx context.Context, req *QueryConfigDefaultsRequest) (*QueryConfigDefaultsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfigDefaults not implemented")
 }
 func (*UnimplementedQueryServer) LastBlocks(ctx context.Context, req *QueryLastBlocksRequest) (*QueryLastBlocksResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LastBlocks not implemented")
 }
-func (*UnimplementedQueryServer) ChainsLastBlock(ctx context.Context, req *QueryChainsLastBlockRequest) (*QueryLastBlocksResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ChainsLastBlock not implemented")
-}
 func (*UnimplementedQueryServer) Vault(ctx context.Context, req *QueryVaultRequest) (*QueryVaultResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Vault not implemented")
 }
-func (*UnimplementedQueryServer) AsgardVaults(ctx context.Context, req *QueryAsgardVaultsRequest) (*QueryAsgardVaultsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AsgardVaults not implemented")
+func (*UnimplementedQueryServer) BaseVaults(ctx context.Context, req *QueryBaseVaultsRequest) (*QueryBaseVaultsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BaseVaults not implemented")
 }
 func (*UnimplementedQueryServer) VaultsPubkeys(ctx context.Context, req *QueryVaultsPubkeysRequest) (*QueryVaultsPubkeysResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VaultsPubkeys not implemented")
@@ -798,20 +646,11 @@ func (*UnimplementedQueryServer) VaultsPubkeys(ctx context.Context, req *QueryVa
 func (*UnimplementedQueryServer) VaultSolvency(ctx context.Context, req *QueryVaultSolvencyRequest) (*QueryVaultSolvencyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VaultSolvency not implemented")
 }
-func (*UnimplementedQueryServer) TxStages(ctx context.Context, req *QueryTxStagesRequest) (*QueryTxStagesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TxStages not implemented")
-}
-func (*UnimplementedQueryServer) TxStatus(ctx context.Context, req *QueryTxStatusRequest) (*QueryTxStatusResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TxStatus not implemented")
-}
 func (*UnimplementedQueryServer) Tx(ctx context.Context, req *QueryTxRequest) (*QueryTxResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Tx not implemented")
 }
-func (*UnimplementedQueryServer) TxVoters(ctx context.Context, req *QueryTxVotersRequest) (*QueryObservedTxVoter, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TxVoters not implemented")
-}
-func (*UnimplementedQueryServer) TxVotersOld(ctx context.Context, req *QueryTxVotersRequest) (*QueryObservedTxVoter, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TxVotersOld not implemented")
+func (*UnimplementedQueryServer) TxOut(ctx context.Context, req *QueryTxOutRequest) (*QueryTxOutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TxOut not implemented")
 }
 func (*UnimplementedQueryServer) ShielderDeposit(ctx context.Context, req *QueryShielderDepositRequest) (*QueryShielderDepositResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderDeposit not implemented")
@@ -863,18 +702,6 @@ func (*UnimplementedQueryServer) UpgradeProposal(ctx context.Context, req *Query
 }
 func (*UnimplementedQueryServer) UpgradeVotes(ctx context.Context, req *QueryUpgradeVotesRequest) (*QueryUpgradeVotesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpgradeVotes not implemented")
-}
-func (*UnimplementedQueryServer) Codes(ctx context.Context, req *QueryCodesRequest) (*QueryCodesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Codes not implemented")
-}
-func (*UnimplementedQueryServer) Eip712TypedData(ctx context.Context, req *QueryEip712TypedDataRequest) (*QueryEip712TypedDataResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Eip712TypedData not implemented")
-}
-func (*UnimplementedQueryServer) ContractInfos(ctx context.Context, req *QueryContractInfosRequest) (*QueryContractInfosResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ContractInfos not implemented")
-}
-func (*UnimplementedQueryServer) ContractInfo(ctx context.Context, req *QueryContractInfoRequest) (*QueryContractInfoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ContractInfo not implemented")
 }
 
 func RegisterQueryServer(s grpc1.Server, srv QueryServer) {
@@ -989,128 +816,74 @@ func _Query_Ban_Handler(srv interface{}, ctx context.Context, dec func(interface
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_MimirValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryMimirValuesRequest)
+func _Query_ConfigValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryConfigValuesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).MimirValues(ctx, in)
+		return srv.(QueryServer).ConfigValues(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.Query/MimirValues",
+		FullMethod: "/types.Query/ConfigValues",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).MimirValues(ctx, req.(*QueryMimirValuesRequest))
+		return srv.(QueryServer).ConfigValues(ctx, req.(*QueryConfigValuesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_MimirWithKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryMimirWithKeyRequest)
+func _Query_ConfigNodesAllValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryConfigNodesAllValuesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).MimirWithKey(ctx, in)
+		return srv.(QueryServer).ConfigNodesAllValues(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.Query/MimirWithKey",
+		FullMethod: "/types.Query/ConfigNodesAllValues",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).MimirWithKey(ctx, req.(*QueryMimirWithKeyRequest))
+		return srv.(QueryServer).ConfigNodesAllValues(ctx, req.(*QueryConfigNodesAllValuesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_MimirAdminValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryMimirAdminValuesRequest)
+func _Query_ConfigNodesValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryConfigNodesValuesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).MimirAdminValues(ctx, in)
+		return srv.(QueryServer).ConfigNodesValues(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.Query/MimirAdminValues",
+		FullMethod: "/types.Query/ConfigNodesValues",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).MimirAdminValues(ctx, req.(*QueryMimirAdminValuesRequest))
+		return srv.(QueryServer).ConfigNodesValues(ctx, req.(*QueryConfigNodesValuesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_MimirNodesAllValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryMimirNodesAllValuesRequest)
+func _Query_ConfigNodeValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryConfigNodeValuesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).MimirNodesAllValues(ctx, in)
+		return srv.(QueryServer).ConfigNodeValues(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.Query/MimirNodesAllValues",
+		FullMethod: "/types.Query/ConfigNodeValues",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).MimirNodesAllValues(ctx, req.(*QueryMimirNodesAllValuesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_MimirNodesValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryMimirNodesValuesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).MimirNodesValues(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/types.Query/MimirNodesValues",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).MimirNodesValues(ctx, req.(*QueryMimirNodesValuesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_MimirNodeValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryMimirNodeValuesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).MimirNodeValues(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/types.Query/MimirNodeValues",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).MimirNodeValues(ctx, req.(*QueryMimirNodeValuesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_InboundAddresses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryInboundAddressesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).InboundAddresses(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/types.Query/InboundAddresses",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).InboundAddresses(ctx, req.(*QueryInboundAddressesRequest))
+		return srv.(QueryServer).ConfigNodeValues(ctx, req.(*QueryConfigNodeValuesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1187,20 +960,20 @@ func _Query_BalanceModule_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_ConstantValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryConstantValuesRequest)
+func _Query_ConfigDefaults_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryConfigDefaultsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).ConstantValues(ctx, in)
+		return srv.(QueryServer).ConfigDefaults(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.Query/ConstantValues",
+		FullMethod: "/types.Query/ConfigDefaults",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ConstantValues(ctx, req.(*QueryConstantValuesRequest))
+		return srv.(QueryServer).ConfigDefaults(ctx, req.(*QueryConfigDefaultsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1223,24 +996,6 @@ func _Query_LastBlocks_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_ChainsLastBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryChainsLastBlockRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).ChainsLastBlock(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/types.Query/ChainsLastBlock",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ChainsLastBlock(ctx, req.(*QueryChainsLastBlockRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Query_Vault_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(QueryVaultRequest)
 	if err := dec(in); err != nil {
@@ -1259,20 +1014,20 @@ func _Query_Vault_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_AsgardVaults_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryAsgardVaultsRequest)
+func _Query_BaseVaults_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryBaseVaultsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).AsgardVaults(ctx, in)
+		return srv.(QueryServer).BaseVaults(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.Query/AsgardVaults",
+		FullMethod: "/types.Query/BaseVaults",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).AsgardVaults(ctx, req.(*QueryAsgardVaultsRequest))
+		return srv.(QueryServer).BaseVaults(ctx, req.(*QueryBaseVaultsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1313,42 +1068,6 @@ func _Query_VaultSolvency_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_TxStages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryTxStagesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).TxStages(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/types.Query/TxStages",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).TxStages(ctx, req.(*QueryTxStagesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_TxStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryTxStatusRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).TxStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/types.Query/TxStatus",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).TxStatus(ctx, req.(*QueryTxStatusRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Query_Tx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(QueryTxRequest)
 	if err := dec(in); err != nil {
@@ -1367,38 +1086,20 @@ func _Query_Tx_Handler(srv interface{}, ctx context.Context, dec func(interface{
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_TxVoters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryTxVotersRequest)
+func _Query_TxOut_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryTxOutRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).TxVoters(ctx, in)
+		return srv.(QueryServer).TxOut(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/types.Query/TxVoters",
+		FullMethod: "/types.Query/TxOut",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).TxVoters(ctx, req.(*QueryTxVotersRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_TxVotersOld_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryTxVotersRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).TxVotersOld(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/types.Query/TxVotersOld",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).TxVotersOld(ctx, req.(*QueryTxVotersRequest))
+		return srv.(QueryServer).TxOut(ctx, req.(*QueryTxOutRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1709,78 +1410,6 @@ func _Query_UpgradeVotes_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_Codes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryCodesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).Codes(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/types.Query/Codes",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).Codes(ctx, req.(*QueryCodesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_Eip712TypedData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryEip712TypedDataRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).Eip712TypedData(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/types.Query/Eip712TypedData",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).Eip712TypedData(ctx, req.(*QueryEip712TypedDataRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_ContractInfos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryContractInfosRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).ContractInfos(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/types.Query/ContractInfos",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ContractInfos(ctx, req.(*QueryContractInfosRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_ContractInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryContractInfoRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).ContractInfo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/types.Query/ContractInfo",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ContractInfo(ctx, req.(*QueryContractInfoRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 var _Query_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "types.Query",
 	HandlerType: (*QueryServer)(nil),
@@ -1810,32 +1439,20 @@ var _Query_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Query_Ban_Handler,
 		},
 		{
-			MethodName: "MimirValues",
-			Handler:    _Query_MimirValues_Handler,
+			MethodName: "ConfigValues",
+			Handler:    _Query_ConfigValues_Handler,
 		},
 		{
-			MethodName: "MimirWithKey",
-			Handler:    _Query_MimirWithKey_Handler,
+			MethodName: "ConfigNodesAllValues",
+			Handler:    _Query_ConfigNodesAllValues_Handler,
 		},
 		{
-			MethodName: "MimirAdminValues",
-			Handler:    _Query_MimirAdminValues_Handler,
+			MethodName: "ConfigNodesValues",
+			Handler:    _Query_ConfigNodesValues_Handler,
 		},
 		{
-			MethodName: "MimirNodesAllValues",
-			Handler:    _Query_MimirNodesAllValues_Handler,
-		},
-		{
-			MethodName: "MimirNodesValues",
-			Handler:    _Query_MimirNodesValues_Handler,
-		},
-		{
-			MethodName: "MimirNodeValues",
-			Handler:    _Query_MimirNodeValues_Handler,
-		},
-		{
-			MethodName: "InboundAddresses",
-			Handler:    _Query_InboundAddresses_Handler,
+			MethodName: "ConfigNodeValues",
+			Handler:    _Query_ConfigNodeValues_Handler,
 		},
 		{
 			MethodName: "Version",
@@ -1854,24 +1471,20 @@ var _Query_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Query_BalanceModule_Handler,
 		},
 		{
-			MethodName: "ConstantValues",
-			Handler:    _Query_ConstantValues_Handler,
+			MethodName: "ConfigDefaults",
+			Handler:    _Query_ConfigDefaults_Handler,
 		},
 		{
 			MethodName: "LastBlocks",
 			Handler:    _Query_LastBlocks_Handler,
 		},
 		{
-			MethodName: "ChainsLastBlock",
-			Handler:    _Query_ChainsLastBlock_Handler,
-		},
-		{
 			MethodName: "Vault",
 			Handler:    _Query_Vault_Handler,
 		},
 		{
-			MethodName: "AsgardVaults",
-			Handler:    _Query_AsgardVaults_Handler,
+			MethodName: "BaseVaults",
+			Handler:    _Query_BaseVaults_Handler,
 		},
 		{
 			MethodName: "VaultsPubkeys",
@@ -1882,24 +1495,12 @@ var _Query_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Query_VaultSolvency_Handler,
 		},
 		{
-			MethodName: "TxStages",
-			Handler:    _Query_TxStages_Handler,
-		},
-		{
-			MethodName: "TxStatus",
-			Handler:    _Query_TxStatus_Handler,
-		},
-		{
 			MethodName: "Tx",
 			Handler:    _Query_Tx_Handler,
 		},
 		{
-			MethodName: "TxVoters",
-			Handler:    _Query_TxVoters_Handler,
-		},
-		{
-			MethodName: "TxVotersOld",
-			Handler:    _Query_TxVotersOld_Handler,
+			MethodName: "TxOut",
+			Handler:    _Query_TxOut_Handler,
 		},
 		{
 			MethodName: "ShielderDeposit",
@@ -1968,22 +1569,6 @@ var _Query_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpgradeVotes",
 			Handler:    _Query_UpgradeVotes_Handler,
-		},
-		{
-			MethodName: "Codes",
-			Handler:    _Query_Codes_Handler,
-		},
-		{
-			MethodName: "Eip712TypedData",
-			Handler:    _Query_Eip712TypedData_Handler,
-		},
-		{
-			MethodName: "ContractInfos",
-			Handler:    _Query_ContractInfos_Handler,
-		},
-		{
-			MethodName: "ContractInfo",
-			Handler:    _Query_ContractInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

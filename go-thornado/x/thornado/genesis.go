@@ -1,9 +1,12 @@
 package thornado
 
 import (
+	"sort"
+
 	abci "github.com/cometbft/cometbft/abci/types"
 
 	"github.com/thornadocash/go-thornado/common/cosmos"
+	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
 )
 
@@ -51,10 +54,28 @@ func DefaultGenesisState() GenesisState {
 		LastChainHeights:    make([]LastChainHeight, 0),
 		Network:             NewNetwork(),
 		NetworkFees:         make([]NetworkFee, 0),
-		ChainContracts:      make([]ChainContract, 0),
-		Mimirs:              make([]Mimir, 0),
-		NodeMimirs:          make([]NodeMimir, 0),
+		Configs:             make([]Config, 0),
+		NodeConfigs:         make([]NodeConfig, 0),
+		ConfigDefaults:      DefaultGenesisConfigDefaults(),
 	}
+}
+
+func DefaultGenesisConfigDefaults() []Config {
+	values := constants.NewConfigValue().GetConfigValsByKeyname().Int64Values
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	configs := make([]Config, 0, len(keys))
+	for _, key := range keys {
+		configs = append(configs, Config{
+			Key:   key,
+			Value: values[key],
+		})
+	}
+	return configs
 }
 
 func initGenesis(ctx cosmos.Context, k keeper.Keeper, data GenesisState) []abci.ValidatorUpdate {

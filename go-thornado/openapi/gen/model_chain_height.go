@@ -16,8 +16,8 @@ import (
 
 // ChainHeight struct for ChainHeight
 type ChainHeight struct {
-	Chain string `json:"chain"`
-	Height int64 `json:"height"`
+	Chain  string `json:"chain"`
+	Height int64  `json:"height"`
 }
 
 // NewChainHeight instantiates a new ChainHeight object
@@ -133,5 +133,3 @@ func (v *NullableChainHeight) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

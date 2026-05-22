@@ -16,6 +16,7 @@ import (
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p/conversion"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
+	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
@@ -131,11 +132,11 @@ func (g *NodeGater) refreshAllowlist() {
 
 // getMinimumBond fetches the current minimum bond requirement.
 func (g *NodeGater) getMinimumBond() (int64, error) {
-	mimirBond, err := g.bridge.GetMimir("BondStartAmountSats")
-	if err == nil && mimirBond > 0 {
-		return mimirBond, nil
+	configBond, err := g.bridge.GetConfigValue(constants.Node_BondStartAmountSats.String())
+	if err == nil && configBond > 0 {
+		return configBond, nil
 	}
-	return 100_000_000, nil
+	return constants.NewConfigValue().GetInt64Value(constants.Node_BondStartAmountSats), nil
 }
 
 // addNodeToAllowlist converts a node's pubkey to a peer ID and adds it to the allowlist
@@ -200,7 +201,7 @@ func (g *NodeGater) InterceptSecured(dir network.Direction, p peer.ID, connMulti
 	if disabled {
 		g.logger.Info().
 			Str("peer_id", p.String()).
-			Msg("accepted inbound connection (gating disabled by mimir)")
+			Msg("accepted inbound connection (gating disabled by config)")
 		return true
 	}
 
@@ -236,7 +237,7 @@ func (g *NodeGater) InterceptUpgraded(conn network.Conn) (bool, control.Disconne
 		remotePeer := conn.RemotePeer()
 		g.logger.Info().
 			Str("peer_id", remotePeer.String()).
-			Msg("upgraded connection (gating disabled by mimir)")
+			Msg("upgraded connection (gating disabled by config)")
 		return true, 0
 	}
 

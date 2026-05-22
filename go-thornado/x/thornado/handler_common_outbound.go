@@ -79,10 +79,10 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 	}
 
 	shouldSlash := true
-	signingTransPeriod := h.mgr.GetConstants().GetInt64Value(constants.SigningTransactionPeriod)
+	signingTransPeriod := h.mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)
 	// every Signing Transaction Period , Thornado will check whether a
 	// TxOutItem had been sent by signer or not
-	// if a txout item that is older than SigningTransactionPeriod, but has not
+	// if a txout item that is older than Keysign_PeriodBlocks, but has not
 	// been sent out by signer , LackSigning will create a new TxOutItem
 	// and mark the previous TxOutItem as complete.
 	//

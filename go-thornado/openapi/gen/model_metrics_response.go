@@ -16,7 +16,7 @@ import (
 
 // MetricsResponse struct for MetricsResponse
 type MetricsResponse struct {
-	Keygen []KeygenMetric `json:"keygen,omitempty"`
+	Keygen  []KeygenMetric  `json:"keygen,omitempty"`
 	Keysign *KeysignMetrics `json:"keysign,omitempty"`
 }
 
@@ -147,5 +147,3 @@ func (v *NullableMetricsResponse) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

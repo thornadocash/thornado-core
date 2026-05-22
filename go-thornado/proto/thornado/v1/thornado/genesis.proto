@@ -3,12 +3,11 @@ package thornado;
 
 option go_package = "github.com/thornadocash/go-thornado/x/thornado";
 
-import "types/type_chain_contract.proto";
 import "types/type_network_fee.proto";
 import "types/type_network.proto";
 import "types/type_vault.proto";
 import "types/type_tx_out.proto";
-import "types/type_mimir.proto";
+import "types/type_config.proto";
 import "types/type_node_account.proto";
 import "types/type_observed_tx.proto";
 import "gogoproto/gogo.proto";
@@ -18,7 +17,7 @@ message lastChainHeight {
   int64 height = 2;
 }
 
-message mimir {
+message config {
   string key = 1;
   int64 value = 2;
 }
@@ -57,13 +56,14 @@ message GenesisState {
   reserved 19;
   repeated types.NetworkFee network_fees = 20 [ (gogoproto.nullable) = false ];
   reserved 21;
-  repeated types.ChainContract chain_contracts = 22
-      [ (gogoproto.nullable) = false ];
+  reserved 22;
   reserved 23;
-  repeated mimir mimirs = 24 [ (gogoproto.nullable) = false ];
+  repeated config configs = 24 [ (gogoproto.nullable) = false ];
   // store_version is deprecated in v3.0.0
   int64 store_version = 25 [ deprecated = true ];
   reserved 26, 27, 29, 30, 31, 32, 33, 34, 35, 36, 37;
-  repeated types.NodeMimir nodeMimirs = 38 [ (gogoproto.nullable) = false ];
-  reserved 39, 41, 42, 43, 45;
+  repeated types.NodeConfig nodeConfigs = 38 [ (gogoproto.nullable) = false ];
+  reserved 39;
+  repeated config config_defaults = 40 [ (gogoproto.nullable) = false ];
+  reserved 41, 42, 43, 45;
 }

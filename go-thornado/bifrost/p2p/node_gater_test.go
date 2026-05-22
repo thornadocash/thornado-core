@@ -19,6 +19,7 @@ import (
 	tctypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
+	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
@@ -33,14 +34,14 @@ type MockThornadoBridge struct {
 	mu                sync.RWMutex
 	nodeAccounts      []*types.QueryNodeResponse
 	nodeAccountsError error
-	mimirValues       map[string]int64
-	mimirError        error
+	configValues      map[string]int64
+	configError       error
 	constants         map[string]int64
 }
 
 func NewMockThornadoBridge() *MockThornadoBridge {
 	return &MockThornadoBridge{
-		mimirValues: make(map[string]int64),
+		configValues: make(map[string]int64),
 	}
 }
 
@@ -53,13 +54,13 @@ func (m *MockThornadoBridge) GetNodeAccounts() ([]*types.QueryNodeResponse, erro
 	return m.nodeAccounts, nil
 }
 
-func (m *MockThornadoBridge) GetMimir(key string) (int64, error) {
+func (m *MockThornadoBridge) GetConfigValue(key string) (int64, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	if m.mimirError != nil {
-		return 0, m.mimirError
+	if m.configError != nil {
+		return 0, m.configError
 	}
-	val, ok := m.mimirValues[key]
+	val, ok := m.configValues[key]
 	if !ok {
 		return 0, nil
 	}
@@ -78,16 +79,16 @@ func (m *MockThornadoBridge) SetNodeAccountsError(err error) {
 	m.nodeAccountsError = err
 }
 
-func (m *MockThornadoBridge) SetMimir(key string, value int64) {
+func (m *MockThornadoBridge) SetConfig(key string, value int64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.mimirValues[key] = value
+	m.configValues[key] = value
 }
 
-func (m *MockThornadoBridge) SetMimirError(err error) {
+func (m *MockThornadoBridge) SetConfigError(err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.mimirError = err
+	m.configError = err
 }
 
 // Stub implementations for the rest of the ThornadoBridge interface
@@ -117,10 +118,7 @@ func (m *MockThornadoBridge) SetConstants(c map[string]int64) {
 	defer m.mu.Unlock()
 	m.constants = c
 }
-func (m *MockThornadoBridge) GetContext() client.Context { return client.Context{} }
-func (m *MockThornadoBridge) GetContractAddress() ([]thornadoclient.PubKeyContractAddressPair, error) {
-	return nil, nil
-}
+func (m *MockThornadoBridge) GetContext() client.Context                                { return client.Context{} }
 func (m *MockThornadoBridge) GetErrataMsg(txID common.TxID, chain common.Chain) sdk.Msg { return nil }
 func (m *MockThornadoBridge) GetKeygenStdTx(poolPubKey common.PubKey, secp256k1Signature, keysharesBackup []byte, blame []types.Blame, inputPks common.PubKeys, keygenType types.KeygenType, chains common.Chains, height, keygenTime int64, poolPubKeyEddsa common.PubKey, keysharesBackupEddsa []byte) (sdk.Msg, error) {
 	return nil, nil
@@ -129,15 +127,17 @@ func (m *MockThornadoBridge) GetKeygenStdTx(poolPubKey common.PubKey, secp256k1S
 func (m *MockThornadoBridge) GetKeysignParty(vaultPubKey common.PubKey) (common.PubKeys, error) {
 	return nil, nil
 }
-func (m *MockThornadoBridge) GetMimirWithRef(template, ref string) (int64, error) { return 0, nil }
+func (m *MockThornadoBridge) GetConfigValueWithRef(template, ref string) (int64, error) {
+	return 0, nil
+}
 func (m *MockThornadoBridge) GetInboundOutbound(txIns common.ObservedTxs) (common.ObservedTxs, common.ObservedTxs, error) {
 	return nil, nil, nil
 }
-func (m *MockThornadoBridge) GetPubKeys() ([]thornadoclient.PubKeyContractAddressPair, error) {
+func (m *MockThornadoBridge) GetPubKeys() ([]thornadoclient.PubKeyAddressPair, error) {
 	return nil, nil
 }
 
-func (m *MockThornadoBridge) GetAsgardPubKeys() ([]thornadoclient.PubKeyContractAddressPair, error) {
+func (m *MockThornadoBridge) GetAsgardPubKeys() ([]thornadoclient.PubKeyAddressPair, error) {
 	return nil, nil
 }
 
@@ -193,7 +193,7 @@ func (s *NodeGaterTestSuite) SetUpTest(c *C) {
 	s.mockBridge = NewMockThornadoBridge()
 	// Set default minimum bond for tests
 	s.mockBridge.SetConstants(map[string]int64{
-		"BondStartAmountSats": 100_000_000, // 1 RUNE
+		constants.Node_BondStartAmountSats.String(): 100_000_000,
 	})
 }
 
@@ -382,17 +382,17 @@ func (s *NodeGaterTestSuite) TestRefreshAllowlistInsufficientBond(c *C) {
 	c.Assert(len(gater.allowedPeers), Equals, 0)
 }
 
-func (s *NodeGaterTestSuite) TestRefreshAllowlistMimirBondOverride(c *C) {
+func (s *NodeGaterTestSuite) TestRefreshAllowlistConfigBondOverride(c *C) {
 	gater := NewNodeGater(s.mockBridge, time.Minute)
 
-	// Set mimir override for minimum bond (lower than constants)
-	s.mockBridge.SetMimir("BondStartAmountSats", 50_000_000)
+	// Set config override for minimum bond (lower than constants)
+	s.mockBridge.SetConfig(constants.Node_BondStartAmountSats.String(), 50_000_000)
 
 	s.mockBridge.SetNodeAccounts([]*types.QueryNodeResponse{
 		{
 			NodeAddress: "thor1test1",
 			Status:      "Standby",
-			TotalBond:   "75000000", // above mimir override, below constants
+			TotalBond:   "75000000", // above config override, below constants
 			PubKeySet: common.PubKeySet{
 				Secp256k1: common.PubKey(testPubKey1),
 			},
@@ -401,7 +401,7 @@ func (s *NodeGaterTestSuite) TestRefreshAllowlistMimirBondOverride(c *C) {
 
 	gater.refreshAllowlist()
 
-	// Should be allowed because mimir override is 50M and node has 75M
+	// Should be allowed because config override is 50M and node has 75M
 	c.Assert(len(gater.allowedPeers), Equals, 1)
 }
 

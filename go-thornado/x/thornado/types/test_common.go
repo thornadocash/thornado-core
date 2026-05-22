@@ -176,7 +176,7 @@ func GetRandomPubKeySet() common.PubKeySet {
 }
 
 func GetRandomVault() Vault {
-	return NewVaultV2(32, VaultStatus_ActiveVault, VaultType_AsgardVault, GetRandomPubKey(), common.Chains{common.BTCChain}.Strings(), []ChainContract{}, GetRandomEd25519PubKey())
+	return NewVaultV2(32, VaultStatus_ActiveVault, VaultType_AsgardVault, GetRandomPubKey(), common.Chains{common.BTCChain}.Strings(), GetRandomEd25519PubKey())
 }
 
 func GetRandomPubKey() common.PubKey {

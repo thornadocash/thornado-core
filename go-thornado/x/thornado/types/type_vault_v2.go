@@ -3,7 +3,7 @@ package types
 import "github.com/thornadocash/go-thornado/common"
 
 // NewVault create a new instance of vault
-func NewVaultV2(height int64, status VaultStatus, vtype VaultType, ecdsaPubKey common.PubKey, chains []string, routers []ChainContract, eddsaPubKey common.PubKey) Vault {
+func NewVaultV2(height int64, status VaultStatus, vtype VaultType, ecdsaPubKey common.PubKey, chains []string, eddsaPubKey common.PubKey) Vault {
 	return Vault{
 		BlockHeight: height,
 		StatusSince: height,
@@ -12,7 +12,6 @@ func NewVaultV2(height int64, status VaultStatus, vtype VaultType, ecdsaPubKey c
 		Type:        vtype,
 		Status:      status,
 		Chains:      chains,
-		Routers:     routers,
 		PubKeyEddsa: eddsaPubKey,
 	}
 }

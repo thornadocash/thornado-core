@@ -480,7 +480,7 @@ func (s *AttestationGossip) Start(ctx context.Context) {
 		semPruneTicker.Stop()
 	}()
 
-	s.reconcileMimirConfigs()
+	s.reconcileConfigConfigs()
 
 	go s.batcher.Start(ctx)
 
@@ -558,7 +558,7 @@ func (s *AttestationGossip) Start(ctx context.Context) {
 			}
 			s.cachedKeySignMu.Unlock()
 
-			s.reconcileMimirConfigs()
+			s.reconcileConfigConfigs()
 
 		case <-delayTimer.C:
 			s.eventClient.Start()
@@ -574,5 +574,5 @@ func (s *AttestationGossip) Start(ctx context.Context) {
 	}
 }
 
-func (s *AttestationGossip) reconcileMimirConfigs() {
+func (s *AttestationGossip) reconcileConfigConfigs() {
 }

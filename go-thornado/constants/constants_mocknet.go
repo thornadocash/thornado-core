@@ -15,7 +15,7 @@ import (
 var ThornadoBlockTime = time.Second
 
 // CamelToSnakeUpper converts a camelCase string to SNAKE_CASE.
-// Examples: "BlocksPerYear" -> "BLOCKS_PER_YEAR"
+// Examples: "Chain_BlocksPerYear" -> "BLOCKS_PER_YEAR"
 func CamelToSnakeUpper(s string) string {
 	re := regexp.MustCompile(`([a-z0-9])([A-Z])|([A-Z]+)([A-Z][a-z])`)
 	snake := re.ReplaceAllString(s, `${1}${3}_${2}${4}`)
@@ -23,20 +23,20 @@ func CamelToSnakeUpper(s string) string {
 }
 
 func init() {
-	int64Overrides = map[ConstantName]int64{
-		DesiredNodeSet:          12,
-		ChurnInterval:           60,
-		ChurnRetryInterval:      30,
-		JailTimeKeygen:          10,
-		JailTimeKeysign:         10,
-		MissingBlockChurnOut:    100,
-		MaxMissingBlockChurnOut: 5,
-		OperationalVotesMin:     1, // For regtest single-signer Mimir changes without Admin
+	int64Overrides = map[ConfigName]int64{
+		Node_SetDesired:               12,
+		Churn_IntervalBlocks:          60,
+		Churn_RetryIntervalBlocks:     30,
+		Keygen_FailJailBlocks:         10,
+		Keysign_FailJailBlocks:        10,
+		Node_MissingBlocksChurnOut:    100,
+		Node_MissingBlocksChurnOutMax: 5,
+		Config_OperationalVotesMin:    1, // For regtest single-signer Config changes without Admin
 	}
-	boolOverrides = map[ConstantName]bool{}
-	stringOverrides = map[ConstantName]string{}
+	boolOverrides = map[ConfigName]bool{}
+	stringOverrides = map[ConfigName]string{}
 
-	v1Values := NewConstantValue()
+	v1Values := NewConfigValue()
 
 	// allow overrides from environment variables in mocknet
 	for k := range v1Values.int64values {

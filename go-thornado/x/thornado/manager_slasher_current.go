@@ -30,7 +30,7 @@ func newSlasher(keeper keeper.Keeper, eventMgr EventManager) *SlasherImpl {
 }
 
 // BeginBlock called when a new block get proposed to detect whether there are duplicate vote
-func (s *SlasherImpl) BeginBlock(ctx cosmos.Context, constAccessor constants.ConstantValues) {
+func (s *SlasherImpl) BeginBlock(ctx cosmos.Context, constAccessor constants.ConfigValues) {
 	var doubleSignEvidence []comet.Evidence
 	// Iterate through any newly discovered evidence of infraction
 	// Slash any nodes (and since-unbonded liquidity within the unbonding period)
@@ -101,15 +101,15 @@ func (s *SlasherImpl) BeginBlock(ctx cosmos.Context, constAccessor constants.Con
 // HandleDoubleSign - slashes a node for signing two blocks at the same
 // block height
 // https://blog.cosmos.network/consensus-compare-casper-vs-tendermint-6df154ad56ae
-func (s *SlasherImpl) HandleDoubleSign(ctx cosmos.Context, addr crypto.Address, infractionHeight int64, constAccessor constants.ConstantValues, nodeAddresses []nodeAddressValidatorAddressPair) error {
+func (s *SlasherImpl) HandleDoubleSign(ctx cosmos.Context, addr crypto.Address, infractionHeight int64, constAccessor constants.ConfigValues, nodeAddresses []nodeAddressValidatorAddressPair) error {
 	// check if we're recent enough to slash for this behavior
-	maxAge := constAccessor.GetInt64Value(constants.DoubleSignMaxAge)
+	maxAge := s.keeper.GetConfigInt64(ctx, constants.DoubleSign_MaxAgeBlocks)
 	if (ctx.BlockHeight() - infractionHeight) > maxAge {
 		ctx.Logger().Info("double sign detected but too old to be slashed", "infraction height", fmt.Sprintf("%d", infractionHeight), "address", addr.String())
 		return nil
 	}
 
-	doubleBlockSignSlashPoints := s.keeper.GetConfigInt64(ctx, constants.DoubleBlockSignSlashPoints)
+	doubleBlockSignSlashPoints := s.keeper.GetConfigInt64(ctx, constants.BlockSign_DoublePenaltyPoints)
 	for _, pair := range nodeAddresses {
 		if addr.String() != pair.validatorAddress.String() {
 			continue
@@ -135,7 +135,7 @@ func (s *SlasherImpl) HandleDoubleSign(ctx cosmos.Context, addr crypto.Address, 
 }
 
 // HandleSuccessfulSign - decrement missing blocks from a node for signing a block
-func (s *SlasherImpl) HandleSuccessfulSign(ctx cosmos.Context, addr crypto.Address, constAccessor constants.ConstantValues, nodeAddresses []nodeAddressValidatorAddressPair) error {
+func (s *SlasherImpl) HandleSuccessfulSign(ctx cosmos.Context, addr crypto.Address, constAccessor constants.ConfigValues, nodeAddresses []nodeAddressValidatorAddressPair) error {
 	for _, pair := range nodeAddresses {
 		if addr.String() != pair.validatorAddress.String() {
 			continue
@@ -160,9 +160,9 @@ func (s *SlasherImpl) HandleSuccessfulSign(ctx cosmos.Context, addr crypto.Addre
 }
 
 // HandleMissingSign - slashes a node for not signing a block
-func (s *SlasherImpl) HandleMissingSign(ctx cosmos.Context, addr crypto.Address, constAccessor constants.ConstantValues, nodeAddresses []nodeAddressValidatorAddressPair) error {
-	missBlockSignSlashPoints := s.keeper.GetConfigInt64(ctx, constants.MissBlockSignSlashPoints)
-	maxTrack := s.keeper.GetConfigInt64(ctx, constants.MaxTrackMissingBlock)
+func (s *SlasherImpl) HandleMissingSign(ctx cosmos.Context, addr crypto.Address, constAccessor constants.ConfigValues, nodeAddresses []nodeAddressValidatorAddressPair) error {
+	missBlockSignSlashPoints := s.keeper.GetConfigInt64(ctx, constants.BlockSign_MissPenaltyPoints)
+	maxTrack := s.keeper.GetConfigInt64(ctx, constants.Node_MissingBlocksTrackMax)
 
 	for _, pair := range nodeAddresses {
 		if addr.String() != pair.validatorAddress.String() {
@@ -197,8 +197,8 @@ func (s *SlasherImpl) HandleMissingSign(ctx cosmos.Context, addr crypto.Address,
 // LackSigning slash account that fail to sign tx
 func (s *SlasherImpl) LackSigning(ctx cosmos.Context, mgr Manager) error {
 	var resultErr error
-	const maxOutboundAttempts = int64(0)
-	signingTransPeriod := mgr.Keeper().GetConfigInt64(ctx, constants.SigningTransactionPeriod)
+	maxOutboundAttempts := s.keeper.GetConfigInt64(ctx, constants.TxOut_MaxAttempts)
+	signingTransPeriod := mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)
 	if signingTransPeriod == 0 {
 		return fmt.Errorf("invalid signing transaction period: %d", signingTransPeriod)
 	}
@@ -268,7 +268,7 @@ func (s *SlasherImpl) LackSigning(ctx cosmos.Context, mgr Manager) error {
 			// was signed), fall through to active vault selection so the outbound can be
 			// fulfilled from a vault that actually holds the funds.
 			if gotVault && vault.Status == InactiveVault {
-				const maxRetiredVaultRecoveryAttempts = int64(100)
+				maxRetiredVaultRecoveryAttempts := s.keeper.GetConfigInt64(ctx, constants.Vault_RetiredRecoveryAttemptsMax)
 				age := ctx.BlockHeight() - voter.FinalisedHeight
 				attempts := age / signingTransPeriod
 				if attempts >= maxRetiredVaultRecoveryAttempts {
@@ -528,18 +528,18 @@ func (s *SlasherImpl) SlashVault(ctx cosmos.Context, vaultPK common.PubKey, coin
 			continue
 		}
 
-		penaltyPts := mgr.Keeper().GetConfigInt64(ctx, constants.SlashPenalty)
+		penaltyPts := mgr.Keeper().GetConfigInt64(ctx, constants.Slash_PenaltyBasisPoints)
 		// total slash amount is penaltyPts the RUNE value of the missing funds
 		totalRuneToSlash := common.GetUncappedShare(cosmos.NewUint(uint64(penaltyPts)), cosmos.NewUint(10_000), stolenRuneValue)
 		totalRuneSlashed := cosmos.ZeroUint()
-		pauseOnSlashThreshold := mgr.Keeper().GetConfigInt64(ctx, constants.PauseOnSlashThreshold)
+		pauseOnSlashThreshold := mgr.Keeper().GetConfigInt64(ctx, constants.Slash_PauseThreshold)
 		if pauseOnSlashThreshold > 0 && totalRuneToSlash.GTE(cosmos.NewUint(uint64(pauseOnSlashThreshold))) {
-			// set mimirs to pause signing
-			haltsignKey := fmt.Sprintf(constants.MimirTemplateHaltSigning, coin.Asset.Chain)
-			s.keeper.SetMimir(ctx, haltsignKey, ctx.BlockHeight())
-			mimirEvent1 := NewEventSetMimir(haltsignKey, strconv.FormatInt(ctx.BlockHeight(), 10))
-			if err := mgr.EventMgr().EmitEvent(ctx, mimirEvent1); err != nil {
-				ctx.Logger().Error("fail to emit set_mimir event", "error", err)
+			// set configs to pause signing
+			haltsignKey := fmt.Sprintf(constants.ConfigTemplateHaltSigning, coin.Asset.Chain)
+			s.keeper.SetConfig(ctx, haltsignKey, ctx.BlockHeight())
+			configEvent1 := NewEventSetConfig(haltsignKey, strconv.FormatInt(ctx.BlockHeight(), 10))
+			if err := mgr.EventMgr().EmitEvent(ctx, configEvent1); err != nil {
+				ctx.Logger().Error("fail to emit set_config event", "error", err)
 			}
 		}
 		for _, member := range membership {

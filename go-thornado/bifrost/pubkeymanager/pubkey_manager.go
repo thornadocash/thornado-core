@@ -32,14 +32,11 @@ type PubKeyValidator interface {
 	GetAlgoPubKeys(algo common.SigningAlgo, includeInactive bool) common.PubKeys
 	RegisterCallback(callback OnNewPubKey)
 	RegisterPathCallback(callback OnNewPubKeyPath)
-	GetContracts(chain common.Chain, includeInactive bool) []common.Address
-	GetContract(chain common.Chain, pk common.PubKey) common.Address
 }
 
 // pubKeyInfo is a struct to store pubkey information  in memory
 type pubKeyInfo struct {
 	PubKey      common.PubKey
-	Contracts   map[common.Chain]common.Address
 	Signer      bool
 	NodeAccount bool
 	Algo        common.SigningAlgo
@@ -87,18 +84,6 @@ func (pkm *PubKeyManager) Stop() error {
 	defer pkm.logger.Info().Msg("pubkey manager stopped")
 	close(pkm.stopChan)
 	return nil
-}
-
-func (pkm *PubKeyManager) updateContractAddresses(pairs []thornadoclient.PubKeyContractAddressPair) {
-	pkm.rwMutex.Lock()
-	defer pkm.rwMutex.Unlock()
-	for _, pair := range pairs {
-		for idx, item := range pkm.pubkeys {
-			if item.PubKey == pair.PubKey {
-				pkm.pubkeys[idx].Contracts = pair.Contracts
-			}
-		}
-	}
 }
 
 // GetPubKeys return all the public keys managed by this PubKeyManager
@@ -198,7 +183,6 @@ func (pkm *PubKeyManager) addPubKeyInternal(pk common.PubKey, signer bool, algo 
 			PubKey:      pk,
 			Signer:      signer,
 			NodeAccount: false,
-			Contracts:   map[common.Chain]common.Address{},
 			Inactive:    inactive,
 		})
 		if algo == common.SigningAlgoSecp256k1 {
@@ -243,7 +227,6 @@ func (pkm *PubKeyManager) AddNodePubKey(pk common.PubKey, algo common.SigningAlg
 			Algo:        algo,
 			Signer:      true,
 			NodeAccount: true,
-			Contracts:   map[common.Chain]common.Address{},
 		})
 		// a new pubkey get added , fire callback
 		pkm.fireCallback(pk)
@@ -289,8 +272,6 @@ func (pkm *PubKeyManager) fetchPubKeys(prune bool) {
 		pkm.addPubKeyInternal(pk.PubKey, signer, pk.Algo, pk.Inactive)
 		pubkeys = append(pubkeys, pk.PubKey)
 	}
-	pkm.updateContractAddresses(addressPairs)
-
 	if prune {
 		pkm.rwMutex.Lock()
 		defer pkm.rwMutex.Unlock()
@@ -359,7 +340,7 @@ func (pkm *PubKeyManager) IsValidPoolAddress(addr string, chain common.Chain) (b
 }
 
 // getPubkeys from Thornado
-func (pkm *PubKeyManager) getPubkeys() ([]thornadoclient.PubKeyContractAddressPair, error) {
+func (pkm *PubKeyManager) getPubkeys() ([]thornadoclient.PubKeyAddressPair, error) {
 	return pkm.bridge.GetPubKeys()
 }
 
@@ -399,45 +380,4 @@ func (pkm *PubKeyManager) firePathCallback(pk common.PubKey, pathIndex uint64) {
 		}(item)
 	}
 	wg.Wait()
-}
-
-// GetContracts return all the contracts for the requested chain.
-// When includeInactive is false, only contracts from active/retiring vaults are returned.
-func (pkm *PubKeyManager) GetContracts(chain common.Chain, includeInactive bool) []common.Address {
-	pkm.rwMutex.RLock()
-	defer pkm.rwMutex.RUnlock()
-	var result []common.Address
-	seen := map[common.Address]bool{} // avoid duplicates of router address
-	for _, pk := range pkm.pubkeys {
-		if !includeInactive && pk.Inactive {
-			continue
-		}
-		if len(pk.Contracts) == 0 {
-			continue
-		}
-		if addr, ok := pk.Contracts[chain]; ok {
-			if seen[addr] {
-				continue
-			}
-			seen[addr] = true
-			result = append(result, addr)
-		}
-	}
-	return result
-}
-
-// GetContract return the contract address that match the given chain and pubkey
-func (pkm *PubKeyManager) GetContract(chain common.Chain, pubKey common.PubKey) common.Address {
-	pkm.rwMutex.RLock()
-	defer pkm.rwMutex.RUnlock()
-	for _, pk := range pkm.pubkeys {
-		if !pk.PubKey.Equals(pubKey) {
-			continue
-		}
-		if len(pk.Contracts) == 0 {
-			continue
-		}
-		return pk.Contracts[chain]
-	}
-	return common.NoAddress
 }

@@ -16,10 +16,10 @@ import (
 
 // LastBlock struct for LastBlock
 type LastBlock struct {
-	Chain string `json:"chain"`
-	LastObservedIn int64 `json:"last_observed_in"`
-	LastSignedOut int64 `json:"last_signed_out"`
-	Thornado int64 `json:"thornado"`
+	Chain          string `json:"chain"`
+	LastObservedIn int64  `json:"last_observed_in"`
+	LastSignedOut  int64  `json:"last_signed_out"`
+	Thornado       int64  `json:"thornado"`
 }
 
 // NewLastBlock instantiates a new LastBlock object
@@ -191,5 +191,3 @@ func (v *NullableLastBlock) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

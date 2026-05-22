@@ -43,7 +43,7 @@ func (h SolvencyQuorumHandler) validate(ctx cosmos.Context, msg types.MsgSolvenc
 //  2. once MsgSolvencyQuorum reach consensus , then the network compare the wallet balance against wallet
 //     if wallet has less fund than asgard vault , and the gap is more than 1% , then the chain
 //     that is insolvent will be halt
-//  3. When chain is halt , bifrost will not observe inbound , and will not sign outbound txs until the issue has been investigated , and enabled it again using mimir
+//  3. When chain is halt , bifrost will not observe inbound , and will not sign outbound txs until the issue has been investigated , and enabled it again using config
 func (h SolvencyQuorumHandler) handle(ctx cosmos.Context, msg types.MsgSolvencyQuorum) (*cosmos.Result, error) {
 	if msg.QuoSolvency == nil || msg.QuoSolvency.Solvency == nil {
 		return nil, cosmos.ErrUnknownRequest("QuoSolvency and Solvency cannot be nil")

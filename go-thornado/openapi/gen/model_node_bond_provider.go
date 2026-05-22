@@ -17,7 +17,7 @@ import (
 // NodeBondProvider struct for NodeBondProvider
 type NodeBondProvider struct {
 	BondAddress *string `json:"bond_address,omitempty"`
-	Bond *string `json:"bond,omitempty"`
+	Bond        *string `json:"bond,omitempty"`
 }
 
 // NewNodeBondProvider instantiates a new NodeBondProvider object
@@ -147,5 +147,3 @@ func (v *NullableNodeBondProvider) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

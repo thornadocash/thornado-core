@@ -22,13 +22,13 @@ import (
 
 type mockBridge struct {
 	thornadoclient.ThornadoBridge
-	asgardPubKeys   []thornadoclient.PubKeyContractAddressPair
+	asgardPubKeys   []thornadoclient.PubKeyAddressPair
 	asgardErr       error
 	postKeysignTxID common.TxID
 	postKeysignErr  error
 }
 
-func (m *mockBridge) GetAsgardPubKeys() ([]thornadoclient.PubKeyContractAddressPair, error) {
+func (m *mockBridge) GetAsgardPubKeys() ([]thornadoclient.PubKeyAddressPair, error) {
 	return m.asgardPubKeys, m.asgardErr
 }
 
@@ -56,7 +56,7 @@ func (s *GetAsgardAddressSuite) TestGetAsgardAddress_BridgeError(c *C) {
 
 func (s *GetAsgardAddressSuite) TestGetAsgardAddress_Empty(c *C) {
 	bridge := &mockBridge{
-		asgardPubKeys: []thornadoclient.PubKeyContractAddressPair{},
+		asgardPubKeys: []thornadoclient.PubKeyAddressPair{},
 	}
 	addrs, err := GetAsgardAddress(common.BTCChain, bridge)
 	c.Assert(err, IsNil)
@@ -65,7 +65,7 @@ func (s *GetAsgardAddressSuite) TestGetAsgardAddress_Empty(c *C) {
 
 func (s *GetAsgardAddressSuite) TestGetAsgardAddress_FiltersNonSecp256k1(c *C) {
 	bridge := &mockBridge{
-		asgardPubKeys: []thornadoclient.PubKeyContractAddressPair{
+		asgardPubKeys: []thornadoclient.PubKeyAddressPair{
 			{
 				PubKey: types.GetRandomPubKey(),
 				Algo:   common.SigningAlgoEd25519,
@@ -80,7 +80,7 @@ func (s *GetAsgardAddressSuite) TestGetAsgardAddress_FiltersNonSecp256k1(c *C) {
 func (s *GetAsgardAddressSuite) TestGetAsgardAddress_Secp256k1Success(c *C) {
 	pk := types.GetRandomPubKey()
 	bridge := &mockBridge{
-		asgardPubKeys: []thornadoclient.PubKeyContractAddressPair{
+		asgardPubKeys: []thornadoclient.PubKeyAddressPair{
 			{
 				PubKey: pk,
 				Algo:   common.SigningAlgoSecp256k1,
@@ -94,7 +94,7 @@ func (s *GetAsgardAddressSuite) TestGetAsgardAddress_Secp256k1Success(c *C) {
 
 func (s *GetAsgardAddressSuite) TestGetAsgardAddress_BadPubKeySkipped(c *C) {
 	bridge := &mockBridge{
-		asgardPubKeys: []thornadoclient.PubKeyContractAddressPair{
+		asgardPubKeys: []thornadoclient.PubKeyAddressPair{
 			{
 				PubKey: common.PubKey("invalid-pub-key"),
 				Algo:   common.SigningAlgoSecp256k1,
@@ -110,7 +110,7 @@ func (s *GetAsgardAddressSuite) TestGetAsgardAddress_BadPubKeySkipped(c *C) {
 func (s *GetAsgardAddressSuite) TestGetAsgardAddress_MixedAlgos(c *C) {
 	pk := types.GetRandomPubKey()
 	bridge := &mockBridge{
-		asgardPubKeys: []thornadoclient.PubKeyContractAddressPair{
+		asgardPubKeys: []thornadoclient.PubKeyAddressPair{
 			{
 				PubKey: common.PubKey("invalid"),
 				Algo:   common.SigningAlgoEd25519,

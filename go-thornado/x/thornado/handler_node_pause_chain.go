@@ -77,13 +77,13 @@ func (h NodePauseChainHandler) handle(ctx cosmos.Context, msg MsgNodePauseChain)
 	}
 
 	// get the current block height set by node pause chain global
-	key := "NodePauseChainGlobal"
-	pauseHeight, err := h.mgr.Keeper().GetMimir(ctx, key)
+	key := constants.ConfigKeyNodePauseChainGlobal
+	pauseHeight, err := h.mgr.Keeper().GetConfig(ctx, key)
 	if err != nil {
 		return err
 	}
 
-	blocks := h.mgr.Keeper().GetConfigInt64(ctx, constants.NodePauseChainBlocks)
+	blocks := h.mgr.Keeper().GetConfigInt64(ctx, constants.Chain_PauseNodeBlocks)
 
 	if msg.Value > 0 { // node intends to pause chain
 		if pauseHeight > ctx.BlockHeight() { // chain is paused
@@ -102,10 +102,10 @@ func (h NodePauseChainHandler) handle(ctx cosmos.Context, msg MsgNodePauseChain)
 		pauseHeight -= blocks
 	}
 
-	h.mgr.Keeper().SetMimir(ctx, key, pauseHeight)
-	mimirEvent := NewEventSetMimir(strings.ToUpper(key), strconv.FormatInt(pauseHeight, 10))
-	if err = h.mgr.EventMgr().EmitEvent(ctx, mimirEvent); err != nil {
-		ctx.Logger().Error("fail to emit set_mimir event", "error", err)
+	h.mgr.Keeper().SetConfig(ctx, key, pauseHeight)
+	configEvent := NewEventSetConfig(strings.ToUpper(key), strconv.FormatInt(pauseHeight, 10))
+	if err = h.mgr.EventMgr().EmitEvent(ctx, configEvent); err != nil {
+		ctx.Logger().Error("fail to emit set_config event", "error", err)
 	}
 
 	return nil

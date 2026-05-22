@@ -793,7 +793,7 @@ func (c *Client) getBlockRequiredConfirmation(txIn types.TxIn, height int64) (in
 	}
 	confMul, err := utxo.GetConfMulBasisPoint(c.GetChain().String(), c.bridge)
 	if err != nil {
-		c.log.Err(err).Msgf("fail to get conf multiplier mimir value for %s", c.GetChain().String())
+		c.log.Err(err).Msgf("fail to get conf multiplier config value for %s", c.GetChain().String())
 	}
 	if totalFeeAndSubsidy == 0 {
 		var cbValue btcutil.Amount
@@ -809,8 +809,12 @@ func (c *Client) getBlockRequiredConfirmation(txIn types.TxIn, height int64) (in
 	if err != nil {
 		c.log.Err(err).Msgf("fail to get max conf value adjustment for %s", c.GetChain().String())
 	}
-	if confirm < c.cfg.MinConfirmations {
-		confirm = c.cfg.MinConfirmations
+	minConfirmations, err := c.bridge.GetConfigValue(constants.BTC_ConfirmationsMin.String())
+	if err != nil || minConfirmations <= 0 {
+		minConfirmations = int64(c.cfg.MinConfirmations)
+	}
+	if confirm < uint64(minConfirmations) {
+		confirm = uint64(minConfirmations)
 	}
 	c.log.Info().Msgf("totalTxValue:%s, totalFeeAndSubsidy:%d, confirm:%d", totalTxValue, totalFeeAndSubsidy, confirm)
 

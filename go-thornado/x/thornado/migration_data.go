@@ -679,7 +679,6 @@ var mainnetSlashRefunds5to6 = []struct {
 	{"thor1r9yr7avhs97mh2ypk377j0ppltc808s84jga7j", 35},
 	{"thor1wfl6ujt7xdc8qvljxq3a8w8e064u0zmcpyf625", 1},
 	{"thor1urkjkfucg3qy5pgj6q098nemdfh0tt6fhy8gtg", 1},
-	{"thor1wrc6754h83d9eg00vpt5a9l0r7eq273aed9tcy", 2},
 	{"thor1f52jx7hnwmds290xpak5v6nteaw65txxz0jsr7", 163046861},
 	{"thor1aypu43w55w88xfw7ygq7xplkq6yuepfydpqctx", 733718484},
 	{"thor1hxcdgn43pyz58ajdqd0hl3rfl3avwdd5y27whf", 652135962},

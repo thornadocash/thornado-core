@@ -624,7 +624,7 @@ type BifrostChainConfiguration struct {
 		MinUTXOConfirmations int64 `mapstructure:"min_utxo_confirmations"`
 
 		// MaxUTXOsToSpend is the maximum number of UTXOs to spend in a single transaction.
-		// This is overridden at runtime by the `MaxUTXOsToSpend` mimir value.
+		// This is overridden at runtime by the `MaxUTXOsToSpend` config value.
 		MaxUTXOsToSpend int64 `mapstructure:"max_utxos_to_spend"`
 
 		// MaxMempoolAncestors is the maximum number of unconfirmed ancestors or descendants

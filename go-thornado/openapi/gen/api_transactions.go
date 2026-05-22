@@ -19,15 +19,14 @@ import (
 	"strings"
 )
 
-
 // TransactionsApiService TransactionsApi service
 type TransactionsApiService service
 
 type ApiTxRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *TransactionsApiService
-	hash string
-	height *int64
+	hash       string
+	height     *int64
 }
 
 // optional block height, defaults to current tip
@@ -45,26 +44,27 @@ Tx Method for Tx
 
 Returns the observed transaction for a provided inbound or outbound hash.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param hash
- @return ApiTxRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param hash
+	@return ApiTxRequest
 */
 func (a *TransactionsApiService) Tx(ctx context.Context, hash string) ApiTxRequest {
 	return ApiTxRequest{
 		ApiService: a,
-		ctx: ctx,
-		hash: hash,
+		ctx:        ctx,
+		hash:       hash,
 	}
 }
 
 // Execute executes the request
-//  @return TxResponse
+//
+//	@return TxResponse
 func (a *TransactionsApiService) TxExecute(r ApiTxRequest) (*TxResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *TxResponse
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *TxResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TransactionsApiService.Tx")
@@ -137,10 +137,10 @@ func (a *TransactionsApiService) TxExecute(r ApiTxRequest) (*TxResponse, *http.R
 }
 
 type ApiTxSignersRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *TransactionsApiService
-	hash string
-	height *int64
+	hash       string
+	height     *int64
 }
 
 // optional block height, defaults to current tip
@@ -158,26 +158,27 @@ TxSigners Method for TxSigners
 
 Returns the signers for a provided inbound or outbound hash.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param hash
- @return ApiTxSignersRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param hash
+	@return ApiTxSignersRequest
 */
 func (a *TransactionsApiService) TxSigners(ctx context.Context, hash string) ApiTxSignersRequest {
 	return ApiTxSignersRequest{
 		ApiService: a,
-		ctx: ctx,
-		hash: hash,
+		ctx:        ctx,
+		hash:       hash,
 	}
 }
 
 // Execute executes the request
-//  @return TxDetailsResponse
+//
+//	@return TxDetailsResponse
 func (a *TransactionsApiService) TxSignersExecute(r ApiTxSignersRequest) (*TxDetailsResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *TxDetailsResponse
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *TxDetailsResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TransactionsApiService.TxSigners")
@@ -250,10 +251,10 @@ func (a *TransactionsApiService) TxSignersExecute(r ApiTxSignersRequest) (*TxDet
 }
 
 type ApiTxSignersOldRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *TransactionsApiService
-	hash string
-	height *int64
+	hash       string
+	height     *int64
 }
 
 // optional block height, defaults to current tip
@@ -271,26 +272,27 @@ TxSignersOld Method for TxSignersOld
 
 Deprecated - migrate to /thornado/tx/details.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param hash
- @return ApiTxSignersOldRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param hash
+	@return ApiTxSignersOldRequest
 */
 func (a *TransactionsApiService) TxSignersOld(ctx context.Context, hash string) ApiTxSignersOldRequest {
 	return ApiTxSignersOldRequest{
 		ApiService: a,
-		ctx: ctx,
-		hash: hash,
+		ctx:        ctx,
+		hash:       hash,
 	}
 }
 
 // Execute executes the request
-//  @return TxSignersResponse
+//
+//	@return TxSignersResponse
 func (a *TransactionsApiService) TxSignersOldExecute(r ApiTxSignersOldRequest) (*TxSignersResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *TxSignersResponse
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *TxSignersResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TransactionsApiService.TxSignersOld")
@@ -363,10 +365,10 @@ func (a *TransactionsApiService) TxSignersOldExecute(r ApiTxSignersOldRequest) (
 }
 
 type ApiTxStagesRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *TransactionsApiService
-	hash string
-	height *int64
+	hash       string
+	height     *int64
 }
 
 // optional block height, defaults to current tip
@@ -384,26 +386,27 @@ TxStages Method for TxStages
 
 Returns the processing stages of a provided inbound hash.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param hash
- @return ApiTxStagesRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param hash
+	@return ApiTxStagesRequest
 */
 func (a *TransactionsApiService) TxStages(ctx context.Context, hash string) ApiTxStagesRequest {
 	return ApiTxStagesRequest{
 		ApiService: a,
-		ctx: ctx,
-		hash: hash,
+		ctx:        ctx,
+		hash:       hash,
 	}
 }
 
 // Execute executes the request
-//  @return TxStagesResponse
+//
+//	@return TxStagesResponse
 func (a *TransactionsApiService) TxStagesExecute(r ApiTxStagesRequest) (*TxStagesResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *TxStagesResponse
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *TxStagesResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TransactionsApiService.TxStages")
@@ -476,10 +479,10 @@ func (a *TransactionsApiService) TxStagesExecute(r ApiTxStagesRequest) (*TxStage
 }
 
 type ApiTxStatusRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *TransactionsApiService
-	hash string
-	height *int64
+	hash       string
+	height     *int64
 }
 
 // optional block height, defaults to current tip
@@ -497,26 +500,27 @@ TxStatus Method for TxStatus
 
 Returns the status of a provided inbound hash.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param hash
- @return ApiTxStatusRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param hash
+	@return ApiTxStatusRequest
 */
 func (a *TransactionsApiService) TxStatus(ctx context.Context, hash string) ApiTxStatusRequest {
 	return ApiTxStatusRequest{
 		ApiService: a,
-		ctx: ctx,
-		hash: hash,
+		ctx:        ctx,
+		hash:       hash,
 	}
 }
 
 // Execute executes the request
-//  @return TxStatusResponse
+//
+//	@return TxStatusResponse
 func (a *TransactionsApiService) TxStatusExecute(r ApiTxStatusRequest) (*TxStatusResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *TxStatusResponse
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *TxStatusResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TransactionsApiService.TxStatus")

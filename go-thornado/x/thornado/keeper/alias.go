@@ -45,13 +45,12 @@ type (
 	Jail                    = types.Jail
 	NodeAccount             = types.NodeAccount
 	NodeAccounts            = types.NodeAccounts
-	NodeMimirs              = types.NodeMimirs
+	NodeConfigs             = types.NodeConfigs
 	NodeStatus              = types.NodeStatus
 	Network                 = types.Network
 	VaultStatus             = types.VaultStatus
 	NetworkFee              = types.NetworkFee
 	ObservedNetworkFeeVoter = types.ObservedNetworkFeeVoter
-	ChainContract           = types.ChainContract
 	SolvencyVoter           = types.SolvencyVoter
 	Upgrade                 = types.Upgrade
 	PriceFeed               = types.PriceFeed

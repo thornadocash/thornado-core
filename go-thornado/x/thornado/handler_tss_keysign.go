@@ -85,7 +85,7 @@ func (h TssKeysignHandler) handle(ctx cosmos.Context, msg MsgTssKeysignFail) (*c
 	if err != nil {
 		return nil, err
 	}
-	observeSlashPoints := h.mgr.GetConstants().GetInt64Value(constants.ObserveSlashPoints)
+	observeSlashPoints := h.mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
 
 	// add labels to telemetry context
 	labels := []metrics.Label{
@@ -196,7 +196,7 @@ func (h TssKeysignHandler) handle(ctx cosmos.Context, msg MsgTssKeysignFail) (*c
 	voter.LastRoundCount = 0
 	h.mgr.Keeper().SetTssKeysignFailVoter(ctx, voter)
 
-	slashPoints := h.mgr.GetConstants().GetInt64Value(constants.FailKeysignSlashPoints)
+	slashPoints := h.mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_FailPenaltyPoints)
 	// fail to generate a new tss key let's slash the node account
 
 	for _, node := range msg.Blame.BlameNodes {
@@ -217,7 +217,7 @@ func (h TssKeysignHandler) handle(ctx cosmos.Context, msg MsgTssKeysignFail) (*c
 		}
 		// go to jail
 		ctx.Logger().Info("jailing node", "pubkey", na.PubKeySet.Secp256k1)
-		jailTime := h.mgr.GetConstants().GetInt64Value(constants.JailTimeKeysign)
+		jailTime := h.mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_FailJailBlocks)
 		releaseHeight := ctx.BlockHeight() + jailTime
 		reason := "failed to perform keysign"
 		if err := h.mgr.Keeper().SetNodeAccountJail(ctx, na.NodeAddress, releaseHeight, reason); err != nil {

@@ -20,7 +20,7 @@ type NodePreflightStatus struct {
 	Status string `json:"status"`
 	// the reason for the transition to the next status
 	Reason string `json:"reason"`
-	Code int64 `json:"code"`
+	Code   int64  `json:"code"`
 }
 
 // NewNodePreflightStatus instantiates a new NodePreflightStatus object
@@ -164,5 +164,3 @@ func (v *NullableNodePreflightStatus) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

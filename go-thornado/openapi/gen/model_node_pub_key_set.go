@@ -17,7 +17,7 @@ import (
 // NodePubKeySet struct for NodePubKeySet
 type NodePubKeySet struct {
 	Secp256k1 *string `json:"secp256k1,omitempty"`
-	Ed25519 *string `json:"ed25519,omitempty"`
+	Ed25519   *string `json:"ed25519,omitempty"`
 }
 
 // NewNodePubKeySet instantiates a new NodePubKeySet object
@@ -147,5 +147,3 @@ func (v *NullableNodePubKeySet) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

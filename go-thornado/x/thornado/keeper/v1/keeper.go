@@ -30,10 +30,7 @@ const (
 	prefixObservedTxIn            types.DbPrefix = "observed_tx_in/"
 	prefixObservedTxOut           types.DbPrefix = "observed_tx_out/"
 	prefixObservedLink            types.DbPrefix = "ob_link/"
-	prefixPool                    types.DbPrefix = "pool/"
-	prefixPoolLUVI                types.DbPrefix = "luvi/"
 	prefixTxOut                   types.DbPrefix = "txout/"
-	prefixLiquidityProvider       types.DbPrefix = "lp/"
 	prefixLastChainHeight         types.DbPrefix = "last_chain_height/"
 	prefixLastSignedHeight        types.DbPrefix = "last_signed_height/"
 	prefixLastObserveHeight       types.DbPrefix = "last_observe_height/"
@@ -50,18 +47,15 @@ const (
 	prefixBanVoter                types.DbPrefix = "ban/"
 	prefixNodeSlashPoints         types.DbPrefix = "slash/"
 	prefixNodeJail                types.DbPrefix = "jail/"
-	prefixOutboundFeeWithheldRune types.DbPrefix = "outbound_fee_withheld_rune/"
-	prefixOutboundFeeSpentRune    types.DbPrefix = "outbound_fee_spent_rune/"
-	prefixMimir                   types.DbPrefix = "mimir/"
+	prefixConfig                  types.DbPrefix = "config/"
 	prefixMinJoinLast             types.DbPrefix = "minjoinlast/"
-	prefixNodeMimir               types.DbPrefix = "nodemimir/"
+	prefixNodeConfig              types.DbPrefix = "nodeconfig/"
 	prefixNodePauseChain          types.DbPrefix = "node_pause_chain/"
 	prefixNetworkFee              types.DbPrefix = "network_fee/"
 	prefixNetworkFeeVoter         types.DbPrefix = "network_fee_voter/"
 	prefixTssKeygenMetric         types.DbPrefix = "tss_keygen_metric/"
 	prefixTssKeysignMetric        types.DbPrefix = "tss_keysign_metric/"
 	prefixTssKeysignMetricLatest  types.DbPrefix = "latest_tss_keysign_metric/"
-	prefixChainContract           types.DbPrefix = "chain_contract/"
 	prefixSolvencyVoter           types.DbPrefix = "solvency_voter/"
 	prefixVersion                 types.DbPrefix = "version/"
 	prefixUpgradeProposals        types.DbPrefix = "upgr_props/"
@@ -100,7 +94,7 @@ type KVStore struct {
 	upgradeKeeper *upgradekeeper.Keeper
 	storeService  storetypes.KVStoreService
 	version       semver.Version
-	constAccessor constants.ConstantValues
+	constAccessor constants.ConfigValues
 }
 
 // NewKVStore creates new instances of the thornado Keeper
@@ -112,7 +106,7 @@ func NewKVStore(cdc codec.BinaryCodec, storeService storetypes.KVStoreService, c
 		storeService:  storeService,
 		cdc:           cdc,
 		version:       version,
-		constAccessor: constants.GetConstantValues(version),
+		constAccessor: constants.GetConfigValues(version),
 	}
 }
 

@@ -344,7 +344,7 @@ func RuneAsset() Asset {
 	return RuneNative
 }
 
-// Replace pool name "." with a "-" for Mimir key checking.
-func (a Asset) MimirString() string {
+// Replace pool name "." with a "-" for Config key checking.
+func (a Asset) ConfigString() string {
 	return a.Chain.String() + "-" + a.Symbol.String()
 }

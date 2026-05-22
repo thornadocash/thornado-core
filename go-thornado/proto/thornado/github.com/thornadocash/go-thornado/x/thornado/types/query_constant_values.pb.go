@@ -23,22 +23,22 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-type QueryConstantValuesRequest struct {
+type QueryConfigDefaultsRequest struct {
 	Height string `protobuf:"bytes,1,opt,name=height,proto3" json:"height,omitempty"`
 }
 
-func (m *QueryConstantValuesRequest) Reset()         { *m = QueryConstantValuesRequest{} }
-func (m *QueryConstantValuesRequest) String() string { return proto.CompactTextString(m) }
-func (*QueryConstantValuesRequest) ProtoMessage()    {}
-func (*QueryConstantValuesRequest) Descriptor() ([]byte, []int) {
+func (m *QueryConfigDefaultsRequest) Reset()         { *m = QueryConfigDefaultsRequest{} }
+func (m *QueryConfigDefaultsRequest) String() string { return proto.CompactTextString(m) }
+func (*QueryConfigDefaultsRequest) ProtoMessage()    {}
+func (*QueryConfigDefaultsRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_09a11eb66540db6e, []int{0}
 }
-func (m *QueryConstantValuesRequest) XXX_Unmarshal(b []byte) error {
+func (m *QueryConfigDefaultsRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *QueryConstantValuesRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *QueryConfigDefaultsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_QueryConstantValuesRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_QueryConfigDefaultsRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -48,43 +48,43 @@ func (m *QueryConstantValuesRequest) XXX_Marshal(b []byte, deterministic bool) (
 		return b[:n], nil
 	}
 }
-func (m *QueryConstantValuesRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryConstantValuesRequest.Merge(m, src)
+func (m *QueryConfigDefaultsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryConfigDefaultsRequest.Merge(m, src)
 }
-func (m *QueryConstantValuesRequest) XXX_Size() int {
+func (m *QueryConfigDefaultsRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *QueryConstantValuesRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryConstantValuesRequest.DiscardUnknown(m)
+func (m *QueryConfigDefaultsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryConfigDefaultsRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QueryConstantValuesRequest proto.InternalMessageInfo
+var xxx_messageInfo_QueryConfigDefaultsRequest proto.InternalMessageInfo
 
-func (m *QueryConstantValuesRequest) GetHeight() string {
+func (m *QueryConfigDefaultsRequest) GetHeight() string {
 	if m != nil {
 		return m.Height
 	}
 	return ""
 }
 
-type QueryConstantValuesResponse struct {
+type QueryConfigDefaultsResponse struct {
 	Int_64Values []*Int64Constants  `protobuf:"bytes,1,rep,name=int_64_values,json=int64Values,proto3" json:"int_64_values,omitempty"`
 	BoolValues   []*BoolConstants   `protobuf:"bytes,2,rep,name=bool_values,json=boolValues,proto3" json:"bool_values,omitempty"`
 	StringValues []*StringConstants `protobuf:"bytes,3,rep,name=string_values,json=stringValues,proto3" json:"string_values,omitempty"`
 }
 
-func (m *QueryConstantValuesResponse) Reset()         { *m = QueryConstantValuesResponse{} }
-func (m *QueryConstantValuesResponse) String() string { return proto.CompactTextString(m) }
-func (*QueryConstantValuesResponse) ProtoMessage()    {}
-func (*QueryConstantValuesResponse) Descriptor() ([]byte, []int) {
+func (m *QueryConfigDefaultsResponse) Reset()         { *m = QueryConfigDefaultsResponse{} }
+func (m *QueryConfigDefaultsResponse) String() string { return proto.CompactTextString(m) }
+func (*QueryConfigDefaultsResponse) ProtoMessage()    {}
+func (*QueryConfigDefaultsResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_09a11eb66540db6e, []int{1}
 }
-func (m *QueryConstantValuesResponse) XXX_Unmarshal(b []byte) error {
+func (m *QueryConfigDefaultsResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *QueryConstantValuesResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *QueryConfigDefaultsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_QueryConstantValuesResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_QueryConfigDefaultsResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -94,33 +94,33 @@ func (m *QueryConstantValuesResponse) XXX_Marshal(b []byte, deterministic bool) 
 		return b[:n], nil
 	}
 }
-func (m *QueryConstantValuesResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryConstantValuesResponse.Merge(m, src)
+func (m *QueryConfigDefaultsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryConfigDefaultsResponse.Merge(m, src)
 }
-func (m *QueryConstantValuesResponse) XXX_Size() int {
+func (m *QueryConfigDefaultsResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *QueryConstantValuesResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryConstantValuesResponse.DiscardUnknown(m)
+func (m *QueryConfigDefaultsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryConfigDefaultsResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QueryConstantValuesResponse proto.InternalMessageInfo
+var xxx_messageInfo_QueryConfigDefaultsResponse proto.InternalMessageInfo
 
-func (m *QueryConstantValuesResponse) GetInt_64Values() []*Int64Constants {
+func (m *QueryConfigDefaultsResponse) GetInt_64Values() []*Int64Constants {
 	if m != nil {
 		return m.Int_64Values
 	}
 	return nil
 }
 
-func (m *QueryConstantValuesResponse) GetBoolValues() []*BoolConstants {
+func (m *QueryConfigDefaultsResponse) GetBoolValues() []*BoolConstants {
 	if m != nil {
 		return m.BoolValues
 	}
 	return nil
 }
 
-func (m *QueryConstantValuesResponse) GetStringValues() []*StringConstants {
+func (m *QueryConfigDefaultsResponse) GetStringValues() []*StringConstants {
 	if m != nil {
 		return m.StringValues
 	}
@@ -284,8 +284,8 @@ func (m *StringConstants) GetValue() string {
 }
 
 func init() {
-	proto.RegisterType((*QueryConstantValuesRequest)(nil), "types.QueryConstantValuesRequest")
-	proto.RegisterType((*QueryConstantValuesResponse)(nil), "types.QueryConstantValuesResponse")
+	proto.RegisterType((*QueryConfigDefaultsRequest)(nil), "types.QueryConfigDefaultsRequest")
+	proto.RegisterType((*QueryConfigDefaultsResponse)(nil), "types.QueryConfigDefaultsResponse")
 	proto.RegisterType((*Int64Constants)(nil), "types.Int64Constants")
 	proto.RegisterType((*BoolConstants)(nil), "types.BoolConstants")
 	proto.RegisterType((*StringConstants)(nil), "types.StringConstants")
@@ -294,32 +294,32 @@ func init() {
 func init() { proto.RegisterFile("types/query_constant_values.proto", fileDescriptor_09a11eb66540db6e) }
 
 var fileDescriptor_09a11eb66540db6e = []byte{
-	// 338 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0xd2, 0x41, 0x4b, 0x02, 0x41,
-	0x14, 0x07, 0x70, 0x47, 0x53, 0xf2, 0x99, 0x05, 0x83, 0x89, 0x18, 0x2c, 0xb6, 0x27, 0x2f, 0xed,
-	0x42, 0x6d, 0x82, 0x79, 0xb3, 0x53, 0x97, 0xa0, 0x0d, 0x3a, 0x74, 0x91, 0xd5, 0x86, 0xd9, 0x05,
-	0x9d, 0xa7, 0x3b, 0xb3, 0x91, 0xdf, 0xa2, 0x8f, 0xd5, 0xa1, 0x83, 0xc7, 0x8e, 0xa1, 0x5f, 0x24,
-	0x76, 0x76, 0x36, 0x31, 0x02, 0x6f, 0xf3, 0xdf, 0xf7, 0x7e, 0xc3, 0x7f, 0x97, 0x85, 0x73, 0xb5,
-	0x9c, 0x33, 0xe9, 0x2e, 0x12, 0x16, 0x2f, 0x47, 0x13, 0x14, 0x52, 0x05, 0x42, 0x8d, 0x5e, 0x83,
-	0x69, 0xc2, 0xa4, 0x33, 0x8f, 0x51, 0x21, 0x2d, 0xeb, 0x95, 0x76, 0x83, 0x23, 0x47, 0xfd, 0xc4,
-	0x4d, 0x4f, 0xd9, 0xd0, 0xf6, 0xa0, 0xfd, 0x90, 0xda, 0x5b, 0x43, 0x9f, 0xb4, 0xf4, 0xd9, 0x22,
-	0x61, 0x52, 0xd1, 0x26, 0x54, 0x42, 0x16, 0xf1, 0x50, 0xb5, 0x48, 0x87, 0x74, 0xab, 0xbe, 0x49,
-	0xf6, 0x27, 0x81, 0xb3, 0x7f, 0x99, 0x9c, 0xa3, 0x90, 0x8c, 0xf6, 0xa1, 0x1e, 0x09, 0x35, 0xea,
-	0x79, 0xa6, 0x49, 0x8b, 0x74, 0x4a, 0xdd, 0xda, 0xe5, 0xa9, 0xa3, 0xab, 0x38, 0x77, 0x42, 0xf5,
-	0xbc, 0x9c, 0x4a, 0xbf, 0x16, 0xa5, 0x39, 0xbb, 0x82, 0x5e, 0x43, 0x6d, 0x8c, 0x38, 0xcd, 0x61,
-	0x51, 0xc3, 0x86, 0x81, 0x43, 0xc4, 0xe9, 0xd6, 0x41, 0xba, 0x68, 0xd8, 0x00, 0xea, 0x52, 0xc5,
-	0x91, 0xe0, 0x39, 0x2c, 0x69, 0xd8, 0x34, 0xf0, 0x51, 0xcf, 0xb6, 0xf4, 0x28, 0x5b, 0xce, 0xb0,
-	0x7d, 0x03, 0xc7, 0xbb, 0x95, 0x28, 0x85, 0x03, 0x11, 0xcc, 0x98, 0x79, 0x6d, 0x7d, 0xa6, 0x0d,
-	0x28, 0xeb, 0xbb, 0x5b, 0xc5, 0x0e, 0xe9, 0x96, 0xfc, 0x2c, 0xd8, 0x7d, 0xa8, 0xef, 0xb4, 0xda,
-	0x4f, 0x0f, 0x73, 0x3a, 0x80, 0x93, 0x3f, 0xbd, 0xf6, 0xe3, 0xaa, 0xc1, 0xc3, 0xfb, 0x8f, 0xb5,
-	0x45, 0x56, 0x6b, 0x8b, 0x7c, 0xaf, 0x2d, 0xf2, 0xbe, 0xb1, 0x0a, 0xab, 0x8d, 0x55, 0xf8, 0xda,
-	0x58, 0x85, 0x67, 0x8f, 0x47, 0x2a, 0x4c, 0xc6, 0xce, 0x04, 0x67, 0xae, 0x0a, 0x31, 0x16, 0xc1,
-	0x0b, 0x4e, 0x02, 0x19, 0xba, 0x1c, 0x2f, 0xf2, 0xec, 0xbe, 0xfd, 0x8e, 0x5c, 0xfd, 0x85, 0xc6,
-	0x15, 0xfd, 0x3f, 0x5c, 0xfd, 0x04, 0x00, 0x00, 0xff, 0xff, 0x53, 0xa7, 0x02, 0x01, 0x51, 0x02,
-	0x00, 0x00,
+	// 347 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0xd2, 0xb1, 0x4e, 0xc2, 0x40,
+	0x18, 0x07, 0x70, 0x0e, 0x84, 0xc8, 0x21, 0x9a, 0x5c, 0x90, 0x10, 0x4c, 0x1a, 0xec, 0xc4, 0x62,
+	0x9b, 0x68, 0x25, 0x41, 0x36, 0x70, 0x71, 0x31, 0xb1, 0x26, 0x0e, 0x2e, 0xa4, 0xe0, 0x71, 0x6d,
+	0x52, 0xee, 0x83, 0xde, 0xd5, 0xc8, 0x5b, 0xf8, 0x58, 0x0e, 0x0e, 0x8c, 0x8e, 0x86, 0xbe, 0x88,
+	0xe9, 0xf5, 0x2a, 0xc1, 0x98, 0xb0, 0xdd, 0xd7, 0xef, 0xff, 0x6b, 0xfe, 0x6d, 0x0e, 0x9f, 0xcb,
+	0xd5, 0x82, 0x0a, 0x7b, 0x19, 0xd3, 0x68, 0x35, 0x9e, 0x02, 0x17, 0xd2, 0xe3, 0x72, 0xfc, 0xea,
+	0x85, 0x31, 0x15, 0xd6, 0x22, 0x02, 0x09, 0xa4, 0xac, 0x22, 0xed, 0x06, 0x03, 0x06, 0xea, 0x89,
+	0x9d, 0x9e, 0xb2, 0xa5, 0xe9, 0xe0, 0xf6, 0x43, 0x6a, 0x47, 0xc0, 0x67, 0x01, 0xbb, 0xa5, 0x33,
+	0x2f, 0x0e, 0xa5, 0x70, 0xe9, 0x32, 0xa6, 0x42, 0x92, 0x26, 0xae, 0xf8, 0x34, 0x60, 0xbe, 0x6c,
+	0xa1, 0x0e, 0xea, 0x56, 0x5d, 0x3d, 0x99, 0x9f, 0x08, 0x9f, 0xfd, 0xcb, 0xc4, 0x02, 0xb8, 0xa0,
+	0xa4, 0x8f, 0xeb, 0x01, 0x97, 0xe3, 0x9e, 0xa3, 0x9b, 0xb4, 0x50, 0xa7, 0xd4, 0xad, 0x5d, 0x9e,
+	0x5a, 0xaa, 0x8a, 0x75, 0xc7, 0x65, 0xcf, 0x19, 0xe9, 0xb2, 0xc2, 0xad, 0x05, 0xe9, 0xfc, 0xa4,
+	0x92, 0xe4, 0x1a, 0xd7, 0x26, 0x00, 0x61, 0x0e, 0x8b, 0x0a, 0x36, 0x34, 0x1c, 0x02, 0x84, 0x5b,
+	0x87, 0xd3, 0xa0, 0x66, 0x03, 0x5c, 0x17, 0x32, 0x0a, 0x38, 0xcb, 0x61, 0x49, 0xc1, 0xa6, 0x86,
+	0x8f, 0x6a, 0xb7, 0xa5, 0x47, 0x59, 0x38, 0xc3, 0xe6, 0x0d, 0x3e, 0xde, 0xad, 0x44, 0x08, 0x3e,
+	0xe0, 0xde, 0x9c, 0xea, 0xcf, 0x56, 0x67, 0xd2, 0xc0, 0x65, 0xf5, 0xee, 0x56, 0xb1, 0x83, 0xba,
+	0x25, 0x37, 0x1b, 0xcc, 0x3e, 0xae, 0xef, 0xb4, 0xda, 0x4f, 0x0f, 0x73, 0x3a, 0xc0, 0x27, 0x7f,
+	0x7a, 0xed, 0xc7, 0x55, 0x8d, 0x87, 0xf7, 0x1f, 0x1b, 0x03, 0xad, 0x37, 0x06, 0xfa, 0xde, 0x18,
+	0xe8, 0x3d, 0x31, 0x0a, 0xeb, 0xc4, 0x28, 0x7c, 0x25, 0x46, 0xe1, 0xd9, 0x61, 0x81, 0xf4, 0xe3,
+	0x89, 0x35, 0x85, 0xb9, 0x2d, 0x7d, 0x88, 0xb8, 0xf7, 0x02, 0x53, 0x4f, 0xf8, 0x36, 0x83, 0x8b,
+	0x7c, 0xb6, 0xdf, 0x7e, 0x57, 0xb6, 0xfa, 0x43, 0x93, 0x8a, 0xba, 0x0f, 0x57, 0x3f, 0x01, 0x00,
+	0x00, 0xff, 0xff, 0x99, 0xd3, 0x04, 0xa1, 0x51, 0x02, 0x00, 0x00,
 }
 
-func (m *QueryConstantValuesRequest) Marshal() (dAtA []byte, err error) {
+func (m *QueryConfigDefaultsRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -329,12 +329,12 @@ func (m *QueryConstantValuesRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *QueryConstantValuesRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *QueryConfigDefaultsRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *QueryConstantValuesRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *QueryConfigDefaultsRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -349,7 +349,7 @@ func (m *QueryConstantValuesRequest) MarshalToSizedBuffer(dAtA []byte) (int, err
 	return len(dAtA) - i, nil
 }
 
-func (m *QueryConstantValuesResponse) Marshal() (dAtA []byte, err error) {
+func (m *QueryConfigDefaultsResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -359,12 +359,12 @@ func (m *QueryConstantValuesResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *QueryConstantValuesResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *QueryConfigDefaultsResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *QueryConstantValuesResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *QueryConfigDefaultsResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -537,7 +537,7 @@ func encodeVarintQueryConstantValues(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func (m *QueryConstantValuesRequest) Size() (n int) {
+func (m *QueryConfigDefaultsRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -550,7 +550,7 @@ func (m *QueryConstantValuesRequest) Size() (n int) {
 	return n
 }
 
-func (m *QueryConstantValuesResponse) Size() (n int) {
+func (m *QueryConfigDefaultsResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -632,7 +632,7 @@ func sovQueryConstantValues(x uint64) (n int) {
 func sozQueryConstantValues(x uint64) (n int) {
 	return sovQueryConstantValues(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (m *QueryConstantValuesRequest) Unmarshal(dAtA []byte) error {
+func (m *QueryConfigDefaultsRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -655,10 +655,10 @@ func (m *QueryConstantValuesRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: QueryConstantValuesRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: QueryConfigDefaultsRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: QueryConstantValuesRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: QueryConfigDefaultsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -714,7 +714,7 @@ func (m *QueryConstantValuesRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *QueryConstantValuesResponse) Unmarshal(dAtA []byte) error {
+func (m *QueryConfigDefaultsResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -737,10 +737,10 @@ func (m *QueryConstantValuesResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: QueryConstantValuesResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: QueryConfigDefaultsResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: QueryConstantValuesResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: QueryConfigDefaultsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:

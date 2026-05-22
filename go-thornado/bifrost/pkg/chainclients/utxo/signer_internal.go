@@ -15,6 +15,7 @@ import (
 	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
+	"github.com/thornadocash/go-thornado/constants"
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -22,15 +23,25 @@ import (
 ////////////////////////////////////////////////////////////////////////////////////////
 
 func (c *Client) getMaximumUtxosToSpend() int64 {
-	const mimirMaxUTXOsToSpend = `MaxUTXOsToSpend`
-	utxosToSpend, err := c.bridge.GetMimir(mimirMaxUTXOsToSpend)
+	utxosToSpend, err := c.bridge.GetConfigValue(constants.UTXO_MaxSpendCount.String())
 	if err != nil {
-		c.log.Err(err).Msg("fail to get MaxUTXOsToSpend")
+		c.log.Err(err).Str("config", constants.UTXO_MaxSpendCount.String()).Msg("fail to get config")
 	}
 	if utxosToSpend <= 0 {
 		utxosToSpend = c.cfg.UTXO.MaxUTXOsToSpend
 	}
 	return utxosToSpend
+}
+
+func (c *Client) getBTCConfigValue(key constants.ConfigName, fallback int64) int64 {
+	value, err := c.bridge.GetConfigValue(key.String())
+	if err != nil {
+		c.log.Err(err).Str("config", key.String()).Msg("fail to get config")
+	}
+	if value <= 0 {
+		return fallback
+	}
+	return value
 }
 
 // getAllUtxos will iterate unspend utxos for the given address and return the oldest
@@ -59,7 +70,9 @@ func (c *Client) getUtxoToSpendAtPath(pubkey common.PubKey, pathIndex uint64, to
 	var result []btcjson.ListUnspentResult
 	var toSpend btcutil.Amount
 	minUTXOAmt := btcutil.Amount(c.cfg.ChainID.DustThreshold().Uint64()).ToBTC()
-	utxosToSpend := c.getMaximumUtxosToSpend() // can be set by mimir
+	utxosToSpend := c.getMaximumUtxosToSpend() // can be set by config
+	minConfirmations := c.getBTCConfigValue(constants.BTC_ConfirmationsMin, c.cfg.UTXO.MinUTXOConfirmations)
+	maxMempoolAncestors := c.getBTCConfigValue(constants.BTC_MaxMempoolAncestors, c.cfg.UTXO.MaxMempoolAncestors)
 
 	for _, item := range utxos {
 		if !c.isValidUTXO(item.ScriptPubKey) {
@@ -68,12 +81,12 @@ func (c *Client) getUtxoToSpendAtPath(pubkey common.PubKey, pathIndex uint64, to
 		}
 
 		// analyze-ignore(float-comparison)
-		if item.Confirmations < c.cfg.UTXO.MinUTXOConfirmations || item.Amount < minUTXOAmt {
+		if item.Confirmations < minConfirmations || item.Amount < minUTXOAmt {
 			// For migration transactions, include confirmed sub-dust UTXOs to sweep all
 			// vault funds. This allows resolving balance mismatches where the on-chain
 			// UTXOs don't match the internal ledger, without requiring a consensus change.
 			// analyze-ignore(float-comparison)
-			if sweepDust && item.Amount < minUTXOAmt && item.Confirmations >= c.cfg.UTXO.MinUTXOConfirmations {
+			if sweepDust && item.Amount < minUTXOAmt && item.Confirmations >= minConfirmations {
 				// Allow confirmed sub-dust UTXOs through for migration sweeps
 			} else {
 				// use all UTXOs sent from asgard, regardless of confirmations or dust threshold
@@ -90,7 +103,7 @@ func (c *Client) getUtxoToSpendAtPath(pubkey common.PubKey, pathIndex uint64, to
 
 			// For unconfirmed UTXOs (even self-transactions), check ancestor, descendant, and combined
 			// chain count to avoid exceeding the chain's mempool limits. Set to 0 to disable.
-			if item.Confirmations == 0 && c.cfg.UTXO.MaxMempoolAncestors > 0 {
+			if item.Confirmations == 0 && maxMempoolAncestors > 0 {
 				var entry *btcjson.GetMempoolEntryResult
 				entry, err = c.rpc.GetMempoolEntry(item.TxID)
 				if err != nil {
@@ -100,12 +113,12 @@ func (c *Client) getUtxoToSpendAtPath(pubkey common.PubKey, pathIndex uint64, to
 
 				// Check the combined ancestor and descendant counts to avoid exceeding mempool
 				// limits and receiving "-26: too-long-mempool-chain" errors on broadcast.
-				if err == nil && entry.AncestorCount+entry.DescendantCount >= c.cfg.UTXO.MaxMempoolAncestors {
+				if err == nil && entry.AncestorCount+entry.DescendantCount >= maxMempoolAncestors {
 					c.log.Warn().
 						Str("txid", item.TxID).
 						Int64("ancestor_count", entry.AncestorCount).
 						Int64("descendant_count", entry.DescendantCount).
-						Int64("max_allowed", c.cfg.UTXO.MaxMempoolAncestors).
+						Int64("max_allowed", maxMempoolAncestors).
 						Msg("skipping UTXO with too many ancestors/descendants to avoid mempool chain limit")
 					continue
 				}
@@ -293,7 +306,7 @@ func (c *Client) getGasCoin(tx stypes.TxOutItem, vSize int64) common.Coin {
 
 	// default to configured value
 	if gasRate == 0 {
-		gasRate = c.cfg.UTXO.DefaultSatsPerVByte
+		gasRate = c.getBTCConfigValue(constants.BTC_DefaultSatsPerVByte, c.cfg.UTXO.DefaultSatsPerVByte)
 	}
 
 	return common.NewCoin(c.cfg.ChainID.GetGasAsset(), cosmos.NewUint(uint64(gasRate*vSize)))
@@ -342,7 +355,7 @@ func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx,
 	gasCoin := c.getGasCoin(tx, totalSize)
 
 	// maxFee in sats
-	maxFeeSats := totalSize * c.cfg.UTXO.MaxSatsPerVByte
+	maxFeeSats := totalSize * c.getBTCConfigValue(constants.BTC_MaxSatsPerVByte, c.cfg.UTXO.MaxSatsPerVByte)
 	gasAmtSats := gasCoin.Amount.Uint64()
 
 	// make sure the transaction fee is not more than the max, otherwise it might reject the transaction

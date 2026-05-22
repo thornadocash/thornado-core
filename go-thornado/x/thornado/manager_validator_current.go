@@ -46,8 +46,8 @@ func (vm *NodeMgr) BeginBlock(ctx cosmos.Context, mgr Manager, existingNodes []s
 		}
 	}
 	lastChurnHeight := getLastChurnHeight(ctx, vm.k)
-	churnInterval := vm.k.GetConfigInt64(ctx, constants.ChurnInterval)
-	churnRetryInterval := vm.k.GetConfigInt64(ctx, constants.ChurnRetryInterval)
+	churnInterval := vm.k.GetConfigInt64(ctx, constants.Churn_IntervalBlocks)
+	churnRetryInterval := vm.k.GetConfigInt64(ctx, constants.Churn_RetryIntervalBlocks)
 	// Only compute retry tick if the interval is valid and past the scheduled churn height
 	onChurnTick := false
 	if churnRetryInterval > 0 && ctx.BlockHeight() > lastChurnHeight+churnInterval {
@@ -59,9 +59,9 @@ func (vm *NodeMgr) BeginBlock(ctx cosmos.Context, mgr Manager, existingNodes []s
 		return nil
 	}
 
-	halt, err := vm.k.GetMimir(ctx, "HaltChurning")
-	if halt > 0 && halt <= ctx.BlockHeight() && err == nil {
-		ctx.Logger().Info("churn event skipped due to mimir has halted churning")
+	halt := vm.k.GetConfigInt64(ctx, constants.Halt_Churning)
+	if halt > 0 && halt <= ctx.BlockHeight() {
+		ctx.Logger().Info("churn event skipped due to config has halted churning")
 		return nil
 	}
 
@@ -133,9 +133,9 @@ func (vm *NodeMgr) churn(ctx cosmos.Context) error {
 }
 
 func (vm *NodeMgr) churnInner(ctx cosmos.Context) error {
-	desiredNodeSet := vm.k.GetConfigInt64(ctx, constants.DesiredNodeSet)
-	redline := vm.k.GetConfigInt64(ctx, constants.BadNodeRedline)
-	minSlashPointsForBadNode := vm.k.GetConfigInt64(ctx, constants.MinPenaltyPointsForBadNode)
+	desiredNodeSet := vm.k.GetConfigInt64(ctx, constants.Node_SetDesired)
+	redline := vm.k.GetConfigInt64(ctx, constants.Node_BadRedline)
+	minSlashPointsForBadNode := vm.k.GetConfigInt64(ctx, constants.Node_PenaltyChurnOutThreshold)
 
 	// update selected actor
 	if err := vm.markSelectedActors(ctx); err != nil {
@@ -298,7 +298,7 @@ func (vm *NodeMgr) EndBlock(ctx cosmos.Context, mgr Manager) []abci.ValidatorUpd
 		return nil
 	}
 
-	minimumNodesForBFT := vm.k.GetConstants().GetInt64Value(constants.MinimumNodesForBFT)
+	minimumNodesForBFT := vm.k.GetConfigInt64(ctx, constants.Node_BFTMin)
 	nodesAfterChange := len(activeNodes) + len(newNodes) - len(removedNodes)
 	if len(activeNodes) >= int(minimumNodesForBFT) && nodesAfterChange < int(minimumNodesForBFT) {
 		// Thornado don't have enough nodes for BFT
@@ -417,13 +417,13 @@ func (vm *NodeMgr) EndBlock(ctx cosmos.Context, mgr Manager) []abci.ValidatorUpd
 	// Now that the node statuses have been updated, update the stored MinJoinVersion.
 	vm.k.SetMinJoinLast(ctx)
 
-	// On each churn, purge OperationalMimir node votes
-	// (without changing the set Mimir values themselves).
-	// This is to stop any OperationalMimir key's threshold for change
+	// On each churn, purge OperationalConfig node votes
+	// (without changing the set Config values themselves).
+	// This is to stop any OperationalConfig key's threshold for change
 	// from creeping up inconveniently high over time.
 	// If a small number of nodes repeatedly uses this purge to go against the majority preference,
-	// the EconomicMimir OperationalVotesMin could be set to a higher threshold.
-	vm.k.PurgeOperationalNodeMimirs(ctx)
+	// the EconomicConfig Config_OperationalVotesMin could be set to a higher threshold.
+	vm.k.PurgeOperationalNodeConfigs(ctx)
 
 	return nodes
 }
@@ -545,7 +545,7 @@ func (vm *NodeMgr) payNodeAccountBondAward(ctx cosmos.Context, lastChurnHeight i
 }
 
 func (vm *NodeMgr) getPendingTxOut(ctx cosmos.Context) (int64, error) {
-	signingTransactionPeriod := vm.k.GetConstants().GetInt64Value(constants.SigningTransactionPeriod)
+	signingTransactionPeriod := vm.k.GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)
 	startHeight := ctx.BlockHeight() - signingTransactionPeriod
 	count := int64(0)
 	for height := startHeight; height <= ctx.BlockHeight(); height++ {
@@ -636,7 +636,7 @@ func (vm *NodeMgr) setupNodeNodes(ctx cosmos.Context, height int64) error {
 	sort.Sort(activeCandidateNodes)
 	sort.Sort(readyNodes)
 	activeCandidateNodes = append(activeCandidateNodes, readyNodes...)
-	desiredNodeSet := vm.k.GetConfigInt64(ctx, constants.DesiredNodeSet)
+	desiredNodeSet := vm.k.GetConfigInt64(ctx, constants.Node_SetDesired)
 	for idx, item := range activeCandidateNodes {
 		if int64(idx) < desiredNodeSet {
 			item.UpdateStatus(NodeActive, ctx.BlockHeight())
@@ -664,7 +664,7 @@ func (vm *NodeMgr) findBadActors(ctx cosmos.Context, minSlashPointsForBadNode, b
 	badActors := make(NodeAccounts, 0)
 
 	// Guard against division by zero: badNodeRedline is used as a divisor
-	// below. If Mimir sets BadNodeRedline to 0, skip bad actor detection
+	// below. If Config sets Node_BadRedline to 0, skip bad actor detection
 	// rather than panicking in a consensus-critical code path.
 	if badNodeRedline <= 0 {
 		return badActors, nil
@@ -749,8 +749,8 @@ func (vm *NodeMgr) findBadActors(ctx cosmos.Context, minSlashPointsForBadNode, b
 
 // Iterate over active node accounts, finding the one that hasn't been signing blocks
 func (vm *NodeMgr) markMissingActors(ctx cosmos.Context) error {
-	maxMissingBlocks := vm.k.GetConfigInt64(ctx, constants.MissingBlockChurnOut)
-	maxChurnOut := vm.k.GetConfigInt64(ctx, constants.MaxMissingBlockChurnOut)
+	maxMissingBlocks := vm.k.GetConfigInt64(ctx, constants.Node_MissingBlocksChurnOut)
+	maxChurnOut := vm.k.GetConfigInt64(ctx, constants.Node_MissingBlocksChurnOutMax)
 	if maxMissingBlocks == 0 || maxChurnOut == 0 {
 		return nil // skip this mark
 	}
@@ -1005,7 +1005,7 @@ func (vm *NodeMgr) selectHighestBondedNode(ctx cosmos.Context, candidates NodeAc
 }
 
 // NodeAccountPreflightCheck preflight check to find out what the node account's next status will be
-func (vm *NodeMgr) NodeAccountPreflightCheck(ctx cosmos.Context, na NodeAccount, _ constants.ConstantValues) (NodeStatus, error) {
+func (vm *NodeMgr) NodeAccountPreflightCheck(ctx cosmos.Context, na NodeAccount, _ constants.ConfigValues) (NodeStatus, error) {
 	// ensure banned nodes can't get churned in again
 	if na.ForcedToLeave {
 		return NodeDisabled, fmt.Errorf("node account has been banned")
@@ -1130,7 +1130,7 @@ func (vm *NodeMgr) nextVaultNodeAccounts(ctx cosmos.Context, targetCount int) (N
 	}
 	// add selected nodes to become active
 	limit := toRemove + 1
-	minimumNodesForBFT := vm.k.GetConstants().GetInt64Value(constants.MinimumNodesForBFT)
+	minimumNodesForBFT := vm.k.GetConfigInt64(ctx, constants.Node_BFTMin)
 	if len(active)+limit < int(minimumNodesForBFT) {
 		limit = int(minimumNodesForBFT) - len(active)
 	}

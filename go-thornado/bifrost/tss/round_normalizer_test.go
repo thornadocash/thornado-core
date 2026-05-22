@@ -16,9 +16,9 @@ func TestCanonicalTssRoundSecp256k1(t *testing.T) {
 		"thornado.tsslib.ecdsa.keygen.KGRound2Message1":    tssMessages.KEYGEN2aUnicast,
 		"thornado.tsslib.ecdsa.signing.SignRound1Message1": tssMessages.KEYSIGN1aUnicast,
 		"thornado.tsslib.ecdsa.signing.SignRound2Message":  tssMessages.KEYSIGN2Unicast,
-		tssMessages.KEYSIGN7:                                tssMessages.KEYSIGN7,
+		tssMessages.KEYSIGN7:                               tssMessages.KEYSIGN7,
 		"thornado.tsslib.ecdsa.signing.SignRound7Message":  tssMessages.KEYSIGN7,
-		"unrelated-round":                                   "unrelated-round",
+		"unrelated-round":                                  "unrelated-round",
 	}
 
 	for in, want := range tests {
@@ -36,8 +36,8 @@ func TestCanonicalTssRoundEd25519(t *testing.T) {
 		"thornado.tsslib.eddsa.keygen.KGRound2Message2":   tssMessages.EDDSAKEYGEN2b,
 		"thornado.tsslib.eddsa.signing.SignRound1Message": tssMessages.EDDSAKEYSIGN1,
 		"thornado.tsslib.eddsa.signing.SignRound3Message": tssMessages.EDDSAKEYSIGN3,
-		tssMessages.EDDSAKEYSIGN2:                          tssMessages.EDDSAKEYSIGN2,
-		"unrelated-round":                                  "unrelated-round",
+		tssMessages.EDDSAKEYSIGN2:                         tssMessages.EDDSAKEYSIGN2,
+		"unrelated-round":                                 "unrelated-round",
 	}
 
 	for in, want := range tests {

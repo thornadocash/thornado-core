@@ -52,7 +52,7 @@ const (
 	PubKeysEndpoint          = "/thornado/vaults/pubkeys"
 	ThornadoConstants        = "/thornado/constants"
 	RagnarokEndpoint         = "/thornado/ragnarok"
-	MimirEndpoint            = "/thornado/mimir"
+	ConfigEndpoint           = "/thornado/config"
 	ChainVersionEndpoint     = "/thornado/version"
 	InboundAddressesEndpoint = "/thornado/inbound_addresses"
 )
@@ -81,15 +81,14 @@ type ThornadoBridge interface {
 	GetConfig() config.BifrostClientConfiguration
 	GetConstants() (map[string]int64, error)
 	GetContext() client.Context
-	GetContractAddress() ([]PubKeyContractAddressPair, error)
 	GetErrataMsg(txID common.TxID, chain common.Chain) sdk.Msg
 	GetKeygenStdTx(poolPubKey common.PubKey, secp256k1Signature, keysharesBackup []byte, blame []stypes.Blame, inputPks common.PubKeys, keygenType stypes.KeygenType, chains common.Chains, height, keygenTime int64, poolPubKeyEddsa common.PubKey, keysharesBackupEddsa []byte) (sdk.Msg, error)
 	GetKeysignParty(vaultPubKey common.PubKey) (common.PubKeys, error)
-	GetMimir(key string) (int64, error)
-	GetMimirWithRef(template, ref string) (int64, error)
+	GetConfigValue(key string) (int64, error)
+	GetConfigValueWithRef(template, ref string) (int64, error)
 	GetInboundOutbound(txIns common.ObservedTxs) (common.ObservedTxs, common.ObservedTxs, error)
-	GetPubKeys() ([]PubKeyContractAddressPair, error)
-	GetAsgardPubKeys() ([]PubKeyContractAddressPair, error)
+	GetPubKeys() ([]PubKeyAddressPair, error)
+	GetAsgardPubKeys() ([]PubKeyAddressPair, error)
 	GetSolvencyMsg(height int64, chain common.Chain, pubKey common.PubKey, coins common.Coins) *stypes.MsgSolvency
 	GetThornadoVersion() (semver.Version, error)
 	IsCatchingUp() (bool, error)
@@ -657,9 +656,9 @@ func (b *thornadoBridge) getVaultPubkeys() ([]byte, error) {
 	return buf, nil
 }
 
-// GetPubKeys retrieve vault pub keys and their relevant smart contracts
+// GetPubKeys retrieves active and inactive vault pubkeys.
 // Returns both active and inactive vaults
-func (b *thornadoBridge) GetPubKeys() ([]PubKeyContractAddressPair, error) {
+func (b *thornadoBridge) GetPubKeys() ([]PubKeyAddressPair, error) {
 	buf, err := b.getVaultPubkeys()
 	if err != nil {
 		return nil, fmt.Errorf("fail to get vault pubkeys ,err: %w", err)
@@ -668,7 +667,7 @@ func (b *thornadoBridge) GetPubKeys() ([]PubKeyContractAddressPair, error) {
 	if err = json.Unmarshal(buf, &result); err != nil {
 		return nil, fmt.Errorf("fail to unmarshal pubkeys: %w", err)
 	}
-	var addressPairs []PubKeyContractAddressPair
+	var addressPairs []PubKeyAddressPair
 
 	// anonymous function to process a vault and add its pubkeys to addressPairs
 	processVault := func(v openapi.VaultInfo, inactive bool) {
@@ -679,29 +678,21 @@ func (b *thornadoBridge) GetPubKeys() ([]PubKeyContractAddressPair, error) {
 
 		// process eddsa pubkey if present
 		if v.PubKeyEddsa != nil && *v.PubKeyEddsa != "" {
-			kp := PubKeyContractAddressPair{
+			kp := PubKeyAddressPair{
 				PubKey:     common.PubKey(*v.PubKeyEddsa),
-				Contracts:  make(map[common.Chain]common.Address),
 				Algo:       common.SigningAlgoEd25519,
 				Membership: membership,
 				Inactive:   inactive,
-			}
-			for _, item := range v.Routers {
-				kp.Contracts[common.Chain(*item.Chain)] = common.Address(*item.Router)
 			}
 			addressPairs = append(addressPairs, kp)
 		}
 
 		// process secp256k1 pubkey
-		kp := PubKeyContractAddressPair{
+		kp := PubKeyAddressPair{
 			PubKey:     common.PubKey(v.PubKey),
-			Contracts:  make(map[common.Chain]common.Address),
 			Algo:       common.SigningAlgoSecp256k1,
 			Membership: membership,
 			Inactive:   inactive,
-		}
-		for _, item := range v.Routers {
-			kp.Contracts[common.Chain(*item.Chain)] = common.Address(*item.Router)
 		}
 		addressPairs = append(addressPairs, kp)
 	}
@@ -719,8 +710,8 @@ func (b *thornadoBridge) GetPubKeys() ([]PubKeyContractAddressPair, error) {
 	return addressPairs, nil
 }
 
-// GetAsgardPubKeys retrieve asgard vaults, and it's relevant smart contracts
-func (b *thornadoBridge) GetAsgardPubKeys() ([]PubKeyContractAddressPair, error) {
+// GetAsgardPubKeys retrieves asgard vault pubkeys.
+func (b *thornadoBridge) GetAsgardPubKeys() ([]PubKeyAddressPair, error) {
 	buf, err := b.getVaultPubkeys()
 	if err != nil {
 		return nil, fmt.Errorf("fail to get vault pubkeys ,err: %w", err)
@@ -729,26 +720,18 @@ func (b *thornadoBridge) GetAsgardPubKeys() ([]PubKeyContractAddressPair, error)
 	if err = json.Unmarshal(buf, &result); err != nil {
 		return nil, fmt.Errorf("fail to unmarshal pubkeys: %w", err)
 	}
-	var addressPairs []PubKeyContractAddressPair
+	var addressPairs []PubKeyAddressPair
 	for _, v := range append(result.Asgard, result.Inactive...) {
 		if v.PubKeyEddsa != nil {
-			kp := PubKeyContractAddressPair{
-				PubKey:    common.PubKey(*v.PubKeyEddsa),
-				Contracts: make(map[common.Chain]common.Address),
-				Algo:      common.SigningAlgoEd25519,
-			}
-			for _, item := range v.Routers {
-				kp.Contracts[common.Chain(*item.Chain)] = common.Address(*item.Router)
+			kp := PubKeyAddressPair{
+				PubKey: common.PubKey(*v.PubKeyEddsa),
+				Algo:   common.SigningAlgoEd25519,
 			}
 			addressPairs = append(addressPairs, kp)
 		}
-		kp := PubKeyContractAddressPair{
-			PubKey:    common.PubKey(v.PubKey),
-			Contracts: make(map[common.Chain]common.Address),
-			Algo:      common.SigningAlgoSecp256k1,
-		}
-		for _, item := range v.Routers {
-			kp.Contracts[common.Chain(*item.Chain)] = common.Address(*item.Router)
+		kp := PubKeyAddressPair{
+			PubKey: common.PubKey(v.PubKey),
+			Algo:   common.SigningAlgoSecp256k1,
 		}
 		addressPairs = append(addressPairs, kp)
 	}
@@ -827,77 +810,34 @@ func (b *thornadoBridge) GetThornadoVersion() (semver.Version, error) {
 	return semver.MustParse(version.Current), nil
 }
 
-// GetMimir - get mimir settings
-func (b *thornadoBridge) GetMimir(key string) (int64, error) {
-	buf, s, err := b.getWithPath(MimirEndpoint + "/key/" + key)
+// GetConfig - get config settings
+func (b *thornadoBridge) GetConfigValue(key string) (int64, error) {
+	buf, s, err := b.getWithPath(ConfigEndpoint + "/key/" + key)
 	if err != nil {
-		return 0, fmt.Errorf("fail to get mimir: %w", err)
+		return 0, fmt.Errorf("fail to get config: %w", err)
 	}
 	if s != http.StatusOK {
 		return 0, fmt.Errorf("unexpected status code: %d", s)
 	}
 	var value int64
 	if err = json.Unmarshal(buf, &value); err != nil {
-		return 0, fmt.Errorf("fail to unmarshal mimir: %w", err)
+		return 0, fmt.Errorf("fail to unmarshal config: %w", err)
 	}
 	return value, nil
 }
 
-// GetMimirWithRef is a helper function to more readably insert references (such as Asset MimirString or Chain) into Mimir key templates.
-func (b *thornadoBridge) GetMimirWithRef(template, ref string) (int64, error) {
+// GetConfigWithRef is a helper function to more readably insert references (such as Asset ConfigString or Chain) into Config key templates.
+func (b *thornadoBridge) GetConfigValueWithRef(template, ref string) (int64, error) {
 	// 'template' should be something like "Halt%sChain" (to halt an arbitrary specified chain)
-	// or "Ragnarok-%s" (to halt the pool of an arbitrary specified Asset (MimirString used for Assets to join Chain and Symbol with a hyphen).
+	// or "Ragnarok-%s" (to halt the pool of an arbitrary specified Asset (ConfigString used for Assets to join Chain and Symbol with a hyphen).
 	key := fmt.Sprintf(template, ref)
-	return b.GetMimir(key)
+	return b.GetConfigValue(key)
 }
 
-// PubKeyContractAddressPair is an entry to map pubkey and contract addresses
-type PubKeyContractAddressPair struct {
+// PubKeyAddressPair is a vault pubkey plus signing metadata.
+type PubKeyAddressPair struct {
 	PubKey     common.PubKey
-	Contracts  map[common.Chain]common.Address
 	Algo       common.SigningAlgo
 	Membership []common.PubKey
 	Inactive   bool
-}
-
-// GetContractAddress retrieve the contract address from asgard
-func (b *thornadoBridge) GetContractAddress() ([]PubKeyContractAddressPair, error) {
-	buf, s, err := b.getWithPath(InboundAddressesEndpoint)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get inbound addresses: %w", err)
-	}
-	if s != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", s)
-	}
-	type address struct {
-		Chain   common.Chain   `json:"chain"`
-		PubKey  common.PubKey  `json:"pub_key"`
-		Address common.Address `json:"address"`
-		Router  common.Address `json:"router"`
-		Halted  bool           `json:"halted"`
-	}
-	var resp []address
-	if err = json.Unmarshal(buf, &resp); err != nil {
-		return nil, fmt.Errorf("fail to unmarshal response: %w", err)
-	}
-	var result []PubKeyContractAddressPair
-	for _, item := range resp {
-		exist := false
-		for _, pair := range result {
-			if item.PubKey.Equals(pair.PubKey) {
-				pair.Contracts[item.Chain] = item.Router
-				exist = true
-				break
-			}
-		}
-		if !exist {
-			pair := PubKeyContractAddressPair{
-				PubKey:    item.PubKey,
-				Contracts: map[common.Chain]common.Address{},
-			}
-			pair.Contracts[item.Chain] = item.Router
-			result = append(result, pair)
-		}
-	}
-	return result, nil
 }

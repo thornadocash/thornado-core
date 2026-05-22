@@ -13,21 +13,9 @@ import (
 
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
+	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
-)
-
-const (
-	BondStartAmountSats   uint64 = 100_000_000
-	BondSlotIncrementSats uint64 = 100_000_000
-	WithdrawalFeeBp       uint64 = 200
-	feeShareScale         uint64 = 1_000_000_000_000
-)
-
-const (
-	MimirBondStartAmountSats   = "BondStartAmountSats"
-	MimirBondSlotIncrementSats = "BondSlotIncrementSats"
-	MimirWithdrawalFeeBp       = "WithdrawalFeeBp"
 )
 
 type ShielderWithdrawalRequest struct {
@@ -96,6 +84,9 @@ func registerShielderPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.
 	if powToken == "" {
 		return types.ShielderSession{}, fmt.Errorf("missing shielder pow token")
 	}
+	if err := validateDepositPowToken(ctx, k, owner, powToken); err != nil {
+		return types.ShielderSession{}, err
+	}
 	operatorPubKey = strings.TrimSpace(operatorPubKey)
 	nodePubKey = strings.TrimSpace(nodePubKey)
 	auctionID = strings.TrimSpace(auctionID)
@@ -117,6 +108,12 @@ func registerShielderPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.
 	}
 	if auctionID != "" && nodePubKey == "" {
 		return types.ShielderSession{}, fmt.Errorf("node slot auction bids require node pubkey")
+	}
+	if existing, err := k.GetShielderSessionByPowToken(ctx, powToken); err == nil && !existing.DepositAddress.IsEmpty() {
+		expiry := k.GetConfigInt64(ctx, constants.Deposit_PowExpiryBlocks)
+		if expiry <= 0 || existing.CreatedHeight+expiry >= ctx.BlockHeight() {
+			return types.ShielderSession{}, fmt.Errorf("shielder pow token already used")
+		}
 	}
 
 	vault, _, err := currentBTCVaultAddress(ctx, k)
@@ -188,8 +185,14 @@ func MatchShielderDeposit(ctx cosmos.Context, mgr Manager, tx ObservedTx) (types
 	if session.DepositAddress.IsEmpty() {
 		return types.ShielderDeposit{}, fmt.Errorf("shielder session not found")
 	}
+	if expiry := k.GetConfigInt64(ctx, constants.Deposit_SessionExpiryBlocks); expiry > 0 && session.CreatedHeight+expiry < ctx.BlockHeight() {
+		return types.ShielderDeposit{}, fmt.Errorf("shielder deposit session expired")
+	}
 	if !tx.Tx.ToAddress.Equals(session.DepositAddress) || !mapping.VaultPubKey.Equals(session.VaultPubKey) || mapping.PathIndex != session.DepositPathIndex {
 		return types.ShielderDeposit{}, fmt.Errorf("shielder deposit mapping mismatch")
+	}
+	if minDeposit := uint64(k.GetConfigInt64(ctx, constants.Deposit_AmountMinSats)); coin.Amount.Uint64() < minDeposit {
+		return types.ShielderDeposit{}, fmt.Errorf("shielder deposit below dust threshold: %d/%d", coin.Amount.Uint64(), minDeposit)
 	}
 
 	deposit := types.ShielderDeposit{
@@ -243,6 +246,13 @@ func CreateNodeSlotAuction(ctx cosmos.Context, k keeper.Keeper, seller cosmos.Ac
 	}
 	if expiryHeight <= ctx.BlockHeight() {
 		return types.NodeSlotAuction{}, fmt.Errorf("node slot auction expiry must be in the future")
+	}
+	duration := expiryHeight - ctx.BlockHeight()
+	if minExpiry := k.GetConfigInt64(ctx, constants.NodeSale_AuctionExpiryBlocksMin); minExpiry > 0 && duration < minExpiry {
+		return types.NodeSlotAuction{}, fmt.Errorf("node slot auction expiry below minimum: %d/%d", duration, minExpiry)
+	}
+	if maxExpiry := k.GetConfigInt64(ctx, constants.NodeSale_AuctionExpiryBlocksMax); maxExpiry > 0 && duration > maxExpiry {
+		return types.NodeSlotAuction{}, fmt.Errorf("node slot auction expiry above maximum: %d/%d", duration, maxExpiry)
 	}
 	bond, err := k.GetShielderNodeBond(ctx, nodePubKey)
 	if err != nil {
@@ -304,6 +314,9 @@ func SelectNodeSlotBid(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAdd
 	}
 	if bid.DepositID.IsEmpty() || bid.AmountSats == 0 {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, fmt.Errorf("node slot bid deposit not matched")
+	}
+	if minBid := uint64(k.GetConfigInt64(ctx, constants.NodeSale_BidAmountMinSats)); bid.AmountSats < minBid {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, fmt.Errorf("node slot bid below minimum")
 	}
 	if bid.AmountSats < auction.ReserveSats {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, fmt.Errorf("node slot bid below reserve")
@@ -369,6 +382,16 @@ func SplitNodeSlotSale(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAdd
 	sellerNotes, err := parseShielderNoteCommitments(sellerCommitments, deposit.SellerPayoutSats, false)
 	if err != nil {
 		return types.ShielderDeposit{}, err
+	}
+	sellerNotes, floorRemainder, err := applyShielderNoteFloor(ctx, k, sellerNotes, deposit.SellerPayoutSats)
+	if err != nil {
+		return types.ShielderDeposit{}, err
+	}
+	if floorRemainder > 0 {
+		deposit.SellerPayoutSats -= floorRemainder
+		if err := addShielderWithdrawalFee(ctx, k, floorRemainder); err != nil {
+			return types.ShielderDeposit{}, err
+		}
 	}
 	var sellerTotal uint64
 	for _, note := range sellerNotes {
@@ -554,6 +577,16 @@ func PostShielderCommitments(ctx cosmos.Context, k keeper.Keeper, owner cosmos.A
 	if err != nil {
 		return types.ShielderDeposit{}, err
 	}
+	noteCommitments, floorRemainder, err := applyShielderNoteFloor(ctx, k, noteCommitments, deposit.AmountSats)
+	if err != nil {
+		return types.ShielderDeposit{}, err
+	}
+	if floorRemainder > 0 {
+		deposit.AmountSats -= floorRemainder
+		if err := addShielderWithdrawalFee(ctx, k, floorRemainder); err != nil {
+			return types.ShielderDeposit{}, err
+		}
+	}
 	seen := make(map[string]struct{}, len(noteCommitments))
 	var total uint64
 	for idx, note := range noteCommitments {
@@ -645,6 +678,38 @@ func parseShielderNoteCommitments(raw []string, depositAmountSats uint64, allowP
 		result = append(result, shielderNoteCommitment{DenominationSats: depositAmountSats, Commitment: item})
 	}
 	return result, nil
+}
+
+func applyShielderNoteFloor(ctx cosmos.Context, k keeper.Keeper, notes []shielderNoteCommitment, amountSats uint64) ([]shielderNoteCommitment, uint64, error) {
+	minNote := uint64(k.GetConfigInt64(ctx, constants.Shielder_NoteAmountMinSats))
+	if minNote == 0 {
+		return notes, 0, nil
+	}
+	filtered := make([]shielderNoteCommitment, 0, len(notes))
+	var noteTotal, feeRemainder uint64
+	for _, note := range notes {
+		if note.DenominationSats < minNote {
+			feeRemainder += note.DenominationSats
+			continue
+		}
+		noteTotal += note.DenominationSats
+		filtered = append(filtered, note)
+	}
+	if len(filtered) == 0 {
+		return nil, 0, fmt.Errorf("shielder split has no notes above minimum")
+	}
+	if noteTotal > amountSats {
+		return nil, 0, fmt.Errorf("shielder commitment denominations exceed amount")
+	}
+	if noteTotal+feeRemainder > amountSats {
+		return nil, 0, fmt.Errorf("shielder commitment denominations exceed amount")
+	}
+	unallocated := amountSats - noteTotal - feeRemainder
+	if unallocated >= minNote {
+		return nil, 0, fmt.Errorf("shielder commitment denominations leave spendable remainder")
+	}
+	feeRemainder += unallocated
+	return filtered, feeRemainder, nil
 }
 
 func shielderBondCommitment(deposit types.ShielderDeposit, denominationSats uint64, index int) string {
@@ -834,6 +899,9 @@ func RequestShielderWithdrawal(ctx cosmos.Context, k keeper.Keeper, req Shielder
 		return types.ShielderWithdrawal{}, err
 	}
 	feeSats := shielderWithdrawalFeeSats(ctx, k, publicInputs.DenominationSats)
+	if feeSats >= publicInputs.DenominationSats {
+		return types.ShielderWithdrawal{}, fmt.Errorf("shielder withdrawal fee exceeds denomination")
+	}
 	if publicInputs.FeeSats != 0 && publicInputs.FeeSats != feeSats {
 		return types.ShielderWithdrawal{}, fmt.Errorf("invalid shielder withdrawal fee: %d/%d", publicInputs.FeeSats, feeSats)
 	}
@@ -874,7 +942,11 @@ func RequestShielderWithdrawal(ctx cosmos.Context, k keeper.Keeper, req Shielder
 }
 
 func shielderWithdrawalFeeSats(ctx cosmos.Context, k keeper.Keeper, amountSats uint64) uint64 {
-	return shielderWithdrawalFeeSatsForBp(amountSats, shielderWithdrawalFeeBp(ctx, k))
+	fee := shielderWithdrawalFeeSatsForBp(amountSats, shielderWithdrawalFeeBp(ctx, k))
+	if minFee := uint64(k.GetConfigInt64(ctx, constants.Withdrawal_FeeMinSats)); fee < minFee {
+		return minFee
+	}
+	return fee
 }
 
 func shielderWithdrawalFeeSatsForBp(amountSats, feeBp uint64) uint64 {
@@ -882,21 +954,40 @@ func shielderWithdrawalFeeSatsForBp(amountSats, feeBp uint64) uint64 {
 }
 
 func shielderWithdrawalFeeBp(ctx cosmos.Context, k keeper.Keeper) uint64 {
-	return shielderMimirUint(ctx, k, MimirWithdrawalFeeBp, WithdrawalFeeBp)
+	return uint64(k.GetConfigInt64(ctx, constants.Withdrawal_FeeBasisPoints))
 }
 
 func shielderBondRequiredSats(ctx cosmos.Context, k keeper.Keeper, slot uint64) uint64 {
-	start := shielderMimirUint(ctx, k, MimirBondStartAmountSats, BondStartAmountSats)
-	increment := shielderMimirUint(ctx, k, MimirBondSlotIncrementSats, BondSlotIncrementSats)
+	start := uint64(k.GetConfigInt64(ctx, constants.Node_BondStartAmountSats))
+	increment := uint64(k.GetConfigInt64(ctx, constants.Node_BondSlotIncrementSats))
 	return start + slot*increment
 }
 
-func shielderMimirUint(ctx cosmos.Context, k keeper.Keeper, key string, fallback uint64) uint64 {
-	mimir, err := k.GetMimir(ctx, key)
-	if err == nil && mimir >= 0 {
-		return uint64(mimir)
+func validateDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, powToken string) error {
+	difficulty := k.GetConfigInt64(ctx, constants.Deposit_PowDifficultyMin)
+	if difficulty <= 0 {
+		return nil
 	}
-	return fallback
+	if difficulty > 256 {
+		return fmt.Errorf("deposit pow difficulty too high")
+	}
+	sum := sha256.Sum256([]byte(owner.String() + ":" + powToken))
+	var zeros int64
+	for _, b := range sum {
+		for bit := 7; bit >= 0; bit-- {
+			if (b>>uint(bit))&1 == 1 {
+				if zeros >= difficulty {
+					return nil
+				}
+				return fmt.Errorf("deposit pow token below difficulty")
+			}
+			zeros++
+			if zeros >= difficulty {
+				return nil
+			}
+		}
+	}
+	return nil
 }
 
 func addShielderWithdrawalFee(ctx cosmos.Context, k keeper.Keeper, amountSats uint64) error {
@@ -922,6 +1013,7 @@ func distributeShielderFeePool(ctx cosmos.Context, k keeper.Keeper) (types.Shiel
 
 func setDistributedShielderFeePool(ctx cosmos.Context, k keeper.Keeper, pool types.ShielderFeePool) error {
 	if pool.PendingSats != 0 && pool.TotalSlots != 0 {
+		feeShareScale := uint64(k.GetConfigInt64(ctx, constants.Shielder_FeeShareScale))
 		increment := mulDivSats(pool.PendingSats, feeShareScale, pool.TotalSlots)
 		if increment != 0 {
 			distributed := mulDivSats(increment, pool.TotalSlots, feeShareScale)
@@ -983,6 +1075,17 @@ func SplitShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 	noteCommitments, err := parseShielderNoteCommitments(commitments, deposit.AmountSats, false)
 	if err != nil {
 		return types.ShielderDeposit{}, err
+	}
+	noteCommitments, floorRemainder, err := applyShielderNoteFloor(ctx, k, noteCommitments, deposit.AmountSats)
+	if err != nil {
+		return types.ShielderDeposit{}, err
+	}
+	if floorRemainder > 0 {
+		deposit.AmountSats -= floorRemainder
+		claimSats = deposit.AmountSats
+		if err := addShielderWithdrawalFee(ctx, k, floorRemainder); err != nil {
+			return types.ShielderDeposit{}, err
+		}
 	}
 	notePubKeys, err := parseShielderFeeNotePubKeys(feeNotePubKeys, len(noteCommitments))
 	if err != nil {
@@ -1188,7 +1291,7 @@ func queueVaultPathSweep(ctx cosmos.Context, mgr Manager, tx ObservedTx, sourceP
 		}
 		amount = amount.Sub(gas)
 	}
-	gasRate := int64(1)
+	gasRate := mgr.Keeper().GetConfigInt64(ctx, constants.BTC_DefaultSatsPerVByte)
 	if nf, err := mgr.Keeper().GetNetworkFee(ctx, common.BTCChain); err == nil && nf.TransactionFeeRate > 0 {
 		gasRate = int64(nf.TransactionFeeRate)
 	}

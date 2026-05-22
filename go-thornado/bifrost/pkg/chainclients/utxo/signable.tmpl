@@ -2,7 +2,6 @@ package utxo
 
 import (
 	"encoding/base64"
-  "fmt"
 	"math/big"
 
 	"github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -56,13 +55,6 @@ func (ts *tssSignable{{ ToUpper $chain }}) Sign(payload []byte) (*{{ $chain }}ec
 
 	return &sig, nil
 }
-
-{{- if eq $chain "bch" }}
-// SignSchnorr signs the given payload using Schnorr
-func (ts *tssSignable{{ ToUpper $chain }}) SignSchnorr(payload []byte) (*{{ $chain }}ec.Signature, error) {
-	return nil, fmt.Errorf("schnorr signature not yet implemented in TSS")
-}
-{{- end }}
 
 func (ts *tssSignable{{ ToUpper $chain }}) GetPubKey() *{{ $chain }}ec.PublicKey {
 	cpk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, ts.poolPubKey.String())

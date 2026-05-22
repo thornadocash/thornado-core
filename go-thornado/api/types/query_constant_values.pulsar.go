@@ -14,25 +14,25 @@ import (
 )
 
 var (
-	md_QueryConstantValuesRequest        protoreflect.MessageDescriptor
-	fd_QueryConstantValuesRequest_height protoreflect.FieldDescriptor
+	md_QueryConfigDefaultsRequest        protoreflect.MessageDescriptor
+	fd_QueryConfigDefaultsRequest_height protoreflect.FieldDescriptor
 )
 
 func init() {
 	file_types_query_constant_values_proto_init()
-	md_QueryConstantValuesRequest = File_types_query_constant_values_proto.Messages().ByName("QueryConstantValuesRequest")
-	fd_QueryConstantValuesRequest_height = md_QueryConstantValuesRequest.Fields().ByName("height")
+	md_QueryConfigDefaultsRequest = File_types_query_constant_values_proto.Messages().ByName("QueryConfigDefaultsRequest")
+	fd_QueryConfigDefaultsRequest_height = md_QueryConfigDefaultsRequest.Fields().ByName("height")
 }
 
-var _ protoreflect.Message = (*fastReflection_QueryConstantValuesRequest)(nil)
+var _ protoreflect.Message = (*fastReflection_QueryConfigDefaultsRequest)(nil)
 
-type fastReflection_QueryConstantValuesRequest QueryConstantValuesRequest
+type fastReflection_QueryConfigDefaultsRequest QueryConfigDefaultsRequest
 
-func (x *QueryConstantValuesRequest) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_QueryConstantValuesRequest)(x)
+func (x *QueryConfigDefaultsRequest) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_QueryConfigDefaultsRequest)(x)
 }
 
-func (x *QueryConstantValuesRequest) slowProtoReflect() protoreflect.Message {
+func (x *QueryConfigDefaultsRequest) slowProtoReflect() protoreflect.Message {
 	mi := &file_types_query_constant_values_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -44,43 +44,43 @@ func (x *QueryConstantValuesRequest) slowProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-var _fastReflection_QueryConstantValuesRequest_messageType fastReflection_QueryConstantValuesRequest_messageType
-var _ protoreflect.MessageType = fastReflection_QueryConstantValuesRequest_messageType{}
+var _fastReflection_QueryConfigDefaultsRequest_messageType fastReflection_QueryConfigDefaultsRequest_messageType
+var _ protoreflect.MessageType = fastReflection_QueryConfigDefaultsRequest_messageType{}
 
-type fastReflection_QueryConstantValuesRequest_messageType struct{}
+type fastReflection_QueryConfigDefaultsRequest_messageType struct{}
 
-func (x fastReflection_QueryConstantValuesRequest_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_QueryConstantValuesRequest)(nil)
+func (x fastReflection_QueryConfigDefaultsRequest_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_QueryConfigDefaultsRequest)(nil)
 }
-func (x fastReflection_QueryConstantValuesRequest_messageType) New() protoreflect.Message {
-	return new(fastReflection_QueryConstantValuesRequest)
+func (x fastReflection_QueryConfigDefaultsRequest_messageType) New() protoreflect.Message {
+	return new(fastReflection_QueryConfigDefaultsRequest)
 }
-func (x fastReflection_QueryConstantValuesRequest_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_QueryConstantValuesRequest
+func (x fastReflection_QueryConfigDefaultsRequest_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryConfigDefaultsRequest
 }
 
 // Descriptor returns message descriptor, which contains only the protobuf
 // type information for the message.
-func (x *fastReflection_QueryConstantValuesRequest) Descriptor() protoreflect.MessageDescriptor {
-	return md_QueryConstantValuesRequest
+func (x *fastReflection_QueryConfigDefaultsRequest) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryConfigDefaultsRequest
 }
 
 // Type returns the message type, which encapsulates both Go and protobuf
 // type information. If the Go type information is not needed,
 // it is recommended that the message descriptor be used instead.
-func (x *fastReflection_QueryConstantValuesRequest) Type() protoreflect.MessageType {
-	return _fastReflection_QueryConstantValuesRequest_messageType
+func (x *fastReflection_QueryConfigDefaultsRequest) Type() protoreflect.MessageType {
+	return _fastReflection_QueryConfigDefaultsRequest_messageType
 }
 
 // New returns a newly allocated and mutable empty message.
-func (x *fastReflection_QueryConstantValuesRequest) New() protoreflect.Message {
-	return new(fastReflection_QueryConstantValuesRequest)
+func (x *fastReflection_QueryConfigDefaultsRequest) New() protoreflect.Message {
+	return new(fastReflection_QueryConfigDefaultsRequest)
 }
 
 // Interface unwraps the message reflection interface and
 // returns the underlying ProtoMessage interface.
-func (x *fastReflection_QueryConstantValuesRequest) Interface() protoreflect.ProtoMessage {
-	return (*QueryConstantValuesRequest)(x)
+func (x *fastReflection_QueryConfigDefaultsRequest) Interface() protoreflect.ProtoMessage {
+	return (*QueryConfigDefaultsRequest)(x)
 }
 
 // Range iterates over every populated field in an undefined order,
@@ -88,10 +88,10 @@ func (x *fastReflection_QueryConstantValuesRequest) Interface() protoreflect.Pro
 // Range returns immediately if f returns false.
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
-func (x *fastReflection_QueryConstantValuesRequest) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+func (x *fastReflection_QueryConfigDefaultsRequest) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
 	if x.Height != "" {
 		value := protoreflect.ValueOfString(x.Height)
-		if !f(fd_QueryConstantValuesRequest_height, value) {
+		if !f(fd_QueryConfigDefaultsRequest_height, value) {
 			return
 		}
 	}
@@ -108,15 +108,15 @@ func (x *fastReflection_QueryConstantValuesRequest) Range(f func(protoreflect.Fi
 // In other cases (aside from the nullable cases above),
 // a proto3 scalar field is populated if it contains a non-zero value, and
 // a repeated field is populated if it is non-empty.
-func (x *fastReflection_QueryConstantValuesRequest) Has(fd protoreflect.FieldDescriptor) bool {
+func (x *fastReflection_QueryConfigDefaultsRequest) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.QueryConstantValuesRequest.height":
+	case "types.QueryConfigDefaultsRequest.height":
 		return x.Height != ""
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConstantValuesRequest"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConfigDefaultsRequest"))
 		}
-		panic(fmt.Errorf("message types.QueryConstantValuesRequest does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryConfigDefaultsRequest does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -126,15 +126,15 @@ func (x *fastReflection_QueryConstantValuesRequest) Has(fd protoreflect.FieldDes
 // associated with the given field number.
 //
 // Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryConstantValuesRequest) Clear(fd protoreflect.FieldDescriptor) {
+func (x *fastReflection_QueryConfigDefaultsRequest) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.QueryConstantValuesRequest.height":
+	case "types.QueryConfigDefaultsRequest.height":
 		x.Height = ""
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConstantValuesRequest"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConfigDefaultsRequest"))
 		}
-		panic(fmt.Errorf("message types.QueryConstantValuesRequest does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryConfigDefaultsRequest does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -144,16 +144,16 @@ func (x *fastReflection_QueryConstantValuesRequest) Clear(fd protoreflect.FieldD
 // the default value of a bytes scalar is guaranteed to be a copy.
 // For unpopulated composite types, it returns an empty, read-only view
 // of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_QueryConstantValuesRequest) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_QueryConfigDefaultsRequest) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.QueryConstantValuesRequest.height":
+	case "types.QueryConfigDefaultsRequest.height":
 		value := x.Height
 		return protoreflect.ValueOfString(value)
 	default:
 		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConstantValuesRequest"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConfigDefaultsRequest"))
 		}
-		panic(fmt.Errorf("message types.QueryConstantValuesRequest does not contain field %s", descriptor.FullName()))
+		panic(fmt.Errorf("message types.QueryConfigDefaultsRequest does not contain field %s", descriptor.FullName()))
 	}
 }
 
@@ -167,15 +167,15 @@ func (x *fastReflection_QueryConstantValuesRequest) Get(descriptor protoreflect.
 // empty, read-only value, then it panics.
 //
 // Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryConstantValuesRequest) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+func (x *fastReflection_QueryConfigDefaultsRequest) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.QueryConstantValuesRequest.height":
+	case "types.QueryConfigDefaultsRequest.height":
 		x.Height = value.Interface().(string)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConstantValuesRequest"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConfigDefaultsRequest"))
 		}
-		panic(fmt.Errorf("message types.QueryConstantValuesRequest does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryConfigDefaultsRequest does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -189,40 +189,40 @@ func (x *fastReflection_QueryConstantValuesRequest) Set(fd protoreflect.FieldDes
 // It panics if the field does not contain a composite type.
 //
 // Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryConstantValuesRequest) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_QueryConfigDefaultsRequest) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.QueryConstantValuesRequest.height":
-		panic(fmt.Errorf("field height of message types.QueryConstantValuesRequest is not mutable"))
+	case "types.QueryConfigDefaultsRequest.height":
+		panic(fmt.Errorf("field height of message types.QueryConfigDefaultsRequest is not mutable"))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConstantValuesRequest"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConfigDefaultsRequest"))
 		}
-		panic(fmt.Errorf("message types.QueryConstantValuesRequest does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryConfigDefaultsRequest does not contain field %s", fd.FullName()))
 	}
 }
 
 // NewField returns a new value that is assignable to the field
 // for the given descriptor. For scalars, this returns the default value.
 // For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_QueryConstantValuesRequest) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_QueryConfigDefaultsRequest) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.QueryConstantValuesRequest.height":
+	case "types.QueryConfigDefaultsRequest.height":
 		return protoreflect.ValueOfString("")
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConstantValuesRequest"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConfigDefaultsRequest"))
 		}
-		panic(fmt.Errorf("message types.QueryConstantValuesRequest does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryConfigDefaultsRequest does not contain field %s", fd.FullName()))
 	}
 }
 
 // WhichOneof reports which field within the oneof is populated,
 // returning nil if none are populated.
 // It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_QueryConstantValuesRequest) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+func (x *fastReflection_QueryConfigDefaultsRequest) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
 	switch d.FullName() {
 	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.QueryConstantValuesRequest", d.FullName()))
+		panic(fmt.Errorf("%s is not a oneof field in types.QueryConfigDefaultsRequest", d.FullName()))
 	}
 	panic("unreachable")
 }
@@ -230,7 +230,7 @@ func (x *fastReflection_QueryConstantValuesRequest) WhichOneof(d protoreflect.On
 // GetUnknown retrieves the entire list of unknown fields.
 // The caller may only mutate the contents of the RawFields
 // if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_QueryConstantValuesRequest) GetUnknown() protoreflect.RawFields {
+func (x *fastReflection_QueryConfigDefaultsRequest) GetUnknown() protoreflect.RawFields {
 	return x.unknownFields
 }
 
@@ -241,7 +241,7 @@ func (x *fastReflection_QueryConstantValuesRequest) GetUnknown() protoreflect.Ra
 // An empty RawFields may be passed to clear the fields.
 //
 // SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryConstantValuesRequest) SetUnknown(fields protoreflect.RawFields) {
+func (x *fastReflection_QueryConfigDefaultsRequest) SetUnknown(fields protoreflect.RawFields) {
 	x.unknownFields = fields
 }
 
@@ -253,7 +253,7 @@ func (x *fastReflection_QueryConstantValuesRequest) SetUnknown(fields protorefle
 // message type, but the details are implementation dependent.
 // Validity is not part of the protobuf data model, and may not
 // be preserved in marshaling or other operations.
-func (x *fastReflection_QueryConstantValuesRequest) IsValid() bool {
+func (x *fastReflection_QueryConfigDefaultsRequest) IsValid() bool {
 	return x != nil
 }
 
@@ -263,9 +263,9 @@ func (x *fastReflection_QueryConstantValuesRequest) IsValid() bool {
 // The returned methods type is identical to
 // "google.golang.org/protobuf/runtime/protoiface".Methods.
 // Consult the protoiface package documentation for details.
-func (x *fastReflection_QueryConstantValuesRequest) ProtoMethods() *protoiface.Methods {
+func (x *fastReflection_QueryConfigDefaultsRequest) ProtoMethods() *protoiface.Methods {
 	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*QueryConstantValuesRequest)
+		x := input.Message.Interface().(*QueryConfigDefaultsRequest)
 		if x == nil {
 			return protoiface.SizeOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -291,7 +291,7 @@ func (x *fastReflection_QueryConstantValuesRequest) ProtoMethods() *protoiface.M
 	}
 
 	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*QueryConstantValuesRequest)
+		x := input.Message.Interface().(*QueryConfigDefaultsRequest)
 		if x == nil {
 			return protoiface.MarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -328,7 +328,7 @@ func (x *fastReflection_QueryConstantValuesRequest) ProtoMethods() *protoiface.M
 		}, nil
 	}
 	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*QueryConstantValuesRequest)
+		x := input.Message.Interface().(*QueryConfigDefaultsRequest)
 		if x == nil {
 			return protoiface.UnmarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -360,10 +360,10 @@ func (x *fastReflection_QueryConstantValuesRequest) ProtoMethods() *protoiface.M
 			fieldNum := int32(wire >> 3)
 			wireType := int(wire & 0x7)
 			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryConstantValuesRequest: wiretype end group for non-group")
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryConfigDefaultsRequest: wiretype end group for non-group")
 			}
 			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryConstantValuesRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryConfigDefaultsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
 			case 1:
@@ -433,183 +433,183 @@ func (x *fastReflection_QueryConstantValuesRequest) ProtoMethods() *protoiface.M
 	}
 }
 
-var _ protoreflect.List = (*_QueryConstantValuesResponse_1_list)(nil)
+var _ protoreflect.List = (*_QueryConfigDefaultsResponse_1_list)(nil)
 
-type _QueryConstantValuesResponse_1_list struct {
+type _QueryConfigDefaultsResponse_1_list struct {
 	list *[]*Int64Constants
 }
 
-func (x *_QueryConstantValuesResponse_1_list) Len() int {
+func (x *_QueryConfigDefaultsResponse_1_list) Len() int {
 	if x.list == nil {
 		return 0
 	}
 	return len(*x.list)
 }
 
-func (x *_QueryConstantValuesResponse_1_list) Get(i int) protoreflect.Value {
+func (x *_QueryConfigDefaultsResponse_1_list) Get(i int) protoreflect.Value {
 	return protoreflect.ValueOfMessage((*x.list)[i].ProtoReflect())
 }
 
-func (x *_QueryConstantValuesResponse_1_list) Set(i int, value protoreflect.Value) {
+func (x *_QueryConfigDefaultsResponse_1_list) Set(i int, value protoreflect.Value) {
 	valueUnwrapped := value.Message()
 	concreteValue := valueUnwrapped.Interface().(*Int64Constants)
 	(*x.list)[i] = concreteValue
 }
 
-func (x *_QueryConstantValuesResponse_1_list) Append(value protoreflect.Value) {
+func (x *_QueryConfigDefaultsResponse_1_list) Append(value protoreflect.Value) {
 	valueUnwrapped := value.Message()
 	concreteValue := valueUnwrapped.Interface().(*Int64Constants)
 	*x.list = append(*x.list, concreteValue)
 }
 
-func (x *_QueryConstantValuesResponse_1_list) AppendMutable() protoreflect.Value {
+func (x *_QueryConfigDefaultsResponse_1_list) AppendMutable() protoreflect.Value {
 	v := new(Int64Constants)
 	*x.list = append(*x.list, v)
 	return protoreflect.ValueOfMessage(v.ProtoReflect())
 }
 
-func (x *_QueryConstantValuesResponse_1_list) Truncate(n int) {
+func (x *_QueryConfigDefaultsResponse_1_list) Truncate(n int) {
 	for i := n; i < len(*x.list); i++ {
 		(*x.list)[i] = nil
 	}
 	*x.list = (*x.list)[:n]
 }
 
-func (x *_QueryConstantValuesResponse_1_list) NewElement() protoreflect.Value {
+func (x *_QueryConfigDefaultsResponse_1_list) NewElement() protoreflect.Value {
 	v := new(Int64Constants)
 	return protoreflect.ValueOfMessage(v.ProtoReflect())
 }
 
-func (x *_QueryConstantValuesResponse_1_list) IsValid() bool {
+func (x *_QueryConfigDefaultsResponse_1_list) IsValid() bool {
 	return x.list != nil
 }
 
-var _ protoreflect.List = (*_QueryConstantValuesResponse_2_list)(nil)
+var _ protoreflect.List = (*_QueryConfigDefaultsResponse_2_list)(nil)
 
-type _QueryConstantValuesResponse_2_list struct {
+type _QueryConfigDefaultsResponse_2_list struct {
 	list *[]*BoolConstants
 }
 
-func (x *_QueryConstantValuesResponse_2_list) Len() int {
+func (x *_QueryConfigDefaultsResponse_2_list) Len() int {
 	if x.list == nil {
 		return 0
 	}
 	return len(*x.list)
 }
 
-func (x *_QueryConstantValuesResponse_2_list) Get(i int) protoreflect.Value {
+func (x *_QueryConfigDefaultsResponse_2_list) Get(i int) protoreflect.Value {
 	return protoreflect.ValueOfMessage((*x.list)[i].ProtoReflect())
 }
 
-func (x *_QueryConstantValuesResponse_2_list) Set(i int, value protoreflect.Value) {
+func (x *_QueryConfigDefaultsResponse_2_list) Set(i int, value protoreflect.Value) {
 	valueUnwrapped := value.Message()
 	concreteValue := valueUnwrapped.Interface().(*BoolConstants)
 	(*x.list)[i] = concreteValue
 }
 
-func (x *_QueryConstantValuesResponse_2_list) Append(value protoreflect.Value) {
+func (x *_QueryConfigDefaultsResponse_2_list) Append(value protoreflect.Value) {
 	valueUnwrapped := value.Message()
 	concreteValue := valueUnwrapped.Interface().(*BoolConstants)
 	*x.list = append(*x.list, concreteValue)
 }
 
-func (x *_QueryConstantValuesResponse_2_list) AppendMutable() protoreflect.Value {
+func (x *_QueryConfigDefaultsResponse_2_list) AppendMutable() protoreflect.Value {
 	v := new(BoolConstants)
 	*x.list = append(*x.list, v)
 	return protoreflect.ValueOfMessage(v.ProtoReflect())
 }
 
-func (x *_QueryConstantValuesResponse_2_list) Truncate(n int) {
+func (x *_QueryConfigDefaultsResponse_2_list) Truncate(n int) {
 	for i := n; i < len(*x.list); i++ {
 		(*x.list)[i] = nil
 	}
 	*x.list = (*x.list)[:n]
 }
 
-func (x *_QueryConstantValuesResponse_2_list) NewElement() protoreflect.Value {
+func (x *_QueryConfigDefaultsResponse_2_list) NewElement() protoreflect.Value {
 	v := new(BoolConstants)
 	return protoreflect.ValueOfMessage(v.ProtoReflect())
 }
 
-func (x *_QueryConstantValuesResponse_2_list) IsValid() bool {
+func (x *_QueryConfigDefaultsResponse_2_list) IsValid() bool {
 	return x.list != nil
 }
 
-var _ protoreflect.List = (*_QueryConstantValuesResponse_3_list)(nil)
+var _ protoreflect.List = (*_QueryConfigDefaultsResponse_3_list)(nil)
 
-type _QueryConstantValuesResponse_3_list struct {
+type _QueryConfigDefaultsResponse_3_list struct {
 	list *[]*StringConstants
 }
 
-func (x *_QueryConstantValuesResponse_3_list) Len() int {
+func (x *_QueryConfigDefaultsResponse_3_list) Len() int {
 	if x.list == nil {
 		return 0
 	}
 	return len(*x.list)
 }
 
-func (x *_QueryConstantValuesResponse_3_list) Get(i int) protoreflect.Value {
+func (x *_QueryConfigDefaultsResponse_3_list) Get(i int) protoreflect.Value {
 	return protoreflect.ValueOfMessage((*x.list)[i].ProtoReflect())
 }
 
-func (x *_QueryConstantValuesResponse_3_list) Set(i int, value protoreflect.Value) {
+func (x *_QueryConfigDefaultsResponse_3_list) Set(i int, value protoreflect.Value) {
 	valueUnwrapped := value.Message()
 	concreteValue := valueUnwrapped.Interface().(*StringConstants)
 	(*x.list)[i] = concreteValue
 }
 
-func (x *_QueryConstantValuesResponse_3_list) Append(value protoreflect.Value) {
+func (x *_QueryConfigDefaultsResponse_3_list) Append(value protoreflect.Value) {
 	valueUnwrapped := value.Message()
 	concreteValue := valueUnwrapped.Interface().(*StringConstants)
 	*x.list = append(*x.list, concreteValue)
 }
 
-func (x *_QueryConstantValuesResponse_3_list) AppendMutable() protoreflect.Value {
+func (x *_QueryConfigDefaultsResponse_3_list) AppendMutable() protoreflect.Value {
 	v := new(StringConstants)
 	*x.list = append(*x.list, v)
 	return protoreflect.ValueOfMessage(v.ProtoReflect())
 }
 
-func (x *_QueryConstantValuesResponse_3_list) Truncate(n int) {
+func (x *_QueryConfigDefaultsResponse_3_list) Truncate(n int) {
 	for i := n; i < len(*x.list); i++ {
 		(*x.list)[i] = nil
 	}
 	*x.list = (*x.list)[:n]
 }
 
-func (x *_QueryConstantValuesResponse_3_list) NewElement() protoreflect.Value {
+func (x *_QueryConfigDefaultsResponse_3_list) NewElement() protoreflect.Value {
 	v := new(StringConstants)
 	return protoreflect.ValueOfMessage(v.ProtoReflect())
 }
 
-func (x *_QueryConstantValuesResponse_3_list) IsValid() bool {
+func (x *_QueryConfigDefaultsResponse_3_list) IsValid() bool {
 	return x.list != nil
 }
 
 var (
-	md_QueryConstantValuesResponse               protoreflect.MessageDescriptor
-	fd_QueryConstantValuesResponse_int_64_values protoreflect.FieldDescriptor
-	fd_QueryConstantValuesResponse_bool_values   protoreflect.FieldDescriptor
-	fd_QueryConstantValuesResponse_string_values protoreflect.FieldDescriptor
+	md_QueryConfigDefaultsResponse               protoreflect.MessageDescriptor
+	fd_QueryConfigDefaultsResponse_int_64_values protoreflect.FieldDescriptor
+	fd_QueryConfigDefaultsResponse_bool_values   protoreflect.FieldDescriptor
+	fd_QueryConfigDefaultsResponse_string_values protoreflect.FieldDescriptor
 )
 
 func init() {
 	file_types_query_constant_values_proto_init()
-	md_QueryConstantValuesResponse = File_types_query_constant_values_proto.Messages().ByName("QueryConstantValuesResponse")
-	fd_QueryConstantValuesResponse_int_64_values = md_QueryConstantValuesResponse.Fields().ByName("int_64_values")
-	fd_QueryConstantValuesResponse_bool_values = md_QueryConstantValuesResponse.Fields().ByName("bool_values")
-	fd_QueryConstantValuesResponse_string_values = md_QueryConstantValuesResponse.Fields().ByName("string_values")
+	md_QueryConfigDefaultsResponse = File_types_query_constant_values_proto.Messages().ByName("QueryConfigDefaultsResponse")
+	fd_QueryConfigDefaultsResponse_int_64_values = md_QueryConfigDefaultsResponse.Fields().ByName("int_64_values")
+	fd_QueryConfigDefaultsResponse_bool_values = md_QueryConfigDefaultsResponse.Fields().ByName("bool_values")
+	fd_QueryConfigDefaultsResponse_string_values = md_QueryConfigDefaultsResponse.Fields().ByName("string_values")
 }
 
-var _ protoreflect.Message = (*fastReflection_QueryConstantValuesResponse)(nil)
+var _ protoreflect.Message = (*fastReflection_QueryConfigDefaultsResponse)(nil)
 
-type fastReflection_QueryConstantValuesResponse QueryConstantValuesResponse
+type fastReflection_QueryConfigDefaultsResponse QueryConfigDefaultsResponse
 
-func (x *QueryConstantValuesResponse) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_QueryConstantValuesResponse)(x)
+func (x *QueryConfigDefaultsResponse) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_QueryConfigDefaultsResponse)(x)
 }
 
-func (x *QueryConstantValuesResponse) slowProtoReflect() protoreflect.Message {
+func (x *QueryConfigDefaultsResponse) slowProtoReflect() protoreflect.Message {
 	mi := &file_types_query_constant_values_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -621,43 +621,43 @@ func (x *QueryConstantValuesResponse) slowProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-var _fastReflection_QueryConstantValuesResponse_messageType fastReflection_QueryConstantValuesResponse_messageType
-var _ protoreflect.MessageType = fastReflection_QueryConstantValuesResponse_messageType{}
+var _fastReflection_QueryConfigDefaultsResponse_messageType fastReflection_QueryConfigDefaultsResponse_messageType
+var _ protoreflect.MessageType = fastReflection_QueryConfigDefaultsResponse_messageType{}
 
-type fastReflection_QueryConstantValuesResponse_messageType struct{}
+type fastReflection_QueryConfigDefaultsResponse_messageType struct{}
 
-func (x fastReflection_QueryConstantValuesResponse_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_QueryConstantValuesResponse)(nil)
+func (x fastReflection_QueryConfigDefaultsResponse_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_QueryConfigDefaultsResponse)(nil)
 }
-func (x fastReflection_QueryConstantValuesResponse_messageType) New() protoreflect.Message {
-	return new(fastReflection_QueryConstantValuesResponse)
+func (x fastReflection_QueryConfigDefaultsResponse_messageType) New() protoreflect.Message {
+	return new(fastReflection_QueryConfigDefaultsResponse)
 }
-func (x fastReflection_QueryConstantValuesResponse_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_QueryConstantValuesResponse
+func (x fastReflection_QueryConfigDefaultsResponse_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryConfigDefaultsResponse
 }
 
 // Descriptor returns message descriptor, which contains only the protobuf
 // type information for the message.
-func (x *fastReflection_QueryConstantValuesResponse) Descriptor() protoreflect.MessageDescriptor {
-	return md_QueryConstantValuesResponse
+func (x *fastReflection_QueryConfigDefaultsResponse) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryConfigDefaultsResponse
 }
 
 // Type returns the message type, which encapsulates both Go and protobuf
 // type information. If the Go type information is not needed,
 // it is recommended that the message descriptor be used instead.
-func (x *fastReflection_QueryConstantValuesResponse) Type() protoreflect.MessageType {
-	return _fastReflection_QueryConstantValuesResponse_messageType
+func (x *fastReflection_QueryConfigDefaultsResponse) Type() protoreflect.MessageType {
+	return _fastReflection_QueryConfigDefaultsResponse_messageType
 }
 
 // New returns a newly allocated and mutable empty message.
-func (x *fastReflection_QueryConstantValuesResponse) New() protoreflect.Message {
-	return new(fastReflection_QueryConstantValuesResponse)
+func (x *fastReflection_QueryConfigDefaultsResponse) New() protoreflect.Message {
+	return new(fastReflection_QueryConfigDefaultsResponse)
 }
 
 // Interface unwraps the message reflection interface and
 // returns the underlying ProtoMessage interface.
-func (x *fastReflection_QueryConstantValuesResponse) Interface() protoreflect.ProtoMessage {
-	return (*QueryConstantValuesResponse)(x)
+func (x *fastReflection_QueryConfigDefaultsResponse) Interface() protoreflect.ProtoMessage {
+	return (*QueryConfigDefaultsResponse)(x)
 }
 
 // Range iterates over every populated field in an undefined order,
@@ -665,22 +665,22 @@ func (x *fastReflection_QueryConstantValuesResponse) Interface() protoreflect.Pr
 // Range returns immediately if f returns false.
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
-func (x *fastReflection_QueryConstantValuesResponse) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+func (x *fastReflection_QueryConfigDefaultsResponse) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
 	if len(x.Int_64Values) != 0 {
-		value := protoreflect.ValueOfList(&_QueryConstantValuesResponse_1_list{list: &x.Int_64Values})
-		if !f(fd_QueryConstantValuesResponse_int_64_values, value) {
+		value := protoreflect.ValueOfList(&_QueryConfigDefaultsResponse_1_list{list: &x.Int_64Values})
+		if !f(fd_QueryConfigDefaultsResponse_int_64_values, value) {
 			return
 		}
 	}
 	if len(x.BoolValues) != 0 {
-		value := protoreflect.ValueOfList(&_QueryConstantValuesResponse_2_list{list: &x.BoolValues})
-		if !f(fd_QueryConstantValuesResponse_bool_values, value) {
+		value := protoreflect.ValueOfList(&_QueryConfigDefaultsResponse_2_list{list: &x.BoolValues})
+		if !f(fd_QueryConfigDefaultsResponse_bool_values, value) {
 			return
 		}
 	}
 	if len(x.StringValues) != 0 {
-		value := protoreflect.ValueOfList(&_QueryConstantValuesResponse_3_list{list: &x.StringValues})
-		if !f(fd_QueryConstantValuesResponse_string_values, value) {
+		value := protoreflect.ValueOfList(&_QueryConfigDefaultsResponse_3_list{list: &x.StringValues})
+		if !f(fd_QueryConfigDefaultsResponse_string_values, value) {
 			return
 		}
 	}
@@ -697,19 +697,19 @@ func (x *fastReflection_QueryConstantValuesResponse) Range(f func(protoreflect.F
 // In other cases (aside from the nullable cases above),
 // a proto3 scalar field is populated if it contains a non-zero value, and
 // a repeated field is populated if it is non-empty.
-func (x *fastReflection_QueryConstantValuesResponse) Has(fd protoreflect.FieldDescriptor) bool {
+func (x *fastReflection_QueryConfigDefaultsResponse) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.QueryConstantValuesResponse.int_64_values":
+	case "types.QueryConfigDefaultsResponse.int_64_values":
 		return len(x.Int_64Values) != 0
-	case "types.QueryConstantValuesResponse.bool_values":
+	case "types.QueryConfigDefaultsResponse.bool_values":
 		return len(x.BoolValues) != 0
-	case "types.QueryConstantValuesResponse.string_values":
+	case "types.QueryConfigDefaultsResponse.string_values":
 		return len(x.StringValues) != 0
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConstantValuesResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConfigDefaultsResponse"))
 		}
-		panic(fmt.Errorf("message types.QueryConstantValuesResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryConfigDefaultsResponse does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -719,19 +719,19 @@ func (x *fastReflection_QueryConstantValuesResponse) Has(fd protoreflect.FieldDe
 // associated with the given field number.
 //
 // Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryConstantValuesResponse) Clear(fd protoreflect.FieldDescriptor) {
+func (x *fastReflection_QueryConfigDefaultsResponse) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.QueryConstantValuesResponse.int_64_values":
+	case "types.QueryConfigDefaultsResponse.int_64_values":
 		x.Int_64Values = nil
-	case "types.QueryConstantValuesResponse.bool_values":
+	case "types.QueryConfigDefaultsResponse.bool_values":
 		x.BoolValues = nil
-	case "types.QueryConstantValuesResponse.string_values":
+	case "types.QueryConfigDefaultsResponse.string_values":
 		x.StringValues = nil
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConstantValuesResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConfigDefaultsResponse"))
 		}
-		panic(fmt.Errorf("message types.QueryConstantValuesResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryConfigDefaultsResponse does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -741,31 +741,31 @@ func (x *fastReflection_QueryConstantValuesResponse) Clear(fd protoreflect.Field
 // the default value of a bytes scalar is guaranteed to be a copy.
 // For unpopulated composite types, it returns an empty, read-only view
 // of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_QueryConstantValuesResponse) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_QueryConfigDefaultsResponse) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.QueryConstantValuesResponse.int_64_values":
+	case "types.QueryConfigDefaultsResponse.int_64_values":
 		if len(x.Int_64Values) == 0 {
-			return protoreflect.ValueOfList(&_QueryConstantValuesResponse_1_list{})
+			return protoreflect.ValueOfList(&_QueryConfigDefaultsResponse_1_list{})
 		}
-		listValue := &_QueryConstantValuesResponse_1_list{list: &x.Int_64Values}
+		listValue := &_QueryConfigDefaultsResponse_1_list{list: &x.Int_64Values}
 		return protoreflect.ValueOfList(listValue)
-	case "types.QueryConstantValuesResponse.bool_values":
+	case "types.QueryConfigDefaultsResponse.bool_values":
 		if len(x.BoolValues) == 0 {
-			return protoreflect.ValueOfList(&_QueryConstantValuesResponse_2_list{})
+			return protoreflect.ValueOfList(&_QueryConfigDefaultsResponse_2_list{})
 		}
-		listValue := &_QueryConstantValuesResponse_2_list{list: &x.BoolValues}
+		listValue := &_QueryConfigDefaultsResponse_2_list{list: &x.BoolValues}
 		return protoreflect.ValueOfList(listValue)
-	case "types.QueryConstantValuesResponse.string_values":
+	case "types.QueryConfigDefaultsResponse.string_values":
 		if len(x.StringValues) == 0 {
-			return protoreflect.ValueOfList(&_QueryConstantValuesResponse_3_list{})
+			return protoreflect.ValueOfList(&_QueryConfigDefaultsResponse_3_list{})
 		}
-		listValue := &_QueryConstantValuesResponse_3_list{list: &x.StringValues}
+		listValue := &_QueryConfigDefaultsResponse_3_list{list: &x.StringValues}
 		return protoreflect.ValueOfList(listValue)
 	default:
 		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConstantValuesResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConfigDefaultsResponse"))
 		}
-		panic(fmt.Errorf("message types.QueryConstantValuesResponse does not contain field %s", descriptor.FullName()))
+		panic(fmt.Errorf("message types.QueryConfigDefaultsResponse does not contain field %s", descriptor.FullName()))
 	}
 }
 
@@ -779,25 +779,25 @@ func (x *fastReflection_QueryConstantValuesResponse) Get(descriptor protoreflect
 // empty, read-only value, then it panics.
 //
 // Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryConstantValuesResponse) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+func (x *fastReflection_QueryConfigDefaultsResponse) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.QueryConstantValuesResponse.int_64_values":
+	case "types.QueryConfigDefaultsResponse.int_64_values":
 		lv := value.List()
-		clv := lv.(*_QueryConstantValuesResponse_1_list)
+		clv := lv.(*_QueryConfigDefaultsResponse_1_list)
 		x.Int_64Values = *clv.list
-	case "types.QueryConstantValuesResponse.bool_values":
+	case "types.QueryConfigDefaultsResponse.bool_values":
 		lv := value.List()
-		clv := lv.(*_QueryConstantValuesResponse_2_list)
+		clv := lv.(*_QueryConfigDefaultsResponse_2_list)
 		x.BoolValues = *clv.list
-	case "types.QueryConstantValuesResponse.string_values":
+	case "types.QueryConfigDefaultsResponse.string_values":
 		lv := value.List()
-		clv := lv.(*_QueryConstantValuesResponse_3_list)
+		clv := lv.(*_QueryConfigDefaultsResponse_3_list)
 		x.StringValues = *clv.list
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConstantValuesResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConfigDefaultsResponse"))
 		}
-		panic(fmt.Errorf("message types.QueryConstantValuesResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryConfigDefaultsResponse does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -811,63 +811,63 @@ func (x *fastReflection_QueryConstantValuesResponse) Set(fd protoreflect.FieldDe
 // It panics if the field does not contain a composite type.
 //
 // Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryConstantValuesResponse) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_QueryConfigDefaultsResponse) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.QueryConstantValuesResponse.int_64_values":
+	case "types.QueryConfigDefaultsResponse.int_64_values":
 		if x.Int_64Values == nil {
 			x.Int_64Values = []*Int64Constants{}
 		}
-		value := &_QueryConstantValuesResponse_1_list{list: &x.Int_64Values}
+		value := &_QueryConfigDefaultsResponse_1_list{list: &x.Int_64Values}
 		return protoreflect.ValueOfList(value)
-	case "types.QueryConstantValuesResponse.bool_values":
+	case "types.QueryConfigDefaultsResponse.bool_values":
 		if x.BoolValues == nil {
 			x.BoolValues = []*BoolConstants{}
 		}
-		value := &_QueryConstantValuesResponse_2_list{list: &x.BoolValues}
+		value := &_QueryConfigDefaultsResponse_2_list{list: &x.BoolValues}
 		return protoreflect.ValueOfList(value)
-	case "types.QueryConstantValuesResponse.string_values":
+	case "types.QueryConfigDefaultsResponse.string_values":
 		if x.StringValues == nil {
 			x.StringValues = []*StringConstants{}
 		}
-		value := &_QueryConstantValuesResponse_3_list{list: &x.StringValues}
+		value := &_QueryConfigDefaultsResponse_3_list{list: &x.StringValues}
 		return protoreflect.ValueOfList(value)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConstantValuesResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConfigDefaultsResponse"))
 		}
-		panic(fmt.Errorf("message types.QueryConstantValuesResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryConfigDefaultsResponse does not contain field %s", fd.FullName()))
 	}
 }
 
 // NewField returns a new value that is assignable to the field
 // for the given descriptor. For scalars, this returns the default value.
 // For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_QueryConstantValuesResponse) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_QueryConfigDefaultsResponse) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.QueryConstantValuesResponse.int_64_values":
+	case "types.QueryConfigDefaultsResponse.int_64_values":
 		list := []*Int64Constants{}
-		return protoreflect.ValueOfList(&_QueryConstantValuesResponse_1_list{list: &list})
-	case "types.QueryConstantValuesResponse.bool_values":
+		return protoreflect.ValueOfList(&_QueryConfigDefaultsResponse_1_list{list: &list})
+	case "types.QueryConfigDefaultsResponse.bool_values":
 		list := []*BoolConstants{}
-		return protoreflect.ValueOfList(&_QueryConstantValuesResponse_2_list{list: &list})
-	case "types.QueryConstantValuesResponse.string_values":
+		return protoreflect.ValueOfList(&_QueryConfigDefaultsResponse_2_list{list: &list})
+	case "types.QueryConfigDefaultsResponse.string_values":
 		list := []*StringConstants{}
-		return protoreflect.ValueOfList(&_QueryConstantValuesResponse_3_list{list: &list})
+		return protoreflect.ValueOfList(&_QueryConfigDefaultsResponse_3_list{list: &list})
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConstantValuesResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryConfigDefaultsResponse"))
 		}
-		panic(fmt.Errorf("message types.QueryConstantValuesResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryConfigDefaultsResponse does not contain field %s", fd.FullName()))
 	}
 }
 
 // WhichOneof reports which field within the oneof is populated,
 // returning nil if none are populated.
 // It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_QueryConstantValuesResponse) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+func (x *fastReflection_QueryConfigDefaultsResponse) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
 	switch d.FullName() {
 	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.QueryConstantValuesResponse", d.FullName()))
+		panic(fmt.Errorf("%s is not a oneof field in types.QueryConfigDefaultsResponse", d.FullName()))
 	}
 	panic("unreachable")
 }
@@ -875,7 +875,7 @@ func (x *fastReflection_QueryConstantValuesResponse) WhichOneof(d protoreflect.O
 // GetUnknown retrieves the entire list of unknown fields.
 // The caller may only mutate the contents of the RawFields
 // if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_QueryConstantValuesResponse) GetUnknown() protoreflect.RawFields {
+func (x *fastReflection_QueryConfigDefaultsResponse) GetUnknown() protoreflect.RawFields {
 	return x.unknownFields
 }
 
@@ -886,7 +886,7 @@ func (x *fastReflection_QueryConstantValuesResponse) GetUnknown() protoreflect.R
 // An empty RawFields may be passed to clear the fields.
 //
 // SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryConstantValuesResponse) SetUnknown(fields protoreflect.RawFields) {
+func (x *fastReflection_QueryConfigDefaultsResponse) SetUnknown(fields protoreflect.RawFields) {
 	x.unknownFields = fields
 }
 
@@ -898,7 +898,7 @@ func (x *fastReflection_QueryConstantValuesResponse) SetUnknown(fields protorefl
 // message type, but the details are implementation dependent.
 // Validity is not part of the protobuf data model, and may not
 // be preserved in marshaling or other operations.
-func (x *fastReflection_QueryConstantValuesResponse) IsValid() bool {
+func (x *fastReflection_QueryConfigDefaultsResponse) IsValid() bool {
 	return x != nil
 }
 
@@ -908,9 +908,9 @@ func (x *fastReflection_QueryConstantValuesResponse) IsValid() bool {
 // The returned methods type is identical to
 // "google.golang.org/protobuf/runtime/protoiface".Methods.
 // Consult the protoiface package documentation for details.
-func (x *fastReflection_QueryConstantValuesResponse) ProtoMethods() *protoiface.Methods {
+func (x *fastReflection_QueryConfigDefaultsResponse) ProtoMethods() *protoiface.Methods {
 	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*QueryConstantValuesResponse)
+		x := input.Message.Interface().(*QueryConfigDefaultsResponse)
 		if x == nil {
 			return protoiface.SizeOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -950,7 +950,7 @@ func (x *fastReflection_QueryConstantValuesResponse) ProtoMethods() *protoiface.
 	}
 
 	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*QueryConstantValuesResponse)
+		x := input.Message.Interface().(*QueryConfigDefaultsResponse)
 		if x == nil {
 			return protoiface.MarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -1028,7 +1028,7 @@ func (x *fastReflection_QueryConstantValuesResponse) ProtoMethods() *protoiface.
 		}, nil
 	}
 	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*QueryConstantValuesResponse)
+		x := input.Message.Interface().(*QueryConfigDefaultsResponse)
 		if x == nil {
 			return protoiface.UnmarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -1060,10 +1060,10 @@ func (x *fastReflection_QueryConstantValuesResponse) ProtoMethods() *protoiface.
 			fieldNum := int32(wire >> 3)
 			wireType := int(wire & 0x7)
 			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryConstantValuesResponse: wiretype end group for non-group")
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryConfigDefaultsResponse: wiretype end group for non-group")
 			}
 			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryConstantValuesResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryConfigDefaultsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
 			case 1:
@@ -2642,7 +2642,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type QueryConstantValuesRequest struct {
+type QueryConfigDefaultsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -2650,8 +2650,8 @@ type QueryConstantValuesRequest struct {
 	Height string `protobuf:"bytes,1,opt,name=height,proto3" json:"height,omitempty"`
 }
 
-func (x *QueryConstantValuesRequest) Reset() {
-	*x = QueryConstantValuesRequest{}
+func (x *QueryConfigDefaultsRequest) Reset() {
+	*x = QueryConfigDefaultsRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_query_constant_values_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2659,25 +2659,25 @@ func (x *QueryConstantValuesRequest) Reset() {
 	}
 }
 
-func (x *QueryConstantValuesRequest) String() string {
+func (x *QueryConfigDefaultsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*QueryConstantValuesRequest) ProtoMessage() {}
+func (*QueryConfigDefaultsRequest) ProtoMessage() {}
 
-// Deprecated: Use QueryConstantValuesRequest.ProtoReflect.Descriptor instead.
-func (*QueryConstantValuesRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use QueryConfigDefaultsRequest.ProtoReflect.Descriptor instead.
+func (*QueryConfigDefaultsRequest) Descriptor() ([]byte, []int) {
 	return file_types_query_constant_values_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *QueryConstantValuesRequest) GetHeight() string {
+func (x *QueryConfigDefaultsRequest) GetHeight() string {
 	if x != nil {
 		return x.Height
 	}
 	return ""
 }
 
-type QueryConstantValuesResponse struct {
+type QueryConfigDefaultsResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -2687,8 +2687,8 @@ type QueryConstantValuesResponse struct {
 	StringValues []*StringConstants `protobuf:"bytes,3,rep,name=string_values,json=stringValues,proto3" json:"string_values,omitempty"`
 }
 
-func (x *QueryConstantValuesResponse) Reset() {
-	*x = QueryConstantValuesResponse{}
+func (x *QueryConfigDefaultsResponse) Reset() {
+	*x = QueryConfigDefaultsResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_query_constant_values_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2696,32 +2696,32 @@ func (x *QueryConstantValuesResponse) Reset() {
 	}
 }
 
-func (x *QueryConstantValuesResponse) String() string {
+func (x *QueryConfigDefaultsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*QueryConstantValuesResponse) ProtoMessage() {}
+func (*QueryConfigDefaultsResponse) ProtoMessage() {}
 
-// Deprecated: Use QueryConstantValuesResponse.ProtoReflect.Descriptor instead.
-func (*QueryConstantValuesResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use QueryConfigDefaultsResponse.ProtoReflect.Descriptor instead.
+func (*QueryConfigDefaultsResponse) Descriptor() ([]byte, []int) {
 	return file_types_query_constant_values_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *QueryConstantValuesResponse) GetInt_64Values() []*Int64Constants {
+func (x *QueryConfigDefaultsResponse) GetInt_64Values() []*Int64Constants {
 	if x != nil {
 		return x.Int_64Values
 	}
 	return nil
 }
 
-func (x *QueryConstantValuesResponse) GetBoolValues() []*BoolConstants {
+func (x *QueryConfigDefaultsResponse) GetBoolValues() []*BoolConstants {
 	if x != nil {
 		return x.BoolValues
 	}
 	return nil
 }
 
-func (x *QueryConstantValuesResponse) GetStringValues() []*StringConstants {
+func (x *QueryConfigDefaultsResponse) GetStringValues() []*StringConstants {
 	if x != nil {
 		return x.StringValues
 	}
@@ -2864,11 +2864,11 @@ var file_types_query_constant_values_proto_rawDesc = []byte{
 	0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x5f, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x2e, 0x70, 0x72,
 	0x6f, 0x74, 0x6f, 0x12, 0x05, 0x74, 0x79, 0x70, 0x65, 0x73, 0x1a, 0x14, 0x67, 0x6f, 0x67, 0x6f,
 	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67, 0x6f, 0x67, 0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x22, 0x34, 0x0a, 0x1a, 0x51, 0x75, 0x65, 0x72, 0x79, 0x43, 0x6f, 0x6e, 0x73, 0x74, 0x61, 0x6e,
-	0x74, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16,
+	0x22, 0x34, 0x0a, 0x1a, 0x51, 0x75, 0x65, 0x72, 0x79, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x44,
+	0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16,
 	0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06,
 	0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0xcc, 0x01, 0x0a, 0x1b, 0x51, 0x75, 0x65, 0x72, 0x79,
-	0x43, 0x6f, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x52, 0x65,
+	0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x44, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x73, 0x52, 0x65,
 	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x39, 0x0a, 0x0d, 0x69, 0x6e, 0x74, 0x5f, 0x36, 0x34,
 	0x5f, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x15, 0x2e,
 	0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x49, 0x6e, 0x74, 0x36, 0x34, 0x43, 0x6f, 0x6e, 0x73, 0x74,
@@ -2917,16 +2917,16 @@ func file_types_query_constant_values_proto_rawDescGZIP() []byte {
 
 var file_types_query_constant_values_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_types_query_constant_values_proto_goTypes = []interface{}{
-	(*QueryConstantValuesRequest)(nil),  // 0: types.QueryConstantValuesRequest
-	(*QueryConstantValuesResponse)(nil), // 1: types.QueryConstantValuesResponse
+	(*QueryConfigDefaultsRequest)(nil),  // 0: types.QueryConfigDefaultsRequest
+	(*QueryConfigDefaultsResponse)(nil), // 1: types.QueryConfigDefaultsResponse
 	(*Int64Constants)(nil),              // 2: types.Int64Constants
 	(*BoolConstants)(nil),               // 3: types.BoolConstants
 	(*StringConstants)(nil),             // 4: types.StringConstants
 }
 var file_types_query_constant_values_proto_depIdxs = []int32{
-	2, // 0: types.QueryConstantValuesResponse.int_64_values:type_name -> types.Int64Constants
-	3, // 1: types.QueryConstantValuesResponse.bool_values:type_name -> types.BoolConstants
-	4, // 2: types.QueryConstantValuesResponse.string_values:type_name -> types.StringConstants
+	2, // 0: types.QueryConfigDefaultsResponse.int_64_values:type_name -> types.Int64Constants
+	3, // 1: types.QueryConfigDefaultsResponse.bool_values:type_name -> types.BoolConstants
+	4, // 2: types.QueryConfigDefaultsResponse.string_values:type_name -> types.StringConstants
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
@@ -2941,7 +2941,7 @@ func file_types_query_constant_values_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_types_query_constant_values_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryConstantValuesRequest); i {
+			switch v := v.(*QueryConfigDefaultsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2953,7 +2953,7 @@ func file_types_query_constant_values_proto_init() {
 			}
 		}
 		file_types_query_constant_values_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryConstantValuesResponse); i {
+			switch v := v.(*QueryConfigDefaultsResponse); i {
 			case 0:
 				return &v.state
 			case 1:

@@ -4,9 +4,9 @@
 package constants
 
 func init() {
-	int64Overrides = map[ConstantName]int64{
-		ChurnInterval:       432000,
-		OperationalVotesMin: 1,
+	int64Overrides = map[ConfigName]int64{
+		Churn_IntervalBlocks:       432000,
+		Config_OperationalVotesMin: 1,
 	}
-	stringOverrides = map[ConstantName]string{}
+	stringOverrides = map[ConfigName]string{}
 }

@@ -26,9 +26,9 @@ func processSolvencyAttestation(
 ) error {
 	k := mgr.Keeper()
 
-	observeSlashPoints := mgr.GetConstants().GetInt64Value(constants.ObserveSlashPoints)
-	lackOfObservationPenalty := mgr.GetConstants().GetInt64Value(constants.LackOfObservationPenalty)
-	observeFlex := k.GetConfigInt64(ctx, constants.ObservationDelayFlexibility)
+	observeSlashPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
+	lackOfObservationPenalty := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_MissPenaltyPoints)
+	observeFlex := k.GetConfigInt64(ctx, constants.Observation_DelayFlexibilityBlocks)
 
 	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
 		telemetry.NewLabel("reason", "failed_observe_solvency"),
@@ -54,7 +54,7 @@ func processSolvencyAttestation(
 
 	// from this point , solvency reach consensus
 	if voter.ConsensusBlockHeight > 0 {
-		// After consensus, only decrement slash points if within the ObservationDelayFlexibility period.
+		// After consensus, only decrement slash points if within the Observation_DelayFlexibilityBlocks period.
 		if (voter.ConsensusBlockHeight + observeFlex) >= ctx.BlockHeight() {
 			slasher.DecSlashPoints(slashCtx, lackOfObservationPenalty, attester)
 		}
@@ -78,27 +78,12 @@ func processSolvencyAttestation(
 	slasher.IncSlashPoints(slashCtx, lackOfObservationPenalty, nonSigners...)
 
 	// Do checks for whether to act on this consensus or not.
-	const StopSolvencyCheckKey = `StopSolvencyCheck`
-	stopSolvencyCheck, err := k.GetMimir(ctx, StopSolvencyCheckKey)
-	if err != nil {
-		ctx.Logger().Error("fail to get mimir", "key", StopSolvencyCheckKey, "error", err)
-	}
+	haltSolvencyCheckKey := constants.Halt_SolvencyCheck.String()
+	stopSolvencyCheck := k.GetConfigInt64(ctx, constants.Halt_SolvencyCheck)
 	if stopSolvencyCheck > 0 && stopSolvencyCheck < ctx.BlockHeight() {
 		return nil
 	}
-	// stop solvency checker can be chain specific
-	stopSolvencyCheckChain, err := k.GetMimir(ctx, fmt.Sprintf("%s%s", StopSolvencyCheckKey, voter.Chain.String()))
-	if err != nil {
-		ctx.Logger().Error("fail to get mimir", "key", StopSolvencyCheckKey+voter.Chain.String(), "error", err)
-	}
-	if stopSolvencyCheckChain > 0 && stopSolvencyCheckChain < ctx.BlockHeight() {
-		return nil
-	}
-	haltChainKey := fmt.Sprintf(`SolvencyHalt%sChain`, voter.Chain)
-	haltChain, err := k.GetMimir(ctx, haltChainKey)
-	if err != nil {
-		ctx.Logger().Error("fail to get mimir", "error", err)
-	}
+	haltChain := stopSolvencyCheck
 	// If the chain was halted this block, leave it halted without overriding.
 	// (For instance if halted because of a different vault which is insolvent.)
 	// Also don't unhalt if the chain was manually halted for a future height
@@ -126,15 +111,15 @@ func processSolvencyAttestation(
 	// from unhalting the chain while this vault remains insolvent.
 	if isInsolvent {
 		if haltChain <= 0 {
-			k.SetMimir(ctx, haltChainKey, ctx.BlockHeight())
-			mimirEvent := NewEventSetMimir(strings.ToUpper(haltChainKey), strconv.FormatInt(ctx.BlockHeight(), 10))
-			if err := mgr.EventMgr().EmitEvent(ctx, mimirEvent); err != nil {
-				ctx.Logger().Error("fail to emit set_mimir event", "error", err)
+			k.SetConfig(ctx, haltSolvencyCheckKey, ctx.BlockHeight())
+			configEvent := NewEventSetConfig(strings.ToUpper(haltSolvencyCheckKey), strconv.FormatInt(ctx.BlockHeight(), 10))
+			if err := mgr.EventMgr().EmitEvent(ctx, configEvent); err != nil {
+				ctx.Logger().Error("fail to emit set_config event", "error", err)
 			}
 			ctx.Logger().Info("chain is insolvent, halt until it is resolved", "chain", voter.Chain)
 		} else if haltChain > 1 && haltChain < ctx.BlockHeight() {
 			// Refresh halt height to current block so a solvent vault can't unhalt next block
-			k.SetMimir(ctx, haltChainKey, ctx.BlockHeight())
+			k.SetConfig(ctx, haltSolvencyCheckKey, ctx.BlockHeight())
 		}
 	}
 
@@ -144,10 +129,10 @@ func processSolvencyAttestation(
 	if !isInsolvent && haltChain > 1 {
 		// if the chain was halted by previous solvency checker, auto unhalt it
 		ctx.Logger().Info("auto un-halt", "chain", voter.Chain, "previous halt height", haltChain, "current block height", ctx.BlockHeight())
-		k.SetMimir(ctx, haltChainKey, 0)
-		mimirEvent := NewEventSetMimir(strings.ToUpper(haltChainKey), "0")
-		if err := mgr.EventMgr().EmitEvent(ctx, mimirEvent); err != nil {
-			ctx.Logger().Error("fail to emit set_mimir event", "error", err)
+		k.SetConfig(ctx, haltSolvencyCheckKey, 0)
+		configEvent := NewEventSetConfig(strings.ToUpper(haltSolvencyCheckKey), "0")
+		if err := mgr.EventMgr().EmitEvent(ctx, configEvent); err != nil {
+			ctx.Logger().Error("fail to emit set_config event", "error", err)
 		}
 	}
 
@@ -227,9 +212,9 @@ func excludePendingOutboundFromVault(ctx cosmos.Context, mgr Manager, vault Vaul
 	}
 	vault.Coins = coinsCopy
 
-	// go back SigningTransactionPeriod blocks to see whether there are outstanding tx, the vault need to send out
+	// go back Keysign_PeriodBlocks blocks to see whether there are outstanding tx, the vault need to send out
 	// if there is , deduct it from their balance
-	signingPeriod := mgr.GetConstants().GetInt64Value(constants.SigningTransactionPeriod)
+	signingPeriod := mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)
 	startHeight := ctx.BlockHeight() - signingPeriod
 	if startHeight < 1 {
 		startHeight = 1

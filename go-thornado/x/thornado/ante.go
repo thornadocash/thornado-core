@@ -140,8 +140,8 @@ func (ad AnteDecorator) anteHandleMessage(ctx sdk.Context, version semver.Versio
 	// cli handlers (non-consensus)
 	case *types.MsgSetIPAddress:
 		return IPAddressAnteHandler(ctx, version, ad.keeper, *m)
-	case *types.MsgMimir:
-		return MimirAnteHandler(ctx, version, ad.keeper, *m)
+	case *types.MsgConfig:
+		return ConfigAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgNodePauseChain:
 		return NodePauseChainAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgSetNodeKeys:

@@ -91,7 +91,6 @@ type QueryVaultResponse struct {
 	InboundTxCount        int64           `protobuf:"varint,9,opt,name=inbound_tx_count,json=inboundTxCount,proto3" json:"inbound_tx_count,omitempty"`
 	OutboundTxCount       int64           `protobuf:"varint,10,opt,name=outbound_tx_count,json=outboundTxCount,proto3" json:"outbound_tx_count,omitempty"`
 	PendingTxBlockHeights []int64         `protobuf:"varint,11,rep,packed,name=pending_tx_block_heights,json=pendingTxBlockHeights,proto3" json:"pending_tx_block_heights,omitempty"`
-	Routers               []*VaultRouter  `protobuf:"bytes,12,rep,name=routers,proto3" json:"routers"`
 	Addresses             []*VaultAddress `protobuf:"bytes,13,rep,name=addresses,proto3" json:"addresses"`
 	Frozen                []string        `protobuf:"bytes,14,rep,name=frozen,proto3" json:"frozen,omitempty"`
 	PubKeyEddsa           string          `protobuf:"bytes,15,opt,name=pub_key_eddsa,json=pubKeyEddsa,proto3" json:"pub_key_eddsa,omitempty"`
@@ -207,13 +206,6 @@ func (m *QueryVaultResponse) GetPendingTxBlockHeights() []int64 {
 	return nil
 }
 
-func (m *QueryVaultResponse) GetRouters() []*VaultRouter {
-	if m != nil {
-		return m.Routers
-	}
-	return nil
-}
-
 func (m *QueryVaultResponse) GetAddresses() []*VaultAddress {
 	if m != nil {
 		return m.Addresses
@@ -235,22 +227,22 @@ func (m *QueryVaultResponse) GetPubKeyEddsa() string {
 	return ""
 }
 
-type QueryAsgardVaultsRequest struct {
+type QueryBaseVaultsRequest struct {
 	Height string `protobuf:"bytes,1,opt,name=height,proto3" json:"height,omitempty"`
 }
 
-func (m *QueryAsgardVaultsRequest) Reset()         { *m = QueryAsgardVaultsRequest{} }
-func (m *QueryAsgardVaultsRequest) String() string { return proto.CompactTextString(m) }
-func (*QueryAsgardVaultsRequest) ProtoMessage()    {}
-func (*QueryAsgardVaultsRequest) Descriptor() ([]byte, []int) {
+func (m *QueryBaseVaultsRequest) Reset()         { *m = QueryBaseVaultsRequest{} }
+func (m *QueryBaseVaultsRequest) String() string { return proto.CompactTextString(m) }
+func (*QueryBaseVaultsRequest) ProtoMessage()    {}
+func (*QueryBaseVaultsRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_941f4868303210e7, []int{2}
 }
-func (m *QueryAsgardVaultsRequest) XXX_Unmarshal(b []byte) error {
+func (m *QueryBaseVaultsRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *QueryAsgardVaultsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *QueryBaseVaultsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_QueryAsgardVaultsRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_QueryBaseVaultsRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -260,41 +252,41 @@ func (m *QueryAsgardVaultsRequest) XXX_Marshal(b []byte, deterministic bool) ([]
 		return b[:n], nil
 	}
 }
-func (m *QueryAsgardVaultsRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryAsgardVaultsRequest.Merge(m, src)
+func (m *QueryBaseVaultsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryBaseVaultsRequest.Merge(m, src)
 }
-func (m *QueryAsgardVaultsRequest) XXX_Size() int {
+func (m *QueryBaseVaultsRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *QueryAsgardVaultsRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryAsgardVaultsRequest.DiscardUnknown(m)
+func (m *QueryBaseVaultsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryBaseVaultsRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QueryAsgardVaultsRequest proto.InternalMessageInfo
+var xxx_messageInfo_QueryBaseVaultsRequest proto.InternalMessageInfo
 
-func (m *QueryAsgardVaultsRequest) GetHeight() string {
+func (m *QueryBaseVaultsRequest) GetHeight() string {
 	if m != nil {
 		return m.Height
 	}
 	return ""
 }
 
-type QueryAsgardVaultsResponse struct {
-	AsgardVaults []*QueryVaultResponse `protobuf:"bytes,1,rep,name=asgard_vaults,json=asgardVaults,proto3" json:"asgard_vaults,omitempty"`
+type QueryBaseVaultsResponse struct {
+	BaseVaults []*QueryVaultResponse `protobuf:"bytes,1,rep,name=base_vaults,json=baseVaults,proto3" json:"base_vaults,omitempty"`
 }
 
-func (m *QueryAsgardVaultsResponse) Reset()         { *m = QueryAsgardVaultsResponse{} }
-func (m *QueryAsgardVaultsResponse) String() string { return proto.CompactTextString(m) }
-func (*QueryAsgardVaultsResponse) ProtoMessage()    {}
-func (*QueryAsgardVaultsResponse) Descriptor() ([]byte, []int) {
+func (m *QueryBaseVaultsResponse) Reset()         { *m = QueryBaseVaultsResponse{} }
+func (m *QueryBaseVaultsResponse) String() string { return proto.CompactTextString(m) }
+func (*QueryBaseVaultsResponse) ProtoMessage()    {}
+func (*QueryBaseVaultsResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_941f4868303210e7, []int{3}
 }
-func (m *QueryAsgardVaultsResponse) XXX_Unmarshal(b []byte) error {
+func (m *QueryBaseVaultsResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *QueryAsgardVaultsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *QueryBaseVaultsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_QueryAsgardVaultsResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_QueryBaseVaultsResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -304,21 +296,21 @@ func (m *QueryAsgardVaultsResponse) XXX_Marshal(b []byte, deterministic bool) ([
 		return b[:n], nil
 	}
 }
-func (m *QueryAsgardVaultsResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_QueryAsgardVaultsResponse.Merge(m, src)
+func (m *QueryBaseVaultsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryBaseVaultsResponse.Merge(m, src)
 }
-func (m *QueryAsgardVaultsResponse) XXX_Size() int {
+func (m *QueryBaseVaultsResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *QueryAsgardVaultsResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_QueryAsgardVaultsResponse.DiscardUnknown(m)
+func (m *QueryBaseVaultsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryBaseVaultsResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_QueryAsgardVaultsResponse proto.InternalMessageInfo
+var xxx_messageInfo_QueryBaseVaultsResponse proto.InternalMessageInfo
 
-func (m *QueryAsgardVaultsResponse) GetAsgardVaults() []*QueryVaultResponse {
+func (m *QueryBaseVaultsResponse) GetBaseVaults() []*QueryVaultResponse {
 	if m != nil {
-		return m.AsgardVaults
+		return m.BaseVaults
 	}
 	return nil
 }
@@ -420,10 +412,9 @@ func (m *QueryVaultsPubkeysResponse) GetInactive() []*VaultInfo {
 }
 
 type VaultInfo struct {
-	PubKey      string         `protobuf:"bytes,1,opt,name=pub_key,json=pubKey,proto3" json:"pub_key"`
-	Routers     []*VaultRouter `protobuf:"bytes,2,rep,name=routers,proto3" json:"routers"`
-	PubKeyEddsa string         `protobuf:"bytes,3,opt,name=pub_key_eddsa,json=pubKeyEddsa,proto3" json:"pub_key_eddsa"`
-	Membership  []string       `protobuf:"bytes,4,rep,name=membership,proto3" json:"membership,omitempty"`
+	PubKey      string   `protobuf:"bytes,1,opt,name=pub_key,json=pubKey,proto3" json:"pub_key"`
+	PubKeyEddsa string   `protobuf:"bytes,3,opt,name=pub_key_eddsa,json=pubKeyEddsa,proto3" json:"pub_key_eddsa"`
+	Membership  []string `protobuf:"bytes,4,rep,name=membership,proto3" json:"membership,omitempty"`
 }
 
 func (m *VaultInfo) Reset()         { *m = VaultInfo{} }
@@ -466,13 +457,6 @@ func (m *VaultInfo) GetPubKey() string {
 	return ""
 }
 
-func (m *VaultInfo) GetRouters() []*VaultRouter {
-	if m != nil {
-		return m.Routers
-	}
-	return nil
-}
-
 func (m *VaultInfo) GetPubKeyEddsa() string {
 	if m != nil {
 		return m.PubKeyEddsa
@@ -487,58 +471,6 @@ func (m *VaultInfo) GetMembership() []string {
 	return nil
 }
 
-type VaultRouter struct {
-	Chain  string `protobuf:"bytes,1,opt,name=chain,proto3" json:"chain,omitempty"`
-	Router string `protobuf:"bytes,2,opt,name=router,proto3" json:"router,omitempty"`
-}
-
-func (m *VaultRouter) Reset()         { *m = VaultRouter{} }
-func (m *VaultRouter) String() string { return proto.CompactTextString(m) }
-func (*VaultRouter) ProtoMessage()    {}
-func (*VaultRouter) Descriptor() ([]byte, []int) {
-	return fileDescriptor_941f4868303210e7, []int{7}
-}
-func (m *VaultRouter) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *VaultRouter) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_VaultRouter.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *VaultRouter) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_VaultRouter.Merge(m, src)
-}
-func (m *VaultRouter) XXX_Size() int {
-	return m.Size()
-}
-func (m *VaultRouter) XXX_DiscardUnknown() {
-	xxx_messageInfo_VaultRouter.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_VaultRouter proto.InternalMessageInfo
-
-func (m *VaultRouter) GetChain() string {
-	if m != nil {
-		return m.Chain
-	}
-	return ""
-}
-
-func (m *VaultRouter) GetRouter() string {
-	if m != nil {
-		return m.Router
-	}
-	return ""
-}
-
 type VaultAddress struct {
 	Chain   string `protobuf:"bytes,1,opt,name=chain,proto3" json:"chain"`
 	Address string `protobuf:"bytes,2,opt,name=address,proto3" json:"address"`
@@ -548,7 +480,7 @@ func (m *VaultAddress) Reset()         { *m = VaultAddress{} }
 func (m *VaultAddress) String() string { return proto.CompactTextString(m) }
 func (*VaultAddress) ProtoMessage()    {}
 func (*VaultAddress) Descriptor() ([]byte, []int) {
-	return fileDescriptor_941f4868303210e7, []int{8}
+	return fileDescriptor_941f4868303210e7, []int{7}
 }
 func (m *VaultAddress) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -599,7 +531,7 @@ func (m *QueryVaultSolvencyRequest) Reset()         { *m = QueryVaultSolvencyReq
 func (m *QueryVaultSolvencyRequest) String() string { return proto.CompactTextString(m) }
 func (*QueryVaultSolvencyRequest) ProtoMessage()    {}
 func (*QueryVaultSolvencyRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_941f4868303210e7, []int{9}
+	return fileDescriptor_941f4868303210e7, []int{8}
 }
 func (m *QueryVaultSolvencyRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -644,7 +576,7 @@ func (m *VaultSolvencyAsset) Reset()         { *m = VaultSolvencyAsset{} }
 func (m *VaultSolvencyAsset) String() string { return proto.CompactTextString(m) }
 func (*VaultSolvencyAsset) ProtoMessage()    {}
 func (*VaultSolvencyAsset) Descriptor() ([]byte, []int) {
-	return fileDescriptor_941f4868303210e7, []int{10}
+	return fileDescriptor_941f4868303210e7, []int{9}
 }
 func (m *VaultSolvencyAsset) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -681,7 +613,7 @@ func (m *QueryVaultSolvencyResponse) Reset()         { *m = QueryVaultSolvencyRe
 func (m *QueryVaultSolvencyResponse) String() string { return proto.CompactTextString(m) }
 func (*QueryVaultSolvencyResponse) ProtoMessage()    {}
 func (*QueryVaultSolvencyResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_941f4868303210e7, []int{11}
+	return fileDescriptor_941f4868303210e7, []int{10}
 }
 func (m *QueryVaultSolvencyResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -720,12 +652,11 @@ func (m *QueryVaultSolvencyResponse) GetAssets() []*VaultSolvencyAsset {
 func init() {
 	proto.RegisterType((*QueryVaultRequest)(nil), "types.QueryVaultRequest")
 	proto.RegisterType((*QueryVaultResponse)(nil), "types.QueryVaultResponse")
-	proto.RegisterType((*QueryAsgardVaultsRequest)(nil), "types.QueryAsgardVaultsRequest")
-	proto.RegisterType((*QueryAsgardVaultsResponse)(nil), "types.QueryAsgardVaultsResponse")
+	proto.RegisterType((*QueryBaseVaultsRequest)(nil), "types.QueryBaseVaultsRequest")
+	proto.RegisterType((*QueryBaseVaultsResponse)(nil), "types.QueryBaseVaultsResponse")
 	proto.RegisterType((*QueryVaultsPubkeysRequest)(nil), "types.QueryVaultsPubkeysRequest")
 	proto.RegisterType((*QueryVaultsPubkeysResponse)(nil), "types.QueryVaultsPubkeysResponse")
 	proto.RegisterType((*VaultInfo)(nil), "types.VaultInfo")
-	proto.RegisterType((*VaultRouter)(nil), "types.VaultRouter")
 	proto.RegisterType((*VaultAddress)(nil), "types.VaultAddress")
 	proto.RegisterType((*QueryVaultSolvencyRequest)(nil), "types.QueryVaultSolvencyRequest")
 	proto.RegisterType((*VaultSolvencyAsset)(nil), "types.VaultSolvencyAsset")
@@ -735,62 +666,59 @@ func init() {
 func init() { proto.RegisterFile("types/query_vault.proto", fileDescriptor_941f4868303210e7) }
 
 var fileDescriptor_941f4868303210e7 = []byte{
-	// 865 bytes of a gzipped FileDescriptorProto
+	// 827 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x55, 0xcd, 0x8e, 0x1b, 0x45,
-	0x10, 0xde, 0x59, 0xaf, 0xbd, 0x71, 0xd9, 0x4e, 0xb2, 0x9d, 0x84, 0x74, 0xf6, 0xe0, 0x59, 0x46,
-	0x20, 0x2c, 0x24, 0x3c, 0x68, 0x13, 0x84, 0x00, 0xf1, 0x63, 0x07, 0x24, 0x22, 0x24, 0x04, 0x9d,
-	0x28, 0x07, 0x72, 0xb0, 0xe6, 0xa7, 0xd7, 0x33, 0xf2, 0xba, 0xdb, 0x99, 0xee, 0x59, 0xd9, 0x3c,
-	0x04, 0xe2, 0xc8, 0x33, 0xf0, 0x0e, 0x9c, 0xb8, 0xec, 0x31, 0x47, 0xc4, 0x61, 0x40, 0xbb, 0x37,
-	0x3f, 0x05, 0xea, 0x9f, 0xb1, 0xc7, 0xde, 0xa0, 0x24, 0xa7, 0xae, 0xfe, 0xea, 0xab, 0xaa, 0xa9,
-	0xae, 0xaf, 0x7b, 0xe0, 0xae, 0x5c, 0xcc, 0xa8, 0xf0, 0x9f, 0xe7, 0x34, 0x5b, 0x8c, 0xce, 0x82,
-	0xfc, 0x54, 0xf6, 0x67, 0x19, 0x97, 0x1c, 0xd5, 0xb5, 0xe3, 0xf0, 0xf6, 0x98, 0x8f, 0xb9, 0x46,
-	0x7c, 0x65, 0x19, 0xe7, 0xe1, 0xad, 0x88, 0x4f, 0xa7, 0x9c, 0xf9, 0x66, 0x31, 0xa0, 0xf7, 0x35,
-	0x1c, 0xfc, 0xa8, 0xd2, 0x3c, 0x55, 0x59, 0x08, 0x7d, 0x9e, 0x53, 0x21, 0xd1, 0x5d, 0xd8, 0x9f,
-	0xe5, 0xe1, 0x68, 0x42, 0x17, 0xd8, 0x39, 0x72, 0x7a, 0x4d, 0xd2, 0x98, 0xe5, 0xe1, 0x77, 0x74,
-	0x81, 0xde, 0x82, 0x46, 0x42, 0xd3, 0x71, 0x22, 0xf1, 0xae, 0xc1, 0xcd, 0xce, 0xfb, 0xad, 0x0e,
-	0xa8, 0x9a, 0x46, 0xcc, 0x38, 0x13, 0x14, 0xbd, 0x0d, 0xed, 0xf0, 0x94, 0x47, 0x93, 0x91, 0x0d,
-	0x52, 0xc9, 0x6a, 0xa4, 0xa5, 0xb1, 0x6f, 0x35, 0x54, 0x2d, 0xb5, 0xbb, 0x51, 0x8a, 0x42, 0x3d,
-	0xe2, 0x29, 0x13, 0xb8, 0x76, 0x54, 0xeb, 0xb5, 0x8e, 0xdb, 0x7d, 0xfb, 0xd9, 0x0f, 0x79, 0xca,
-	0x86, 0x83, 0xf3, 0xc2, 0xdd, 0x59, 0x16, 0xae, 0xa1, 0xfc, 0xfe, 0x8f, 0xfb, 0xe1, 0x38, 0x95,
-	0x49, 0x1e, 0x2a, 0x92, 0x2f, 0x13, 0x9e, 0xb1, 0x20, 0xe6, 0x51, 0x20, 0x12, 0x7f, 0xcc, 0x3f,
-	0x28, 0xf7, 0x7e, 0x25, 0x83, 0x20, 0x26, 0x14, 0x21, 0xd8, 0x53, 0x67, 0x86, 0xf7, 0x74, 0x71,
-	0x6d, 0x23, 0x0f, 0x1a, 0x42, 0x06, 0x32, 0x17, 0xb8, 0xae, 0xd0, 0x21, 0x2c, 0x0b, 0xd7, 0x22,
-	0xc4, 0xae, 0xaa, 0x35, 0x63, 0x8d, 0x44, 0xca, 0x22, 0x8a, 0x1b, 0xa6, 0x35, 0x83, 0x3d, 0x56,
-	0x10, 0xea, 0x02, 0x4c, 0xe9, 0x34, 0xa4, 0x99, 0x48, 0xd2, 0x19, 0xde, 0x3f, 0xaa, 0xf5, 0x9a,
-	0xa4, 0x82, 0xa8, 0xc3, 0x8c, 0x92, 0x40, 0xb5, 0x78, 0x4d, 0xfb, 0xec, 0x0e, 0xf5, 0xe0, 0x66,
-	0xca, 0x42, 0x9e, 0xb3, 0x78, 0x24, 0xe7, 0xa3, 0x88, 0xe7, 0x4c, 0xe2, 0xa6, 0x4e, 0x7f, 0xdd,
-	0xe2, 0x4f, 0xe6, 0x0f, 0x15, 0x8a, 0xde, 0x87, 0x03, 0x9e, 0xcb, 0x2d, 0x2a, 0x68, 0xea, 0x8d,
-	0xd2, 0x51, 0x72, 0x3f, 0x06, 0x3c, 0xa3, 0x2c, 0x4e, 0xd9, 0x58, 0x51, 0xab, 0x63, 0x11, 0xb8,
-	0x75, 0x54, 0xeb, 0xd5, 0xc8, 0x1d, 0xeb, 0x7f, 0x32, 0x1f, 0xae, 0x07, 0x24, 0xd0, 0x27, 0xb0,
-	0x9f, 0xf1, 0x5c, 0xd2, 0x4c, 0xe0, 0xb6, 0x1e, 0x05, 0xea, 0x6b, 0x95, 0xf5, 0xcd, 0xac, 0xb5,
-	0x6b, 0xd8, 0x5a, 0x16, 0x6e, 0x49, 0x23, 0xa5, 0x81, 0xbe, 0x82, 0x66, 0x10, 0xc7, 0x19, 0x15,
-	0x82, 0x0a, 0xdc, 0xd1, 0xc1, 0xb7, 0xaa, 0xc1, 0x03, 0xe3, 0x1c, 0x76, 0x96, 0x85, 0xbb, 0x66,
-	0x92, 0xb5, 0xa9, 0xce, 0xe8, 0x24, 0xe3, 0x3f, 0x53, 0x86, 0xaf, 0x9b, 0x33, 0x32, 0x3b, 0xd4,
-	0x83, 0x8e, 0x95, 0xcd, 0x88, 0xc6, 0xb1, 0x08, 0xf0, 0x0d, 0x3d, 0xa9, 0xbd, 0xf3, 0xc2, 0x75,
-	0x48, 0xcb, 0x48, 0xe8, 0x1b, 0xe5, 0xf0, 0x8e, 0x01, 0x6b, 0x65, 0x0e, 0xc4, 0x38, 0xc8, 0x62,
-	0x5d, 0x56, 0x94, 0x3a, 0x5f, 0xcb, 0xd9, 0xd9, 0x90, 0xf3, 0x33, 0xb8, 0xf7, 0x92, 0x18, 0x2b,
-	0xea, 0x2f, 0xa0, 0x13, 0x68, 0xdc, 0xdc, 0x3c, 0x81, 0x1d, 0xdd, 0xd8, 0x3d, 0xdb, 0xd8, 0xd5,
-	0x6b, 0x40, 0xda, 0x41, 0x25, 0x8f, 0x77, 0xdf, 0x26, 0x37, 0xdb, 0x1f, 0xf2, 0x70, 0x42, 0x17,
-	0xaf, 0xfc, 0xa2, 0x5f, 0x1c, 0x38, 0x7c, 0x59, 0x94, 0xfd, 0xa6, 0x07, 0xd0, 0x30, 0x35, 0xec,
-	0xc7, 0xdc, 0xac, 0x9e, 0xf2, 0x23, 0x76, 0xc2, 0x8d, 0x86, 0x0d, 0x87, 0xd8, 0x15, 0x7d, 0x0a,
-	0xd7, 0x52, 0x16, 0x44, 0x32, 0x3d, 0xa3, 0x78, 0xf7, 0x7f, 0xe2, 0xda, 0xcb, 0xc2, 0x5d, 0xb1,
-	0xc8, 0xca, 0xf2, 0xfe, 0x74, 0xa0, 0xb9, 0x62, 0xa1, 0x77, 0xb6, 0x1e, 0x0c, 0xa3, 0x07, 0x0b,
-	0xad, 0xae, 0x74, 0x45, 0x49, 0xbb, 0x6f, 0xa8, 0xa4, 0x8f, 0xb6, 0xe7, 0x5d, 0xd3, 0x65, 0x0e,
-	0x96, 0x85, 0xbb, 0xe9, 0xd8, 0x18, 0xfe, 0xd6, 0x15, 0xdc, 0xdb, 0xbe, 0x82, 0xde, 0x67, 0xd0,
-	0xaa, 0xd4, 0x46, 0xb7, 0xa1, 0xae, 0xef, 0xa0, 0x3d, 0x7c, 0xb3, 0x51, 0x33, 0x31, 0x9f, 0x51,
-	0xbe, 0x50, 0x66, 0xe7, 0x3d, 0x85, 0x76, 0x55, 0xc5, 0xc8, 0xdd, 0x88, 0x1e, 0x36, 0xf5, 0xfb,
-	0xa4, 0x80, 0x32, 0xd1, 0xbb, 0xb0, 0x6f, 0x95, 0x6d, 0x32, 0x99, 0x5e, 0x2d, 0x44, 0x4a, 0x63,
-	0x53, 0x20, 0x8f, 0xf9, 0xe9, 0x19, 0x65, 0xd1, 0xe2, 0x55, 0x02, 0xf9, 0xc3, 0x01, 0xb4, 0x11,
-	0x30, 0x10, 0x82, 0x4a, 0x74, 0x02, 0xf5, 0x40, 0x19, 0x9a, 0xdd, 0x3a, 0xee, 0x94, 0xaf, 0xa8,
-	0xf6, 0x9a, 0x67, 0xf4, 0xef, 0xe2, 0x8d, 0x5e, 0x4f, 0x1d, 0xa9, 0x5a, 0xd3, 0x79, 0x89, 0x59,
-	0xd0, 0x97, 0xd0, 0x08, 0xa6, 0xfa, 0xf9, 0x31, 0x9d, 0xbd, 0x67, 0x33, 0xdf, 0x89, 0xb8, 0x98,
-	0x72, 0x21, 0xe2, 0x49, 0x3f, 0xe5, 0xfe, 0x34, 0x90, 0x49, 0xff, 0x11, 0x93, 0x5a, 0x8b, 0x9a,
-	0x4e, 0xec, 0xea, 0x3d, 0xab, 0xea, 0x7b, 0xdd, 0xb4, 0xd5, 0xf7, 0xe7, 0x4a, 0xdf, 0x82, 0x5e,
-	0xb9, 0x6c, 0x57, 0x3b, 0x2e, 0x85, 0xae, 0xc8, 0xc4, 0xae, 0xc3, 0xef, 0xcf, 0x2f, 0xba, 0xce,
-	0x8b, 0x8b, 0xae, 0xf3, 0xef, 0x45, 0xd7, 0xf9, 0xf5, 0xb2, 0xbb, 0xf3, 0xe2, 0xb2, 0xbb, 0xf3,
-	0xd7, 0x65, 0x77, 0xe7, 0xa7, 0x07, 0xaf, 0xd3, 0xf9, 0x7c, 0xe5, 0xf2, 0x75, 0xd9, 0xb0, 0xa1,
-	0xff, 0x9d, 0xf7, 0xff, 0x0b, 0x00, 0x00, 0xff, 0xff, 0x56, 0x04, 0xbe, 0xee, 0x88, 0x07, 0x00,
-	0x00,
+	0x10, 0xde, 0xf1, 0xd8, 0x5e, 0xbb, 0x6c, 0x27, 0xde, 0x0e, 0xc9, 0x4e, 0xf6, 0xe0, 0x31, 0x16,
+	0x08, 0x0b, 0x09, 0x4f, 0x94, 0x04, 0x21, 0x45, 0x42, 0xb0, 0x0e, 0x48, 0x24, 0x48, 0x08, 0x3a,
+	0x21, 0x07, 0x38, 0x58, 0xf3, 0xd3, 0xeb, 0x19, 0x79, 0xdd, 0xed, 0xb8, 0x7b, 0x56, 0x36, 0x0f,
+	0x81, 0x78, 0x0e, 0xde, 0x81, 0xfb, 0x1e, 0x73, 0x44, 0x1c, 0x06, 0xb4, 0xbe, 0xf9, 0x29, 0x50,
+	0xff, 0x8c, 0x3d, 0xb6, 0x41, 0x81, 0x53, 0xf7, 0x7c, 0xf5, 0x55, 0x75, 0x55, 0xd7, 0x57, 0x3d,
+	0x70, 0x2a, 0x96, 0x33, 0xc2, 0xbd, 0xd7, 0x29, 0x99, 0x2f, 0x47, 0x57, 0x7e, 0x7a, 0x29, 0x06,
+	0xb3, 0x39, 0x13, 0x0c, 0x55, 0x94, 0xe1, 0xec, 0x9d, 0x31, 0x1b, 0x33, 0x85, 0x78, 0x72, 0xa7,
+	0x8d, 0x67, 0x77, 0x42, 0x36, 0x9d, 0x32, 0xea, 0xe9, 0x45, 0x83, 0xbd, 0x2f, 0xe0, 0xe4, 0x3b,
+	0x19, 0xe6, 0x95, 0x8c, 0x82, 0xc9, 0xeb, 0x94, 0x70, 0x81, 0x4e, 0xe1, 0x78, 0x96, 0x06, 0xa3,
+	0x09, 0x59, 0x3a, 0x56, 0xd7, 0xea, 0xd7, 0x71, 0x75, 0x96, 0x06, 0x5f, 0x93, 0x25, 0xba, 0x07,
+	0xd5, 0x98, 0x24, 0xe3, 0x58, 0x38, 0x25, 0x8d, 0xeb, 0xaf, 0xde, 0xaa, 0x0c, 0xa8, 0x18, 0x86,
+	0xcf, 0x18, 0xe5, 0x04, 0xbd, 0x0b, 0xcd, 0xe0, 0x92, 0x85, 0x93, 0x91, 0x71, 0x92, 0xc1, 0x6c,
+	0xdc, 0x50, 0xd8, 0x57, 0x0a, 0x2a, 0x1e, 0x55, 0xda, 0x39, 0x8a, 0x40, 0x25, 0x64, 0x09, 0xe5,
+	0x8e, 0xdd, 0xb5, 0xfb, 0x8d, 0x87, 0xcd, 0x81, 0x49, 0xfb, 0x29, 0x4b, 0xe8, 0xf0, 0xfc, 0x3a,
+	0x73, 0x8f, 0xd6, 0x99, 0xab, 0x29, 0xbf, 0xfe, 0xe9, 0x3e, 0x18, 0x27, 0x22, 0x4e, 0x03, 0x49,
+	0xf2, 0x44, 0xcc, 0xe6, 0xd4, 0x8f, 0x58, 0xe8, 0xf3, 0xd8, 0x1b, 0xb3, 0x8f, 0xf2, 0x6f, 0xaf,
+	0x10, 0x81, 0x63, 0xed, 0x8a, 0x10, 0x94, 0xe5, 0x9d, 0x39, 0x65, 0x75, 0xb8, 0xda, 0xa3, 0x1e,
+	0x54, 0xb9, 0xf0, 0x45, 0xca, 0x9d, 0x8a, 0x44, 0x87, 0xb0, 0xce, 0x5c, 0x83, 0x60, 0xb3, 0xca,
+	0xd2, 0xf4, 0x6e, 0xc4, 0x13, 0x1a, 0x12, 0xa7, 0xaa, 0x4b, 0xd3, 0xd8, 0x0b, 0x09, 0xa1, 0x0e,
+	0xc0, 0x94, 0x4c, 0x03, 0x32, 0xe7, 0x71, 0x32, 0x73, 0x8e, 0xbb, 0x76, 0xbf, 0x8e, 0x0b, 0x88,
+	0xbc, 0xcc, 0x30, 0xf6, 0x65, 0x89, 0x35, 0x65, 0x33, 0x5f, 0xa8, 0x0f, 0xed, 0x84, 0x06, 0x2c,
+	0xa5, 0xd1, 0x48, 0x2c, 0x46, 0x21, 0x4b, 0xa9, 0x70, 0xea, 0x2a, 0xfc, 0x2d, 0x83, 0xbf, 0x5c,
+	0x3c, 0x95, 0x28, 0xfa, 0x10, 0x4e, 0x58, 0x2a, 0xf6, 0xa8, 0xa0, 0xa8, 0xb7, 0x73, 0x43, 0xce,
+	0xfd, 0x04, 0x9c, 0x19, 0xa1, 0x51, 0x42, 0xc7, 0x92, 0x5a, 0x6c, 0x0b, 0x77, 0x1a, 0x5d, 0xbb,
+	0x6f, 0xe3, 0xbb, 0xc6, 0xfe, 0x72, 0x31, 0xdc, 0x36, 0x88, 0xa3, 0xcf, 0xa1, 0xee, 0x47, 0xd1,
+	0x9c, 0x70, 0x4e, 0xb8, 0xd3, 0x52, 0xcd, 0xb8, 0x33, 0x50, 0x3a, 0x1b, 0xa8, 0x6e, 0x9f, 0x6b,
+	0xe3, 0xb0, 0xb5, 0xce, 0xdc, 0x2d, 0x13, 0x6f, 0xb7, 0xb2, 0xd0, 0x8b, 0x39, 0xfb, 0x89, 0x50,
+	0xe7, 0x96, 0x2e, 0x54, 0x7f, 0xa1, 0x3e, 0xb4, 0x4c, 0xef, 0x47, 0x24, 0x8a, 0xb8, 0xef, 0xdc,
+	0x56, 0xd7, 0x5d, 0xbe, 0xce, 0x5c, 0x0b, 0x37, 0xb4, 0x0e, 0xbe, 0x94, 0x86, 0xe7, 0xe5, 0x5a,
+	0xb3, 0xdd, 0xea, 0x3d, 0x80, 0x7b, 0x4a, 0x64, 0x43, 0x9f, 0x13, 0x75, 0x34, 0xcf, 0x05, 0xbb,
+	0xd5, 0xa5, 0xb5, 0xa3, 0xcb, 0xef, 0xe1, 0xf4, 0xc0, 0xc3, 0x68, 0xf3, 0x09, 0x34, 0x02, 0x9f,
+	0x13, 0x3d, 0x3e, 0xdc, 0xb1, 0x54, 0x61, 0xf7, 0x4d, 0x61, 0x87, 0x5a, 0xc6, 0x10, 0x6c, 0x62,
+	0xf4, 0x1e, 0xc1, 0xfd, 0x2d, 0x83, 0x7f, 0x9b, 0x06, 0x13, 0xb2, 0x7c, 0x6b, 0x2e, 0x3f, 0x5b,
+	0x70, 0xf6, 0x4f, 0x5e, 0x26, 0x9f, 0xc7, 0x50, 0xf5, 0xf9, 0xd8, 0x9f, 0x47, 0x26, 0x95, 0x76,
+	0xf1, 0x8e, 0x9f, 0xd1, 0x0b, 0xa6, 0x65, 0xa8, 0x39, 0xd8, 0xac, 0xe8, 0x09, 0xd4, 0x12, 0xea,
+	0x87, 0x22, 0xb9, 0x22, 0x4e, 0xe9, 0x5f, 0xfc, 0x9a, 0xeb, 0xcc, 0xdd, 0xb0, 0xf0, 0x66, 0x27,
+	0x13, 0xaa, 0x6f, 0x58, 0xe8, 0xbd, 0xbd, 0x99, 0x1f, 0x36, 0xd6, 0x99, 0x9b, 0x43, 0x9b, 0xa9,
+	0xfc, 0x78, 0xbf, 0x65, 0xb6, 0xe2, 0x9e, 0xac, 0x33, 0x77, 0xd7, 0xb0, 0xd3, 0xbf, 0xbd, 0x51,
+	0x28, 0xef, 0x8f, 0xc2, 0xf3, 0x72, 0xad, 0xd4, 0xb6, 0x7b, 0xaf, 0xa0, 0x59, 0x54, 0x14, 0x72,
+	0xa1, 0xa2, 0x46, 0xc2, 0x24, 0x54, 0x57, 0x03, 0x2f, 0x01, 0xac, 0x17, 0xf4, 0x3e, 0x1c, 0x1b,
+	0x95, 0xe9, 0xc7, 0x43, 0xe7, 0x6c, 0x20, 0x9c, 0x6f, 0x76, 0xdb, 0xf5, 0x82, 0x5d, 0x5e, 0x11,
+	0x1a, 0x2e, 0xdf, 0xd6, 0xae, 0xdf, 0x2c, 0x40, 0x3b, 0x0e, 0xe7, 0x9c, 0x13, 0x81, 0x2e, 0xa0,
+	0xe2, 0xcb, 0x8d, 0x62, 0x37, 0x1e, 0xb6, 0xf2, 0x67, 0x49, 0x59, 0xf5, 0xbb, 0xf4, 0x47, 0xf6,
+	0xbf, 0x9e, 0x23, 0xe5, 0x29, 0x4b, 0x53, 0x71, 0xb1, 0x5e, 0xd0, 0x67, 0x50, 0xf5, 0xa7, 0x6a,
+	0x9e, 0x75, 0x65, 0x1f, 0x98, 0xc8, 0x77, 0x43, 0xc6, 0xa7, 0x8c, 0xf3, 0x68, 0x32, 0x48, 0x98,
+	0x37, 0xf5, 0x45, 0x3c, 0x78, 0x46, 0x85, 0x52, 0x86, 0xa2, 0x63, 0xb3, 0xf6, 0x7e, 0x2c, 0xaa,
+	0x6d, 0x5b, 0xb4, 0x51, 0xdb, 0xa7, 0x52, 0x6d, 0x9c, 0x1c, 0x08, 0xff, 0xb0, 0xe2, 0x5c, 0x76,
+	0x92, 0x8c, 0xcd, 0x3a, 0xfc, 0xe6, 0xfa, 0xa6, 0x63, 0xbd, 0xb9, 0xe9, 0x58, 0x7f, 0xdd, 0x74,
+	0xac, 0x5f, 0x56, 0x9d, 0xa3, 0x37, 0xab, 0xce, 0xd1, 0xef, 0xab, 0xce, 0xd1, 0x0f, 0x8f, 0xff,
+	0x4b, 0xe5, 0x8b, 0x8d, 0xc9, 0x53, 0xc7, 0x06, 0x55, 0xf5, 0x33, 0x7a, 0xf4, 0x77, 0x00, 0x00,
+	0x00, 0xff, 0xff, 0xe4, 0x1d, 0x03, 0x2a, 0xd9, 0x06, 0x00, 0x00,
 }
 
 func (m *QueryVaultRequest) Marshal() (dAtA []byte, err error) {
@@ -878,20 +806,6 @@ func (m *QueryVaultResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 			}
 			i--
 			dAtA[i] = 0x6a
-		}
-	}
-	if len(m.Routers) > 0 {
-		for iNdEx := len(m.Routers) - 1; iNdEx >= 0; iNdEx-- {
-			{
-				size, err := m.Routers[iNdEx].MarshalToSizedBuffer(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarintQueryVault(dAtA, i, uint64(size))
-			}
-			i--
-			dAtA[i] = 0x62
 		}
 	}
 	if len(m.PendingTxBlockHeights) > 0 {
@@ -989,7 +903,7 @@ func (m *QueryVaultResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *QueryAsgardVaultsRequest) Marshal() (dAtA []byte, err error) {
+func (m *QueryBaseVaultsRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -999,12 +913,12 @@ func (m *QueryAsgardVaultsRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *QueryAsgardVaultsRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *QueryBaseVaultsRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *QueryAsgardVaultsRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *QueryBaseVaultsRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1019,7 +933,7 @@ func (m *QueryAsgardVaultsRequest) MarshalToSizedBuffer(dAtA []byte) (int, error
 	return len(dAtA) - i, nil
 }
 
-func (m *QueryAsgardVaultsResponse) Marshal() (dAtA []byte, err error) {
+func (m *QueryBaseVaultsResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1029,20 +943,20 @@ func (m *QueryAsgardVaultsResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *QueryAsgardVaultsResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *QueryBaseVaultsResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *QueryAsgardVaultsResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *QueryBaseVaultsResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.AsgardVaults) > 0 {
-		for iNdEx := len(m.AsgardVaults) - 1; iNdEx >= 0; iNdEx-- {
+	if len(m.BaseVaults) > 0 {
+		for iNdEx := len(m.BaseVaults) - 1; iNdEx >= 0; iNdEx-- {
 			{
-				size, err := m.AsgardVaults[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				size, err := m.BaseVaults[iNdEx].MarshalToSizedBuffer(dAtA[:i])
 				if err != nil {
 					return 0, err
 				}
@@ -1173,61 +1087,10 @@ func (m *VaultInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x1a
 	}
-	if len(m.Routers) > 0 {
-		for iNdEx := len(m.Routers) - 1; iNdEx >= 0; iNdEx-- {
-			{
-				size, err := m.Routers[iNdEx].MarshalToSizedBuffer(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarintQueryVault(dAtA, i, uint64(size))
-			}
-			i--
-			dAtA[i] = 0x12
-		}
-	}
 	if len(m.PubKey) > 0 {
 		i -= len(m.PubKey)
 		copy(dAtA[i:], m.PubKey)
 		i = encodeVarintQueryVault(dAtA, i, uint64(len(m.PubKey)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *VaultRouter) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *VaultRouter) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *VaultRouter) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Router) > 0 {
-		i -= len(m.Router)
-		copy(dAtA[i:], m.Router)
-		i = encodeVarintQueryVault(dAtA, i, uint64(len(m.Router)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.Chain) > 0 {
-		i -= len(m.Chain)
-		copy(dAtA[i:], m.Chain)
-		i = encodeVarintQueryVault(dAtA, i, uint64(len(m.Chain)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -1464,12 +1327,6 @@ func (m *QueryVaultResponse) Size() (n int) {
 		}
 		n += 1 + sovQueryVault(uint64(l)) + l
 	}
-	if len(m.Routers) > 0 {
-		for _, e := range m.Routers {
-			l = e.Size()
-			n += 1 + l + sovQueryVault(uint64(l))
-		}
-	}
 	if len(m.Addresses) > 0 {
 		for _, e := range m.Addresses {
 			l = e.Size()
@@ -1489,7 +1346,7 @@ func (m *QueryVaultResponse) Size() (n int) {
 	return n
 }
 
-func (m *QueryAsgardVaultsRequest) Size() (n int) {
+func (m *QueryBaseVaultsRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1502,14 +1359,14 @@ func (m *QueryAsgardVaultsRequest) Size() (n int) {
 	return n
 }
 
-func (m *QueryAsgardVaultsResponse) Size() (n int) {
+func (m *QueryBaseVaultsResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if len(m.AsgardVaults) > 0 {
-		for _, e := range m.AsgardVaults {
+	if len(m.BaseVaults) > 0 {
+		for _, e := range m.BaseVaults {
 			l = e.Size()
 			n += 1 + l + sovQueryVault(uint64(l))
 		}
@@ -1561,12 +1418,6 @@ func (m *VaultInfo) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovQueryVault(uint64(l))
 	}
-	if len(m.Routers) > 0 {
-		for _, e := range m.Routers {
-			l = e.Size()
-			n += 1 + l + sovQueryVault(uint64(l))
-		}
-	}
 	l = len(m.PubKeyEddsa)
 	if l > 0 {
 		n += 1 + l + sovQueryVault(uint64(l))
@@ -1576,23 +1427,6 @@ func (m *VaultInfo) Size() (n int) {
 			l = len(s)
 			n += 1 + l + sovQueryVault(uint64(l))
 		}
-	}
-	return n
-}
-
-func (m *VaultRouter) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Chain)
-	if l > 0 {
-		n += 1 + l + sovQueryVault(uint64(l))
-	}
-	l = len(m.Router)
-	if l > 0 {
-		n += 1 + l + sovQueryVault(uint64(l))
 	}
 	return n
 }
@@ -2150,40 +1984,6 @@ func (m *QueryVaultResponse) Unmarshal(dAtA []byte) error {
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field PendingTxBlockHeights", wireType)
 			}
-		case 12:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Routers", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowQueryVault
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthQueryVault
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthQueryVault
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Routers = append(m.Routers, &VaultRouter{})
-			if err := m.Routers[len(m.Routers)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		case 13:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Addresses", wireType)
@@ -2303,7 +2103,7 @@ func (m *QueryVaultResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *QueryAsgardVaultsRequest) Unmarshal(dAtA []byte) error {
+func (m *QueryBaseVaultsRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2326,10 +2126,10 @@ func (m *QueryAsgardVaultsRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: QueryAsgardVaultsRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: QueryBaseVaultsRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: QueryAsgardVaultsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: QueryBaseVaultsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2385,7 +2185,7 @@ func (m *QueryAsgardVaultsRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *QueryAsgardVaultsResponse) Unmarshal(dAtA []byte) error {
+func (m *QueryBaseVaultsResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2408,15 +2208,15 @@ func (m *QueryAsgardVaultsResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: QueryAsgardVaultsResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: QueryBaseVaultsResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: QueryAsgardVaultsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: QueryBaseVaultsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field AsgardVaults", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field BaseVaults", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -2443,8 +2243,8 @@ func (m *QueryAsgardVaultsResponse) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.AsgardVaults = append(m.AsgardVaults, &QueryVaultResponse{})
-			if err := m.AsgardVaults[len(m.AsgardVaults)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			m.BaseVaults = append(m.BaseVaults, &QueryVaultResponse{})
+			if err := m.BaseVaults[len(m.BaseVaults)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2730,40 +2530,6 @@ func (m *VaultInfo) Unmarshal(dAtA []byte) error {
 			}
 			m.PubKey = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Routers", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowQueryVault
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthQueryVault
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthQueryVault
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Routers = append(m.Routers, &VaultRouter{})
-			if err := m.Routers[len(m.Routers)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PubKeyEddsa", wireType)
@@ -2827,120 +2593,6 @@ func (m *VaultInfo) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Membership = append(m.Membership, string(dAtA[iNdEx:postIndex]))
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipQueryVault(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthQueryVault
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *VaultRouter) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowQueryVault
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: VaultRouter: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: VaultRouter: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Chain", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowQueryVault
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthQueryVault
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthQueryVault
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Chain = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Router", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowQueryVault
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthQueryVault
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthQueryVault
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Router = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

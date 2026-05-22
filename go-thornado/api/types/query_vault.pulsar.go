@@ -687,57 +687,6 @@ func (x *_QueryVaultResponse_11_list) IsValid() bool {
 	return x.list != nil
 }
 
-var _ protoreflect.List = (*_QueryVaultResponse_12_list)(nil)
-
-type _QueryVaultResponse_12_list struct {
-	list *[]*VaultRouter
-}
-
-func (x *_QueryVaultResponse_12_list) Len() int {
-	if x.list == nil {
-		return 0
-	}
-	return len(*x.list)
-}
-
-func (x *_QueryVaultResponse_12_list) Get(i int) protoreflect.Value {
-	return protoreflect.ValueOfMessage((*x.list)[i].ProtoReflect())
-}
-
-func (x *_QueryVaultResponse_12_list) Set(i int, value protoreflect.Value) {
-	valueUnwrapped := value.Message()
-	concreteValue := valueUnwrapped.Interface().(*VaultRouter)
-	(*x.list)[i] = concreteValue
-}
-
-func (x *_QueryVaultResponse_12_list) Append(value protoreflect.Value) {
-	valueUnwrapped := value.Message()
-	concreteValue := valueUnwrapped.Interface().(*VaultRouter)
-	*x.list = append(*x.list, concreteValue)
-}
-
-func (x *_QueryVaultResponse_12_list) AppendMutable() protoreflect.Value {
-	v := new(VaultRouter)
-	*x.list = append(*x.list, v)
-	return protoreflect.ValueOfMessage(v.ProtoReflect())
-}
-
-func (x *_QueryVaultResponse_12_list) Truncate(n int) {
-	for i := n; i < len(*x.list); i++ {
-		(*x.list)[i] = nil
-	}
-	*x.list = (*x.list)[:n]
-}
-
-func (x *_QueryVaultResponse_12_list) NewElement() protoreflect.Value {
-	v := new(VaultRouter)
-	return protoreflect.ValueOfMessage(v.ProtoReflect())
-}
-
-func (x *_QueryVaultResponse_12_list) IsValid() bool {
-	return x.list != nil
-}
-
 var _ protoreflect.List = (*_QueryVaultResponse_13_list)(nil)
 
 type _QueryVaultResponse_13_list struct {
@@ -848,7 +797,6 @@ var (
 	fd_QueryVaultResponse_inbound_tx_count         protoreflect.FieldDescriptor
 	fd_QueryVaultResponse_outbound_tx_count        protoreflect.FieldDescriptor
 	fd_QueryVaultResponse_pending_tx_block_heights protoreflect.FieldDescriptor
-	fd_QueryVaultResponse_routers                  protoreflect.FieldDescriptor
 	fd_QueryVaultResponse_addresses                protoreflect.FieldDescriptor
 	fd_QueryVaultResponse_frozen                   protoreflect.FieldDescriptor
 	fd_QueryVaultResponse_pub_key_eddsa            protoreflect.FieldDescriptor
@@ -868,7 +816,6 @@ func init() {
 	fd_QueryVaultResponse_inbound_tx_count = md_QueryVaultResponse.Fields().ByName("inbound_tx_count")
 	fd_QueryVaultResponse_outbound_tx_count = md_QueryVaultResponse.Fields().ByName("outbound_tx_count")
 	fd_QueryVaultResponse_pending_tx_block_heights = md_QueryVaultResponse.Fields().ByName("pending_tx_block_heights")
-	fd_QueryVaultResponse_routers = md_QueryVaultResponse.Fields().ByName("routers")
 	fd_QueryVaultResponse_addresses = md_QueryVaultResponse.Fields().ByName("addresses")
 	fd_QueryVaultResponse_frozen = md_QueryVaultResponse.Fields().ByName("frozen")
 	fd_QueryVaultResponse_pub_key_eddsa = md_QueryVaultResponse.Fields().ByName("pub_key_eddsa")
@@ -1005,12 +952,6 @@ func (x *fastReflection_QueryVaultResponse) Range(f func(protoreflect.FieldDescr
 			return
 		}
 	}
-	if len(x.Routers) != 0 {
-		value := protoreflect.ValueOfList(&_QueryVaultResponse_12_list{list: &x.Routers})
-		if !f(fd_QueryVaultResponse_routers, value) {
-			return
-		}
-	}
 	if len(x.Addresses) != 0 {
 		value := protoreflect.ValueOfList(&_QueryVaultResponse_13_list{list: &x.Addresses})
 		if !f(fd_QueryVaultResponse_addresses, value) {
@@ -1066,8 +1007,6 @@ func (x *fastReflection_QueryVaultResponse) Has(fd protoreflect.FieldDescriptor)
 		return x.OutboundTxCount != int64(0)
 	case "types.QueryVaultResponse.pending_tx_block_heights":
 		return len(x.PendingTxBlockHeights) != 0
-	case "types.QueryVaultResponse.routers":
-		return len(x.Routers) != 0
 	case "types.QueryVaultResponse.addresses":
 		return len(x.Addresses) != 0
 	case "types.QueryVaultResponse.frozen":
@@ -1112,8 +1051,6 @@ func (x *fastReflection_QueryVaultResponse) Clear(fd protoreflect.FieldDescripto
 		x.OutboundTxCount = int64(0)
 	case "types.QueryVaultResponse.pending_tx_block_heights":
 		x.PendingTxBlockHeights = nil
-	case "types.QueryVaultResponse.routers":
-		x.Routers = nil
 	case "types.QueryVaultResponse.addresses":
 		x.Addresses = nil
 	case "types.QueryVaultResponse.frozen":
@@ -1181,12 +1118,6 @@ func (x *fastReflection_QueryVaultResponse) Get(descriptor protoreflect.FieldDes
 		}
 		listValue := &_QueryVaultResponse_11_list{list: &x.PendingTxBlockHeights}
 		return protoreflect.ValueOfList(listValue)
-	case "types.QueryVaultResponse.routers":
-		if len(x.Routers) == 0 {
-			return protoreflect.ValueOfList(&_QueryVaultResponse_12_list{})
-		}
-		listValue := &_QueryVaultResponse_12_list{list: &x.Routers}
-		return protoreflect.ValueOfList(listValue)
 	case "types.QueryVaultResponse.addresses":
 		if len(x.Addresses) == 0 {
 			return protoreflect.ValueOfList(&_QueryVaultResponse_13_list{})
@@ -1252,10 +1183,6 @@ func (x *fastReflection_QueryVaultResponse) Set(fd protoreflect.FieldDescriptor,
 		lv := value.List()
 		clv := lv.(*_QueryVaultResponse_11_list)
 		x.PendingTxBlockHeights = *clv.list
-	case "types.QueryVaultResponse.routers":
-		lv := value.List()
-		clv := lv.(*_QueryVaultResponse_12_list)
-		x.Routers = *clv.list
 	case "types.QueryVaultResponse.addresses":
 		lv := value.List()
 		clv := lv.(*_QueryVaultResponse_13_list)
@@ -1309,12 +1236,6 @@ func (x *fastReflection_QueryVaultResponse) Mutable(fd protoreflect.FieldDescrip
 			x.PendingTxBlockHeights = []int64{}
 		}
 		value := &_QueryVaultResponse_11_list{list: &x.PendingTxBlockHeights}
-		return protoreflect.ValueOfList(value)
-	case "types.QueryVaultResponse.routers":
-		if x.Routers == nil {
-			x.Routers = []*VaultRouter{}
-		}
-		value := &_QueryVaultResponse_12_list{list: &x.Routers}
 		return protoreflect.ValueOfList(value)
 	case "types.QueryVaultResponse.addresses":
 		if x.Addresses == nil {
@@ -1383,9 +1304,6 @@ func (x *fastReflection_QueryVaultResponse) NewField(fd protoreflect.FieldDescri
 	case "types.QueryVaultResponse.pending_tx_block_heights":
 		list := []int64{}
 		return protoreflect.ValueOfList(&_QueryVaultResponse_11_list{list: &list})
-	case "types.QueryVaultResponse.routers":
-		list := []*VaultRouter{}
-		return protoreflect.ValueOfList(&_QueryVaultResponse_12_list{list: &list})
 	case "types.QueryVaultResponse.addresses":
 		list := []*VaultAddress{}
 		return protoreflect.ValueOfList(&_QueryVaultResponse_13_list{list: &list})
@@ -1512,12 +1430,6 @@ func (x *fastReflection_QueryVaultResponse) ProtoMethods() *protoiface.Methods {
 			}
 			n += 1 + runtime.Sov(uint64(l)) + l
 		}
-		if len(x.Routers) > 0 {
-			for _, e := range x.Routers {
-				l = options.Size(e)
-				n += 1 + l + runtime.Sov(uint64(l))
-			}
-		}
 		if len(x.Addresses) > 0 {
 			for _, e := range x.Addresses {
 				l = options.Size(e)
@@ -1593,22 +1505,6 @@ func (x *fastReflection_QueryVaultResponse) ProtoMethods() *protoiface.Methods {
 				i = runtime.EncodeVarint(dAtA, i, uint64(len(encoded)))
 				i--
 				dAtA[i] = 0x6a
-			}
-		}
-		if len(x.Routers) > 0 {
-			for iNdEx := len(x.Routers) - 1; iNdEx >= 0; iNdEx-- {
-				encoded, err := options.Marshal(x.Routers[iNdEx])
-				if err != nil {
-					return protoiface.MarshalOutput{
-						NoUnkeyedLiterals: input.NoUnkeyedLiterals,
-						Buf:               input.Buf,
-					}, err
-				}
-				i -= len(encoded)
-				copy(dAtA[i:], encoded)
-				i = runtime.EncodeVarint(dAtA, i, uint64(len(encoded)))
-				i--
-				dAtA[i] = 0x62
 			}
 		}
 		if len(x.PendingTxBlockHeights) > 0 {
@@ -2102,40 +1998,6 @@ func (x *fastReflection_QueryVaultResponse) ProtoMethods() *protoiface.Methods {
 				} else {
 					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field PendingTxBlockHeights", wireType)
 				}
-			case 12:
-				if wireType != 2 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Routers", wireType)
-				}
-				var msglen int
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
-					}
-					if iNdEx >= l {
-						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					msglen |= int(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				if msglen < 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
-				}
-				postIndex := iNdEx + msglen
-				if postIndex < 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
-				}
-				if postIndex > l {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-				}
-				x.Routers = append(x.Routers, &VaultRouter{})
-				if err := options.Unmarshal(dAtA[iNdEx:postIndex], x.Routers[len(x.Routers)-1]); err != nil {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, err
-				}
-				iNdEx = postIndex
 			case 13:
 				if wireType != 2 {
 					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Addresses", wireType)
@@ -2270,25 +2132,25 @@ func (x *fastReflection_QueryVaultResponse) ProtoMethods() *protoiface.Methods {
 }
 
 var (
-	md_QueryAsgardVaultsRequest        protoreflect.MessageDescriptor
-	fd_QueryAsgardVaultsRequest_height protoreflect.FieldDescriptor
+	md_QueryBaseVaultsRequest        protoreflect.MessageDescriptor
+	fd_QueryBaseVaultsRequest_height protoreflect.FieldDescriptor
 )
 
 func init() {
 	file_types_query_vault_proto_init()
-	md_QueryAsgardVaultsRequest = File_types_query_vault_proto.Messages().ByName("QueryAsgardVaultsRequest")
-	fd_QueryAsgardVaultsRequest_height = md_QueryAsgardVaultsRequest.Fields().ByName("height")
+	md_QueryBaseVaultsRequest = File_types_query_vault_proto.Messages().ByName("QueryBaseVaultsRequest")
+	fd_QueryBaseVaultsRequest_height = md_QueryBaseVaultsRequest.Fields().ByName("height")
 }
 
-var _ protoreflect.Message = (*fastReflection_QueryAsgardVaultsRequest)(nil)
+var _ protoreflect.Message = (*fastReflection_QueryBaseVaultsRequest)(nil)
 
-type fastReflection_QueryAsgardVaultsRequest QueryAsgardVaultsRequest
+type fastReflection_QueryBaseVaultsRequest QueryBaseVaultsRequest
 
-func (x *QueryAsgardVaultsRequest) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_QueryAsgardVaultsRequest)(x)
+func (x *QueryBaseVaultsRequest) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_QueryBaseVaultsRequest)(x)
 }
 
-func (x *QueryAsgardVaultsRequest) slowProtoReflect() protoreflect.Message {
+func (x *QueryBaseVaultsRequest) slowProtoReflect() protoreflect.Message {
 	mi := &file_types_query_vault_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2300,43 +2162,43 @@ func (x *QueryAsgardVaultsRequest) slowProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-var _fastReflection_QueryAsgardVaultsRequest_messageType fastReflection_QueryAsgardVaultsRequest_messageType
-var _ protoreflect.MessageType = fastReflection_QueryAsgardVaultsRequest_messageType{}
+var _fastReflection_QueryBaseVaultsRequest_messageType fastReflection_QueryBaseVaultsRequest_messageType
+var _ protoreflect.MessageType = fastReflection_QueryBaseVaultsRequest_messageType{}
 
-type fastReflection_QueryAsgardVaultsRequest_messageType struct{}
+type fastReflection_QueryBaseVaultsRequest_messageType struct{}
 
-func (x fastReflection_QueryAsgardVaultsRequest_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_QueryAsgardVaultsRequest)(nil)
+func (x fastReflection_QueryBaseVaultsRequest_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_QueryBaseVaultsRequest)(nil)
 }
-func (x fastReflection_QueryAsgardVaultsRequest_messageType) New() protoreflect.Message {
-	return new(fastReflection_QueryAsgardVaultsRequest)
+func (x fastReflection_QueryBaseVaultsRequest_messageType) New() protoreflect.Message {
+	return new(fastReflection_QueryBaseVaultsRequest)
 }
-func (x fastReflection_QueryAsgardVaultsRequest_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_QueryAsgardVaultsRequest
+func (x fastReflection_QueryBaseVaultsRequest_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryBaseVaultsRequest
 }
 
 // Descriptor returns message descriptor, which contains only the protobuf
 // type information for the message.
-func (x *fastReflection_QueryAsgardVaultsRequest) Descriptor() protoreflect.MessageDescriptor {
-	return md_QueryAsgardVaultsRequest
+func (x *fastReflection_QueryBaseVaultsRequest) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryBaseVaultsRequest
 }
 
 // Type returns the message type, which encapsulates both Go and protobuf
 // type information. If the Go type information is not needed,
 // it is recommended that the message descriptor be used instead.
-func (x *fastReflection_QueryAsgardVaultsRequest) Type() protoreflect.MessageType {
-	return _fastReflection_QueryAsgardVaultsRequest_messageType
+func (x *fastReflection_QueryBaseVaultsRequest) Type() protoreflect.MessageType {
+	return _fastReflection_QueryBaseVaultsRequest_messageType
 }
 
 // New returns a newly allocated and mutable empty message.
-func (x *fastReflection_QueryAsgardVaultsRequest) New() protoreflect.Message {
-	return new(fastReflection_QueryAsgardVaultsRequest)
+func (x *fastReflection_QueryBaseVaultsRequest) New() protoreflect.Message {
+	return new(fastReflection_QueryBaseVaultsRequest)
 }
 
 // Interface unwraps the message reflection interface and
 // returns the underlying ProtoMessage interface.
-func (x *fastReflection_QueryAsgardVaultsRequest) Interface() protoreflect.ProtoMessage {
-	return (*QueryAsgardVaultsRequest)(x)
+func (x *fastReflection_QueryBaseVaultsRequest) Interface() protoreflect.ProtoMessage {
+	return (*QueryBaseVaultsRequest)(x)
 }
 
 // Range iterates over every populated field in an undefined order,
@@ -2344,10 +2206,10 @@ func (x *fastReflection_QueryAsgardVaultsRequest) Interface() protoreflect.Proto
 // Range returns immediately if f returns false.
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
-func (x *fastReflection_QueryAsgardVaultsRequest) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+func (x *fastReflection_QueryBaseVaultsRequest) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
 	if x.Height != "" {
 		value := protoreflect.ValueOfString(x.Height)
-		if !f(fd_QueryAsgardVaultsRequest_height, value) {
+		if !f(fd_QueryBaseVaultsRequest_height, value) {
 			return
 		}
 	}
@@ -2364,15 +2226,15 @@ func (x *fastReflection_QueryAsgardVaultsRequest) Range(f func(protoreflect.Fiel
 // In other cases (aside from the nullable cases above),
 // a proto3 scalar field is populated if it contains a non-zero value, and
 // a repeated field is populated if it is non-empty.
-func (x *fastReflection_QueryAsgardVaultsRequest) Has(fd protoreflect.FieldDescriptor) bool {
+func (x *fastReflection_QueryBaseVaultsRequest) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.QueryAsgardVaultsRequest.height":
+	case "types.QueryBaseVaultsRequest.height":
 		return x.Height != ""
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryAsgardVaultsRequest"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryBaseVaultsRequest"))
 		}
-		panic(fmt.Errorf("message types.QueryAsgardVaultsRequest does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryBaseVaultsRequest does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -2382,15 +2244,15 @@ func (x *fastReflection_QueryAsgardVaultsRequest) Has(fd protoreflect.FieldDescr
 // associated with the given field number.
 //
 // Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryAsgardVaultsRequest) Clear(fd protoreflect.FieldDescriptor) {
+func (x *fastReflection_QueryBaseVaultsRequest) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.QueryAsgardVaultsRequest.height":
+	case "types.QueryBaseVaultsRequest.height":
 		x.Height = ""
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryAsgardVaultsRequest"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryBaseVaultsRequest"))
 		}
-		panic(fmt.Errorf("message types.QueryAsgardVaultsRequest does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryBaseVaultsRequest does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -2400,16 +2262,16 @@ func (x *fastReflection_QueryAsgardVaultsRequest) Clear(fd protoreflect.FieldDes
 // the default value of a bytes scalar is guaranteed to be a copy.
 // For unpopulated composite types, it returns an empty, read-only view
 // of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_QueryAsgardVaultsRequest) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_QueryBaseVaultsRequest) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.QueryAsgardVaultsRequest.height":
+	case "types.QueryBaseVaultsRequest.height":
 		value := x.Height
 		return protoreflect.ValueOfString(value)
 	default:
 		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryAsgardVaultsRequest"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryBaseVaultsRequest"))
 		}
-		panic(fmt.Errorf("message types.QueryAsgardVaultsRequest does not contain field %s", descriptor.FullName()))
+		panic(fmt.Errorf("message types.QueryBaseVaultsRequest does not contain field %s", descriptor.FullName()))
 	}
 }
 
@@ -2423,15 +2285,15 @@ func (x *fastReflection_QueryAsgardVaultsRequest) Get(descriptor protoreflect.Fi
 // empty, read-only value, then it panics.
 //
 // Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryAsgardVaultsRequest) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+func (x *fastReflection_QueryBaseVaultsRequest) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.QueryAsgardVaultsRequest.height":
+	case "types.QueryBaseVaultsRequest.height":
 		x.Height = value.Interface().(string)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryAsgardVaultsRequest"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryBaseVaultsRequest"))
 		}
-		panic(fmt.Errorf("message types.QueryAsgardVaultsRequest does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryBaseVaultsRequest does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -2445,40 +2307,40 @@ func (x *fastReflection_QueryAsgardVaultsRequest) Set(fd protoreflect.FieldDescr
 // It panics if the field does not contain a composite type.
 //
 // Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryAsgardVaultsRequest) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_QueryBaseVaultsRequest) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.QueryAsgardVaultsRequest.height":
-		panic(fmt.Errorf("field height of message types.QueryAsgardVaultsRequest is not mutable"))
+	case "types.QueryBaseVaultsRequest.height":
+		panic(fmt.Errorf("field height of message types.QueryBaseVaultsRequest is not mutable"))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryAsgardVaultsRequest"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryBaseVaultsRequest"))
 		}
-		panic(fmt.Errorf("message types.QueryAsgardVaultsRequest does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryBaseVaultsRequest does not contain field %s", fd.FullName()))
 	}
 }
 
 // NewField returns a new value that is assignable to the field
 // for the given descriptor. For scalars, this returns the default value.
 // For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_QueryAsgardVaultsRequest) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_QueryBaseVaultsRequest) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.QueryAsgardVaultsRequest.height":
+	case "types.QueryBaseVaultsRequest.height":
 		return protoreflect.ValueOfString("")
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryAsgardVaultsRequest"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryBaseVaultsRequest"))
 		}
-		panic(fmt.Errorf("message types.QueryAsgardVaultsRequest does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryBaseVaultsRequest does not contain field %s", fd.FullName()))
 	}
 }
 
 // WhichOneof reports which field within the oneof is populated,
 // returning nil if none are populated.
 // It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_QueryAsgardVaultsRequest) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+func (x *fastReflection_QueryBaseVaultsRequest) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
 	switch d.FullName() {
 	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.QueryAsgardVaultsRequest", d.FullName()))
+		panic(fmt.Errorf("%s is not a oneof field in types.QueryBaseVaultsRequest", d.FullName()))
 	}
 	panic("unreachable")
 }
@@ -2486,7 +2348,7 @@ func (x *fastReflection_QueryAsgardVaultsRequest) WhichOneof(d protoreflect.Oneo
 // GetUnknown retrieves the entire list of unknown fields.
 // The caller may only mutate the contents of the RawFields
 // if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_QueryAsgardVaultsRequest) GetUnknown() protoreflect.RawFields {
+func (x *fastReflection_QueryBaseVaultsRequest) GetUnknown() protoreflect.RawFields {
 	return x.unknownFields
 }
 
@@ -2497,7 +2359,7 @@ func (x *fastReflection_QueryAsgardVaultsRequest) GetUnknown() protoreflect.RawF
 // An empty RawFields may be passed to clear the fields.
 //
 // SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryAsgardVaultsRequest) SetUnknown(fields protoreflect.RawFields) {
+func (x *fastReflection_QueryBaseVaultsRequest) SetUnknown(fields protoreflect.RawFields) {
 	x.unknownFields = fields
 }
 
@@ -2509,7 +2371,7 @@ func (x *fastReflection_QueryAsgardVaultsRequest) SetUnknown(fields protoreflect
 // message type, but the details are implementation dependent.
 // Validity is not part of the protobuf data model, and may not
 // be preserved in marshaling or other operations.
-func (x *fastReflection_QueryAsgardVaultsRequest) IsValid() bool {
+func (x *fastReflection_QueryBaseVaultsRequest) IsValid() bool {
 	return x != nil
 }
 
@@ -2519,9 +2381,9 @@ func (x *fastReflection_QueryAsgardVaultsRequest) IsValid() bool {
 // The returned methods type is identical to
 // "google.golang.org/protobuf/runtime/protoiface".Methods.
 // Consult the protoiface package documentation for details.
-func (x *fastReflection_QueryAsgardVaultsRequest) ProtoMethods() *protoiface.Methods {
+func (x *fastReflection_QueryBaseVaultsRequest) ProtoMethods() *protoiface.Methods {
 	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*QueryAsgardVaultsRequest)
+		x := input.Message.Interface().(*QueryBaseVaultsRequest)
 		if x == nil {
 			return protoiface.SizeOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -2547,7 +2409,7 @@ func (x *fastReflection_QueryAsgardVaultsRequest) ProtoMethods() *protoiface.Met
 	}
 
 	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*QueryAsgardVaultsRequest)
+		x := input.Message.Interface().(*QueryBaseVaultsRequest)
 		if x == nil {
 			return protoiface.MarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -2584,7 +2446,7 @@ func (x *fastReflection_QueryAsgardVaultsRequest) ProtoMethods() *protoiface.Met
 		}, nil
 	}
 	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*QueryAsgardVaultsRequest)
+		x := input.Message.Interface().(*QueryBaseVaultsRequest)
 		if x == nil {
 			return protoiface.UnmarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -2616,10 +2478,10 @@ func (x *fastReflection_QueryAsgardVaultsRequest) ProtoMethods() *protoiface.Met
 			fieldNum := int32(wire >> 3)
 			wireType := int(wire & 0x7)
 			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryAsgardVaultsRequest: wiretype end group for non-group")
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryBaseVaultsRequest: wiretype end group for non-group")
 			}
 			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryAsgardVaultsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryBaseVaultsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
 			case 1:
@@ -2689,77 +2551,77 @@ func (x *fastReflection_QueryAsgardVaultsRequest) ProtoMethods() *protoiface.Met
 	}
 }
 
-var _ protoreflect.List = (*_QueryAsgardVaultsResponse_1_list)(nil)
+var _ protoreflect.List = (*_QueryBaseVaultsResponse_1_list)(nil)
 
-type _QueryAsgardVaultsResponse_1_list struct {
+type _QueryBaseVaultsResponse_1_list struct {
 	list *[]*QueryVaultResponse
 }
 
-func (x *_QueryAsgardVaultsResponse_1_list) Len() int {
+func (x *_QueryBaseVaultsResponse_1_list) Len() int {
 	if x.list == nil {
 		return 0
 	}
 	return len(*x.list)
 }
 
-func (x *_QueryAsgardVaultsResponse_1_list) Get(i int) protoreflect.Value {
+func (x *_QueryBaseVaultsResponse_1_list) Get(i int) protoreflect.Value {
 	return protoreflect.ValueOfMessage((*x.list)[i].ProtoReflect())
 }
 
-func (x *_QueryAsgardVaultsResponse_1_list) Set(i int, value protoreflect.Value) {
+func (x *_QueryBaseVaultsResponse_1_list) Set(i int, value protoreflect.Value) {
 	valueUnwrapped := value.Message()
 	concreteValue := valueUnwrapped.Interface().(*QueryVaultResponse)
 	(*x.list)[i] = concreteValue
 }
 
-func (x *_QueryAsgardVaultsResponse_1_list) Append(value protoreflect.Value) {
+func (x *_QueryBaseVaultsResponse_1_list) Append(value protoreflect.Value) {
 	valueUnwrapped := value.Message()
 	concreteValue := valueUnwrapped.Interface().(*QueryVaultResponse)
 	*x.list = append(*x.list, concreteValue)
 }
 
-func (x *_QueryAsgardVaultsResponse_1_list) AppendMutable() protoreflect.Value {
+func (x *_QueryBaseVaultsResponse_1_list) AppendMutable() protoreflect.Value {
 	v := new(QueryVaultResponse)
 	*x.list = append(*x.list, v)
 	return protoreflect.ValueOfMessage(v.ProtoReflect())
 }
 
-func (x *_QueryAsgardVaultsResponse_1_list) Truncate(n int) {
+func (x *_QueryBaseVaultsResponse_1_list) Truncate(n int) {
 	for i := n; i < len(*x.list); i++ {
 		(*x.list)[i] = nil
 	}
 	*x.list = (*x.list)[:n]
 }
 
-func (x *_QueryAsgardVaultsResponse_1_list) NewElement() protoreflect.Value {
+func (x *_QueryBaseVaultsResponse_1_list) NewElement() protoreflect.Value {
 	v := new(QueryVaultResponse)
 	return protoreflect.ValueOfMessage(v.ProtoReflect())
 }
 
-func (x *_QueryAsgardVaultsResponse_1_list) IsValid() bool {
+func (x *_QueryBaseVaultsResponse_1_list) IsValid() bool {
 	return x.list != nil
 }
 
 var (
-	md_QueryAsgardVaultsResponse               protoreflect.MessageDescriptor
-	fd_QueryAsgardVaultsResponse_asgard_vaults protoreflect.FieldDescriptor
+	md_QueryBaseVaultsResponse             protoreflect.MessageDescriptor
+	fd_QueryBaseVaultsResponse_base_vaults protoreflect.FieldDescriptor
 )
 
 func init() {
 	file_types_query_vault_proto_init()
-	md_QueryAsgardVaultsResponse = File_types_query_vault_proto.Messages().ByName("QueryAsgardVaultsResponse")
-	fd_QueryAsgardVaultsResponse_asgard_vaults = md_QueryAsgardVaultsResponse.Fields().ByName("asgard_vaults")
+	md_QueryBaseVaultsResponse = File_types_query_vault_proto.Messages().ByName("QueryBaseVaultsResponse")
+	fd_QueryBaseVaultsResponse_base_vaults = md_QueryBaseVaultsResponse.Fields().ByName("base_vaults")
 }
 
-var _ protoreflect.Message = (*fastReflection_QueryAsgardVaultsResponse)(nil)
+var _ protoreflect.Message = (*fastReflection_QueryBaseVaultsResponse)(nil)
 
-type fastReflection_QueryAsgardVaultsResponse QueryAsgardVaultsResponse
+type fastReflection_QueryBaseVaultsResponse QueryBaseVaultsResponse
 
-func (x *QueryAsgardVaultsResponse) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_QueryAsgardVaultsResponse)(x)
+func (x *QueryBaseVaultsResponse) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_QueryBaseVaultsResponse)(x)
 }
 
-func (x *QueryAsgardVaultsResponse) slowProtoReflect() protoreflect.Message {
+func (x *QueryBaseVaultsResponse) slowProtoReflect() protoreflect.Message {
 	mi := &file_types_query_vault_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2771,43 +2633,43 @@ func (x *QueryAsgardVaultsResponse) slowProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-var _fastReflection_QueryAsgardVaultsResponse_messageType fastReflection_QueryAsgardVaultsResponse_messageType
-var _ protoreflect.MessageType = fastReflection_QueryAsgardVaultsResponse_messageType{}
+var _fastReflection_QueryBaseVaultsResponse_messageType fastReflection_QueryBaseVaultsResponse_messageType
+var _ protoreflect.MessageType = fastReflection_QueryBaseVaultsResponse_messageType{}
 
-type fastReflection_QueryAsgardVaultsResponse_messageType struct{}
+type fastReflection_QueryBaseVaultsResponse_messageType struct{}
 
-func (x fastReflection_QueryAsgardVaultsResponse_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_QueryAsgardVaultsResponse)(nil)
+func (x fastReflection_QueryBaseVaultsResponse_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_QueryBaseVaultsResponse)(nil)
 }
-func (x fastReflection_QueryAsgardVaultsResponse_messageType) New() protoreflect.Message {
-	return new(fastReflection_QueryAsgardVaultsResponse)
+func (x fastReflection_QueryBaseVaultsResponse_messageType) New() protoreflect.Message {
+	return new(fastReflection_QueryBaseVaultsResponse)
 }
-func (x fastReflection_QueryAsgardVaultsResponse_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_QueryAsgardVaultsResponse
+func (x fastReflection_QueryBaseVaultsResponse_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryBaseVaultsResponse
 }
 
 // Descriptor returns message descriptor, which contains only the protobuf
 // type information for the message.
-func (x *fastReflection_QueryAsgardVaultsResponse) Descriptor() protoreflect.MessageDescriptor {
-	return md_QueryAsgardVaultsResponse
+func (x *fastReflection_QueryBaseVaultsResponse) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryBaseVaultsResponse
 }
 
 // Type returns the message type, which encapsulates both Go and protobuf
 // type information. If the Go type information is not needed,
 // it is recommended that the message descriptor be used instead.
-func (x *fastReflection_QueryAsgardVaultsResponse) Type() protoreflect.MessageType {
-	return _fastReflection_QueryAsgardVaultsResponse_messageType
+func (x *fastReflection_QueryBaseVaultsResponse) Type() protoreflect.MessageType {
+	return _fastReflection_QueryBaseVaultsResponse_messageType
 }
 
 // New returns a newly allocated and mutable empty message.
-func (x *fastReflection_QueryAsgardVaultsResponse) New() protoreflect.Message {
-	return new(fastReflection_QueryAsgardVaultsResponse)
+func (x *fastReflection_QueryBaseVaultsResponse) New() protoreflect.Message {
+	return new(fastReflection_QueryBaseVaultsResponse)
 }
 
 // Interface unwraps the message reflection interface and
 // returns the underlying ProtoMessage interface.
-func (x *fastReflection_QueryAsgardVaultsResponse) Interface() protoreflect.ProtoMessage {
-	return (*QueryAsgardVaultsResponse)(x)
+func (x *fastReflection_QueryBaseVaultsResponse) Interface() protoreflect.ProtoMessage {
+	return (*QueryBaseVaultsResponse)(x)
 }
 
 // Range iterates over every populated field in an undefined order,
@@ -2815,10 +2677,10 @@ func (x *fastReflection_QueryAsgardVaultsResponse) Interface() protoreflect.Prot
 // Range returns immediately if f returns false.
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
-func (x *fastReflection_QueryAsgardVaultsResponse) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
-	if len(x.AsgardVaults) != 0 {
-		value := protoreflect.ValueOfList(&_QueryAsgardVaultsResponse_1_list{list: &x.AsgardVaults})
-		if !f(fd_QueryAsgardVaultsResponse_asgard_vaults, value) {
+func (x *fastReflection_QueryBaseVaultsResponse) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+	if len(x.BaseVaults) != 0 {
+		value := protoreflect.ValueOfList(&_QueryBaseVaultsResponse_1_list{list: &x.BaseVaults})
+		if !f(fd_QueryBaseVaultsResponse_base_vaults, value) {
 			return
 		}
 	}
@@ -2835,15 +2697,15 @@ func (x *fastReflection_QueryAsgardVaultsResponse) Range(f func(protoreflect.Fie
 // In other cases (aside from the nullable cases above),
 // a proto3 scalar field is populated if it contains a non-zero value, and
 // a repeated field is populated if it is non-empty.
-func (x *fastReflection_QueryAsgardVaultsResponse) Has(fd protoreflect.FieldDescriptor) bool {
+func (x *fastReflection_QueryBaseVaultsResponse) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.QueryAsgardVaultsResponse.asgard_vaults":
-		return len(x.AsgardVaults) != 0
+	case "types.QueryBaseVaultsResponse.base_vaults":
+		return len(x.BaseVaults) != 0
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryAsgardVaultsResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryBaseVaultsResponse"))
 		}
-		panic(fmt.Errorf("message types.QueryAsgardVaultsResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryBaseVaultsResponse does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -2853,15 +2715,15 @@ func (x *fastReflection_QueryAsgardVaultsResponse) Has(fd protoreflect.FieldDesc
 // associated with the given field number.
 //
 // Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryAsgardVaultsResponse) Clear(fd protoreflect.FieldDescriptor) {
+func (x *fastReflection_QueryBaseVaultsResponse) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.QueryAsgardVaultsResponse.asgard_vaults":
-		x.AsgardVaults = nil
+	case "types.QueryBaseVaultsResponse.base_vaults":
+		x.BaseVaults = nil
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryAsgardVaultsResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryBaseVaultsResponse"))
 		}
-		panic(fmt.Errorf("message types.QueryAsgardVaultsResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryBaseVaultsResponse does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -2871,19 +2733,19 @@ func (x *fastReflection_QueryAsgardVaultsResponse) Clear(fd protoreflect.FieldDe
 // the default value of a bytes scalar is guaranteed to be a copy.
 // For unpopulated composite types, it returns an empty, read-only view
 // of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_QueryAsgardVaultsResponse) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_QueryBaseVaultsResponse) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.QueryAsgardVaultsResponse.asgard_vaults":
-		if len(x.AsgardVaults) == 0 {
-			return protoreflect.ValueOfList(&_QueryAsgardVaultsResponse_1_list{})
+	case "types.QueryBaseVaultsResponse.base_vaults":
+		if len(x.BaseVaults) == 0 {
+			return protoreflect.ValueOfList(&_QueryBaseVaultsResponse_1_list{})
 		}
-		listValue := &_QueryAsgardVaultsResponse_1_list{list: &x.AsgardVaults}
+		listValue := &_QueryBaseVaultsResponse_1_list{list: &x.BaseVaults}
 		return protoreflect.ValueOfList(listValue)
 	default:
 		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryAsgardVaultsResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryBaseVaultsResponse"))
 		}
-		panic(fmt.Errorf("message types.QueryAsgardVaultsResponse does not contain field %s", descriptor.FullName()))
+		panic(fmt.Errorf("message types.QueryBaseVaultsResponse does not contain field %s", descriptor.FullName()))
 	}
 }
 
@@ -2897,17 +2759,17 @@ func (x *fastReflection_QueryAsgardVaultsResponse) Get(descriptor protoreflect.F
 // empty, read-only value, then it panics.
 //
 // Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryAsgardVaultsResponse) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+func (x *fastReflection_QueryBaseVaultsResponse) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.QueryAsgardVaultsResponse.asgard_vaults":
+	case "types.QueryBaseVaultsResponse.base_vaults":
 		lv := value.List()
-		clv := lv.(*_QueryAsgardVaultsResponse_1_list)
-		x.AsgardVaults = *clv.list
+		clv := lv.(*_QueryBaseVaultsResponse_1_list)
+		x.BaseVaults = *clv.list
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryAsgardVaultsResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryBaseVaultsResponse"))
 		}
-		panic(fmt.Errorf("message types.QueryAsgardVaultsResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryBaseVaultsResponse does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -2921,45 +2783,45 @@ func (x *fastReflection_QueryAsgardVaultsResponse) Set(fd protoreflect.FieldDesc
 // It panics if the field does not contain a composite type.
 //
 // Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryAsgardVaultsResponse) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_QueryBaseVaultsResponse) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.QueryAsgardVaultsResponse.asgard_vaults":
-		if x.AsgardVaults == nil {
-			x.AsgardVaults = []*QueryVaultResponse{}
+	case "types.QueryBaseVaultsResponse.base_vaults":
+		if x.BaseVaults == nil {
+			x.BaseVaults = []*QueryVaultResponse{}
 		}
-		value := &_QueryAsgardVaultsResponse_1_list{list: &x.AsgardVaults}
+		value := &_QueryBaseVaultsResponse_1_list{list: &x.BaseVaults}
 		return protoreflect.ValueOfList(value)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryAsgardVaultsResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryBaseVaultsResponse"))
 		}
-		panic(fmt.Errorf("message types.QueryAsgardVaultsResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryBaseVaultsResponse does not contain field %s", fd.FullName()))
 	}
 }
 
 // NewField returns a new value that is assignable to the field
 // for the given descriptor. For scalars, this returns the default value.
 // For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_QueryAsgardVaultsResponse) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_QueryBaseVaultsResponse) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.QueryAsgardVaultsResponse.asgard_vaults":
+	case "types.QueryBaseVaultsResponse.base_vaults":
 		list := []*QueryVaultResponse{}
-		return protoreflect.ValueOfList(&_QueryAsgardVaultsResponse_1_list{list: &list})
+		return protoreflect.ValueOfList(&_QueryBaseVaultsResponse_1_list{list: &list})
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryAsgardVaultsResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryBaseVaultsResponse"))
 		}
-		panic(fmt.Errorf("message types.QueryAsgardVaultsResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.QueryBaseVaultsResponse does not contain field %s", fd.FullName()))
 	}
 }
 
 // WhichOneof reports which field within the oneof is populated,
 // returning nil if none are populated.
 // It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_QueryAsgardVaultsResponse) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+func (x *fastReflection_QueryBaseVaultsResponse) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
 	switch d.FullName() {
 	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.QueryAsgardVaultsResponse", d.FullName()))
+		panic(fmt.Errorf("%s is not a oneof field in types.QueryBaseVaultsResponse", d.FullName()))
 	}
 	panic("unreachable")
 }
@@ -2967,7 +2829,7 @@ func (x *fastReflection_QueryAsgardVaultsResponse) WhichOneof(d protoreflect.One
 // GetUnknown retrieves the entire list of unknown fields.
 // The caller may only mutate the contents of the RawFields
 // if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_QueryAsgardVaultsResponse) GetUnknown() protoreflect.RawFields {
+func (x *fastReflection_QueryBaseVaultsResponse) GetUnknown() protoreflect.RawFields {
 	return x.unknownFields
 }
 
@@ -2978,7 +2840,7 @@ func (x *fastReflection_QueryAsgardVaultsResponse) GetUnknown() protoreflect.Raw
 // An empty RawFields may be passed to clear the fields.
 //
 // SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_QueryAsgardVaultsResponse) SetUnknown(fields protoreflect.RawFields) {
+func (x *fastReflection_QueryBaseVaultsResponse) SetUnknown(fields protoreflect.RawFields) {
 	x.unknownFields = fields
 }
 
@@ -2990,7 +2852,7 @@ func (x *fastReflection_QueryAsgardVaultsResponse) SetUnknown(fields protoreflec
 // message type, but the details are implementation dependent.
 // Validity is not part of the protobuf data model, and may not
 // be preserved in marshaling or other operations.
-func (x *fastReflection_QueryAsgardVaultsResponse) IsValid() bool {
+func (x *fastReflection_QueryBaseVaultsResponse) IsValid() bool {
 	return x != nil
 }
 
@@ -3000,9 +2862,9 @@ func (x *fastReflection_QueryAsgardVaultsResponse) IsValid() bool {
 // The returned methods type is identical to
 // "google.golang.org/protobuf/runtime/protoiface".Methods.
 // Consult the protoiface package documentation for details.
-func (x *fastReflection_QueryAsgardVaultsResponse) ProtoMethods() *protoiface.Methods {
+func (x *fastReflection_QueryBaseVaultsResponse) ProtoMethods() *protoiface.Methods {
 	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*QueryAsgardVaultsResponse)
+		x := input.Message.Interface().(*QueryBaseVaultsResponse)
 		if x == nil {
 			return protoiface.SizeOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -3014,8 +2876,8 @@ func (x *fastReflection_QueryAsgardVaultsResponse) ProtoMethods() *protoiface.Me
 		var n int
 		var l int
 		_ = l
-		if len(x.AsgardVaults) > 0 {
-			for _, e := range x.AsgardVaults {
+		if len(x.BaseVaults) > 0 {
+			for _, e := range x.BaseVaults {
 				l = options.Size(e)
 				n += 1 + l + runtime.Sov(uint64(l))
 			}
@@ -3030,7 +2892,7 @@ func (x *fastReflection_QueryAsgardVaultsResponse) ProtoMethods() *protoiface.Me
 	}
 
 	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*QueryAsgardVaultsResponse)
+		x := input.Message.Interface().(*QueryBaseVaultsResponse)
 		if x == nil {
 			return protoiface.MarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -3049,9 +2911,9 @@ func (x *fastReflection_QueryAsgardVaultsResponse) ProtoMethods() *protoiface.Me
 			i -= len(x.unknownFields)
 			copy(dAtA[i:], x.unknownFields)
 		}
-		if len(x.AsgardVaults) > 0 {
-			for iNdEx := len(x.AsgardVaults) - 1; iNdEx >= 0; iNdEx-- {
-				encoded, err := options.Marshal(x.AsgardVaults[iNdEx])
+		if len(x.BaseVaults) > 0 {
+			for iNdEx := len(x.BaseVaults) - 1; iNdEx >= 0; iNdEx-- {
+				encoded, err := options.Marshal(x.BaseVaults[iNdEx])
 				if err != nil {
 					return protoiface.MarshalOutput{
 						NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -3076,7 +2938,7 @@ func (x *fastReflection_QueryAsgardVaultsResponse) ProtoMethods() *protoiface.Me
 		}, nil
 	}
 	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*QueryAsgardVaultsResponse)
+		x := input.Message.Interface().(*QueryBaseVaultsResponse)
 		if x == nil {
 			return protoiface.UnmarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -3108,15 +2970,15 @@ func (x *fastReflection_QueryAsgardVaultsResponse) ProtoMethods() *protoiface.Me
 			fieldNum := int32(wire >> 3)
 			wireType := int(wire & 0x7)
 			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryAsgardVaultsResponse: wiretype end group for non-group")
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryBaseVaultsResponse: wiretype end group for non-group")
 			}
 			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryAsgardVaultsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryBaseVaultsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
 			case 1:
 				if wireType != 2 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field AsgardVaults", wireType)
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field BaseVaults", wireType)
 				}
 				var msglen int
 				for shift := uint(0); ; shift += 7 {
@@ -3143,8 +3005,8 @@ func (x *fastReflection_QueryAsgardVaultsResponse) ProtoMethods() *protoiface.Me
 				if postIndex > l {
 					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
 				}
-				x.AsgardVaults = append(x.AsgardVaults, &QueryVaultResponse{})
-				if err := options.Unmarshal(dAtA[iNdEx:postIndex], x.AsgardVaults[len(x.AsgardVaults)-1]); err != nil {
+				x.BaseVaults = append(x.BaseVaults, &QueryVaultResponse{})
+				if err := options.Unmarshal(dAtA[iNdEx:postIndex], x.BaseVaults[len(x.BaseVaults)-1]); err != nil {
 					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, err
 				}
 				iNdEx = postIndex
@@ -4235,57 +4097,6 @@ func (x *fastReflection_QueryVaultsPubkeysResponse) ProtoMethods() *protoiface.M
 	}
 }
 
-var _ protoreflect.List = (*_VaultInfo_2_list)(nil)
-
-type _VaultInfo_2_list struct {
-	list *[]*VaultRouter
-}
-
-func (x *_VaultInfo_2_list) Len() int {
-	if x.list == nil {
-		return 0
-	}
-	return len(*x.list)
-}
-
-func (x *_VaultInfo_2_list) Get(i int) protoreflect.Value {
-	return protoreflect.ValueOfMessage((*x.list)[i].ProtoReflect())
-}
-
-func (x *_VaultInfo_2_list) Set(i int, value protoreflect.Value) {
-	valueUnwrapped := value.Message()
-	concreteValue := valueUnwrapped.Interface().(*VaultRouter)
-	(*x.list)[i] = concreteValue
-}
-
-func (x *_VaultInfo_2_list) Append(value protoreflect.Value) {
-	valueUnwrapped := value.Message()
-	concreteValue := valueUnwrapped.Interface().(*VaultRouter)
-	*x.list = append(*x.list, concreteValue)
-}
-
-func (x *_VaultInfo_2_list) AppendMutable() protoreflect.Value {
-	v := new(VaultRouter)
-	*x.list = append(*x.list, v)
-	return protoreflect.ValueOfMessage(v.ProtoReflect())
-}
-
-func (x *_VaultInfo_2_list) Truncate(n int) {
-	for i := n; i < len(*x.list); i++ {
-		(*x.list)[i] = nil
-	}
-	*x.list = (*x.list)[:n]
-}
-
-func (x *_VaultInfo_2_list) NewElement() protoreflect.Value {
-	v := new(VaultRouter)
-	return protoreflect.ValueOfMessage(v.ProtoReflect())
-}
-
-func (x *_VaultInfo_2_list) IsValid() bool {
-	return x.list != nil
-}
-
 var _ protoreflect.List = (*_VaultInfo_4_list)(nil)
 
 type _VaultInfo_4_list struct {
@@ -4335,7 +4146,6 @@ func (x *_VaultInfo_4_list) IsValid() bool {
 var (
 	md_VaultInfo               protoreflect.MessageDescriptor
 	fd_VaultInfo_pub_key       protoreflect.FieldDescriptor
-	fd_VaultInfo_routers       protoreflect.FieldDescriptor
 	fd_VaultInfo_pub_key_eddsa protoreflect.FieldDescriptor
 	fd_VaultInfo_membership    protoreflect.FieldDescriptor
 )
@@ -4344,7 +4154,6 @@ func init() {
 	file_types_query_vault_proto_init()
 	md_VaultInfo = File_types_query_vault_proto.Messages().ByName("VaultInfo")
 	fd_VaultInfo_pub_key = md_VaultInfo.Fields().ByName("pub_key")
-	fd_VaultInfo_routers = md_VaultInfo.Fields().ByName("routers")
 	fd_VaultInfo_pub_key_eddsa = md_VaultInfo.Fields().ByName("pub_key_eddsa")
 	fd_VaultInfo_membership = md_VaultInfo.Fields().ByName("membership")
 }
@@ -4420,12 +4229,6 @@ func (x *fastReflection_VaultInfo) Range(f func(protoreflect.FieldDescriptor, pr
 			return
 		}
 	}
-	if len(x.Routers) != 0 {
-		value := protoreflect.ValueOfList(&_VaultInfo_2_list{list: &x.Routers})
-		if !f(fd_VaultInfo_routers, value) {
-			return
-		}
-	}
 	if x.PubKeyEddsa != "" {
 		value := protoreflect.ValueOfString(x.PubKeyEddsa)
 		if !f(fd_VaultInfo_pub_key_eddsa, value) {
@@ -4455,8 +4258,6 @@ func (x *fastReflection_VaultInfo) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
 	case "types.VaultInfo.pub_key":
 		return x.PubKey != ""
-	case "types.VaultInfo.routers":
-		return len(x.Routers) != 0
 	case "types.VaultInfo.pub_key_eddsa":
 		return x.PubKeyEddsa != ""
 	case "types.VaultInfo.membership":
@@ -4479,8 +4280,6 @@ func (x *fastReflection_VaultInfo) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
 	case "types.VaultInfo.pub_key":
 		x.PubKey = ""
-	case "types.VaultInfo.routers":
-		x.Routers = nil
 	case "types.VaultInfo.pub_key_eddsa":
 		x.PubKeyEddsa = ""
 	case "types.VaultInfo.membership":
@@ -4504,12 +4303,6 @@ func (x *fastReflection_VaultInfo) Get(descriptor protoreflect.FieldDescriptor) 
 	case "types.VaultInfo.pub_key":
 		value := x.PubKey
 		return protoreflect.ValueOfString(value)
-	case "types.VaultInfo.routers":
-		if len(x.Routers) == 0 {
-			return protoreflect.ValueOfList(&_VaultInfo_2_list{})
-		}
-		listValue := &_VaultInfo_2_list{list: &x.Routers}
-		return protoreflect.ValueOfList(listValue)
 	case "types.VaultInfo.pub_key_eddsa":
 		value := x.PubKeyEddsa
 		return protoreflect.ValueOfString(value)
@@ -4541,10 +4334,6 @@ func (x *fastReflection_VaultInfo) Set(fd protoreflect.FieldDescriptor, value pr
 	switch fd.FullName() {
 	case "types.VaultInfo.pub_key":
 		x.PubKey = value.Interface().(string)
-	case "types.VaultInfo.routers":
-		lv := value.List()
-		clv := lv.(*_VaultInfo_2_list)
-		x.Routers = *clv.list
 	case "types.VaultInfo.pub_key_eddsa":
 		x.PubKeyEddsa = value.Interface().(string)
 	case "types.VaultInfo.membership":
@@ -4571,12 +4360,6 @@ func (x *fastReflection_VaultInfo) Set(fd protoreflect.FieldDescriptor, value pr
 // Mutable is a mutating operation and unsafe for concurrent use.
 func (x *fastReflection_VaultInfo) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.VaultInfo.routers":
-		if x.Routers == nil {
-			x.Routers = []*VaultRouter{}
-		}
-		value := &_VaultInfo_2_list{list: &x.Routers}
-		return protoreflect.ValueOfList(value)
 	case "types.VaultInfo.membership":
 		if x.Membership == nil {
 			x.Membership = []string{}
@@ -4602,9 +4385,6 @@ func (x *fastReflection_VaultInfo) NewField(fd protoreflect.FieldDescriptor) pro
 	switch fd.FullName() {
 	case "types.VaultInfo.pub_key":
 		return protoreflect.ValueOfString("")
-	case "types.VaultInfo.routers":
-		list := []*VaultRouter{}
-		return protoreflect.ValueOfList(&_VaultInfo_2_list{list: &list})
 	case "types.VaultInfo.pub_key_eddsa":
 		return protoreflect.ValueOfString("")
 	case "types.VaultInfo.membership":
@@ -4683,12 +4463,6 @@ func (x *fastReflection_VaultInfo) ProtoMethods() *protoiface.Methods {
 		if l > 0 {
 			n += 1 + l + runtime.Sov(uint64(l))
 		}
-		if len(x.Routers) > 0 {
-			for _, e := range x.Routers {
-				l = options.Size(e)
-				n += 1 + l + runtime.Sov(uint64(l))
-			}
-		}
 		l = len(x.PubKeyEddsa)
 		if l > 0 {
 			n += 1 + l + runtime.Sov(uint64(l))
@@ -4743,22 +4517,6 @@ func (x *fastReflection_VaultInfo) ProtoMethods() *protoiface.Methods {
 			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.PubKeyEddsa)))
 			i--
 			dAtA[i] = 0x1a
-		}
-		if len(x.Routers) > 0 {
-			for iNdEx := len(x.Routers) - 1; iNdEx >= 0; iNdEx-- {
-				encoded, err := options.Marshal(x.Routers[iNdEx])
-				if err != nil {
-					return protoiface.MarshalOutput{
-						NoUnkeyedLiterals: input.NoUnkeyedLiterals,
-						Buf:               input.Buf,
-					}, err
-				}
-				i -= len(encoded)
-				copy(dAtA[i:], encoded)
-				i = runtime.EncodeVarint(dAtA, i, uint64(len(encoded)))
-				i--
-				dAtA[i] = 0x12
-			}
 		}
 		if len(x.PubKey) > 0 {
 			i -= len(x.PubKey)
@@ -4847,40 +4605,6 @@ func (x *fastReflection_VaultInfo) ProtoMethods() *protoiface.Methods {
 					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
 				}
 				x.PubKey = string(dAtA[iNdEx:postIndex])
-				iNdEx = postIndex
-			case 2:
-				if wireType != 2 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Routers", wireType)
-				}
-				var msglen int
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
-					}
-					if iNdEx >= l {
-						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					msglen |= int(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				if msglen < 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
-				}
-				postIndex := iNdEx + msglen
-				if postIndex < 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
-				}
-				if postIndex > l {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-				}
-				x.Routers = append(x.Routers, &VaultRouter{})
-				if err := options.Unmarshal(dAtA[iNdEx:postIndex], x.Routers[len(x.Routers)-1]); err != nil {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, err
-				}
 				iNdEx = postIndex
 			case 3:
 				if wireType != 2 {
@@ -4982,490 +4706,6 @@ func (x *fastReflection_VaultInfo) ProtoMethods() *protoiface.Methods {
 }
 
 var (
-	md_VaultRouter        protoreflect.MessageDescriptor
-	fd_VaultRouter_chain  protoreflect.FieldDescriptor
-	fd_VaultRouter_router protoreflect.FieldDescriptor
-)
-
-func init() {
-	file_types_query_vault_proto_init()
-	md_VaultRouter = File_types_query_vault_proto.Messages().ByName("VaultRouter")
-	fd_VaultRouter_chain = md_VaultRouter.Fields().ByName("chain")
-	fd_VaultRouter_router = md_VaultRouter.Fields().ByName("router")
-}
-
-var _ protoreflect.Message = (*fastReflection_VaultRouter)(nil)
-
-type fastReflection_VaultRouter VaultRouter
-
-func (x *VaultRouter) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_VaultRouter)(x)
-}
-
-func (x *VaultRouter) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_vault_proto_msgTypes[7]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-var _fastReflection_VaultRouter_messageType fastReflection_VaultRouter_messageType
-var _ protoreflect.MessageType = fastReflection_VaultRouter_messageType{}
-
-type fastReflection_VaultRouter_messageType struct{}
-
-func (x fastReflection_VaultRouter_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_VaultRouter)(nil)
-}
-func (x fastReflection_VaultRouter_messageType) New() protoreflect.Message {
-	return new(fastReflection_VaultRouter)
-}
-func (x fastReflection_VaultRouter_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_VaultRouter
-}
-
-// Descriptor returns message descriptor, which contains only the protobuf
-// type information for the message.
-func (x *fastReflection_VaultRouter) Descriptor() protoreflect.MessageDescriptor {
-	return md_VaultRouter
-}
-
-// Type returns the message type, which encapsulates both Go and protobuf
-// type information. If the Go type information is not needed,
-// it is recommended that the message descriptor be used instead.
-func (x *fastReflection_VaultRouter) Type() protoreflect.MessageType {
-	return _fastReflection_VaultRouter_messageType
-}
-
-// New returns a newly allocated and mutable empty message.
-func (x *fastReflection_VaultRouter) New() protoreflect.Message {
-	return new(fastReflection_VaultRouter)
-}
-
-// Interface unwraps the message reflection interface and
-// returns the underlying ProtoMessage interface.
-func (x *fastReflection_VaultRouter) Interface() protoreflect.ProtoMessage {
-	return (*VaultRouter)(x)
-}
-
-// Range iterates over every populated field in an undefined order,
-// calling f for each field descriptor and value encountered.
-// Range returns immediately if f returns false.
-// While iterating, mutating operations may only be performed
-// on the current field descriptor.
-func (x *fastReflection_VaultRouter) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
-	if x.Chain != "" {
-		value := protoreflect.ValueOfString(x.Chain)
-		if !f(fd_VaultRouter_chain, value) {
-			return
-		}
-	}
-	if x.Router != "" {
-		value := protoreflect.ValueOfString(x.Router)
-		if !f(fd_VaultRouter_router, value) {
-			return
-		}
-	}
-}
-
-// Has reports whether a field is populated.
-//
-// Some fields have the property of nullability where it is possible to
-// distinguish between the default value of a field and whether the field
-// was explicitly populated with the default value. Singular message fields,
-// member fields of a oneof, and proto2 scalar fields are nullable. Such
-// fields are populated only if explicitly set.
-//
-// In other cases (aside from the nullable cases above),
-// a proto3 scalar field is populated if it contains a non-zero value, and
-// a repeated field is populated if it is non-empty.
-func (x *fastReflection_VaultRouter) Has(fd protoreflect.FieldDescriptor) bool {
-	switch fd.FullName() {
-	case "types.VaultRouter.chain":
-		return x.Chain != ""
-	case "types.VaultRouter.router":
-		return x.Router != ""
-	default:
-		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.VaultRouter"))
-		}
-		panic(fmt.Errorf("message types.VaultRouter does not contain field %s", fd.FullName()))
-	}
-}
-
-// Clear clears the field such that a subsequent Has call reports false.
-//
-// Clearing an extension field clears both the extension type and value
-// associated with the given field number.
-//
-// Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_VaultRouter) Clear(fd protoreflect.FieldDescriptor) {
-	switch fd.FullName() {
-	case "types.VaultRouter.chain":
-		x.Chain = ""
-	case "types.VaultRouter.router":
-		x.Router = ""
-	default:
-		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.VaultRouter"))
-		}
-		panic(fmt.Errorf("message types.VaultRouter does not contain field %s", fd.FullName()))
-	}
-}
-
-// Get retrieves the value for a field.
-//
-// For unpopulated scalars, it returns the default value, where
-// the default value of a bytes scalar is guaranteed to be a copy.
-// For unpopulated composite types, it returns an empty, read-only view
-// of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_VaultRouter) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
-	switch descriptor.FullName() {
-	case "types.VaultRouter.chain":
-		value := x.Chain
-		return protoreflect.ValueOfString(value)
-	case "types.VaultRouter.router":
-		value := x.Router
-		return protoreflect.ValueOfString(value)
-	default:
-		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.VaultRouter"))
-		}
-		panic(fmt.Errorf("message types.VaultRouter does not contain field %s", descriptor.FullName()))
-	}
-}
-
-// Set stores the value for a field.
-//
-// For a field belonging to a oneof, it implicitly clears any other field
-// that may be currently set within the same oneof.
-// For extension fields, it implicitly stores the provided ExtensionType.
-// When setting a composite type, it is unspecified whether the stored value
-// aliases the source's memory in any way. If the composite value is an
-// empty, read-only value, then it panics.
-//
-// Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_VaultRouter) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
-	switch fd.FullName() {
-	case "types.VaultRouter.chain":
-		x.Chain = value.Interface().(string)
-	case "types.VaultRouter.router":
-		x.Router = value.Interface().(string)
-	default:
-		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.VaultRouter"))
-		}
-		panic(fmt.Errorf("message types.VaultRouter does not contain field %s", fd.FullName()))
-	}
-}
-
-// Mutable returns a mutable reference to a composite type.
-//
-// If the field is unpopulated, it may allocate a composite value.
-// For a field belonging to a oneof, it implicitly clears any other field
-// that may be currently set within the same oneof.
-// For extension fields, it implicitly stores the provided ExtensionType
-// if not already stored.
-// It panics if the field does not contain a composite type.
-//
-// Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_VaultRouter) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
-	switch fd.FullName() {
-	case "types.VaultRouter.chain":
-		panic(fmt.Errorf("field chain of message types.VaultRouter is not mutable"))
-	case "types.VaultRouter.router":
-		panic(fmt.Errorf("field router of message types.VaultRouter is not mutable"))
-	default:
-		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.VaultRouter"))
-		}
-		panic(fmt.Errorf("message types.VaultRouter does not contain field %s", fd.FullName()))
-	}
-}
-
-// NewField returns a new value that is assignable to the field
-// for the given descriptor. For scalars, this returns the default value.
-// For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_VaultRouter) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
-	switch fd.FullName() {
-	case "types.VaultRouter.chain":
-		return protoreflect.ValueOfString("")
-	case "types.VaultRouter.router":
-		return protoreflect.ValueOfString("")
-	default:
-		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.VaultRouter"))
-		}
-		panic(fmt.Errorf("message types.VaultRouter does not contain field %s", fd.FullName()))
-	}
-}
-
-// WhichOneof reports which field within the oneof is populated,
-// returning nil if none are populated.
-// It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_VaultRouter) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
-	switch d.FullName() {
-	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.VaultRouter", d.FullName()))
-	}
-	panic("unreachable")
-}
-
-// GetUnknown retrieves the entire list of unknown fields.
-// The caller may only mutate the contents of the RawFields
-// if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_VaultRouter) GetUnknown() protoreflect.RawFields {
-	return x.unknownFields
-}
-
-// SetUnknown stores an entire list of unknown fields.
-// The raw fields must be syntactically valid according to the wire format.
-// An implementation may panic if this is not the case.
-// Once stored, the caller must not mutate the content of the RawFields.
-// An empty RawFields may be passed to clear the fields.
-//
-// SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_VaultRouter) SetUnknown(fields protoreflect.RawFields) {
-	x.unknownFields = fields
-}
-
-// IsValid reports whether the message is valid.
-//
-// An invalid message is an empty, read-only value.
-//
-// An invalid message often corresponds to a nil pointer of the concrete
-// message type, but the details are implementation dependent.
-// Validity is not part of the protobuf data model, and may not
-// be preserved in marshaling or other operations.
-func (x *fastReflection_VaultRouter) IsValid() bool {
-	return x != nil
-}
-
-// ProtoMethods returns optional fastReflectionFeature-path implementations of various operations.
-// This method may return nil.
-//
-// The returned methods type is identical to
-// "google.golang.org/protobuf/runtime/protoiface".Methods.
-// Consult the protoiface package documentation for details.
-func (x *fastReflection_VaultRouter) ProtoMethods() *protoiface.Methods {
-	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*VaultRouter)
-		if x == nil {
-			return protoiface.SizeOutput{
-				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
-				Size:              0,
-			}
-		}
-		options := runtime.SizeInputToOptions(input)
-		_ = options
-		var n int
-		var l int
-		_ = l
-		l = len(x.Chain)
-		if l > 0 {
-			n += 1 + l + runtime.Sov(uint64(l))
-		}
-		l = len(x.Router)
-		if l > 0 {
-			n += 1 + l + runtime.Sov(uint64(l))
-		}
-		if x.unknownFields != nil {
-			n += len(x.unknownFields)
-		}
-		return protoiface.SizeOutput{
-			NoUnkeyedLiterals: input.NoUnkeyedLiterals,
-			Size:              n,
-		}
-	}
-
-	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*VaultRouter)
-		if x == nil {
-			return protoiface.MarshalOutput{
-				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
-				Buf:               input.Buf,
-			}, nil
-		}
-		options := runtime.MarshalInputToOptions(input)
-		_ = options
-		size := options.Size(x)
-		dAtA := make([]byte, size)
-		i := len(dAtA)
-		_ = i
-		var l int
-		_ = l
-		if x.unknownFields != nil {
-			i -= len(x.unknownFields)
-			copy(dAtA[i:], x.unknownFields)
-		}
-		if len(x.Router) > 0 {
-			i -= len(x.Router)
-			copy(dAtA[i:], x.Router)
-			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.Router)))
-			i--
-			dAtA[i] = 0x12
-		}
-		if len(x.Chain) > 0 {
-			i -= len(x.Chain)
-			copy(dAtA[i:], x.Chain)
-			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.Chain)))
-			i--
-			dAtA[i] = 0xa
-		}
-		if input.Buf != nil {
-			input.Buf = append(input.Buf, dAtA...)
-		} else {
-			input.Buf = dAtA
-		}
-		return protoiface.MarshalOutput{
-			NoUnkeyedLiterals: input.NoUnkeyedLiterals,
-			Buf:               input.Buf,
-		}, nil
-	}
-	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*VaultRouter)
-		if x == nil {
-			return protoiface.UnmarshalOutput{
-				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
-				Flags:             input.Flags,
-			}, nil
-		}
-		options := runtime.UnmarshalInputToOptions(input)
-		_ = options
-		dAtA := input.Buf
-		l := len(dAtA)
-		iNdEx := 0
-		for iNdEx < l {
-			preIndex := iNdEx
-			var wire uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				wire |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			fieldNum := int32(wire >> 3)
-			wireType := int(wire & 0x7)
-			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: VaultRouter: wiretype end group for non-group")
-			}
-			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: VaultRouter: illegal tag %d (wire type %d)", fieldNum, wire)
-			}
-			switch fieldNum {
-			case 1:
-				if wireType != 2 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Chain", wireType)
-				}
-				var stringLen uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
-					}
-					if iNdEx >= l {
-						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					stringLen |= uint64(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				intStringLen := int(stringLen)
-				if intStringLen < 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
-				}
-				postIndex := iNdEx + intStringLen
-				if postIndex < 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
-				}
-				if postIndex > l {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-				}
-				x.Chain = string(dAtA[iNdEx:postIndex])
-				iNdEx = postIndex
-			case 2:
-				if wireType != 2 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Router", wireType)
-				}
-				var stringLen uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
-					}
-					if iNdEx >= l {
-						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					stringLen |= uint64(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				intStringLen := int(stringLen)
-				if intStringLen < 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
-				}
-				postIndex := iNdEx + intStringLen
-				if postIndex < 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
-				}
-				if postIndex > l {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-				}
-				x.Router = string(dAtA[iNdEx:postIndex])
-				iNdEx = postIndex
-			default:
-				iNdEx = preIndex
-				skippy, err := runtime.Skip(dAtA[iNdEx:])
-				if err != nil {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, err
-				}
-				if (skippy < 0) || (iNdEx+skippy) < 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
-				}
-				if (iNdEx + skippy) > l {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-				}
-				if !options.DiscardUnknown {
-					x.unknownFields = append(x.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-				}
-				iNdEx += skippy
-			}
-		}
-
-		if iNdEx > l {
-			return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-		}
-		return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, nil
-	}
-	return &protoiface.Methods{
-		NoUnkeyedLiterals: struct{}{},
-		Flags:             protoiface.SupportMarshalDeterministic | protoiface.SupportUnmarshalDiscardUnknown,
-		Size:              size,
-		Marshal:           marshal,
-		Unmarshal:         unmarshal,
-		Merge:             nil,
-		CheckInitialized:  nil,
-	}
-}
-
-var (
 	md_VaultAddress         protoreflect.MessageDescriptor
 	fd_VaultAddress_chain   protoreflect.FieldDescriptor
 	fd_VaultAddress_address protoreflect.FieldDescriptor
@@ -5487,7 +4727,7 @@ func (x *VaultAddress) ProtoReflect() protoreflect.Message {
 }
 
 func (x *VaultAddress) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_vault_proto_msgTypes[8]
+	mi := &file_types_query_vault_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5969,7 +5209,7 @@ func (x *QueryVaultSolvencyRequest) ProtoReflect() protoreflect.Message {
 }
 
 func (x *QueryVaultSolvencyRequest) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_vault_proto_msgTypes[9]
+	mi := &file_types_query_vault_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6391,7 +5631,7 @@ func (x *VaultSolvencyAsset) ProtoReflect() protoreflect.Message {
 }
 
 func (x *VaultSolvencyAsset) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_vault_proto_msgTypes[10]
+	mi := &file_types_query_vault_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6939,7 +6179,7 @@ func (x *QueryVaultSolvencyResponse) ProtoReflect() protoreflect.Message {
 }
 
 func (x *QueryVaultSolvencyResponse) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_vault_proto_msgTypes[11]
+	mi := &file_types_query_vault_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7435,7 +6675,6 @@ type QueryVaultResponse struct {
 	InboundTxCount        int64           `protobuf:"varint,9,opt,name=inbound_tx_count,json=inboundTxCount,proto3" json:"inbound_tx_count,omitempty"`
 	OutboundTxCount       int64           `protobuf:"varint,10,opt,name=outbound_tx_count,json=outboundTxCount,proto3" json:"outbound_tx_count,omitempty"`
 	PendingTxBlockHeights []int64         `protobuf:"varint,11,rep,packed,name=pending_tx_block_heights,json=pendingTxBlockHeights,proto3" json:"pending_tx_block_heights,omitempty"`
-	Routers               []*VaultRouter  `protobuf:"bytes,12,rep,name=routers,proto3" json:"routers,omitempty"`
 	Addresses             []*VaultAddress `protobuf:"bytes,13,rep,name=addresses,proto3" json:"addresses,omitempty"`
 	Frozen                []string        `protobuf:"bytes,14,rep,name=frozen,proto3" json:"frozen,omitempty"`
 	PubKeyEddsa           string          `protobuf:"bytes,15,opt,name=pub_key_eddsa,json=pubKeyEddsa,proto3" json:"pub_key_eddsa,omitempty"`
@@ -7538,13 +6777,6 @@ func (x *QueryVaultResponse) GetPendingTxBlockHeights() []int64 {
 	return nil
 }
 
-func (x *QueryVaultResponse) GetRouters() []*VaultRouter {
-	if x != nil {
-		return x.Routers
-	}
-	return nil
-}
-
 func (x *QueryVaultResponse) GetAddresses() []*VaultAddress {
 	if x != nil {
 		return x.Addresses
@@ -7566,7 +6798,7 @@ func (x *QueryVaultResponse) GetPubKeyEddsa() string {
 	return ""
 }
 
-type QueryAsgardVaultsRequest struct {
+type QueryBaseVaultsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -7574,8 +6806,8 @@ type QueryAsgardVaultsRequest struct {
 	Height string `protobuf:"bytes,1,opt,name=height,proto3" json:"height,omitempty"`
 }
 
-func (x *QueryAsgardVaultsRequest) Reset() {
-	*x = QueryAsgardVaultsRequest{}
+func (x *QueryBaseVaultsRequest) Reset() {
+	*x = QueryBaseVaultsRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_query_vault_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -7583,34 +6815,34 @@ func (x *QueryAsgardVaultsRequest) Reset() {
 	}
 }
 
-func (x *QueryAsgardVaultsRequest) String() string {
+func (x *QueryBaseVaultsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*QueryAsgardVaultsRequest) ProtoMessage() {}
+func (*QueryBaseVaultsRequest) ProtoMessage() {}
 
-// Deprecated: Use QueryAsgardVaultsRequest.ProtoReflect.Descriptor instead.
-func (*QueryAsgardVaultsRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use QueryBaseVaultsRequest.ProtoReflect.Descriptor instead.
+func (*QueryBaseVaultsRequest) Descriptor() ([]byte, []int) {
 	return file_types_query_vault_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *QueryAsgardVaultsRequest) GetHeight() string {
+func (x *QueryBaseVaultsRequest) GetHeight() string {
 	if x != nil {
 		return x.Height
 	}
 	return ""
 }
 
-type QueryAsgardVaultsResponse struct {
+type QueryBaseVaultsResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	AsgardVaults []*QueryVaultResponse `protobuf:"bytes,1,rep,name=asgard_vaults,json=asgardVaults,proto3" json:"asgard_vaults,omitempty"`
+	BaseVaults []*QueryVaultResponse `protobuf:"bytes,1,rep,name=base_vaults,json=baseVaults,proto3" json:"base_vaults,omitempty"`
 }
 
-func (x *QueryAsgardVaultsResponse) Reset() {
-	*x = QueryAsgardVaultsResponse{}
+func (x *QueryBaseVaultsResponse) Reset() {
+	*x = QueryBaseVaultsResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_query_vault_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -7618,20 +6850,20 @@ func (x *QueryAsgardVaultsResponse) Reset() {
 	}
 }
 
-func (x *QueryAsgardVaultsResponse) String() string {
+func (x *QueryBaseVaultsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*QueryAsgardVaultsResponse) ProtoMessage() {}
+func (*QueryBaseVaultsResponse) ProtoMessage() {}
 
-// Deprecated: Use QueryAsgardVaultsResponse.ProtoReflect.Descriptor instead.
-func (*QueryAsgardVaultsResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use QueryBaseVaultsResponse.ProtoReflect.Descriptor instead.
+func (*QueryBaseVaultsResponse) Descriptor() ([]byte, []int) {
 	return file_types_query_vault_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *QueryAsgardVaultsResponse) GetAsgardVaults() []*QueryVaultResponse {
+func (x *QueryBaseVaultsResponse) GetBaseVaults() []*QueryVaultResponse {
 	if x != nil {
-		return x.AsgardVaults
+		return x.BaseVaults
 	}
 	return nil
 }
@@ -7719,10 +6951,9 @@ type VaultInfo struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	PubKey      string         `protobuf:"bytes,1,opt,name=pub_key,json=pubKey,proto3" json:"pub_key,omitempty"`
-	Routers     []*VaultRouter `protobuf:"bytes,2,rep,name=routers,proto3" json:"routers,omitempty"`
-	PubKeyEddsa string         `protobuf:"bytes,3,opt,name=pub_key_eddsa,json=pubKeyEddsa,proto3" json:"pub_key_eddsa,omitempty"`
-	Membership  []string       `protobuf:"bytes,4,rep,name=membership,proto3" json:"membership,omitempty"`
+	PubKey      string   `protobuf:"bytes,1,opt,name=pub_key,json=pubKey,proto3" json:"pub_key,omitempty"`
+	PubKeyEddsa string   `protobuf:"bytes,3,opt,name=pub_key_eddsa,json=pubKeyEddsa,proto3" json:"pub_key_eddsa,omitempty"`
+	Membership  []string `protobuf:"bytes,4,rep,name=membership,proto3" json:"membership,omitempty"`
 }
 
 func (x *VaultInfo) Reset() {
@@ -7752,13 +6983,6 @@ func (x *VaultInfo) GetPubKey() string {
 	return ""
 }
 
-func (x *VaultInfo) GetRouters() []*VaultRouter {
-	if x != nil {
-		return x.Routers
-	}
-	return nil
-}
-
 func (x *VaultInfo) GetPubKeyEddsa() string {
 	if x != nil {
 		return x.PubKeyEddsa
@@ -7773,49 +6997,6 @@ func (x *VaultInfo) GetMembership() []string {
 	return nil
 }
 
-type VaultRouter struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Chain  string `protobuf:"bytes,1,opt,name=chain,proto3" json:"chain,omitempty"`
-	Router string `protobuf:"bytes,2,opt,name=router,proto3" json:"router,omitempty"`
-}
-
-func (x *VaultRouter) Reset() {
-	*x = VaultRouter{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_vault_proto_msgTypes[7]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *VaultRouter) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*VaultRouter) ProtoMessage() {}
-
-// Deprecated: Use VaultRouter.ProtoReflect.Descriptor instead.
-func (*VaultRouter) Descriptor() ([]byte, []int) {
-	return file_types_query_vault_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *VaultRouter) GetChain() string {
-	if x != nil {
-		return x.Chain
-	}
-	return ""
-}
-
-func (x *VaultRouter) GetRouter() string {
-	if x != nil {
-		return x.Router
-	}
-	return ""
-}
-
 type VaultAddress struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -7828,7 +7009,7 @@ type VaultAddress struct {
 func (x *VaultAddress) Reset() {
 	*x = VaultAddress{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_vault_proto_msgTypes[8]
+		mi := &file_types_query_vault_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7842,7 +7023,7 @@ func (*VaultAddress) ProtoMessage() {}
 
 // Deprecated: Use VaultAddress.ProtoReflect.Descriptor instead.
 func (*VaultAddress) Descriptor() ([]byte, []int) {
-	return file_types_query_vault_proto_rawDescGZIP(), []int{8}
+	return file_types_query_vault_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *VaultAddress) GetChain() string {
@@ -7870,7 +7051,7 @@ type QueryVaultSolvencyRequest struct {
 func (x *QueryVaultSolvencyRequest) Reset() {
 	*x = QueryVaultSolvencyRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_vault_proto_msgTypes[9]
+		mi := &file_types_query_vault_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7884,7 +7065,7 @@ func (*QueryVaultSolvencyRequest) ProtoMessage() {}
 
 // Deprecated: Use QueryVaultSolvencyRequest.ProtoReflect.Descriptor instead.
 func (*QueryVaultSolvencyRequest) Descriptor() ([]byte, []int) {
-	return file_types_query_vault_proto_rawDescGZIP(), []int{9}
+	return file_types_query_vault_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *QueryVaultSolvencyRequest) GetHeight() string {
@@ -7906,7 +7087,7 @@ type VaultSolvencyAsset struct {
 func (x *VaultSolvencyAsset) Reset() {
 	*x = VaultSolvencyAsset{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_vault_proto_msgTypes[10]
+		mi := &file_types_query_vault_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7920,7 +7101,7 @@ func (*VaultSolvencyAsset) ProtoMessage() {}
 
 // Deprecated: Use VaultSolvencyAsset.ProtoReflect.Descriptor instead.
 func (*VaultSolvencyAsset) Descriptor() ([]byte, []int) {
-	return file_types_query_vault_proto_rawDescGZIP(), []int{10}
+	return file_types_query_vault_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *VaultSolvencyAsset) GetAsset() *common.Asset {
@@ -7948,7 +7129,7 @@ type QueryVaultSolvencyResponse struct {
 func (x *QueryVaultSolvencyResponse) Reset() {
 	*x = QueryVaultSolvencyResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_vault_proto_msgTypes[11]
+		mi := &file_types_query_vault_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -7962,7 +7143,7 @@ func (*QueryVaultSolvencyResponse) ProtoMessage() {}
 
 // Deprecated: Use QueryVaultSolvencyResponse.ProtoReflect.Descriptor instead.
 func (*QueryVaultSolvencyResponse) Descriptor() ([]byte, []int) {
-	return file_types_query_vault_proto_rawDescGZIP(), []int{11}
+	return file_types_query_vault_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *QueryVaultSolvencyResponse) GetAssets() []*VaultSolvencyAsset {
@@ -7984,7 +7165,7 @@ var file_types_query_vault_proto_rawDesc = []byte{
 	0x12, 0x17, 0x0a, 0x07, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28,
 	0x09, 0x52, 0x06, 0x70, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69,
 	0x67, 0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68,
-	0x74, 0x22, 0x98, 0x05, 0x0a, 0x12, 0x51, 0x75, 0x65, 0x72, 0x79, 0x56, 0x61, 0x75, 0x6c, 0x74,
+	0x74, 0x22, 0xe3, 0x04, 0x0a, 0x12, 0x51, 0x75, 0x65, 0x72, 0x79, 0x56, 0x61, 0x75, 0x6c, 0x74,
 	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x21, 0x0a, 0x0c, 0x62, 0x6c, 0x6f, 0x63,
 	0x6b, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0b,
 	0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x17, 0x0a, 0x07, 0x70,
@@ -8013,92 +7194,81 @@ var file_types_query_vault_proto_rawDesc = []byte{
 	0x6f, 0x75, 0x6e, 0x74, 0x12, 0x37, 0x0a, 0x18, 0x70, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x5f,
 	0x74, 0x78, 0x5f, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x73,
 	0x18, 0x0b, 0x20, 0x03, 0x28, 0x03, 0x52, 0x15, 0x70, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x54,
-	0x78, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x73, 0x12, 0x39, 0x0a,
-	0x07, 0x72, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x73, 0x18, 0x0c, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x12,
-	0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x52, 0x6f, 0x75, 0x74,
-	0x65, 0x72, 0x42, 0x0b, 0xea, 0xde, 0x1f, 0x07, 0x72, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x73, 0x52,
-	0x07, 0x72, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x73, 0x12, 0x40, 0x0a, 0x09, 0x61, 0x64, 0x64, 0x72,
-	0x65, 0x73, 0x73, 0x65, 0x73, 0x18, 0x0d, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x74, 0x79,
-	0x70, 0x65, 0x73, 0x2e, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73,
-	0x42, 0x0d, 0xea, 0xde, 0x1f, 0x09, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x52,
-	0x09, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x12, 0x16, 0x0a, 0x06, 0x66, 0x72,
-	0x6f, 0x7a, 0x65, 0x6e, 0x18, 0x0e, 0x20, 0x03, 0x28, 0x09, 0x52, 0x06, 0x66, 0x72, 0x6f, 0x7a,
-	0x65, 0x6e, 0x12, 0x28, 0x0a, 0x0d, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x5f, 0x65, 0x64,
-	0x64, 0x73, 0x61, 0x18, 0x0f, 0x20, 0x01, 0x28, 0x09, 0x42, 0x04, 0xc8, 0xde, 0x1f, 0x01, 0x52,
-	0x0b, 0x70, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x45, 0x64, 0x64, 0x73, 0x61, 0x22, 0x32, 0x0a, 0x18,
-	0x51, 0x75, 0x65, 0x72, 0x79, 0x41, 0x73, 0x67, 0x61, 0x72, 0x64, 0x56, 0x61, 0x75, 0x6c, 0x74,
-	0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67,
-	0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74,
-	0x22, 0x5b, 0x0a, 0x19, 0x51, 0x75, 0x65, 0x72, 0x79, 0x41, 0x73, 0x67, 0x61, 0x72, 0x64, 0x56,
-	0x61, 0x75, 0x6c, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x3e, 0x0a,
-	0x0d, 0x61, 0x73, 0x67, 0x61, 0x72, 0x64, 0x5f, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x73, 0x18, 0x01,
-	0x20, 0x03, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x51, 0x75, 0x65,
-	0x72, 0x79, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x52,
-	0x0c, 0x61, 0x73, 0x67, 0x61, 0x72, 0x64, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x73, 0x22, 0x33, 0x0a,
-	0x19, 0x51, 0x75, 0x65, 0x72, 0x79, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x73, 0x50, 0x75, 0x62, 0x6b,
-	0x65, 0x79, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65,
-	0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67,
-	0x68, 0x74, 0x22, 0x8e, 0x01, 0x0a, 0x1a, 0x51, 0x75, 0x65, 0x72, 0x79, 0x56, 0x61, 0x75, 0x6c,
-	0x74, 0x73, 0x50, 0x75, 0x62, 0x6b, 0x65, 0x79, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x12, 0x34, 0x0a, 0x06, 0x61, 0x73, 0x67, 0x61, 0x72, 0x64, 0x18, 0x01, 0x20, 0x03, 0x28,
-	0x0b, 0x32, 0x10, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x49,
-	0x6e, 0x66, 0x6f, 0x42, 0x0a, 0xea, 0xde, 0x1f, 0x06, 0x61, 0x73, 0x67, 0x61, 0x72, 0x64, 0x52,
-	0x06, 0x61, 0x73, 0x67, 0x61, 0x72, 0x64, 0x12, 0x3a, 0x0a, 0x08, 0x69, 0x6e, 0x61, 0x63, 0x74,
-	0x69, 0x76, 0x65, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x74, 0x79, 0x70, 0x65,
-	0x73, 0x2e, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x49, 0x6e, 0x66, 0x6f, 0x42, 0x0c, 0xea, 0xde, 0x1f,
-	0x08, 0x69, 0x6e, 0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x52, 0x08, 0x69, 0x6e, 0x61, 0x63, 0x74,
-	0x69, 0x76, 0x65, 0x22, 0xc3, 0x01, 0x0a, 0x09, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x49, 0x6e, 0x66,
-	0x6f, 0x12, 0x24, 0x0a, 0x07, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x42, 0x0b, 0xea, 0xde, 0x1f, 0x07, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x52,
-	0x06, 0x70, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x39, 0x0a, 0x07, 0x72, 0x6f, 0x75, 0x74, 0x65,
-	0x72, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73,
-	0x2e, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x52, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x42, 0x0b, 0xea, 0xde,
-	0x1f, 0x07, 0x72, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x73, 0x52, 0x07, 0x72, 0x6f, 0x75, 0x74, 0x65,
-	0x72, 0x73, 0x12, 0x35, 0x0a, 0x0d, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x5f, 0x65, 0x64,
-	0x64, 0x73, 0x61, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x42, 0x11, 0xea, 0xde, 0x1f, 0x0d, 0x70,
-	0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x5f, 0x65, 0x64, 0x64, 0x73, 0x61, 0x52, 0x0b, 0x70, 0x75,
-	0x62, 0x4b, 0x65, 0x79, 0x45, 0x64, 0x64, 0x73, 0x61, 0x12, 0x1e, 0x0a, 0x0a, 0x6d, 0x65, 0x6d,
-	0x62, 0x65, 0x72, 0x73, 0x68, 0x69, 0x70, 0x18, 0x04, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0a, 0x6d,
-	0x65, 0x6d, 0x62, 0x65, 0x72, 0x73, 0x68, 0x69, 0x70, 0x22, 0x3b, 0x0a, 0x0b, 0x56, 0x61, 0x75,
-	0x6c, 0x74, 0x52, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x12, 0x14, 0x0a, 0x05, 0x63, 0x68, 0x61, 0x69,
-	0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x12, 0x16,
-	0x0a, 0x06, 0x72, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06,
-	0x72, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x22, 0x56, 0x0a, 0x0c, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x41,
-	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x1f, 0x0a, 0x05, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x09, 0xea, 0xde, 0x1f, 0x05, 0x63, 0x68, 0x61, 0x69, 0x6e,
-	0x52, 0x05, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x12, 0x25, 0x0a, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65,
-	0x73, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0b, 0xea, 0xde, 0x1f, 0x07, 0x61, 0x64,
-	0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x22, 0x33,
-	0x0a, 0x19, 0x51, 0x75, 0x65, 0x72, 0x79, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x53, 0x6f, 0x6c, 0x76,
-	0x65, 0x6e, 0x63, 0x79, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x68,
-	0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69,
-	0x67, 0x68, 0x74, 0x22, 0xbd, 0x01, 0x0a, 0x12, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x53, 0x6f, 0x6c,
-	0x76, 0x65, 0x6e, 0x63, 0x79, 0x41, 0x73, 0x73, 0x65, 0x74, 0x12, 0x66, 0x0a, 0x05, 0x61, 0x73,
-	0x73, 0x65, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0d, 0x2e, 0x63, 0x6f, 0x6d, 0x6d,
-	0x6f, 0x6e, 0x2e, 0x41, 0x73, 0x73, 0x65, 0x74, 0x42, 0x41, 0xc8, 0xde, 0x1f, 0x00, 0xda, 0xde,
-	0x1f, 0x30, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f,
-	0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f,
-	0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x41, 0x73, 0x73,
-	0x65, 0x74, 0xea, 0xde, 0x1f, 0x05, 0x61, 0x73, 0x73, 0x65, 0x74, 0x52, 0x05, 0x61, 0x73, 0x73,
-	0x65, 0x74, 0x12, 0x3f, 0x0a, 0x06, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01,
-	0x28, 0x09, 0x42, 0x27, 0xc8, 0xde, 0x1f, 0x00, 0xda, 0xde, 0x1f, 0x15, 0x63, 0x6f, 0x73, 0x6d,
-	0x6f, 0x73, 0x73, 0x64, 0x6b, 0x2e, 0x69, 0x6f, 0x2f, 0x6d, 0x61, 0x74, 0x68, 0x2e, 0x49, 0x6e,
-	0x74, 0xea, 0xde, 0x1f, 0x06, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x52, 0x06, 0x61, 0x6d, 0x6f,
-	0x75, 0x6e, 0x74, 0x22, 0x5b, 0x0a, 0x1a, 0x51, 0x75, 0x65, 0x72, 0x79, 0x56, 0x61, 0x75, 0x6c,
-	0x74, 0x53, 0x6f, 0x6c, 0x76, 0x65, 0x6e, 0x63, 0x79, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x12, 0x3d, 0x0a, 0x06, 0x61, 0x73, 0x73, 0x65, 0x74, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28,
-	0x0b, 0x32, 0x19, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x53,
-	0x6f, 0x6c, 0x76, 0x65, 0x6e, 0x63, 0x79, 0x41, 0x73, 0x73, 0x65, 0x74, 0x42, 0x0a, 0xea, 0xde,
-	0x1f, 0x06, 0x61, 0x73, 0x73, 0x65, 0x74, 0x73, 0x52, 0x06, 0x61, 0x73, 0x73, 0x65, 0x74, 0x73,
-	0x42, 0x83, 0x01, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x42, 0x0f,
-	0x51, 0x75, 0x65, 0x72, 0x79, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50,
-	0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68,
+	0x78, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x73, 0x12, 0x40, 0x0a,
+	0x09, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x18, 0x0d, 0x20, 0x03, 0x28, 0x0b,
+	0x32, 0x13, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x41, 0x64,
+	0x64, 0x72, 0x65, 0x73, 0x73, 0x42, 0x0d, 0xea, 0xde, 0x1f, 0x09, 0x61, 0x64, 0x64, 0x72, 0x65,
+	0x73, 0x73, 0x65, 0x73, 0x52, 0x09, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x65, 0x73, 0x12,
+	0x16, 0x0a, 0x06, 0x66, 0x72, 0x6f, 0x7a, 0x65, 0x6e, 0x18, 0x0e, 0x20, 0x03, 0x28, 0x09, 0x52,
+	0x06, 0x66, 0x72, 0x6f, 0x7a, 0x65, 0x6e, 0x12, 0x28, 0x0a, 0x0d, 0x70, 0x75, 0x62, 0x5f, 0x6b,
+	0x65, 0x79, 0x5f, 0x65, 0x64, 0x64, 0x73, 0x61, 0x18, 0x0f, 0x20, 0x01, 0x28, 0x09, 0x42, 0x04,
+	0xc8, 0xde, 0x1f, 0x01, 0x52, 0x0b, 0x70, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x45, 0x64, 0x64, 0x73,
+	0x61, 0x4a, 0x04, 0x08, 0x0c, 0x10, 0x0d, 0x22, 0x30, 0x0a, 0x16, 0x51, 0x75, 0x65, 0x72, 0x79,
+	0x42, 0x61, 0x73, 0x65, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x55, 0x0a, 0x17, 0x51, 0x75, 0x65,
+	0x72, 0x79, 0x42, 0x61, 0x73, 0x65, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x3a, 0x0a, 0x0b, 0x62, 0x61, 0x73, 0x65, 0x5f, 0x76, 0x61, 0x75,
+	0x6c, 0x74, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x74, 0x79, 0x70, 0x65,
+	0x73, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x52, 0x0a, 0x62, 0x61, 0x73, 0x65, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x73,
+	0x22, 0x33, 0x0a, 0x19, 0x51, 0x75, 0x65, 0x72, 0x79, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x73, 0x50,
+	0x75, 0x62, 0x6b, 0x65, 0x79, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a,
+	0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68,
+	0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x8e, 0x01, 0x0a, 0x1a, 0x51, 0x75, 0x65, 0x72, 0x79, 0x56,
+	0x61, 0x75, 0x6c, 0x74, 0x73, 0x50, 0x75, 0x62, 0x6b, 0x65, 0x79, 0x73, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x34, 0x0a, 0x06, 0x61, 0x73, 0x67, 0x61, 0x72, 0x64, 0x18, 0x01,
+	0x20, 0x03, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x56, 0x61, 0x75,
+	0x6c, 0x74, 0x49, 0x6e, 0x66, 0x6f, 0x42, 0x0a, 0xea, 0xde, 0x1f, 0x06, 0x61, 0x73, 0x67, 0x61,
+	0x72, 0x64, 0x52, 0x06, 0x61, 0x73, 0x67, 0x61, 0x72, 0x64, 0x12, 0x3a, 0x0a, 0x08, 0x69, 0x6e,
+	0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x74,
+	0x79, 0x70, 0x65, 0x73, 0x2e, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x49, 0x6e, 0x66, 0x6f, 0x42, 0x0c,
+	0xea, 0xde, 0x1f, 0x08, 0x69, 0x6e, 0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x52, 0x08, 0x69, 0x6e,
+	0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x22, 0x8e, 0x01, 0x0a, 0x09, 0x56, 0x61, 0x75, 0x6c, 0x74,
+	0x49, 0x6e, 0x66, 0x6f, 0x12, 0x24, 0x0a, 0x07, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0b, 0xea, 0xde, 0x1f, 0x07, 0x70, 0x75, 0x62, 0x5f, 0x6b,
+	0x65, 0x79, 0x52, 0x06, 0x70, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x35, 0x0a, 0x0d, 0x70, 0x75,
+	0x62, 0x5f, 0x6b, 0x65, 0x79, 0x5f, 0x65, 0x64, 0x64, 0x73, 0x61, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x09, 0x42, 0x11, 0xea, 0xde, 0x1f, 0x0d, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x5f, 0x65,
+	0x64, 0x64, 0x73, 0x61, 0x52, 0x0b, 0x70, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x45, 0x64, 0x64, 0x73,
+	0x61, 0x12, 0x1e, 0x0a, 0x0a, 0x6d, 0x65, 0x6d, 0x62, 0x65, 0x72, 0x73, 0x68, 0x69, 0x70, 0x18,
+	0x04, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0a, 0x6d, 0x65, 0x6d, 0x62, 0x65, 0x72, 0x73, 0x68, 0x69,
+	0x70, 0x4a, 0x04, 0x08, 0x02, 0x10, 0x03, 0x22, 0x56, 0x0a, 0x0c, 0x56, 0x61, 0x75, 0x6c, 0x74,
+	0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x1f, 0x0a, 0x05, 0x63, 0x68, 0x61, 0x69, 0x6e,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x09, 0xea, 0xde, 0x1f, 0x05, 0x63, 0x68, 0x61, 0x69,
+	0x6e, 0x52, 0x05, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x12, 0x25, 0x0a, 0x07, 0x61, 0x64, 0x64, 0x72,
+	0x65, 0x73, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0b, 0xea, 0xde, 0x1f, 0x07, 0x61,
+	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x22,
+	0x33, 0x0a, 0x19, 0x51, 0x75, 0x65, 0x72, 0x79, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x53, 0x6f, 0x6c,
+	0x76, 0x65, 0x6e, 0x63, 0x79, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06,
+	0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65,
+	0x69, 0x67, 0x68, 0x74, 0x22, 0xbd, 0x01, 0x0a, 0x12, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x53, 0x6f,
+	0x6c, 0x76, 0x65, 0x6e, 0x63, 0x79, 0x41, 0x73, 0x73, 0x65, 0x74, 0x12, 0x66, 0x0a, 0x05, 0x61,
+	0x73, 0x73, 0x65, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0d, 0x2e, 0x63, 0x6f, 0x6d,
+	0x6d, 0x6f, 0x6e, 0x2e, 0x41, 0x73, 0x73, 0x65, 0x74, 0x42, 0x41, 0xc8, 0xde, 0x1f, 0x00, 0xda,
+	0xde, 0x1f, 0x30, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68,
 	0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68,
-	0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73,
-	0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xca, 0x02,
-	0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2, 0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5c, 0x47,
-	0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54, 0x79, 0x70,
-	0x65, 0x73, 0xc8, 0xe2, 0x1e, 0x01, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x41, 0x73,
+	0x73, 0x65, 0x74, 0xea, 0xde, 0x1f, 0x05, 0x61, 0x73, 0x73, 0x65, 0x74, 0x52, 0x05, 0x61, 0x73,
+	0x73, 0x65, 0x74, 0x12, 0x3f, 0x0a, 0x06, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x42, 0x27, 0xc8, 0xde, 0x1f, 0x00, 0xda, 0xde, 0x1f, 0x15, 0x63, 0x6f, 0x73,
+	0x6d, 0x6f, 0x73, 0x73, 0x64, 0x6b, 0x2e, 0x69, 0x6f, 0x2f, 0x6d, 0x61, 0x74, 0x68, 0x2e, 0x49,
+	0x6e, 0x74, 0xea, 0xde, 0x1f, 0x06, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x52, 0x06, 0x61, 0x6d,
+	0x6f, 0x75, 0x6e, 0x74, 0x22, 0x5b, 0x0a, 0x1a, 0x51, 0x75, 0x65, 0x72, 0x79, 0x56, 0x61, 0x75,
+	0x6c, 0x74, 0x53, 0x6f, 0x6c, 0x76, 0x65, 0x6e, 0x63, 0x79, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x3d, 0x0a, 0x06, 0x61, 0x73, 0x73, 0x65, 0x74, 0x73, 0x18, 0x01, 0x20, 0x03,
+	0x28, 0x0b, 0x32, 0x19, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x56, 0x61, 0x75, 0x6c, 0x74,
+	0x53, 0x6f, 0x6c, 0x76, 0x65, 0x6e, 0x63, 0x79, 0x41, 0x73, 0x73, 0x65, 0x74, 0x42, 0x0a, 0xea,
+	0xde, 0x1f, 0x06, 0x61, 0x73, 0x73, 0x65, 0x74, 0x73, 0x52, 0x06, 0x61, 0x73, 0x73, 0x65, 0x74,
+	0x73, 0x42, 0x83, 0x01, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x42,
+	0x0f, 0x51, 0x75, 0x65, 0x72, 0x79, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x50, 0x72, 0x6f, 0x74, 0x6f,
+	0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74,
+	0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74,
+	0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70, 0x65,
+	0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xca,
+	0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2, 0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5c,
+	0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54, 0x79,
+	0x70, 0x65, 0x73, 0xc8, 0xe2, 0x1e, 0x01, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -8113,38 +7283,35 @@ func file_types_query_vault_proto_rawDescGZIP() []byte {
 	return file_types_query_vault_proto_rawDescData
 }
 
-var file_types_query_vault_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_types_query_vault_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_types_query_vault_proto_goTypes = []interface{}{
 	(*QueryVaultRequest)(nil),          // 0: types.QueryVaultRequest
 	(*QueryVaultResponse)(nil),         // 1: types.QueryVaultResponse
-	(*QueryAsgardVaultsRequest)(nil),   // 2: types.QueryAsgardVaultsRequest
-	(*QueryAsgardVaultsResponse)(nil),  // 3: types.QueryAsgardVaultsResponse
+	(*QueryBaseVaultsRequest)(nil),     // 2: types.QueryBaseVaultsRequest
+	(*QueryBaseVaultsResponse)(nil),    // 3: types.QueryBaseVaultsResponse
 	(*QueryVaultsPubkeysRequest)(nil),  // 4: types.QueryVaultsPubkeysRequest
 	(*QueryVaultsPubkeysResponse)(nil), // 5: types.QueryVaultsPubkeysResponse
 	(*VaultInfo)(nil),                  // 6: types.VaultInfo
-	(*VaultRouter)(nil),                // 7: types.VaultRouter
-	(*VaultAddress)(nil),               // 8: types.VaultAddress
-	(*QueryVaultSolvencyRequest)(nil),  // 9: types.QueryVaultSolvencyRequest
-	(*VaultSolvencyAsset)(nil),         // 10: types.VaultSolvencyAsset
-	(*QueryVaultSolvencyResponse)(nil), // 11: types.QueryVaultSolvencyResponse
-	(*common.Coin)(nil),                // 12: common.Coin
-	(*common.Asset)(nil),               // 13: common.Asset
+	(*VaultAddress)(nil),               // 7: types.VaultAddress
+	(*QueryVaultSolvencyRequest)(nil),  // 8: types.QueryVaultSolvencyRequest
+	(*VaultSolvencyAsset)(nil),         // 9: types.VaultSolvencyAsset
+	(*QueryVaultSolvencyResponse)(nil), // 10: types.QueryVaultSolvencyResponse
+	(*common.Coin)(nil),                // 11: common.Coin
+	(*common.Asset)(nil),               // 12: common.Asset
 }
 var file_types_query_vault_proto_depIdxs = []int32{
-	12, // 0: types.QueryVaultResponse.coins:type_name -> common.Coin
-	7,  // 1: types.QueryVaultResponse.routers:type_name -> types.VaultRouter
-	8,  // 2: types.QueryVaultResponse.addresses:type_name -> types.VaultAddress
-	1,  // 3: types.QueryAsgardVaultsResponse.asgard_vaults:type_name -> types.QueryVaultResponse
-	6,  // 4: types.QueryVaultsPubkeysResponse.asgard:type_name -> types.VaultInfo
-	6,  // 5: types.QueryVaultsPubkeysResponse.inactive:type_name -> types.VaultInfo
-	7,  // 6: types.VaultInfo.routers:type_name -> types.VaultRouter
-	13, // 7: types.VaultSolvencyAsset.asset:type_name -> common.Asset
-	10, // 8: types.QueryVaultSolvencyResponse.assets:type_name -> types.VaultSolvencyAsset
-	9,  // [9:9] is the sub-list for method output_type
-	9,  // [9:9] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	11, // 0: types.QueryVaultResponse.coins:type_name -> common.Coin
+	7,  // 1: types.QueryVaultResponse.addresses:type_name -> types.VaultAddress
+	1,  // 2: types.QueryBaseVaultsResponse.base_vaults:type_name -> types.QueryVaultResponse
+	6,  // 3: types.QueryVaultsPubkeysResponse.asgard:type_name -> types.VaultInfo
+	6,  // 4: types.QueryVaultsPubkeysResponse.inactive:type_name -> types.VaultInfo
+	12, // 5: types.VaultSolvencyAsset.asset:type_name -> common.Asset
+	9,  // 6: types.QueryVaultSolvencyResponse.assets:type_name -> types.VaultSolvencyAsset
+	7,  // [7:7] is the sub-list for method output_type
+	7,  // [7:7] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_types_query_vault_proto_init() }
@@ -8178,7 +7345,7 @@ func file_types_query_vault_proto_init() {
 			}
 		}
 		file_types_query_vault_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryAsgardVaultsRequest); i {
+			switch v := v.(*QueryBaseVaultsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8190,7 +7357,7 @@ func file_types_query_vault_proto_init() {
 			}
 		}
 		file_types_query_vault_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryAsgardVaultsResponse); i {
+			switch v := v.(*QueryBaseVaultsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8238,18 +7405,6 @@ func file_types_query_vault_proto_init() {
 			}
 		}
 		file_types_query_vault_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*VaultRouter); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_types_query_vault_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*VaultAddress); i {
 			case 0:
 				return &v.state
@@ -8261,7 +7416,7 @@ func file_types_query_vault_proto_init() {
 				return nil
 			}
 		}
-		file_types_query_vault_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+		file_types_query_vault_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*QueryVaultSolvencyRequest); i {
 			case 0:
 				return &v.state
@@ -8273,7 +7428,7 @@ func file_types_query_vault_proto_init() {
 				return nil
 			}
 		}
-		file_types_query_vault_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+		file_types_query_vault_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*VaultSolvencyAsset); i {
 			case 0:
 				return &v.state
@@ -8285,7 +7440,7 @@ func file_types_query_vault_proto_init() {
 				return nil
 			}
 		}
-		file_types_query_vault_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+		file_types_query_vault_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*QueryVaultSolvencyResponse); i {
 			case 0:
 				return &v.state
@@ -8304,7 +7459,7 @@ func file_types_query_vault_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_types_query_vault_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

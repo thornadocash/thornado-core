@@ -28,7 +28,7 @@ type ThornadoBlockScan struct {
 	keygenChan     chan ttypes.KeygenBlock
 	cfg            config.BifrostBlockScannerConfiguration
 	scannerStorage blockscanner.ScannerStorage
-	thornado      thornadoclient.ThornadoBridge
+	thornado       thornadoclient.ThornadoBridge
 	errCounter     *prometheus.CounterVec
 	pubkeyMgr      pubkeymanager.PubKeyValidator
 }
@@ -49,7 +49,7 @@ func NewThornadoBlockScan(cfg config.BifrostBlockScannerConfiguration, scanStora
 		keygenChan:     make(chan ttypes.KeygenBlock),
 		cfg:            cfg,
 		scannerStorage: scanStorage,
-		thornado:      thornado,
+		thornado:       thornado,
 		errCounter:     m.GetCounterVec(metrics.ThornadoBlockScannerError),
 		pubkeyMgr:      pubkeyMgr,
 	}, nil

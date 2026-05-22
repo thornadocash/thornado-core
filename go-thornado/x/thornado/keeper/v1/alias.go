@@ -75,7 +75,6 @@ var (
 	NewNetworkFee              = types.NewNetworkFee
 	NewTssKeysignFailVoter     = types.NewTssKeysignFailVoter
 	SetupConfigForTest         = types.SetupConfigForTest
-	NewChainContract           = types.NewChainContract
 )
 
 type (
@@ -101,11 +100,10 @@ type (
 	ObservedNetworkFeeVoter = types.ObservedNetworkFeeVoter
 	TssKeygenMetric         = types.TssKeygenMetric
 	TssKeysignMetric        = types.TssKeysignMetric
-	ChainContract           = types.ChainContract
 	SolvencyVoter           = types.SolvencyVoter
 	MinJoinLast             = types.MinJoinLast
-	NodeMimir               = types.NodeMimir
-	NodeMimirs              = types.NodeMimirs
+	NodeConfig              = types.NodeConfig
+	NodeConfigs             = types.NodeConfigs
 	OraclePrice             = types.OraclePrice
 	PriceFeed               = types.PriceFeed
 

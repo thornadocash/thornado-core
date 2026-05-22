@@ -36,7 +36,7 @@ type InboundAddress struct {
 	GasRateUnits *string `json:"gas_rate_units,omitempty"`
 	// Avg size of outbound TXs on each chain. For UTXO chains it may be larger than average, as it takes into account vault consolidation txs, which can have many vouts
 	OutboundTxSize *string `json:"outbound_tx_size,omitempty"`
-	// The total outbound fee charged to the user for outbound txs in the gas asset of the chain.  Can be observed_fee_rate * 1.5 * outbound_tx_size or else kept to an equivalent of Mimir key fixed outbound fee floor.
+	// The total outbound fee charged to the user for outbound txs in the gas asset of the chain.  Can be observed_fee_rate * 1.5 * outbound_tx_size or else kept to an equivalent of Config key fixed outbound fee floor.
 	OutboundFee *string `json:"outbound_fee,omitempty"`
 	// Defines the minimum transaction size for the chain in base units (sats, wei, uatom). Transactions with asset amounts lower than the dust_threshold are ignored.
 	DustThreshold *string `json:"dust_threshold,omitempty"`

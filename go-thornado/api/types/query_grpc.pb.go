@@ -25,29 +25,22 @@ const (
 	Query_Node_FullMethodName                   = "/types.Query/Node"
 	Query_Nodes_FullMethodName                  = "/types.Query/Nodes"
 	Query_Ban_FullMethodName                    = "/types.Query/Ban"
-	Query_MimirValues_FullMethodName            = "/types.Query/MimirValues"
-	Query_MimirWithKey_FullMethodName           = "/types.Query/MimirWithKey"
-	Query_MimirAdminValues_FullMethodName       = "/types.Query/MimirAdminValues"
-	Query_MimirNodesAllValues_FullMethodName    = "/types.Query/MimirNodesAllValues"
-	Query_MimirNodesValues_FullMethodName       = "/types.Query/MimirNodesValues"
-	Query_MimirNodeValues_FullMethodName        = "/types.Query/MimirNodeValues"
-	Query_InboundAddresses_FullMethodName       = "/types.Query/InboundAddresses"
+	Query_ConfigValues_FullMethodName           = "/types.Query/ConfigValues"
+	Query_ConfigNodesAllValues_FullMethodName   = "/types.Query/ConfigNodesAllValues"
+	Query_ConfigNodesValues_FullMethodName      = "/types.Query/ConfigNodesValues"
+	Query_ConfigNodeValues_FullMethodName       = "/types.Query/ConfigNodeValues"
 	Query_Version_FullMethodName                = "/types.Query/Version"
 	Query_Invariant_FullMethodName              = "/types.Query/Invariant"
 	Query_Invariants_FullMethodName             = "/types.Query/Invariants"
 	Query_BalanceModule_FullMethodName          = "/types.Query/BalanceModule"
-	Query_ConstantValues_FullMethodName         = "/types.Query/ConstantValues"
+	Query_ConfigDefaults_FullMethodName         = "/types.Query/ConfigDefaults"
 	Query_LastBlocks_FullMethodName             = "/types.Query/LastBlocks"
-	Query_ChainsLastBlock_FullMethodName        = "/types.Query/ChainsLastBlock"
 	Query_Vault_FullMethodName                  = "/types.Query/Vault"
-	Query_AsgardVaults_FullMethodName           = "/types.Query/AsgardVaults"
+	Query_BaseVaults_FullMethodName             = "/types.Query/BaseVaults"
 	Query_VaultsPubkeys_FullMethodName          = "/types.Query/VaultsPubkeys"
 	Query_VaultSolvency_FullMethodName          = "/types.Query/VaultSolvency"
-	Query_TxStages_FullMethodName               = "/types.Query/TxStages"
-	Query_TxStatus_FullMethodName               = "/types.Query/TxStatus"
 	Query_Tx_FullMethodName                     = "/types.Query/Tx"
-	Query_TxVoters_FullMethodName               = "/types.Query/TxVoters"
-	Query_TxVotersOld_FullMethodName            = "/types.Query/TxVotersOld"
+	Query_TxOut_FullMethodName                  = "/types.Query/TxOut"
 	Query_ShielderDeposit_FullMethodName        = "/types.Query/ShielderDeposit"
 	Query_ShielderFeePool_FullMethodName        = "/types.Query/ShielderFeePool"
 	Query_ShielderSession_FullMethodName        = "/types.Query/ShielderSession"
@@ -65,10 +58,6 @@ const (
 	Query_UpgradeProposals_FullMethodName       = "/types.Query/UpgradeProposals"
 	Query_UpgradeProposal_FullMethodName        = "/types.Query/UpgradeProposal"
 	Query_UpgradeVotes_FullMethodName           = "/types.Query/UpgradeVotes"
-	Query_Codes_FullMethodName                  = "/types.Query/Codes"
-	Query_Eip712TypedData_FullMethodName        = "/types.Query/Eip712TypedData"
-	Query_ContractInfos_FullMethodName          = "/types.Query/ContractInfos"
-	Query_ContractInfo_FullMethodName           = "/types.Query/ContractInfo"
 )
 
 // QueryClient is the client API for Query service.
@@ -81,29 +70,22 @@ type QueryClient interface {
 	Node(ctx context.Context, in *QueryNodeRequest, opts ...grpc.CallOption) (*QueryNodeResponse, error)
 	Nodes(ctx context.Context, in *QueryNodesRequest, opts ...grpc.CallOption) (*QueryNodesResponse, error)
 	Ban(ctx context.Context, in *QueryBanRequest, opts ...grpc.CallOption) (*BanVoter, error)
-	MimirValues(ctx context.Context, in *QueryMimirValuesRequest, opts ...grpc.CallOption) (*QueryMimirValuesResponse, error)
-	MimirWithKey(ctx context.Context, in *QueryMimirWithKeyRequest, opts ...grpc.CallOption) (*QueryMimirWithKeyResponse, error)
-	MimirAdminValues(ctx context.Context, in *QueryMimirAdminValuesRequest, opts ...grpc.CallOption) (*QueryMimirAdminValuesResponse, error)
-	MimirNodesAllValues(ctx context.Context, in *QueryMimirNodesAllValuesRequest, opts ...grpc.CallOption) (*QueryMimirNodesAllValuesResponse, error)
-	MimirNodesValues(ctx context.Context, in *QueryMimirNodesValuesRequest, opts ...grpc.CallOption) (*QueryMimirNodesValuesResponse, error)
-	MimirNodeValues(ctx context.Context, in *QueryMimirNodeValuesRequest, opts ...grpc.CallOption) (*QueryMimirNodeValuesResponse, error)
-	InboundAddresses(ctx context.Context, in *QueryInboundAddressesRequest, opts ...grpc.CallOption) (*QueryInboundAddressesResponse, error)
+	ConfigValues(ctx context.Context, in *QueryConfigValuesRequest, opts ...grpc.CallOption) (*QueryConfigValuesResponse, error)
+	ConfigNodesAllValues(ctx context.Context, in *QueryConfigNodesAllValuesRequest, opts ...grpc.CallOption) (*QueryConfigNodesAllValuesResponse, error)
+	ConfigNodesValues(ctx context.Context, in *QueryConfigNodesValuesRequest, opts ...grpc.CallOption) (*QueryConfigNodesValuesResponse, error)
+	ConfigNodeValues(ctx context.Context, in *QueryConfigNodeValuesRequest, opts ...grpc.CallOption) (*QueryConfigNodeValuesResponse, error)
 	Version(ctx context.Context, in *QueryVersionRequest, opts ...grpc.CallOption) (*QueryVersionResponse, error)
 	Invariant(ctx context.Context, in *QueryInvariantRequest, opts ...grpc.CallOption) (*QueryInvariantResponse, error)
 	Invariants(ctx context.Context, in *QueryInvariantsRequest, opts ...grpc.CallOption) (*QueryInvariantsResponse, error)
 	BalanceModule(ctx context.Context, in *QueryBalanceModuleRequest, opts ...grpc.CallOption) (*QueryBalanceModuleResponse, error)
-	ConstantValues(ctx context.Context, in *QueryConstantValuesRequest, opts ...grpc.CallOption) (*QueryConstantValuesResponse, error)
+	ConfigDefaults(ctx context.Context, in *QueryConfigDefaultsRequest, opts ...grpc.CallOption) (*QueryConfigDefaultsResponse, error)
 	LastBlocks(ctx context.Context, in *QueryLastBlocksRequest, opts ...grpc.CallOption) (*QueryLastBlocksResponse, error)
-	ChainsLastBlock(ctx context.Context, in *QueryChainsLastBlockRequest, opts ...grpc.CallOption) (*QueryLastBlocksResponse, error)
 	Vault(ctx context.Context, in *QueryVaultRequest, opts ...grpc.CallOption) (*QueryVaultResponse, error)
-	AsgardVaults(ctx context.Context, in *QueryAsgardVaultsRequest, opts ...grpc.CallOption) (*QueryAsgardVaultsResponse, error)
+	BaseVaults(ctx context.Context, in *QueryBaseVaultsRequest, opts ...grpc.CallOption) (*QueryBaseVaultsResponse, error)
 	VaultsPubkeys(ctx context.Context, in *QueryVaultsPubkeysRequest, opts ...grpc.CallOption) (*QueryVaultsPubkeysResponse, error)
 	VaultSolvency(ctx context.Context, in *QueryVaultSolvencyRequest, opts ...grpc.CallOption) (*QueryVaultSolvencyResponse, error)
-	TxStages(ctx context.Context, in *QueryTxStagesRequest, opts ...grpc.CallOption) (*QueryTxStagesResponse, error)
-	TxStatus(ctx context.Context, in *QueryTxStatusRequest, opts ...grpc.CallOption) (*QueryTxStatusResponse, error)
 	Tx(ctx context.Context, in *QueryTxRequest, opts ...grpc.CallOption) (*QueryTxResponse, error)
-	TxVoters(ctx context.Context, in *QueryTxVotersRequest, opts ...grpc.CallOption) (*QueryObservedTxVoter, error)
-	TxVotersOld(ctx context.Context, in *QueryTxVotersRequest, opts ...grpc.CallOption) (*QueryObservedTxVoter, error)
+	TxOut(ctx context.Context, in *QueryTxOutRequest, opts ...grpc.CallOption) (*QueryTxOutResponse, error)
 	ShielderDeposit(ctx context.Context, in *QueryShielderDepositRequest, opts ...grpc.CallOption) (*QueryShielderDepositResponse, error)
 	ShielderFeePool(ctx context.Context, in *QueryShielderFeePoolRequest, opts ...grpc.CallOption) (*QueryShielderFeePoolResponse, error)
 	ShielderSession(ctx context.Context, in *QueryShielderSessionRequest, opts ...grpc.CallOption) (*QueryShielderSessionResponse, error)
@@ -121,10 +103,6 @@ type QueryClient interface {
 	UpgradeProposals(ctx context.Context, in *QueryUpgradeProposalsRequest, opts ...grpc.CallOption) (*QueryUpgradeProposalsResponse, error)
 	UpgradeProposal(ctx context.Context, in *QueryUpgradeProposalRequest, opts ...grpc.CallOption) (*QueryUpgradeProposalResponse, error)
 	UpgradeVotes(ctx context.Context, in *QueryUpgradeVotesRequest, opts ...grpc.CallOption) (*QueryUpgradeVotesResponse, error)
-	Codes(ctx context.Context, in *QueryCodesRequest, opts ...grpc.CallOption) (*QueryCodesResponse, error)
-	Eip712TypedData(ctx context.Context, in *QueryEip712TypedDataRequest, opts ...grpc.CallOption) (*QueryEip712TypedDataResponse, error)
-	ContractInfos(ctx context.Context, in *QueryContractInfosRequest, opts ...grpc.CallOption) (*QueryContractInfosResponse, error)
-	ContractInfo(ctx context.Context, in *QueryContractInfoRequest, opts ...grpc.CallOption) (*QueryContractInfoResponse, error)
 }
 
 type queryClient struct {
@@ -189,63 +167,36 @@ func (c *queryClient) Ban(ctx context.Context, in *QueryBanRequest, opts ...grpc
 	return out, nil
 }
 
-func (c *queryClient) MimirValues(ctx context.Context, in *QueryMimirValuesRequest, opts ...grpc.CallOption) (*QueryMimirValuesResponse, error) {
-	out := new(QueryMimirValuesResponse)
-	err := c.cc.Invoke(ctx, Query_MimirValues_FullMethodName, in, out, opts...)
+func (c *queryClient) ConfigValues(ctx context.Context, in *QueryConfigValuesRequest, opts ...grpc.CallOption) (*QueryConfigValuesResponse, error) {
+	out := new(QueryConfigValuesResponse)
+	err := c.cc.Invoke(ctx, Query_ConfigValues_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queryClient) MimirWithKey(ctx context.Context, in *QueryMimirWithKeyRequest, opts ...grpc.CallOption) (*QueryMimirWithKeyResponse, error) {
-	out := new(QueryMimirWithKeyResponse)
-	err := c.cc.Invoke(ctx, Query_MimirWithKey_FullMethodName, in, out, opts...)
+func (c *queryClient) ConfigNodesAllValues(ctx context.Context, in *QueryConfigNodesAllValuesRequest, opts ...grpc.CallOption) (*QueryConfigNodesAllValuesResponse, error) {
+	out := new(QueryConfigNodesAllValuesResponse)
+	err := c.cc.Invoke(ctx, Query_ConfigNodesAllValues_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queryClient) MimirAdminValues(ctx context.Context, in *QueryMimirAdminValuesRequest, opts ...grpc.CallOption) (*QueryMimirAdminValuesResponse, error) {
-	out := new(QueryMimirAdminValuesResponse)
-	err := c.cc.Invoke(ctx, Query_MimirAdminValues_FullMethodName, in, out, opts...)
+func (c *queryClient) ConfigNodesValues(ctx context.Context, in *QueryConfigNodesValuesRequest, opts ...grpc.CallOption) (*QueryConfigNodesValuesResponse, error) {
+	out := new(QueryConfigNodesValuesResponse)
+	err := c.cc.Invoke(ctx, Query_ConfigNodesValues_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queryClient) MimirNodesAllValues(ctx context.Context, in *QueryMimirNodesAllValuesRequest, opts ...grpc.CallOption) (*QueryMimirNodesAllValuesResponse, error) {
-	out := new(QueryMimirNodesAllValuesResponse)
-	err := c.cc.Invoke(ctx, Query_MimirNodesAllValues_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) MimirNodesValues(ctx context.Context, in *QueryMimirNodesValuesRequest, opts ...grpc.CallOption) (*QueryMimirNodesValuesResponse, error) {
-	out := new(QueryMimirNodesValuesResponse)
-	err := c.cc.Invoke(ctx, Query_MimirNodesValues_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) MimirNodeValues(ctx context.Context, in *QueryMimirNodeValuesRequest, opts ...grpc.CallOption) (*QueryMimirNodeValuesResponse, error) {
-	out := new(QueryMimirNodeValuesResponse)
-	err := c.cc.Invoke(ctx, Query_MimirNodeValues_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) InboundAddresses(ctx context.Context, in *QueryInboundAddressesRequest, opts ...grpc.CallOption) (*QueryInboundAddressesResponse, error) {
-	out := new(QueryInboundAddressesResponse)
-	err := c.cc.Invoke(ctx, Query_InboundAddresses_FullMethodName, in, out, opts...)
+func (c *queryClient) ConfigNodeValues(ctx context.Context, in *QueryConfigNodeValuesRequest, opts ...grpc.CallOption) (*QueryConfigNodeValuesResponse, error) {
+	out := new(QueryConfigNodeValuesResponse)
+	err := c.cc.Invoke(ctx, Query_ConfigNodeValues_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -288,9 +239,9 @@ func (c *queryClient) BalanceModule(ctx context.Context, in *QueryBalanceModuleR
 	return out, nil
 }
 
-func (c *queryClient) ConstantValues(ctx context.Context, in *QueryConstantValuesRequest, opts ...grpc.CallOption) (*QueryConstantValuesResponse, error) {
-	out := new(QueryConstantValuesResponse)
-	err := c.cc.Invoke(ctx, Query_ConstantValues_FullMethodName, in, out, opts...)
+func (c *queryClient) ConfigDefaults(ctx context.Context, in *QueryConfigDefaultsRequest, opts ...grpc.CallOption) (*QueryConfigDefaultsResponse, error) {
+	out := new(QueryConfigDefaultsResponse)
+	err := c.cc.Invoke(ctx, Query_ConfigDefaults_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -306,15 +257,6 @@ func (c *queryClient) LastBlocks(ctx context.Context, in *QueryLastBlocksRequest
 	return out, nil
 }
 
-func (c *queryClient) ChainsLastBlock(ctx context.Context, in *QueryChainsLastBlockRequest, opts ...grpc.CallOption) (*QueryLastBlocksResponse, error) {
-	out := new(QueryLastBlocksResponse)
-	err := c.cc.Invoke(ctx, Query_ChainsLastBlock_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *queryClient) Vault(ctx context.Context, in *QueryVaultRequest, opts ...grpc.CallOption) (*QueryVaultResponse, error) {
 	out := new(QueryVaultResponse)
 	err := c.cc.Invoke(ctx, Query_Vault_FullMethodName, in, out, opts...)
@@ -324,9 +266,9 @@ func (c *queryClient) Vault(ctx context.Context, in *QueryVaultRequest, opts ...
 	return out, nil
 }
 
-func (c *queryClient) AsgardVaults(ctx context.Context, in *QueryAsgardVaultsRequest, opts ...grpc.CallOption) (*QueryAsgardVaultsResponse, error) {
-	out := new(QueryAsgardVaultsResponse)
-	err := c.cc.Invoke(ctx, Query_AsgardVaults_FullMethodName, in, out, opts...)
+func (c *queryClient) BaseVaults(ctx context.Context, in *QueryBaseVaultsRequest, opts ...grpc.CallOption) (*QueryBaseVaultsResponse, error) {
+	out := new(QueryBaseVaultsResponse)
+	err := c.cc.Invoke(ctx, Query_BaseVaults_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -351,24 +293,6 @@ func (c *queryClient) VaultSolvency(ctx context.Context, in *QueryVaultSolvencyR
 	return out, nil
 }
 
-func (c *queryClient) TxStages(ctx context.Context, in *QueryTxStagesRequest, opts ...grpc.CallOption) (*QueryTxStagesResponse, error) {
-	out := new(QueryTxStagesResponse)
-	err := c.cc.Invoke(ctx, Query_TxStages_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) TxStatus(ctx context.Context, in *QueryTxStatusRequest, opts ...grpc.CallOption) (*QueryTxStatusResponse, error) {
-	out := new(QueryTxStatusResponse)
-	err := c.cc.Invoke(ctx, Query_TxStatus_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *queryClient) Tx(ctx context.Context, in *QueryTxRequest, opts ...grpc.CallOption) (*QueryTxResponse, error) {
 	out := new(QueryTxResponse)
 	err := c.cc.Invoke(ctx, Query_Tx_FullMethodName, in, out, opts...)
@@ -378,18 +302,9 @@ func (c *queryClient) Tx(ctx context.Context, in *QueryTxRequest, opts ...grpc.C
 	return out, nil
 }
 
-func (c *queryClient) TxVoters(ctx context.Context, in *QueryTxVotersRequest, opts ...grpc.CallOption) (*QueryObservedTxVoter, error) {
-	out := new(QueryObservedTxVoter)
-	err := c.cc.Invoke(ctx, Query_TxVoters_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) TxVotersOld(ctx context.Context, in *QueryTxVotersRequest, opts ...grpc.CallOption) (*QueryObservedTxVoter, error) {
-	out := new(QueryObservedTxVoter)
-	err := c.cc.Invoke(ctx, Query_TxVotersOld_FullMethodName, in, out, opts...)
+func (c *queryClient) TxOut(ctx context.Context, in *QueryTxOutRequest, opts ...grpc.CallOption) (*QueryTxOutResponse, error) {
+	out := new(QueryTxOutResponse)
+	err := c.cc.Invoke(ctx, Query_TxOut_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -549,42 +464,6 @@ func (c *queryClient) UpgradeVotes(ctx context.Context, in *QueryUpgradeVotesReq
 	return out, nil
 }
 
-func (c *queryClient) Codes(ctx context.Context, in *QueryCodesRequest, opts ...grpc.CallOption) (*QueryCodesResponse, error) {
-	out := new(QueryCodesResponse)
-	err := c.cc.Invoke(ctx, Query_Codes_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) Eip712TypedData(ctx context.Context, in *QueryEip712TypedDataRequest, opts ...grpc.CallOption) (*QueryEip712TypedDataResponse, error) {
-	out := new(QueryEip712TypedDataResponse)
-	err := c.cc.Invoke(ctx, Query_Eip712TypedData_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) ContractInfos(ctx context.Context, in *QueryContractInfosRequest, opts ...grpc.CallOption) (*QueryContractInfosResponse, error) {
-	out := new(QueryContractInfosResponse)
-	err := c.cc.Invoke(ctx, Query_ContractInfos_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) ContractInfo(ctx context.Context, in *QueryContractInfoRequest, opts ...grpc.CallOption) (*QueryContractInfoResponse, error) {
-	out := new(QueryContractInfoResponse)
-	err := c.cc.Invoke(ctx, Query_ContractInfo_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // QueryServer is the server API for Query service.
 // All implementations must embed UnimplementedQueryServer
 // for forward compatibility
@@ -595,29 +474,22 @@ type QueryServer interface {
 	Node(context.Context, *QueryNodeRequest) (*QueryNodeResponse, error)
 	Nodes(context.Context, *QueryNodesRequest) (*QueryNodesResponse, error)
 	Ban(context.Context, *QueryBanRequest) (*BanVoter, error)
-	MimirValues(context.Context, *QueryMimirValuesRequest) (*QueryMimirValuesResponse, error)
-	MimirWithKey(context.Context, *QueryMimirWithKeyRequest) (*QueryMimirWithKeyResponse, error)
-	MimirAdminValues(context.Context, *QueryMimirAdminValuesRequest) (*QueryMimirAdminValuesResponse, error)
-	MimirNodesAllValues(context.Context, *QueryMimirNodesAllValuesRequest) (*QueryMimirNodesAllValuesResponse, error)
-	MimirNodesValues(context.Context, *QueryMimirNodesValuesRequest) (*QueryMimirNodesValuesResponse, error)
-	MimirNodeValues(context.Context, *QueryMimirNodeValuesRequest) (*QueryMimirNodeValuesResponse, error)
-	InboundAddresses(context.Context, *QueryInboundAddressesRequest) (*QueryInboundAddressesResponse, error)
+	ConfigValues(context.Context, *QueryConfigValuesRequest) (*QueryConfigValuesResponse, error)
+	ConfigNodesAllValues(context.Context, *QueryConfigNodesAllValuesRequest) (*QueryConfigNodesAllValuesResponse, error)
+	ConfigNodesValues(context.Context, *QueryConfigNodesValuesRequest) (*QueryConfigNodesValuesResponse, error)
+	ConfigNodeValues(context.Context, *QueryConfigNodeValuesRequest) (*QueryConfigNodeValuesResponse, error)
 	Version(context.Context, *QueryVersionRequest) (*QueryVersionResponse, error)
 	Invariant(context.Context, *QueryInvariantRequest) (*QueryInvariantResponse, error)
 	Invariants(context.Context, *QueryInvariantsRequest) (*QueryInvariantsResponse, error)
 	BalanceModule(context.Context, *QueryBalanceModuleRequest) (*QueryBalanceModuleResponse, error)
-	ConstantValues(context.Context, *QueryConstantValuesRequest) (*QueryConstantValuesResponse, error)
+	ConfigDefaults(context.Context, *QueryConfigDefaultsRequest) (*QueryConfigDefaultsResponse, error)
 	LastBlocks(context.Context, *QueryLastBlocksRequest) (*QueryLastBlocksResponse, error)
-	ChainsLastBlock(context.Context, *QueryChainsLastBlockRequest) (*QueryLastBlocksResponse, error)
 	Vault(context.Context, *QueryVaultRequest) (*QueryVaultResponse, error)
-	AsgardVaults(context.Context, *QueryAsgardVaultsRequest) (*QueryAsgardVaultsResponse, error)
+	BaseVaults(context.Context, *QueryBaseVaultsRequest) (*QueryBaseVaultsResponse, error)
 	VaultsPubkeys(context.Context, *QueryVaultsPubkeysRequest) (*QueryVaultsPubkeysResponse, error)
 	VaultSolvency(context.Context, *QueryVaultSolvencyRequest) (*QueryVaultSolvencyResponse, error)
-	TxStages(context.Context, *QueryTxStagesRequest) (*QueryTxStagesResponse, error)
-	TxStatus(context.Context, *QueryTxStatusRequest) (*QueryTxStatusResponse, error)
 	Tx(context.Context, *QueryTxRequest) (*QueryTxResponse, error)
-	TxVoters(context.Context, *QueryTxVotersRequest) (*QueryObservedTxVoter, error)
-	TxVotersOld(context.Context, *QueryTxVotersRequest) (*QueryObservedTxVoter, error)
+	TxOut(context.Context, *QueryTxOutRequest) (*QueryTxOutResponse, error)
 	ShielderDeposit(context.Context, *QueryShielderDepositRequest) (*QueryShielderDepositResponse, error)
 	ShielderFeePool(context.Context, *QueryShielderFeePoolRequest) (*QueryShielderFeePoolResponse, error)
 	ShielderSession(context.Context, *QueryShielderSessionRequest) (*QueryShielderSessionResponse, error)
@@ -635,10 +507,6 @@ type QueryServer interface {
 	UpgradeProposals(context.Context, *QueryUpgradeProposalsRequest) (*QueryUpgradeProposalsResponse, error)
 	UpgradeProposal(context.Context, *QueryUpgradeProposalRequest) (*QueryUpgradeProposalResponse, error)
 	UpgradeVotes(context.Context, *QueryUpgradeVotesRequest) (*QueryUpgradeVotesResponse, error)
-	Codes(context.Context, *QueryCodesRequest) (*QueryCodesResponse, error)
-	Eip712TypedData(context.Context, *QueryEip712TypedDataRequest) (*QueryEip712TypedDataResponse, error)
-	ContractInfos(context.Context, *QueryContractInfosRequest) (*QueryContractInfosResponse, error)
-	ContractInfo(context.Context, *QueryContractInfoRequest) (*QueryContractInfoResponse, error)
 	mustEmbedUnimplementedQueryServer()
 }
 
@@ -664,26 +532,17 @@ func (UnimplementedQueryServer) Nodes(context.Context, *QueryNodesRequest) (*Que
 func (UnimplementedQueryServer) Ban(context.Context, *QueryBanRequest) (*BanVoter, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ban not implemented")
 }
-func (UnimplementedQueryServer) MimirValues(context.Context, *QueryMimirValuesRequest) (*QueryMimirValuesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MimirValues not implemented")
+func (UnimplementedQueryServer) ConfigValues(context.Context, *QueryConfigValuesRequest) (*QueryConfigValuesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfigValues not implemented")
 }
-func (UnimplementedQueryServer) MimirWithKey(context.Context, *QueryMimirWithKeyRequest) (*QueryMimirWithKeyResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MimirWithKey not implemented")
+func (UnimplementedQueryServer) ConfigNodesAllValues(context.Context, *QueryConfigNodesAllValuesRequest) (*QueryConfigNodesAllValuesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfigNodesAllValues not implemented")
 }
-func (UnimplementedQueryServer) MimirAdminValues(context.Context, *QueryMimirAdminValuesRequest) (*QueryMimirAdminValuesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MimirAdminValues not implemented")
+func (UnimplementedQueryServer) ConfigNodesValues(context.Context, *QueryConfigNodesValuesRequest) (*QueryConfigNodesValuesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfigNodesValues not implemented")
 }
-func (UnimplementedQueryServer) MimirNodesAllValues(context.Context, *QueryMimirNodesAllValuesRequest) (*QueryMimirNodesAllValuesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MimirNodesAllValues not implemented")
-}
-func (UnimplementedQueryServer) MimirNodesValues(context.Context, *QueryMimirNodesValuesRequest) (*QueryMimirNodesValuesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MimirNodesValues not implemented")
-}
-func (UnimplementedQueryServer) MimirNodeValues(context.Context, *QueryMimirNodeValuesRequest) (*QueryMimirNodeValuesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MimirNodeValues not implemented")
-}
-func (UnimplementedQueryServer) InboundAddresses(context.Context, *QueryInboundAddressesRequest) (*QueryInboundAddressesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method InboundAddresses not implemented")
+func (UnimplementedQueryServer) ConfigNodeValues(context.Context, *QueryConfigNodeValuesRequest) (*QueryConfigNodeValuesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfigNodeValues not implemented")
 }
 func (UnimplementedQueryServer) Version(context.Context, *QueryVersionRequest) (*QueryVersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Version not implemented")
@@ -697,20 +556,17 @@ func (UnimplementedQueryServer) Invariants(context.Context, *QueryInvariantsRequ
 func (UnimplementedQueryServer) BalanceModule(context.Context, *QueryBalanceModuleRequest) (*QueryBalanceModuleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BalanceModule not implemented")
 }
-func (UnimplementedQueryServer) ConstantValues(context.Context, *QueryConstantValuesRequest) (*QueryConstantValuesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ConstantValues not implemented")
+func (UnimplementedQueryServer) ConfigDefaults(context.Context, *QueryConfigDefaultsRequest) (*QueryConfigDefaultsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfigDefaults not implemented")
 }
 func (UnimplementedQueryServer) LastBlocks(context.Context, *QueryLastBlocksRequest) (*QueryLastBlocksResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LastBlocks not implemented")
 }
-func (UnimplementedQueryServer) ChainsLastBlock(context.Context, *QueryChainsLastBlockRequest) (*QueryLastBlocksResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ChainsLastBlock not implemented")
-}
 func (UnimplementedQueryServer) Vault(context.Context, *QueryVaultRequest) (*QueryVaultResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Vault not implemented")
 }
-func (UnimplementedQueryServer) AsgardVaults(context.Context, *QueryAsgardVaultsRequest) (*QueryAsgardVaultsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AsgardVaults not implemented")
+func (UnimplementedQueryServer) BaseVaults(context.Context, *QueryBaseVaultsRequest) (*QueryBaseVaultsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BaseVaults not implemented")
 }
 func (UnimplementedQueryServer) VaultsPubkeys(context.Context, *QueryVaultsPubkeysRequest) (*QueryVaultsPubkeysResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VaultsPubkeys not implemented")
@@ -718,20 +574,11 @@ func (UnimplementedQueryServer) VaultsPubkeys(context.Context, *QueryVaultsPubke
 func (UnimplementedQueryServer) VaultSolvency(context.Context, *QueryVaultSolvencyRequest) (*QueryVaultSolvencyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VaultSolvency not implemented")
 }
-func (UnimplementedQueryServer) TxStages(context.Context, *QueryTxStagesRequest) (*QueryTxStagesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TxStages not implemented")
-}
-func (UnimplementedQueryServer) TxStatus(context.Context, *QueryTxStatusRequest) (*QueryTxStatusResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TxStatus not implemented")
-}
 func (UnimplementedQueryServer) Tx(context.Context, *QueryTxRequest) (*QueryTxResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Tx not implemented")
 }
-func (UnimplementedQueryServer) TxVoters(context.Context, *QueryTxVotersRequest) (*QueryObservedTxVoter, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TxVoters not implemented")
-}
-func (UnimplementedQueryServer) TxVotersOld(context.Context, *QueryTxVotersRequest) (*QueryObservedTxVoter, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TxVotersOld not implemented")
+func (UnimplementedQueryServer) TxOut(context.Context, *QueryTxOutRequest) (*QueryTxOutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TxOut not implemented")
 }
 func (UnimplementedQueryServer) ShielderDeposit(context.Context, *QueryShielderDepositRequest) (*QueryShielderDepositResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderDeposit not implemented")
@@ -783,18 +630,6 @@ func (UnimplementedQueryServer) UpgradeProposal(context.Context, *QueryUpgradePr
 }
 func (UnimplementedQueryServer) UpgradeVotes(context.Context, *QueryUpgradeVotesRequest) (*QueryUpgradeVotesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpgradeVotes not implemented")
-}
-func (UnimplementedQueryServer) Codes(context.Context, *QueryCodesRequest) (*QueryCodesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Codes not implemented")
-}
-func (UnimplementedQueryServer) Eip712TypedData(context.Context, *QueryEip712TypedDataRequest) (*QueryEip712TypedDataResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Eip712TypedData not implemented")
-}
-func (UnimplementedQueryServer) ContractInfos(context.Context, *QueryContractInfosRequest) (*QueryContractInfosResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ContractInfos not implemented")
-}
-func (UnimplementedQueryServer) ContractInfo(context.Context, *QueryContractInfoRequest) (*QueryContractInfoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ContractInfo not implemented")
 }
 func (UnimplementedQueryServer) mustEmbedUnimplementedQueryServer() {}
 
@@ -917,128 +752,74 @@ func _Query_Ban_Handler(srv interface{}, ctx context.Context, dec func(interface
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_MimirValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryMimirValuesRequest)
+func _Query_ConfigValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryConfigValuesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).MimirValues(ctx, in)
+		return srv.(QueryServer).ConfigValues(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_MimirValues_FullMethodName,
+		FullMethod: Query_ConfigValues_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).MimirValues(ctx, req.(*QueryMimirValuesRequest))
+		return srv.(QueryServer).ConfigValues(ctx, req.(*QueryConfigValuesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_MimirWithKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryMimirWithKeyRequest)
+func _Query_ConfigNodesAllValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryConfigNodesAllValuesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).MimirWithKey(ctx, in)
+		return srv.(QueryServer).ConfigNodesAllValues(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_MimirWithKey_FullMethodName,
+		FullMethod: Query_ConfigNodesAllValues_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).MimirWithKey(ctx, req.(*QueryMimirWithKeyRequest))
+		return srv.(QueryServer).ConfigNodesAllValues(ctx, req.(*QueryConfigNodesAllValuesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_MimirAdminValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryMimirAdminValuesRequest)
+func _Query_ConfigNodesValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryConfigNodesValuesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).MimirAdminValues(ctx, in)
+		return srv.(QueryServer).ConfigNodesValues(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_MimirAdminValues_FullMethodName,
+		FullMethod: Query_ConfigNodesValues_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).MimirAdminValues(ctx, req.(*QueryMimirAdminValuesRequest))
+		return srv.(QueryServer).ConfigNodesValues(ctx, req.(*QueryConfigNodesValuesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_MimirNodesAllValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryMimirNodesAllValuesRequest)
+func _Query_ConfigNodeValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryConfigNodeValuesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).MimirNodesAllValues(ctx, in)
+		return srv.(QueryServer).ConfigNodeValues(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_MimirNodesAllValues_FullMethodName,
+		FullMethod: Query_ConfigNodeValues_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).MimirNodesAllValues(ctx, req.(*QueryMimirNodesAllValuesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_MimirNodesValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryMimirNodesValuesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).MimirNodesValues(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_MimirNodesValues_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).MimirNodesValues(ctx, req.(*QueryMimirNodesValuesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_MimirNodeValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryMimirNodeValuesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).MimirNodeValues(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_MimirNodeValues_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).MimirNodeValues(ctx, req.(*QueryMimirNodeValuesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_InboundAddresses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryInboundAddressesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).InboundAddresses(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_InboundAddresses_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).InboundAddresses(ctx, req.(*QueryInboundAddressesRequest))
+		return srv.(QueryServer).ConfigNodeValues(ctx, req.(*QueryConfigNodeValuesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1115,20 +896,20 @@ func _Query_BalanceModule_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_ConstantValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryConstantValuesRequest)
+func _Query_ConfigDefaults_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryConfigDefaultsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).ConstantValues(ctx, in)
+		return srv.(QueryServer).ConfigDefaults(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_ConstantValues_FullMethodName,
+		FullMethod: Query_ConfigDefaults_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ConstantValues(ctx, req.(*QueryConstantValuesRequest))
+		return srv.(QueryServer).ConfigDefaults(ctx, req.(*QueryConfigDefaultsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1151,24 +932,6 @@ func _Query_LastBlocks_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_ChainsLastBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryChainsLastBlockRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).ChainsLastBlock(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_ChainsLastBlock_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ChainsLastBlock(ctx, req.(*QueryChainsLastBlockRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Query_Vault_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(QueryVaultRequest)
 	if err := dec(in); err != nil {
@@ -1187,20 +950,20 @@ func _Query_Vault_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_AsgardVaults_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryAsgardVaultsRequest)
+func _Query_BaseVaults_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryBaseVaultsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).AsgardVaults(ctx, in)
+		return srv.(QueryServer).BaseVaults(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_AsgardVaults_FullMethodName,
+		FullMethod: Query_BaseVaults_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).AsgardVaults(ctx, req.(*QueryAsgardVaultsRequest))
+		return srv.(QueryServer).BaseVaults(ctx, req.(*QueryBaseVaultsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1241,42 +1004,6 @@ func _Query_VaultSolvency_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_TxStages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryTxStagesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).TxStages(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_TxStages_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).TxStages(ctx, req.(*QueryTxStagesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_TxStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryTxStatusRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).TxStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_TxStatus_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).TxStatus(ctx, req.(*QueryTxStatusRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Query_Tx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(QueryTxRequest)
 	if err := dec(in); err != nil {
@@ -1295,38 +1022,20 @@ func _Query_Tx_Handler(srv interface{}, ctx context.Context, dec func(interface{
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_TxVoters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryTxVotersRequest)
+func _Query_TxOut_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryTxOutRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).TxVoters(ctx, in)
+		return srv.(QueryServer).TxOut(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_TxVoters_FullMethodName,
+		FullMethod: Query_TxOut_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).TxVoters(ctx, req.(*QueryTxVotersRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_TxVotersOld_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryTxVotersRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).TxVotersOld(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_TxVotersOld_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).TxVotersOld(ctx, req.(*QueryTxVotersRequest))
+		return srv.(QueryServer).TxOut(ctx, req.(*QueryTxOutRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1637,78 +1346,6 @@ func _Query_UpgradeVotes_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_Codes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryCodesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).Codes(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_Codes_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).Codes(ctx, req.(*QueryCodesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_Eip712TypedData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryEip712TypedDataRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).Eip712TypedData(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_Eip712TypedData_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).Eip712TypedData(ctx, req.(*QueryEip712TypedDataRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_ContractInfos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryContractInfosRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).ContractInfos(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_ContractInfos_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ContractInfos(ctx, req.(*QueryContractInfosRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_ContractInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryContractInfoRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).ContractInfo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_ContractInfo_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ContractInfo(ctx, req.(*QueryContractInfoRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // Query_ServiceDesc is the grpc.ServiceDesc for Query service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1741,32 +1378,20 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Query_Ban_Handler,
 		},
 		{
-			MethodName: "MimirValues",
-			Handler:    _Query_MimirValues_Handler,
+			MethodName: "ConfigValues",
+			Handler:    _Query_ConfigValues_Handler,
 		},
 		{
-			MethodName: "MimirWithKey",
-			Handler:    _Query_MimirWithKey_Handler,
+			MethodName: "ConfigNodesAllValues",
+			Handler:    _Query_ConfigNodesAllValues_Handler,
 		},
 		{
-			MethodName: "MimirAdminValues",
-			Handler:    _Query_MimirAdminValues_Handler,
+			MethodName: "ConfigNodesValues",
+			Handler:    _Query_ConfigNodesValues_Handler,
 		},
 		{
-			MethodName: "MimirNodesAllValues",
-			Handler:    _Query_MimirNodesAllValues_Handler,
-		},
-		{
-			MethodName: "MimirNodesValues",
-			Handler:    _Query_MimirNodesValues_Handler,
-		},
-		{
-			MethodName: "MimirNodeValues",
-			Handler:    _Query_MimirNodeValues_Handler,
-		},
-		{
-			MethodName: "InboundAddresses",
-			Handler:    _Query_InboundAddresses_Handler,
+			MethodName: "ConfigNodeValues",
+			Handler:    _Query_ConfigNodeValues_Handler,
 		},
 		{
 			MethodName: "Version",
@@ -1785,24 +1410,20 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Query_BalanceModule_Handler,
 		},
 		{
-			MethodName: "ConstantValues",
-			Handler:    _Query_ConstantValues_Handler,
+			MethodName: "ConfigDefaults",
+			Handler:    _Query_ConfigDefaults_Handler,
 		},
 		{
 			MethodName: "LastBlocks",
 			Handler:    _Query_LastBlocks_Handler,
 		},
 		{
-			MethodName: "ChainsLastBlock",
-			Handler:    _Query_ChainsLastBlock_Handler,
-		},
-		{
 			MethodName: "Vault",
 			Handler:    _Query_Vault_Handler,
 		},
 		{
-			MethodName: "AsgardVaults",
-			Handler:    _Query_AsgardVaults_Handler,
+			MethodName: "BaseVaults",
+			Handler:    _Query_BaseVaults_Handler,
 		},
 		{
 			MethodName: "VaultsPubkeys",
@@ -1813,24 +1434,12 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Query_VaultSolvency_Handler,
 		},
 		{
-			MethodName: "TxStages",
-			Handler:    _Query_TxStages_Handler,
-		},
-		{
-			MethodName: "TxStatus",
-			Handler:    _Query_TxStatus_Handler,
-		},
-		{
 			MethodName: "Tx",
 			Handler:    _Query_Tx_Handler,
 		},
 		{
-			MethodName: "TxVoters",
-			Handler:    _Query_TxVoters_Handler,
-		},
-		{
-			MethodName: "TxVotersOld",
-			Handler:    _Query_TxVotersOld_Handler,
+			MethodName: "TxOut",
+			Handler:    _Query_TxOut_Handler,
 		},
 		{
 			MethodName: "ShielderDeposit",
@@ -1899,22 +1508,6 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpgradeVotes",
 			Handler:    _Query_UpgradeVotes_Handler,
-		},
-		{
-			MethodName: "Codes",
-			Handler:    _Query_Codes_Handler,
-		},
-		{
-			MethodName: "Eip712TypedData",
-			Handler:    _Query_Eip712TypedData_Handler,
-		},
-		{
-			MethodName: "ContractInfos",
-			Handler:    _Query_ContractInfos_Handler,
-		},
-		{
-			MethodName: "ContractInfo",
-			Handler:    _Query_ContractInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

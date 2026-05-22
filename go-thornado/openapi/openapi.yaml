@@ -34,12 +34,12 @@ paths:
       responses:
         "200":
           description: Balances response
-  /thornado/inbound_addresses:
+  /thornado/vaults/base:
     get:
-      summary: Inbound addresses
+      summary: Base vaults
       responses:
         "200":
-          description: Inbound address response
+          description: Base vault response
   /thornado/vaults/pubkeys:
     get:
       summary: Vault pubkeys
@@ -70,72 +70,31 @@ paths:
       responses:
         "200":
           description: Transaction response
-  /thornado/tx/status/{hash}:
+  /thornado/txout:
     get:
-      summary: Transaction status
+      summary: TxOut queue
       parameters:
-        - name: hash
-          in: path
-          required: true
+        - name: height
+          in: query
+          required: false
           schema:
-            type: string
+            type: integer
+            format: int64
       responses:
         "200":
-          description: Transaction status response
-  /thornado/tx/stages/{hash}:
+          description: TxOut queue response
+  /thornado/config:
     get:
-      summary: Transaction stages
-      parameters:
-        - name: hash
-          in: path
-          required: true
-          schema:
-            type: string
+      summary: Config values
       responses:
         "200":
-          description: Transaction stages response
-  /thornado/reference_memo/{reference}:
+          description: Config response
+  /thornado/config/defaults:
     get:
-      summary: Reference memo
-      parameters:
-        - name: reference
-          in: path
-          required: true
-          schema:
-            type: string
+      summary: Config defaults
       responses:
         "200":
-          description: Reference memo response
-  /thornado/reference_memo/hash/{hash}:
-    get:
-      summary: Reference memo by hash
-      parameters:
-        - name: hash
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Reference memo response
-  /thornado/reference_memo/preflight:
-    get:
-      summary: Reference memo preflight
-      responses:
-        "200":
-          description: Reference memo preflight response
-  /thornado/mimir:
-    get:
-      summary: Mimir values
-      responses:
-        "200":
-          description: Mimir response
-  /thornado/constants:
-    get:
-      summary: Constants
-      responses:
-        "200":
-          description: Constants response
+          description: Config defaults response
   /thornado/version:
     get:
       summary: Version
@@ -167,6 +126,96 @@ paths:
       responses:
         "200":
           description: Last block response
+  /thornado/deposit/{deposit_id}:
+    get:
+      summary: Deposit
+      parameters:
+        - name: deposit_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deposit response
+  /thornado/fees:
+    get:
+      summary: Fee pool
+      responses:
+        "200":
+          description: Fee pool response
+  /thornado/session/{owner}:
+    get:
+      summary: Deposit session
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session response
+  /thornado/bond/{node_pub_key}:
+    get:
+      summary: Node bond
+      parameters:
+        - name: node_pub_key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Bond response
+  /thornado/node/auction/{auction_id}:
+    get:
+      summary: Node slot auction
+      parameters:
+        - name: auction_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Auction response
+  /thornado/node/bid/{bid_id}:
+    get:
+      summary: Node slot bid
+      parameters:
+        - name: bid_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Bid response
+  /thornado/deposit/address/{address}:
+    get:
+      summary: Deposit address mapping
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deposit address response
+  /thornado/fee/entitlement/{node_pub_key}:
+    get:
+      summary: Node fee entitlement
+      parameters:
+        - name: node_pub_key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Fee entitlement response
   /thornado/tss/keygen:
     get:
       summary: TSS keygen metrics
@@ -179,21 +228,3 @@ paths:
       responses:
         "200":
           description: TSS keysign response
-  /thornado/contract:
-    get:
-      summary: Contract infos
-      responses:
-        "200":
-          description: Contract infos response
-  /thornado/contract/{address}:
-    get:
-      summary: Contract info
-      parameters:
-        - name: address
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Contract info response

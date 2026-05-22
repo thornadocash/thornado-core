@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/thornadocash/go-thornado/common"
+	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
@@ -66,7 +67,7 @@ func TestUserSplitRequiresCommitments(t *testing.T) {
 }
 
 func TestWithdrawalFeeIsProtocolTwoPercent(t *testing.T) {
-	if got := shielderWithdrawalFeeSatsForBp(100_000_000, WithdrawalFeeBp); got != 2_000_000 {
+	if got := shielderWithdrawalFeeSatsForBp(100_000_000, uint64(constants.NewConfigValue().GetInt64Value(constants.Withdrawal_FeeBasisPoints))); got != 2_000_000 {
 		t.Fatalf("unexpected fee: %d", got)
 	}
 }

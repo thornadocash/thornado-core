@@ -44,8 +44,8 @@ func (ms msgServer) ErrataTxQuorum(goCtx context.Context, msg *types.MsgErrataTx
 	return externalHandler(goCtx, handler, msg)
 }
 
-func (ms msgServer) Mimir(goCtx context.Context, msg *types.MsgMimir) (*types.MsgEmpty, error) {
-	handler := NewMimirHandler(ms.mgr)
+func (ms msgServer) Config(goCtx context.Context, msg *types.MsgConfig) (*types.MsgEmpty, error) {
+	handler := NewConfigHandler(ms.mgr)
 	return externalHandler(goCtx, handler, msg)
 }
 

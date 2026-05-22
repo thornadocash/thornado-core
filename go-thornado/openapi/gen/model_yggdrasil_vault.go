@@ -16,34 +16,32 @@ import (
 
 // YggdrasilVault struct for YggdrasilVault
 type YggdrasilVault struct {
-	BlockHeight *int64 `json:"block_height,omitempty"`
-	PubKey *string `json:"pub_key,omitempty"`
-	Coins []Coin `json:"coins"`
-	Type *string `json:"type,omitempty"`
-	StatusSince *int64 `json:"status_since,omitempty"`
+	BlockHeight *int64  `json:"block_height,omitempty"`
+	PubKey      *string `json:"pub_key,omitempty"`
+	Coins       []Coin  `json:"coins"`
+	Type        *string `json:"type,omitempty"`
+	StatusSince *int64  `json:"status_since,omitempty"`
 	// the list of node public keys which are members of the vault
-	Membership []string `json:"membership,omitempty"`
-	Chains []string `json:"chains,omitempty"`
-	InboundTxCount *int64 `json:"inbound_tx_count,omitempty"`
-	OutboundTxCount *int64 `json:"outbound_tx_count,omitempty"`
-	PendingTxBlockHeights []int64 `json:"pending_tx_block_heights,omitempty"`
-	Routers []VaultRouter `json:"routers"`
-	Status string `json:"status"`
+	Membership            []string `json:"membership,omitempty"`
+	Chains                []string `json:"chains,omitempty"`
+	InboundTxCount        *int64   `json:"inbound_tx_count,omitempty"`
+	OutboundTxCount       *int64   `json:"outbound_tx_count,omitempty"`
+	PendingTxBlockHeights []int64  `json:"pending_tx_block_heights,omitempty"`
+	Status                string   `json:"status"`
 	// current node bond
 	Bond string `json:"bond"`
 	// estimated value of the vault's assets
-	TotalValue string `json:"total_value"`
-	Addresses []VaultAddress `json:"addresses"`
+	TotalValue string         `json:"total_value"`
+	Addresses  []VaultAddress `json:"addresses"`
 }
 
 // NewYggdrasilVault instantiates a new YggdrasilVault object
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewYggdrasilVault(coins []Coin, routers []VaultRouter, status string, bond string, totalValue string, addresses []VaultAddress) *YggdrasilVault {
+func NewYggdrasilVault(coins []Coin, status string, bond string, totalValue string, addresses []VaultAddress) *YggdrasilVault {
 	this := YggdrasilVault{}
 	this.Coins = coins
-	this.Routers = routers
 	this.Status = status
 	this.Bond = bond
 	this.TotalValue = totalValue
@@ -371,30 +369,6 @@ func (o *YggdrasilVault) SetPendingTxBlockHeights(v []int64) {
 	o.PendingTxBlockHeights = v
 }
 
-// GetRouters returns the Routers field value
-func (o *YggdrasilVault) GetRouters() []VaultRouter {
-	if o == nil {
-		var ret []VaultRouter
-		return ret
-	}
-
-	return o.Routers
-}
-
-// GetRoutersOk returns a tuple with the Routers field value
-// and a boolean to check if the value has been set.
-func (o *YggdrasilVault) GetRoutersOk() ([]VaultRouter, bool) {
-	if o == nil {
-		return nil, false
-	}
-	return o.Routers, true
-}
-
-// SetRouters sets field value
-func (o *YggdrasilVault) SetRouters(v []VaultRouter) {
-	o.Routers = v
-}
-
 // GetStatus returns the Status field value
 func (o *YggdrasilVault) GetStatus() string {
 	if o == nil {
@@ -524,9 +498,6 @@ func (o YggdrasilVault) MarshalJSON_deprecated() ([]byte, error) {
 		toSerialize["pending_tx_block_heights"] = o.PendingTxBlockHeights
 	}
 	if true {
-		toSerialize["routers"] = o.Routers
-	}
-	if true {
 		toSerialize["status"] = o.Status
 	}
 	if true {
@@ -576,4 +547,3 @@ func (v *NullableYggdrasilVault) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-

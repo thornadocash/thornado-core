@@ -17,7 +17,7 @@ import (
 // KeygenResponse struct for KeygenResponse
 type KeygenResponse struct {
 	KeygenBlock KeygenBlock `json:"keygen_block"`
-	Signature string `json:"signature"`
+	Signature   string      `json:"signature"`
 }
 
 // NewKeygenResponse instantiates a new KeygenResponse object
@@ -133,5 +133,3 @@ func (v *NullableKeygenResponse) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

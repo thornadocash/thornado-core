@@ -16,10 +16,10 @@ import (
 
 // TxStatusResponse struct for TxStatusResponse
 type TxStatusResponse struct {
-	Tx *Tx `json:"tx,omitempty"`
-	PlannedOutTxs []PlannedOutTx `json:"planned_out_txs,omitempty"`
-	OutTxs []Tx `json:"out_txs,omitempty"`
-	Stages TxStagesResponse `json:"stages"`
+	Tx            *Tx              `json:"tx,omitempty"`
+	PlannedOutTxs []PlannedOutTx   `json:"planned_out_txs,omitempty"`
+	OutTxs        []Tx             `json:"out_txs,omitempty"`
+	Stages        TxStagesResponse `json:"stages"`
 }
 
 // NewTxStatusResponse instantiates a new TxStatusResponse object
@@ -212,5 +212,3 @@ func (v *NullableTxStatusResponse) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

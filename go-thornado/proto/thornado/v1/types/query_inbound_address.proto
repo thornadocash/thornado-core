@@ -11,7 +11,7 @@ message QueryInboundAddressResponse {
   string chain = 1;
   string pub_key = 2;
   string address = 3;
-  string router = 4;
+  reserved 4;
   // Returns true if trading is unavailable for this chain, either because
   // trading is halted globally or specifically for this chain
   bool halted = 5 [ (gogoproto.jsontag) = "halted" ];

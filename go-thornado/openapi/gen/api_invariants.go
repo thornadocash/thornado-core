@@ -19,15 +19,14 @@ import (
 	"strings"
 )
 
-
 // InvariantsApiService InvariantsApi service
 type InvariantsApiService service
 
 type ApiInvariantRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *InvariantsApiService
-	invariant string
-	height *int64
+	invariant  string
+	height     *int64
 }
 
 // optional block height, defaults to current tip
@@ -45,26 +44,27 @@ Invariant Method for Invariant
 
 Returns result of running the given invariant.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param invariant
- @return ApiInvariantRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param invariant
+	@return ApiInvariantRequest
 */
 func (a *InvariantsApiService) Invariant(ctx context.Context, invariant string) ApiInvariantRequest {
 	return ApiInvariantRequest{
 		ApiService: a,
-		ctx: ctx,
-		invariant: invariant,
+		ctx:        ctx,
+		invariant:  invariant,
 	}
 }
 
 // Execute executes the request
-//  @return InvariantResponse
+//
+//	@return InvariantResponse
 func (a *InvariantsApiService) InvariantExecute(r ApiInvariantRequest) (*InvariantResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *InvariantResponse
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *InvariantResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "InvariantsApiService.Invariant")
@@ -137,9 +137,9 @@ func (a *InvariantsApiService) InvariantExecute(r ApiInvariantRequest) (*Invaria
 }
 
 type ApiInvariantsRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *InvariantsApiService
-	height *int64
+	height     *int64
 }
 
 // optional block height, defaults to current tip
@@ -157,24 +157,25 @@ Invariants Method for Invariants
 
 Returns a list of available invariants.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @return ApiInvariantsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiInvariantsRequest
 */
 func (a *InvariantsApiService) Invariants(ctx context.Context) ApiInvariantsRequest {
 	return ApiInvariantsRequest{
 		ApiService: a,
-		ctx: ctx,
+		ctx:        ctx,
 	}
 }
 
 // Execute executes the request
-//  @return InvariantsResponse
+//
+//	@return InvariantsResponse
 func (a *InvariantsApiService) InvariantsExecute(r ApiInvariantsRequest) (*InvariantsResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *InvariantsResponse
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *InvariantsResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "InvariantsApiService.Invariants")

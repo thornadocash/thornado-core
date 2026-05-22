@@ -25,7 +25,7 @@ const (
 	CommonBlockScannerError MetricName = `block_scanner_error`
 
 	ThornadoBlockScannerError MetricName = `thornado_block_scan_error`
-	BlockDiscoveryDuration     MetricName = `block_discovery_duration`
+	BlockDiscoveryDuration    MetricName = `block_discovery_duration`
 
 	ThornadoClientError    MetricName = `thornado_client_error`
 	TxToThornado           MetricName = `tx_to_thornado`

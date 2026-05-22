@@ -51,7 +51,7 @@ type BlockScanner struct {
 	globalTxsQueue        chan types.TxIn
 	globalNetworkFeeQueue chan common.NetworkFee
 	errorCounter          *prometheus.CounterVec
-	thornadoBridge       thornadoclient.ThornadoBridge
+	thornadoBridge        thornadoclient.ThornadoBridge
 	chainScanner          BlockScannerFetcher
 	healthy               *atomic.Bool
 }
@@ -71,18 +71,18 @@ func NewBlockScanner(cfg config.BifrostBlockScannerConfiguration, scannerStorage
 
 	logger := log.Logger.With().Str("module", "blockscanner").Str("chain", cfg.ChainID.String()).Logger()
 	scanner := &BlockScanner{
-		cfg:             cfg,
-		logger:          logger,
-		wg:              &sync.WaitGroup{},
-		stopChan:        make(chan struct{}),
-		scanChan:        make(chan int64),
-		rollbackChan:    make(chan int64),
-		scannerStorage:  scannerStorage,
-		metrics:         m,
-		errorCounter:    m.GetCounterVec(metrics.CommonBlockScannerError),
+		cfg:            cfg,
+		logger:         logger,
+		wg:             &sync.WaitGroup{},
+		stopChan:       make(chan struct{}),
+		scanChan:       make(chan int64),
+		rollbackChan:   make(chan int64),
+		scannerStorage: scannerStorage,
+		metrics:        m,
+		errorCounter:   m.GetCounterVec(metrics.CommonBlockScannerError),
 		thornadoBridge: thornadoBridge,
-		chainScanner:    chainScanner,
-		healthy:         &atomic.Bool{},
+		chainScanner:   chainScanner,
+		healthy:        &atomic.Bool{},
 	}
 
 	scanner.previousBlock, err = scanner.GetStartHeight()
@@ -110,7 +110,7 @@ func (b *BlockScanner) RollbackToLastObserved() error {
 		return nil
 	}
 
-	maxConfirmations, err := b.thornadoBridge.GetMimirWithRef(constants.MimirTemplateMaxConfirmations, b.cfg.ChainID.String())
+	maxConfirmations, err := b.thornadoBridge.GetConfigValue(constants.BTC_MaxConfirmations.String())
 	if err != nil || maxConfirmations < 0 {
 		maxConfirmations = 0
 	}
@@ -120,11 +120,11 @@ func (b *BlockScanner) RollbackToLastObserved() error {
 		return fmt.Errorf("fail to get constants: %w", err)
 	}
 
-	obsDelayFlexConst := constants.ObservationDelayFlexibility.String()
+	obsDelayFlexConst := constants.Observation_DelayFlexibilityBlocks.String()
 	observerFlexWindowBlocksThor := c[obsDelayFlexConst]
-	observerFlexWindowBlocksThorMimir, err := b.thornadoBridge.GetMimir(obsDelayFlexConst)
-	if err == nil && observerFlexWindowBlocksThorMimir > 0 {
-		observerFlexWindowBlocksThor = observerFlexWindowBlocksThorMimir
+	observerFlexWindowBlocksThorConfig, err := b.thornadoBridge.GetConfigValue(obsDelayFlexConst)
+	if err == nil && observerFlexWindowBlocksThorConfig > 0 {
+		observerFlexWindowBlocksThor = observerFlexWindowBlocksThorConfig
 	}
 
 	thorBlockTimeMs := c[constants.ThornadoBlockTime.String()] / int64(time.Millisecond)
@@ -218,7 +218,7 @@ func (b *BlockScanner) scanMempool() {
 	}
 }
 
-// Checks current mimir settings to determine if the current chain is paused
+// Checks current config settings to determine if the current chain is paused
 // either globally or specifically
 func IsChainPaused(cfg config.BifrostBlockScannerConfiguration, logger zerolog.Logger, bridge thornadoclient.ThornadoBridge) bool {
 	thorHeight, err := bridge.GetBlockHeight()
@@ -226,37 +226,37 @@ func IsChainPaused(cfg config.BifrostBlockScannerConfiguration, logger zerolog.L
 		logger.Error().Err(err).Msg("fail to get Thornado block height")
 	}
 
-	// Check if chain has been halted via mimir
-	haltHeight, err := bridge.GetMimir(fmt.Sprintf("Halt%sChain", cfg.ChainID))
+	// Check if chain has been halted via config
+	haltHeight, err := bridge.GetConfigValue(constants.Halt_ChainGlobal.String())
 	if err != nil {
-		logger.Error().Err(err).Msgf("fail to get mimir setting %s", fmt.Sprintf("Halt%sChain", cfg.ChainID))
+		logger.Error().Err(err).Str("config", constants.Halt_ChainGlobal.String()).Msg("fail to get config")
 	}
 	if haltHeight > 0 && thorHeight >= haltHeight {
 		return true
 	}
 
 	// Check if chain has been halted by auto solvency checks
-	solvencyHaltHeight, err := bridge.GetMimir(fmt.Sprintf("SolvencyHalt%sChain", cfg.ChainID))
+	solvencyHaltHeight, err := bridge.GetConfigValue(constants.Halt_SolvencyCheck.String())
 	if err != nil {
-		logger.Error().Err(err).Msgf("fail to get mimir %s", fmt.Sprintf("SolvencyHalt%sChain", cfg.ChainID))
+		logger.Error().Err(err).Str("config", constants.Halt_SolvencyCheck.String()).Msg("fail to get config")
 	}
 	if solvencyHaltHeight > 0 && thorHeight >= solvencyHaltHeight {
 		return true
 	}
 
 	// Check if all chains halted globally
-	globalHaltHeight, err := bridge.GetMimir("HaltChainGlobal")
+	globalHaltHeight, err := bridge.GetConfigValue(constants.Halt_ChainGlobal.String())
 	if err != nil {
-		logger.Error().Err(err).Msg("fail to get mimir setting HaltChainGlobal")
+		logger.Error().Err(err).Str("config", constants.Halt_ChainGlobal.String()).Msg("fail to get config")
 	}
 	if globalHaltHeight > 0 && thorHeight >= globalHaltHeight {
 		return true
 	}
 
 	// Check if a node temporarily paused all chains
-	nodePauseHeight, err := bridge.GetMimir("NodePauseChainGlobal")
+	nodePauseHeight, err := bridge.GetConfigValue(constants.ConfigKeyNodePauseChainGlobal)
 	if err != nil {
-		logger.Error().Err(err).Msg("fail to get mimir setting NodePauseChainGlobal")
+		logger.Error().Err(err).Str("config", constants.ConfigKeyNodePauseChainGlobal).Msg("fail to get config")
 	}
 
 	return (nodePauseHeight > 0 && thorHeight <= nodePauseHeight)
@@ -268,7 +268,7 @@ func (b *BlockScanner) scanBlocks() {
 	defer b.logger.Debug().Msg("stop scan blocks")
 	defer b.wg.Done()
 
-	lastMimirCheck := time.Now().Add(-constants.ThornadoBlockTime)
+	lastConfigCheck := time.Now().Add(-constants.ThornadoBlockTime)
 	isChainPaused := false
 
 	type fetchTxsResult struct {
@@ -292,10 +292,10 @@ func (b *BlockScanner) scanBlocks() {
 		default:
 			preBlockHeight := atomic.LoadInt64(&b.previousBlock)
 			currentBlock := preBlockHeight + 1
-			// check if mimir has disabled this chain
-			if time.Since(lastMimirCheck) >= constants.ThornadoBlockTime {
+			// check if config has disabled this chain
+			if time.Since(lastConfigCheck) >= constants.ThornadoBlockTime {
 				isChainPaused = IsChainPaused(b.cfg, b.logger, b.thornadoBridge)
-				lastMimirCheck = time.Now()
+				lastConfigCheck = time.Now()
 			}
 
 			// Chain is paused, mark as unhealthy

@@ -5,7 +5,7 @@ import "cosmos/msg/v1/msg.proto";
 import "types/msg_ban.proto";
 import "types/msg_deposit.proto";
 import "types/msg_errata.proto";
-import "types/msg_mimir.proto";
+import "types/msg_config.proto";
 import "types/msg_network_fee.proto";
 import "types/msg_node_pause_chain.proto";
 import "types/msg_observed_txin.proto";
@@ -33,7 +33,7 @@ service Msg {
   rpc Deposit(MsgDeposit) returns (MsgEmpty);
   rpc ErrataTx(MsgErrataTx) returns (MsgEmpty);
   rpc ErrataTxQuorum(MsgErrataTxQuorum) returns (MsgEmpty);
-  rpc Mimir(MsgMimir) returns (MsgEmpty);
+  rpc Config(MsgConfig) returns (MsgEmpty);
   rpc NetworkFee(MsgNetworkFee) returns (MsgEmpty);
   rpc NetworkFeeQuorum(MsgNetworkFeeQuorum) returns (MsgEmpty);
   rpc NodePauseChain(MsgNodePauseChain) returns (MsgEmpty);

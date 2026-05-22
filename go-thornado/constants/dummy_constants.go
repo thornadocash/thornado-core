@@ -1,21 +1,21 @@
 package constants
 
-type DummyConstants struct {
-	int64values  map[ConstantName]int64
-	boolValues   map[ConstantName]bool
-	stringValues map[ConstantName]string
+type DummyConfigs struct {
+	int64values  map[ConfigName]int64
+	boolValues   map[ConfigName]bool
+	stringValues map[ConfigName]string
 }
 
-// NewDummyConstants create a new instance of DummyConstants for test purpose
-func NewDummyConstants(int64Values map[ConstantName]int64, boolValues map[ConstantName]bool, stringValues map[ConstantName]string) *DummyConstants {
-	return &DummyConstants{
+// NewDummyConfigs create a new instance of DummyConfigs for test purpose
+func NewDummyConfigs(int64Values map[ConfigName]int64, boolValues map[ConfigName]bool, stringValues map[ConfigName]string) *DummyConfigs {
+	return &DummyConfigs{
 		int64values:  int64Values,
 		boolValues:   boolValues,
 		stringValues: stringValues,
 	}
 }
 
-func (dc *DummyConstants) GetInt64Value(name ConstantName) int64 {
+func (dc *DummyConfigs) GetInt64Value(name ConfigName) int64 {
 	v, ok := dc.int64values[name]
 	if !ok {
 		return 0
@@ -23,7 +23,7 @@ func (dc *DummyConstants) GetInt64Value(name ConstantName) int64 {
 	return v
 }
 
-func (dc *DummyConstants) GetBoolValue(name ConstantName) bool {
+func (dc *DummyConfigs) GetBoolValue(name ConfigName) bool {
 	v, ok := dc.boolValues[name]
 	if !ok {
 		return false
@@ -31,7 +31,7 @@ func (dc *DummyConstants) GetBoolValue(name ConstantName) bool {
 	return v
 }
 
-func (dc *DummyConstants) GetStringValue(name ConstantName) string {
+func (dc *DummyConfigs) GetStringValue(name ConfigName) string {
 	v, ok := dc.stringValues[name]
 	if !ok {
 		return ""
@@ -39,10 +39,10 @@ func (dc *DummyConstants) GetStringValue(name ConstantName) string {
 	return v
 }
 
-func (dc *DummyConstants) String() string {
+func (dc *DummyConfigs) String() string {
 	return ""
 }
 
-func (dc *DummyConstants) GetConstantValsByKeyname() ConstantValsByKeyname {
-	return ConstantValsByKeyname{}
+func (dc *DummyConfigs) GetConfigValsByKeyname() ConfigValsByKeyname {
+	return ConfigValsByKeyname{}
 }

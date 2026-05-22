@@ -21,9 +21,9 @@ func processNetworkFeeAttestation(
 	nf *common.NetworkFee,
 	shouldSlashForDuplicate bool,
 ) error {
-	observeSlashPoints := mgr.GetConstants().GetInt64Value(constants.ObserveSlashPoints)
-	lackOfObservationPenalty := mgr.GetConstants().GetInt64Value(constants.LackOfObservationPenalty)
-	observeFlex := mgr.Keeper().GetConfigInt64(ctx, constants.ObservationDelayFlexibility)
+	observeSlashPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
+	lackOfObservationPenalty := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_MissPenaltyPoints)
+	observeFlex := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_DelayFlexibilityBlocks)
 
 	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
 		telemetry.NewLabel("reason", "failed_observe_network_fee"),
@@ -47,7 +47,7 @@ func processNetworkFeeAttestation(
 	}
 
 	if voter.BlockHeight > 0 {
-		// After consensus, only decrement slash points if within the ObservationDelayFlexibility period.
+		// After consensus, only decrement slash points if within the Observation_DelayFlexibilityBlocks period.
 		if (voter.BlockHeight + observeFlex) >= ctx.BlockHeight() {
 			mgr.Slasher().DecSlashPoints(slashCtx, lackOfObservationPenalty, attester)
 		}

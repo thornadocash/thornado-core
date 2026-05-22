@@ -16,13 +16,13 @@ import (
 
 // Tx struct for Tx
 type Tx struct {
-	Id *string `json:"id,omitempty"`
-	Chain *string `json:"chain,omitempty"`
+	Id          *string `json:"id,omitempty"`
+	Chain       *string `json:"chain,omitempty"`
 	FromAddress *string `json:"from_address,omitempty"`
-	ToAddress *string `json:"to_address,omitempty"`
-	Coins []Coin `json:"coins"`
-	Gas []Coin `json:"gas"`
-	Memo *string `json:"memo,omitempty"`
+	ToAddress   *string `json:"to_address,omitempty"`
+	Coins       []Coin  `json:"coins"`
+	Gas         []Coin  `json:"gas"`
+	Memo        *string `json:"memo,omitempty"`
 }
 
 // NewTx instantiates a new Tx object
@@ -313,5 +313,3 @@ func (v *NullableTx) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

@@ -28,7 +28,7 @@ func NewConstantsProvider(bridge thornadoclient.ThornadoBridge) *ConstantsProvid
 }
 
 // GetInt64Value get the constant value that match the given key
-func (cp *ConstantsProvider) GetInt64Value(thornadoBlockHeight int64, key constants.ConstantName) (int64, error) {
+func (cp *ConstantsProvider) GetInt64Value(thornadoBlockHeight int64, key constants.ConfigName) (int64, error) {
 	if err := cp.EnsureConstants(thornadoBlockHeight); err != nil {
 		return 0, fmt.Errorf("fail to get constants from thornado: %w", err)
 	}
@@ -42,7 +42,7 @@ func (cp *ConstantsProvider) EnsureConstants(thornadoBlockHeight int64) error {
 		return cp.getConstantsFromThornado(thornadoBlockHeight)
 	}
 	cp.constantsLock.Lock()
-	churnInterval := cp.constants[constants.ChurnInterval.String()]
+	churnInterval := cp.constants[constants.Churn_IntervalBlocks.String()]
 	cp.constantsLock.Unlock()
 	// Thornado will have new version and constants only when new node get rotated in , and the new version get consensus
 	if thornadoBlockHeight-cp.requestHeight < churnInterval {

@@ -16,9 +16,9 @@ import (
 
 // VaultPubkeysResponse struct for VaultPubkeysResponse
 type VaultPubkeysResponse struct {
-	Asgard []VaultInfo `json:"asgard"`
+	Asgard    []VaultInfo `json:"asgard"`
 	Yggdrasil []VaultInfo `json:"yggdrasil"`
-	Inactive []VaultInfo `json:"inactive"`
+	Inactive  []VaultInfo `json:"inactive"`
 }
 
 // NewVaultPubkeysResponse instantiates a new VaultPubkeysResponse object
@@ -162,5 +162,3 @@ func (v *NullableVaultPubkeysResponse) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

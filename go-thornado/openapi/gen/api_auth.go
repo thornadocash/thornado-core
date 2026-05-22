@@ -19,15 +19,14 @@ import (
 	"strings"
 )
 
-
 // AuthApiService AuthApi service
 type AuthApiService service
 
 type ApiAccountRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *AuthApiService
-	address string
-	height *int64
+	address    string
+	height     *int64
 }
 
 // optional block height, defaults to current tip
@@ -45,26 +44,27 @@ Account Method for Account
 
 Returns account information for the provided address.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param address
- @return ApiAccountRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param address
+	@return ApiAccountRequest
 */
 func (a *AuthApiService) Account(ctx context.Context, address string) ApiAccountRequest {
 	return ApiAccountRequest{
 		ApiService: a,
-		ctx: ctx,
-		address: address,
+		ctx:        ctx,
+		address:    address,
 	}
 }
 
 // Execute executes the request
-//  @return AccountResponse
+//
+//	@return AccountResponse
 func (a *AuthApiService) AccountExecute(r ApiAccountRequest) (*AccountResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *AccountResponse
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *AccountResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "AuthApiService.Account")

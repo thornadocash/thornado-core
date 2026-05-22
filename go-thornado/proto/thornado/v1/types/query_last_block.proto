@@ -9,11 +9,6 @@ option (gogoproto.marshaler_all) = true;
 
 message QueryLastBlocksRequest { string height = 1; }
 
-message QueryChainsLastBlockRequest {
-  string chain = 1;
-  string height = 2;
-}
-
 message QueryLastBlocksResponse { repeated ChainsLastBlock last_blocks = 1; }
 
 message ChainsLastBlock {

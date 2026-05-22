@@ -16,8 +16,8 @@ import (
 
 // BlockResponseIdParts struct for BlockResponseIdParts
 type BlockResponseIdParts struct {
-	Total int64 `json:"total"`
-	Hash string `json:"hash"`
+	Total int64  `json:"total"`
+	Hash  string `json:"hash"`
 }
 
 // NewBlockResponseIdParts instantiates a new BlockResponseIdParts object
@@ -133,5 +133,3 @@ func (v *NullableBlockResponseIdParts) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

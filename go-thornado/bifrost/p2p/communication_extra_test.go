@@ -12,6 +12,7 @@ import (
 	. "gopkg.in/check.v1"
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p/messages"
+	"github.com/thornadocash/go-thornado/constants"
 )
 
 func TestNewCommunicationInvalidPort(t *testing.T) {
@@ -162,7 +163,7 @@ func (CommunicationTestSuite) TestBroadcastAndProcessBroadcast(c *C) {
 func (CommunicationTestSuite) TestStopWithNodeGater(c *C) {
 	bridge := NewMockThornadoBridge()
 	bridge.SetConstants(map[string]int64{
-		"BondStartAmountSats": 100_000_000,
+		constants.Node_BondStartAmountSats.String(): 100_000_000,
 	})
 	comm, err := NewCommunication(&Config{Port: 6692, RendezvousString: "testgater"}, nil, bridge)
 	c.Assert(err, IsNil)

@@ -16,33 +16,31 @@ import (
 
 // Vault struct for Vault
 type Vault struct {
-	BlockHeight *int64 `json:"block_height,omitempty"`
-	PubKey *string `json:"pub_key,omitempty"`
+	BlockHeight *int64  `json:"block_height,omitempty"`
+	PubKey      *string `json:"pub_key,omitempty"`
 	PubKeyEddsa *string `json:"pub_key_eddsa,omitempty"`
-	Coins []Coin `json:"coins"`
-	Type *string `json:"type,omitempty"`
-	Status string `json:"status"`
-	StatusSince *int64 `json:"status_since,omitempty"`
+	Coins       []Coin  `json:"coins"`
+	Type        *string `json:"type,omitempty"`
+	Status      string  `json:"status"`
+	StatusSince *int64  `json:"status_since,omitempty"`
 	// the list of node public keys which are members of the vault
-	Membership []string `json:"membership,omitempty"`
-	Chains []string `json:"chains,omitempty"`
-	InboundTxCount *int64 `json:"inbound_tx_count,omitempty"`
-	OutboundTxCount *int64 `json:"outbound_tx_count,omitempty"`
-	PendingTxBlockHeights []int64 `json:"pending_tx_block_heights,omitempty"`
-	Routers []VaultRouter `json:"routers"`
-	Addresses []VaultAddress `json:"addresses"`
-	Frozen []string `json:"frozen,omitempty"`
+	Membership            []string       `json:"membership,omitempty"`
+	Chains                []string       `json:"chains,omitempty"`
+	InboundTxCount        *int64         `json:"inbound_tx_count,omitempty"`
+	OutboundTxCount       *int64         `json:"outbound_tx_count,omitempty"`
+	PendingTxBlockHeights []int64        `json:"pending_tx_block_heights,omitempty"`
+	Addresses             []VaultAddress `json:"addresses"`
+	Frozen                []string       `json:"frozen,omitempty"`
 }
 
 // NewVault instantiates a new Vault object
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewVault(coins []Coin, status string, routers []VaultRouter, addresses []VaultAddress) *Vault {
+func NewVault(coins []Coin, status string, addresses []VaultAddress) *Vault {
 	this := Vault{}
 	this.Coins = coins
 	this.Status = status
-	this.Routers = routers
 	this.Addresses = addresses
 	return &this
 }
@@ -423,30 +421,6 @@ func (o *Vault) SetPendingTxBlockHeights(v []int64) {
 	o.PendingTxBlockHeights = v
 }
 
-// GetRouters returns the Routers field value
-func (o *Vault) GetRouters() []VaultRouter {
-	if o == nil {
-		var ret []VaultRouter
-		return ret
-	}
-
-	return o.Routers
-}
-
-// GetRoutersOk returns a tuple with the Routers field value
-// and a boolean to check if the value has been set.
-func (o *Vault) GetRoutersOk() ([]VaultRouter, bool) {
-	if o == nil {
-		return nil, false
-	}
-	return o.Routers, true
-}
-
-// SetRouters sets field value
-func (o *Vault) SetRouters(v []VaultRouter) {
-	o.Routers = v
-}
-
 // GetAddresses returns the Addresses field value
 func (o *Vault) GetAddresses() []VaultAddress {
 	if o == nil {
@@ -542,9 +516,6 @@ func (o Vault) MarshalJSON_deprecated() ([]byte, error) {
 		toSerialize["pending_tx_block_heights"] = o.PendingTxBlockHeights
 	}
 	if true {
-		toSerialize["routers"] = o.Routers
-	}
-	if true {
 		toSerialize["addresses"] = o.Addresses
 	}
 	if o.Frozen != nil {
@@ -588,5 +559,3 @@ func (v *NullableVault) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

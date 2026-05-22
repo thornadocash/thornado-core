@@ -19,15 +19,14 @@ import (
 	"strings"
 )
 
-
 // BankApiService BankApi service
 type BankApiService service
 
 type ApiBalancesRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *BankApiService
-	address string
-	height *int64
+	address    string
+	height     *int64
 }
 
 // optional block height, defaults to current tip
@@ -45,26 +44,27 @@ Balances Method for Balances
 
 Returns balances for the provided address.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param address
- @return ApiBalancesRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param address
+	@return ApiBalancesRequest
 */
 func (a *BankApiService) Balances(ctx context.Context, address string) ApiBalancesRequest {
 	return ApiBalancesRequest{
 		ApiService: a,
-		ctx: ctx,
-		address: address,
+		ctx:        ctx,
+		address:    address,
 	}
 }
 
 // Execute executes the request
-//  @return BalancesResponse
+//
+//	@return BalancesResponse
 func (a *BankApiService) BalancesExecute(r ApiBalancesRequest) (*BalancesResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *BalancesResponse
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *BalancesResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "BankApiService.Balances")

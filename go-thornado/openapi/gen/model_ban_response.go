@@ -16,9 +16,9 @@ import (
 
 // BanResponse struct for BanResponse
 type BanResponse struct {
-	NodeAddress *string `json:"node_address,omitempty"`
-	BlockHeight *int64 `json:"block_height,omitempty"`
-	Signers []string `json:"signers,omitempty"`
+	NodeAddress *string  `json:"node_address,omitempty"`
+	BlockHeight *int64   `json:"block_height,omitempty"`
+	Signers     []string `json:"signers,omitempty"`
 }
 
 // NewBanResponse instantiates a new BanResponse object
@@ -183,5 +183,3 @@ func (v *NullableBanResponse) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

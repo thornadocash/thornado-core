@@ -54,20 +54,15 @@ type APIClient struct {
 
 	BlockApi *BlockApiService
 
-	CodesApi *CodesApiService
-
 	ExportApi *ExportApiService
 
 	HealthApi *HealthApiService
 
 	InvariantsApi *InvariantsApiService
 
-	MimirApi *MimirApiService
+	ConfigApi *ConfigApiService
 
 	NodesApi *NodesApiService
-
-
-	SmartContractsApi *SmartContractsApiService
 
 	TSSApi *TSSApiService
 
@@ -95,13 +90,11 @@ func NewAPIClient(cfg *Configuration) *APIClient {
 	c.AuthApi = (*AuthApiService)(&c.common)
 	c.BankApi = (*BankApiService)(&c.common)
 	c.BlockApi = (*BlockApiService)(&c.common)
-	c.CodesApi = (*CodesApiService)(&c.common)
 	c.ExportApi = (*ExportApiService)(&c.common)
 	c.HealthApi = (*HealthApiService)(&c.common)
 	c.InvariantsApi = (*InvariantsApiService)(&c.common)
-	c.MimirApi = (*MimirApiService)(&c.common)
+	c.ConfigApi = (*ConfigApiService)(&c.common)
 	c.NodesApi = (*NodesApiService)(&c.common)
-	c.SmartContractsApi = (*SmartContractsApiService)(&c.common)
 	c.TSSApi = (*TSSApiService)(&c.common)
 	c.TransactionsApi = (*TransactionsApiService)(&c.common)
 	c.VaultsApi = (*VaultsApiService)(&c.common)

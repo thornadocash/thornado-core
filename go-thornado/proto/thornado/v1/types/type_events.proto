@@ -331,12 +331,12 @@ message EventMintBurn {
 
 
 
-message EventSetMimir {
+message EventSetConfig {
   string key = 1;
   string value = 2;
 }
 
-message EventSetNodeMimir {
+message EventSetNodeConfig {
   string key = 1;
   string value = 2;
   string address = 3;

@@ -19,15 +19,14 @@ import (
 	"strings"
 )
 
-
 // TSSApiService TSSApi service
 type TSSApiService service
 
 type ApiKeygenPubkeyRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *TSSApiService
-	height int64
-	pubkey string
+	height     int64
+	pubkey     string
 }
 
 func (r ApiKeygenPubkeyRequest) Execute() (*KeygenResponse, *http.Response, error) {
@@ -39,28 +38,29 @@ KeygenPubkey Method for KeygenPubkey
 
 Returns keygen information for the provided height and pubkey - the pubkey being of one of the members of a keygen block for that height
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param height
- @param pubkey
- @return ApiKeygenPubkeyRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param height
+	@param pubkey
+	@return ApiKeygenPubkeyRequest
 */
 func (a *TSSApiService) KeygenPubkey(ctx context.Context, height int64, pubkey string) ApiKeygenPubkeyRequest {
 	return ApiKeygenPubkeyRequest{
 		ApiService: a,
-		ctx: ctx,
-		height: height,
-		pubkey: pubkey,
+		ctx:        ctx,
+		height:     height,
+		pubkey:     pubkey,
 	}
 }
 
 // Execute executes the request
-//  @return KeygenResponse
+//
+//	@return KeygenResponse
 func (a *TSSApiService) KeygenPubkeyExecute(r ApiKeygenPubkeyRequest) (*KeygenResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *KeygenResponse
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *KeygenResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TSSApiService.KeygenPubkey")
@@ -134,9 +134,9 @@ func (a *TSSApiService) KeygenPubkeyExecute(r ApiKeygenPubkeyRequest) (*KeygenRe
 }
 
 type ApiKeysignRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *TSSApiService
-	height int64
+	height     int64
 }
 
 func (r ApiKeysignRequest) Execute() (*KeysignResponse, *http.Response, error) {
@@ -148,26 +148,27 @@ Keysign Method for Keysign
 
 Returns keysign information for the provided height - the height being the first block a tx out item appears in the signed-but-unobserved outbound queue.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param height
- @return ApiKeysignRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param height
+	@return ApiKeysignRequest
 */
 func (a *TSSApiService) Keysign(ctx context.Context, height int64) ApiKeysignRequest {
 	return ApiKeysignRequest{
 		ApiService: a,
-		ctx: ctx,
-		height: height,
+		ctx:        ctx,
+		height:     height,
 	}
 }
 
 // Execute executes the request
-//  @return KeysignResponse
+//
+//	@return KeysignResponse
 func (a *TSSApiService) KeysignExecute(r ApiKeysignRequest) (*KeysignResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *KeysignResponse
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *KeysignResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TSSApiService.Keysign")
@@ -240,10 +241,10 @@ func (a *TSSApiService) KeysignExecute(r ApiKeysignRequest) (*KeysignResponse, *
 }
 
 type ApiKeysignPubkeyRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *TSSApiService
-	height int64
-	pubkey string
+	height     int64
+	pubkey     string
 }
 
 func (r ApiKeysignPubkeyRequest) Execute() (*KeysignResponse, *http.Response, error) {
@@ -255,28 +256,29 @@ KeysignPubkey Method for KeysignPubkey
 
 Returns keysign information for the provided height and pubkey - the height being the block at which a tx out item is scheduled to be signed and moved from the scheduled outbound queue to the outbound queue.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param height
- @param pubkey
- @return ApiKeysignPubkeyRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param height
+	@param pubkey
+	@return ApiKeysignPubkeyRequest
 */
 func (a *TSSApiService) KeysignPubkey(ctx context.Context, height int64, pubkey string) ApiKeysignPubkeyRequest {
 	return ApiKeysignPubkeyRequest{
 		ApiService: a,
-		ctx: ctx,
-		height: height,
-		pubkey: pubkey,
+		ctx:        ctx,
+		height:     height,
+		pubkey:     pubkey,
 	}
 }
 
 // Execute executes the request
-//  @return KeysignResponse
+//
+//	@return KeysignResponse
 func (a *TSSApiService) KeysignPubkeyExecute(r ApiKeysignPubkeyRequest) (*KeysignResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *KeysignResponse
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *KeysignResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TSSApiService.KeysignPubkey")
@@ -350,9 +352,9 @@ func (a *TSSApiService) KeysignPubkeyExecute(r ApiKeysignPubkeyRequest) (*Keysig
 }
 
 type ApiMetricsRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *TSSApiService
-	height *int64
+	height     *int64
 }
 
 // optional block height, defaults to current tip
@@ -370,24 +372,25 @@ Metrics Method for Metrics
 
 Returns keygen and keysign metrics for current vaults.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @return ApiMetricsRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiMetricsRequest
 */
 func (a *TSSApiService) Metrics(ctx context.Context) ApiMetricsRequest {
 	return ApiMetricsRequest{
 		ApiService: a,
-		ctx: ctx,
+		ctx:        ctx,
 	}
 }
 
 // Execute executes the request
-//  @return MetricsResponse
+//
+//	@return MetricsResponse
 func (a *TSSApiService) MetricsExecute(r ApiMetricsRequest) (*MetricsResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *MetricsResponse
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *MetricsResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TSSApiService.Metrics")
@@ -459,10 +462,10 @@ func (a *TSSApiService) MetricsExecute(r ApiMetricsRequest) (*MetricsResponse, *
 }
 
 type ApiMetricsKeygenRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *TSSApiService
-	pubkey string
-	height *int64
+	pubkey     string
+	height     *int64
 }
 
 // optional block height, defaults to current tip
@@ -480,26 +483,27 @@ MetricsKeygen Method for MetricsKeygen
 
 Returns keygen metrics for the provided vault pubkey.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param pubkey
- @return ApiMetricsKeygenRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param pubkey
+	@return ApiMetricsKeygenRequest
 */
 func (a *TSSApiService) MetricsKeygen(ctx context.Context, pubkey string) ApiMetricsKeygenRequest {
 	return ApiMetricsKeygenRequest{
 		ApiService: a,
-		ctx: ctx,
-		pubkey: pubkey,
+		ctx:        ctx,
+		pubkey:     pubkey,
 	}
 }
 
 // Execute executes the request
-//  @return []KeygenMetric
+//
+//	@return []KeygenMetric
 func (a *TSSApiService) MetricsKeygenExecute(r ApiMetricsKeygenRequest) ([]KeygenMetric, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  []KeygenMetric
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue []KeygenMetric
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "TSSApiService.MetricsKeygen")

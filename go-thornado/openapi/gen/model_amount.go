@@ -16,7 +16,7 @@ import (
 
 // Amount struct for Amount
 type Amount struct {
-	Denom string `json:"denom"`
+	Denom  string `json:"denom"`
 	Amount string `json:"amount"`
 }
 
@@ -133,5 +133,3 @@ func (v *NullableAmount) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

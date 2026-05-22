@@ -29,7 +29,7 @@ var ErrNotEnoughToPayFee = errors.New("not enough asset to pay for fees")
 
 // Manager is an interface to define all the required methods
 type Manager interface {
-	GetConstants() constants.ConstantValues
+	GetConstants() constants.ConfigValues
 	GetVersion() semver.Version
 	Keeper() keeper.Keeper
 	GasMgr() GasManager
@@ -90,7 +90,7 @@ type ObserverManager interface {
 type NodeManager interface {
 	BeginBlock(ctx cosmos.Context, mgr Manager, existingNodes []string) error
 	EndBlock(ctx cosmos.Context, mgr Manager) []abci.ValidatorUpdate
-	NodeAccountPreflightCheck(ctx cosmos.Context, na NodeAccount, constAccessor constants.ConstantValues) (NodeStatus, error)
+	NodeAccountPreflightCheck(ctx cosmos.Context, na NodeAccount, constAccessor constants.ConfigValues) (NodeStatus, error)
 	selectHighestBondedNode(ctx cosmos.Context, candidates NodeAccounts) NodeAccount
 }
 
@@ -100,13 +100,13 @@ type NetworkManager interface {
 	RotateVault(ctx cosmos.Context, vault Vault) error
 	BeginBlock(ctx cosmos.Context, mgr Manager) error
 	EndBlock(ctx cosmos.Context, mgr Manager) error
-	UpdateNetwork(ctx cosmos.Context, constAccessor constants.ConstantValues, gasManager GasManager, eventMgr EventManager) error
+	UpdateNetwork(ctx cosmos.Context, constAccessor constants.ConfigValues, gasManager GasManager, eventMgr EventManager) error
 	CalcAnchor(_ cosmos.Context, _ Manager, _ common.Asset) (cosmos.Uint, cosmos.Uint, cosmos.Uint)
 }
 
 // Slasher define all the method to perform slash
 type Slasher interface {
-	BeginBlock(ctx cosmos.Context, constAccessor constants.ConstantValues)
+	BeginBlock(ctx cosmos.Context, constAccessor constants.ConfigValues)
 	LackSigning(ctx cosmos.Context, mgr Manager) error
 	SlashVault(ctx cosmos.Context, vaultPK common.PubKey, coins common.Coins, mgr Manager) error
 	IncSlashPoints(ctx cosmos.Context, point int64, addresses ...cosmos.AccAddress)
@@ -120,7 +120,7 @@ type ScheduledMigrationManager interface {
 // Mgrs is an implementation of Manager interface
 type Mgrs struct {
 	currentVersion            semver.Version
-	constAccessor             constants.ConstantValues
+	constAccessor             constants.ConfigValues
 	gasMgr                    GasManager
 	eventMgr                  EventManager
 	txOutStore                TxOutStore
@@ -161,7 +161,7 @@ func (mgr *Mgrs) GetVersion() semver.Version {
 	return mgr.currentVersion
 }
 
-func (mgr *Mgrs) GetConstants() constants.ConstantValues {
+func (mgr *Mgrs) GetConstants() constants.ConfigValues {
 	return mgr.constAccessor
 }
 
@@ -196,7 +196,7 @@ func (mgr *Mgrs) LoadManagerIfNecessary(ctx cosmos.Context) error {
 
 func (mgr *Mgrs) recreateManagers(ctx cosmos.Context, v semver.Version) error {
 	mgr.currentVersion = v
-	mgr.constAccessor = constants.GetConstantValues(v)
+	mgr.constAccessor = constants.GetConfigValues(v)
 	var err error
 
 	mgr.K, err = GetKeeper(v, mgr.cdc, mgr.storeService, mgr.coinKeeper, mgr.accountKeeper, mgr.upgradeKeeper)
@@ -290,7 +290,7 @@ func GetKeeper(
 
 // GetGasManager return GasManager
 func GetGasManager(version semver.Version, keeper keeper.Keeper) (GasManager, error) {
-	constAccessor := constants.GetConstantValues(version)
+	constAccessor := constants.GetConfigValues(version)
 	return newGasMgr(constAccessor, keeper), nil
 }
 
@@ -301,7 +301,7 @@ func GetEventManager(version semver.Version) (EventManager, error) {
 
 // GetTxOutStore will return an implementation of the txout store that
 func GetTxOutStore(version semver.Version, keeper keeper.Keeper, eventMgr EventManager, gasManager GasManager) (TxOutStore, error) {
-	constAccessor := constants.GetConstantValues(version)
+	constAccessor := constants.GetConfigValues(version)
 	return newTxOutStorage(keeper, constAccessor, eventMgr, gasManager), nil
 }
 

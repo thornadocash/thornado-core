@@ -1,0 +1,36 @@
+syntax = "proto3";
+package types;
+
+option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
+
+import "gogoproto/gogo.proto";
+import "types/type_config.proto";
+
+option (gogoproto.marshaler_all) = true;
+
+message QueryConfigValuesRequest { string height = 1; }
+
+message QueryConfigValuesResponse { repeated Config configs = 1; }
+
+message QueryConfigNodesAllValuesRequest { string height = 1; }
+
+message QueryConfigNodesAllValuesResponse {
+  repeated NodeConfig configs = 1
+      [ (gogoproto.nullable) = false, (gogoproto.jsontag) = "configs" ];
+}
+
+message QueryConfigNodesValuesRequest { string height = 1; }
+
+message QueryConfigNodesValuesResponse { repeated Config configs = 1; }
+
+message QueryConfigNodeValuesRequest {
+  string address = 1;
+  string height = 2;
+}
+
+message QueryConfigNodeValuesResponse { repeated Config node_configs = 1; }
+
+message Config {
+  string key = 1;
+  int64 value = 2;
+}

@@ -1,0 +1,16 @@
+syntax = "proto3";
+package types;
+
+import "gogoproto/gogo.proto";
+option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
+
+message NodeConfig {
+  string key = 1;
+  int64 value = 2;
+  bytes signer = 3 [ (gogoproto.casttype) =
+                         "github.com/cosmos/cosmos-sdk/types.AccAddress" ];
+}
+
+message NodeConfigs {
+  repeated NodeConfig configs = 1 [ (gogoproto.nullable) = false ];
+}

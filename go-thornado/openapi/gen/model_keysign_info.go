@@ -17,7 +17,7 @@ import (
 // KeysignInfo struct for KeysignInfo
 type KeysignInfo struct {
 	// the block(s) in which a tx out item is scheduled to be signed and moved from the scheduled outbound queue to the outbound queue
-	Height *int64 `json:"height,omitempty"`
+	Height  *int64      `json:"height,omitempty"`
 	TxArray []TxOutItem `json:"tx_array"`
 }
 
@@ -141,5 +141,3 @@ func (v *NullableKeysignInfo) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

@@ -36,7 +36,7 @@ func GetTxCmd() *cobra.Command {
 	cmd.AddCommand(GetCmdRejectUpgrade())
 	cmd.AddCommand(GetCmdSetIPAddress())
 	cmd.AddCommand(GetCmdBan())
-	cmd.AddCommand(GetCmdMimir())
+	cmd.AddCommand(GetCmdConfig())
 	cmd.AddCommand(GetCmdNodePauseChain())
 	cmd.AddCommand(GetCmdNodeResumeChain())
 	cmd.AddCommand(GetCmdDeposit())
@@ -114,11 +114,11 @@ func GetCmdSend() *cobra.Command {
 	}
 }
 
-// GetCmdMimir command to change a mimir attribute
-func GetCmdMimir() *cobra.Command {
+// GetCmdConfig command to change a config attribute
+func GetCmdConfig() *cobra.Command {
 	return &cobra.Command{
-		Use:   "mimir [key] [value]",
-		Short: "updates a mimir attribute (admin only)",
+		Use:   "config [key] [value]",
+		Short: "updates a config attribute (admin only)",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
@@ -131,7 +131,7 @@ func GetCmdMimir() *cobra.Command {
 				return fmt.Errorf("invalid value (must be an integer): %w", err)
 			}
 
-			msg := types.NewMsgMimir(strings.ToUpper(args[0]), val, clientCtx.GetFromAddress())
+			msg := types.NewMsgConfig(strings.ToUpper(args[0]), val, clientCtx.GetFromAddress())
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}

@@ -19,15 +19,14 @@ import (
 	"strings"
 )
 
-
 // NodesApiService NodesApi service
 type NodesApiService service
 
 type ApiNodeRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *NodesApiService
-	address string
-	height *int64
+	address    string
+	height     *int64
 }
 
 // optional block height, defaults to current tip
@@ -45,26 +44,27 @@ Node Method for Node
 
 Returns node information for the provided node address.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param address
- @return ApiNodeRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@param address
+	@return ApiNodeRequest
 */
 func (a *NodesApiService) Node(ctx context.Context, address string) ApiNodeRequest {
 	return ApiNodeRequest{
 		ApiService: a,
-		ctx: ctx,
-		address: address,
+		ctx:        ctx,
+		address:    address,
 	}
 }
 
 // Execute executes the request
-//  @return Node
+//
+//	@return Node
 func (a *NodesApiService) NodeExecute(r ApiNodeRequest) (*Node, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  *Node
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue *Node
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "NodesApiService.Node")
@@ -137,9 +137,9 @@ func (a *NodesApiService) NodeExecute(r ApiNodeRequest) (*Node, *http.Response, 
 }
 
 type ApiNodesRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *NodesApiService
-	height *int64
+	height     *int64
 }
 
 // optional block height, defaults to current tip
@@ -157,24 +157,25 @@ Nodes Method for Nodes
 
 Returns node information for all registered validators.
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @return ApiNodesRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiNodesRequest
 */
 func (a *NodesApiService) Nodes(ctx context.Context) ApiNodesRequest {
 	return ApiNodesRequest{
 		ApiService: a,
-		ctx: ctx,
+		ctx:        ctx,
 	}
 }
 
 // Execute executes the request
-//  @return []Node
+//
+//	@return []Node
 func (a *NodesApiService) NodesExecute(r ApiNodesRequest) ([]Node, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  []Node
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue []Node
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "NodesApiService.Nodes")

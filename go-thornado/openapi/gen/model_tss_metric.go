@@ -17,7 +17,7 @@ import (
 // TssMetric struct for TssMetric
 type TssMetric struct {
 	Address *string `json:"address,omitempty"`
-	TssTime *int64 `json:"tss_time,omitempty"`
+	TssTime *int64  `json:"tss_time,omitempty"`
 }
 
 // NewTssMetric instantiates a new TssMetric object
@@ -147,5 +147,3 @@ func (v *NullableTssMetric) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

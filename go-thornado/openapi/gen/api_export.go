@@ -18,12 +18,11 @@ import (
 	"net/url"
 )
 
-
 // ExportApiService ExportApi service
 type ExportApiService service
 
 type ApiExportRequest struct {
-	ctx context.Context
+	ctx        context.Context
 	ApiService *ExportApiService
 }
 
@@ -36,24 +35,25 @@ Export Method for Export
 
 Returns genesis export
 
- @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @return ApiExportRequest
+	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+	@return ApiExportRequest
 */
 func (a *ExportApiService) Export(ctx context.Context) ApiExportRequest {
 	return ApiExportRequest{
 		ApiService: a,
-		ctx: ctx,
+		ctx:        ctx,
 	}
 }
 
 // Execute executes the request
-//  @return map[string]interface{}
+//
+//	@return map[string]interface{}
 func (a *ExportApiService) ExportExecute(r ApiExportRequest) (map[string]interface{}, *http.Response, error) {
 	var (
-		localVarHTTPMethod   = http.MethodGet
-		localVarPostBody     interface{}
-		formFiles            []formFile
-		localVarReturnValue  map[string]interface{}
+		localVarHTTPMethod  = http.MethodGet
+		localVarPostBody    interface{}
+		formFiles           []formFile
+		localVarReturnValue map[string]interface{}
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "ExportApiService.Export")
