@@ -34,6 +34,43 @@ paths:
       responses:
         "200":
           description: Balances response
+  /thornado/node/address/{address}:
+    get:
+      summary: Node by address
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Node response
+  /thornado/nodes:
+    get:
+      summary: Nodes
+      responses:
+        "200":
+          description: Nodes response
+  /thornado/node/metrics:
+    get:
+      summary: Node metrics
+      responses:
+        "200":
+          description: Node metrics response
+  /thornado/node/slot/{slot}:
+    get:
+      summary: Node slot
+      parameters:
+        - name: slot
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Node slot response
   /thornado/vaults/base:
     get:
       summary: Base vaults
@@ -144,7 +181,7 @@ paths:
       responses:
         "200":
           description: Fee pool response
-  /thornado/session/{owner}:
+  /thornado/deposit/session/{owner}:
     get:
       summary: Deposit session
       parameters:
@@ -156,6 +193,49 @@ paths:
       responses:
         "200":
           description: Session response
+  /thornado/shielder/withdrawal/{withdrawal_id}:
+    get:
+      summary: Shielder withdrawal
+      parameters:
+        - name: withdrawal_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Withdrawal response
+  /thornado/shielder/nullifier/{nullifier_hash}:
+    get:
+      summary: Shielder nullifier
+      parameters:
+        - name: nullifier_hash
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Nullifier response
+  /thornado/shielder/roots:
+    get:
+      summary: Shielder roots
+      responses:
+        "200":
+          description: Shielder roots response
+  /thornado/shielder/withdrawal/quote/{amount_sats}:
+    get:
+      summary: Shielder withdrawal quote
+      parameters:
+        - name: amount_sats
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Withdrawal quote response
   /thornado/bond/{node_pub_key}:
     get:
       summary: Node bond
@@ -180,6 +260,12 @@ paths:
       responses:
         "200":
           description: Auction response
+  /thornado/node/auctions:
+    get:
+      summary: Node slot auctions
+      responses:
+        "200":
+          description: Auctions response
   /thornado/node/bid/{bid_id}:
     get:
       summary: Node slot bid
@@ -192,6 +278,18 @@ paths:
       responses:
         "200":
           description: Bid response
+  /thornado/node/auction/{auction_id}/bids:
+    get:
+      summary: Node slot auction bids
+      parameters:
+        - name: auction_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Auction bids response
   /thornado/deposit/address/{address}:
     get:
       summary: Deposit address mapping
@@ -216,6 +314,12 @@ paths:
       responses:
         "200":
           description: Fee entitlement response
+  /thornado/fee/entitlements:
+    get:
+      summary: Node fee entitlements
+      responses:
+        "200":
+          description: Fee entitlements response
   /thornado/tss/keygen:
     get:
       summary: TSS keygen metrics

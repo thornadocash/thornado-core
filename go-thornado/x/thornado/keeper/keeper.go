@@ -178,8 +178,10 @@ type KeeperShielder interface {
 	GetShielderDenominationCommitments(ctx cosmos.Context, denominationSats uint64) ([]string, error)
 	SetShielderMerkleRoot(ctx cosmos.Context, denominationSats uint64, root string) error
 	ShielderMerkleRootExists(ctx cosmos.Context, denominationSats uint64, root string) bool
+	GetShielderMerkleRootIterator(ctx cosmos.Context) cosmos.Iterator
 	SetShielderWithdrawal(ctx cosmos.Context, withdrawal types.ShielderWithdrawal) error
 	GetShielderWithdrawal(ctx cosmos.Context, withdrawalID string) (types.ShielderWithdrawal, error)
+	GetShielderWithdrawalByNullifier(ctx cosmos.Context, nullifierHash string) (types.ShielderWithdrawal, error)
 	SetShielderNullifierSpent(ctx cosmos.Context, nullifierHash string, withdrawalID string) error
 	ShielderNullifierSpent(ctx cosmos.Context, nullifierHash string) bool
 	GetNextShielderNodeBondSlot(ctx cosmos.Context) (uint64, error)
@@ -187,14 +189,17 @@ type KeeperShielder interface {
 	AllocateShielderNodeBondSlot(ctx cosmos.Context) (uint64, error)
 	SetShielderNodeBond(ctx cosmos.Context, bond types.ShielderNodeBond) error
 	GetShielderNodeBond(ctx cosmos.Context, nodePubKey string) (types.ShielderNodeBond, error)
+	GetShielderNodeBondIterator(ctx cosmos.Context) cosmos.Iterator
 	SetShielderFeePool(ctx cosmos.Context, pool types.ShielderFeePool) error
 	GetShielderFeePool(ctx cosmos.Context) (types.ShielderFeePool, error)
 	SetShielderFeeNotePubKey(ctx cosmos.Context, pubKey common.PubKey, depositID common.TxID) error
 	ShielderFeeNotePubKeyUsed(ctx cosmos.Context, pubKey common.PubKey) bool
 	SetNodeSlotAuction(ctx cosmos.Context, auction types.NodeSlotAuction) error
 	GetNodeSlotAuction(ctx cosmos.Context, auctionID string) (types.NodeSlotAuction, error)
+	GetNodeSlotAuctionIterator(ctx cosmos.Context) cosmos.Iterator
 	SetNodeSlotBid(ctx cosmos.Context, bid types.NodeSlotBid) error
 	GetNodeSlotBid(ctx cosmos.Context, bidID string) (types.NodeSlotBid, error)
+	GetNodeSlotBidIterator(ctx cosmos.Context) cosmos.Iterator
 }
 
 type KeeperOutboundFees interface {

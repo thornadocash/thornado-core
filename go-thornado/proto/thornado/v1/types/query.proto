@@ -42,11 +42,19 @@ service Query {
   }
 
   rpc Node(QueryNodeRequest) returns (QueryNodeResponse) {
-    option (google.api.http).get = "/thornado/node/{address}";
+    option (google.api.http).get = "/thornado/node/address/{address}";
   }
 
   rpc Nodes(QueryNodesRequest) returns (QueryNodesResponse) {
     option (google.api.http).get = "/thornado/nodes";
+  }
+
+  rpc NodeMetrics(QueryNodeMetricsRequest) returns (QueryNodeMetricsResponse) {
+    option (google.api.http).get = "/thornado/node/metrics";
+  }
+
+  rpc NodeSlot(QueryNodeSlotRequest) returns (QueryNodeSlotResponse) {
+    option (google.api.http).get = "/thornado/node/slot/{slot}";
   }
 
   rpc Ban(QueryBanRequest) returns (BanVoter) {
@@ -121,12 +129,28 @@ service Query {
     option (google.api.http).get = "/thornado/deposit/{deposit_id}";
   }
 
+  rpc ShielderWithdrawal(QueryShielderWithdrawalRequest) returns (QueryShielderWithdrawalResponse) {
+    option (google.api.http).get = "/thornado/shielder/withdrawal/{withdrawal_id}";
+  }
+
+  rpc ShielderNullifier(QueryShielderNullifierRequest) returns (QueryShielderNullifierResponse) {
+    option (google.api.http).get = "/thornado/shielder/nullifier/{nullifier_hash}";
+  }
+
+  rpc ShielderRoots(QueryShielderRootsRequest) returns (QueryShielderRootsResponse) {
+    option (google.api.http).get = "/thornado/shielder/roots";
+  }
+
+  rpc ShielderWithdrawalQuote(QueryShielderWithdrawalQuoteRequest) returns (QueryShielderWithdrawalQuoteResponse) {
+    option (google.api.http).get = "/thornado/shielder/withdrawal/quote/{amount_sats}";
+  }
+
   rpc ShielderFeePool(QueryShielderFeePoolRequest) returns (QueryShielderFeePoolResponse) {
     option (google.api.http).get = "/thornado/fees";
   }
 
   rpc ShielderSession(QueryShielderSessionRequest) returns (QueryShielderSessionResponse) {
-    option (google.api.http).get = "/thornado/session/{owner}";
+    option (google.api.http).get = "/thornado/deposit/session/{owner}";
   }
 
   rpc ShielderBond(QueryShielderBondRequest) returns (QueryShielderBondResponse) {
@@ -137,8 +161,16 @@ service Query {
     option (google.api.http).get = "/thornado/node/auction/{auction_id}";
   }
 
+  rpc NodeSlotAuctions(QueryNodeSlotAuctionsRequest) returns (QueryNodeSlotAuctionsResponse) {
+    option (google.api.http).get = "/thornado/node/auctions";
+  }
+
   rpc NodeSlotBid(QueryNodeSlotBidRequest) returns (QueryNodeSlotBidResponse) {
     option (google.api.http).get = "/thornado/node/bid/{bid_id}";
+  }
+
+  rpc NodeSlotAuctionBids(QueryNodeSlotAuctionBidsRequest) returns (QueryNodeSlotAuctionBidsResponse) {
+    option (google.api.http).get = "/thornado/node/auction/{auction_id}/bids";
   }
 
   rpc VaultDepositAddress(QueryVaultDepositAddressRequest) returns (QueryVaultDepositAddressResponse) {
@@ -147,6 +179,10 @@ service Query {
 
   rpc ShielderFeeEntitlement(QueryShielderFeeEntitlementRequest) returns (QueryShielderFeeEntitlementResponse) {
     option (google.api.http).get = "/thornado/fee/entitlement/{node_pub_key}";
+  }
+
+  rpc ShielderFeeEntitlements(QueryShielderFeeEntitlementsRequest) returns (QueryShielderFeeEntitlementsResponse) {
+    option (google.api.http).get = "/thornado/fee/entitlements";
   }
 
   rpc Block(QueryBlockRequest) returns (QueryBlockResponse) {

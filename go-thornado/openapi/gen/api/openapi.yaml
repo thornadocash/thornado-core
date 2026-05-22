@@ -1,0 +1,260 @@
+openapi: 3.0.3
+info:
+  description: Thornado REST API.
+  title: Thornado API
+  version: 0.1.0
+servers:
+- url: /
+paths:
+  /thornado/ping:
+    get:
+      responses:
+        "200":
+          description: Pong
+      summary: Ping
+  /thornado/account/{address}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: address
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Account response
+      summary: Account
+  /thornado/balances/{address}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: address
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Balances response
+      summary: Balances
+  /thornado/vaults/base:
+    get:
+      responses:
+        "200":
+          description: Base vault response
+      summary: Base vaults
+  /thornado/vaults/pubkeys:
+    get:
+      responses:
+        "200":
+          description: Vault pubkeys response
+      summary: Vault pubkeys
+  /thornado/vault/{pub_key}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: pub_key
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Vault response
+      summary: Vault
+  /thornado/tx/{hash}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: hash
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Transaction response
+      summary: Transaction
+  /thornado/txout:
+    get:
+      parameters:
+      - explode: true
+        in: query
+        name: height
+        required: false
+        schema:
+          format: int64
+          type: integer
+        style: form
+      responses:
+        "200":
+          description: TxOut queue response
+      summary: TxOut queue
+  /thornado/config:
+    get:
+      responses:
+        "200":
+          description: Config response
+      summary: Config values
+  /thornado/config/defaults:
+    get:
+      responses:
+        "200":
+          description: Config defaults response
+      summary: Config defaults
+  /thornado/version:
+    get:
+      responses:
+        "200":
+          description: Version response
+      summary: Version
+  /thornado/block:
+    get:
+      responses:
+        "200":
+          description: Block response
+      summary: Latest block
+  /thornado/block/{height}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: height
+        required: true
+        schema:
+          format: int64
+          type: integer
+        style: simple
+      responses:
+        "200":
+          description: Block response
+      summary: Block by height
+  /thornado/lastblock:
+    get:
+      responses:
+        "200":
+          description: Last block response
+      summary: Last observed blocks
+  /thornado/deposit/{deposit_id}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: deposit_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Deposit response
+      summary: Deposit
+  /thornado/fees:
+    get:
+      responses:
+        "200":
+          description: Fee pool response
+      summary: Fee pool
+  /thornado/session/{owner}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Session response
+      summary: Deposit session
+  /thornado/bond/{node_pub_key}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: node_pub_key
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Bond response
+      summary: Node bond
+  /thornado/node/auction/{auction_id}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: auction_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Auction response
+      summary: Node slot auction
+  /thornado/node/bid/{bid_id}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: bid_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Bid response
+      summary: Node slot bid
+  /thornado/deposit/address/{address}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: address
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Deposit address response
+      summary: Deposit address mapping
+  /thornado/fee/entitlement/{node_pub_key}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: node_pub_key
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Fee entitlement response
+      summary: Node fee entitlement
+  /thornado/tss/keygen:
+    get:
+      responses:
+        "200":
+          description: TSS keygen response
+      summary: TSS keygen metrics
+  /thornado/tss/keysign:
+    get:
+      responses:
+        "200":
+          description: TSS keysign response
+      summary: TSS keysign metrics
+components:
+  schemas: {}

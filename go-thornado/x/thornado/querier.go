@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -639,6 +640,68 @@ func (qs queryServer) queryNodes(ctx cosmos.Context, _ *types.QueryNodesRequest)
 	return &types.QueryNodesResponse{Nodes: result}, nil
 }
 
+func (qs queryServer) queryNodeMetrics(ctx cosmos.Context, _ *types.QueryNodeMetricsRequest) (*types.QueryNodeMetricsResponse, error) {
+	k := qs.mgr.Keeper()
+	nextSlot, err := k.GetNextShielderNodeBondSlot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	start := uint64(k.GetConfigInt64(ctx, constants.Node_BondStartAmountSats))
+	increment := uint64(k.GetConfigInt64(ctx, constants.Node_BondSlotIncrementSats))
+	resp := &types.QueryNodeMetricsResponse{
+		NextSlot:                 nextSlot,
+		NextSlotBondRequiredSats: start + nextSlot*increment,
+		BondStartAmountSats:      start,
+		BondSlotIncrementSats:    increment,
+	}
+
+	iter := k.GetShielderNodeBondIterator(ctx)
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		var bond types.ShielderNodeBond
+		if err := json.Unmarshal(iter.Value(), &bond); err != nil {
+			return nil, err
+		}
+		resp.PendingBondSats += bond.PendingSats
+		resp.ConfirmedBondSats += bond.BondSats
+		if bond.Sold {
+			resp.SoldSlots++
+			continue
+		}
+		node, err := k.GetNodeAccount(ctx, bond.NodeAddress)
+		if err != nil || node.NodeAddress.Empty() {
+			continue
+		}
+		switch node.Status {
+		case NodeActive:
+			resp.ActiveSlots++
+		case NodeStandby:
+			resp.StandbySlots++
+		}
+	}
+	return resp, nil
+}
+
+func (qs queryServer) queryNodeSlot(ctx cosmos.Context, req *types.QueryNodeSlotRequest) (*types.QueryNodeSlotResponse, error) {
+	iter := qs.mgr.Keeper().GetShielderNodeBondIterator(ctx)
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		var bond types.ShielderNodeBond
+		if err := json.Unmarshal(iter.Value(), &bond); err != nil {
+			return nil, err
+		}
+		if bond.Slot != req.Slot {
+			continue
+		}
+		resp, err := qs.shielderBondResponse(ctx, bond)
+		if err != nil {
+			return nil, err
+		}
+		return &types.QueryNodeSlotResponse{Bond: resp}, nil
+	}
+	return nil, fmt.Errorf("node slot not found: %d", req.Slot)
+}
+
 func extractVoter(ctx cosmos.Context, tx_id string, mgr *Mgrs) (common.TxID, ObservedTxVoter, error) {
 	if len(tx_id) == 0 {
 		return "", ObservedTxVoter{}, errors.New("tx id not provided")
@@ -917,6 +980,7 @@ func (qs queryServer) queryTx(ctx cosmos.Context, req *types.QueryTxRequest) (*t
 		OutTxs:          voter.OutTxs,
 		Actions:         voter.Actions,
 		Stages:          newTxStagesResponse(ctx, voter),
+		Txs:             castObservedTxs(voter.Txs),
 	}
 	if voter.Actions != nil {
 		result.PlannedOutTxs = make([]*types.PlannedOutTx, len(voter.Actions))
@@ -978,6 +1042,78 @@ func (qs queryServer) queryShielderDeposit(ctx cosmos.Context, req *types.QueryS
 	}, nil
 }
 
+func (qs queryServer) queryShielderWithdrawal(ctx cosmos.Context, req *types.QueryShielderWithdrawalRequest) (*types.QueryShielderWithdrawalResponse, error) {
+	withdrawal, err := qs.mgr.Keeper().GetShielderWithdrawal(ctx, strings.TrimSpace(req.WithdrawalId))
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(withdrawal.WithdrawalID) == "" {
+		return nil, errors.New("shielder withdrawal not found")
+	}
+	return shielderWithdrawalResponse(withdrawal), nil
+}
+
+func (qs queryServer) queryShielderNullifier(ctx cosmos.Context, req *types.QueryShielderNullifierRequest) (*types.QueryShielderNullifierResponse, error) {
+	nullifier := strings.TrimSpace(req.NullifierHash)
+	withdrawal, err := qs.mgr.Keeper().GetShielderWithdrawalByNullifier(ctx, nullifier)
+	if err != nil {
+		return nil, err
+	}
+	resp := &types.QueryShielderNullifierResponse{
+		NullifierHash: nullifier,
+		Spent:         strings.TrimSpace(withdrawal.WithdrawalID) != "",
+		WithdrawalId:  withdrawal.WithdrawalID,
+	}
+	return resp, nil
+}
+
+func (qs queryServer) queryShielderRoots(ctx cosmos.Context, _ *types.QueryShielderRootsRequest) (*types.QueryShielderRootsResponse, error) {
+	k := qs.mgr.Keeper()
+	iter := k.GetShielderMerkleRootIterator(ctx)
+	defer iter.Close()
+
+	roots := make([]*types.ShielderRoot, 0)
+	for ; iter.Valid(); iter.Next() {
+		denomination, root, ok := parseShielderMerkleRootKey(string(iter.Key()))
+		if !ok {
+			continue
+		}
+		leaves, err := k.GetShielderDenominationCommitments(ctx, denomination)
+		if err != nil {
+			return nil, err
+		}
+		roots = append(roots, &types.ShielderRoot{
+			DenominationSats: denomination,
+			Root:             root,
+			LeafCount:        uint64(len(leaves)),
+		})
+	}
+	sort.Slice(roots, func(i, j int) bool {
+		if roots[i].DenominationSats == roots[j].DenominationSats {
+			return roots[i].Root < roots[j].Root
+		}
+		return roots[i].DenominationSats < roots[j].DenominationSats
+	})
+	return &types.QueryShielderRootsResponse{Roots: roots}, nil
+}
+
+func (qs queryServer) queryShielderWithdrawalQuote(ctx cosmos.Context, req *types.QueryShielderWithdrawalQuoteRequest) (*types.QueryShielderWithdrawalQuoteResponse, error) {
+	if req.AmountSats == 0 {
+		return nil, fmt.Errorf("missing withdrawal amount")
+	}
+	fee := shielderWithdrawalFeeSats(ctx, qs.mgr.Keeper(), req.AmountSats)
+	if fee >= req.AmountSats {
+		return nil, fmt.Errorf("withdrawal fee exceeds amount")
+	}
+	return &types.QueryShielderWithdrawalQuoteResponse{
+		AmountSats:     req.AmountSats,
+		FeeSats:        fee,
+		NetSats:        req.AmountSats - fee,
+		FeeBasisPoints: shielderWithdrawalFeeBp(ctx, qs.mgr.Keeper()),
+		FeeMinSats:     uint64(qs.mgr.Keeper().GetConfigInt64(ctx, constants.Withdrawal_FeeMinSats)),
+	}, nil
+}
+
 func (qs queryServer) queryShielderFeePool(ctx cosmos.Context, _ *types.QueryShielderFeePoolRequest) (*types.QueryShielderFeePoolResponse, error) {
 	pool, err := qs.mgr.Keeper().GetShielderFeePool(ctx)
 	if err != nil {
@@ -1026,6 +1162,10 @@ func (qs queryServer) queryShielderBond(ctx cosmos.Context, req *types.QueryShie
 	if strings.TrimSpace(bond.NodePubKey) == "" {
 		return nil, errors.New("shielder node bond not found")
 	}
+	return qs.shielderBondResponse(ctx, bond)
+}
+
+func (qs queryServer) shielderBondResponse(ctx cosmos.Context, bond types.ShielderNodeBond) (*types.QueryShielderBondResponse, error) {
 	node, err := qs.mgr.Keeper().GetNodeAccount(ctx, bond.NodeAddress)
 	if err != nil {
 		return nil, err
@@ -1061,6 +1201,10 @@ func (qs queryServer) queryNodeSlotAuction(ctx cosmos.Context, req *types.QueryN
 	if strings.TrimSpace(auction.AuctionID) == "" {
 		return nil, errors.New("node slot auction not found")
 	}
+	return nodeSlotAuctionResponse(auction), nil
+}
+
+func nodeSlotAuctionResponse(auction types.NodeSlotAuction) *types.QueryNodeSlotAuctionResponse {
 	return &types.QueryNodeSlotAuctionResponse{
 		AuctionId:            auction.AuctionID,
 		Seller:               auction.Seller.String(),
@@ -1074,7 +1218,24 @@ func (qs queryServer) queryNodeSlotAuction(ctx cosmos.Context, req *types.QueryN
 		Status:               auction.Status,
 		CreatedHeight:        auction.CreatedHeight,
 		UpdatedHeight:        auction.UpdatedHeight,
-	}, nil
+	}
+}
+
+func (qs queryServer) queryNodeSlotAuctions(ctx cosmos.Context, _ *types.QueryNodeSlotAuctionsRequest) (*types.QueryNodeSlotAuctionsResponse, error) {
+	iter := qs.mgr.Keeper().GetNodeSlotAuctionIterator(ctx)
+	defer iter.Close()
+	auctions := make([]*types.QueryNodeSlotAuctionResponse, 0)
+	for ; iter.Valid(); iter.Next() {
+		var auction types.NodeSlotAuction
+		if err := json.Unmarshal(iter.Value(), &auction); err != nil {
+			return nil, err
+		}
+		auctions = append(auctions, nodeSlotAuctionResponse(auction))
+	}
+	sort.Slice(auctions, func(i, j int) bool {
+		return auctions[i].CreatedHeight < auctions[j].CreatedHeight
+	})
+	return &types.QueryNodeSlotAuctionsResponse{Auctions: auctions}, nil
 }
 
 func (qs queryServer) queryNodeSlotBid(ctx cosmos.Context, req *types.QueryNodeSlotBidRequest) (*types.QueryNodeSlotBidResponse, error) {
@@ -1085,6 +1246,10 @@ func (qs queryServer) queryNodeSlotBid(ctx cosmos.Context, req *types.QueryNodeS
 	if strings.TrimSpace(bid.BidID) == "" {
 		return nil, errors.New("node slot bid not found")
 	}
+	return nodeSlotBidResponse(bid), nil
+}
+
+func nodeSlotBidResponse(bid types.NodeSlotBid) *types.QueryNodeSlotBidResponse {
 	return &types.QueryNodeSlotBidResponse{
 		BidId:          bid.BidID,
 		AuctionId:      bid.AuctionID,
@@ -1097,7 +1262,29 @@ func (qs queryServer) queryNodeSlotBid(ctx cosmos.Context, req *types.QueryNodeS
 		Settled:        bid.Settled,
 		CreatedHeight:  bid.CreatedHeight,
 		UpdatedHeight:  bid.UpdatedHeight,
-	}, nil
+	}
+}
+
+func (qs queryServer) queryNodeSlotAuctionBids(ctx cosmos.Context, req *types.QueryNodeSlotAuctionBidsRequest) (*types.QueryNodeSlotAuctionBidsResponse, error) {
+	iter := qs.mgr.Keeper().GetNodeSlotBidIterator(ctx)
+	defer iter.Close()
+	bids := make([]*types.QueryNodeSlotBidResponse, 0)
+	for ; iter.Valid(); iter.Next() {
+		var bid types.NodeSlotBid
+		if err := json.Unmarshal(iter.Value(), &bid); err != nil {
+			return nil, err
+		}
+		if bid.AuctionID == strings.TrimSpace(req.AuctionId) {
+			bids = append(bids, nodeSlotBidResponse(bid))
+		}
+	}
+	sort.Slice(bids, func(i, j int) bool {
+		if bids[i].AmountSats == bids[j].AmountSats {
+			return bids[i].CreatedHeight < bids[j].CreatedHeight
+		}
+		return bids[i].AmountSats > bids[j].AmountSats
+	})
+	return &types.QueryNodeSlotAuctionBidsResponse{Bids: bids}, nil
 }
 
 func (qs queryServer) queryVaultDepositAddress(ctx cosmos.Context, req *types.QueryVaultDepositAddressRequest) (*types.QueryVaultDepositAddressResponse, error) {
@@ -1132,6 +1319,10 @@ func (qs queryServer) queryShielderFeeEntitlement(ctx cosmos.Context, req *types
 	if strings.TrimSpace(bond.NodePubKey) == "" {
 		return nil, errors.New("shielder node bond not found")
 	}
+	return qs.shielderFeeEntitlementResponse(ctx, bond)
+}
+
+func (qs queryServer) shielderFeeEntitlementResponse(ctx cosmos.Context, bond types.ShielderNodeBond) (*types.QueryShielderFeeEntitlementResponse, error) {
 	pool, err := qs.mgr.Keeper().GetShielderFeePool(ctx)
 	if err != nil {
 		return nil, err
@@ -1150,6 +1341,27 @@ func (qs queryServer) queryShielderFeeEntitlement(ctx cosmos.Context, req *types
 		FeeShareActive:      bond.FeeShareActive,
 		PendingFeeDepositId: bond.PendingFeeDepositID.String(),
 	}, nil
+}
+
+func (qs queryServer) queryShielderFeeEntitlements(ctx cosmos.Context, _ *types.QueryShielderFeeEntitlementsRequest) (*types.QueryShielderFeeEntitlementsResponse, error) {
+	iter := qs.mgr.Keeper().GetShielderNodeBondIterator(ctx)
+	defer iter.Close()
+	entitlements := make([]*types.QueryShielderFeeEntitlementResponse, 0)
+	for ; iter.Valid(); iter.Next() {
+		var bond types.ShielderNodeBond
+		if err := json.Unmarshal(iter.Value(), &bond); err != nil {
+			return nil, err
+		}
+		entitlement, err := qs.shielderFeeEntitlementResponse(ctx, bond)
+		if err != nil {
+			return nil, err
+		}
+		entitlements = append(entitlements, entitlement)
+	}
+	sort.Slice(entitlements, func(i, j int) bool {
+		return entitlements[i].NodePubKey < entitlements[j].NodePubKey
+	})
+	return &types.QueryShielderFeeEntitlementsResponse{Entitlements: entitlements}, nil
 }
 
 func extractBlockHeight(ctx cosmos.Context, heightStr string) (int64, error) {
@@ -1877,6 +2089,47 @@ func castObservedTx(observedTx ObservedTx) types.QueryObservedTx {
 		AggregatorTarget:      observedTx.AggregatorTarget,
 		AggregatorTargetLimit: observedTx.AggregatorTargetLimit,
 	}
+}
+
+func castObservedTxs(observedTxs ObservedTxs) []types.QueryObservedTx {
+	result := make([]types.QueryObservedTx, len(observedTxs))
+	for i := range observedTxs {
+		result[i] = castObservedTx(observedTxs[i])
+	}
+	return result
+}
+
+func shielderWithdrawalResponse(withdrawal types.ShielderWithdrawal) *types.QueryShielderWithdrawalResponse {
+	return &types.QueryShielderWithdrawalResponse{
+		WithdrawalId:    withdrawal.WithdrawalID,
+		Owner:           withdrawal.Owner.String(),
+		NullifierHash:   withdrawal.NullifierHash,
+		MerkleRoot:      withdrawal.MerkleRoot,
+		Recipient:       withdrawal.Recipient.String(),
+		AmountSats:      withdrawal.AmountSats,
+		FeeSats:         withdrawal.FeeSats,
+		InHash:          withdrawal.InHash.String(),
+		VaultPubKey:     withdrawal.VaultPubKey.String(),
+		RequestedHeight: withdrawal.RequestedHeight,
+		Status:          withdrawal.Status,
+	}
+}
+
+func parseShielderMerkleRootKey(key string) (uint64, string, bool) {
+	const prefix = "shielder_merkle_root/"
+	rest := strings.TrimPrefix(key, prefix)
+	if rest == key {
+		return 0, "", false
+	}
+	parts := strings.Split(rest, "/")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return 0, "", false
+	}
+	denomination, err := strconv.ParseUint(parts[0], 10, 64)
+	if err != nil || denomination == 0 {
+		return 0, "", false
+	}
+	return denomination, parts[1], true
 }
 
 func blockEvent(e sdk.Event) *types.BlockEvent {

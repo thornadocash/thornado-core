@@ -3262,6 +3262,2117 @@ func (x *fastReflection_QueryNodesResponse) ProtoMethods() *protoiface.Methods {
 }
 
 var (
+	md_QueryNodeMetricsRequest        protoreflect.MessageDescriptor
+	fd_QueryNodeMetricsRequest_height protoreflect.FieldDescriptor
+)
+
+func init() {
+	file_types_query_node_proto_init()
+	md_QueryNodeMetricsRequest = File_types_query_node_proto.Messages().ByName("QueryNodeMetricsRequest")
+	fd_QueryNodeMetricsRequest_height = md_QueryNodeMetricsRequest.Fields().ByName("height")
+}
+
+var _ protoreflect.Message = (*fastReflection_QueryNodeMetricsRequest)(nil)
+
+type fastReflection_QueryNodeMetricsRequest QueryNodeMetricsRequest
+
+func (x *QueryNodeMetricsRequest) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_QueryNodeMetricsRequest)(x)
+}
+
+func (x *QueryNodeMetricsRequest) slowProtoReflect() protoreflect.Message {
+	mi := &file_types_query_node_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+var _fastReflection_QueryNodeMetricsRequest_messageType fastReflection_QueryNodeMetricsRequest_messageType
+var _ protoreflect.MessageType = fastReflection_QueryNodeMetricsRequest_messageType{}
+
+type fastReflection_QueryNodeMetricsRequest_messageType struct{}
+
+func (x fastReflection_QueryNodeMetricsRequest_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_QueryNodeMetricsRequest)(nil)
+}
+func (x fastReflection_QueryNodeMetricsRequest_messageType) New() protoreflect.Message {
+	return new(fastReflection_QueryNodeMetricsRequest)
+}
+func (x fastReflection_QueryNodeMetricsRequest_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryNodeMetricsRequest
+}
+
+// Descriptor returns message descriptor, which contains only the protobuf
+// type information for the message.
+func (x *fastReflection_QueryNodeMetricsRequest) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryNodeMetricsRequest
+}
+
+// Type returns the message type, which encapsulates both Go and protobuf
+// type information. If the Go type information is not needed,
+// it is recommended that the message descriptor be used instead.
+func (x *fastReflection_QueryNodeMetricsRequest) Type() protoreflect.MessageType {
+	return _fastReflection_QueryNodeMetricsRequest_messageType
+}
+
+// New returns a newly allocated and mutable empty message.
+func (x *fastReflection_QueryNodeMetricsRequest) New() protoreflect.Message {
+	return new(fastReflection_QueryNodeMetricsRequest)
+}
+
+// Interface unwraps the message reflection interface and
+// returns the underlying ProtoMessage interface.
+func (x *fastReflection_QueryNodeMetricsRequest) Interface() protoreflect.ProtoMessage {
+	return (*QueryNodeMetricsRequest)(x)
+}
+
+// Range iterates over every populated field in an undefined order,
+// calling f for each field descriptor and value encountered.
+// Range returns immediately if f returns false.
+// While iterating, mutating operations may only be performed
+// on the current field descriptor.
+func (x *fastReflection_QueryNodeMetricsRequest) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+	if x.Height != "" {
+		value := protoreflect.ValueOfString(x.Height)
+		if !f(fd_QueryNodeMetricsRequest_height, value) {
+			return
+		}
+	}
+}
+
+// Has reports whether a field is populated.
+//
+// Some fields have the property of nullability where it is possible to
+// distinguish between the default value of a field and whether the field
+// was explicitly populated with the default value. Singular message fields,
+// member fields of a oneof, and proto2 scalar fields are nullable. Such
+// fields are populated only if explicitly set.
+//
+// In other cases (aside from the nullable cases above),
+// a proto3 scalar field is populated if it contains a non-zero value, and
+// a repeated field is populated if it is non-empty.
+func (x *fastReflection_QueryNodeMetricsRequest) Has(fd protoreflect.FieldDescriptor) bool {
+	switch fd.FullName() {
+	case "types.QueryNodeMetricsRequest.height":
+		return x.Height != ""
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeMetricsRequest"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeMetricsRequest does not contain field %s", fd.FullName()))
+	}
+}
+
+// Clear clears the field such that a subsequent Has call reports false.
+//
+// Clearing an extension field clears both the extension type and value
+// associated with the given field number.
+//
+// Clear is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeMetricsRequest) Clear(fd protoreflect.FieldDescriptor) {
+	switch fd.FullName() {
+	case "types.QueryNodeMetricsRequest.height":
+		x.Height = ""
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeMetricsRequest"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeMetricsRequest does not contain field %s", fd.FullName()))
+	}
+}
+
+// Get retrieves the value for a field.
+//
+// For unpopulated scalars, it returns the default value, where
+// the default value of a bytes scalar is guaranteed to be a copy.
+// For unpopulated composite types, it returns an empty, read-only view
+// of the value; to obtain a mutable reference, use Mutable.
+func (x *fastReflection_QueryNodeMetricsRequest) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+	switch descriptor.FullName() {
+	case "types.QueryNodeMetricsRequest.height":
+		value := x.Height
+		return protoreflect.ValueOfString(value)
+	default:
+		if descriptor.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeMetricsRequest"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeMetricsRequest does not contain field %s", descriptor.FullName()))
+	}
+}
+
+// Set stores the value for a field.
+//
+// For a field belonging to a oneof, it implicitly clears any other field
+// that may be currently set within the same oneof.
+// For extension fields, it implicitly stores the provided ExtensionType.
+// When setting a composite type, it is unspecified whether the stored value
+// aliases the source's memory in any way. If the composite value is an
+// empty, read-only value, then it panics.
+//
+// Set is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeMetricsRequest) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+	switch fd.FullName() {
+	case "types.QueryNodeMetricsRequest.height":
+		x.Height = value.Interface().(string)
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeMetricsRequest"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeMetricsRequest does not contain field %s", fd.FullName()))
+	}
+}
+
+// Mutable returns a mutable reference to a composite type.
+//
+// If the field is unpopulated, it may allocate a composite value.
+// For a field belonging to a oneof, it implicitly clears any other field
+// that may be currently set within the same oneof.
+// For extension fields, it implicitly stores the provided ExtensionType
+// if not already stored.
+// It panics if the field does not contain a composite type.
+//
+// Mutable is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeMetricsRequest) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+	switch fd.FullName() {
+	case "types.QueryNodeMetricsRequest.height":
+		panic(fmt.Errorf("field height of message types.QueryNodeMetricsRequest is not mutable"))
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeMetricsRequest"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeMetricsRequest does not contain field %s", fd.FullName()))
+	}
+}
+
+// NewField returns a new value that is assignable to the field
+// for the given descriptor. For scalars, this returns the default value.
+// For lists, maps, and messages, this returns a new, empty, mutable value.
+func (x *fastReflection_QueryNodeMetricsRequest) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+	switch fd.FullName() {
+	case "types.QueryNodeMetricsRequest.height":
+		return protoreflect.ValueOfString("")
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeMetricsRequest"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeMetricsRequest does not contain field %s", fd.FullName()))
+	}
+}
+
+// WhichOneof reports which field within the oneof is populated,
+// returning nil if none are populated.
+// It panics if the oneof descriptor does not belong to this message.
+func (x *fastReflection_QueryNodeMetricsRequest) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+	switch d.FullName() {
+	default:
+		panic(fmt.Errorf("%s is not a oneof field in types.QueryNodeMetricsRequest", d.FullName()))
+	}
+	panic("unreachable")
+}
+
+// GetUnknown retrieves the entire list of unknown fields.
+// The caller may only mutate the contents of the RawFields
+// if the mutated bytes are stored back into the message with SetUnknown.
+func (x *fastReflection_QueryNodeMetricsRequest) GetUnknown() protoreflect.RawFields {
+	return x.unknownFields
+}
+
+// SetUnknown stores an entire list of unknown fields.
+// The raw fields must be syntactically valid according to the wire format.
+// An implementation may panic if this is not the case.
+// Once stored, the caller must not mutate the content of the RawFields.
+// An empty RawFields may be passed to clear the fields.
+//
+// SetUnknown is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeMetricsRequest) SetUnknown(fields protoreflect.RawFields) {
+	x.unknownFields = fields
+}
+
+// IsValid reports whether the message is valid.
+//
+// An invalid message is an empty, read-only value.
+//
+// An invalid message often corresponds to a nil pointer of the concrete
+// message type, but the details are implementation dependent.
+// Validity is not part of the protobuf data model, and may not
+// be preserved in marshaling or other operations.
+func (x *fastReflection_QueryNodeMetricsRequest) IsValid() bool {
+	return x != nil
+}
+
+// ProtoMethods returns optional fastReflectionFeature-path implementations of various operations.
+// This method may return nil.
+//
+// The returned methods type is identical to
+// "google.golang.org/protobuf/runtime/protoiface".Methods.
+// Consult the protoiface package documentation for details.
+func (x *fastReflection_QueryNodeMetricsRequest) ProtoMethods() *protoiface.Methods {
+	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
+		x := input.Message.Interface().(*QueryNodeMetricsRequest)
+		if x == nil {
+			return protoiface.SizeOutput{
+				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+				Size:              0,
+			}
+		}
+		options := runtime.SizeInputToOptions(input)
+		_ = options
+		var n int
+		var l int
+		_ = l
+		l = len(x.Height)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.unknownFields != nil {
+			n += len(x.unknownFields)
+		}
+		return protoiface.SizeOutput{
+			NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+			Size:              n,
+		}
+	}
+
+	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
+		x := input.Message.Interface().(*QueryNodeMetricsRequest)
+		if x == nil {
+			return protoiface.MarshalOutput{
+				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+				Buf:               input.Buf,
+			}, nil
+		}
+		options := runtime.MarshalInputToOptions(input)
+		_ = options
+		size := options.Size(x)
+		dAtA := make([]byte, size)
+		i := len(dAtA)
+		_ = i
+		var l int
+		_ = l
+		if x.unknownFields != nil {
+			i -= len(x.unknownFields)
+			copy(dAtA[i:], x.unknownFields)
+		}
+		if len(x.Height) > 0 {
+			i -= len(x.Height)
+			copy(dAtA[i:], x.Height)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.Height)))
+			i--
+			dAtA[i] = 0xa
+		}
+		if input.Buf != nil {
+			input.Buf = append(input.Buf, dAtA...)
+		} else {
+			input.Buf = dAtA
+		}
+		return protoiface.MarshalOutput{
+			NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+			Buf:               input.Buf,
+		}, nil
+	}
+	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
+		x := input.Message.Interface().(*QueryNodeMetricsRequest)
+		if x == nil {
+			return protoiface.UnmarshalOutput{
+				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+				Flags:             input.Flags,
+			}, nil
+		}
+		options := runtime.UnmarshalInputToOptions(input)
+		_ = options
+		dAtA := input.Buf
+		l := len(dAtA)
+		iNdEx := 0
+		for iNdEx < l {
+			preIndex := iNdEx
+			var wire uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				wire |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			fieldNum := int32(wire >> 3)
+			wireType := int(wire & 0x7)
+			if wireType == 4 {
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryNodeMetricsRequest: wiretype end group for non-group")
+			}
+			if fieldNum <= 0 {
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryNodeMetricsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			}
+			switch fieldNum {
+			case 1:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.Height = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			default:
+				iNdEx = preIndex
+				skippy, err := runtime.Skip(dAtA[iNdEx:])
+				if err != nil {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, err
+				}
+				if (skippy < 0) || (iNdEx+skippy) < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if (iNdEx + skippy) > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				if !options.DiscardUnknown {
+					x.unknownFields = append(x.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+				}
+				iNdEx += skippy
+			}
+		}
+
+		if iNdEx > l {
+			return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+		}
+		return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, nil
+	}
+	return &protoiface.Methods{
+		NoUnkeyedLiterals: struct{}{},
+		Flags:             protoiface.SupportMarshalDeterministic | protoiface.SupportUnmarshalDiscardUnknown,
+		Size:              size,
+		Marshal:           marshal,
+		Unmarshal:         unmarshal,
+		Merge:             nil,
+		CheckInitialized:  nil,
+	}
+}
+
+var (
+	md_QueryNodeMetricsResponse                              protoreflect.MessageDescriptor
+	fd_QueryNodeMetricsResponse_next_slot                    protoreflect.FieldDescriptor
+	fd_QueryNodeMetricsResponse_next_slot_bond_required_sats protoreflect.FieldDescriptor
+	fd_QueryNodeMetricsResponse_bond_start_amount_sats       protoreflect.FieldDescriptor
+	fd_QueryNodeMetricsResponse_bond_slot_increment_sats     protoreflect.FieldDescriptor
+	fd_QueryNodeMetricsResponse_active_slots                 protoreflect.FieldDescriptor
+	fd_QueryNodeMetricsResponse_standby_slots                protoreflect.FieldDescriptor
+	fd_QueryNodeMetricsResponse_sold_slots                   protoreflect.FieldDescriptor
+	fd_QueryNodeMetricsResponse_pending_bond_sats            protoreflect.FieldDescriptor
+	fd_QueryNodeMetricsResponse_confirmed_bond_sats          protoreflect.FieldDescriptor
+)
+
+func init() {
+	file_types_query_node_proto_init()
+	md_QueryNodeMetricsResponse = File_types_query_node_proto.Messages().ByName("QueryNodeMetricsResponse")
+	fd_QueryNodeMetricsResponse_next_slot = md_QueryNodeMetricsResponse.Fields().ByName("next_slot")
+	fd_QueryNodeMetricsResponse_next_slot_bond_required_sats = md_QueryNodeMetricsResponse.Fields().ByName("next_slot_bond_required_sats")
+	fd_QueryNodeMetricsResponse_bond_start_amount_sats = md_QueryNodeMetricsResponse.Fields().ByName("bond_start_amount_sats")
+	fd_QueryNodeMetricsResponse_bond_slot_increment_sats = md_QueryNodeMetricsResponse.Fields().ByName("bond_slot_increment_sats")
+	fd_QueryNodeMetricsResponse_active_slots = md_QueryNodeMetricsResponse.Fields().ByName("active_slots")
+	fd_QueryNodeMetricsResponse_standby_slots = md_QueryNodeMetricsResponse.Fields().ByName("standby_slots")
+	fd_QueryNodeMetricsResponse_sold_slots = md_QueryNodeMetricsResponse.Fields().ByName("sold_slots")
+	fd_QueryNodeMetricsResponse_pending_bond_sats = md_QueryNodeMetricsResponse.Fields().ByName("pending_bond_sats")
+	fd_QueryNodeMetricsResponse_confirmed_bond_sats = md_QueryNodeMetricsResponse.Fields().ByName("confirmed_bond_sats")
+}
+
+var _ protoreflect.Message = (*fastReflection_QueryNodeMetricsResponse)(nil)
+
+type fastReflection_QueryNodeMetricsResponse QueryNodeMetricsResponse
+
+func (x *QueryNodeMetricsResponse) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_QueryNodeMetricsResponse)(x)
+}
+
+func (x *QueryNodeMetricsResponse) slowProtoReflect() protoreflect.Message {
+	mi := &file_types_query_node_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+var _fastReflection_QueryNodeMetricsResponse_messageType fastReflection_QueryNodeMetricsResponse_messageType
+var _ protoreflect.MessageType = fastReflection_QueryNodeMetricsResponse_messageType{}
+
+type fastReflection_QueryNodeMetricsResponse_messageType struct{}
+
+func (x fastReflection_QueryNodeMetricsResponse_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_QueryNodeMetricsResponse)(nil)
+}
+func (x fastReflection_QueryNodeMetricsResponse_messageType) New() protoreflect.Message {
+	return new(fastReflection_QueryNodeMetricsResponse)
+}
+func (x fastReflection_QueryNodeMetricsResponse_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryNodeMetricsResponse
+}
+
+// Descriptor returns message descriptor, which contains only the protobuf
+// type information for the message.
+func (x *fastReflection_QueryNodeMetricsResponse) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryNodeMetricsResponse
+}
+
+// Type returns the message type, which encapsulates both Go and protobuf
+// type information. If the Go type information is not needed,
+// it is recommended that the message descriptor be used instead.
+func (x *fastReflection_QueryNodeMetricsResponse) Type() protoreflect.MessageType {
+	return _fastReflection_QueryNodeMetricsResponse_messageType
+}
+
+// New returns a newly allocated and mutable empty message.
+func (x *fastReflection_QueryNodeMetricsResponse) New() protoreflect.Message {
+	return new(fastReflection_QueryNodeMetricsResponse)
+}
+
+// Interface unwraps the message reflection interface and
+// returns the underlying ProtoMessage interface.
+func (x *fastReflection_QueryNodeMetricsResponse) Interface() protoreflect.ProtoMessage {
+	return (*QueryNodeMetricsResponse)(x)
+}
+
+// Range iterates over every populated field in an undefined order,
+// calling f for each field descriptor and value encountered.
+// Range returns immediately if f returns false.
+// While iterating, mutating operations may only be performed
+// on the current field descriptor.
+func (x *fastReflection_QueryNodeMetricsResponse) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+	if x.NextSlot != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.NextSlot)
+		if !f(fd_QueryNodeMetricsResponse_next_slot, value) {
+			return
+		}
+	}
+	if x.NextSlotBondRequiredSats != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.NextSlotBondRequiredSats)
+		if !f(fd_QueryNodeMetricsResponse_next_slot_bond_required_sats, value) {
+			return
+		}
+	}
+	if x.BondStartAmountSats != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.BondStartAmountSats)
+		if !f(fd_QueryNodeMetricsResponse_bond_start_amount_sats, value) {
+			return
+		}
+	}
+	if x.BondSlotIncrementSats != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.BondSlotIncrementSats)
+		if !f(fd_QueryNodeMetricsResponse_bond_slot_increment_sats, value) {
+			return
+		}
+	}
+	if x.ActiveSlots != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.ActiveSlots)
+		if !f(fd_QueryNodeMetricsResponse_active_slots, value) {
+			return
+		}
+	}
+	if x.StandbySlots != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.StandbySlots)
+		if !f(fd_QueryNodeMetricsResponse_standby_slots, value) {
+			return
+		}
+	}
+	if x.SoldSlots != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.SoldSlots)
+		if !f(fd_QueryNodeMetricsResponse_sold_slots, value) {
+			return
+		}
+	}
+	if x.PendingBondSats != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.PendingBondSats)
+		if !f(fd_QueryNodeMetricsResponse_pending_bond_sats, value) {
+			return
+		}
+	}
+	if x.ConfirmedBondSats != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.ConfirmedBondSats)
+		if !f(fd_QueryNodeMetricsResponse_confirmed_bond_sats, value) {
+			return
+		}
+	}
+}
+
+// Has reports whether a field is populated.
+//
+// Some fields have the property of nullability where it is possible to
+// distinguish between the default value of a field and whether the field
+// was explicitly populated with the default value. Singular message fields,
+// member fields of a oneof, and proto2 scalar fields are nullable. Such
+// fields are populated only if explicitly set.
+//
+// In other cases (aside from the nullable cases above),
+// a proto3 scalar field is populated if it contains a non-zero value, and
+// a repeated field is populated if it is non-empty.
+func (x *fastReflection_QueryNodeMetricsResponse) Has(fd protoreflect.FieldDescriptor) bool {
+	switch fd.FullName() {
+	case "types.QueryNodeMetricsResponse.next_slot":
+		return x.NextSlot != uint64(0)
+	case "types.QueryNodeMetricsResponse.next_slot_bond_required_sats":
+		return x.NextSlotBondRequiredSats != uint64(0)
+	case "types.QueryNodeMetricsResponse.bond_start_amount_sats":
+		return x.BondStartAmountSats != uint64(0)
+	case "types.QueryNodeMetricsResponse.bond_slot_increment_sats":
+		return x.BondSlotIncrementSats != uint64(0)
+	case "types.QueryNodeMetricsResponse.active_slots":
+		return x.ActiveSlots != uint64(0)
+	case "types.QueryNodeMetricsResponse.standby_slots":
+		return x.StandbySlots != uint64(0)
+	case "types.QueryNodeMetricsResponse.sold_slots":
+		return x.SoldSlots != uint64(0)
+	case "types.QueryNodeMetricsResponse.pending_bond_sats":
+		return x.PendingBondSats != uint64(0)
+	case "types.QueryNodeMetricsResponse.confirmed_bond_sats":
+		return x.ConfirmedBondSats != uint64(0)
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeMetricsResponse"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeMetricsResponse does not contain field %s", fd.FullName()))
+	}
+}
+
+// Clear clears the field such that a subsequent Has call reports false.
+//
+// Clearing an extension field clears both the extension type and value
+// associated with the given field number.
+//
+// Clear is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeMetricsResponse) Clear(fd protoreflect.FieldDescriptor) {
+	switch fd.FullName() {
+	case "types.QueryNodeMetricsResponse.next_slot":
+		x.NextSlot = uint64(0)
+	case "types.QueryNodeMetricsResponse.next_slot_bond_required_sats":
+		x.NextSlotBondRequiredSats = uint64(0)
+	case "types.QueryNodeMetricsResponse.bond_start_amount_sats":
+		x.BondStartAmountSats = uint64(0)
+	case "types.QueryNodeMetricsResponse.bond_slot_increment_sats":
+		x.BondSlotIncrementSats = uint64(0)
+	case "types.QueryNodeMetricsResponse.active_slots":
+		x.ActiveSlots = uint64(0)
+	case "types.QueryNodeMetricsResponse.standby_slots":
+		x.StandbySlots = uint64(0)
+	case "types.QueryNodeMetricsResponse.sold_slots":
+		x.SoldSlots = uint64(0)
+	case "types.QueryNodeMetricsResponse.pending_bond_sats":
+		x.PendingBondSats = uint64(0)
+	case "types.QueryNodeMetricsResponse.confirmed_bond_sats":
+		x.ConfirmedBondSats = uint64(0)
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeMetricsResponse"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeMetricsResponse does not contain field %s", fd.FullName()))
+	}
+}
+
+// Get retrieves the value for a field.
+//
+// For unpopulated scalars, it returns the default value, where
+// the default value of a bytes scalar is guaranteed to be a copy.
+// For unpopulated composite types, it returns an empty, read-only view
+// of the value; to obtain a mutable reference, use Mutable.
+func (x *fastReflection_QueryNodeMetricsResponse) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+	switch descriptor.FullName() {
+	case "types.QueryNodeMetricsResponse.next_slot":
+		value := x.NextSlot
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryNodeMetricsResponse.next_slot_bond_required_sats":
+		value := x.NextSlotBondRequiredSats
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryNodeMetricsResponse.bond_start_amount_sats":
+		value := x.BondStartAmountSats
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryNodeMetricsResponse.bond_slot_increment_sats":
+		value := x.BondSlotIncrementSats
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryNodeMetricsResponse.active_slots":
+		value := x.ActiveSlots
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryNodeMetricsResponse.standby_slots":
+		value := x.StandbySlots
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryNodeMetricsResponse.sold_slots":
+		value := x.SoldSlots
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryNodeMetricsResponse.pending_bond_sats":
+		value := x.PendingBondSats
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryNodeMetricsResponse.confirmed_bond_sats":
+		value := x.ConfirmedBondSats
+		return protoreflect.ValueOfUint64(value)
+	default:
+		if descriptor.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeMetricsResponse"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeMetricsResponse does not contain field %s", descriptor.FullName()))
+	}
+}
+
+// Set stores the value for a field.
+//
+// For a field belonging to a oneof, it implicitly clears any other field
+// that may be currently set within the same oneof.
+// For extension fields, it implicitly stores the provided ExtensionType.
+// When setting a composite type, it is unspecified whether the stored value
+// aliases the source's memory in any way. If the composite value is an
+// empty, read-only value, then it panics.
+//
+// Set is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeMetricsResponse) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+	switch fd.FullName() {
+	case "types.QueryNodeMetricsResponse.next_slot":
+		x.NextSlot = value.Uint()
+	case "types.QueryNodeMetricsResponse.next_slot_bond_required_sats":
+		x.NextSlotBondRequiredSats = value.Uint()
+	case "types.QueryNodeMetricsResponse.bond_start_amount_sats":
+		x.BondStartAmountSats = value.Uint()
+	case "types.QueryNodeMetricsResponse.bond_slot_increment_sats":
+		x.BondSlotIncrementSats = value.Uint()
+	case "types.QueryNodeMetricsResponse.active_slots":
+		x.ActiveSlots = value.Uint()
+	case "types.QueryNodeMetricsResponse.standby_slots":
+		x.StandbySlots = value.Uint()
+	case "types.QueryNodeMetricsResponse.sold_slots":
+		x.SoldSlots = value.Uint()
+	case "types.QueryNodeMetricsResponse.pending_bond_sats":
+		x.PendingBondSats = value.Uint()
+	case "types.QueryNodeMetricsResponse.confirmed_bond_sats":
+		x.ConfirmedBondSats = value.Uint()
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeMetricsResponse"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeMetricsResponse does not contain field %s", fd.FullName()))
+	}
+}
+
+// Mutable returns a mutable reference to a composite type.
+//
+// If the field is unpopulated, it may allocate a composite value.
+// For a field belonging to a oneof, it implicitly clears any other field
+// that may be currently set within the same oneof.
+// For extension fields, it implicitly stores the provided ExtensionType
+// if not already stored.
+// It panics if the field does not contain a composite type.
+//
+// Mutable is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeMetricsResponse) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+	switch fd.FullName() {
+	case "types.QueryNodeMetricsResponse.next_slot":
+		panic(fmt.Errorf("field next_slot of message types.QueryNodeMetricsResponse is not mutable"))
+	case "types.QueryNodeMetricsResponse.next_slot_bond_required_sats":
+		panic(fmt.Errorf("field next_slot_bond_required_sats of message types.QueryNodeMetricsResponse is not mutable"))
+	case "types.QueryNodeMetricsResponse.bond_start_amount_sats":
+		panic(fmt.Errorf("field bond_start_amount_sats of message types.QueryNodeMetricsResponse is not mutable"))
+	case "types.QueryNodeMetricsResponse.bond_slot_increment_sats":
+		panic(fmt.Errorf("field bond_slot_increment_sats of message types.QueryNodeMetricsResponse is not mutable"))
+	case "types.QueryNodeMetricsResponse.active_slots":
+		panic(fmt.Errorf("field active_slots of message types.QueryNodeMetricsResponse is not mutable"))
+	case "types.QueryNodeMetricsResponse.standby_slots":
+		panic(fmt.Errorf("field standby_slots of message types.QueryNodeMetricsResponse is not mutable"))
+	case "types.QueryNodeMetricsResponse.sold_slots":
+		panic(fmt.Errorf("field sold_slots of message types.QueryNodeMetricsResponse is not mutable"))
+	case "types.QueryNodeMetricsResponse.pending_bond_sats":
+		panic(fmt.Errorf("field pending_bond_sats of message types.QueryNodeMetricsResponse is not mutable"))
+	case "types.QueryNodeMetricsResponse.confirmed_bond_sats":
+		panic(fmt.Errorf("field confirmed_bond_sats of message types.QueryNodeMetricsResponse is not mutable"))
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeMetricsResponse"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeMetricsResponse does not contain field %s", fd.FullName()))
+	}
+}
+
+// NewField returns a new value that is assignable to the field
+// for the given descriptor. For scalars, this returns the default value.
+// For lists, maps, and messages, this returns a new, empty, mutable value.
+func (x *fastReflection_QueryNodeMetricsResponse) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+	switch fd.FullName() {
+	case "types.QueryNodeMetricsResponse.next_slot":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryNodeMetricsResponse.next_slot_bond_required_sats":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryNodeMetricsResponse.bond_start_amount_sats":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryNodeMetricsResponse.bond_slot_increment_sats":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryNodeMetricsResponse.active_slots":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryNodeMetricsResponse.standby_slots":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryNodeMetricsResponse.sold_slots":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryNodeMetricsResponse.pending_bond_sats":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryNodeMetricsResponse.confirmed_bond_sats":
+		return protoreflect.ValueOfUint64(uint64(0))
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeMetricsResponse"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeMetricsResponse does not contain field %s", fd.FullName()))
+	}
+}
+
+// WhichOneof reports which field within the oneof is populated,
+// returning nil if none are populated.
+// It panics if the oneof descriptor does not belong to this message.
+func (x *fastReflection_QueryNodeMetricsResponse) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+	switch d.FullName() {
+	default:
+		panic(fmt.Errorf("%s is not a oneof field in types.QueryNodeMetricsResponse", d.FullName()))
+	}
+	panic("unreachable")
+}
+
+// GetUnknown retrieves the entire list of unknown fields.
+// The caller may only mutate the contents of the RawFields
+// if the mutated bytes are stored back into the message with SetUnknown.
+func (x *fastReflection_QueryNodeMetricsResponse) GetUnknown() protoreflect.RawFields {
+	return x.unknownFields
+}
+
+// SetUnknown stores an entire list of unknown fields.
+// The raw fields must be syntactically valid according to the wire format.
+// An implementation may panic if this is not the case.
+// Once stored, the caller must not mutate the content of the RawFields.
+// An empty RawFields may be passed to clear the fields.
+//
+// SetUnknown is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeMetricsResponse) SetUnknown(fields protoreflect.RawFields) {
+	x.unknownFields = fields
+}
+
+// IsValid reports whether the message is valid.
+//
+// An invalid message is an empty, read-only value.
+//
+// An invalid message often corresponds to a nil pointer of the concrete
+// message type, but the details are implementation dependent.
+// Validity is not part of the protobuf data model, and may not
+// be preserved in marshaling or other operations.
+func (x *fastReflection_QueryNodeMetricsResponse) IsValid() bool {
+	return x != nil
+}
+
+// ProtoMethods returns optional fastReflectionFeature-path implementations of various operations.
+// This method may return nil.
+//
+// The returned methods type is identical to
+// "google.golang.org/protobuf/runtime/protoiface".Methods.
+// Consult the protoiface package documentation for details.
+func (x *fastReflection_QueryNodeMetricsResponse) ProtoMethods() *protoiface.Methods {
+	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
+		x := input.Message.Interface().(*QueryNodeMetricsResponse)
+		if x == nil {
+			return protoiface.SizeOutput{
+				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+				Size:              0,
+			}
+		}
+		options := runtime.SizeInputToOptions(input)
+		_ = options
+		var n int
+		var l int
+		_ = l
+		if x.NextSlot != 0 {
+			n += 1 + runtime.Sov(uint64(x.NextSlot))
+		}
+		if x.NextSlotBondRequiredSats != 0 {
+			n += 1 + runtime.Sov(uint64(x.NextSlotBondRequiredSats))
+		}
+		if x.BondStartAmountSats != 0 {
+			n += 1 + runtime.Sov(uint64(x.BondStartAmountSats))
+		}
+		if x.BondSlotIncrementSats != 0 {
+			n += 1 + runtime.Sov(uint64(x.BondSlotIncrementSats))
+		}
+		if x.ActiveSlots != 0 {
+			n += 1 + runtime.Sov(uint64(x.ActiveSlots))
+		}
+		if x.StandbySlots != 0 {
+			n += 1 + runtime.Sov(uint64(x.StandbySlots))
+		}
+		if x.SoldSlots != 0 {
+			n += 1 + runtime.Sov(uint64(x.SoldSlots))
+		}
+		if x.PendingBondSats != 0 {
+			n += 1 + runtime.Sov(uint64(x.PendingBondSats))
+		}
+		if x.ConfirmedBondSats != 0 {
+			n += 1 + runtime.Sov(uint64(x.ConfirmedBondSats))
+		}
+		if x.unknownFields != nil {
+			n += len(x.unknownFields)
+		}
+		return protoiface.SizeOutput{
+			NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+			Size:              n,
+		}
+	}
+
+	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
+		x := input.Message.Interface().(*QueryNodeMetricsResponse)
+		if x == nil {
+			return protoiface.MarshalOutput{
+				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+				Buf:               input.Buf,
+			}, nil
+		}
+		options := runtime.MarshalInputToOptions(input)
+		_ = options
+		size := options.Size(x)
+		dAtA := make([]byte, size)
+		i := len(dAtA)
+		_ = i
+		var l int
+		_ = l
+		if x.unknownFields != nil {
+			i -= len(x.unknownFields)
+			copy(dAtA[i:], x.unknownFields)
+		}
+		if x.ConfirmedBondSats != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.ConfirmedBondSats))
+			i--
+			dAtA[i] = 0x48
+		}
+		if x.PendingBondSats != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.PendingBondSats))
+			i--
+			dAtA[i] = 0x40
+		}
+		if x.SoldSlots != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.SoldSlots))
+			i--
+			dAtA[i] = 0x38
+		}
+		if x.StandbySlots != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.StandbySlots))
+			i--
+			dAtA[i] = 0x30
+		}
+		if x.ActiveSlots != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.ActiveSlots))
+			i--
+			dAtA[i] = 0x28
+		}
+		if x.BondSlotIncrementSats != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.BondSlotIncrementSats))
+			i--
+			dAtA[i] = 0x20
+		}
+		if x.BondStartAmountSats != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.BondStartAmountSats))
+			i--
+			dAtA[i] = 0x18
+		}
+		if x.NextSlotBondRequiredSats != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.NextSlotBondRequiredSats))
+			i--
+			dAtA[i] = 0x10
+		}
+		if x.NextSlot != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.NextSlot))
+			i--
+			dAtA[i] = 0x8
+		}
+		if input.Buf != nil {
+			input.Buf = append(input.Buf, dAtA...)
+		} else {
+			input.Buf = dAtA
+		}
+		return protoiface.MarshalOutput{
+			NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+			Buf:               input.Buf,
+		}, nil
+	}
+	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
+		x := input.Message.Interface().(*QueryNodeMetricsResponse)
+		if x == nil {
+			return protoiface.UnmarshalOutput{
+				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+				Flags:             input.Flags,
+			}, nil
+		}
+		options := runtime.UnmarshalInputToOptions(input)
+		_ = options
+		dAtA := input.Buf
+		l := len(dAtA)
+		iNdEx := 0
+		for iNdEx < l {
+			preIndex := iNdEx
+			var wire uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				wire |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			fieldNum := int32(wire >> 3)
+			wireType := int(wire & 0x7)
+			if wireType == 4 {
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryNodeMetricsResponse: wiretype end group for non-group")
+			}
+			if fieldNum <= 0 {
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryNodeMetricsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			}
+			switch fieldNum {
+			case 1:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field NextSlot", wireType)
+				}
+				x.NextSlot = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.NextSlot |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 2:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field NextSlotBondRequiredSats", wireType)
+				}
+				x.NextSlotBondRequiredSats = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.NextSlotBondRequiredSats |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 3:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field BondStartAmountSats", wireType)
+				}
+				x.BondStartAmountSats = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.BondStartAmountSats |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 4:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field BondSlotIncrementSats", wireType)
+				}
+				x.BondSlotIncrementSats = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.BondSlotIncrementSats |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 5:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field ActiveSlots", wireType)
+				}
+				x.ActiveSlots = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.ActiveSlots |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 6:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field StandbySlots", wireType)
+				}
+				x.StandbySlots = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.StandbySlots |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 7:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field SoldSlots", wireType)
+				}
+				x.SoldSlots = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.SoldSlots |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 8:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field PendingBondSats", wireType)
+				}
+				x.PendingBondSats = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.PendingBondSats |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 9:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field ConfirmedBondSats", wireType)
+				}
+				x.ConfirmedBondSats = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.ConfirmedBondSats |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			default:
+				iNdEx = preIndex
+				skippy, err := runtime.Skip(dAtA[iNdEx:])
+				if err != nil {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, err
+				}
+				if (skippy < 0) || (iNdEx+skippy) < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if (iNdEx + skippy) > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				if !options.DiscardUnknown {
+					x.unknownFields = append(x.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+				}
+				iNdEx += skippy
+			}
+		}
+
+		if iNdEx > l {
+			return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+		}
+		return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, nil
+	}
+	return &protoiface.Methods{
+		NoUnkeyedLiterals: struct{}{},
+		Flags:             protoiface.SupportMarshalDeterministic | protoiface.SupportUnmarshalDiscardUnknown,
+		Size:              size,
+		Marshal:           marshal,
+		Unmarshal:         unmarshal,
+		Merge:             nil,
+		CheckInitialized:  nil,
+	}
+}
+
+var (
+	md_QueryNodeSlotRequest        protoreflect.MessageDescriptor
+	fd_QueryNodeSlotRequest_slot   protoreflect.FieldDescriptor
+	fd_QueryNodeSlotRequest_height protoreflect.FieldDescriptor
+)
+
+func init() {
+	file_types_query_node_proto_init()
+	md_QueryNodeSlotRequest = File_types_query_node_proto.Messages().ByName("QueryNodeSlotRequest")
+	fd_QueryNodeSlotRequest_slot = md_QueryNodeSlotRequest.Fields().ByName("slot")
+	fd_QueryNodeSlotRequest_height = md_QueryNodeSlotRequest.Fields().ByName("height")
+}
+
+var _ protoreflect.Message = (*fastReflection_QueryNodeSlotRequest)(nil)
+
+type fastReflection_QueryNodeSlotRequest QueryNodeSlotRequest
+
+func (x *QueryNodeSlotRequest) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_QueryNodeSlotRequest)(x)
+}
+
+func (x *QueryNodeSlotRequest) slowProtoReflect() protoreflect.Message {
+	mi := &file_types_query_node_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+var _fastReflection_QueryNodeSlotRequest_messageType fastReflection_QueryNodeSlotRequest_messageType
+var _ protoreflect.MessageType = fastReflection_QueryNodeSlotRequest_messageType{}
+
+type fastReflection_QueryNodeSlotRequest_messageType struct{}
+
+func (x fastReflection_QueryNodeSlotRequest_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_QueryNodeSlotRequest)(nil)
+}
+func (x fastReflection_QueryNodeSlotRequest_messageType) New() protoreflect.Message {
+	return new(fastReflection_QueryNodeSlotRequest)
+}
+func (x fastReflection_QueryNodeSlotRequest_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryNodeSlotRequest
+}
+
+// Descriptor returns message descriptor, which contains only the protobuf
+// type information for the message.
+func (x *fastReflection_QueryNodeSlotRequest) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryNodeSlotRequest
+}
+
+// Type returns the message type, which encapsulates both Go and protobuf
+// type information. If the Go type information is not needed,
+// it is recommended that the message descriptor be used instead.
+func (x *fastReflection_QueryNodeSlotRequest) Type() protoreflect.MessageType {
+	return _fastReflection_QueryNodeSlotRequest_messageType
+}
+
+// New returns a newly allocated and mutable empty message.
+func (x *fastReflection_QueryNodeSlotRequest) New() protoreflect.Message {
+	return new(fastReflection_QueryNodeSlotRequest)
+}
+
+// Interface unwraps the message reflection interface and
+// returns the underlying ProtoMessage interface.
+func (x *fastReflection_QueryNodeSlotRequest) Interface() protoreflect.ProtoMessage {
+	return (*QueryNodeSlotRequest)(x)
+}
+
+// Range iterates over every populated field in an undefined order,
+// calling f for each field descriptor and value encountered.
+// Range returns immediately if f returns false.
+// While iterating, mutating operations may only be performed
+// on the current field descriptor.
+func (x *fastReflection_QueryNodeSlotRequest) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+	if x.Slot != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.Slot)
+		if !f(fd_QueryNodeSlotRequest_slot, value) {
+			return
+		}
+	}
+	if x.Height != "" {
+		value := protoreflect.ValueOfString(x.Height)
+		if !f(fd_QueryNodeSlotRequest_height, value) {
+			return
+		}
+	}
+}
+
+// Has reports whether a field is populated.
+//
+// Some fields have the property of nullability where it is possible to
+// distinguish between the default value of a field and whether the field
+// was explicitly populated with the default value. Singular message fields,
+// member fields of a oneof, and proto2 scalar fields are nullable. Such
+// fields are populated only if explicitly set.
+//
+// In other cases (aside from the nullable cases above),
+// a proto3 scalar field is populated if it contains a non-zero value, and
+// a repeated field is populated if it is non-empty.
+func (x *fastReflection_QueryNodeSlotRequest) Has(fd protoreflect.FieldDescriptor) bool {
+	switch fd.FullName() {
+	case "types.QueryNodeSlotRequest.slot":
+		return x.Slot != uint64(0)
+	case "types.QueryNodeSlotRequest.height":
+		return x.Height != ""
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeSlotRequest"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeSlotRequest does not contain field %s", fd.FullName()))
+	}
+}
+
+// Clear clears the field such that a subsequent Has call reports false.
+//
+// Clearing an extension field clears both the extension type and value
+// associated with the given field number.
+//
+// Clear is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeSlotRequest) Clear(fd protoreflect.FieldDescriptor) {
+	switch fd.FullName() {
+	case "types.QueryNodeSlotRequest.slot":
+		x.Slot = uint64(0)
+	case "types.QueryNodeSlotRequest.height":
+		x.Height = ""
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeSlotRequest"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeSlotRequest does not contain field %s", fd.FullName()))
+	}
+}
+
+// Get retrieves the value for a field.
+//
+// For unpopulated scalars, it returns the default value, where
+// the default value of a bytes scalar is guaranteed to be a copy.
+// For unpopulated composite types, it returns an empty, read-only view
+// of the value; to obtain a mutable reference, use Mutable.
+func (x *fastReflection_QueryNodeSlotRequest) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+	switch descriptor.FullName() {
+	case "types.QueryNodeSlotRequest.slot":
+		value := x.Slot
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryNodeSlotRequest.height":
+		value := x.Height
+		return protoreflect.ValueOfString(value)
+	default:
+		if descriptor.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeSlotRequest"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeSlotRequest does not contain field %s", descriptor.FullName()))
+	}
+}
+
+// Set stores the value for a field.
+//
+// For a field belonging to a oneof, it implicitly clears any other field
+// that may be currently set within the same oneof.
+// For extension fields, it implicitly stores the provided ExtensionType.
+// When setting a composite type, it is unspecified whether the stored value
+// aliases the source's memory in any way. If the composite value is an
+// empty, read-only value, then it panics.
+//
+// Set is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeSlotRequest) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+	switch fd.FullName() {
+	case "types.QueryNodeSlotRequest.slot":
+		x.Slot = value.Uint()
+	case "types.QueryNodeSlotRequest.height":
+		x.Height = value.Interface().(string)
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeSlotRequest"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeSlotRequest does not contain field %s", fd.FullName()))
+	}
+}
+
+// Mutable returns a mutable reference to a composite type.
+//
+// If the field is unpopulated, it may allocate a composite value.
+// For a field belonging to a oneof, it implicitly clears any other field
+// that may be currently set within the same oneof.
+// For extension fields, it implicitly stores the provided ExtensionType
+// if not already stored.
+// It panics if the field does not contain a composite type.
+//
+// Mutable is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeSlotRequest) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+	switch fd.FullName() {
+	case "types.QueryNodeSlotRequest.slot":
+		panic(fmt.Errorf("field slot of message types.QueryNodeSlotRequest is not mutable"))
+	case "types.QueryNodeSlotRequest.height":
+		panic(fmt.Errorf("field height of message types.QueryNodeSlotRequest is not mutable"))
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeSlotRequest"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeSlotRequest does not contain field %s", fd.FullName()))
+	}
+}
+
+// NewField returns a new value that is assignable to the field
+// for the given descriptor. For scalars, this returns the default value.
+// For lists, maps, and messages, this returns a new, empty, mutable value.
+func (x *fastReflection_QueryNodeSlotRequest) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+	switch fd.FullName() {
+	case "types.QueryNodeSlotRequest.slot":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryNodeSlotRequest.height":
+		return protoreflect.ValueOfString("")
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeSlotRequest"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeSlotRequest does not contain field %s", fd.FullName()))
+	}
+}
+
+// WhichOneof reports which field within the oneof is populated,
+// returning nil if none are populated.
+// It panics if the oneof descriptor does not belong to this message.
+func (x *fastReflection_QueryNodeSlotRequest) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+	switch d.FullName() {
+	default:
+		panic(fmt.Errorf("%s is not a oneof field in types.QueryNodeSlotRequest", d.FullName()))
+	}
+	panic("unreachable")
+}
+
+// GetUnknown retrieves the entire list of unknown fields.
+// The caller may only mutate the contents of the RawFields
+// if the mutated bytes are stored back into the message with SetUnknown.
+func (x *fastReflection_QueryNodeSlotRequest) GetUnknown() protoreflect.RawFields {
+	return x.unknownFields
+}
+
+// SetUnknown stores an entire list of unknown fields.
+// The raw fields must be syntactically valid according to the wire format.
+// An implementation may panic if this is not the case.
+// Once stored, the caller must not mutate the content of the RawFields.
+// An empty RawFields may be passed to clear the fields.
+//
+// SetUnknown is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeSlotRequest) SetUnknown(fields protoreflect.RawFields) {
+	x.unknownFields = fields
+}
+
+// IsValid reports whether the message is valid.
+//
+// An invalid message is an empty, read-only value.
+//
+// An invalid message often corresponds to a nil pointer of the concrete
+// message type, but the details are implementation dependent.
+// Validity is not part of the protobuf data model, and may not
+// be preserved in marshaling or other operations.
+func (x *fastReflection_QueryNodeSlotRequest) IsValid() bool {
+	return x != nil
+}
+
+// ProtoMethods returns optional fastReflectionFeature-path implementations of various operations.
+// This method may return nil.
+//
+// The returned methods type is identical to
+// "google.golang.org/protobuf/runtime/protoiface".Methods.
+// Consult the protoiface package documentation for details.
+func (x *fastReflection_QueryNodeSlotRequest) ProtoMethods() *protoiface.Methods {
+	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
+		x := input.Message.Interface().(*QueryNodeSlotRequest)
+		if x == nil {
+			return protoiface.SizeOutput{
+				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+				Size:              0,
+			}
+		}
+		options := runtime.SizeInputToOptions(input)
+		_ = options
+		var n int
+		var l int
+		_ = l
+		if x.Slot != 0 {
+			n += 1 + runtime.Sov(uint64(x.Slot))
+		}
+		l = len(x.Height)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.unknownFields != nil {
+			n += len(x.unknownFields)
+		}
+		return protoiface.SizeOutput{
+			NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+			Size:              n,
+		}
+	}
+
+	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
+		x := input.Message.Interface().(*QueryNodeSlotRequest)
+		if x == nil {
+			return protoiface.MarshalOutput{
+				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+				Buf:               input.Buf,
+			}, nil
+		}
+		options := runtime.MarshalInputToOptions(input)
+		_ = options
+		size := options.Size(x)
+		dAtA := make([]byte, size)
+		i := len(dAtA)
+		_ = i
+		var l int
+		_ = l
+		if x.unknownFields != nil {
+			i -= len(x.unknownFields)
+			copy(dAtA[i:], x.unknownFields)
+		}
+		if len(x.Height) > 0 {
+			i -= len(x.Height)
+			copy(dAtA[i:], x.Height)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.Height)))
+			i--
+			dAtA[i] = 0x12
+		}
+		if x.Slot != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.Slot))
+			i--
+			dAtA[i] = 0x8
+		}
+		if input.Buf != nil {
+			input.Buf = append(input.Buf, dAtA...)
+		} else {
+			input.Buf = dAtA
+		}
+		return protoiface.MarshalOutput{
+			NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+			Buf:               input.Buf,
+		}, nil
+	}
+	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
+		x := input.Message.Interface().(*QueryNodeSlotRequest)
+		if x == nil {
+			return protoiface.UnmarshalOutput{
+				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+				Flags:             input.Flags,
+			}, nil
+		}
+		options := runtime.UnmarshalInputToOptions(input)
+		_ = options
+		dAtA := input.Buf
+		l := len(dAtA)
+		iNdEx := 0
+		for iNdEx < l {
+			preIndex := iNdEx
+			var wire uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				wire |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			fieldNum := int32(wire >> 3)
+			wireType := int(wire & 0x7)
+			if wireType == 4 {
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryNodeSlotRequest: wiretype end group for non-group")
+			}
+			if fieldNum <= 0 {
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryNodeSlotRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			}
+			switch fieldNum {
+			case 1:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Slot", wireType)
+				}
+				x.Slot = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.Slot |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 2:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.Height = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			default:
+				iNdEx = preIndex
+				skippy, err := runtime.Skip(dAtA[iNdEx:])
+				if err != nil {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, err
+				}
+				if (skippy < 0) || (iNdEx+skippy) < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if (iNdEx + skippy) > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				if !options.DiscardUnknown {
+					x.unknownFields = append(x.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+				}
+				iNdEx += skippy
+			}
+		}
+
+		if iNdEx > l {
+			return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+		}
+		return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, nil
+	}
+	return &protoiface.Methods{
+		NoUnkeyedLiterals: struct{}{},
+		Flags:             protoiface.SupportMarshalDeterministic | protoiface.SupportUnmarshalDiscardUnknown,
+		Size:              size,
+		Marshal:           marshal,
+		Unmarshal:         unmarshal,
+		Merge:             nil,
+		CheckInitialized:  nil,
+	}
+}
+
+var (
+	md_QueryNodeSlotResponse      protoreflect.MessageDescriptor
+	fd_QueryNodeSlotResponse_bond protoreflect.FieldDescriptor
+)
+
+func init() {
+	file_types_query_node_proto_init()
+	md_QueryNodeSlotResponse = File_types_query_node_proto.Messages().ByName("QueryNodeSlotResponse")
+	fd_QueryNodeSlotResponse_bond = md_QueryNodeSlotResponse.Fields().ByName("bond")
+}
+
+var _ protoreflect.Message = (*fastReflection_QueryNodeSlotResponse)(nil)
+
+type fastReflection_QueryNodeSlotResponse QueryNodeSlotResponse
+
+func (x *QueryNodeSlotResponse) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_QueryNodeSlotResponse)(x)
+}
+
+func (x *QueryNodeSlotResponse) slowProtoReflect() protoreflect.Message {
+	mi := &file_types_query_node_proto_msgTypes[7]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+var _fastReflection_QueryNodeSlotResponse_messageType fastReflection_QueryNodeSlotResponse_messageType
+var _ protoreflect.MessageType = fastReflection_QueryNodeSlotResponse_messageType{}
+
+type fastReflection_QueryNodeSlotResponse_messageType struct{}
+
+func (x fastReflection_QueryNodeSlotResponse_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_QueryNodeSlotResponse)(nil)
+}
+func (x fastReflection_QueryNodeSlotResponse_messageType) New() protoreflect.Message {
+	return new(fastReflection_QueryNodeSlotResponse)
+}
+func (x fastReflection_QueryNodeSlotResponse_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryNodeSlotResponse
+}
+
+// Descriptor returns message descriptor, which contains only the protobuf
+// type information for the message.
+func (x *fastReflection_QueryNodeSlotResponse) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryNodeSlotResponse
+}
+
+// Type returns the message type, which encapsulates both Go and protobuf
+// type information. If the Go type information is not needed,
+// it is recommended that the message descriptor be used instead.
+func (x *fastReflection_QueryNodeSlotResponse) Type() protoreflect.MessageType {
+	return _fastReflection_QueryNodeSlotResponse_messageType
+}
+
+// New returns a newly allocated and mutable empty message.
+func (x *fastReflection_QueryNodeSlotResponse) New() protoreflect.Message {
+	return new(fastReflection_QueryNodeSlotResponse)
+}
+
+// Interface unwraps the message reflection interface and
+// returns the underlying ProtoMessage interface.
+func (x *fastReflection_QueryNodeSlotResponse) Interface() protoreflect.ProtoMessage {
+	return (*QueryNodeSlotResponse)(x)
+}
+
+// Range iterates over every populated field in an undefined order,
+// calling f for each field descriptor and value encountered.
+// Range returns immediately if f returns false.
+// While iterating, mutating operations may only be performed
+// on the current field descriptor.
+func (x *fastReflection_QueryNodeSlotResponse) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+	if x.Bond != nil {
+		value := protoreflect.ValueOfMessage(x.Bond.ProtoReflect())
+		if !f(fd_QueryNodeSlotResponse_bond, value) {
+			return
+		}
+	}
+}
+
+// Has reports whether a field is populated.
+//
+// Some fields have the property of nullability where it is possible to
+// distinguish between the default value of a field and whether the field
+// was explicitly populated with the default value. Singular message fields,
+// member fields of a oneof, and proto2 scalar fields are nullable. Such
+// fields are populated only if explicitly set.
+//
+// In other cases (aside from the nullable cases above),
+// a proto3 scalar field is populated if it contains a non-zero value, and
+// a repeated field is populated if it is non-empty.
+func (x *fastReflection_QueryNodeSlotResponse) Has(fd protoreflect.FieldDescriptor) bool {
+	switch fd.FullName() {
+	case "types.QueryNodeSlotResponse.bond":
+		return x.Bond != nil
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeSlotResponse"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeSlotResponse does not contain field %s", fd.FullName()))
+	}
+}
+
+// Clear clears the field such that a subsequent Has call reports false.
+//
+// Clearing an extension field clears both the extension type and value
+// associated with the given field number.
+//
+// Clear is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeSlotResponse) Clear(fd protoreflect.FieldDescriptor) {
+	switch fd.FullName() {
+	case "types.QueryNodeSlotResponse.bond":
+		x.Bond = nil
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeSlotResponse"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeSlotResponse does not contain field %s", fd.FullName()))
+	}
+}
+
+// Get retrieves the value for a field.
+//
+// For unpopulated scalars, it returns the default value, where
+// the default value of a bytes scalar is guaranteed to be a copy.
+// For unpopulated composite types, it returns an empty, read-only view
+// of the value; to obtain a mutable reference, use Mutable.
+func (x *fastReflection_QueryNodeSlotResponse) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+	switch descriptor.FullName() {
+	case "types.QueryNodeSlotResponse.bond":
+		value := x.Bond
+		return protoreflect.ValueOfMessage(value.ProtoReflect())
+	default:
+		if descriptor.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeSlotResponse"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeSlotResponse does not contain field %s", descriptor.FullName()))
+	}
+}
+
+// Set stores the value for a field.
+//
+// For a field belonging to a oneof, it implicitly clears any other field
+// that may be currently set within the same oneof.
+// For extension fields, it implicitly stores the provided ExtensionType.
+// When setting a composite type, it is unspecified whether the stored value
+// aliases the source's memory in any way. If the composite value is an
+// empty, read-only value, then it panics.
+//
+// Set is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeSlotResponse) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+	switch fd.FullName() {
+	case "types.QueryNodeSlotResponse.bond":
+		x.Bond = value.Message().Interface().(*QueryShielderBondResponse)
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeSlotResponse"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeSlotResponse does not contain field %s", fd.FullName()))
+	}
+}
+
+// Mutable returns a mutable reference to a composite type.
+//
+// If the field is unpopulated, it may allocate a composite value.
+// For a field belonging to a oneof, it implicitly clears any other field
+// that may be currently set within the same oneof.
+// For extension fields, it implicitly stores the provided ExtensionType
+// if not already stored.
+// It panics if the field does not contain a composite type.
+//
+// Mutable is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeSlotResponse) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+	switch fd.FullName() {
+	case "types.QueryNodeSlotResponse.bond":
+		if x.Bond == nil {
+			x.Bond = new(QueryShielderBondResponse)
+		}
+		return protoreflect.ValueOfMessage(x.Bond.ProtoReflect())
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeSlotResponse"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeSlotResponse does not contain field %s", fd.FullName()))
+	}
+}
+
+// NewField returns a new value that is assignable to the field
+// for the given descriptor. For scalars, this returns the default value.
+// For lists, maps, and messages, this returns a new, empty, mutable value.
+func (x *fastReflection_QueryNodeSlotResponse) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+	switch fd.FullName() {
+	case "types.QueryNodeSlotResponse.bond":
+		m := new(QueryShielderBondResponse)
+		return protoreflect.ValueOfMessage(m.ProtoReflect())
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeSlotResponse"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeSlotResponse does not contain field %s", fd.FullName()))
+	}
+}
+
+// WhichOneof reports which field within the oneof is populated,
+// returning nil if none are populated.
+// It panics if the oneof descriptor does not belong to this message.
+func (x *fastReflection_QueryNodeSlotResponse) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+	switch d.FullName() {
+	default:
+		panic(fmt.Errorf("%s is not a oneof field in types.QueryNodeSlotResponse", d.FullName()))
+	}
+	panic("unreachable")
+}
+
+// GetUnknown retrieves the entire list of unknown fields.
+// The caller may only mutate the contents of the RawFields
+// if the mutated bytes are stored back into the message with SetUnknown.
+func (x *fastReflection_QueryNodeSlotResponse) GetUnknown() protoreflect.RawFields {
+	return x.unknownFields
+}
+
+// SetUnknown stores an entire list of unknown fields.
+// The raw fields must be syntactically valid according to the wire format.
+// An implementation may panic if this is not the case.
+// Once stored, the caller must not mutate the content of the RawFields.
+// An empty RawFields may be passed to clear the fields.
+//
+// SetUnknown is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeSlotResponse) SetUnknown(fields protoreflect.RawFields) {
+	x.unknownFields = fields
+}
+
+// IsValid reports whether the message is valid.
+//
+// An invalid message is an empty, read-only value.
+//
+// An invalid message often corresponds to a nil pointer of the concrete
+// message type, but the details are implementation dependent.
+// Validity is not part of the protobuf data model, and may not
+// be preserved in marshaling or other operations.
+func (x *fastReflection_QueryNodeSlotResponse) IsValid() bool {
+	return x != nil
+}
+
+// ProtoMethods returns optional fastReflectionFeature-path implementations of various operations.
+// This method may return nil.
+//
+// The returned methods type is identical to
+// "google.golang.org/protobuf/runtime/protoiface".Methods.
+// Consult the protoiface package documentation for details.
+func (x *fastReflection_QueryNodeSlotResponse) ProtoMethods() *protoiface.Methods {
+	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
+		x := input.Message.Interface().(*QueryNodeSlotResponse)
+		if x == nil {
+			return protoiface.SizeOutput{
+				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+				Size:              0,
+			}
+		}
+		options := runtime.SizeInputToOptions(input)
+		_ = options
+		var n int
+		var l int
+		_ = l
+		if x.Bond != nil {
+			l = options.Size(x.Bond)
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.unknownFields != nil {
+			n += len(x.unknownFields)
+		}
+		return protoiface.SizeOutput{
+			NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+			Size:              n,
+		}
+	}
+
+	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
+		x := input.Message.Interface().(*QueryNodeSlotResponse)
+		if x == nil {
+			return protoiface.MarshalOutput{
+				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+				Buf:               input.Buf,
+			}, nil
+		}
+		options := runtime.MarshalInputToOptions(input)
+		_ = options
+		size := options.Size(x)
+		dAtA := make([]byte, size)
+		i := len(dAtA)
+		_ = i
+		var l int
+		_ = l
+		if x.unknownFields != nil {
+			i -= len(x.unknownFields)
+			copy(dAtA[i:], x.unknownFields)
+		}
+		if x.Bond != nil {
+			encoded, err := options.Marshal(x.Bond)
+			if err != nil {
+				return protoiface.MarshalOutput{
+					NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+					Buf:               input.Buf,
+				}, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(encoded)))
+			i--
+			dAtA[i] = 0xa
+		}
+		if input.Buf != nil {
+			input.Buf = append(input.Buf, dAtA...)
+		} else {
+			input.Buf = dAtA
+		}
+		return protoiface.MarshalOutput{
+			NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+			Buf:               input.Buf,
+		}, nil
+	}
+	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
+		x := input.Message.Interface().(*QueryNodeSlotResponse)
+		if x == nil {
+			return protoiface.UnmarshalOutput{
+				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+				Flags:             input.Flags,
+			}, nil
+		}
+		options := runtime.UnmarshalInputToOptions(input)
+		_ = options
+		dAtA := input.Buf
+		l := len(dAtA)
+		iNdEx := 0
+		for iNdEx < l {
+			preIndex := iNdEx
+			var wire uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				wire |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			fieldNum := int32(wire >> 3)
+			wireType := int(wire & 0x7)
+			if wireType == 4 {
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryNodeSlotResponse: wiretype end group for non-group")
+			}
+			if fieldNum <= 0 {
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryNodeSlotResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			}
+			switch fieldNum {
+			case 1:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Bond", wireType)
+				}
+				var msglen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					msglen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if msglen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + msglen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				if x.Bond == nil {
+					x.Bond = &QueryShielderBondResponse{}
+				}
+				if err := options.Unmarshal(dAtA[iNdEx:postIndex], x.Bond); err != nil {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, err
+				}
+				iNdEx = postIndex
+			default:
+				iNdEx = preIndex
+				skippy, err := runtime.Skip(dAtA[iNdEx:])
+				if err != nil {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, err
+				}
+				if (skippy < 0) || (iNdEx+skippy) < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if (iNdEx + skippy) > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				if !options.DiscardUnknown {
+					x.unknownFields = append(x.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+				}
+				iNdEx += skippy
+			}
+		}
+
+		if iNdEx > l {
+			return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+		}
+		return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, nil
+	}
+	return &protoiface.Methods{
+		NoUnkeyedLiterals: struct{}{},
+		Flags:             protoiface.SupportMarshalDeterministic | protoiface.SupportUnmarshalDiscardUnknown,
+		Size:              size,
+		Marshal:           marshal,
+		Unmarshal:         unmarshal,
+		Merge:             nil,
+		CheckInitialized:  nil,
+	}
+}
+
+var (
 	md_NodeJail                protoreflect.MessageDescriptor
 	fd_NodeJail_release_height protoreflect.FieldDescriptor
 	fd_NodeJail_reason         protoreflect.FieldDescriptor
@@ -3283,7 +5394,7 @@ func (x *NodeJail) ProtoReflect() protoreflect.Message {
 }
 
 func (x *NodeJail) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_node_proto_msgTypes[4]
+	mi := &file_types_query_node_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3751,7 +5862,7 @@ func (x *ChainHeight) ProtoReflect() protoreflect.Message {
 }
 
 func (x *ChainHeight) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_node_proto_msgTypes[5]
+	mi := &file_types_query_node_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4221,7 +6332,7 @@ func (x *NodePreflightStatus) ProtoReflect() protoreflect.Message {
 }
 
 func (x *NodePreflightStatus) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_node_proto_msgTypes[6]
+	mi := &file_types_query_node_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5071,6 +7182,218 @@ func (x *QueryNodesResponse) GetNodes() []*QueryNodeResponse {
 	return nil
 }
 
+type QueryNodeMetricsRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Height string `protobuf:"bytes,1,opt,name=height,proto3" json:"height,omitempty"`
+}
+
+func (x *QueryNodeMetricsRequest) Reset() {
+	*x = QueryNodeMetricsRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_types_query_node_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *QueryNodeMetricsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueryNodeMetricsRequest) ProtoMessage() {}
+
+// Deprecated: Use QueryNodeMetricsRequest.ProtoReflect.Descriptor instead.
+func (*QueryNodeMetricsRequest) Descriptor() ([]byte, []int) {
+	return file_types_query_node_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *QueryNodeMetricsRequest) GetHeight() string {
+	if x != nil {
+		return x.Height
+	}
+	return ""
+}
+
+type QueryNodeMetricsResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	NextSlot                 uint64 `protobuf:"varint,1,opt,name=next_slot,json=nextSlot,proto3" json:"next_slot,omitempty"`
+	NextSlotBondRequiredSats uint64 `protobuf:"varint,2,opt,name=next_slot_bond_required_sats,json=nextSlotBondRequiredSats,proto3" json:"next_slot_bond_required_sats,omitempty"`
+	BondStartAmountSats      uint64 `protobuf:"varint,3,opt,name=bond_start_amount_sats,json=bondStartAmountSats,proto3" json:"bond_start_amount_sats,omitempty"`
+	BondSlotIncrementSats    uint64 `protobuf:"varint,4,opt,name=bond_slot_increment_sats,json=bondSlotIncrementSats,proto3" json:"bond_slot_increment_sats,omitempty"`
+	ActiveSlots              uint64 `protobuf:"varint,5,opt,name=active_slots,json=activeSlots,proto3" json:"active_slots,omitempty"`
+	StandbySlots             uint64 `protobuf:"varint,6,opt,name=standby_slots,json=standbySlots,proto3" json:"standby_slots,omitempty"`
+	SoldSlots                uint64 `protobuf:"varint,7,opt,name=sold_slots,json=soldSlots,proto3" json:"sold_slots,omitempty"`
+	PendingBondSats          uint64 `protobuf:"varint,8,opt,name=pending_bond_sats,json=pendingBondSats,proto3" json:"pending_bond_sats,omitempty"`
+	ConfirmedBondSats        uint64 `protobuf:"varint,9,opt,name=confirmed_bond_sats,json=confirmedBondSats,proto3" json:"confirmed_bond_sats,omitempty"`
+}
+
+func (x *QueryNodeMetricsResponse) Reset() {
+	*x = QueryNodeMetricsResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_types_query_node_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *QueryNodeMetricsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueryNodeMetricsResponse) ProtoMessage() {}
+
+// Deprecated: Use QueryNodeMetricsResponse.ProtoReflect.Descriptor instead.
+func (*QueryNodeMetricsResponse) Descriptor() ([]byte, []int) {
+	return file_types_query_node_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *QueryNodeMetricsResponse) GetNextSlot() uint64 {
+	if x != nil {
+		return x.NextSlot
+	}
+	return 0
+}
+
+func (x *QueryNodeMetricsResponse) GetNextSlotBondRequiredSats() uint64 {
+	if x != nil {
+		return x.NextSlotBondRequiredSats
+	}
+	return 0
+}
+
+func (x *QueryNodeMetricsResponse) GetBondStartAmountSats() uint64 {
+	if x != nil {
+		return x.BondStartAmountSats
+	}
+	return 0
+}
+
+func (x *QueryNodeMetricsResponse) GetBondSlotIncrementSats() uint64 {
+	if x != nil {
+		return x.BondSlotIncrementSats
+	}
+	return 0
+}
+
+func (x *QueryNodeMetricsResponse) GetActiveSlots() uint64 {
+	if x != nil {
+		return x.ActiveSlots
+	}
+	return 0
+}
+
+func (x *QueryNodeMetricsResponse) GetStandbySlots() uint64 {
+	if x != nil {
+		return x.StandbySlots
+	}
+	return 0
+}
+
+func (x *QueryNodeMetricsResponse) GetSoldSlots() uint64 {
+	if x != nil {
+		return x.SoldSlots
+	}
+	return 0
+}
+
+func (x *QueryNodeMetricsResponse) GetPendingBondSats() uint64 {
+	if x != nil {
+		return x.PendingBondSats
+	}
+	return 0
+}
+
+func (x *QueryNodeMetricsResponse) GetConfirmedBondSats() uint64 {
+	if x != nil {
+		return x.ConfirmedBondSats
+	}
+	return 0
+}
+
+type QueryNodeSlotRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Slot   uint64 `protobuf:"varint,1,opt,name=slot,proto3" json:"slot,omitempty"`
+	Height string `protobuf:"bytes,2,opt,name=height,proto3" json:"height,omitempty"`
+}
+
+func (x *QueryNodeSlotRequest) Reset() {
+	*x = QueryNodeSlotRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_types_query_node_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *QueryNodeSlotRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueryNodeSlotRequest) ProtoMessage() {}
+
+// Deprecated: Use QueryNodeSlotRequest.ProtoReflect.Descriptor instead.
+func (*QueryNodeSlotRequest) Descriptor() ([]byte, []int) {
+	return file_types_query_node_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *QueryNodeSlotRequest) GetSlot() uint64 {
+	if x != nil {
+		return x.Slot
+	}
+	return 0
+}
+
+func (x *QueryNodeSlotRequest) GetHeight() string {
+	if x != nil {
+		return x.Height
+	}
+	return ""
+}
+
+type QueryNodeSlotResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Bond *QueryShielderBondResponse `protobuf:"bytes,1,opt,name=bond,proto3" json:"bond,omitempty"`
+}
+
+func (x *QueryNodeSlotResponse) Reset() {
+	*x = QueryNodeSlotResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_types_query_node_proto_msgTypes[7]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *QueryNodeSlotResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueryNodeSlotResponse) ProtoMessage() {}
+
+// Deprecated: Use QueryNodeSlotResponse.ProtoReflect.Descriptor instead.
+func (*QueryNodeSlotResponse) Descriptor() ([]byte, []int) {
+	return file_types_query_node_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *QueryNodeSlotResponse) GetBond() *QueryShielderBondResponse {
+	if x != nil {
+		return x.Bond
+	}
+	return nil
+}
+
 type NodeJail struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -5083,7 +7406,7 @@ type NodeJail struct {
 func (x *NodeJail) Reset() {
 	*x = NodeJail{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_node_proto_msgTypes[4]
+		mi := &file_types_query_node_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5097,7 +7420,7 @@ func (*NodeJail) ProtoMessage() {}
 
 // Deprecated: Use NodeJail.ProtoReflect.Descriptor instead.
 func (*NodeJail) Descriptor() ([]byte, []int) {
-	return file_types_query_node_proto_rawDescGZIP(), []int{4}
+	return file_types_query_node_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *NodeJail) GetReleaseHeight() int64 {
@@ -5126,7 +7449,7 @@ type ChainHeight struct {
 func (x *ChainHeight) Reset() {
 	*x = ChainHeight{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_node_proto_msgTypes[5]
+		mi := &file_types_query_node_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5140,7 +7463,7 @@ func (*ChainHeight) ProtoMessage() {}
 
 // Deprecated: Use ChainHeight.ProtoReflect.Descriptor instead.
 func (*ChainHeight) Descriptor() ([]byte, []int) {
-	return file_types_query_node_proto_rawDescGZIP(), []int{5}
+	return file_types_query_node_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ChainHeight) GetChain() string {
@@ -5172,7 +7495,7 @@ type NodePreflightStatus struct {
 func (x *NodePreflightStatus) Reset() {
 	*x = NodePreflightStatus{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_node_proto_msgTypes[6]
+		mi := &file_types_query_node_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5186,7 +7509,7 @@ func (*NodePreflightStatus) ProtoMessage() {}
 
 // Deprecated: Use NodePreflightStatus.ProtoReflect.Descriptor instead.
 func (*NodePreflightStatus) Descriptor() ([]byte, []int) {
-	return file_types_query_node_proto_rawDescGZIP(), []int{6}
+	return file_types_query_node_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *NodePreflightStatus) GetStatus() string {
@@ -5217,128 +7540,169 @@ var file_types_query_node_proto_rawDesc = []byte{
 	0x64, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x05, 0x74, 0x79, 0x70, 0x65, 0x73, 0x1a,
 	0x14, 0x67, 0x6f, 0x67, 0x6f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67, 0x6f, 0x67, 0x6f, 0x2e,
 	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x13, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2f, 0x63, 0x6f,
-	0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x44, 0x0a, 0x10, 0x51, 0x75,
-	0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18,
-	0x0a, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67,
-	0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74,
-	0x22, 0xa6, 0x0a, 0x0a, 0x11, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x33, 0x0a, 0x0c, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x61,
-	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x10, 0xea, 0xde,
-	0x1f, 0x0c, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x0b,
-	0x6e, 0x6f, 0x64, 0x65, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x22, 0x0a, 0x06, 0x73,
-	0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0a, 0xea, 0xde, 0x1f,
-	0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12,
-	0x46, 0x0a, 0x0b, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x5f, 0x73, 0x65, 0x74, 0x18, 0x03,
-	0x20, 0x01, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x50, 0x75,
-	0x62, 0x4b, 0x65, 0x79, 0x53, 0x65, 0x74, 0x42, 0x13, 0xc8, 0xde, 0x1f, 0x00, 0xea, 0xde, 0x1f,
-	0x0b, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x5f, 0x73, 0x65, 0x74, 0x52, 0x09, 0x70, 0x75,
-	0x62, 0x4b, 0x65, 0x79, 0x53, 0x65, 0x74, 0x12, 0x40, 0x0a, 0x11, 0x6e, 0x6f, 0x64, 0x65, 0x5f,
-	0x63, 0x6f, 0x6e, 0x73, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x04, 0x20, 0x01,
-	0x28, 0x09, 0x42, 0x15, 0xea, 0xde, 0x1f, 0x11, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x63, 0x6f, 0x6e,
-	0x73, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x52, 0x0e, 0x6e, 0x6f, 0x64, 0x65, 0x43,
-	0x6f, 0x6e, 0x73, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x24, 0x0a, 0x07, 0x70, 0x65, 0x65,
-	0x72, 0x5f, 0x69, 0x64, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0b, 0xea, 0xde, 0x1f, 0x07,
-	0x70, 0x65, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x52, 0x06, 0x70, 0x65, 0x65, 0x72, 0x49, 0x64, 0x12,
-	0x47, 0x0a, 0x13, 0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x5f,
-	0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x06, 0x20, 0x01, 0x28, 0x03, 0x42, 0x17, 0xea, 0xde,
-	0x1f, 0x13, 0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x5f, 0x68,
-	0x65, 0x69, 0x67, 0x68, 0x74, 0x52, 0x11, 0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x42, 0x6c, 0x6f,
-	0x63, 0x6b, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x33, 0x0a, 0x0c, 0x73, 0x74, 0x61, 0x74,
-	0x75, 0x73, 0x5f, 0x73, 0x69, 0x6e, 0x63, 0x65, 0x18, 0x07, 0x20, 0x01, 0x28, 0x03, 0x42, 0x10,
-	0xea, 0xde, 0x1f, 0x0c, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x5f, 0x73, 0x69, 0x6e, 0x63, 0x65,
-	0x52, 0x0b, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x53, 0x69, 0x6e, 0x63, 0x65, 0x12, 0x4d, 0x0a,
-	0x15, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x61,
-	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x08, 0x20, 0x01, 0x28, 0x09, 0x42, 0x19, 0xea, 0xde,
-	0x1f, 0x15, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f,
-	0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x13, 0x6e, 0x6f, 0x64, 0x65, 0x4f, 0x70, 0x65,
-	0x72, 0x61, 0x74, 0x6f, 0x72, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x2d, 0x0a, 0x0a,
-	0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x62, 0x6f, 0x6e, 0x64, 0x18, 0x09, 0x20, 0x01, 0x28, 0x09,
-	0x42, 0x0e, 0xea, 0xde, 0x1f, 0x0a, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x62, 0x6f, 0x6e, 0x64,
-	0x52, 0x09, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x42, 0x6f, 0x6e, 0x64, 0x12, 0x42, 0x0a, 0x11, 0x73,
-	0x69, 0x67, 0x6e, 0x65, 0x72, 0x5f, 0x6d, 0x65, 0x6d, 0x62, 0x65, 0x72, 0x73, 0x68, 0x69, 0x70,
-	0x18, 0x0b, 0x20, 0x03, 0x28, 0x09, 0x42, 0x15, 0xea, 0xde, 0x1f, 0x11, 0x73, 0x69, 0x67, 0x6e,
-	0x65, 0x72, 0x5f, 0x6d, 0x65, 0x6d, 0x62, 0x65, 0x72, 0x73, 0x68, 0x69, 0x70, 0x52, 0x10, 0x73,
-	0x69, 0x67, 0x6e, 0x65, 0x72, 0x4d, 0x65, 0x6d, 0x62, 0x65, 0x72, 0x73, 0x68, 0x69, 0x70, 0x12,
-	0x44, 0x0a, 0x12, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x65, 0x64, 0x5f, 0x74, 0x6f, 0x5f,
-	0x6c, 0x65, 0x61, 0x76, 0x65, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x08, 0x42, 0x16, 0xea, 0xde, 0x1f,
-	0x12, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x65, 0x64, 0x5f, 0x74, 0x6f, 0x5f, 0x6c, 0x65,
-	0x61, 0x76, 0x65, 0x52, 0x10, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x65, 0x64, 0x54, 0x6f,
-	0x4c, 0x65, 0x61, 0x76, 0x65, 0x12, 0x3b, 0x0a, 0x0f, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x64, 0x5f,
-	0x74, 0x6f, 0x5f, 0x6c, 0x65, 0x61, 0x76, 0x65, 0x18, 0x0d, 0x20, 0x01, 0x28, 0x08, 0x42, 0x13,
-	0xea, 0xde, 0x1f, 0x0f, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x64, 0x5f, 0x74, 0x6f, 0x5f, 0x6c, 0x65,
-	0x61, 0x76, 0x65, 0x52, 0x0d, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x64, 0x54, 0x6f, 0x4c, 0x65, 0x61,
-	0x76, 0x65, 0x12, 0x33, 0x0a, 0x0c, 0x6c, 0x65, 0x61, 0x76, 0x65, 0x5f, 0x68, 0x65, 0x69, 0x67,
-	0x68, 0x74, 0x18, 0x0e, 0x20, 0x01, 0x28, 0x03, 0x42, 0x10, 0xea, 0xde, 0x1f, 0x0c, 0x6c, 0x65,
-	0x61, 0x76, 0x65, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x52, 0x0b, 0x6c, 0x65, 0x61, 0x76,
-	0x65, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x2d, 0x0a, 0x0a, 0x69, 0x70, 0x5f, 0x61, 0x64,
-	0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x0f, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0e, 0xea, 0xde, 0x1f,
-	0x0a, 0x69, 0x70, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x09, 0x69, 0x70, 0x41,
-	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x25, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f,
-	0x6e, 0x18, 0x10, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0b, 0xea, 0xde, 0x1f, 0x07, 0x76, 0x65, 0x72,
-	0x73, 0x69, 0x6f, 0x6e, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x33, 0x0a,
-	0x0c, 0x73, 0x6c, 0x61, 0x73, 0x68, 0x5f, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x73, 0x18, 0x11, 0x20,
-	0x01, 0x28, 0x03, 0x42, 0x10, 0xea, 0xde, 0x1f, 0x0c, 0x73, 0x6c, 0x61, 0x73, 0x68, 0x5f, 0x70,
-	0x6f, 0x69, 0x6e, 0x74, 0x73, 0x52, 0x0b, 0x73, 0x6c, 0x61, 0x73, 0x68, 0x50, 0x6f, 0x69, 0x6e,
-	0x74, 0x73, 0x12, 0x2d, 0x0a, 0x04, 0x6a, 0x61, 0x69, 0x6c, 0x18, 0x12, 0x20, 0x01, 0x28, 0x0b,
-	0x32, 0x0f, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x4e, 0x6f, 0x64, 0x65, 0x4a, 0x61, 0x69,
-	0x6c, 0x42, 0x08, 0xea, 0xde, 0x1f, 0x04, 0x6a, 0x61, 0x69, 0x6c, 0x52, 0x04, 0x6a, 0x61, 0x69,
-	0x6c, 0x12, 0x36, 0x0a, 0x0d, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x5f, 0x61, 0x77, 0x61,
-	0x72, 0x64, 0x18, 0x13, 0x20, 0x01, 0x28, 0x09, 0x42, 0x11, 0xea, 0xde, 0x1f, 0x0d, 0x63, 0x75,
-	0x72, 0x72, 0x65, 0x6e, 0x74, 0x5f, 0x61, 0x77, 0x61, 0x72, 0x64, 0x52, 0x0c, 0x63, 0x75, 0x72,
-	0x72, 0x65, 0x6e, 0x74, 0x41, 0x77, 0x61, 0x72, 0x64, 0x12, 0x4d, 0x0a, 0x0e, 0x6f, 0x62, 0x73,
-	0x65, 0x72, 0x76, 0x65, 0x5f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x73, 0x18, 0x14, 0x20, 0x03, 0x28,
-	0x0b, 0x32, 0x12, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x48,
-	0x65, 0x69, 0x67, 0x68, 0x74, 0x42, 0x12, 0xea, 0xde, 0x1f, 0x0e, 0x6f, 0x62, 0x73, 0x65, 0x72,
-	0x76, 0x65, 0x5f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x73, 0x52, 0x0d, 0x6f, 0x62, 0x73, 0x65, 0x72,
-	0x76, 0x65, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x73, 0x12, 0x5b, 0x0a, 0x10, 0x70, 0x72, 0x65, 0x66,
-	0x6c, 0x69, 0x67, 0x68, 0x74, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x15, 0x20, 0x01,
-	0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x4e, 0x6f, 0x64, 0x65, 0x50,
-	0x72, 0x65, 0x66, 0x6c, 0x69, 0x67, 0x68, 0x74, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x42, 0x14,
-	0xea, 0xde, 0x1f, 0x10, 0x70, 0x72, 0x65, 0x66, 0x6c, 0x69, 0x67, 0x68, 0x74, 0x5f, 0x73, 0x74,
-	0x61, 0x74, 0x75, 0x73, 0x52, 0x0f, 0x70, 0x72, 0x65, 0x66, 0x6c, 0x69, 0x67, 0x68, 0x74, 0x53,
-	0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x31, 0x0a, 0x0b, 0x6d, 0x61, 0x69, 0x6e, 0x74, 0x65, 0x6e,
-	0x61, 0x6e, 0x63, 0x65, 0x18, 0x16, 0x20, 0x01, 0x28, 0x08, 0x42, 0x0f, 0xea, 0xde, 0x1f, 0x0b,
-	0x6d, 0x61, 0x69, 0x6e, 0x74, 0x65, 0x6e, 0x61, 0x6e, 0x63, 0x65, 0x52, 0x0b, 0x6d, 0x61, 0x69,
-	0x6e, 0x74, 0x65, 0x6e, 0x61, 0x6e, 0x63, 0x65, 0x12, 0x39, 0x0a, 0x0e, 0x6d, 0x69, 0x73, 0x73,
-	0x69, 0x6e, 0x67, 0x5f, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x18, 0x17, 0x20, 0x01, 0x28, 0x03,
-	0x42, 0x12, 0xea, 0xde, 0x1f, 0x0e, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6e, 0x67, 0x5f, 0x62, 0x6c,
-	0x6f, 0x63, 0x6b, 0x73, 0x52, 0x0d, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6e, 0x67, 0x42, 0x6c, 0x6f,
-	0x63, 0x6b, 0x73, 0x4a, 0x04, 0x08, 0x0a, 0x10, 0x0b, 0x22, 0x2b, 0x0a, 0x11, 0x51, 0x75, 0x65,
-	0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16,
-	0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06,
-	0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x44, 0x0a, 0x12, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e,
-	0x6f, 0x64, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2e, 0x0a, 0x05,
-	0x6e, 0x6f, 0x64, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x18, 0x2e, 0x74, 0x79,
-	0x70, 0x65, 0x73, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x52, 0x05, 0x6e, 0x6f, 0x64, 0x65, 0x73, 0x22, 0x49, 0x0a, 0x08,
-	0x4e, 0x6f, 0x64, 0x65, 0x4a, 0x61, 0x69, 0x6c, 0x12, 0x25, 0x0a, 0x0e, 0x72, 0x65, 0x6c, 0x65,
-	0x61, 0x73, 0x65, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03,
-	0x52, 0x0d, 0x72, 0x65, 0x6c, 0x65, 0x61, 0x73, 0x65, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12,
-	0x16, 0x0a, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x22, 0x52, 0x0a, 0x0b, 0x43, 0x68, 0x61, 0x69, 0x6e,
-	0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x1f, 0x0a, 0x05, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x09, 0xea, 0xde, 0x1f, 0x05, 0x63, 0x68, 0x61, 0x69, 0x6e,
-	0x52, 0x05, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x12, 0x22, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68,
-	0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x42, 0x0a, 0xea, 0xde, 0x1f, 0x06, 0x68, 0x65, 0x69,
-	0x67, 0x68, 0x74, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x7b, 0x0a, 0x13, 0x4e,
-	0x6f, 0x64, 0x65, 0x50, 0x72, 0x65, 0x66, 0x6c, 0x69, 0x67, 0x68, 0x74, 0x53, 0x74, 0x61, 0x74,
-	0x75, 0x73, 0x12, 0x22, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x42, 0x0a, 0xea, 0xde, 0x1f, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x06,
-	0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x22, 0x0a, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0a, 0xea, 0xde, 0x1f, 0x06, 0x72, 0x65, 0x61, 0x73,
-	0x6f, 0x6e, 0x52, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x12, 0x1c, 0x0a, 0x04, 0x63, 0x6f,
-	0x64, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x42, 0x08, 0xea, 0xde, 0x1f, 0x04, 0x63, 0x6f,
-	0x64, 0x65, 0x52, 0x04, 0x63, 0x6f, 0x64, 0x65, 0x42, 0x82, 0x01, 0x0a, 0x09, 0x63, 0x6f, 0x6d,
-	0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x42, 0x0e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64,
-	0x65, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
-	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73,
-	0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70,
-	0x69, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x05,
-	0x54, 0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2, 0x02, 0x11,
-	0x54, 0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74,
-	0x61, 0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xc8, 0xe2, 0x1e, 0x01, 0x62, 0x06, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x1a, 0x74, 0x79, 0x70, 0x65,
+	0x73, 0x2f, 0x71, 0x75, 0x65, 0x72, 0x79, 0x5f, 0x73, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72,
+	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x44, 0x0a, 0x10, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e,
+	0x6f, 0x64, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x61, 0x64,
+	0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x61, 0x64, 0x64,
+	0x72, 0x65, 0x73, 0x73, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0xa6, 0x0a, 0x0a,
+	0x11, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x33, 0x0a, 0x0c, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x65,
+	0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x10, 0xea, 0xde, 0x1f, 0x0c, 0x6e, 0x6f,
+	0x64, 0x65, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x0b, 0x6e, 0x6f, 0x64, 0x65,
+	0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x22, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75,
+	0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0a, 0xea, 0xde, 0x1f, 0x06, 0x73, 0x74, 0x61,
+	0x74, 0x75, 0x73, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x46, 0x0a, 0x0b, 0x70,
+	0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x5f, 0x73, 0x65, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x11, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79,
+	0x53, 0x65, 0x74, 0x42, 0x13, 0xc8, 0xde, 0x1f, 0x00, 0xea, 0xde, 0x1f, 0x0b, 0x70, 0x75, 0x62,
+	0x5f, 0x6b, 0x65, 0x79, 0x5f, 0x73, 0x65, 0x74, 0x52, 0x09, 0x70, 0x75, 0x62, 0x4b, 0x65, 0x79,
+	0x53, 0x65, 0x74, 0x12, 0x40, 0x0a, 0x11, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x63, 0x6f, 0x6e, 0x73,
+	0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x42, 0x15,
+	0xea, 0xde, 0x1f, 0x11, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x63, 0x6f, 0x6e, 0x73, 0x5f, 0x70, 0x75,
+	0x62, 0x5f, 0x6b, 0x65, 0x79, 0x52, 0x0e, 0x6e, 0x6f, 0x64, 0x65, 0x43, 0x6f, 0x6e, 0x73, 0x50,
+	0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x24, 0x0a, 0x07, 0x70, 0x65, 0x65, 0x72, 0x5f, 0x69, 0x64,
+	0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0b, 0xea, 0xde, 0x1f, 0x07, 0x70, 0x65, 0x65, 0x72,
+	0x5f, 0x69, 0x64, 0x52, 0x06, 0x70, 0x65, 0x65, 0x72, 0x49, 0x64, 0x12, 0x47, 0x0a, 0x13, 0x61,
+	0x63, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x5f, 0x68, 0x65, 0x69, 0x67,
+	0x68, 0x74, 0x18, 0x06, 0x20, 0x01, 0x28, 0x03, 0x42, 0x17, 0xea, 0xde, 0x1f, 0x13, 0x61, 0x63,
+	0x74, 0x69, 0x76, 0x65, 0x5f, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68,
+	0x74, 0x52, 0x11, 0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x48, 0x65,
+	0x69, 0x67, 0x68, 0x74, 0x12, 0x33, 0x0a, 0x0c, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x5f, 0x73,
+	0x69, 0x6e, 0x63, 0x65, 0x18, 0x07, 0x20, 0x01, 0x28, 0x03, 0x42, 0x10, 0xea, 0xde, 0x1f, 0x0c,
+	0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x5f, 0x73, 0x69, 0x6e, 0x63, 0x65, 0x52, 0x0b, 0x73, 0x74,
+	0x61, 0x74, 0x75, 0x73, 0x53, 0x69, 0x6e, 0x63, 0x65, 0x12, 0x4d, 0x0a, 0x15, 0x6e, 0x6f, 0x64,
+	0x65, 0x5f, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x65,
+	0x73, 0x73, 0x18, 0x08, 0x20, 0x01, 0x28, 0x09, 0x42, 0x19, 0xea, 0xde, 0x1f, 0x15, 0x6e, 0x6f,
+	0x64, 0x65, 0x5f, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x61, 0x64, 0x64, 0x72,
+	0x65, 0x73, 0x73, 0x52, 0x13, 0x6e, 0x6f, 0x64, 0x65, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f,
+	0x72, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x2d, 0x0a, 0x0a, 0x74, 0x6f, 0x74, 0x61,
+	0x6c, 0x5f, 0x62, 0x6f, 0x6e, 0x64, 0x18, 0x09, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0e, 0xea, 0xde,
+	0x1f, 0x0a, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x62, 0x6f, 0x6e, 0x64, 0x52, 0x09, 0x74, 0x6f,
+	0x74, 0x61, 0x6c, 0x42, 0x6f, 0x6e, 0x64, 0x12, 0x42, 0x0a, 0x11, 0x73, 0x69, 0x67, 0x6e, 0x65,
+	0x72, 0x5f, 0x6d, 0x65, 0x6d, 0x62, 0x65, 0x72, 0x73, 0x68, 0x69, 0x70, 0x18, 0x0b, 0x20, 0x03,
+	0x28, 0x09, 0x42, 0x15, 0xea, 0xde, 0x1f, 0x11, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x5f, 0x6d,
+	0x65, 0x6d, 0x62, 0x65, 0x72, 0x73, 0x68, 0x69, 0x70, 0x52, 0x10, 0x73, 0x69, 0x67, 0x6e, 0x65,
+	0x72, 0x4d, 0x65, 0x6d, 0x62, 0x65, 0x72, 0x73, 0x68, 0x69, 0x70, 0x12, 0x44, 0x0a, 0x12, 0x72,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x65, 0x64, 0x5f, 0x74, 0x6f, 0x5f, 0x6c, 0x65, 0x61, 0x76,
+	0x65, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x08, 0x42, 0x16, 0xea, 0xde, 0x1f, 0x12, 0x72, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x65, 0x64, 0x5f, 0x74, 0x6f, 0x5f, 0x6c, 0x65, 0x61, 0x76, 0x65, 0x52,
+	0x10, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x65, 0x64, 0x54, 0x6f, 0x4c, 0x65, 0x61, 0x76,
+	0x65, 0x12, 0x3b, 0x0a, 0x0f, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x64, 0x5f, 0x74, 0x6f, 0x5f, 0x6c,
+	0x65, 0x61, 0x76, 0x65, 0x18, 0x0d, 0x20, 0x01, 0x28, 0x08, 0x42, 0x13, 0xea, 0xde, 0x1f, 0x0f,
+	0x66, 0x6f, 0x72, 0x63, 0x65, 0x64, 0x5f, 0x74, 0x6f, 0x5f, 0x6c, 0x65, 0x61, 0x76, 0x65, 0x52,
+	0x0d, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x64, 0x54, 0x6f, 0x4c, 0x65, 0x61, 0x76, 0x65, 0x12, 0x33,
+	0x0a, 0x0c, 0x6c, 0x65, 0x61, 0x76, 0x65, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x0e,
+	0x20, 0x01, 0x28, 0x03, 0x42, 0x10, 0xea, 0xde, 0x1f, 0x0c, 0x6c, 0x65, 0x61, 0x76, 0x65, 0x5f,
+	0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x52, 0x0b, 0x6c, 0x65, 0x61, 0x76, 0x65, 0x48, 0x65, 0x69,
+	0x67, 0x68, 0x74, 0x12, 0x2d, 0x0a, 0x0a, 0x69, 0x70, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73,
+	0x73, 0x18, 0x0f, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0e, 0xea, 0xde, 0x1f, 0x0a, 0x69, 0x70, 0x5f,
+	0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x09, 0x69, 0x70, 0x41, 0x64, 0x64, 0x72, 0x65,
+	0x73, 0x73, 0x12, 0x25, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x10, 0x20,
+	0x01, 0x28, 0x09, 0x42, 0x0b, 0xea, 0xde, 0x1f, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e,
+	0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x33, 0x0a, 0x0c, 0x73, 0x6c, 0x61,
+	0x73, 0x68, 0x5f, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x73, 0x18, 0x11, 0x20, 0x01, 0x28, 0x03, 0x42,
+	0x10, 0xea, 0xde, 0x1f, 0x0c, 0x73, 0x6c, 0x61, 0x73, 0x68, 0x5f, 0x70, 0x6f, 0x69, 0x6e, 0x74,
+	0x73, 0x52, 0x0b, 0x73, 0x6c, 0x61, 0x73, 0x68, 0x50, 0x6f, 0x69, 0x6e, 0x74, 0x73, 0x12, 0x2d,
+	0x0a, 0x04, 0x6a, 0x61, 0x69, 0x6c, 0x18, 0x12, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x74,
+	0x79, 0x70, 0x65, 0x73, 0x2e, 0x4e, 0x6f, 0x64, 0x65, 0x4a, 0x61, 0x69, 0x6c, 0x42, 0x08, 0xea,
+	0xde, 0x1f, 0x04, 0x6a, 0x61, 0x69, 0x6c, 0x52, 0x04, 0x6a, 0x61, 0x69, 0x6c, 0x12, 0x36, 0x0a,
+	0x0d, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x5f, 0x61, 0x77, 0x61, 0x72, 0x64, 0x18, 0x13,
+	0x20, 0x01, 0x28, 0x09, 0x42, 0x11, 0xea, 0xde, 0x1f, 0x0d, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e,
+	0x74, 0x5f, 0x61, 0x77, 0x61, 0x72, 0x64, 0x52, 0x0c, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74,
+	0x41, 0x77, 0x61, 0x72, 0x64, 0x12, 0x4d, 0x0a, 0x0e, 0x6f, 0x62, 0x73, 0x65, 0x72, 0x76, 0x65,
+	0x5f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x73, 0x18, 0x14, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x12, 0x2e,
+	0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x48, 0x65, 0x69, 0x67, 0x68,
+	0x74, 0x42, 0x12, 0xea, 0xde, 0x1f, 0x0e, 0x6f, 0x62, 0x73, 0x65, 0x72, 0x76, 0x65, 0x5f, 0x63,
+	0x68, 0x61, 0x69, 0x6e, 0x73, 0x52, 0x0d, 0x6f, 0x62, 0x73, 0x65, 0x72, 0x76, 0x65, 0x43, 0x68,
+	0x61, 0x69, 0x6e, 0x73, 0x12, 0x5b, 0x0a, 0x10, 0x70, 0x72, 0x65, 0x66, 0x6c, 0x69, 0x67, 0x68,
+	0x74, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x15, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a,
+	0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x4e, 0x6f, 0x64, 0x65, 0x50, 0x72, 0x65, 0x66, 0x6c,
+	0x69, 0x67, 0x68, 0x74, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x42, 0x14, 0xea, 0xde, 0x1f, 0x10,
+	0x70, 0x72, 0x65, 0x66, 0x6c, 0x69, 0x67, 0x68, 0x74, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73,
+	0x52, 0x0f, 0x70, 0x72, 0x65, 0x66, 0x6c, 0x69, 0x67, 0x68, 0x74, 0x53, 0x74, 0x61, 0x74, 0x75,
+	0x73, 0x12, 0x31, 0x0a, 0x0b, 0x6d, 0x61, 0x69, 0x6e, 0x74, 0x65, 0x6e, 0x61, 0x6e, 0x63, 0x65,
+	0x18, 0x16, 0x20, 0x01, 0x28, 0x08, 0x42, 0x0f, 0xea, 0xde, 0x1f, 0x0b, 0x6d, 0x61, 0x69, 0x6e,
+	0x74, 0x65, 0x6e, 0x61, 0x6e, 0x63, 0x65, 0x52, 0x0b, 0x6d, 0x61, 0x69, 0x6e, 0x74, 0x65, 0x6e,
+	0x61, 0x6e, 0x63, 0x65, 0x12, 0x39, 0x0a, 0x0e, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6e, 0x67, 0x5f,
+	0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x18, 0x17, 0x20, 0x01, 0x28, 0x03, 0x42, 0x12, 0xea, 0xde,
+	0x1f, 0x0e, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6e, 0x67, 0x5f, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x73,
+	0x52, 0x0d, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6e, 0x67, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73, 0x4a,
+	0x04, 0x08, 0x0a, 0x10, 0x0b, 0x22, 0x2b, 0x0a, 0x11, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f,
+	0x64, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65,
+	0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67,
+	0x68, 0x74, 0x22, 0x44, 0x0a, 0x12, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x73,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2e, 0x0a, 0x05, 0x6e, 0x6f, 0x64, 0x65,
+	0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x18, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e,
+	0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x52, 0x05, 0x6e, 0x6f, 0x64, 0x65, 0x73, 0x22, 0x31, 0x0a, 0x17, 0x51, 0x75, 0x65, 0x72,
+	0x79, 0x4e, 0x6f, 0x64, 0x65, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0xa8, 0x03, 0x0a, 0x18,
+	0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1b, 0x0a, 0x09, 0x6e, 0x65, 0x78, 0x74,
+	0x5f, 0x73, 0x6c, 0x6f, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x08, 0x6e, 0x65, 0x78,
+	0x74, 0x53, 0x6c, 0x6f, 0x74, 0x12, 0x3e, 0x0a, 0x1c, 0x6e, 0x65, 0x78, 0x74, 0x5f, 0x73, 0x6c,
+	0x6f, 0x74, 0x5f, 0x62, 0x6f, 0x6e, 0x64, 0x5f, 0x72, 0x65, 0x71, 0x75, 0x69, 0x72, 0x65, 0x64,
+	0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x04, 0x52, 0x18, 0x6e, 0x65, 0x78,
+	0x74, 0x53, 0x6c, 0x6f, 0x74, 0x42, 0x6f, 0x6e, 0x64, 0x52, 0x65, 0x71, 0x75, 0x69, 0x72, 0x65,
+	0x64, 0x53, 0x61, 0x74, 0x73, 0x12, 0x33, 0x0a, 0x16, 0x62, 0x6f, 0x6e, 0x64, 0x5f, 0x73, 0x74,
+	0x61, 0x72, 0x74, 0x5f, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18,
+	0x03, 0x20, 0x01, 0x28, 0x04, 0x52, 0x13, 0x62, 0x6f, 0x6e, 0x64, 0x53, 0x74, 0x61, 0x72, 0x74,
+	0x41, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x53, 0x61, 0x74, 0x73, 0x12, 0x37, 0x0a, 0x18, 0x62, 0x6f,
+	0x6e, 0x64, 0x5f, 0x73, 0x6c, 0x6f, 0x74, 0x5f, 0x69, 0x6e, 0x63, 0x72, 0x65, 0x6d, 0x65, 0x6e,
+	0x74, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x04, 0x20, 0x01, 0x28, 0x04, 0x52, 0x15, 0x62, 0x6f,
+	0x6e, 0x64, 0x53, 0x6c, 0x6f, 0x74, 0x49, 0x6e, 0x63, 0x72, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x53,
+	0x61, 0x74, 0x73, 0x12, 0x21, 0x0a, 0x0c, 0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x73, 0x6c,
+	0x6f, 0x74, 0x73, 0x18, 0x05, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0b, 0x61, 0x63, 0x74, 0x69, 0x76,
+	0x65, 0x53, 0x6c, 0x6f, 0x74, 0x73, 0x12, 0x23, 0x0a, 0x0d, 0x73, 0x74, 0x61, 0x6e, 0x64, 0x62,
+	0x79, 0x5f, 0x73, 0x6c, 0x6f, 0x74, 0x73, 0x18, 0x06, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0c, 0x73,
+	0x74, 0x61, 0x6e, 0x64, 0x62, 0x79, 0x53, 0x6c, 0x6f, 0x74, 0x73, 0x12, 0x1d, 0x0a, 0x0a, 0x73,
+	0x6f, 0x6c, 0x64, 0x5f, 0x73, 0x6c, 0x6f, 0x74, 0x73, 0x18, 0x07, 0x20, 0x01, 0x28, 0x04, 0x52,
+	0x09, 0x73, 0x6f, 0x6c, 0x64, 0x53, 0x6c, 0x6f, 0x74, 0x73, 0x12, 0x2a, 0x0a, 0x11, 0x70, 0x65,
+	0x6e, 0x64, 0x69, 0x6e, 0x67, 0x5f, 0x62, 0x6f, 0x6e, 0x64, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18,
+	0x08, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0f, 0x70, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x42, 0x6f,
+	0x6e, 0x64, 0x53, 0x61, 0x74, 0x73, 0x12, 0x2e, 0x0a, 0x13, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x72,
+	0x6d, 0x65, 0x64, 0x5f, 0x62, 0x6f, 0x6e, 0x64, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x09, 0x20,
+	0x01, 0x28, 0x04, 0x52, 0x11, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x72, 0x6d, 0x65, 0x64, 0x42, 0x6f,
+	0x6e, 0x64, 0x53, 0x61, 0x74, 0x73, 0x22, 0x42, 0x0a, 0x14, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e,
+	0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12,
+	0x0a, 0x04, 0x73, 0x6c, 0x6f, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x04, 0x73, 0x6c,
+	0x6f, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x4d, 0x0a, 0x15, 0x51, 0x75,
+	0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x12, 0x34, 0x0a, 0x04, 0x62, 0x6f, 0x6e, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x20, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x53,
+	0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x42, 0x6f, 0x6e, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x52, 0x04, 0x62, 0x6f, 0x6e, 0x64, 0x22, 0x49, 0x0a, 0x08, 0x4e, 0x6f, 0x64,
+	0x65, 0x4a, 0x61, 0x69, 0x6c, 0x12, 0x25, 0x0a, 0x0e, 0x72, 0x65, 0x6c, 0x65, 0x61, 0x73, 0x65,
+	0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x72,
+	0x65, 0x6c, 0x65, 0x61, 0x73, 0x65, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x16, 0x0a, 0x06,
+	0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x72, 0x65,
+	0x61, 0x73, 0x6f, 0x6e, 0x22, 0x52, 0x0a, 0x0b, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x48, 0x65, 0x69,
+	0x67, 0x68, 0x74, 0x12, 0x1f, 0x0a, 0x05, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x42, 0x09, 0xea, 0xde, 0x1f, 0x05, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x52, 0x05, 0x63,
+	0x68, 0x61, 0x69, 0x6e, 0x12, 0x22, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x03, 0x42, 0x0a, 0xea, 0xde, 0x1f, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74,
+	0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x7b, 0x0a, 0x13, 0x4e, 0x6f, 0x64, 0x65,
+	0x50, 0x72, 0x65, 0x66, 0x6c, 0x69, 0x67, 0x68, 0x74, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12,
+	0x22, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42,
+	0x0a, 0xea, 0xde, 0x1f, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x06, 0x73, 0x74, 0x61,
+	0x74, 0x75, 0x73, 0x12, 0x22, 0x0a, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x42, 0x0a, 0xea, 0xde, 0x1f, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x52,
+	0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x12, 0x1c, 0x0a, 0x04, 0x63, 0x6f, 0x64, 0x65, 0x18,
+	0x03, 0x20, 0x01, 0x28, 0x03, 0x42, 0x08, 0xea, 0xde, 0x1f, 0x04, 0x63, 0x6f, 0x64, 0x65, 0x52,
+	0x04, 0x63, 0x6f, 0x64, 0x65, 0x42, 0x82, 0x01, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79,
+	0x70, 0x65, 0x73, 0x42, 0x0e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x50, 0x72,
+	0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
+	0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67,
+	0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74,
+	0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x05, 0x54, 0x79, 0x70,
+	0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2, 0x02, 0x11, 0x54, 0x79, 0x70,
+	0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02,
+	0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xc8, 0xe2, 0x1e, 0x01, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var (
@@ -5353,28 +7717,34 @@ func file_types_query_node_proto_rawDescGZIP() []byte {
 	return file_types_query_node_proto_rawDescData
 }
 
-var file_types_query_node_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_types_query_node_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_types_query_node_proto_goTypes = []interface{}{
-	(*QueryNodeRequest)(nil),    // 0: types.QueryNodeRequest
-	(*QueryNodeResponse)(nil),   // 1: types.QueryNodeResponse
-	(*QueryNodesRequest)(nil),   // 2: types.QueryNodesRequest
-	(*QueryNodesResponse)(nil),  // 3: types.QueryNodesResponse
-	(*NodeJail)(nil),            // 4: types.NodeJail
-	(*ChainHeight)(nil),         // 5: types.ChainHeight
-	(*NodePreflightStatus)(nil), // 6: types.NodePreflightStatus
-	(*common.PubKeySet)(nil),    // 7: common.PubKeySet
+	(*QueryNodeRequest)(nil),          // 0: types.QueryNodeRequest
+	(*QueryNodeResponse)(nil),         // 1: types.QueryNodeResponse
+	(*QueryNodesRequest)(nil),         // 2: types.QueryNodesRequest
+	(*QueryNodesResponse)(nil),        // 3: types.QueryNodesResponse
+	(*QueryNodeMetricsRequest)(nil),   // 4: types.QueryNodeMetricsRequest
+	(*QueryNodeMetricsResponse)(nil),  // 5: types.QueryNodeMetricsResponse
+	(*QueryNodeSlotRequest)(nil),      // 6: types.QueryNodeSlotRequest
+	(*QueryNodeSlotResponse)(nil),     // 7: types.QueryNodeSlotResponse
+	(*NodeJail)(nil),                  // 8: types.NodeJail
+	(*ChainHeight)(nil),               // 9: types.ChainHeight
+	(*NodePreflightStatus)(nil),       // 10: types.NodePreflightStatus
+	(*common.PubKeySet)(nil),          // 11: common.PubKeySet
+	(*QueryShielderBondResponse)(nil), // 12: types.QueryShielderBondResponse
 }
 var file_types_query_node_proto_depIdxs = []int32{
-	7, // 0: types.QueryNodeResponse.pub_key_set:type_name -> common.PubKeySet
-	4, // 1: types.QueryNodeResponse.jail:type_name -> types.NodeJail
-	5, // 2: types.QueryNodeResponse.observe_chains:type_name -> types.ChainHeight
-	6, // 3: types.QueryNodeResponse.preflight_status:type_name -> types.NodePreflightStatus
-	1, // 4: types.QueryNodesResponse.nodes:type_name -> types.QueryNodeResponse
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	11, // 0: types.QueryNodeResponse.pub_key_set:type_name -> common.PubKeySet
+	8,  // 1: types.QueryNodeResponse.jail:type_name -> types.NodeJail
+	9,  // 2: types.QueryNodeResponse.observe_chains:type_name -> types.ChainHeight
+	10, // 3: types.QueryNodeResponse.preflight_status:type_name -> types.NodePreflightStatus
+	1,  // 4: types.QueryNodesResponse.nodes:type_name -> types.QueryNodeResponse
+	12, // 5: types.QueryNodeSlotResponse.bond:type_name -> types.QueryShielderBondResponse
+	6,  // [6:6] is the sub-list for method output_type
+	6,  // [6:6] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_types_query_node_proto_init() }
@@ -5382,6 +7752,7 @@ func file_types_query_node_proto_init() {
 	if File_types_query_node_proto != nil {
 		return
 	}
+	file_types_query_shielder_proto_init()
 	if !protoimpl.UnsafeEnabled {
 		file_types_query_node_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*QueryNodeRequest); i {
@@ -5432,7 +7803,7 @@ func file_types_query_node_proto_init() {
 			}
 		}
 		file_types_query_node_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*NodeJail); i {
+			switch v := v.(*QueryNodeMetricsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5444,7 +7815,7 @@ func file_types_query_node_proto_init() {
 			}
 		}
 		file_types_query_node_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ChainHeight); i {
+			switch v := v.(*QueryNodeMetricsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -5456,6 +7827,54 @@ func file_types_query_node_proto_init() {
 			}
 		}
 		file_types_query_node_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*QueryNodeSlotRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_types_query_node_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*QueryNodeSlotResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_types_query_node_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*NodeJail); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_types_query_node_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ChainHeight); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_types_query_node_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*NodePreflightStatus); i {
 			case 0:
 				return &v.state
@@ -5474,7 +7893,7 @@ func file_types_query_node_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_types_query_node_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -208,6 +208,10 @@ func (k KVStore) ShielderMerkleRootExists(ctx cosmos.Context, denominationSats u
 	return k.has(ctx, shielderMerkleRootKey(denominationSats, root))
 }
 
+func (k KVStore) GetShielderMerkleRootIterator(ctx cosmos.Context) cosmos.Iterator {
+	return k.getIterator(ctx, prefixShielderMerkleRoot)
+}
+
 func shielderDenominationPrefix(denominationSats uint64) string {
 	return fmt.Sprintf("%s%020d/", prefixShielderDenomCommitment, denominationSats)
 }
@@ -231,6 +235,18 @@ func (k KVStore) GetShielderWithdrawal(ctx cosmos.Context, withdrawalID string) 
 	record := types.ShielderWithdrawal{WithdrawalID: withdrawalID}
 	_, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderWithdrawal, withdrawalID), &record)
 	return record, err
+}
+
+func (k KVStore) GetShielderWithdrawalByNullifier(ctx cosmos.Context, nullifierHash string) (types.ShielderWithdrawal, error) {
+	var withdrawalID string
+	found, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderNullifier, strings.TrimSpace(nullifierHash)), &withdrawalID)
+	if err != nil {
+		return types.ShielderWithdrawal{}, err
+	}
+	if !found || withdrawalID == "" {
+		return types.ShielderWithdrawal{}, nil
+	}
+	return k.GetShielderWithdrawal(ctx, withdrawalID)
 }
 
 func (k KVStore) SetShielderNullifierSpent(ctx cosmos.Context, nullifierHash string, withdrawalID string) error {

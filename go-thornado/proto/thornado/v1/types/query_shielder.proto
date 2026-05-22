@@ -36,6 +36,59 @@ message QueryShielderFeePoolResponse {
   uint64 total_claimed_sats = 5;
 }
 
+message QueryShielderWithdrawalRequest {
+  string withdrawal_id = 1;
+  string height = 2;
+}
+
+message QueryShielderWithdrawalResponse {
+  string withdrawal_id = 1;
+  string owner = 2;
+  string nullifier_hash = 3;
+  string merkle_root = 4;
+  string recipient = 5;
+  uint64 amount_sats = 6;
+  uint64 fee_sats = 7;
+  string in_hash = 8;
+  string vault_pub_key = 9;
+  int64 requested_height = 10;
+  string status = 11;
+}
+
+message QueryShielderNullifierRequest {
+  string nullifier_hash = 1;
+  string height = 2;
+}
+
+message QueryShielderNullifierResponse {
+  string nullifier_hash = 1;
+  bool spent = 2;
+  string withdrawal_id = 3;
+}
+
+message ShielderRoot {
+  uint64 denomination_sats = 1;
+  string root = 2;
+  uint64 leaf_count = 3;
+}
+
+message QueryShielderRootsRequest { string height = 1; }
+
+message QueryShielderRootsResponse { repeated ShielderRoot roots = 1; }
+
+message QueryShielderWithdrawalQuoteRequest {
+  uint64 amount_sats = 1;
+  string height = 2;
+}
+
+message QueryShielderWithdrawalQuoteResponse {
+  uint64 amount_sats = 1;
+  uint64 fee_sats = 2;
+  uint64 net_sats = 3;
+  uint64 fee_basis_points = 4;
+  uint64 fee_min_sats = 5;
+}
+
 message QueryShielderSessionRequest {
   string owner = 1;
   string height = 2;
@@ -97,6 +150,12 @@ message QueryNodeSlotAuctionResponse {
   int64 updated_height = 12;
 }
 
+message QueryNodeSlotAuctionsRequest { string height = 1; }
+
+message QueryNodeSlotAuctionsResponse {
+  repeated QueryNodeSlotAuctionResponse auctions = 1;
+}
+
 message QueryNodeSlotBidRequest {
   string bid_id = 1;
   string height = 2;
@@ -114,6 +173,15 @@ message QueryNodeSlotBidResponse {
   bool settled = 9;
   int64 created_height = 10;
   int64 updated_height = 11;
+}
+
+message QueryNodeSlotAuctionBidsRequest {
+  string auction_id = 1;
+  string height = 2;
+}
+
+message QueryNodeSlotAuctionBidsResponse {
+  repeated QueryNodeSlotBidResponse bids = 1;
 }
 
 message QueryVaultDepositAddressRequest {
@@ -145,4 +213,10 @@ message QueryShielderFeeEntitlementResponse {
   uint64 fee_per_slot_share = 5;
   bool fee_share_active = 6;
   string pending_fee_deposit_id = 7;
+}
+
+message QueryShielderFeeEntitlementsRequest { string height = 1; }
+
+message QueryShielderFeeEntitlementsResponse {
+  repeated QueryShielderFeeEntitlementResponse entitlements = 1;
 }

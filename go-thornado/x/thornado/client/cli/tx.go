@@ -519,7 +519,7 @@ func observeTxs(outbound bool) func(cmd *cobra.Command, args []string) error {
 // broadcast for the provided transaction ID.
 func findLackingObservation(txid, address, thornadoAPI string) (*common.ObservedTx, error) {
 	// get tx details from thornado API
-	url := fmt.Sprintf("%s/thornado/tx/details/%s", thornadoAPI, txid)
+	url := fmt.Sprintf("%s/thornado/tx/%s", thornadoAPI, txid)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tx details: %w", err)

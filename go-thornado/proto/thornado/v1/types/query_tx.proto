@@ -70,6 +70,8 @@ message QueryTxResponse {
       [ (gogoproto.nullable) = false, (gogoproto.jsontag) = "stages" ];
   repeated TxOutItem actions = 9
       [ (gogoproto.nullable) = false, (gogoproto.jsontag) = "actions" ];
+  repeated QueryObservedTx txs = 10
+      [ (gogoproto.nullable) = false, (gogoproto.jsontag) = "txs" ];
 }
 
 // Same as ObservedTx, but changes block_height and finalise_height (openapi

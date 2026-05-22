@@ -5,6 +5,7 @@ option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
 
 import "gogoproto/gogo.proto";
 import "common/common.proto";
+import "types/query_shielder.proto";
 
 option (gogoproto.marshaler_all) = true;
 
@@ -61,6 +62,27 @@ message QueryNodeResponse {
 message QueryNodesRequest { string height = 1; }
 
 message QueryNodesResponse { repeated QueryNodeResponse nodes = 1; }
+
+message QueryNodeMetricsRequest { string height = 1; }
+
+message QueryNodeMetricsResponse {
+  uint64 next_slot = 1;
+  uint64 next_slot_bond_required_sats = 2;
+  uint64 bond_start_amount_sats = 3;
+  uint64 bond_slot_increment_sats = 4;
+  uint64 active_slots = 5;
+  uint64 standby_slots = 6;
+  uint64 sold_slots = 7;
+  uint64 pending_bond_sats = 8;
+  uint64 confirmed_bond_sats = 9;
+}
+
+message QueryNodeSlotRequest {
+  uint64 slot = 1;
+  string height = 2;
+}
+
+message QueryNodeSlotResponse { QueryShielderBondResponse bond = 1; }
 
 message NodeJail {
   int64 release_height = 1;

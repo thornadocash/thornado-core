@@ -303,6 +303,9 @@ func (k KVStoreDummy) SetShielderNodeBond(_ cosmos.Context, _ types.ShielderNode
 func (k KVStoreDummy) GetShielderNodeBond(_ cosmos.Context, _ string) (types.ShielderNodeBond, error) {
 	return types.ShielderNodeBond{}, kaboom
 }
+func (k KVStoreDummy) GetShielderNodeBondIterator(_ cosmos.Context) cosmos.Iterator {
+	return NewDummyIterator()
+}
 func (k KVStoreDummy) SetShielderFeePool(_ cosmos.Context, _ types.ShielderFeePool) error {
 	return kaboom
 }
@@ -323,6 +326,9 @@ func (k KVStoreDummy) SetNodeSlotAuction(_ cosmos.Context, _ types.NodeSlotAucti
 func (k KVStoreDummy) GetNodeSlotAuction(_ cosmos.Context, _ string) (types.NodeSlotAuction, error) {
 	return types.NodeSlotAuction{}, kaboom
 }
+func (k KVStoreDummy) GetNodeSlotAuctionIterator(_ cosmos.Context) cosmos.Iterator {
+	return NewDummyIterator()
+}
 
 func (k KVStoreDummy) SetNodeSlotBid(_ cosmos.Context, _ types.NodeSlotBid) error {
 	return nil
@@ -330,6 +336,9 @@ func (k KVStoreDummy) SetNodeSlotBid(_ cosmos.Context, _ types.NodeSlotBid) erro
 
 func (k KVStoreDummy) GetNodeSlotBid(_ cosmos.Context, _ string) (types.NodeSlotBid, error) {
 	return types.NodeSlotBid{}, kaboom
+}
+func (k KVStoreDummy) GetNodeSlotBidIterator(_ cosmos.Context) cosmos.Iterator {
+	return NewDummyIterator()
 }
 func (k KVStoreDummy) GetChains(_ cosmos.Context) (common.Chains, error) { return nil, kaboom }
 func (k KVStoreDummy) SetChains(_ cosmos.Context, _ common.Chains)       {}
@@ -573,10 +582,16 @@ func (k KVStoreDummy) SetShielderMerkleRoot(_ cosmos.Context, _ uint64, _ string
 func (k KVStoreDummy) ShielderMerkleRootExists(_ cosmos.Context, _ uint64, _ string) bool {
 	return false
 }
+func (k KVStoreDummy) GetShielderMerkleRootIterator(_ cosmos.Context) cosmos.Iterator {
+	return NewDummyIterator()
+}
 func (k KVStoreDummy) SetShielderWithdrawal(_ cosmos.Context, _ types.ShielderWithdrawal) error {
 	return nil
 }
 func (k KVStoreDummy) GetShielderWithdrawal(_ cosmos.Context, _ string) (types.ShielderWithdrawal, error) {
+	return types.ShielderWithdrawal{}, nil
+}
+func (k KVStoreDummy) GetShielderWithdrawalByNullifier(_ cosmos.Context, _ string) (types.ShielderWithdrawal, error) {
 	return types.ShielderWithdrawal{}, nil
 }
 func (k KVStoreDummy) SetShielderNullifierSpent(_ cosmos.Context, _, _ string) error {
