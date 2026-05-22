@@ -39,10 +39,6 @@ func (ad AnteDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, ne
 		return ctx, err
 	}
 
-	if err = ad.rejectDuplicateTHORNameMsgs(tx.GetMsgs()); err != nil {
-		return ctx, err
-	}
-
 	// TODO remove on hard fork, when all signers will be allowed (v47+)
 	if err = ad.rejectInvalidSigners(tx); err != nil {
 		return ctx, err
@@ -104,19 +100,7 @@ func (ad AnteDecorator) rejectMultipleDepositMsgs(msgs []cosmos.Msg) error {
 	return nil
 }
 
-// rejectDuplicateTHORNameMsgs prevents multiple MsgManageTHORName messages for the same name in a single tx
-// This prevents exploitation where a second message could inherit state changes (like extended expiration)
-// from the first message without paying for them
 func (ad AnteDecorator) rejectDuplicateTHORNameMsgs(msgs []cosmos.Msg) error {
-	seenNames := make(map[string]struct{})
-	for _, msg := range msgs {
-		if tnMsg, ok := msg.(*types.MsgManageTHORName); ok {
-			if _, exists := seenNames[tnMsg.Name]; exists {
-				return cosmos.ErrUnknownRequest("duplicate THORName operation in same tx: " + tnMsg.Name)
-			}
-			seenNames[tnMsg.Name] = struct{}{}
-		}
-	}
 	return nil
 }
 

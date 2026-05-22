@@ -14,7 +14,7 @@ fi
 
 echo "Starting Thornado localnet with profiles: ${COMPOSE_PROFILES}"
 if [[ "${COMPOSE_PROFILES}" == *mock* ]]; then
-  echo "Using ops mock-service containers for Thornode and Bifrost boundaries."
+  echo "Using ops mock-service containers for Thornado and Bifrost boundaries."
 fi
 
 if [[ "${SKIP_PREFLIGHT}" != "1" ]]; then

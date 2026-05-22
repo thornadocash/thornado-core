@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// GetBlockTimestamp returns the timestamp for a specific THORChain block height.
+// GetBlockTimestamp returns the timestamp for a specific Thornado block height.
 // This is used to derive deterministic timestamps for transaction construction
 // across all nodes in the network.
 func (b *thorchainBridge) GetBlockTimestamp(height int64) (time.Time, error) {

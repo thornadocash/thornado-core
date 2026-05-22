@@ -68,7 +68,7 @@ func (a *CodesApiService) CodesExecute(r ApiCodesRequest) (*CodesResponse, *http
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/codes"
+	localVarPath := localBasePath + "/thornado/codes"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	BTCChain  = Chain("BTC")
-	THORChain = Chain("THOR")
+	BTCChain = Chain("BTC")
+	Thornado = Chain("THOR")
 
 	SigningAlgoSecp256k1 = SigningAlgo("secp256k1")
 	SigningAlgoEd25519   = SigningAlgo("ed25519")
@@ -21,7 +21,7 @@ const (
 
 var AllChains = [...]Chain{
 	BTCChain,
-	THORChain,
+	Thornado,
 }
 
 type SigningAlgo string
@@ -53,7 +53,7 @@ func NewChain(chainID string) (Chain, error) {
 	if err := chain.Valid(); err != nil {
 		return chain, err
 	}
-	if !chain.Equals(BTCChain) && !chain.Equals(THORChain) {
+	if !chain.Equals(BTCChain) && !chain.Equals(Thornado) {
 		return chain, errors.New("unsupported chain")
 	}
 	return chain, nil
@@ -65,7 +65,7 @@ func (c Chain) Equals(c2 Chain) bool {
 }
 
 func (c Chain) IsTHORChain() bool {
-	return c.Equals(THORChain)
+	return c.Equals(Thornado)
 }
 
 func GetEVMChains() []Chain {
@@ -110,7 +110,7 @@ func (c Chain) GetSigningAlgo() SigningAlgo {
 // GetGasAsset chain's base asset
 func (c Chain) GetGasAsset() Asset {
 	switch c {
-	case THORChain:
+	case Thornado:
 		return RuneNative
 	case BTCChain:
 		return BTCAsset
@@ -133,13 +133,13 @@ func (c Chain) GetGasUnits() (gasRateUnits string, gasRateUnitsPerOne cosmos.Uin
 	}
 }
 
-// NativeGasToThorchain converts native gas units to THORChain units (1e8).
+// NativeGasToThorchain converts native gas units to Thornado units (1e8).
 func (c Chain) NativeGasToThorchain(native cosmos.Uint) cosmos.Uint {
 	_, gasRateUnitsPerOne := c.GetGasUnits()
 	return native.MulUint64(One).Quo(gasRateUnitsPerOne)
 }
 
-// ThorchainToNativeGas converts THORChain units (1e8) to native gas units.
+// ThorchainToNativeGas converts Thornado units (1e8) to native gas units.
 func (c Chain) ThorchainToNativeGas(thorchain cosmos.Uint) cosmos.Uint {
 	_, gasRateUnitsPerOne := c.GetGasUnits()
 	return thorchain.Mul(gasRateUnitsPerOne).QuoUint64(One)
@@ -168,7 +168,7 @@ func (c Chain) AddressPrefix(cn ChainNetwork) string {
 	switch cn {
 	case MockNet:
 		switch c {
-		case THORChain:
+		case Thornado:
 			// TODO update this to use mocknet address prefix
 			return types.GetConfig().GetBech32AccountAddrPrefix()
 		case BTCChain:
@@ -176,7 +176,7 @@ func (c Chain) AddressPrefix(cn ChainNetwork) string {
 		}
 	case MainNet, StageNet, ChainNet:
 		switch c {
-		case THORChain:
+		case Thornado:
 			return types.GetConfig().GetBech32AccountAddrPrefix()
 		case BTCChain:
 			return chaincfg.MainNetParams.Bech32HRPSegwit
@@ -239,7 +239,7 @@ func (c Chain) ApproximateBlockMilliseconds() int64 {
 	switch c {
 	case BTCChain:
 		return 600_000
-	case THORChain:
+	case Thornado:
 		return 6_000
 	default:
 		return 0
@@ -250,8 +250,8 @@ func (c Chain) InboundNotes() string {
 	switch c {
 	case BTCChain:
 		return "First output should be to inbound_address, second output should be change back to self, third output should be OP_RETURN, limited to 80 bytes. Do not send below the dust threshold. Do not use exotic spend scripts, locks or address formats."
-	case THORChain:
-		return "Broadcast a MsgDeposit to the THORChain network with the appropriate memo. Do not use multi-in, multi-out transactions."
+	case Thornado:
+		return "Broadcast a MsgDeposit to the Thornado network with the appropriate memo. Do not use multi-in, multi-out transactions."
 	default:
 		return ""
 	}

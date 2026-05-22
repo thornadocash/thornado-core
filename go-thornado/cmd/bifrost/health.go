@@ -45,7 +45,7 @@ type P2PStatusPeer struct {
 }
 
 type P2PStatusResponse struct {
-	ThornodeHeight int64           `json:"thornode_height"`
+	ThornadoHeight int64           `json:"thornado_height"`
 	Peers          []P2PStatusPeer `json:"peers"`
 	PeerCount      int             `json:"peer_count"`
 	Errors         []string        `json:"errors"`
@@ -168,33 +168,33 @@ func (s *HealthServer) getP2pIDHandler(w http.ResponseWriter, _ *http.Request) {
 func (s *HealthServer) p2pStatus(w http.ResponseWriter, _ *http.Request) {
 	res := &P2PStatusResponse{Peers: make([]P2PStatusPeer, 0)}
 
-	// get thorchain nodes
+	// get thornado nodes
 	nodesByIP := map[string]openapi.Node{}
-	thornode := config.GetBifrost().Thorchain.ChainHost
-	url := fmt.Sprintf("http://%s/thorchain/nodes", thornode)
+	thornado := config.GetBifrost().Thornado.ChainHost
+	url := fmt.Sprintf("http://%s/thornado/nodes", thornado)
 	resp, err := http.Get(url)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("fail to get thornode status")
+		s.logger.Error().Err(err).Msg("fail to get thornado status")
 	} else {
 		defer resp.Body.Close()
 
 		// set the height from header
-		res.ThornodeHeight, err = strconv.ParseInt(resp.Header.Get("grpc-metadata-x-cosmos-block-height"), 10, 64)
+		res.ThornadoHeight, err = strconv.ParseInt(resp.Header.Get("grpc-metadata-x-cosmos-block-height"), 10, 64)
 		if err != nil {
-			s.logger.Error().Err(err).Msg("fail to parse thornode height")
+			s.logger.Error().Err(err).Msg("fail to parse thornado height")
 		}
 
 		nodes := make([]openapi.Node, 0)
 		if err = json.NewDecoder(resp.Body).Decode(&nodes); err != nil {
-			s.logger.Error().Err(err).Msg("fail to decode thornode status")
+			s.logger.Error().Err(err).Msg("fail to decode thornado status")
 		} else {
 			for _, node := range nodes {
 				otherNode, exists := nodesByIP[node.IpAddress]
 
-				if !exists || (otherNode.Status != types.NodeStatus_Active.String() && otherNode.PreflightStatus.Status != types.NodeStatus_Ready.String()) {
+				if !exists || (otherNode.Status != types.NodeStatus_Active.String() && otherNode.PreflightStatus.Status != "Ready") {
 					// only add node if the IP is not already in the map
 					nodesByIP[node.IpAddress] = node
-				} else if node.Status == types.NodeStatus_Active.String() || node.PreflightStatus.Status == types.NodeStatus_Ready.String() {
+				} else if node.Status == types.NodeStatus_Active.String() || node.PreflightStatus.Status == "Ready" {
 					// if both nodes are active or ready, report an error
 					res.Errors = append(res.Errors, fmt.Sprintf("active node IP reuse: %s", node.IpAddress))
 				}
@@ -229,7 +229,7 @@ func (s *HealthServer) p2pStatus(w http.ResponseWriter, _ *http.Request) {
 				return
 			}
 
-			// check if the node is in thornode
+			// check if the node is in thornado
 			if node, ok := nodesByIP[pi.Address]; ok {
 				peer.Address = node.NodeAddress
 				peer.Status = node.Status
@@ -279,17 +279,17 @@ func (s *HealthServer) p2pStatus(w http.ResponseWriter, _ *http.Request) {
 func (s *HealthServer) currentSigning(w http.ResponseWriter, _ *http.Request) {
 	res := make([]VaultResponse, 0)
 
-	thornode := config.GetBifrost().Thorchain.ChainHost
-	url := fmt.Sprintf("http://%s%s", thornode, thorclient.AsgardVault)
+	thornado := config.GetBifrost().Thornado.ChainHost
+	url := fmt.Sprintf("http://%s%s", thornado, thorclient.AsgardVault)
 	resp, err := http.Get(url)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("fail to get thornode status")
+		s.logger.Error().Err(err).Msg("fail to get thornado status")
 	} else {
 		defer resp.Body.Close()
 
 		vaults := make([]openapi.Vault, 0)
 		if err = json.NewDecoder(resp.Body).Decode(&vaults); err != nil {
-			s.logger.Error().Err(err).Msg("fail to decode thornode status")
+			s.logger.Error().Err(err).Msg("fail to decode thornado status")
 		}
 		for _, vault := range vaults {
 			valRes := VaultResponse{
@@ -386,23 +386,23 @@ func (s *HealthServer) chainScanner(w http.ResponseWriter, _ *http.Request) {
 	}
 	wg.Wait()
 
-	// Fetch thorchain height
-	thornode := config.GetBifrost().Thorchain.ChainHost
-	url := fmt.Sprintf("http://%s/thorchain/lastblock", thornode)
+	// Fetch thornado height
+	thornado := config.GetBifrost().Thornado.ChainHost
+	url := fmt.Sprintf("http://%s/thornado/lastblock", thornado)
 	resp, err := http.Get(url)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("fail to get thornode status")
+		s.logger.Error().Err(err).Msg("fail to get thornado status")
 	} else {
 		defer resp.Body.Close()
 		var height int64
 		height, err = strconv.ParseInt(resp.Header.Get("grpc-metadata-x-cosmos-block-height"), 10, 64)
 		if err != nil {
-			s.logger.Error().Err(err).Msg("fail to parse thornode height")
+			s.logger.Error().Err(err).Msg("fail to parse thornado height")
 		}
-		res[common.THORChain.String()] = ScannerResponse{
-			Chain:              common.THORChain.String(),
+		res[common.Thornado.String()] = ScannerResponse{
+			Chain:              common.Thornado.String(),
 			ChainHeight:        height,
-			BlockScannerHeight: -1, // TODO: pending for thorchain
+			BlockScannerHeight: -1, // TODO: pending for thornado
 			ScannerHeightDiff:  -1,
 		}
 	}
@@ -460,7 +460,7 @@ func classifyHost(rawURL string) string {
 		return "external-host" // public IP
 	}
 
-	// Bare hostnames (no dots) such as "localhost", "bitcoin-daemon", "thornode".
+	// Bare hostnames (no dots) such as "localhost", "bitcoin-daemon", "thornado".
 	if strings.EqualFold(host, "localhost") || !strings.Contains(host, ".") {
 		return "self-hosted"
 	}

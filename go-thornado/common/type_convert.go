@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	One       = 1e8  // One is a useful constant so THORNode doesn't need to manage 8 zeroes all the time.
+	One       = 1e8  // One is a useful constant so Thornado doesn't need to manage 8 zeroes all the time.
 	WeiPerOne = 1e18 // Relevant for chain clients which record numbers in Wei.
 )
 

@@ -673,7 +673,7 @@ type matchedOutbound struct {
 //
 // When multiple TxOutItems match (e.g., two outbounds with identical on-chain fields but
 // different memos), this function uses deterministic ordering matching Bifrost's signer
-// (see bifrost/signer/storage.go:200-204) to ensure THORNode picks the same one Bifrost signed.
+// (see bifrost/signer/storage.go:200-204) to ensure Thornado picks the same one Bifrost signed.
 func findOriginalMemoForOutbound(ctx cosmos.Context, mgr Manager, tx common.ObservedTx) string {
 	// Check coins early to avoid unnecessary iteration
 	if len(tx.Tx.Coins) == 0 {
@@ -808,17 +808,7 @@ func ExtractReferenceFromAmount(ctx cosmos.Context, mgr Manager, asset common.As
 	if asset.IsGasAsset() {
 		decimals = asset.Chain.GetGasAssetDecimal()
 	} else {
-		pool, err := mgr.Keeper().GetPool(ctx, asset)
-		if err != nil {
-			ctx.Logger().Error("unable to fetch pool for ref memo", "error", err)
-			return "", err
-		}
-		decimals = pool.Decimals
-		if decimals == 0 {
-			// For non-gas assets, a pool decimal value of zero is used as a sentinel
-			// for THORChain default precision (1e8), not literal 0-decimal precision.
-			decimals = int64(common.THORChainDecimals)
-		}
+		decimals = int64(common.ThornadoDecimals)
 	}
 
 	baseEnd := mgr.Keeper().GetConfigInt64(ctx, constants.MemolessTxnRefCount)
@@ -838,14 +828,14 @@ func ExtractReferenceFromAmount(ctx cosmos.Context, mgr Manager, asset common.As
 		}
 	}
 
-	// Normalize amount to THORChain decimals.
-	// Note: Only decimals < THORChainDecimals (8) need handling here. For chains with
-	// decimals >= THORChainDecimals (e.g. SOL at 9), Bifrost already normalizes all
-	// inbound amounts to 1e8 precision before they reach THORNode, so no scaling is
+	// Normalize amount to Thornado decimals.
+	// Note: Only decimals < ThornadoDecimals (8) need handling here. For chains with
+	// decimals >= ThornadoDecimals (e.g. SOL at 9), Bifrost already normalizes all
+	// inbound amounts to 1e8 precision before they reach Thornado, so no scaling is
 	// needed in those cases.
-	if decimals < int64(common.THORChainDecimals) {
+	if decimals < int64(common.ThornadoDecimals) {
 		divisor := int64(1)
-		for i := decimals; i < int64(common.THORChainDecimals); i++ {
+		for i := decimals; i < int64(common.ThornadoDecimals); i++ {
 			divisor *= 10
 		}
 		amount /= uint64(divisor)

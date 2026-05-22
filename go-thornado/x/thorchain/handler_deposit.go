@@ -12,7 +12,7 @@ import (
 	"github.com/thornadocash/go-thornado/x/thorchain/keeper"
 )
 
-// DepositHandler is to process native messages on THORChain
+// DepositHandler is to process native messages on Thornado
 type DepositHandler struct {
 	mgr Manager
 }
@@ -52,13 +52,13 @@ func (h DepositHandler) validate(ctx cosmos.Context, msg MsgDeposit) error {
 }
 
 func (h DepositHandler) handle(ctx cosmos.Context, msg MsgDeposit, idx uint16) (*cosmos.Result, error) {
-	if h.mgr.Keeper().IsChainHalted(ctx, common.THORChain) {
-		return nil, fmt.Errorf("unable to use MsgDeposit while THORChain is halted")
+	if h.mgr.Keeper().IsChainHalted(ctx, common.Thornado) {
+		return nil, fmt.Errorf("unable to use MsgDeposit while Thornado is halted")
 	}
 
 	coins, err := msg.Coins.Native()
 	if err != nil {
-		return nil, ErrInternal(err, "coins are native to THORChain")
+		return nil, ErrInternal(err, "coins are native to Thornado")
 	}
 
 	// HasCoins always returns false if the address has no balances
@@ -72,7 +72,7 @@ func (h DepositHandler) handle(ctx cosmos.Context, msg MsgDeposit, idx uint16) (
 }
 
 // extractReferenceFromNativeAmount extracts the reference ID from a native asset transaction amount.
-// All native assets use common.THORChainDecimals (8 decimals), so no pool lookup is needed.
+// All native assets use common.ThornadoDecimals (8 decimals), so no pool lookup is needed.
 func (h DepositHandler) extractReferenceFromNativeAmount(ctx cosmos.Context, amount uint64) (string, error) {
 	if amount == 0 {
 		return "", fmt.Errorf("zero amount in transaction for reference generation")
@@ -95,7 +95,7 @@ func (h DepositHandler) extractReferenceFromNativeAmount(ctx cosmos.Context, amo
 		}
 	}
 
-	// Native assets already use THORChain decimals (8), so no normalization needed
+	// Native assets already use Thornado decimals (8), so no normalization needed
 	// Extract reference from the amount directly
 	refNum := amount % modulus
 

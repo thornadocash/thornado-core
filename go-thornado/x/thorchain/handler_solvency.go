@@ -11,7 +11,7 @@ import (
 )
 
 // SolvencyHandler is to process MsgSolvency message from bifrost
-// Bifrost constantly monitor the account balance , and report to THORNode
+// Bifrost constantly monitor the account balance , and report to Thornado
 // If it detect that wallet is short of fund , much less than vault, the network should automatically halt trading
 type SolvencyHandler struct {
 	mgr Manager
@@ -50,7 +50,7 @@ func (h SolvencyHandler) validate(ctx cosmos.Context, msg MsgSolvency) error {
 }
 
 // handleCurrent is the logic to process MsgSolvency, the feature works like this
-//  1. Bifrost report MsgSolvency to thornode , which is the balance of asgard wallet on each individual chain
+//  1. Bifrost report MsgSolvency to thornado , which is the balance of asgard wallet on each individual chain
 //  2. once MsgSolvency reach consensus , then the network compare the wallet balance against wallet
 //     if wallet has less fund than asgard vault , and the gap is more than 1% , then the chain
 //     that is insolvent will be halt

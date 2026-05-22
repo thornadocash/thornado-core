@@ -68,7 +68,7 @@ func (a *BlockApiService) BlockExecute(r ApiBlockRequest) (*BlockResponse, *http
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/block"
+	localVarPath := localBasePath + "/thornado/block"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

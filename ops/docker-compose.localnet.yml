@@ -39,17 +39,17 @@ services:
       timeout: 3s
       retries: 30
 
-  thornode-1:
+  thornado-1:
     profiles: ["mock"]
     build:
       context: ./mock-service
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      MOCK_SERVICE_NAME: thornode-1
+      MOCK_SERVICE_NAME: thornado-1
       MOCK_PORTS: "26656,26657,1317,9090"
-      THORNODE_MONIKER: thornode-1
-      THORNODE_HOME: /var/lib/thornado/thornode
+      THORNADO_MONIKER: thornado-1
+      THORNADO_HOME: /var/lib/thornado/thornado
     depends_on:
       bitcoind-regtest:
         condition: service_healthy
@@ -59,48 +59,48 @@ services:
       - "1317:1317"
       - "9090:9090"
     volumes:
-      - thornado-thornode-1:/var/lib/thornado/thornode
-      - ./logs/thornode-1:/logs
+      - thornado-thornado-1:/var/lib/thornado/thornado
+      - ./logs/thornado-1:/logs
 
-  thornode-2:
+  thornado-2:
     profiles: ["three-node"]
     build:
       context: ./mock-service
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      MOCK_SERVICE_NAME: thornode-2
+      MOCK_SERVICE_NAME: thornado-2
       MOCK_PORTS: "26656,26657,1317,9090"
-      THORNODE_MONIKER: thornode-2
-      THORNODE_HOME: /var/lib/thornado/thornode
+      THORNADO_MONIKER: thornado-2
+      THORNADO_HOME: /var/lib/thornado/thornado
     ports:
       - "26756:26656"
       - "26757:26657"
       - "1318:1317"
       - "9091:9090"
     volumes:
-      - thornado-thornode-2:/var/lib/thornado/thornode
-      - ./logs/thornode-2:/logs
+      - thornado-thornado-2:/var/lib/thornado/thornado
+      - ./logs/thornado-2:/logs
 
-  thornode-3:
+  thornado-3:
     profiles: ["three-node"]
     build:
       context: ./mock-service
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      MOCK_SERVICE_NAME: thornode-3
+      MOCK_SERVICE_NAME: thornado-3
       MOCK_PORTS: "26656,26657,1317,9090"
-      THORNODE_MONIKER: thornode-3
-      THORNODE_HOME: /var/lib/thornado/thornode
+      THORNADO_MONIKER: thornado-3
+      THORNADO_HOME: /var/lib/thornado/thornado
     ports:
       - "26856:26656"
       - "26857:26657"
       - "1319:1317"
       - "9092:9090"
     volumes:
-      - thornado-thornode-3:/var/lib/thornado/thornode
-      - ./logs/thornode-3:/logs
+      - thornado-thornado-3:/var/lib/thornado/thornado
+      - ./logs/thornado-3:/logs
 
   bifrost-1:
     profiles: ["mock"]
@@ -113,12 +113,12 @@ services:
       MOCK_PORTS: "6040"
       BIFROST_NODE_ID: bifrost-1
       BIFROST_HOME: /var/lib/thornado/bifrost
-      THORNODE_ENDPOINT: http://thornode-1:1317
-      THORNODE_GRPC_ENDPOINT: thornode-1:9090
+      THORNADO_ENDPOINT: http://thornado-1:1317
+      THORNADO_GRPC_ENDPOINT: thornado-1:9090
     depends_on:
       bitcoind-regtest:
         condition: service_healthy
-      thornode-1:
+      thornado-1:
         condition: service_started
     ports:
       - "6040:6040"
@@ -137,10 +137,10 @@ services:
       MOCK_PORTS: "6040"
       BIFROST_NODE_ID: bifrost-2
       BIFROST_HOME: /var/lib/thornado/bifrost
-      THORNODE_ENDPOINT: http://thornode-2:1317
-      THORNODE_GRPC_ENDPOINT: thornode-2:9090
+      THORNADO_ENDPOINT: http://thornado-2:1317
+      THORNADO_GRPC_ENDPOINT: thornado-2:9090
     depends_on:
-      thornode-2:
+      thornado-2:
         condition: service_started
     ports:
       - "6041:6040"
@@ -159,10 +159,10 @@ services:
       MOCK_PORTS: "6040"
       BIFROST_NODE_ID: bifrost-3
       BIFROST_HOME: /var/lib/thornado/bifrost
-      THORNODE_ENDPOINT: http://thornode-3:1317
-      THORNODE_GRPC_ENDPOINT: thornode-3:9090
+      THORNADO_ENDPOINT: http://thornado-3:1317
+      THORNADO_GRPC_ENDPOINT: thornado-3:9090
     depends_on:
-      thornode-3:
+      thornado-3:
         condition: service_started
     ports:
       - "6042:6040"
@@ -176,8 +176,8 @@ services:
     working_dir: /workspace
     environment:
       <<: [*common-env, *bitcoin-env]
-      THORNODE_ENDPOINT: http://thornode-1:1317
-      THORNODE_GRPC_ENDPOINT: thornode-1:9090
+      THORNADO_ENDPOINT: http://thornado-1:1317
+      THORNADO_GRPC_ENDPOINT: thornado-1:9090
     volumes:
       - ..:/workspace
       - ./logs/client:/logs
@@ -185,9 +185,9 @@ services:
 
 volumes:
   thornado-bitcoin:
-  thornado-thornode-1:
-  thornado-thornode-2:
-  thornado-thornode-3:
+  thornado-thornado-1:
+  thornado-thornado-2:
+  thornado-thornado-3:
   thornado-bifrost-1:
   thornado-bifrost-2:
   thornado-bifrost-3:

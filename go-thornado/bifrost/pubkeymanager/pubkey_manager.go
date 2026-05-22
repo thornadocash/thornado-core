@@ -75,7 +75,7 @@ func NewPubKeyManager(bridge thorclient.ThorchainBridge, m *metrics.Metrics) (*P
 	}, nil
 }
 
-// Start to poll pubkeys from thorchain
+// Start to poll pubkeys from thornado
 func (pkm *PubKeyManager) Start() error {
 	pkm.fetchPubKeys(false)
 	go pkm.updatePubKeys()
@@ -273,7 +273,7 @@ func (pkm *PubKeyManager) removePubKeyInternal(pk common.PubKey) {
 func (pkm *PubKeyManager) fetchPubKeys(prune bool) {
 	addressPairs, err := pkm.getPubkeys()
 	if err != nil {
-		pkm.logger.Error().Err(err).Msg("fail to get pubkeys from THORChain")
+		pkm.logger.Error().Err(err).Msg("fail to get pubkeys from Thornado")
 		return
 	}
 	nodePubKey := pkm.GetNodePubKey(common.SigningAlgoSecp256k1)
@@ -316,7 +316,7 @@ func (pkm *PubKeyManager) updatePubKeys() {
 		select {
 		case <-pkm.stopChan:
 			return
-		case <-time.After(constants.ThorchainBlockTime):
+		case <-time.After(constants.ThornadoBlockTime):
 			pkm.fetchPubKeys(i%100 == 0) // only prune every 100 blocks
 		}
 	}
@@ -358,7 +358,7 @@ func (pkm *PubKeyManager) IsValidPoolAddress(addr string, chain common.Chain) (b
 	return false, common.NoChainPoolInfo
 }
 
-// getPubkeys from THORChain
+// getPubkeys from Thornado
 func (pkm *PubKeyManager) getPubkeys() ([]thorclient.PubKeyContractAddressPair, error) {
 	return pkm.bridge.GetPubKeys()
 }

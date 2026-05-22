@@ -1,7 +1,6 @@
 package keeper
 
 import (
-	"cosmossdk.io/math"
 	upgradetypes "cosmossdk.io/x/upgrade/types"
 	"github.com/blang/semver"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -48,16 +47,12 @@ type Keeper interface {
 	DollarConfigInRune(ctx cosmos.Context, key constants.ConstantName) cosmos.Uint
 
 	GetNativeTxFee(ctx cosmos.Context) cosmos.Uint
-	GetTHORNameRegisterFee(ctx cosmos.Context) cosmos.Uint
-	GetTHORNamePerBlockFee(ctx cosmos.Context) cosmos.Uint
 
 	DeductNativeTxFeeFromAccount(ctx cosmos.Context, acctAddr cosmos.AccAddress) error
 
 	// Keeper Interfaces
 	KeeperConfig
-	KeeperPool
 	KeeperLastHeight
-	KeeperLiquidityProvider
 	KeeperNodeAccount
 	KeeperUpgrade
 	KeeperObserver
@@ -83,7 +78,6 @@ type Keeper interface {
 	KeeperOracle
 	KeeperChainContract
 	KeeperSolvencyVoter
-	KeeperTHORName
 	KeeperReferenceMemo
 	KeeperHalt
 	KeeperAnchors
@@ -91,9 +85,6 @@ type Keeper interface {
 	KeeperSwapperClout
 	KeeperTradeAccount
 	KeeperSecuredAsset
-	KeeperRUNEPool
-	KeeperTCYClaimer
-	KeeperTCYStaker
 	KeeperVolume
 	KeeperPOLReserve
 	KeeperShielder
@@ -102,17 +93,6 @@ type Keeper interface {
 type KeeperConfig interface {
 	GetConstants() constants.ConstantValues
 	GetConfigInt64(ctx cosmos.Context, key constants.ConstantName) int64
-}
-
-type KeeperPool interface {
-	GetPoolIterator(ctx cosmos.Context) cosmos.Iterator
-	GetPool(ctx cosmos.Context, asset common.Asset) (Pool, error)
-	GetPools(ctx cosmos.Context) (Pools, error)
-	SetPool(ctx cosmos.Context, pool Pool) error
-	PoolExist(ctx cosmos.Context, asset common.Asset) bool
-	RemovePool(ctx cosmos.Context, asset common.Asset)
-	SetPoolLUVI(ctx cosmos.Context, asset common.Asset, luvi cosmos.Uint)
-	GetPoolLUVI(ctx cosmos.Context, asset common.Asset) (cosmos.Uint, error)
 }
 
 type KeeperLastHeight interface {
@@ -139,14 +119,6 @@ type KeeperStreamingSwap interface {
 	GetStreamingSwap(ctx cosmos.Context, _ common.TxID) (StreamingSwap, error)
 	StreamingSwapExists(ctx cosmos.Context, _ common.TxID) bool
 	RemoveStreamingSwap(ctx cosmos.Context, _ common.TxID)
-}
-
-type KeeperLiquidityProvider interface {
-	GetLiquidityProviderIterator(ctx cosmos.Context, _ common.Asset) cosmos.Iterator
-	GetLiquidityProvider(ctx cosmos.Context, asset common.Asset, addr common.Address) (LiquidityProvider, error)
-	SetLiquidityProvider(ctx cosmos.Context, lp LiquidityProvider)
-	RemoveLiquidityProvider(ctx cosmos.Context, lp LiquidityProvider)
-	GetTotalSupply(ctx cosmos.Context, asset common.Asset) cosmos.Uint
 }
 
 type KeeperNodeAccount interface {
@@ -242,6 +214,19 @@ type KeeperShielder interface {
 	GetShielderWithdrawal(ctx cosmos.Context, withdrawalID string) (types.ShielderWithdrawal, error)
 	SetShielderNullifierSpent(ctx cosmos.Context, nullifierHash string, withdrawalID string) error
 	ShielderNullifierSpent(ctx cosmos.Context, nullifierHash string) bool
+	GetNextShielderNodeBondSlot(ctx cosmos.Context) (uint64, error)
+	SetNextShielderNodeBondSlot(ctx cosmos.Context, slot uint64) error
+	AllocateShielderNodeBondSlot(ctx cosmos.Context) (uint64, error)
+	SetShielderValidatorBond(ctx cosmos.Context, bond types.ShielderValidatorBond) error
+	GetShielderValidatorBond(ctx cosmos.Context, validatorPubKey string) (types.ShielderValidatorBond, error)
+	SetShielderFeePool(ctx cosmos.Context, pool types.ShielderFeePool) error
+	GetShielderFeePool(ctx cosmos.Context) (types.ShielderFeePool, error)
+	SetShielderFeeNotePubKey(ctx cosmos.Context, pubKey common.PubKey, depositID common.TxID) error
+	ShielderFeeNotePubKeyUsed(ctx cosmos.Context, pubKey common.PubKey) bool
+	SetNodeSlotAuction(ctx cosmos.Context, auction types.NodeSlotAuction) error
+	GetNodeSlotAuction(ctx cosmos.Context, auctionID string) (types.NodeSlotAuction, error)
+	SetNodeSlotBid(ctx cosmos.Context, bid types.NodeSlotBid) error
+	GetNodeSlotBid(ctx cosmos.Context, bidID string) (types.NodeSlotBid, error)
 }
 
 type KeeperLiquidityFees interface {
@@ -296,15 +281,6 @@ type KeeperSecuredAsset interface {
 	GetSecuredAsset(ctx cosmos.Context, asset common.Asset) (SecuredAsset, error)
 	SetSecuredAsset(ctx cosmos.Context, unit SecuredAsset)
 	GetSecuredAssetIterator(ctx cosmos.Context) cosmos.Iterator
-}
-
-type KeeperRUNEPool interface {
-	GetRUNEPool(ctx cosmos.Context) (RUNEPool, error)
-	SetRUNEPool(ctx cosmos.Context, pool RUNEPool)
-	GetRUNEProviderIterator(ctx cosmos.Context) cosmos.Iterator
-	GetRUNEProvider(ctx cosmos.Context, addr cosmos.AccAddress) (RUNEProvider, error)
-	SetRUNEProvider(ctx cosmos.Context, rp RUNEProvider)
-	RemoveRUNEProvider(ctx cosmos.Context, rp RUNEProvider)
 }
 
 type KeeperVault interface {
@@ -488,19 +464,6 @@ type KeeperReferenceMemo interface {
 	SetLastReferenceNumber(ctx cosmos.Context, _ common.Asset, _ string)
 }
 
-// NewKeeper creates new instances of the thorchain Keeper
-type KeeperTHORName interface {
-	THORNameExists(ctx cosmos.Context, _ string) bool
-	GetTHORName(ctx cosmos.Context, _ string) (THORName, error)
-	SetTHORName(ctx cosmos.Context, name THORName)
-	GetTHORNameIterator(ctx cosmos.Context) cosmos.Iterator
-	DeleteTHORName(ctx cosmos.Context, _ string) error
-	SetAffiliateCollector(_ cosmos.Context, _ AffiliateFeeCollector)
-	GetAffiliateCollector(_ cosmos.Context, _ cosmos.AccAddress) (AffiliateFeeCollector, error)
-	GetAffiliateCollectorIterator(_ cosmos.Context) cosmos.Iterator
-	GetAffiliateCollectors(_ cosmos.Context) ([]AffiliateFeeCollector, error)
-}
-
 type KeeperHalt interface {
 	IsTradingHalt(ctx cosmos.Context, msg cosmos.Msg) bool
 	IsGlobalTradingHalted(ctx cosmos.Context) bool
@@ -515,24 +478,4 @@ type KeeperAnchors interface {
 	AnchorMedian(ctx cosmos.Context, assets []common.Asset) cosmos.Uint
 	DollarsPerRune(ctx cosmos.Context) cosmos.Uint
 	RunePerDollar(ctx cosmos.Context) cosmos.Uint
-}
-
-type KeeperTCYClaimer interface {
-	SetTCYClaimer(ctx cosmos.Context, record TCYClaimer) error
-	GetTCYClaimer(ctx cosmos.Context, l1Address common.Address, asset common.Asset) (TCYClaimer, error)
-	GetTCYClaimerIteratorFromL1Address(ctx cosmos.Context, l1Address common.Address) cosmos.Iterator
-	DeleteTCYClaimer(ctx cosmos.Context, l1Address common.Address, asset common.Asset)
-	ListTCYClaimersFromL1Address(ctx cosmos.Context, l1Address common.Address) ([]TCYClaimer, error)
-	GetTCYClaimerIterator(ctx cosmos.Context) cosmos.Iterator
-	TCYClaimerExists(ctx cosmos.Context, l1Address common.Address, asset common.Asset) bool
-	UpdateTCYClaimer(ctx cosmos.Context, l1Address common.Address, asset common.Asset, amount math.Uint) error
-}
-
-type KeeperTCYStaker interface {
-	SetTCYStaker(ctx cosmos.Context, record TCYStaker) error
-	GetTCYStaker(ctx cosmos.Context, address common.Address) (TCYStaker, error)
-	DeleteTCYStaker(ctx cosmos.Context, address common.Address)
-	ListTCYStakers(ctx cosmos.Context) ([]TCYStaker, error)
-	TCYStakerExists(ctx cosmos.Context, address common.Address) bool
-	UpdateTCYStaker(ctx cosmos.Context, address common.Address, amount math.Uint) error
 }

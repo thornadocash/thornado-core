@@ -178,7 +178,7 @@ func (m *MsgSwap) ValidateBasic() error {
 	if !m.Destination.IsNoop() && !m.Destination.IsChain(m.TargetAsset.GetChain()) {
 		return cosmos.ErrUnknownRequest("swap destination address is not the same chain as the target asset")
 	}
-	if !m.AffiliateAddress.IsEmpty() && !m.AffiliateAddress.IsChain(common.THORChain) {
+	if !m.AffiliateAddress.IsEmpty() && !m.AffiliateAddress.IsChain(common.Thornado) {
 		return cosmos.ErrUnknownRequest("swap affiliate address must be a THOR address")
 	}
 	if len(m.Aggregator) != 0 && len(m.AggregatorTargetAddress) == 0 {

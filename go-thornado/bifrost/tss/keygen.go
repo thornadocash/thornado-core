@@ -51,7 +51,7 @@ func NewTssKeyGen(keys *thorclient.Keys, server *tss.TssServer, bridge thorclien
 func (kg *KeyGen) getVersion() semver.Version {
 	requestTime := time.Now()
 	// analyze-ignore(float-comparison)
-	if !kg.currentVersion.Equals(semver.Version{}) && requestTime.Sub(kg.lastCheck).Seconds() < constants.ThorchainBlockTime.Seconds() {
+	if !kg.currentVersion.Equals(semver.Version{}) && requestTime.Sub(kg.lastCheck).Seconds() < constants.ThornadoBlockTime.Seconds() {
 		return kg.currentVersion
 	}
 	version, err := kg.bridge.GetThorchainVersion()
@@ -244,7 +244,7 @@ func frostKeygenChains(chains common.Chains) bool {
 		return false
 	}
 	for _, chain := range chains.Distinct() {
-		if chain.IsEmpty() || chain == common.THORChain || chain == common.BTCChain {
+		if chain.IsEmpty() || chain == common.Thornado || chain == common.BTCChain {
 			continue
 		}
 		return false

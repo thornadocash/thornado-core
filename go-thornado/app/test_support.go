@@ -7,18 +7,18 @@ package app
 // 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
 // )
 
-// func (app *THORChainApp) GetBaseApp() *baseapp.BaseApp {
+// func (app *ThornadoApp) GetBaseApp() *baseapp.BaseApp {
 // 	return app.BaseApp
 // }
 
-// func (app *THORChainApp) GetBankKeeper() bankkeeper.Keeper {
+// func (app *ThornadoApp) GetBankKeeper() bankkeeper.Keeper {
 // 	return app.BankKeeper
 // }
 
-// func (app *THORChainApp) GetStakingKeeper() *stakingkeeper.Keeper {
+// func (app *ThornadoApp) GetStakingKeeper() *stakingkeeper.Keeper {
 // 	return app.StakingKeeper
 // }
 
-// func (app *THORChainApp) GetAccountKeeper() authkeeper.AccountKeeper {
+// func (app *ThornadoApp) GetAccountKeeper() authkeeper.AccountKeeper {
 // 	return app.AccountKeeper
 // }

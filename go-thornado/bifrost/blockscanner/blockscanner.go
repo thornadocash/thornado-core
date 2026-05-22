@@ -127,7 +127,7 @@ func (b *BlockScanner) RollbackToLastObserved() error {
 		observerFlexWindowBlocksThor = observerFlexWindowBlocksThorMimir
 	}
 
-	thorBlockTimeMs := c[constants.ThorchainBlockTime.String()] / int64(time.Millisecond)
+	thorBlockTimeMs := c[constants.ThornadoBlockTime.String()] / int64(time.Millisecond)
 	observerFlexWindowBlocksChain := observerFlexWindowBlocksThor * thorBlockTimeMs / b.cfg.ChainID.ApproximateBlockMilliseconds()
 	if observerFlexWindowBlocksChain < 1 {
 		observerFlexWindowBlocksChain = 1
@@ -212,7 +212,7 @@ func (b *BlockScanner) scanMempool() {
 				}
 			} else {
 				// backoff between mempool scans (some chain clients always return nothing)
-				time.Sleep(constants.ThorchainBlockTime)
+				time.Sleep(constants.ThornadoBlockTime)
 			}
 		}
 	}
@@ -223,7 +223,7 @@ func (b *BlockScanner) scanMempool() {
 func IsChainPaused(cfg config.BifrostBlockScannerConfiguration, logger zerolog.Logger, bridge thorclient.ThorchainBridge) bool {
 	thorHeight, err := bridge.GetBlockHeight()
 	if err != nil {
-		logger.Error().Err(err).Msg("fail to get THORChain block height")
+		logger.Error().Err(err).Msg("fail to get Thornado block height")
 	}
 
 	// Check if chain has been halted via mimir
@@ -268,7 +268,7 @@ func (b *BlockScanner) scanBlocks() {
 	defer b.logger.Debug().Msg("stop scan blocks")
 	defer b.wg.Done()
 
-	lastMimirCheck := time.Now().Add(-constants.ThorchainBlockTime)
+	lastMimirCheck := time.Now().Add(-constants.ThornadoBlockTime)
 	isChainPaused := false
 
 	type fetchTxsResult struct {
@@ -293,7 +293,7 @@ func (b *BlockScanner) scanBlocks() {
 			preBlockHeight := atomic.LoadInt64(&b.previousBlock)
 			currentBlock := preBlockHeight + 1
 			// check if mimir has disabled this chain
-			if time.Since(lastMimirCheck) >= constants.ThorchainBlockTime {
+			if time.Since(lastMimirCheck) >= constants.ThornadoBlockTime {
 				isChainPaused = IsChainPaused(b.cfg, b.logger, b.thorchainBridge)
 				lastMimirCheck = time.Now()
 			}
@@ -301,7 +301,7 @@ func (b *BlockScanner) scanBlocks() {
 			// Chain is paused, mark as unhealthy
 			if isChainPaused {
 				b.healthy.Store(false)
-				time.Sleep(constants.ThorchainBlockTime)
+				time.Sleep(constants.ThornadoBlockTime)
 				continue
 			}
 
@@ -354,7 +354,7 @@ func (b *BlockScanner) scanBlocks() {
 
 			ms := b.cfg.ChainID.ApproximateBlockMilliseconds()
 
-			// determine how often we compare THORNode network fee to Bifrost network fee.
+			// determine how often we compare Thornado network fee to Bifrost network fee.
 			// General goal is about once per hour.
 			mod := ((60 * 60 * 1000) + ms - 1) / ms
 			if currentBlock%mod == 0 {
@@ -402,28 +402,28 @@ func (b *BlockScanner) scanBlocks() {
 }
 
 // updateStaleNetworkFee broadcasts a network fee observation if the local scanner fee
-// does not match the fee published to THORNode. This can be called periodically to
+// does not match the fee published to Thornado. This can be called periodically to
 // ensure fee changes find consensus despite raciness on the observation height.
 func (b *BlockScanner) updateStaleNetworkFee(currentBlock int64) {
-	// Only broadcast MsgNetworkFee if the chain isn't THORChain
+	// Only broadcast MsgNetworkFee if the chain isn't Thornado
 	// and the scanner is healthy.
-	if b.cfg.ChainID.Equals(common.THORChain) || !b.healthy.Load() {
+	if b.cfg.ChainID.Equals(common.Thornado) || !b.healthy.Load() {
 		return
 	}
 
 	transactionSize, transactionFeeRate := b.chainScanner.GetNetworkFee()
 	thorTransactionSize, thorTransactionFeeRate, err := b.thorchainBridge.GetNetworkFee(b.cfg.ChainID)
 	if err != nil {
-		b.logger.Error().Err(err).Msg("fail to get thornode network fee")
+		b.logger.Error().Err(err).Msg("fail to get thornado network fee")
 		return
 	}
-	// Do not broadcast a regularly-timed network fee if the THORNode network fee is already consistent with the scanner's.
+	// Do not broadcast a regularly-timed network fee if the Thornado network fee is already consistent with the scanner's.
 	if thorTransactionSize == transactionSize && thorTransactionFeeRate == transactionFeeRate {
 		b.logger.Info().
 			Int64("height", currentBlock).
 			Uint64("size", transactionSize).
 			Uint64("rate", transactionFeeRate).
-			Msg("thornode network fee is consistent with scanner, no need to broadcast")
+			Msg("thornado network fee is consistent with scanner, no need to broadcast")
 		return
 	}
 
@@ -438,7 +438,7 @@ func (b *BlockScanner) updateStaleNetworkFee(currentBlock int64) {
 		Int64("height", currentBlock).
 		Uint64("size", transactionSize).
 		Uint64("rate", transactionFeeRate).
-		Msg("sent timed network fee to THORChain")
+		Msg("sent timed network fee to Thornado")
 }
 
 // GetStartHeight determines the height to start scanning:
@@ -468,7 +468,7 @@ func (b *BlockScanner) GetStartHeight() (int64, error) {
 		return 0, err
 	}
 
-	if b.thorchainBridge != nil && b.cfg.ChainID != common.THORChain {
+	if b.thorchainBridge != nil && b.cfg.ChainID != common.Thornado {
 		height, _ := b.thorchainBridge.GetLastObservedInHeight(b.cfg.ChainID)
 		if height > 0 {
 

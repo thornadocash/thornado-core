@@ -9,7 +9,6 @@ const (
 	ReserveName  = types.ReserveName
 	AsgardName   = types.AsgardName
 	TreasuryName = types.TreasuryName
-	RUNEPoolName = types.RUNEPoolName
 	BondName     = types.BondName
 	StoreKey     = types.StoreKey
 
@@ -20,7 +19,6 @@ const (
 )
 
 var (
-	NewPool                  = types.NewPool
 	NewJail                  = types.NewJail
 	ModuleCdc                = types.ModuleCdc
 	RegisterLegacyAminoCodec = types.RegisterLegacyAminoCodec
@@ -34,10 +32,6 @@ var (
 type (
 	MsgSwap = types.MsgSwap
 
-	PoolStatus               = types.PoolStatus
-	Pool                     = types.Pool
-	Pools                    = types.Pools
-	LiquidityProvider        = types.LiquidityProvider
 	StreamingSwap            = types.StreamingSwap
 	ObservedTxVoter          = types.ObservedTxVoter
 	BanVoter                 = types.BanVoter
@@ -69,17 +63,12 @@ type (
 	ChainContract            = types.ChainContract
 	SolvencyVoter            = types.SolvencyVoter
 	ReferenceMemo            = types.ReferenceMemo
-	THORName                 = types.THORName
 	AffiliateFeeCollector    = types.AffiliateFeeCollector
 	SwapperClout             = types.SwapperClout
 	TradeAccount             = types.TradeAccount
 	TradeUnit                = types.TradeUnit
 	SecuredAsset             = types.SecuredAsset
-	RUNEProvider             = types.RUNEProvider
-	RUNEPool                 = types.RUNEPool
 	Upgrade                  = types.Upgrade
-	TCYClaimer               = types.TCYClaimer
-	TCYStaker                = types.TCYStaker
 	PriceFeed                = types.PriceFeed
 	OraclePrice              = types.OraclePrice
 	Volume                   = types.Volume

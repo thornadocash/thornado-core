@@ -8,13 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	sdkmath "cosmossdk.io/math"
 	"github.com/blang/semver"
 	tmhttp "github.com/cometbft/cometbft/rpc/client/http"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -31,17 +29,6 @@ import (
 	"github.com/thornadocash/go-thornado/x/thorchain/types"
 )
 
-// Swap status constants
-const (
-	SwapStatusQueued = "queued"
-)
-
-// Queue type constants
-const (
-	QueueTypeRegular  = "regular"
-	QueueTypeAdvanced = "advanced"
-)
-
 var (
 	initManager = func(_ cosmos.Context, _ *Mgrs) {}
 	queryExport = func(_ sdk.Context, _ *Mgrs) ([]byte, error) {
@@ -53,7 +40,7 @@ var (
 
 func initTendermint() {
 	// get tendermint port from config
-	portSplit := strings.Split(config.GetThornode().Tendermint.RPC.ListenAddress, ":")
+	portSplit := strings.Split(config.GetThornado().Tendermint.RPC.ListenAddress, ":")
 	port := portSplit[len(portSplit)-1]
 
 	// setup tendermint client
@@ -74,11 +61,6 @@ func getPeerIDFromPubKey(pubkey common.PubKey) string {
 	return peerID.String()
 }
 
-func (qs queryServer) queryRagnarok(ctx cosmos.Context, _ *types.QueryRagnarokRequest) (*types.QueryRagnarokResponse, error) {
-	ragnarokInProgress := qs.mgr.Keeper().RagnarokInProgress(ctx)
-	return &types.QueryRagnarokResponse{InProgress: ragnarokInProgress}, nil
-}
-
 func (qs queryServer) queryBalanceModule(ctx cosmos.Context, req *types.QueryBalanceModuleRequest) (*types.QueryBalanceModuleResponse, error) {
 	moduleName := req.Name
 	if len(moduleName) == 0 {
@@ -93,10 +75,6 @@ func (qs queryServer) queryBalanceModule(ctx cosmos.Context, req *types.QueryBal
 		Coins:   bal,
 	}
 	return &balance, nil
-}
-
-func (qs queryServer) queryTHORName(ctx cosmos.Context, req *types.QueryThornameRequest) (*types.QueryThornameResponse, error) {
-	return nil, errors.New("THORName is not part of the Thornado custody fork")
 }
 
 func (qs queryServer) queryVault(ctx cosmos.Context, req *types.QueryVaultRequest) (*types.QueryVaultResponse, error) {
@@ -176,7 +154,7 @@ func (qs queryServer) queryAsgardVaults(ctx cosmos.Context, _ *types.QueryAsgard
 
 func getVaultChainAddresses(ctx cosmos.Context, vault Vault) []*types.VaultAddress {
 	var result []*types.VaultAddress
-	allChains := append(vault.GetChains(), common.THORChain)
+	allChains := append(vault.GetChains(), common.Thornado)
 	for _, c := range allChains.Distinct() {
 		if vault.PubKeyEddsa.IsEmpty() && c.GetSigningAlgo() != common.SigningAlgoEd25519 {
 			// this is an eddsa chain, but the vault doesn't have an eddsa pubkey, skip.
@@ -215,7 +193,7 @@ func (qs queryServer) queryVaultsPubkeys(ctx cosmos.Context, _ *types.QueryVault
 	if err != nil {
 		return nil, err
 	}
-	cutOffAge := ctx.BlockHeight() - config.GetThornode().VaultPubkeysCutoffBlocks
+	cutOffAge := ctx.BlockHeight() - config.GetThornado().VaultPubkeysCutoffBlocks
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
 		var vault Vault
@@ -292,210 +270,8 @@ func (qs queryServer) queryVaultSolvency(ctx cosmos.Context, _ *types.QueryVault
 	return resp, nil
 }
 
-func (qs queryServer) queryRUNEPool(ctx cosmos.Context, _ *types.QueryRunePoolRequest) (*types.QueryRunePoolResponse, error) {
-	// gather pol data
-	pol, err := qs.mgr.Keeper().GetPOL(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get POL: %w", err)
-	}
-	polValue, err := polPoolValue(ctx, qs.mgr)
-	if err != nil {
-		return nil, fmt.Errorf("fail to fetch POL value: %w", err)
-	}
-	pnl := pol.PnL(polValue)
-
-	// gather runepool data
-	runePool, err := qs.mgr.Keeper().GetRUNEPool(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get RUNE pool: %w", err)
-	}
-
-	// calculate pending units
-	runePoolValue, err := runePoolValue(ctx, qs.mgr)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get rune pool value: %w", err)
-	}
-	pendingRune := qs.mgr.Keeper().GetRuneBalanceOfModule(ctx, RUNEPoolName)
-	pendingUnits := common.GetSafeShare(pendingRune, runePoolValue, runePool.TotalUnits())
-
-	// calculate provider shares
-	providerValue := common.GetSafeShare(runePool.PoolUnits, runePool.TotalUnits(), runePoolValue)
-	providerPnl := sdkmath.NewIntFromBigInt(providerValue.BigInt()).Sub(runePool.CurrentDeposit())
-
-	// calculate reserve shares
-	reserveValue := common.GetSafeShare(runePool.ReserveUnits, runePool.TotalUnits(), runePoolValue)
-	reserveCurrentDeposit := pol.CurrentDeposit().
-		Sub(runePool.CurrentDeposit()).
-		Add(cosmos.NewIntFromBigInt(pendingRune.BigInt()))
-	reservePnl := sdkmath.NewIntFromBigInt(reserveValue.BigInt()).Sub(reserveCurrentDeposit)
-
-	result := types.QueryRunePoolResponse{
-		Pol: &types.POL{
-			RuneDeposited:  pol.RuneDeposited.String(),
-			RuneWithdrawn:  pol.RuneWithdrawn.String(),
-			Value:          polValue.String(),
-			Pnl:            pnl.String(),
-			CurrentDeposit: pol.CurrentDeposit().String(),
-		},
-		Providers: &types.RunePoolProviders{
-			Units:          runePool.PoolUnits.String(),
-			PendingUnits:   pendingUnits.String(),
-			PendingRune:    pendingRune.String(),
-			Value:          providerValue.String(),
-			Pnl:            providerPnl.String(),
-			CurrentDeposit: runePool.CurrentDeposit().String(),
-		},
-		Reserve: &types.RunePoolReserve{
-			Units:          runePool.ReserveUnits.String(),
-			Value:          reserveValue.String(),
-			Pnl:            reservePnl.String(),
-			CurrentDeposit: reserveCurrentDeposit.String(),
-		},
-	}
-
-	return &result, nil
-}
-
 // queryRUNEProvider
-func (qs queryServer) queryRUNEProvider(ctx cosmos.Context, req *types.QueryRuneProviderRequest) (*types.QueryRuneProviderResponse, error) {
-	if len(req.Address) == 0 {
-		return nil, errors.New("address not provided")
-	}
-	addr, err := cosmos.AccAddressFromBech32(req.Address)
-	if err != nil {
-		return nil, errors.New("unable to decode address")
-	}
-	rp, err := qs.mgr.Keeper().GetRUNEProvider(ctx, addr)
-	if err != nil {
-		return nil, fmt.Errorf("unable to GetRUNEProvider: %s", err)
-	}
-
-	// get runepool value to determine current value and pnl
-	runePool, err := qs.mgr.Keeper().GetRUNEPool(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get RUNE pool: %w", err)
-	}
-	runePoolValue, err := runePoolValue(ctx, qs.mgr)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get rune pool value: %w", err)
-	}
-	providerValue := common.GetSafeShare(rp.Units, runePool.TotalUnits(), runePoolValue)
-	providerPnl := providerValue.BigInt()
-	providerPnl.Sub(providerPnl, rp.DepositAmount.BigInt())
-	providerPnl.Add(providerPnl, rp.WithdrawAmount.BigInt())
-
-	result := types.QueryRuneProviderResponse{
-		RuneAddress:        rp.RuneAddress.String(),
-		Units:              rp.Units.String(),
-		Value:              providerValue.String(),
-		Pnl:                providerPnl.String(),
-		DepositAmount:      rp.DepositAmount.String(),
-		WithdrawAmount:     rp.WithdrawAmount.String(),
-		LastDepositHeight:  rp.LastDepositHeight,
-		LastWithdrawHeight: rp.LastWithdrawHeight,
-	}
-	return &result, nil
-}
-
 // queryRUNEProviders
-func (qs queryServer) queryRUNEProviders(ctx cosmos.Context, _ *types.QueryRuneProvidersRequest) (*types.QueryRuneProvidersResponse, error) {
-	// get runepool value to determine current value and pnl
-	runePool, err := qs.mgr.Keeper().GetRUNEPool(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get RUNE pool: %w", err)
-	}
-	runePoolValue, err := runePoolValue(ctx, qs.mgr)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get rune pool value: %w", err)
-	}
-
-	var runeProviders []*types.QueryRuneProviderResponse
-	iterator := qs.mgr.Keeper().GetRUNEProviderIterator(ctx)
-	defer iterator.Close()
-	for ; iterator.Valid(); iterator.Next() {
-		var rp types.RUNEProvider
-		qs.mgr.Keeper().Cdc().MustUnmarshal(iterator.Value(), &rp)
-
-		providerValue := common.GetSafeShare(rp.Units, runePool.TotalUnits(), runePoolValue)
-		providerPnl := providerValue.BigInt()
-		providerPnl.Sub(providerPnl, rp.DepositAmount.BigInt())
-		providerPnl.Add(providerPnl, rp.WithdrawAmount.BigInt())
-
-		runeProviders = append(runeProviders, &types.QueryRuneProviderResponse{
-			RuneAddress:        rp.RuneAddress.String(),
-			Units:              rp.Units.String(),
-			Value:              providerValue.String(),
-			Pnl:                providerPnl.String(),
-			DepositAmount:      rp.DepositAmount.String(),
-			WithdrawAmount:     rp.WithdrawAmount.String(),
-			LastDepositHeight:  rp.LastDepositHeight,
-			LastWithdrawHeight: rp.LastWithdrawHeight,
-		})
-	}
-	return &types.QueryRuneProvidersResponse{Providers: runeProviders}, nil
-}
-
-func (qs queryServer) queryNetwork(ctx cosmos.Context, _ *types.QueryNetworkRequest) (*types.QueryNetworkResponse, error) {
-	data, err := qs.mgr.Keeper().GetNetwork(ctx)
-	if err != nil {
-		ctx.Logger().Error("fail to get network", "error", err)
-		return nil, fmt.Errorf("fail to get network: %w", err)
-	}
-
-	vaults, err := qs.mgr.Keeper().GetAsgardVaultsByStatus(ctx, RetiringVault)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get retiring vaults: %w", err)
-	}
-	vaultsMigrating := (len(vaults) != 0)
-
-	nodeAccounts, err := qs.mgr.Keeper().ListActiveValidators(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get active validators: %w", err)
-	}
-
-	_, availablePoolsRune, err := getAvailablePoolsRune(ctx, qs.mgr.Keeper())
-	if err != nil {
-		return nil, fmt.Errorf("fail to get available pools rune: %w", err)
-	}
-	vaultsLiquidityRune, err := getVaultsLiquidityRune(ctx, qs.mgr.Keeper())
-	if err != nil {
-		return nil, fmt.Errorf("fail to get vaults liquidity rune: %w", err)
-	}
-	effectiveSecurityBond := getEffectiveSecurityBond(nodeAccounts)
-
-	targetOutboundFeeSurplus := qs.mgr.Keeper().GetConfigInt64(ctx, constants.TargetOutboundFeeSurplusRune)
-	maxMultiplierBasisPoints := qs.mgr.Keeper().GetConfigInt64(ctx, constants.MaxOutboundFeeMultiplierBasisPoints)
-	minMultiplierBasisPoints := qs.mgr.Keeper().GetConfigInt64(ctx, constants.MinOutboundFeeMultiplierBasisPoints)
-	outboundFeeMultiplier := qs.mgr.gasMgr.CalcOutboundFeeMultiplier(ctx, cosmos.NewUint(uint64(targetOutboundFeeSurplus)), cosmos.NewUint(data.OutboundGasSpentRune), cosmos.NewUint(data.OutboundGasWithheldRune), cosmos.NewUint(uint64(maxMultiplierBasisPoints)), cosmos.NewUint(uint64(minMultiplierBasisPoints)))
-
-	assets := qs.mgr.Keeper().GetAnchors(ctx, common.TOR)
-	median := qs.mgr.Keeper().AnchorMedian(ctx, assets).QuoUint64(constants.DollarMulti)
-
-	result := types.QueryNetworkResponse{
-		// Due to using openapi. this will be displayed in alphabetical order,
-		// so its schema (and order here) should also be in alphabetical order.
-		BondRewardRune:        data.BondRewardRune.String(),
-		TotalBondUnits:        data.TotalBondUnits.String(),
-		AvailablePoolsRune:    availablePoolsRune.String(),
-		VaultsLiquidityRune:   vaultsLiquidityRune.String(),
-		EffectiveSecurityBond: effectiveSecurityBond.String(),
-		TotalReserve:          qs.mgr.Keeper().GetRuneBalanceOfModule(ctx, ReserveName).String(),
-		VaultsMigrating:       vaultsMigrating,
-		GasSpentRune:          cosmos.NewUint(data.OutboundGasSpentRune).String(),
-		GasWithheldRune:       cosmos.NewUint(data.OutboundGasWithheldRune).String(),
-		OutboundFeeMultiplier: outboundFeeMultiplier.String(),
-		NativeTxFeeRune:       qs.mgr.Keeper().GetNativeTxFee(ctx).String(),
-		NativeOutboundFeeRune: qs.mgr.Keeper().GetOutboundTxFee(ctx).String(),
-		TnsRegisterFeeRune:    qs.mgr.Keeper().GetTHORNameRegisterFee(ctx).String(),
-		TnsFeePerBlockRune:    qs.mgr.Keeper().GetTHORNamePerBlockFee(ctx).String(),
-		RunePriceInTor:        dollarsPerRuneIgnoreHalt(ctx, qs.mgr.Keeper()).String(),
-		TorPriceInRune:        runePerDollarIgnoreHalt(ctx, qs.mgr.Keeper()).String(),
-		TorPriceHalted:        median.IsZero(),
-	}
-
-	return &result, nil
-}
-
 func (qs queryServer) queryInboundAddresses(ctx cosmos.Context, _ *types.QueryInboundAddressesRequest) (*types.QueryInboundAddressesResponse, error) {
 	active, err := qs.mgr.Keeper().GetAsgardVaultsByStatus(ctx, ActiveVault)
 	if err != nil {
@@ -525,7 +301,7 @@ func (qs queryServer) queryInboundAddresses(ctx cosmos.Context, _ *types.QueryIn
 
 	for _, chain := range chains {
 		// tx send to thorchain doesn't need an address , thus here skip it
-		if chain == common.THORChain {
+		if chain == common.Thornado {
 			continue
 		}
 
@@ -581,7 +357,7 @@ func (qs queryServer) queryInboundAddresses(ctx cosmos.Context, _ *types.QueryIn
 }
 
 // queryNode return the Node information related to the request node address
-// /thorchain/node/{nodeaddress}
+// /thornado/node/{nodeaddress}
 func (qs queryServer) queryNode(ctx cosmos.Context, req *types.QueryNodeRequest) (*types.QueryNodeResponse, error) {
 	if len(req.Address) == 0 {
 		return nil, errors.New("node address not provided")
@@ -723,6 +499,21 @@ func getNodePreflightResult(ctx cosmos.Context, mgr *Mgrs, nodeAcc NodeAccount) 
 	constAccessor := mgr.GetConstants()
 	preflightResult := types.NodePreflightStatus{}
 	status, err := mgr.ValidatorMgr().NodeAccountPreflightCheck(ctx, nodeAcc, constAccessor)
+	if err == nil && status == NodeSelected {
+		candidates := NodeAccounts{}
+		for _, candidateStatus := range []NodeStatus{NodeWhiteListed, NodeStandby, NodeSelected} {
+			nodes, listErr := mgr.Keeper().ListValidatorsByStatus(ctx, candidateStatus)
+			if listErr != nil {
+				return preflightResult, listErr
+			}
+			candidates = append(candidates, nodes...)
+		}
+		selected := mgr.ValidatorMgr().selectHighestBondedNode(ctx, candidates)
+		if selected.IsEmpty() || !selected.NodeAddress.Equals(nodeAcc.NodeAddress) {
+			status = NodeWhiteListed
+			err = fmt.Errorf("insufficient bond")
+		}
+	}
 	preflightResult.Status = status.String()
 	if err != nil {
 		preflightResult.Reason = err.Error()
@@ -762,7 +553,7 @@ func getNodeCurrentRewards(ctx cosmos.Context, mgr *Mgrs, nodeAcc NodeAccount, l
 }
 
 // queryNodes return all the nodes that has bond
-// /thorchain/nodes
+// /thornado/nodes
 func (qs queryServer) queryNodes(ctx cosmos.Context, _ *types.QueryNodesRequest) (*types.QueryNodesResponse, error) {
 	nodeAccounts, err := qs.mgr.Keeper().ListValidatorsWithBond(ctx)
 	if err != nil {
@@ -905,925 +696,6 @@ func (qs queryServer) queryNodes(ctx cosmos.Context, _ *types.QueryNodesRequest)
 	return &types.QueryNodesResponse{Nodes: result}, nil
 }
 
-func newSaver(lp LiquidityProvider, pool Pool) *types.QuerySaverResponse {
-	assetRedeemableValue := lp.GetSaversAssetRedeemValue(pool)
-
-	gp := cosmos.NewDec(0)
-	if !lp.AssetDepositValue.IsZero() {
-		adv := cosmos.NewDec(lp.AssetDepositValue.BigInt().Int64())
-		arv := cosmos.NewDec(assetRedeemableValue.BigInt().Int64())
-		gp = arv.Sub(adv)
-		gp = gp.Quo(adv)
-	}
-
-	return &types.QuerySaverResponse{
-		Asset:              lp.Asset.GetLayer1Asset().String(),
-		AssetAddress:       lp.AssetAddress.String(),
-		LastAddHeight:      lp.LastAddHeight,
-		LastWithdrawHeight: lp.LastWithdrawHeight,
-		Units:              lp.Units.String(),
-		AssetDepositValue:  lp.AssetDepositValue.String(),
-		AssetRedeemValue:   assetRedeemableValue.String(),
-		GrowthPct:          gp.String(),
-	}
-}
-
-// queryLiquidityProviders
-func (qs queryServer) queryLiquidityProviders(ctx cosmos.Context, req *types.QueryLiquidityProvidersRequest) (*types.QueryLiquidityProvidersResponse, error) {
-	if len(req.Asset) == 0 {
-		return nil, errors.New("asset not provided")
-	}
-	asset, err := common.NewAsset(req.Asset)
-	if err != nil {
-		ctx.Logger().Error("fail to get parse asset", "error", err)
-		return nil, fmt.Errorf("fail to parse asset: %w", err)
-	}
-	if asset.IsDerivedAsset() {
-		return nil, fmt.Errorf("must not be a derived asset")
-	}
-	if asset.IsSyntheticAsset() {
-		return nil, fmt.Errorf("invalid request: requested pool is a SaversPool")
-	}
-
-	var lps []*types.QueryLiquidityProviderResponse
-	iterator := qs.mgr.Keeper().GetLiquidityProviderIterator(ctx, asset)
-	defer iterator.Close()
-	for ; iterator.Valid(); iterator.Next() {
-		var lp LiquidityProvider
-		qs.mgr.Keeper().Cdc().MustUnmarshal(iterator.Value(), &lp)
-		lps = append(lps, &types.QueryLiquidityProviderResponse{
-			// No redeem or LUVI calculations for the array response.
-			Asset:              lp.Asset.GetLayer1Asset().String(),
-			RuneAddress:        lp.RuneAddress.String(),
-			AssetAddress:       lp.AssetAddress.String(),
-			LastAddHeight:      lp.LastAddHeight,
-			LastWithdrawHeight: lp.LastWithdrawHeight,
-			Units:              lp.Units.String(),
-			PendingRune:        lp.PendingRune.String(),
-			PendingAsset:       lp.PendingAsset.String(),
-			PendingTxId:        lp.PendingTxID.String(),
-			RuneDepositValue:   lp.RuneDepositValue.String(),
-			AssetDepositValue:  lp.AssetDepositValue.String(),
-		})
-	}
-	return &types.QueryLiquidityProvidersResponse{LiquidityProviders: lps}, nil
-}
-
-// queryLiquidityProvider
-func (qs queryServer) queryLiquidityProvider(ctx cosmos.Context, req *types.QueryLiquidityProviderRequest) (*types.QueryLiquidityProviderResponse, error) {
-	if len(req.Asset) == 0 {
-		return nil, errors.New("asset not provided")
-	}
-	if len(req.Address) == 0 {
-		return nil, errors.New("lp not provided")
-	}
-	asset, err := common.NewAsset(req.Asset)
-	if err != nil {
-		ctx.Logger().Error("fail to get parse asset", "error", err)
-		return nil, fmt.Errorf("fail to parse asset: %w", err)
-	}
-
-	if asset.IsDerivedAsset() {
-		return nil, fmt.Errorf("must not be a derived asset")
-	}
-
-	if asset.IsSyntheticAsset() {
-		return nil, fmt.Errorf("invalid request: requested pool is a SaversPool")
-	}
-
-	addr, err := common.NewAddress(req.Address)
-	if err != nil {
-		ctx.Logger().Error("fail to get parse address", "error", err)
-		return nil, fmt.Errorf("fail to parse address: %w", err)
-	}
-	lp, err := qs.mgr.Keeper().GetLiquidityProvider(ctx, asset, addr)
-	if err != nil {
-		ctx.Logger().Error("fail to get liquidity provider", "error", err)
-		return nil, fmt.Errorf("fail to liquidity provider: %w", err)
-	}
-
-	poolAsset := asset
-
-	pool, err := qs.mgr.Keeper().GetPool(ctx, poolAsset)
-	if err != nil {
-		ctx.Logger().Error("fail to get pool", "error", err)
-		return nil, fmt.Errorf("fail to get pool: %w", err)
-	}
-
-	synthSupply := qs.mgr.Keeper().GetTotalSupply(ctx, poolAsset.GetSyntheticAsset())
-	_, runeRedeemValue := lp.GetRuneRedeemValue(pool, synthSupply)
-	_, assetRedeemValue := lp.GetAssetRedeemValue(pool, synthSupply)
-	_, luviDepositValue := lp.GetLuviDepositValue(pool)
-	_, luviRedeemValue := lp.GetLuviRedeemValue(runeRedeemValue, assetRedeemValue)
-
-	lgp := cosmos.NewDec(0)
-	if !luviDepositValue.IsZero() {
-		ldv := cosmos.NewDec(luviDepositValue.BigInt().Int64())
-		lrv := cosmos.NewDec(luviRedeemValue.BigInt().Int64())
-		lgp = lrv.Sub(ldv)
-		lgp = lgp.Quo(ldv)
-	}
-
-	liqp := types.QueryLiquidityProviderResponse{
-		Asset:              lp.Asset.GetLayer1Asset().String(),
-		RuneAddress:        lp.RuneAddress.String(),
-		AssetAddress:       lp.AssetAddress.String(),
-		LastAddHeight:      lp.LastAddHeight,
-		LastWithdrawHeight: lp.LastWithdrawHeight,
-		Units:              lp.Units.String(),
-		PendingRune:        lp.PendingRune.String(),
-		PendingAsset:       lp.PendingAsset.String(),
-		PendingTxId:        lp.PendingTxID.String(),
-		RuneDepositValue:   lp.RuneDepositValue.String(),
-		AssetDepositValue:  lp.AssetDepositValue.String(),
-		RuneRedeemValue:    runeRedeemValue.String(),
-		AssetRedeemValue:   assetRedeemValue.String(),
-		LuviDepositValue:   luviDepositValue.String(),
-		LuviRedeemValue:    luviRedeemValue.String(),
-		LuviGrowthPct:      lgp.String(),
-	}
-
-	return &liqp, nil
-}
-
-// querySavers
-func (qs queryServer) querySavers(ctx cosmos.Context, req *types.QuerySaversRequest) (*types.QuerySaversResponse, error) {
-	if len(req.Asset) == 0 {
-		return nil, errors.New("asset not provided")
-	}
-	req.Asset = strings.Replace(req.Asset, ".", "/", 1)
-	asset, err := common.NewAsset(req.Asset)
-	if err != nil {
-		ctx.Logger().Error("fail to get parse asset", "error", err)
-		return nil, fmt.Errorf("fail to parse asset: %w", err)
-	}
-	if asset.IsDerivedAsset() {
-		return nil, fmt.Errorf("must not be a derived asset")
-	}
-	if !asset.IsSyntheticAsset() {
-		return nil, fmt.Errorf("invalid request: requested pool is not a SaversPool")
-	}
-
-	poolAsset := asset.GetSyntheticAsset()
-
-	pool, err := qs.mgr.Keeper().GetPool(ctx, poolAsset)
-	if err != nil {
-		ctx.Logger().Error("fail to get pool", "error", err)
-		return nil, fmt.Errorf("fail to get pool: %w", err)
-	}
-
-	var savers []*types.QuerySaverResponse
-	iterator := qs.mgr.Keeper().GetLiquidityProviderIterator(ctx, asset)
-	defer iterator.Close()
-	for ; iterator.Valid(); iterator.Next() {
-		var lp LiquidityProvider
-		qs.mgr.Keeper().Cdc().MustUnmarshal(iterator.Value(), &lp)
-		savers = append(savers, newSaver(lp, pool))
-	}
-
-	return &types.QuerySaversResponse{Savers: savers}, nil
-}
-
-// querySaver
-// isSavers is true if request is for the savers of a Savers Pool, if false the request is for an L1 pool
-func (qs queryServer) querySaver(ctx cosmos.Context, req *types.QuerySaverRequest) (*types.QuerySaverResponse, error) {
-	if len(req.Asset) == 0 {
-		return nil, errors.New("asset not provided")
-	}
-	if len(req.Address) == 0 {
-		return nil, errors.New("lp not provided")
-	}
-	req.Asset = strings.Replace(req.Asset, ".", "/", 1)
-	asset, err := common.NewAsset(req.Asset)
-	if err != nil {
-		ctx.Logger().Error("fail to get parse asset", "error", err)
-		return nil, fmt.Errorf("fail to parse asset: %w", err)
-	}
-
-	if asset.IsDerivedAsset() {
-		return nil, fmt.Errorf("must not be a derived asset")
-	}
-
-	if !asset.IsSyntheticAsset() {
-		return nil, fmt.Errorf("invalid request: requested pool is not a SaversPool")
-	}
-
-	addr, err := common.NewAddress(req.Address)
-	if err != nil {
-		ctx.Logger().Error("fail to get parse address", "error", err)
-		return nil, fmt.Errorf("fail to parse address: %w", err)
-	}
-	lp, err := qs.mgr.Keeper().GetLiquidityProvider(ctx, asset, addr)
-	if err != nil {
-		ctx.Logger().Error("fail to get liquidity provider", "error", err)
-		return nil, fmt.Errorf("fail to liquidity provider: %w", err)
-	}
-
-	poolAsset := asset.GetSyntheticAsset()
-
-	pool, err := qs.mgr.Keeper().GetPool(ctx, poolAsset)
-	if err != nil {
-		ctx.Logger().Error("fail to get pool", "error", err)
-		return nil, fmt.Errorf("fail to get pool: %w", err)
-	}
-
-	saver := newSaver(lp, pool)
-
-	return saver, nil
-}
-
-func newStreamingSwap(streamingSwap StreamingSwap, msgSwap MsgSwap) *types.QueryStreamingSwapResponse {
-	var sourceAsset common.Asset
-	// Leave the source_asset field empty if there is more than a single input Coin.
-	if len(msgSwap.Tx.Coins) == 1 {
-		sourceAsset = msgSwap.Tx.Coins[0].Asset
-	}
-
-	var failedSwaps []int64
-	// Leave this nil (null rather than []) if the source is nil.
-	if streamingSwap.FailedSwaps != nil {
-		failedSwaps = make([]int64, len(streamingSwap.FailedSwaps))
-		for i := range streamingSwap.FailedSwaps {
-			failedSwaps[i] = int64(streamingSwap.FailedSwaps[i])
-		}
-	}
-
-	return &types.QueryStreamingSwapResponse{
-		TxId:              streamingSwap.TxID.String(),
-		Interval:          int64(streamingSwap.Interval),
-		Quantity:          int64(streamingSwap.Quantity),
-		Count:             int64(streamingSwap.Count),
-		LastHeight:        streamingSwap.LastHeight,
-		InitialHeight:     msgSwap.InitialBlockHeight,
-		TradeTarget:       streamingSwap.TradeTarget.String(),
-		SourceAsset:       sourceAsset.String(),
-		TargetAsset:       msgSwap.TargetAsset.String(),
-		Destination:       msgSwap.Destination.String(),
-		Deposit:           streamingSwap.Deposit.String(),
-		In:                streamingSwap.In.String(),
-		Out:               streamingSwap.Out.String(),
-		FailedSwaps:       failedSwaps,
-		FailedSwapReasons: streamingSwap.FailedSwapReasons,
-	}
-}
-
-// newStreamingSwapFromAdvQueue converts an advanced swap queue MsgSwap to QueryStreamingSwapResponse format
-func newStreamingSwapFromAdvQueue(msgSwap MsgSwap) *types.QueryStreamingSwapResponse {
-	var sourceAsset common.Asset
-	// Leave the source_asset field empty if there is more than a single input Coin.
-	if len(msgSwap.Tx.Coins) == 1 {
-		sourceAsset = msgSwap.Tx.Coins[0].Asset
-	}
-
-	var failedSwaps []int64
-	// Leave this nil (null rather than []) if the source is nil.
-	if msgSwap.State.FailedSwaps != nil {
-		failedSwaps = make([]int64, len(msgSwap.State.FailedSwaps))
-		for i := range msgSwap.State.FailedSwaps {
-			failedSwaps[i] = int64(msgSwap.State.FailedSwaps[i])
-		}
-	}
-
-	return &types.QueryStreamingSwapResponse{
-		TxId:              msgSwap.Tx.ID.String(),
-		Interval:          int64(msgSwap.State.Interval),
-		Quantity:          int64(msgSwap.State.Quantity),
-		Count:             int64(msgSwap.State.Count),
-		LastHeight:        msgSwap.State.LastHeight,
-		InitialHeight:     msgSwap.InitialBlockHeight,
-		TradeTarget:       msgSwap.TradeTarget.String(),
-		SourceAsset:       sourceAsset.String(),
-		TargetAsset:       msgSwap.TargetAsset.String(),
-		Destination:       msgSwap.Destination.String(),
-		Deposit:           msgSwap.State.Deposit.String(),
-		In:                msgSwap.State.In.String(),
-		Out:               msgSwap.State.Out.String(),
-		FailedSwaps:       failedSwaps,
-		FailedSwapReasons: msgSwap.State.FailedSwapReasons,
-	}
-}
-
-func (qs queryServer) queryStreamingSwaps(ctx cosmos.Context, _ *types.QueryStreamingSwapsRequest) (*types.QueryStreamingSwapsResponse, error) {
-	var streams []*types.QueryStreamingSwapResponse
-
-	// Get legacy streaming swaps
-	iter := qs.mgr.Keeper().GetStreamingSwapIterator(ctx)
-	defer iter.Close()
-	for ; iter.Valid(); iter.Next() {
-		var stream StreamingSwap
-		qs.mgr.Keeper().Cdc().MustUnmarshal(iter.Value(), &stream)
-
-		var msgSwap MsgSwap
-		// Check up to the first two indices (0 through 1) for the MsgSwap; if not found, leave the fields blank.
-		for i := 0; i <= 1; i++ {
-			swapQueueItem, err := qs.mgr.Keeper().GetSwapQueueItem(ctx, stream.TxID, i)
-			if err != nil {
-				// GetSwapQueueItem returns an error if there is no MsgSwap set for that index, a normal occurrence here.
-				continue
-			}
-			if !swapQueueItem.IsLegacyStreaming() {
-				continue
-			}
-			// In case there are multiple streaming swaps with the same TxID, check the input amount.
-			if len(swapQueueItem.Tx.Coins) == 0 || !swapQueueItem.Tx.Coins[0].Amount.Equal(stream.Deposit) {
-				continue
-			}
-			msgSwap = swapQueueItem
-			break
-		}
-
-		streams = append(streams, newStreamingSwap(stream, msgSwap))
-	}
-
-	// Get advanced swap queue streaming swaps
-	advIter := qs.mgr.Keeper().GetAdvSwapQueueItemIterator(ctx)
-	defer advIter.Close()
-	for ; advIter.Valid(); advIter.Next() {
-		var msgSwap MsgSwap
-		if err := qs.mgr.Keeper().Cdc().Unmarshal(advIter.Value(), &msgSwap); err != nil {
-			ctx.Logger().Error("failed to unmarshal advanced swap queue item", "error", err)
-			continue
-		}
-
-		// Only include streaming swaps (quantity > 1)
-		if !msgSwap.IsStreaming() {
-			continue
-		}
-
-		// Convert advanced swap queue MsgSwap to streaming swap response format
-		streams = append(streams, newStreamingSwapFromAdvQueue(msgSwap))
-	}
-
-	return &types.QueryStreamingSwapsResponse{StreamingSwaps: streams}, nil
-}
-
-func (qs queryServer) querySwapperClout(ctx cosmos.Context, req *types.QuerySwapperCloutRequest) (*types.SwapperClout, error) {
-	if len(req.Address) == 0 {
-		return nil, errors.New("address not provided")
-	}
-	addr, err := common.NewAddress(req.Address)
-	if err != nil {
-		ctx.Logger().Error("fail to parse address", "error", err)
-		return nil, fmt.Errorf("could not parse address: %w", err)
-	}
-
-	clout, err := qs.mgr.Keeper().GetSwapperClout(ctx, addr)
-	if err != nil {
-		ctx.Logger().Error("fail to get swapper clout", "error", err)
-		return nil, fmt.Errorf("could not get swapper clout: %w", err)
-	}
-
-	return &clout, nil
-}
-
-func (qs queryServer) queryStreamingSwap(ctx cosmos.Context, req *types.QueryStreamingSwapRequest) (*types.QueryStreamingSwapResponse, error) {
-	if len(req.TxId) == 0 {
-		return nil, errors.New("tx id not provided")
-	}
-	txid, err := common.NewTxID(req.TxId)
-	if err != nil {
-		ctx.Logger().Error("fail to parse txid", "error", err)
-		return nil, fmt.Errorf("could not parse txid: %w", err)
-	}
-
-	// First try advanced swap queue (primary system since EnableAdvSwapQueue = 1 by default)
-	// Check up to the first two indices (0 through 1) for streaming swaps in advanced queue
-	for i := 0; i <= 1; i++ {
-		var advSwapItem MsgSwap
-		advSwapItem, err = qs.mgr.Keeper().GetAdvSwapQueueItem(ctx, txid, i)
-		if err != nil {
-			// GetAdvSwapQueueItem returns an error if there is no MsgSwap set for that index, a normal occurrence here.
-			continue
-		}
-		if !advSwapItem.IsStreaming() {
-			continue
-		}
-		// Found streaming swap in advanced queue
-		result := newStreamingSwapFromAdvQueue(advSwapItem)
-		return result, nil
-	}
-
-	// Advanced swap queue not found, try legacy streaming swap for backward compatibility
-	streamingSwap, err := qs.mgr.Keeper().GetStreamingSwap(ctx, txid)
-	if err == nil {
-		// Found legacy streaming swap, look for corresponding MsgSwap
-		var msgSwap MsgSwap
-		// Check up to the first two indices (0 through 1) for the MsgSwap; if not found, leave the fields blank.
-		for i := 0; i <= 1; i++ {
-			swapQueueItem, err := qs.mgr.Keeper().GetSwapQueueItem(ctx, txid, i)
-			if err != nil {
-				// GetSwapQueueItem returns an error if there is no MsgSwap set for that index, a normal occurrence here.
-				continue
-			}
-			if !swapQueueItem.IsLegacyStreaming() {
-				continue
-			}
-			// In case there are multiple streaming swaps with the same TxID, check the input amount.
-			if len(swapQueueItem.Tx.Coins) == 0 || !swapQueueItem.Tx.Coins[0].Amount.Equal(streamingSwap.Deposit) {
-				continue
-			}
-			msgSwap = swapQueueItem
-			break
-		}
-
-		result := newStreamingSwap(streamingSwap, msgSwap)
-		return result, nil
-	}
-
-	// Neither advanced queue nor legacy system contains the streaming swap
-	ctx.Logger().Error("streaming swap not found in advanced queue or legacy system", "txid", txid)
-	return nil, fmt.Errorf("could not find streaming swap: %s", txid)
-}
-
-func (qs queryServer) queryPool(ctx cosmos.Context, req *types.QueryPoolRequest) (*types.QueryPoolResponse, error) {
-	if len(req.Asset) == 0 {
-		return nil, errors.New("asset not provided")
-	}
-	asset, err := common.NewAsset(req.Asset)
-	if err != nil {
-		ctx.Logger().Error("fail to parse asset", "error", err)
-		return nil, fmt.Errorf("could not parse asset: %w", err)
-	}
-
-	if asset.IsDerivedAsset() {
-		return nil, fmt.Errorf("asset: %s is a derived asset", req.Asset)
-	}
-
-	pool, err := qs.mgr.Keeper().GetPool(ctx, asset)
-	if err != nil {
-		ctx.Logger().Error("fail to get pool", "error", err)
-		return nil, fmt.Errorf("could not get pool: %w", err)
-	}
-	if pool.IsEmpty() {
-		return nil, fmt.Errorf("pool: %s doesn't exist", req.Asset)
-	}
-
-	// Get Savers Vault for this L1 pool if it's a gas asset
-	saversAsset := pool.Asset.GetSyntheticAsset()
-	saversPool, err := qs.mgr.Keeper().GetPool(ctx, saversAsset)
-	if err != nil {
-		return nil, fmt.Errorf("fail to unmarshal savers vault: %w", err)
-	}
-
-	saversDepth := saversPool.BalanceAsset
-	saversUnits := saversPool.LPUnits
-	synthSupply := qs.mgr.Keeper().GetTotalSupply(ctx, pool.Asset.GetSyntheticAsset())
-	pool.CalcUnits(synthSupply)
-
-	synthMintPausedErr := isSynthMintPaused(ctx, qs.mgr, saversAsset, cosmos.ZeroUint())
-	synthSupplyRemaining, _ := getSynthSupplyRemaining(ctx, qs.mgr, saversAsset)
-
-	maxSynthsForSaversYield := qs.mgr.Keeper().GetConfigInt64(ctx, constants.MaxSynthsForSaversYield)
-	// Capping the synths at double the pool balance of Assets.
-	maxSynthsForSaversYieldUint := common.GetUncappedShare(cosmos.NewUint(uint64(maxSynthsForSaversYield)), cosmos.NewUint(constants.MaxBasisPts), pool.BalanceAsset.MulUint64(2))
-
-	saversFillBps := common.GetUncappedShare(synthSupply, maxSynthsForSaversYieldUint, cosmos.NewUint(constants.MaxBasisPts))
-	saversCapacityRemaining := common.SafeSub(maxSynthsForSaversYieldUint, synthSupply)
-	runeDepth, _, _ := qs.mgr.NetworkMgr().CalcAnchor(ctx, qs.mgr, asset)
-	dpool, _ := qs.mgr.Keeper().GetPool(ctx, asset.GetDerivedAsset())
-	dbps := common.GetUncappedShare(dpool.BalanceRune, runeDepth, cosmos.NewUint(constants.MaxBasisPts))
-	if dpool.Status != PoolAvailable {
-		dbps = cosmos.ZeroUint()
-	}
-
-	tradingHalted := qs.mgr.Keeper().IsGlobalTradingHalted(ctx)
-
-	l1Asset := pool.Asset.GetLayer1Asset()
-	chain := l1Asset.GetChain()
-
-	if !pool.IsAvailable() {
-		tradingHalted = true
-	}
-
-	if !tradingHalted && qs.mgr.Keeper().IsChainTradingHalted(ctx, chain) {
-		tradingHalted = true
-	}
-
-	if !tradingHalted && qs.mgr.Keeper().IsChainHalted(ctx, chain) {
-		tradingHalted = true
-	}
-
-	if !tradingHalted && qs.mgr.Keeper().IsRagnarok(ctx, []common.Asset{l1Asset}) {
-		tradingHalted = true
-	}
-
-	volume, err := qs.mgr.Keeper().GetVolume(ctx, pool.Asset)
-	if err != nil {
-		// fallback to display "0" volume
-		volume = types.NewVolume(pool.Asset)
-	}
-
-	p := types.QueryPoolResponse{
-		Asset:               pool.Asset.String(),
-		ShortCode:           pool.Asset.ShortCode(),
-		Status:              pool.Status.String(),
-		Decimals:            pool.Decimals,
-		PendingInboundAsset: pool.PendingInboundAsset.String(),
-		PendingInboundRune:  pool.PendingInboundRune.String(),
-		BalanceAsset:        pool.BalanceAsset.String(),
-		BalanceRune:         pool.BalanceRune.String(),
-		PoolUnits:           pool.GetPoolUnits().String(),
-		LPUnits:             pool.LPUnits.String(),
-		SynthUnits:          pool.SynthUnits.String(),
-		TradingHalted:       tradingHalted,
-		VolumeRune:          volume.TotalRune.String(),
-		VolumeAsset:         volume.TotalAsset.String(),
-	}
-	p.SynthSupply = synthSupply.String()
-	p.SaversDepth = saversDepth.String()
-	p.SaversUnits = saversUnits.String()
-	p.SaversFillBps = saversFillBps.String()
-	p.SaversCapacityRemaining = saversCapacityRemaining.String()
-	p.SynthMintPaused = (synthMintPausedErr != nil)
-	p.SynthSupplyRemaining = synthSupplyRemaining.String()
-	p.DerivedDepthBps = dbps.String()
-
-	polReserveDeposit, err := qs.mgr.Keeper().GetPOLReserveDeposit(ctx, pool.Asset)
-	if err == nil {
-		p.PolReserveRuneDeposited = polReserveDeposit.RuneDeposited.String()
-	}
-
-	rollingFee, err := qs.mgr.Keeper().GetRollingPoolLiquidityFee(ctx, pool.Asset)
-	if err == nil {
-		p.RollingPoolLiquidityFeeRune = cosmos.NewUint(rollingFee).String()
-	}
-
-	if !pool.BalanceAsset.IsZero() && !pool.BalanceRune.IsZero() {
-		dollarsPerRune := dollarsPerRuneIgnoreHalt(ctx, qs.mgr.Keeper())
-		p.AssetTorPrice = dollarsPerRune.Mul(pool.BalanceRune).Quo(pool.BalanceAsset).String()
-	}
-
-	return &p, nil
-}
-
-func (qs queryServer) queryPools(ctx cosmos.Context, _ *types.QueryPoolsRequest) (*types.QueryPoolsResponse, error) {
-	dollarsPerRune := dollarsPerRuneIgnoreHalt(ctx, qs.mgr.Keeper())
-
-	isGlobalTradingHalted := qs.mgr.Keeper().IsGlobalTradingHalted(ctx)
-	isChainOrChainTradingHalted := map[common.Chain]bool{}
-
-	pools := make([]*types.QueryPoolResponse, 0)
-	iterator := qs.mgr.Keeper().GetPoolIterator(ctx)
-	defer iterator.Close()
-	for ; iterator.Valid(); iterator.Next() {
-		var pool Pool
-		if err := qs.mgr.Keeper().Cdc().Unmarshal(iterator.Value(), &pool); err != nil {
-			return nil, fmt.Errorf("fail to unmarshal pool: %w", err)
-		}
-		// ignore pool if no liquidity provider units
-		if pool.LPUnits.IsZero() {
-			continue
-		}
-
-		// Ignore synth asset pool (savers). Info will be on the L1 pool
-		if pool.Asset.IsSyntheticAsset() {
-			continue
-		}
-
-		// Ignore derived assets (except TOR)
-		if pool.Asset.IsDerivedAsset() {
-			continue
-		}
-
-		// Get Savers Vault
-		saversAsset := pool.Asset.GetSyntheticAsset()
-		saversPool, err := qs.mgr.Keeper().GetPool(ctx, saversAsset)
-		if err != nil {
-			return nil, fmt.Errorf("fail to unmarshal savers vault: %w", err)
-		}
-
-		saversDepth := saversPool.BalanceAsset
-		saversUnits := saversPool.LPUnits
-
-		synthSupply := qs.mgr.Keeper().GetTotalSupply(ctx, pool.Asset.GetSyntheticAsset())
-		pool.CalcUnits(synthSupply)
-
-		synthMintPausedErr := isSynthMintPaused(ctx, qs.mgr, pool.Asset, cosmos.ZeroUint())
-		synthSupplyRemaining, _ := getSynthSupplyRemaining(ctx, qs.mgr, pool.Asset)
-
-		maxSynthsForSaversYield := qs.mgr.Keeper().GetConfigInt64(ctx, constants.MaxSynthsForSaversYield)
-		// Capping the synths at double the pool balance of Assets.
-		maxSynthsForSaversYieldUint := common.GetUncappedShare(cosmos.NewUint(uint64(maxSynthsForSaversYield)), cosmos.NewUint(constants.MaxBasisPts), pool.BalanceAsset.MulUint64(2))
-
-		saversFillBps := common.GetUncappedShare(synthSupply, maxSynthsForSaversYieldUint, cosmos.NewUint(constants.MaxBasisPts))
-		saversCapacityRemaining := common.SafeSub(maxSynthsForSaversYieldUint, synthSupply)
-		runeDepth, _, _ := qs.mgr.NetworkMgr().CalcAnchor(ctx, qs.mgr, pool.Asset)
-		dpool, _ := qs.mgr.Keeper().GetPool(ctx, pool.Asset.GetDerivedAsset())
-		dbps := common.GetUncappedShare(dpool.BalanceRune, runeDepth, cosmos.NewUint(constants.MaxBasisPts))
-		if dpool.Status != PoolAvailable {
-			dbps = cosmos.ZeroUint()
-		}
-
-		tradingHalted := isGlobalTradingHalted
-
-		l1Asset := pool.Asset.GetLayer1Asset()
-		chain := l1Asset.GetChain()
-
-		_, found := isChainOrChainTradingHalted[chain]
-		if !found {
-			isChainHalted := qs.mgr.Keeper().IsChainHalted(ctx, chain)
-			isChainTradingHalted := qs.mgr.Keeper().IsChainTradingHalted(ctx, chain)
-
-			isChainOrChainTradingHalted[chain] = isChainHalted || isChainTradingHalted
-		}
-
-		if !tradingHalted {
-			tradingHalted = isChainOrChainTradingHalted[chain]
-		}
-
-		if !pool.IsAvailable() {
-			tradingHalted = true
-		}
-
-		if qs.mgr.Keeper().IsRagnarok(ctx, []common.Asset{l1Asset}) {
-			tradingHalted = true
-		}
-
-		volume, err := qs.mgr.Keeper().GetVolume(ctx, pool.Asset)
-		if err != nil {
-			// fallback to display "0" volume
-			volume = types.NewVolume(pool.Asset)
-		}
-
-		p := types.QueryPoolResponse{
-			Asset:               pool.Asset.String(),
-			ShortCode:           pool.Asset.ShortCode(),
-			Status:              pool.Status.String(),
-			Decimals:            pool.Decimals,
-			PendingInboundAsset: pool.PendingInboundAsset.String(),
-			PendingInboundRune:  pool.PendingInboundRune.String(),
-			BalanceAsset:        pool.BalanceAsset.String(),
-			BalanceRune:         pool.BalanceRune.String(),
-			PoolUnits:           pool.GetPoolUnits().String(),
-			LPUnits:             pool.LPUnits.String(),
-			SynthUnits:          pool.SynthUnits.String(),
-			TradingHalted:       tradingHalted,
-			VolumeRune:          volume.TotalRune.String(),
-			VolumeAsset:         volume.TotalAsset.String(),
-		}
-
-		p.SynthSupply = synthSupply.String()
-		p.SaversDepth = saversDepth.String()
-		p.SaversUnits = saversUnits.String()
-		p.SaversFillBps = saversFillBps.String()
-		p.SaversCapacityRemaining = saversCapacityRemaining.String()
-		p.SynthMintPaused = (synthMintPausedErr != nil)
-		p.SynthSupplyRemaining = synthSupplyRemaining.String()
-		p.DerivedDepthBps = dbps.String()
-
-		polReserveDeposit, polErr := qs.mgr.Keeper().GetPOLReserveDeposit(ctx, pool.Asset)
-		if polErr == nil {
-			p.PolReserveRuneDeposited = polReserveDeposit.RuneDeposited.String()
-		}
-
-		rollingFee, rollingErr := qs.mgr.Keeper().GetRollingPoolLiquidityFee(ctx, pool.Asset)
-		if rollingErr == nil {
-			p.RollingPoolLiquidityFeeRune = cosmos.NewUint(rollingFee).String()
-		}
-
-		if !pool.BalanceAsset.IsZero() && !pool.BalanceRune.IsZero() {
-			p.AssetTorPrice = dollarsPerRune.Mul(pool.BalanceRune).Quo(pool.BalanceAsset).String()
-		}
-
-		pools = append(pools, &p)
-	}
-	return &types.QueryPoolsResponse{Pools: pools}, nil
-}
-
-func (qs queryServer) queryPoolSlips(ctx cosmos.Context, asset string) (*types.QueryPoolSlipsResponse, error) {
-	var assets []common.Asset
-	if len(asset) > 0 {
-		assetObj, err := common.NewAsset(asset)
-		if err != nil {
-			ctx.Logger().Error("fail to parse asset", "error", err, "asset", asset)
-			return nil, fmt.Errorf("fail to parse asset (%s): %w", asset, err)
-		}
-		assets = []common.Asset{assetObj}
-	} else {
-		iterator := qs.mgr.Keeper().GetPoolIterator(ctx)
-		defer iterator.Close()
-		for ; iterator.Valid(); iterator.Next() {
-			var pool Pool
-			if err := qs.mgr.Keeper().Cdc().Unmarshal(iterator.Value(), &pool); err != nil {
-				return nil, fmt.Errorf("fail to unmarshal pool: %w", err)
-			}
-
-			// Display the swap slips of Available-pool Layer 1 assets.
-			if pool.Status != PoolAvailable || pool.Asset.IsNative() {
-				continue
-			}
-			assets = append(assets, pool.Asset)
-		}
-	}
-
-	result := make([]*types.QueryPoolSlipResponse, len(assets))
-	for i := range assets {
-		result[i] = &types.QueryPoolSlipResponse{}
-		result[i].Asset = assets[i].String()
-
-		poolSlip, err := qs.mgr.Keeper().GetPoolSwapSlip(ctx, ctx.BlockHeight(), assets[i])
-		if err != nil {
-			return nil, fmt.Errorf("fail to get swap slip for asset (%s) height (%d), err:%w", assets[i], ctx.BlockHeight(), err)
-		}
-		result[i].PoolSlip = poolSlip.Int64()
-
-		rollupCount, err := qs.mgr.Keeper().GetRollupCount(ctx, assets[i])
-		if err != nil {
-			return nil, fmt.Errorf("fail to get rollup count for asset (%s) height (%d), err:%w", assets[i], ctx.BlockHeight(), err)
-		}
-		result[i].RollupCount = rollupCount
-
-		longRollup, err := qs.mgr.Keeper().GetLongRollup(ctx, assets[i])
-		if err != nil {
-			return nil, fmt.Errorf("fail to get long rollup for asset (%s) height (%d), err:%w", assets[i], ctx.BlockHeight(), err)
-		}
-		result[i].LongRollup = longRollup
-
-		rollup, err := qs.mgr.Keeper().GetCurrentRollup(ctx, assets[i])
-		if err != nil {
-			return nil, fmt.Errorf("fail to get rollup count for asset (%s) height (%d), err:%w", assets[i], ctx.BlockHeight(), err)
-		}
-		result[i].Rollup = rollup
-	}
-
-	// For performance, only sum the rollup swap slip for comparison
-	// when a single asset has been specified.
-	if len(assets) == 1 {
-		maxAnchorBlocks := qs.mgr.Keeper().GetConfigInt64(ctx, constants.MaxAnchorBlocks)
-		var summedRollup int64
-		for i := ctx.BlockHeight() - maxAnchorBlocks; i < ctx.BlockHeight(); i++ {
-			poolSlip, err := qs.mgr.Keeper().GetPoolSwapSlip(ctx, i, assets[0])
-			if err != nil {
-				// Log the error, zero the sum, and exit the loop.
-				ctx.Logger().Error("fail to get swap slip", "error", err, "asset", assets[0], "height", i)
-				summedRollup = 0
-				break
-			}
-			summedRollup += poolSlip.Int64()
-		}
-		result[0].SummedRollup = summedRollup
-	}
-
-	return &types.QueryPoolSlipsResponse{PoolSlips: result}, nil
-}
-
-func (qs queryServer) queryDerivedPool(ctx cosmos.Context, req *types.QueryDerivedPoolRequest) (*types.QueryDerivedPoolResponse, error) {
-	if len(req.Asset) == 0 {
-		return nil, errors.New("asset not provided")
-	}
-	asset, err := common.NewAsset(req.Asset)
-	if err != nil {
-		ctx.Logger().Error("fail to parse asset", "error", err)
-		return nil, fmt.Errorf("could not parse asset: %w", err)
-	}
-
-	if !asset.IsDerivedAsset() {
-		return nil, fmt.Errorf("asset is not a derived asset: %s", asset)
-	}
-
-	// call begin block so the derived depth matches the next block execution state
-	_ = qs.mgr.NetworkMgr().BeginBlock(ctx.WithBlockHeight(ctx.BlockHeight()+1), qs.mgr)
-
-	// sum rune depth of anchor pools
-	runeDepth := sdkmath.ZeroUint()
-	for _, anchor := range qs.mgr.Keeper().GetAnchors(ctx, asset) {
-		aPool, _ := qs.mgr.Keeper().GetPool(ctx, anchor)
-		runeDepth = runeDepth.Add(aPool.BalanceRune)
-	}
-
-	dpool, _ := qs.mgr.Keeper().GetPool(ctx, asset.GetDerivedAsset())
-	dbps := cosmos.ZeroUint()
-	if dpool.Status == PoolAvailable {
-		dbps = common.GetUncappedShare(dpool.BalanceRune, runeDepth, cosmos.NewUint(constants.MaxBasisPts))
-	}
-
-	p := types.QueryDerivedPoolResponse{
-		Asset:        dpool.Asset.String(),
-		Status:       dpool.Status.String(),
-		Decimals:     dpool.Decimals,
-		BalanceAsset: dpool.BalanceAsset.String(),
-		BalanceRune:  dpool.BalanceRune.String(),
-	}
-	p.DerivedDepthBps = dbps.String()
-
-	return &p, nil
-}
-
-func (qs queryServer) queryDerivedPools(ctx cosmos.Context, _ *types.QueryDerivedPoolsRequest) (*types.QueryDerivedPoolsResponse, error) {
-	pools := make([]*types.QueryDerivedPoolResponse, 0)
-	iterator := qs.mgr.Keeper().GetPoolIterator(ctx)
-	defer iterator.Close()
-	for ; iterator.Valid(); iterator.Next() {
-		var pool Pool
-		if err := qs.mgr.Keeper().Cdc().Unmarshal(iterator.Value(), &pool); err != nil {
-			return nil, fmt.Errorf("fail to unmarshal pool: %w", err)
-		}
-		// Ignore derived assets (except TOR)
-		if !pool.Asset.IsDerivedAsset() {
-			continue
-		}
-
-		runeDepth, _, _ := qs.mgr.NetworkMgr().CalcAnchor(ctx, qs.mgr, pool.Asset)
-		dpool, _ := qs.mgr.Keeper().GetPool(ctx, pool.Asset.GetDerivedAsset())
-		dbps := cosmos.ZeroUint()
-		if dpool.Status == PoolAvailable {
-			dbps = common.GetUncappedShare(
-				dpool.BalanceRune,
-				runeDepth,
-				cosmos.NewUint(constants.MaxBasisPts),
-			)
-		}
-
-		p := types.QueryDerivedPoolResponse{
-			Asset:        dpool.Asset.String(),
-			Status:       dpool.Status.String(),
-			Decimals:     dpool.Decimals,
-			BalanceAsset: dpool.BalanceAsset.String(),
-			BalanceRune:  dpool.BalanceRune.String(),
-		}
-		p.DerivedDepthBps = dbps.String()
-
-		pools = append(pools, &p)
-	}
-
-	return &types.QueryDerivedPoolsResponse{Pools: pools}, nil
-}
-
-func (qs queryServer) queryTradeUnit(ctx cosmos.Context, req *types.QueryTradeUnitRequest) (*types.QueryTradeUnitResponse, error) {
-	if len(req.Asset) == 0 {
-		return nil, errors.New("asset not provided")
-	}
-	asset, err := common.NewAsset(req.Asset)
-	if err != nil {
-		ctx.Logger().Error("fail to parse asset", "error", err)
-		return nil, fmt.Errorf("could not parse asset: %w", err)
-	}
-
-	tu, err := qs.mgr.Keeper().GetTradeUnit(ctx, asset)
-	if err != nil {
-		ctx.Logger().Error("fail to get trade unit", "error", err)
-		return nil, fmt.Errorf("could not get trade unit: %w", err)
-	}
-	tuResp := types.QueryTradeUnitResponse{
-		Asset: tu.Asset.String(),
-		Units: tu.Units.String(),
-		Depth: tu.Depth.String(),
-	}
-	return &tuResp, nil
-}
-
-func (qs queryServer) queryTradeUnits(ctx cosmos.Context, _ *types.QueryTradeUnitsRequest) (*types.QueryTradeUnitsResponse, error) {
-	pools, err := qs.mgr.Keeper().GetPools(ctx)
-	if err != nil {
-		return nil, errors.New("failed to get pools")
-	}
-	units := make([]*types.QueryTradeUnitResponse, 0)
-	for _, pool := range pools {
-		// skip non-layer1 pools
-		if pool.Asset.GetChain().IsTHORChain() {
-			continue
-		}
-		asset := pool.Asset.GetTradeAsset()
-		tu, err := qs.mgr.Keeper().GetTradeUnit(ctx, asset)
-		if err != nil {
-			ctx.Logger().Error("fail to get trade unit", "error", err)
-			return nil, fmt.Errorf("could not get trade unit: %w", err)
-		}
-		tuResp := types.QueryTradeUnitResponse{
-			Asset: tu.Asset.String(),
-			Units: tu.Units.String(),
-			Depth: tu.Depth.String(),
-		}
-		units = append(units, &tuResp)
-	}
-
-	return &types.QueryTradeUnitsResponse{TradeUnits: units}, nil
-}
-
-func (qs queryServer) queryTradeAccounts(ctx cosmos.Context, req *types.QueryTradeAccountsRequest) (*types.QueryTradeAccountsResponse, error) {
-	return nil, errors.New("trade accounts are not part of the Thornado custody fork")
-}
-
-func (qs queryServer) queryTradeAccount(ctx cosmos.Context, req *types.QueryTradeAccountRequest) (*types.QueryTradeAccountsResponse, error) {
-	return nil, errors.New("trade accounts are not part of the Thornado custody fork")
-}
-
-func (qs queryServer) querySecuredAssets(ctx cosmos.Context, req *types.QuerySecuredAssetsRequest) (*types.QuerySecuredAssetsResponse, error) {
-	return nil, errors.New("secured assets are not part of the Thornado custody fork")
-}
-
-func (qs queryServer) querySecuredAsset(ctx cosmos.Context, req *types.QuerySecuredAssetRequest) (*types.QuerySecuredAssetResponse, error) {
-	return nil, errors.New("secured assets are not part of the Thornado custody fork")
-}
-
-func (qs queryServer) queryLimitSwaps(ctx cosmos.Context, req *types.QueryLimitSwapsRequest) (*types.QueryLimitSwapsResponse, error) {
-	return nil, errors.New("limit swaps are not part of the Thornado custody fork")
-}
-
-func (qs queryServer) queryLimitSwapsSummary(ctx cosmos.Context, req *types.QueryLimitSwapsSummaryRequest) (*types.QueryLimitSwapsSummaryResponse, error) {
-	return nil, errors.New("limit swaps are not part of the Thornado custody fork")
-}
-
 func extractVoter(ctx cosmos.Context, tx_id string, mgr *Mgrs) (common.TxID, ObservedTxVoter, error) {
 	if len(tx_id) == 0 {
 		return "", ObservedTxVoter{}, errors.New("tx id not provided")
@@ -1880,28 +752,6 @@ func (qs queryServer) queryTxVoters(ctx cosmos.Context, req *types.QueryTxVoters
 	}, nil
 }
 
-// TODO: Remove isSwap and isPending code when SwapFinalised field deprecated.
-func checkPending(ctx cosmos.Context, keeper keeper.Keeper, voter ObservedTxVoter) (isSwap, isPending, pending bool, streamingSwap StreamingSwap) {
-	// If there's no (confirmation-counting-complete) consensus transaction yet, don't spend time checking the swap status.
-	if voter.Tx.IsEmpty() || !voter.Tx.IsFinal() {
-		return
-	}
-
-	pending = keeper.HasSwapQueueItem(ctx, voter.TxID, 0) || keeper.HasAdvSwapQueueItem(ctx, voter.TxID, 0)
-
-	// Only look for streaming information when a swap is pending.
-	if pending {
-		var err error
-		streamingSwap, err = keeper.GetStreamingSwap(ctx, voter.TxID)
-		if err != nil {
-			// Log the error, but continue without streaming information.
-			ctx.Logger().Error("fail to get streaming swap", "error", err)
-		}
-	}
-
-	return
-}
-
 // Get the largest number of signers for a not-final (pre-confirmation-counting) and final Txs respectively.
 func countSigners(voter ObservedTxVoter) (int64, int64) {
 	var notFinalCount, finalCount int
@@ -1936,9 +786,8 @@ func countSigners(voter ObservedTxVoter) (int64, int64) {
 }
 
 // Call newTxStagesResponse from both queryTxStatus (which includes the stages) and queryTxStages.
-// TODO: Remove isSwap and isPending arguments when SwapFinalised deprecated in favour of SwapStatus.
 // TODO: Deprecate InboundObserved.Started field in favour of the observation counting.
-func newTxStagesResponse(ctx cosmos.Context, voter ObservedTxVoter, isSwap, isPending, pending bool, streamingSwap StreamingSwap) (result types.QueryTxStagesResponse) {
+func newTxStagesResponse(ctx cosmos.Context, voter ObservedTxVoter) (result types.QueryTxStagesResponse) {
 	result.InboundObserved.PreConfirmationCount, result.InboundObserved.FinalCount = countSigners(voter)
 	result.InboundObserved.Completed = !voter.Tx.IsEmpty()
 
@@ -1971,7 +820,7 @@ func newTxStagesResponse(ctx cosmos.Context, voter ObservedTxVoter, isSwap, isPe
 
 			estConfMs := voter.Tx.Tx.Chain.ApproximateBlockMilliseconds() * (extConfDelayHeight - extObsHeight)
 			if currentHeight > countStartHeight {
-				estConfMs -= (currentHeight - countStartHeight) * common.THORChain.ApproximateBlockMilliseconds()
+				estConfMs -= (currentHeight - countStartHeight) * common.Thornado.ApproximateBlockMilliseconds()
 			}
 			estConfSec := estConfMs / 1000
 			// Floor at 0.
@@ -1987,32 +836,6 @@ func newTxStagesResponse(ctx cosmos.Context, voter ObservedTxVoter, isSwap, isPe
 	var inboundFinalised types.InboundFinalisedStage
 	inboundFinalised.Completed = (voter.FinalisedHeight != 0)
 	result.InboundFinalised = &inboundFinalised
-
-	var swapStatus types.SwapStatus
-	swapStatus.Pending = pending
-	// Only display the SwapStatus stage's Streaming field when there's streaming information available.
-	if streamingSwap.Valid() == nil {
-		streaming := types.StreamingStatus{
-			Interval: int64(streamingSwap.Interval),
-			Quantity: int64(streamingSwap.Quantity),
-			Count:    int64(streamingSwap.Count),
-		}
-		swapStatus.Streaming = &streaming
-	}
-	result.SwapStatus = &swapStatus
-
-	// Whether there's an external outbound or not, show the SwapFinalised stage from the start.
-	if isSwap {
-		var swapFinalisedState types.SwapFinalisedStage
-
-		swapFinalisedState.Completed = false
-		if !isPending && result.InboundFinalised.Completed {
-			// Record as completed only when not pending after the inbound has already been finalised.
-			swapFinalisedState.Completed = true
-		}
-
-		result.SwapFinalised = &swapFinalisedState
-	}
 
 	// Only fill ExternalOutboundDelay and ExternalOutboundKeysign for inbound transactions with an external outbound;
 	// namely, transactions with an outbound_height .
@@ -2032,7 +855,7 @@ func newTxStagesResponse(ctx cosmos.Context, voter ObservedTxVoter, isSwap, isPe
 			remainBlocks := voter.OutboundHeight - currentHeight
 			outDelay.RemainingDelayBlocks = remainBlocks
 
-			remainSec := remainBlocks * common.THORChain.ApproximateBlockMilliseconds() / 1000
+			remainSec := remainBlocks * common.Thornado.ApproximateBlockMilliseconds() / 1000
 			outDelay.RemainingDelaySeconds = remainSec
 		}
 
@@ -2067,12 +890,10 @@ func (qs queryServer) queryTxStages(ctx cosmos.Context, req *types.QueryTxStages
 	if err != nil {
 		return nil, err
 	}
-	// when no TxIn voter don't check TxOut voter, as TxOut THORChain observation or not matters little to the user once signed and broadcast
+	// when no TxIn voter don't check TxOut voter, as TxOut Thornado observation or not matters little to the user once signed and broadcast
 	// Rather than a "tx: %s doesn't exist" result, allow a response to an existing-but-unobserved hash with Observation.Started 'false'.
 
-	isSwap, isPending, pending, streamingSwap := checkPending(ctx, qs.mgr.Keeper(), voter)
-
-	result := newTxStagesResponse(ctx, voter, isSwap, isPending, pending, streamingSwap)
+	result := newTxStagesResponse(ctx, voter)
 
 	return &result, nil
 }
@@ -2083,11 +904,8 @@ func (qs queryServer) queryTxStatus(ctx cosmos.Context, req *types.QueryTxStatus
 	if err != nil {
 		return nil, err
 	}
-	// when no TxIn voter don't check TxOut voter, as TxOut THORChain observation or not matters little to the user once signed and broadcast
+	// when no TxIn voter don't check TxOut voter, as TxOut Thornado observation or not matters little to the user once signed and broadcast
 	// Rather than a "tx: %s doesn't exist" result, allow a response to an existing-but-unobserved hash with Stages.Observation.Started 'false'.
-
-	// TODO: Remove isSwap and isPending arguments when SwapFinalised deprecated.
-	isSwap, isPending, pending, streamingSwap := checkPending(ctx, qs.mgr.Keeper(), voter)
 
 	var result types.QueryTxStatusResponse
 
@@ -2118,7 +936,7 @@ func (qs queryServer) queryTxStatus(ctx cosmos.Context, req *types.QueryTxStatus
 		result.OutTxs = voter.OutTxs
 	}
 
-	result.Stages = newTxStagesResponse(ctx, voter, isSwap, isPending, pending, streamingSwap)
+	result.Stages = newTxStagesResponse(ctx, voter)
 
 	return &result, nil
 }
@@ -2282,79 +1100,6 @@ func (qs queryServer) queryKeysign(ctx cosmos.Context, heightStr, pubKey string)
 }
 
 // queryOutQueue - iterates over txout, counting how many transactions are waiting to be sent
-func (qs queryServer) queryQueue(ctx cosmos.Context, _ *types.QueryQueueRequest) (*types.QueryQueueResponse, error) {
-	constAccessor := qs.mgr.GetConstants()
-	signingTransactionPeriod := constAccessor.GetInt64Value(constants.SigningTransactionPeriod)
-	startHeight := ctx.BlockHeight() - signingTransactionPeriod
-	var query types.QueryQueueResponse
-	scheduledOutboundValue := cosmos.ZeroUint()
-	scheduledOutboundClout := cosmos.ZeroUint()
-
-	iterator := qs.mgr.Keeper().GetSwapQueueIterator(ctx)
-	defer iterator.Close()
-	for ; iterator.Valid(); iterator.Next() {
-		var msg MsgSwap
-		if err := qs.mgr.Keeper().Cdc().Unmarshal(iterator.Value(), &msg); err != nil {
-			continue
-		}
-		query.Swap++
-	}
-
-	iter2 := qs.mgr.Keeper().GetAdvSwapQueueItemIterator(ctx)
-	defer iter2.Close()
-	for ; iter2.Valid(); iter2.Next() {
-		var msg MsgSwap
-		if err := qs.mgr.Keeper().Cdc().Unmarshal(iter2.Value(), &msg); err != nil {
-			ctx.Logger().Error("failed to load MsgSwap", "error", err)
-			continue
-		}
-		query.Swap++
-	}
-
-	for height := startHeight; height <= ctx.BlockHeight(); height++ {
-		txs, err := qs.mgr.Keeper().GetTxOut(ctx, height)
-		if err != nil {
-			ctx.Logger().Error("fail to get tx out array from key value store", "error", err)
-			return nil, fmt.Errorf("fail to get tx out array from key value store: %w", err)
-		}
-		for _, tx := range txs.TxArray {
-			if tx.OutHash.IsEmpty() {
-				query.Outbound++
-			}
-		}
-	}
-
-	// sum outbound value
-	maxTxOutOffset, err := qs.mgr.Keeper().GetMimir(ctx, constants.MaxTxOutOffset.String())
-	if maxTxOutOffset < 0 || err != nil {
-		maxTxOutOffset = constAccessor.GetInt64Value(constants.MaxTxOutOffset)
-	}
-	txOutDelayMax, err := qs.mgr.Keeper().GetMimir(ctx, constants.TxOutDelayMax.String())
-	if txOutDelayMax <= 0 || err != nil {
-		txOutDelayMax = constAccessor.GetInt64Value(constants.TxOutDelayMax)
-	}
-
-	for height := ctx.BlockHeight() + 1; height <= ctx.BlockHeight()+txOutDelayMax; height++ {
-		value, clout, err := qs.mgr.Keeper().GetTxOutValue(ctx, height)
-		if err != nil {
-			ctx.Logger().Error("fail to get tx out array from key value store", "error", err)
-			continue
-		}
-		if height > ctx.BlockHeight()+maxTxOutOffset && value.IsZero() {
-			// we've hit our max offset, and an empty block, we can assume the
-			// rest will be empty as well
-			break
-		}
-		scheduledOutboundValue = scheduledOutboundValue.Add(value)
-		scheduledOutboundClout = scheduledOutboundClout.Add(clout)
-	}
-
-	query.ScheduledOutboundValue = scheduledOutboundValue.String()
-	query.ScheduledOutboundClout = scheduledOutboundClout.String()
-
-	return &query, nil
-}
-
 func (qs queryServer) queryLastBlockHeights(ctx cosmos.Context, chain string) (*types.QueryLastBlocksResponse, error) {
 	var chains common.Chains
 	if len(chain) > 0 {
@@ -2377,7 +1122,7 @@ func (qs queryServer) queryLastBlockHeights(ctx cosmos.Context, chain string) (*
 	}
 	var result []*types.ChainsLastBlock
 	for _, c := range chains {
-		if c == common.THORChain {
+		if c == common.Thornado {
 			continue
 		}
 		chainHeight, err := qs.mgr.Keeper().GetLastChainHeight(ctx, c)
@@ -2755,98 +1500,6 @@ func (qs queryServer) queryMimirNodeValues(ctx cosmos.Context, req *types.QueryM
 	return &resp, nil
 }
 
-func (qs queryServer) queryOutboundFees(ctx cosmos.Context, asset string) (*types.QueryOutboundFeesResponse, error) {
-	var assets []common.Asset
-
-	if asset != "" {
-		// If an Asset has been specified, return information for just that Asset
-		// (even if for instance a Derived Asset to show its THORChain outbound fee).
-		asset, err := common.NewAsset(asset)
-		if err != nil {
-			ctx.Logger().Error("fail to parse asset", "error", err, "asset", asset)
-			return nil, fmt.Errorf("fail to parse asset (%s): %w", asset, err)
-		}
-		assets = []common.Asset{asset}
-	} else {
-		// By default display the outbound fees of RUNE and all external-chain Layer 1 assets.
-		// Even Staged pool Assets can incur outbound fees (from withdraw outbounds).
-		assets = []common.Asset{common.RuneAsset()}
-		iterator := qs.mgr.Keeper().GetPoolIterator(ctx)
-		defer iterator.Close()
-		for ; iterator.Valid(); iterator.Next() {
-			var pool Pool
-			if err := qs.mgr.Keeper().Cdc().Unmarshal(iterator.Value(), &pool); err != nil {
-				return nil, fmt.Errorf("fail to unmarshal pool: %w", err)
-			}
-
-			if pool.Asset.IsNative() {
-				// To avoid clutter do not by default display the outbound fees
-				// of THORChain Assets other than RUNE.
-				continue
-			}
-			if pool.BalanceAsset.IsZero() || pool.BalanceRune.IsZero() {
-				// A Layer 1 Asset's pool must have both depths be non-zero
-				// for any outbound fee withholding or gas reimbursement to take place.
-				// (This can take place even if the PoolUnits are zero and all liquidity is synths.)
-				continue
-			}
-
-			assets = append(assets, pool.Asset)
-		}
-	}
-
-	// Obtain the unchanging CalcOutboundFeeMultiplier arguments before the loop which calls it.
-	targetSurplusRune := cosmos.NewUint(uint64(qs.mgr.Keeper().GetConfigInt64(ctx, constants.TargetOutboundFeeSurplusRune)))
-	maxMultiplier := cosmos.NewUint(uint64(qs.mgr.Keeper().GetConfigInt64(ctx, constants.MaxOutboundFeeMultiplierBasisPoints)))
-	minMultiplier := cosmos.NewUint(uint64(qs.mgr.Keeper().GetConfigInt64(ctx, constants.MinOutboundFeeMultiplierBasisPoints)))
-
-	// Due to the nature of pool iteration by key, this is expected to have RUNE at the top and then be in alphabetical order.
-	result := make([]*types.QueryOutboundFeeResponse, 0, len(assets))
-	for i := range assets {
-		// Display the Asset's fee as the amount of that Asset deducted.
-		outboundFee, err := qs.mgr.GasMgr().GetAssetOutboundFee(ctx, assets[i], false)
-		if err != nil {
-			ctx.Logger().Error("fail to get asset outbound fee", "asset", assets[i], "error", err)
-		}
-
-		// Only display fields other than asset and outbound_fee when the Asset is external,
-		// as a non-zero dynamic multiplier could be misleading otherwise.
-		var outboundFeeWithheldRuneString, outboundFeeSpentRuneString, surplusRuneString, dynamicMultiplierBasisPointsString string
-		if !assets[i].IsNative() {
-			outboundFeeWithheldRune, err := qs.mgr.Keeper().GetOutboundFeeWithheldRune(ctx, assets[i])
-			if err != nil {
-				ctx.Logger().Error("fail to get outbound fee withheld rune", "outbound asset", assets[i], "error", err)
-				return nil, fmt.Errorf("fail to get outbound fee withheld rune for asset (%s): %w", assets[i], err)
-			}
-			outboundFeeWithheldRuneString = outboundFeeWithheldRune.String()
-
-			outboundFeeSpentRune, err := qs.mgr.Keeper().GetOutboundFeeSpentRune(ctx, assets[i])
-			if err != nil {
-				ctx.Logger().Error("fail to get outbound fee spent rune", "outbound asset", assets[i], "error", err)
-				return nil, fmt.Errorf("fail to get outbound fee spent rune for asset (%s): %w", assets[i], err)
-			}
-			outboundFeeSpentRuneString = outboundFeeSpentRune.String()
-
-			surplusRuneString = common.SafeSub(outboundFeeWithheldRune, outboundFeeSpentRune).String()
-
-			dynamicMultiplierBasisPointsString = qs.mgr.GasMgr().CalcOutboundFeeMultiplier(ctx, targetSurplusRune, outboundFeeSpentRune, outboundFeeWithheldRune, maxMultiplier, minMultiplier).String()
-		}
-
-		// As the entire endpoint is for outbounds, the term 'Outbound' is omitted from the field names.
-		result = append(result, &types.QueryOutboundFeeResponse{
-			Asset:                        assets[i].String(),
-			OutboundFee:                  outboundFee.String(),
-			FeeWithheldRune:              outboundFeeWithheldRuneString,
-			FeeSpentRune:                 outboundFeeSpentRuneString,
-			SurplusRune:                  surplusRuneString,
-			DynamicMultiplierBasisPoints: dynamicMultiplierBasisPointsString,
-		})
-
-	}
-
-	return &types.QueryOutboundFeesResponse{OutboundFees: result}, nil
-}
-
 func (qs queryServer) queryBan(ctx cosmos.Context, req *types.QueryBanRequest) (*types.BanVoter, error) {
 	if len(req.Address) == 0 {
 		return nil, errors.New("node address not available")
@@ -2864,142 +1517,6 @@ func (qs queryServer) queryBan(ctx cosmos.Context, req *types.QueryBanRequest) (
 	}
 
 	return &ban, nil
-}
-
-func (qs queryServer) queryScheduledOutbound(ctx cosmos.Context, _ *types.QueryScheduledOutboundRequest) (*types.QueryOutboundResponse, error) {
-	result := make([]*types.QueryTxOutItem, 0)
-	constAccessor := qs.mgr.GetConstants()
-	maxTxOutOffset, err := qs.mgr.Keeper().GetMimir(ctx, constants.MaxTxOutOffset.String())
-	if maxTxOutOffset < 0 || err != nil {
-		maxTxOutOffset = constAccessor.GetInt64Value(constants.MaxTxOutOffset)
-	}
-	for height := ctx.BlockHeight() + 1; height <= ctx.BlockHeight()+17280; height++ {
-		txOut, err := qs.mgr.Keeper().GetTxOut(ctx, height)
-		if err != nil {
-			ctx.Logger().Error("fail to get tx out array from key value store", "error", err)
-			continue
-		}
-		if height > ctx.BlockHeight()+maxTxOutOffset && len(txOut.TxArray) == 0 {
-			// we've hit our max offset, and an empty block, we can assume the
-			// rest will be empty as well
-			break
-		}
-		for _, toi := range txOut.TxArray {
-			result = append(result, castTxOutItem(toi, height))
-		}
-	}
-
-	return &types.QueryOutboundResponse{TxOutItems: result}, nil
-}
-
-func (qs queryServer) queryPendingOutbound(ctx cosmos.Context, _ *types.QueryPendingOutboundRequest) (*types.QueryOutboundResponse, error) {
-	constAccessor := qs.mgr.GetConstants()
-	signingTransactionPeriod := constAccessor.GetInt64Value(constants.SigningTransactionPeriod)
-	rescheduleCoalesceBlocks := qs.mgr.Keeper().GetConfigInt64(ctx, constants.RescheduleCoalesceBlocks)
-	startHeight := ctx.BlockHeight() - signingTransactionPeriod
-	if startHeight < 1 {
-		startHeight = 1
-	}
-
-	// outbounds can be rescheduled to a future height which is the rounded-up nearest multiple of reschedule coalesce blocks
-	lastOutboundHeight := ctx.BlockHeight()
-	if rescheduleCoalesceBlocks > 1 {
-		overBlocks := lastOutboundHeight % rescheduleCoalesceBlocks
-		if overBlocks != 0 {
-			lastOutboundHeight += rescheduleCoalesceBlocks - overBlocks
-		}
-	}
-
-	result := make([]*types.QueryTxOutItem, 0)
-	for height := startHeight; height <= lastOutboundHeight; height++ {
-		txs, err := qs.mgr.Keeper().GetTxOut(ctx, height)
-		if err != nil {
-			ctx.Logger().Error("fail to get tx out array from key value store", "error", err)
-			return nil, fmt.Errorf("fail to get tx out array from key value store: %w", err)
-		}
-		for _, tx := range txs.TxArray {
-			if tx.OutHash.IsEmpty() {
-				result = append(result, castTxOutItem(tx, height))
-			}
-		}
-	}
-
-	return &types.QueryOutboundResponse{TxOutItems: result}, nil
-}
-
-func (qs queryServer) querySwapQueue(ctx cosmos.Context, _ *types.QuerySwapQueueRequest) (*types.QuerySwapQueueResponse, error) {
-	result := make([]*MsgSwap, 0)
-
-	// Add items from regular swap queue
-	iterator := qs.mgr.Keeper().GetSwapQueueIterator(ctx)
-	defer iterator.Close()
-	for ; iterator.Valid(); iterator.Next() {
-		var msg MsgSwap
-		if err := qs.mgr.Keeper().Cdc().Unmarshal(iterator.Value(), &msg); err != nil {
-			continue
-		}
-		result = append(result, &msg)
-	}
-
-	// Add items from advanced swap queue if enabled
-	if qs.mgr.Keeper().AdvSwapQueueEnabled(ctx) {
-		advIterator := qs.mgr.Keeper().GetAdvSwapQueueItemIterator(ctx)
-		defer advIterator.Close()
-		for ; advIterator.Valid(); advIterator.Next() {
-			var msg MsgSwap
-			if err := qs.mgr.Keeper().Cdc().Unmarshal(advIterator.Value(), &msg); err != nil {
-				continue
-			}
-			result = append(result, &msg)
-		}
-	}
-
-	return &types.QuerySwapQueueResponse{SwapQueue: result}, nil
-}
-
-func (qs queryServer) querySwapDetails(ctx cosmos.Context, req *types.QuerySwapDetailsRequest) (*types.QuerySwapDetailsResponse, error) {
-	if len(req.TxId) == 0 {
-		return nil, fmt.Errorf("missing tx_id parameter")
-	}
-
-	txID, err := common.NewTxID(req.TxId)
-	if err != nil {
-		return nil, fmt.Errorf("invalid tx_id: %w", err)
-	}
-
-	// Check if it's in the regular swap queue
-	iterator := qs.mgr.Keeper().GetSwapQueueIterator(ctx)
-	defer iterator.Close()
-	for ; iterator.Valid(); iterator.Next() {
-		var msg MsgSwap
-		if err := qs.mgr.Keeper().Cdc().Unmarshal(iterator.Value(), &msg); err != nil {
-			continue
-		}
-		if msg.Tx.ID.Equals(txID) {
-			return &types.QuerySwapDetailsResponse{
-				Swap:      &msg,
-				Status:    SwapStatusQueued,
-				QueueType: QueueTypeRegular,
-			}, nil
-		}
-	}
-
-	// Check if it's in the advanced swap queue
-	if qs.mgr.Keeper().AdvSwapQueueEnabled(ctx) {
-		if qs.mgr.Keeper().HasAdvSwapQueueItem(ctx, txID, 0) {
-			msg, err := qs.mgr.Keeper().GetAdvSwapQueueItem(ctx, txID, 0)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get advanced swap queue item: %w", err)
-			}
-			return &types.QuerySwapDetailsResponse{
-				Swap:      &msg,
-				Status:    SwapStatusQueued,
-				QueueType: QueueTypeAdvanced,
-			}, nil
-		}
-	}
-
-	return nil, fmt.Errorf("swap with tx_id %s not found in any queue", req.TxId)
 }
 
 func (qs queryServer) queryTssKeygenMetric(ctx cosmos.Context, req *types.QueryTssKeygenMetricRequest) (*types.QueryTssKeygenMetricResponse, error) {
@@ -3202,28 +1719,6 @@ func (qs queryServer) queryBlock(ctx cosmos.Context, req *types.QueryBlockReques
 // Generic Helpers
 // -------------------------------------------------------------------------------------
 
-func castTxOutItem(toi TxOutItem, height int64) *types.QueryTxOutItem {
-	return &types.QueryTxOutItem{
-		Height:                height, // Omitted if 0, for use in openapi.TxDetailsResponse
-		VaultPubKey:           toi.VaultPubKey.String(),
-		VaultPubKeyEddsa:      toi.VaultPubKeyEddsa.String(),
-		InHash:                toi.InHash.String(),
-		OutHash:               toi.OutHash.String(),
-		Chain:                 toi.Chain.String(),
-		ToAddress:             toi.ToAddress.String(),
-		Coin:                  &toi.Coin,
-		MaxGas:                toi.MaxGas,
-		GasRate:               toi.GasRate,
-		Memo:                  toi.Memo,
-		OriginalMemo:          toi.OriginalMemo,
-		Aggregator:            toi.Aggregator,
-		AggregatorTargetAsset: toi.AggregatorTargetAsset,
-		AggregatorTargetLimit: toi.AggregatorTargetLimit.String(),
-		CloutSpent:            toi.CloutSpent.String(),
-		TxType:                toi.GetTxType(),
-	}
-}
-
 func castObservedTx(observedTx ObservedTx) types.QueryObservedTx {
 	// Only display the Status if it is "done", not if "incomplete".
 	status := ""
@@ -3304,154 +1799,7 @@ func runePerDollarIgnoreHalt(ctx cosmos.Context, k keeper.Keeper) cosmos.Uint {
 // anchor chains are unavailable with them. This is used for the TOR price on pools to
 // ensure a best effort price is returned whenever possible instead of zero.
 func dollarsPerRuneIgnoreHalt(ctx cosmos.Context, k keeper.Keeper) cosmos.Uint {
-	// check for mimir override
-	dollarsPerRune, err := k.GetMimir(ctx, "DollarsPerRune")
-	if err == nil && dollarsPerRune > 0 {
-		return cosmos.NewUint(uint64(dollarsPerRune))
-	}
-
-	usdAssets := k.GetAnchors(ctx, common.TOR)
-
-	// if all anchor chains have trading halt, then ignore trading halt
-	ignoreHalt := true
-	for _, asset := range usdAssets {
-		if !k.IsChainTradingHalted(ctx, asset.Chain) {
-			ignoreHalt = false
-			break
-		}
-	}
-
-	p := make([]cosmos.Uint, 0)
-	for _, asset := range usdAssets {
-		if !ignoreHalt && k.IsChainTradingHalted(ctx, asset.Chain) {
-			continue
-		}
-		pool, err := k.GetPool(ctx, asset)
-		if err != nil {
-			ctx.Logger().Error("fail to get usd pool", "asset", asset.String(), "error", err)
-			continue
-		}
-		if !pool.IsAvailable() {
-			continue
-		}
-		// value := common.GetUncappedShare(pool.BalanceAsset, pool.BalanceRune, cosmos.NewUint(common.One))
-		value := pool.RuneValueInAsset(cosmos.NewUint(constants.DollarMulti * common.One))
-
-		if !value.IsZero() {
-			p = append(p, value)
-		}
-	}
-	return common.GetMedianUint(p).QuoUint64(constants.DollarMulti)
-}
-
-// queryTCYStakers
-func (qs queryServer) queryTCYStakers(ctx cosmos.Context, req *types.QueryTCYStakersRequest) (*types.QueryTCYStakersResponse, error) {
-	var stakers []*types.QueryTCYStakerResponse
-	tcyStakers, err := qs.mgr.Keeper().ListTCYStakers(ctx)
-	if err != nil {
-		return &types.QueryTCYStakersResponse{}, err
-	}
-	for _, staker := range tcyStakers {
-		stakers = append(stakers, &types.QueryTCYStakerResponse{
-			Address: staker.Address.String(),
-			Amount:  staker.Amount.String(),
-		})
-	}
-	return &types.QueryTCYStakersResponse{TcyStakers: stakers}, nil
-}
-
-// queryTCYStaker
-func (qs queryServer) queryTCYStaker(ctx cosmos.Context, req *types.QueryTCYStakerRequest) (*types.QueryTCYStakerResponse, error) {
-	addr, err := common.NewAddress(req.Address)
-	if err != nil {
-		ctx.Logger().Error("fail to get parse address", "error", err)
-		return nil, fmt.Errorf("fail to parse address: %w", err)
-	}
-	staker, err := qs.mgr.Keeper().GetTCYStaker(ctx, addr)
-	if err != nil {
-		ctx.Logger().Error("fail to get tcy staker", "error", err)
-		return nil, fmt.Errorf("fail to tcy staker: %w", err)
-	}
-
-	stakerRes := types.QueryTCYStakerResponse{
-		Address: staker.Address.String(),
-		Amount:  staker.Amount.String(),
-	}
-
-	return &stakerRes, nil
-}
-
-// queryTCYClaimers
-func (qs queryServer) queryTCYClaimers(ctx cosmos.Context, req *types.QueryTCYClaimersRequest) (*types.QueryTCYClaimersResponse, error) {
-	var claimers []*types.QueryTCYClaimer
-	iterator := qs.mgr.Keeper().GetTCYClaimerIterator(ctx)
-	defer iterator.Close()
-	for ; iterator.Valid(); iterator.Next() {
-		var claimer TCYClaimer
-		qs.mgr.Keeper().Cdc().MustUnmarshal(iterator.Value(), &claimer)
-
-		claimers = append(claimers, &types.QueryTCYClaimer{
-			Asset:     claimer.Asset.String(),
-			L1Address: claimer.L1Address.String(),
-			Amount:    claimer.Amount.String(),
-		})
-	}
-	return &types.QueryTCYClaimersResponse{TcyClaimers: claimers}, nil
-}
-
-// queryTCYClaimer
-func (qs queryServer) queryTCYClaimer(ctx cosmos.Context, req *types.QueryTCYClaimerRequest) (*types.QueryTCYClaimerResponse, error) {
-	addr, err := common.NewAddress(req.Address)
-	if err != nil {
-		ctx.Logger().Error("fail to get parse address", "error", err)
-		return nil, fmt.Errorf("fail to parse address: %w", err)
-	}
-	addressClaims, err := qs.mgr.Keeper().ListTCYClaimersFromL1Address(ctx, addr)
-	if err != nil {
-		ctx.Logger().Error("fail to get tcy claimer", "error", err)
-		return nil, fmt.Errorf("fail to tcy claimer: %w", err)
-	}
-
-	var claimsRes []*types.QueryTCYClaimer
-	for _, claim := range addressClaims {
-		claimsRes = append(claimsRes, &types.QueryTCYClaimer{
-			Asset:     claim.Asset.String(),
-			L1Address: claim.L1Address.String(),
-			Amount:    claim.Amount.String(),
-		})
-	}
-
-	return &types.QueryTCYClaimerResponse{TcyClaimer: claimsRes}, nil
-}
-
-// queryOraclePrices
-func (qs queryServer) queryOraclePrices(ctx cosmos.Context, _ *types.QueryOraclePricesRequest) (*types.QueryOraclePricesResponse, error) {
-	var prices []*OraclePrice
-
-	iterator := qs.mgr.Keeper().GetPriceIterator(ctx)
-	defer iterator.Close()
-
-	for ; iterator.Valid(); iterator.Next() {
-		var price OraclePrice
-		qs.mgr.Keeper().Cdc().MustUnmarshal(iterator.Value(), &price)
-		prices = append(prices, &price)
-	}
-
-	sort.Slice(prices, func(i, j int) bool {
-		return prices[i].Symbol < prices[j].Symbol
-	})
-
-	return &types.QueryOraclePricesResponse{Prices: prices}, nil
-}
-
-// queryOraclePrice
-func (qs queryServer) queryOraclePrice(ctx cosmos.Context, req *types.QueryOraclePriceRequest) (*types.QueryOraclePriceResponse, error) {
-	price, err := qs.mgr.Keeper().GetPrice(ctx, req.Symbol)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get price for symbol '%s': %w", req.Symbol, err)
-	}
-
-	return &types.QueryOraclePriceResponse{Price: &price}, nil
+	return cosmos.ZeroUint()
 }
 
 func (qs queryServer) queryEip712TypedData(_ cosmos.Context, req *types.QueryEip712TypedDataRequest) (*types.QueryEip712TypedDataResponse, error) {
@@ -3469,28 +1817,6 @@ func (qs queryServer) queryEip712TypedData(_ cosmos.Context, req *types.QueryEip
 }
 
 // querySupply returns the RUNE supply breakdown.
-func (qs queryServer) querySupply(ctx cosmos.Context, req *types.QuerySupplyRequest) (*types.QuerySupplyResponse, error) {
-	keeper := qs.mgr.Keeper()
-
-	// total RUNE supply from bank module
-	runeSupply := keeper.GetTotalSupply(ctx, common.RuneAsset())
-
-	// reserve module balance (locked/non-circulating)
-	reserveBal := keeper.GetRuneBalanceOfModule(ctx, ReserveName)
-
-	// circulating = total - reserves
-	circulating := common.SafeSub(runeSupply, reserveBal)
-
-	const e8 = 1e8
-	return &types.QuerySupplyResponse{
-		Circulating: int64(circulating.Uint64() / e8),
-		Locked: &types.LockedSupply{
-			Reserve: int64(reserveBal.Uint64() / e8),
-		},
-		Total: int64(runeSupply.Uint64() / e8),
-	}, nil
-}
-
 func (qs queryServer) queryContractInfo(ctx cosmos.Context, req *types.QueryContractInfoRequest) (*types.QueryContractInfoResponse, error) {
 	return nil, errors.New("wasm contract queries are not part of the Thornado custody fork")
 }

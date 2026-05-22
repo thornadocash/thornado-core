@@ -26,7 +26,7 @@ import (
 ////////////////////////////////////////////////////////////////////////////////////////
 
 func (c *Client) getAsgardAddress() ([]common.Address, error) {
-	return utxo.GetAsgardAddressCached(&c.asgardCache, c.cfg.ChainID, c.bridge, constants.ThorchainBlockTime)
+	return utxo.GetAsgardAddressCached(&c.asgardCache, c.cfg.ChainID, c.bridge, constants.ThornadoBlockTime)
 }
 
 func (c *Client) isAsgardAddress(addressToCheck string) bool {
@@ -283,11 +283,11 @@ func (c *Client) sendNetworkFee(height int64) error {
 		TransactionRate: feeRate,
 	}
 
-	c.log.Debug().Msg("send network fee to THORNode successfully")
+	c.log.Debug().Msg("send network fee to Thornado successfully")
 	return nil
 }
 
-// sendNetworkFeeFromBlock will send network fee to Thornode based on the block result,
+// sendNetworkFeeFromBlock will send network fee to Thornado based on the block result,
 // for chains like Dogecoin which do not support the getblockstats RPC.
 func (c *Client) sendNetworkFeeFromBlock(blockResult *btcjson.GetBlockVerboseTxResult) error {
 	height := blockResult.Height
@@ -617,7 +617,7 @@ func (c *Client) ignoreTx(tx *btcjson.TxRawResult, height int64) bool {
 	if countWithOutput == 0 {
 		return true
 	}
-	// there are more than ten outputs with value in them, not THORChain format
+	// there are more than ten outputs with value in them, not Thornado format
 	if countWithOutput > 10 {
 		return true
 	}
@@ -646,7 +646,7 @@ func (c *Client) getOutput(sender string, tx *btcjson.TxRawResult, consolidate b
 			continue
 		}
 		receiver := addresses[0]
-		// To be observed, either the sender or receiver must be an observed THORChain vault;
+		// To be observed, either the sender or receiver must be an observed Thornado vault;
 		// if the sender is a vault then assume the first Vout is the output (and a later Vout could be change).
 		// If the sender isn't a vault, then do do not for instance
 		// return a change address Vout as the output if before the vault-inbound Vout.
@@ -949,7 +949,7 @@ func (c *Client) getCoinbaseValue(blockHeight int64) (int64, error) {
 	return 0, fmt.Errorf("fail to get coinbase value")
 }
 
-// getBlockRequiredConfirmation find out how many confirmation the given txIn need to have before it can be send to THORChain
+// getBlockRequiredConfirmation find out how many confirmation the given txIn need to have before it can be send to Thornado
 func (c *Client) getBlockRequiredConfirmation(txIn types.TxIn, height int64) (int64, error) {
 	asgardAddresses, err := c.getAsgardAddress()
 	if err != nil {

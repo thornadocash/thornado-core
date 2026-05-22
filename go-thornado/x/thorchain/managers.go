@@ -92,6 +92,7 @@ type ValidatorManager interface {
 	EndBlock(ctx cosmos.Context, mgr Manager) []abci.ValidatorUpdate
 	processRagnarok(ctx cosmos.Context, mgr Manager) error
 	NodeAccountPreflightCheck(ctx cosmos.Context, na NodeAccount, constAccessor constants.ConstantValues) (NodeStatus, error)
+	selectHighestBondedNode(ctx cosmos.Context, candidates NodeAccounts) NodeAccount
 }
 
 // NetworkManager interface define the contract of network Manager

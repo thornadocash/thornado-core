@@ -155,13 +155,8 @@ func validateTssAuth(ctx cosmos.Context, k keeper.Keeper, signer cosmos.AccAddre
 	if nodeSigner.IsEmpty() {
 		return fmt.Errorf("invalid signer")
 	}
-	if nodeSigner.Status != NodeActive && nodeSigner.Status != NodeReady {
+	if nodeSigner.Status != NodeActive && nodeSigner.Status != NodeSelected {
 		return fmt.Errorf("invalid signer status(%s)", nodeSigner.Status)
-	}
-	// ensure we have enough rune
-	minBond := k.GetConfigInt64(ctx, constants.MinimumBondInRune)
-	if nodeSigner.Bond.LT(cosmos.NewUint(uint64(minBond))) {
-		return fmt.Errorf("signer doesn't have enough rune")
 	}
 	return nil
 }
@@ -311,10 +306,10 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 		// Do the below only for a non-success message upon 2/3rds consensus.
 		if !msg.IsSuccess() {
 			// since the keygen failed, it's now safe to reset all nodes in
-			// ready status back to standby status
-			ready, err := h.mgr.Keeper().ListValidatorsByStatus(ctx, NodeReady)
+			// selected status back to standby status
+			ready, err := h.mgr.Keeper().ListValidatorsByStatus(ctx, NodeSelected)
 			if err != nil {
-				ctx.Logger().Error("fail to get list of ready node accounts", "error", err)
+				ctx.Logger().Error("fail to get list of selected node accounts", "error", err)
 			}
 			for _, na := range ready {
 				na.UpdateStatus(NodeStandby, ctx.BlockHeight())
@@ -377,7 +372,7 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 							}
 							slashFloat, _ := new(big.Float).SetInt(slashBond.BigInt()).Float32()
 							telemetry.IncrCounterWithLabels(
-								[]string{"thornode", "bond_slash"},
+								[]string{"thornado", "bond_slash"},
 								slashFloat,
 								[]metrics.Label{
 									telemetry.NewLabel("address", na.NodeAddress.String()),

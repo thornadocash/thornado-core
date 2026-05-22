@@ -40,7 +40,7 @@ import (
 	ttypes "github.com/thornadocash/go-thornado/x/thorchain/types"
 )
 
-// Signer will pull the tx out from thorchain and then forward it to chain
+// Signer will pull the tx out from thornado and then forward it to chain
 type Signer struct {
 	logger                zerolog.Logger
 	cfg                   config.Bifrost
@@ -91,13 +91,13 @@ func NewSigner(cfg config.Bifrost,
 		}
 		na, err = thorchainBridge.GetNodeAccount(signerAddr.String())
 		if err != nil {
-			return nil, fmt.Errorf("fail to get node account from thorchain,err:%w", err)
+			return nil, fmt.Errorf("fail to get node account from thornado,err:%w", err)
 		}
 
 		if !na.PubKeySet.Secp256k1.IsEmpty() {
 			break
 		}
-		time.Sleep(constants.ThorchainBlockTime)
+		time.Sleep(constants.ThornadoBlockTime)
 		log.Info().Msg("Waiting for node account to be registered...")
 	}
 
@@ -110,12 +110,12 @@ func NewSigner(cfg config.Bifrost,
 		pubkeyMgr.AddNodePubKey(na.PubKeySet.Ed25519, common.SigningAlgoEd25519)
 	}
 
-	cfg.Signer.BlockScanner.ChainID = common.THORChain // hard code to thorchain
+	cfg.Signer.BlockScanner.ChainID = common.Thornado // hard code to thornado
 
 	// Create pubkey manager and add our private key
 	thorchainBlockScanner, err := NewThorchainBlockScan(cfg.Signer.BlockScanner, storage, thorchainBridge, m, pubkeyMgr)
 	if err != nil {
-		return nil, fmt.Errorf("fail to create thorchain block scan: %w", err)
+		return nil, fmt.Errorf("fail to create thornado block scan: %w", err)
 	}
 
 	blockScanner, err := blockscanner.NewBlockScanner(cfg.Signer.BlockScanner, storage, m, thorchainBridge, thorchainBlockScanner)
@@ -190,11 +190,11 @@ func (s *Signer) signTransactions() {
 		case <-s.stopChan:
 			return
 		default:
-			// When THORChain is catching up , bifrost might get stale data from thornode , thus it shall pause signing
+			// When Thornado is catching up , bifrost might get stale data from thornado , thus it shall pause signing
 			catchingUp, err := s.thorchainBridge.IsCatchingUp()
 			if err != nil {
-				s.logger.Error().Err(err).Msg("fail to get thorchain sync status")
-				time.Sleep(constants.ThorchainBlockTime)
+				s.logger.Error().Err(err).Msg("fail to get thornado sync status")
+				time.Sleep(constants.ThornadoBlockTime)
 				break // this will break select
 			}
 			if !catchingUp {
@@ -291,7 +291,7 @@ func (s *Signer) processKeygen(ch <-chan ttypes.KeygenBlock) {
 			if !more {
 				return
 			}
-			s.logger.Info().Interface("keygenBlock", keygenBlock).Msg("received a keygen block from thorchain")
+			s.logger.Info().Interface("keygenBlock", keygenBlock).Msg("received a keygen block from thornado")
 			s.processKeygenBlock(keygenBlock)
 		}
 	}
@@ -316,7 +316,7 @@ func (s *Signer) scheduleKeygenRetry(keygenBlock ttypes.KeygenBlock) bool {
 	}
 
 	// sanity check the retry interval is at least 1.5x the timeout
-	retryIntervalDuration := time.Duration(keygenRetryInterval) * constants.ThorchainBlockTime
+	retryIntervalDuration := time.Duration(keygenRetryInterval) * constants.ThornadoBlockTime
 	if retryIntervalDuration <= s.cfg.Signer.KeygenTimeout*3/2 {
 		s.logger.Error().
 			Stringer("retryInterval", retryIntervalDuration).
@@ -342,7 +342,7 @@ func (s *Signer) scheduleKeygenRetry(keygenBlock ttypes.KeygenBlock) bool {
 	go func() {
 		// every block, try to start processing again
 		for {
-			time.Sleep(constants.ThorchainBlockTime)
+			time.Sleep(constants.ThornadoBlockTime)
 			currentHeight, err := s.thorchainBridge.GetBlockHeight()
 			if err != nil {
 				s.logger.Error().Err(err).Msg("fail to get last chain height")
@@ -420,7 +420,7 @@ func (s *Signer) processKeygenBlock(keygenBlock ttypes.KeygenBlock) {
 // secp256k1VerificationSignature will make a best effort to sign the public key with
 // its own private key as a sanity check to ensure parties are able to sign. The
 // signature will be included in the TssPool message if successful, and verified by
-// THORNode before the keygen is accepted.
+// Thornado before the keygen is accepted.
 func (s *Signer) secp256k1VerificationSignature(pk common.PubKey) []byte {
 	// create keysign instance
 	ks, err := tss.NewKeySign(s.tssServer, s.thorchainBridge)
@@ -459,7 +459,7 @@ func (s *Signer) secp256k1VerificationSignature(pk common.PubKey) []byte {
 	ss := new(big.Int).SetBytes(sigBytes[32:])
 	signature := &btcec.Signature{R: r, S: ss}
 
-	// verify the signature (thornode will also verify and reject if invalid)
+	// verify the signature (thornado will also verify and reject if invalid)
 	spk, err := pk.Secp256K1()
 	if err != nil {
 		s.logger.Error().Err(err).Msg("fail to get secp256k1 pubkey")
@@ -503,7 +503,7 @@ func schnorrVerificationSignature(pk common.PubKey, sigBytes []byte) error {
 func (s *Signer) sendKeygenToThorchain(height int64, poolPk common.PubKey, secp256k1Signature []byte, blame []ttypes.Blame, input common.PubKeys, keygenType ttypes.KeygenType, keygenTime int64, poolPubKeyEddsa common.PubKey) error {
 	// collect supported chains in the configuration
 	chains := common.Chains{
-		common.THORChain,
+		common.Thornado,
 	}
 	for chain, chainCfg := range s.cfg.GetChains() {
 		if !chainCfg.OptToRetire && !chainCfg.Disabled {
@@ -568,11 +568,11 @@ func (s *Signer) sendKeygenToThorchain(height int64, poolPk common.PubKey, secp2
 	return backoff.Retry(func() error {
 		txID, err := s.thorchainBridge.Broadcast(keygenMsg)
 		if err != nil {
-			s.logger.Warn().Err(err).Msg("fail to send keygen tx to thorchain")
+			s.logger.Warn().Err(err).Msg("fail to send keygen tx to thornado")
 			s.errCounter.WithLabelValues("fail_to_send_to_thorchain", strHeight).Inc()
-			return fmt.Errorf("fail to send the tx to thorchain: %w", err)
+			return fmt.Errorf("fail to send the tx to thornado: %w", err)
 		}
-		s.logger.Info().Stringer("txid", txID).Int64("block", height).Msg("sent keygen tx to thorchain")
+		s.logger.Info().Stringer("txid", txID).Int64("block", height).Msg("sent keygen tx to thornado")
 		return nil
 	}, bf)
 }
@@ -599,7 +599,7 @@ func frostKeyshareRawFromLocalStatePath(path string) ([]byte, bool, error) {
 // SignTx error for the chain client, if we receive checkpoint bytes we also return them
 // with the error so they can be set on the TxOutStoreItem and re-used on a subsequent
 // retry to avoid double spend. The second returned value is an optional observation
-// that should be submitted to THORChain.
+// that should be submitted to Thornado.
 func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem, error) {
 	height := item.Height
 	tx := item.TxOutItem
@@ -693,7 +693,7 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 	}
 
 	if len(tx.ToAddress) == 0 {
-		s.logger.Info().Msg("To address is empty, THORNode don't know where to send the fund , ignore")
+		s.logger.Info().Msg("To address is empty, Thornado don't know where to send the fund , ignore")
 		return nil, nil, nil // return nil and discard item
 	}
 
@@ -718,7 +718,7 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 		return nil, nil, nil // return nil and discard item
 	}
 
-	// We get the keysign object from thorchain again to ensure it hasn't
+	// We get the keysign object from thornado again to ensure it hasn't
 	// been signed already, and we can skip. This helps us not get stuck on
 	// a task that we'll never sign, because 2/3rds already has and will
 	// never be available to sign again.
@@ -850,7 +850,7 @@ func (s *Signer) processTransaction(item TxOutStoreItem) {
 	if err != nil {
 		// Always store the checkpoint of the built tx if we have one. This ensures the same
 		// vault will never attempt multiple txs for an outbound, as further protection
-		// against cases like https://gitlab.com/thorchain/thornode/-/merge_requests/4344.
+		// against cases like https://gitlab.com/thornado/thornado/-/merge_requests/4344.
 		// In tradeoff, we accept a higher likelihood of temporary stuck outbounds.
 		item.Checkpoint = checkpoint
 

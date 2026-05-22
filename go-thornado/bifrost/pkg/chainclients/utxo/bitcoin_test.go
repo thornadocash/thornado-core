@@ -50,7 +50,7 @@ func (s *BitcoinSuite) SetUpSuite(c *C) {
 	cryptocodec.RegisterInterfaces(registry)
 	cdc := codec.NewProtoCodec(registry)
 	kb := cKeys.NewInMemory(cdc)
-	_, _, err := kb.NewMnemonic(bob, cKeys.English, cmd.THORChainHDPath, password, hd.Secp256k1)
+	_, _, err := kb.NewMnemonic(bob, cKeys.English, cmd.ThornadoHDPath, password, hd.Secp256k1)
 	c.Assert(err, IsNil)
 	s.keys = thorclient.NewKeysWithKeybase(kb, bob, password)
 }
@@ -111,7 +111,7 @@ func (s *BitcoinSuite) SetUpTest(c *C) {
 
 	thordir := filepath.Join(os.TempDir(), ns, ".thorcli")
 	cfg := config.BifrostClientConfiguration{
-		ChainID:         "thorchain",
+		ChainID:         "thornado",
 		ChainHost:       "localhost",
 		SignerName:      bob,
 		SignerPasswd:    password,
@@ -175,9 +175,9 @@ func (s *BitcoinSuite) SetUpTest(c *C) {
 			} else {
 				handleRPC(body, rw)
 			}
-		} else if strings.HasPrefix(req.RequestURI, "/thorchain/node/") {
+		} else if strings.HasPrefix(req.RequestURI, "/thornado/node/") {
 			httpTestHandler(c, rw, "../../../../test/fixtures/endpoints/nodeaccount/template.json")
-		} else if req.RequestURI == "/thorchain/lastblock" {
+		} else if req.RequestURI == "/thornado/lastblock" {
 			httpTestHandler(c, rw, "../../../../test/fixtures/endpoints/lastblock/btc.json")
 		} else if strings.HasPrefix(req.RequestURI, "/auth/accounts/") {
 			_, err := rw.Write([]byte(`{ "jsonrpc": "2.0", "id": "", "result": { "height": "0", "result": { "value": { "account_number": "0", "sequence": "0" } } } }`))
@@ -187,10 +187,10 @@ func (s *BitcoinSuite) SetUpTest(c *C) {
 			c.Assert(err, IsNil)
 		} else if strings.HasPrefix(req.RequestURI, thorclient.AsgardVault) {
 			httpTestHandler(c, rw, "../../../../test/fixtures/endpoints/vaults/asgard.json")
-		} else if req.RequestURI == "/thorchain/mimir/key/MaxUTXOsToSpend" {
+		} else if req.RequestURI == "/thornado/mimir/key/MaxUTXOsToSpend" {
 			_, err := rw.Write([]byte(`-1`))
 			c.Assert(err, IsNil)
-		} else if req.RequestURI == "/thorchain/vaults/pubkeys" {
+		} else if req.RequestURI == "/thornado/vaults/pubkeys" {
 			if common.CurrentChainNetwork == common.MainNet {
 				httpTestHandler(c, rw, "../../../../test/fixtures/endpoints/vaults/pubKeys-Mainnet.json")
 			} else {
@@ -302,7 +302,7 @@ func (s *BitcoinSuite) TestGetMemo(c *C) {
 	}
 	memo, err := s.client.getMemo(&tx)
 	c.Assert(err, IsNil)
-	c.Assert(memo, Equals, "thorchain:consolidate")
+	c.Assert(memo, Equals, "thornado:consolidate")
 
 	tx = btcjson.TxRawResult{
 		Vout: []btcjson.Vout{

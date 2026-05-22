@@ -28,13 +28,13 @@ func getSeedAddrs() (addrs []string) {
 	// get nodes
 	res, err := http.Get(config.Thornode.SeedNodesEndpoint)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to get thorchain nodes")
+		log.Fatal().Err(err).Msg("failed to get thornado nodes")
 	}
 
 	// parse nodes
 	var nodes []types.NodeAccount
 	if err = json.NewDecoder(res.Body).Decode(&nodes); err != nil {
-		log.Fatal().Err(err).Msg("failed to decode thorchain nodes")
+		log.Fatal().Err(err).Msg("failed to decode thornado nodes")
 	}
 	res.Body.Close()
 
@@ -55,7 +55,7 @@ func getSeedAddrs() (addrs []string) {
 		seeds[i], seeds[j] = seeds[j], seeds[i]
 	})
 
-	log.Info().Msgf("found %d thorchain seeds", len(seeds))
+	log.Info().Msgf("found %d thornado seeds", len(seeds))
 
 	return seeds
 }

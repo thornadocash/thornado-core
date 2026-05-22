@@ -17,7 +17,7 @@ func newAddress(address string) (Address, error) {
 	outputAddr, err := btcutil.DecodeAddress(address, &chaincfg.TestNet3Params)
 	switch outputAddr.(type) {
 	case *btcutil.AddressPubKey:
-		// AddressPubKey format is not supported by THORChain.
+		// AddressPubKey format is not supported by Thornado.
 	default:
 		if err == nil {
 			return Address(address), nil

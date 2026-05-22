@@ -1,26 +1,26 @@
 services:
-  thornode-1:
+  thornado-1:
     build:
       context: ./mock-service
       dockerfile: Dockerfile
     environment:
-      MOCK_SERVICE_NAME: thornode-1
+      MOCK_SERVICE_NAME: thornado-1
       MOCK_PORTS: "26656,26657,1317,9090"
 
-  thornode-2:
+  thornado-2:
     build:
       context: ./mock-service
       dockerfile: Dockerfile
     environment:
-      MOCK_SERVICE_NAME: thornode-2
+      MOCK_SERVICE_NAME: thornado-2
       MOCK_PORTS: "26656,26657,1317,9090"
 
-  thornode-3:
+  thornado-3:
     build:
       context: ./mock-service
       dockerfile: Dockerfile
     environment:
-      MOCK_SERVICE_NAME: thornode-3
+      MOCK_SERVICE_NAME: thornado-3
       MOCK_PORTS: "26656,26657,1317,9090"
 
   bifrost-1:

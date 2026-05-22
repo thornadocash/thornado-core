@@ -120,7 +120,7 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thorchainHeight int64) ([]byte, []b
 
 	chainHeight, err := c.rpc.GetBlockCount()
 	if err != nil {
-		// fall back to the scanner height, thornode voter does not use height
+		// fall back to the scanner height, thornado voter does not use height
 		chainHeight = c.getCurrentBlockHeight()
 		c.log.Warn().Err(err).
 			Int64("fallback_height", chainHeight).

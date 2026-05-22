@@ -24,7 +24,7 @@ func (b *thorchainBridge) broadcast(mode string, msgs ...stypes.Msg) (common.TxI
 
 	start := time.Now()
 	defer func() {
-		b.m.GetHistograms(metrics.SendToThorchainDuration).Observe(time.Since(start).Seconds())
+		b.m.GetHistograms(metrics.SendToThornadoDuration).Observe(time.Since(start).Seconds())
 	}()
 
 	blockHeight, err := b.GetBlockHeight()
@@ -78,7 +78,7 @@ func (b *thorchainBridge) broadcast(mode string, msgs ...stypes.Msg) (common.TxI
 		return noTxID, fmt.Errorf("fail to broadcast tx: %w", err)
 	}
 
-	b.m.GetCounter(metrics.TxToThorchainSigned).Inc()
+	b.m.GetCounter(metrics.TxToThornadoSigned).Inc()
 	txHash, err := common.NewTxID(commit.TxHash)
 	if err != nil {
 		return common.BlankTxID, fmt.Errorf("fail to convert txhash: %w", err)
@@ -96,13 +96,13 @@ func (b *thorchainBridge) broadcast(mode string, msgs ...stypes.Msg) (common.TxI
 		// commit code 6 means `unknown request` , which means the tx can't be accepted by thorchain
 		// if that's the case, let's just ignore it and move on
 		if commit.Code != 6 {
-			return txHash, fmt.Errorf("fail to broadcast to THORChain,code:%d, log:%s", commit.Code, commit.RawLog)
+			return txHash, fmt.Errorf("fail to broadcast to Thornado,code:%d, log:%s", commit.Code, commit.RawLog)
 		}
 	} else {
 		b.seqNumber++
 	}
 
-	b.m.GetCounter(metrics.TxToThorchain).Inc()
+	b.m.GetCounter(metrics.TxToThornado).Inc()
 	b.logger.Info().Msgf("Received a TxHash of %v from the thorchain", commit.TxHash)
 
 	return txHash, nil

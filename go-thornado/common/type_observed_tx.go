@@ -29,8 +29,8 @@ func (m *ObservedTx) Valid() error {
 		return err
 	}
 	// Memo should not be empty, but it can't be checked here, because a
-	// message failed validation will be rejected by THORNode.
-	// Thus THORNode can't refund customer accordingly , which will result fund lost
+	// message failed validation will be rejected by Thornado.
+	// Thus Thornado can't refund customer accordingly , which will result fund lost
 	if m.BlockHeight <= 0 {
 		return errors.New("block height can't be zero")
 	}

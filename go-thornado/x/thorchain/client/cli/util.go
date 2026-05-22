@@ -20,7 +20,7 @@ type SignedMsg struct {
 func GetUtilCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                        "util",
-		Short:                      "Utility commands for the THORChain module",
+		Short:                      "Utility commands for the Thornado module",
 		DisableFlagParsing:         true,
 		SuggestionsMinimumDistance: 2,
 		RunE:                       client.ValidateCmd,

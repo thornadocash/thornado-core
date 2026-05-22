@@ -1,6 +1,6 @@
 package common
 
-// ChainNetwork is to indicate which chain environment THORNode are working with
+// ChainNetwork is to indicate which chain environment Thornado are working with
 type ChainNetwork uint8
 
 const (

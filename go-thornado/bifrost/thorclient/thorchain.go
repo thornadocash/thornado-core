@@ -39,29 +39,27 @@ import (
 const (
 	AuthAccountEndpoint         = "/cosmos/auth/v1beta1/accounts"
 	BroadcastTxsEndpoint        = "/"
-	ConstantsEndpoint           = "/thorchain/constants"
-	KeygenEndpoint              = "/thorchain/keygen"
-	KeysignEndpoint             = "/thorchain/keysign"
-	LastBlockEndpoint           = "/thorchain/lastblock"
-	NodeAccountEndpoint         = "/thorchain/node"
-	NodeAccountsEndpoint        = "/thorchain/nodes"
-	SignerMembershipEndpoint    = "/thorchain/vaults/%s/signers"
+	ConstantsEndpoint           = "/thornado/constants"
+	KeygenEndpoint              = "/thornado/keygen"
+	KeysignEndpoint             = "/thornado/keysign"
+	LastBlockEndpoint           = "/thornado/lastblock"
+	NodeAccountEndpoint         = "/thornado/node"
+	NodeAccountsEndpoint        = "/thornado/nodes"
+	SignerMembershipEndpoint    = "/thornado/vaults/%s/signers"
 	StatusEndpoint              = "/status"
-	VaultEndpoint               = "/thorchain/vault/%s"
-	AsgardVault                 = "/thorchain/vaults/asgard"
-	PubKeysEndpoint             = "/thorchain/vaults/pubkeys"
-	ThorchainConstants          = "/thorchain/constants"
-	RagnarokEndpoint            = "/thorchain/ragnarok"
-	MimirEndpoint               = "/thorchain/mimir"
-	ChainVersionEndpoint        = "/thorchain/version"
-	InboundAddressesEndpoint    = "/thorchain/inbound_addresses"
-	PoolsEndpoint               = "/thorchain/pools"
-	THORNameEndpoint            = "/thorchain/thorname/%s"
-	ReferenceMemoEndpoint       = "/thorchain/memo/%s/%s"
-	ReferenceMemoByHashEndpoint = "/thorchain/memo/%s"
+	VaultEndpoint               = "/thornado/vault/%s"
+	AsgardVault                 = "/thornado/vaults/asgard"
+	PubKeysEndpoint             = "/thornado/vaults/pubkeys"
+	ThornadoConstants          = "/thornado/constants"
+	RagnarokEndpoint            = "/thornado/ragnarok"
+	MimirEndpoint               = "/thornado/mimir"
+	ChainVersionEndpoint        = "/thornado/version"
+	InboundAddressesEndpoint    = "/thornado/inbound_addresses"
+	ReferenceMemoEndpoint       = "/thornado/memo/%s/%s"
+	ReferenceMemoByHashEndpoint = "/thornado/memo/%s"
 )
 
-// thorchainBridge will be used to send tx to THORChain
+// thorchainBridge will be used to send tx to Thornado
 type thorchainBridge struct {
 	logger        zerolog.Logger
 	cfg           config.BifrostClientConfiguration
@@ -92,11 +90,9 @@ type ThorchainBridge interface {
 	GetMimir(key string) (int64, error)
 	GetMimirWithRef(template, ref string) (int64, error)
 	GetInboundOutbound(txIns common.ObservedTxs) (common.ObservedTxs, common.ObservedTxs, error)
-	GetPools() (stypes.Pools, error)
 	GetPubKeys() ([]PubKeyContractAddressPair, error)
 	GetAsgardPubKeys() ([]PubKeyContractAddressPair, error)
 	GetSolvencyMsg(height int64, chain common.Chain, pubKey common.PubKey, coins common.Coins) *stypes.MsgSolvency
-	GetTHORName(name string) (stypes.THORName, error)
 	GetThorchainVersion() (semver.Version, error)
 	IsCatchingUp() (bool, error)
 	HasNetworkFee(chain common.Chain) (bool, error)
@@ -150,7 +146,7 @@ func NewThorchainBridge(cfg config.BifrostClientConfiguration, m *metrics.Metric
 		logger:        logger,
 		cfg:           cfg,
 		keys:          k,
-		errCounter:    m.GetCounterVec(metrics.ThorchainClientError),
+		errCounter:    m.GetCounterVec(metrics.ThornadoClientError),
 		httpClient:    httpClient,
 		m:             m,
 		broadcastLock: &sync.RWMutex{},
@@ -220,7 +216,7 @@ func (b *thorchainBridge) get(url string) ([]byte, int, error) {
 	defer respCachePointer.httpResponseMu.Unlock()
 
 	// When the same endpoint has been checked within the span of a single block, return the cached response.
-	if time.Since(respCachePointer.httpResponseChecked) < constants.ThorchainBlockTime && respCachePointer.httpResponse != nil {
+	if time.Since(respCachePointer.httpResponseChecked) < constants.ThornadoBlockTime && respCachePointer.httpResponse != nil {
 		return respCachePointer.httpResponse, http.StatusOK, nil
 	}
 
@@ -297,7 +293,7 @@ func (b *thorchainBridge) GetConfig() config.BifrostClientConfiguration {
 func (b *thorchainBridge) PostKeysignFailure(blame stypes.Blame, height int64, memo string, coins common.Coins, pubkey common.PubKey) (common.TxID, error) {
 	start := time.Now()
 	defer func() {
-		b.m.GetHistograms(metrics.SignToThorchainDuration).Observe(time.Since(start).Seconds())
+		b.m.GetHistograms(metrics.SignToThornadoDuration).Observe(time.Since(start).Seconds())
 	}()
 
 	if blame.IsEmpty() {
@@ -570,7 +566,7 @@ func (b *thorchainBridge) HasNetworkFee(chain common.Chain) (bool, error) {
 	return false, fmt.Errorf("no inbound address found for chain: %s", chain)
 }
 
-// GetNetworkFee get chain's network fee from THORNode.
+// GetNetworkFee get chain's network fee from Thornado.
 func (b *thorchainBridge) GetNetworkFee(chain common.Chain) (transactionSize, transactionFeeRate uint64, err error) {
 	buf, s, err := b.getWithPath(InboundAddressesEndpoint)
 	if err != nil {
@@ -617,7 +613,7 @@ func (b *thorchainBridge) WaitToCatchUp() error {
 			break
 		}
 		b.logger.Info().Msg("thorchain is not caught up... waiting...")
-		time.Sleep(constants.ThorchainBlockTime)
+		time.Sleep(constants.ThornadoBlockTime)
 	}
 	return nil
 }
@@ -763,7 +759,7 @@ func (b *thorchainBridge) GetAsgardPubKeys() ([]PubKeyContractAddressPair, error
 	return addressPairs, nil
 }
 
-// PostNetworkFee send network fee message to THORNode
+// PostNetworkFee send network fee message to Thornado
 func (b *thorchainBridge) PostNetworkFee(height int64, chain common.Chain, transactionSize, transactionRate uint64) (common.TxID, error) {
 	nodeStatus, err := b.FetchNodeStatus()
 	if err != nil {
@@ -775,7 +771,7 @@ func (b *thorchainBridge) PostNetworkFee(height int64, chain common.Chain, trans
 	}
 	start := time.Now()
 	defer func() {
-		b.m.GetHistograms(metrics.SignToThorchainDuration).Observe(time.Since(start).Seconds())
+		b.m.GetHistograms(metrics.SignToThornadoDuration).Observe(time.Since(start).Seconds())
 	}()
 	signerAddr, err := b.keys.GetSignerInfo().GetAddress()
 	if err != nil {
@@ -785,12 +781,12 @@ func (b *thorchainBridge) PostNetworkFee(height int64, chain common.Chain, trans
 	return b.Broadcast(msg)
 }
 
-// GetConstants from thornode
+// GetConstants from thornado
 func (b *thorchainBridge) GetConstants() (map[string]int64, error) {
 	var result struct {
 		Int64Values map[string]int64 `json:"int_64_values"`
 	}
-	buf, s, err := b.getWithPath(ThorchainConstants)
+	buf, s, err := b.getWithPath(ThornadoConstants)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get constants: %w", err)
 	}
@@ -823,14 +819,14 @@ func (b *thorchainBridge) RagnarokInProgress() (bool, error) {
 func (b *thorchainBridge) GetThorchainVersion() (semver.Version, error) {
 	buf, s, err := b.getWithPath(ChainVersionEndpoint)
 	if err != nil {
-		return semver.Version{}, fmt.Errorf("fail to get THORChain version: %w", err)
+		return semver.Version{}, fmt.Errorf("fail to get Thornado version: %w", err)
 	}
 	if s != http.StatusOK {
 		return semver.Version{}, fmt.Errorf("unexpected status code: %d", s)
 	}
 	var version openapi.VersionResponse
 	if err = json.Unmarshal(buf, &version); err != nil {
-		return semver.Version{}, fmt.Errorf("fail to unmarshal THORChain version : %w", err)
+		return semver.Version{}, fmt.Errorf("fail to unmarshal Thornado version : %w", err)
 	}
 	return semver.MustParse(version.Current), nil
 }
@@ -908,39 +904,6 @@ func (b *thorchainBridge) GetContractAddress() ([]PubKeyContractAddressPair, err
 		}
 	}
 	return result, nil
-}
-
-// GetPools get pools from THORChain
-func (b *thorchainBridge) GetPools() (stypes.Pools, error) {
-	buf, s, err := b.getWithPath(PoolsEndpoint)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get pools addresses: %w", err)
-	}
-	if s != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", s)
-	}
-	var pools stypes.Pools
-	if err = json.Unmarshal(buf, &pools); err != nil {
-		return nil, fmt.Errorf("fail to unmarshal pools from json: %w", err)
-	}
-	return pools, nil
-}
-
-// GetTHORName get THORName from THORChain
-func (b *thorchainBridge) GetTHORName(name string) (stypes.THORName, error) {
-	p := fmt.Sprintf(THORNameEndpoint, name)
-	buf, s, err := b.getWithPath(p)
-	if err != nil {
-		return stypes.THORName{}, fmt.Errorf("fail to get THORName: %w", err)
-	}
-	if s != http.StatusOK {
-		return stypes.THORName{}, fmt.Errorf("unexpected status code: %d", s)
-	}
-	var tn stypes.THORName
-	if err = json.Unmarshal(buf, &tn); err != nil {
-		return stypes.THORName{}, fmt.Errorf("fail to unmarshal THORNames from json: %w", err)
-	}
-	return tn, nil
 }
 
 // GetReferenceMemo takes a chain and reference id and gets the memo

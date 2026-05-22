@@ -61,7 +61,7 @@ func (a *ExportApiService) ExportExecute(r ApiExportRequest) (map[string]interfa
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/export"
+	localVarPath := localBasePath + "/thornado/export"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

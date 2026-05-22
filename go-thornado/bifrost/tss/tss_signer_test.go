@@ -81,7 +81,6 @@ func (m *mockBridgeForKeysign) GetMimirWithRef(string, string) (int64, error) { 
 func (m *mockBridgeForKeysign) GetInboundOutbound(common.ObservedTxs) (common.ObservedTxs, common.ObservedTxs, error) {
 	return nil, nil, nil
 }
-func (m *mockBridgeForKeysign) GetPools() (stypes.Pools, error) { return nil, nil }
 func (m *mockBridgeForKeysign) GetPubKeys() ([]thorclient.PubKeyContractAddressPair, error) {
 	return nil, nil
 }
@@ -92,10 +91,6 @@ func (m *mockBridgeForKeysign) GetAsgardPubKeys() ([]thorclient.PubKeyContractAd
 
 func (m *mockBridgeForKeysign) GetSolvencyMsg(int64, common.Chain, common.PubKey, common.Coins) *stypes.MsgSolvency {
 	return nil
-}
-
-func (m *mockBridgeForKeysign) GetTHORName(string) (stypes.THORName, error) {
-	return stypes.THORName{}, nil
 }
 
 func (m *mockBridgeForKeysign) GetThorchainVersion() (semver.Version, error) {

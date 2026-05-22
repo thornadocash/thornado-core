@@ -24,14 +24,14 @@ const (
 	TotalRetryBlocks        MetricName = `total_retry_blocks`
 	CommonBlockScannerError MetricName = `block_scanner_error`
 
-	ThorchainBlockScannerError MetricName = `thorchain_block_scan_error`
+	ThornadoBlockScannerError MetricName = `thornado_block_scan_error`
 	BlockDiscoveryDuration     MetricName = `block_discovery_duration`
 
-	ThorchainClientError    MetricName = `thorchain_client_error`
-	TxToThorchain           MetricName = `tx_to_thorchain`
-	TxToThorchainSigned     MetricName = `tx_to_thorchain_signed`
-	SignToThorchainDuration MetricName = `sign_to_thorchain_duration`
-	SendToThorchainDuration MetricName = `send_to_thorchain_duration`
+	ThornadoClientError    MetricName = `thornado_client_error`
+	TxToThornado           MetricName = `tx_to_thornado`
+	TxToThornadoSigned     MetricName = `tx_to_thornado_signed`
+	SignToThornadoDuration MetricName = `sign_to_thornado_duration`
+	SendToThornadoDuration MetricName = `send_to_thornado_duration`
 
 	ObserverError MetricName = `observer_error`
 	SignerError   MetricName = `signer_error`
@@ -72,16 +72,16 @@ var (
 			Name:      "total_retry_blocks_total",
 			Help:      "total blocks retried ",
 		}),
-		TxToThorchain: prometheus.NewCounter(prometheus.CounterOpts{
+		TxToThornado: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "observer",
-			Subsystem: "thorchain_client",
-			Name:      "tx_to_thorchain_total",
-			Help:      "number of tx observer post to thorchain successfully",
+			Subsystem: "thornado_client",
+			Name:      "tx_to_thornado_total",
+			Help:      "number of tx observer post to thornado successfully",
 		}),
-		TxToThorchainSigned: prometheus.NewCounter(prometheus.CounterOpts{
+		TxToThornadoSigned: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "observer",
-			Subsystem: "thorchain_client",
-			Name:      "tx_to_thorchain_signed_total",
+			Subsystem: "thornado_client",
+			Name:      "tx_to_thornado_signed_total",
 			Help:      "number of tx observer signed successfully",
 		}),
 		BatchSends: prometheus.NewCounter(prometheus.CounterOpts{
@@ -107,20 +107,20 @@ var (
 			"error_name", "additional",
 		}),
 
-		ThorchainBlockScannerError: prometheus.NewCounterVec(prometheus.CounterOpts{
+		ThornadoBlockScannerError: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "block_scanner",
-			Subsystem: "thorchain_block_scanner",
+			Subsystem: "thornado_block_scanner",
 			Name:      "errors_total",
-			Help:      "errors in thorchain block scanner",
+			Help:      "errors in thornado block scanner",
 		}, []string{
 			"error_name", "additional",
 		}),
 
-		ThorchainClientError: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "thorchain",
-			Subsystem: "thorchain_client",
+		ThornadoClientError: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "thornado",
+			Subsystem: "thornado_client",
 			Name:      "errors_total",
-			Help:      "errors in thorchain client",
+			Help:      "errors in thornado client",
 		}, []string{
 			"error_name", "additional",
 		}),
@@ -166,17 +166,17 @@ var (
 			Name:      "block_discovery",
 			Help:      "how long it takes to discovery a block height",
 		}),
-		SignToThorchainDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+		SignToThornadoDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Namespace: "observer",
-			Subsystem: "thorchain",
-			Name:      "sign_to_thorchain_duration",
-			Help:      "how long it takes to sign a tx to thorchain",
+			Subsystem: "thornado",
+			Name:      "sign_to_thornado_duration",
+			Help:      "how long it takes to sign a tx to thornado",
 		}),
-		SendToThorchainDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+		SendToThornadoDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Namespace: "observer",
-			Subsystem: "thorchain",
-			Name:      "send_to_thorchain_duration",
-			Help:      "how long it takes to sign and broadcast to thorchain",
+			Subsystem: "thornado",
+			Name:      "send_to_thornado_duration",
+			Help:      "how long it takes to sign and broadcast to thornado",
 		}),
 		BatchSize: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Namespace: "observer",

@@ -137,7 +137,7 @@ func (HealthServerTestSuite) TestClassifyHost(c *C) {
 		{"localhost", "self-hosted"},
 		{"LOCALHOST", "self-hosted"},
 		{"bitcoin-daemon", "self-hosted"},
-		{"thornode", "self-hosted"},
+		{"thornado", "self-hosted"},
 
 		// local TLDs
 		{"node.local", "self-hosted"},

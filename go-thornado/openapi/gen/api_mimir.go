@@ -69,7 +69,7 @@ func (a *MimirApiService) MimirExecute(r ApiMimirRequest) (map[string]string, *h
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/mimir"
+	localVarPath := localBasePath + "/thornado/mimir"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -178,7 +178,7 @@ func (a *MimirApiService) MimirAdminExecute(r ApiMimirAdminRequest) (map[string]
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/mimir/admin"
+	localVarPath := localBasePath + "/thornado/mimir/admin"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -290,7 +290,7 @@ func (a *MimirApiService) MimirKeyExecute(r ApiMimirKeyRequest) (int64, *http.Re
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/mimir/key/{key}"
+	localVarPath := localBasePath + "/thornado/mimir/key/{key}"
 	localVarPath = strings.Replace(localVarPath, "{"+"key"+"}", url.PathEscape(parameterToString(r.key, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -403,7 +403,7 @@ func (a *MimirApiService) MimirNodeExecute(r ApiMimirNodeRequest) (map[string]st
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/mimir/node/{address}"
+	localVarPath := localBasePath + "/thornado/mimir/node/{address}"
 	localVarPath = strings.Replace(localVarPath, "{"+"address"+"}", url.PathEscape(parameterToString(r.address, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -513,7 +513,7 @@ func (a *MimirApiService) MimirNodesExecute(r ApiMimirNodesRequest) (*MimirNodes
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/mimir/nodes_all"
+	localVarPath := localBasePath + "/thornado/mimir/nodes_all"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

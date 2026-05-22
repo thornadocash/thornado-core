@@ -113,6 +113,13 @@ const (
 	prefixShielderMerkleRoot        types.DbPrefix = "shielder_merkle_root/"
 	prefixShielderWithdrawal        types.DbPrefix = "shielder_withdrawal/"
 	prefixShielderNullifier         types.DbPrefix = "shielder_nullifier/"
+	prefixShielderValidatorBond     types.DbPrefix = "shielder_validator_bond/"
+	prefixShielderNodeBondSlot      types.DbPrefix = "shielder_node_bond_slot/"
+	prefixShielderFeePool           types.DbPrefix = "shielder_fee_pool/"
+	prefixShielderFeeNotePubKey     types.DbPrefix = "shielder_fee_note_pubkey/"
+	prefixNodeSlotAuction           types.DbPrefix = "node_slot_auction/"
+	prefixNodeSlotBid               types.DbPrefix = "node_slot_bid/"
+	prefixNodeSlotAuctionBid        types.DbPrefix = "node_slot_auction_bid/"
 )
 
 func dbError(ctx cosmos.Context, wrapper string, err error) error {
@@ -415,32 +422,7 @@ func (k KVStore) BurnFromModule(ctx cosmos.Context, module string, coin common.C
 }
 
 func (k KVStore) MintToModule(ctx cosmos.Context, module string, coin common.Coin) error {
-	// circuit breaker
-	// mint new rune coins until we hit the cap. Once we do, borrow
-	// from the reserve instead of minting new tokens
-	// from the reserve instead of minting new tokens
-	maxAmt, _ := k.GetMimir(ctx, constants.MaxRuneSupply.String())
-	if coin.IsRune() && maxAmt > 0 {
-		currentSupply := k.GetTotalSupply(ctx, common.RuneAsset())  // current circulating supply of rune
-		maxSupply := cosmos.NewUint(uint64(maxAmt))                 // max supply of rune (ie 500m)
-		availableSupply := common.SafeSub(maxSupply, currentSupply) // available supply to be mint
-		// if available supply is less than the coin.Amount, we need to
-		// borrow from the reserve
-		if availableSupply.LT(coin.Amount) {
-			// Never mint an amount that would exceed MaxRuneSupply.
-			borrowReserveAmt := common.SafeSub(coin.Amount, availableSupply) // to borrow from reserve
-			coin.Amount = common.SafeSub(coin.Amount, borrowReserveAmt)      // to mint later in this func
-
-			reserveCoin := common.NewCoin(common.RuneAsset(), borrowReserveAmt)
-			if err := k.SendFromModuleToModule(ctx, ReserveName, module, common.NewCoins(reserveCoin)); err != nil {
-				// If unable to move the needed surplus coin from the Reserve, error out without any minting.
-				ctx.Logger().Error("fail to move coins during circuit breaker", "error", err)
-				return err
-			}
-		}
-	}
 	if coin.Amount.IsZero() {
-		// Don't proceed if the remaining amount to mint is zero.
 		return nil
 	}
 
@@ -452,19 +434,6 @@ func (k KVStore) MintToModule(ctx cosmos.Context, module string, coin common.Coi
 	err = k.coinKeeper.MintCoins(ctx, module, coinsToMint)
 	if err != nil {
 		return fmt.Errorf("fail to mint assets: %w", err)
-	}
-
-	// check if we've exceeded max rune supply cap. If we have, there could
-	// be an issue (infinite mint bug/exploit), or maybe runway rune
-	// hyperinflation. In any case, pause everything and allow the
-	// community time to find a solution to the issue.
-	coin2 := k.coinKeeper.GetSupply(ctx, common.RuneAsset().Native())
-	maxAmt, _ = k.GetMimir(ctx, "MaxRuneSupply")
-	if maxAmt > 0 && coin2.Amount.GT(cosmos.NewInt(maxAmt)) {
-		k.SetMimir(ctx, "HaltTrading", 1)
-		k.SetMimir(ctx, "HaltChainGlobal", 1)
-		k.SetMimir(ctx, "PauseLP", 1)
-		k.SetMimir(ctx, "HaltTHORChain", 1)
 	}
 
 	return nil
@@ -504,11 +473,7 @@ func (k KVStore) GetAccount(ctx cosmos.Context, addr cosmos.AccAddress) cosmos.A
 }
 
 func (k KVStore) GetNativeTxFee(ctx cosmos.Context) cosmos.Uint {
-	if k.usdFeesEnabled(ctx) {
-		return k.DollarConfigInRune(ctx, constants.NativeTransactionFeeUSD)
-	}
-	fee := k.GetConfigInt64(ctx, constants.NativeTransactionFee)
-	return cosmos.NewUint(uint64(fee))
+	return cosmos.ZeroUint()
 }
 
 func (k KVStore) GetTHORNameRegisterFee(ctx cosmos.Context) cosmos.Uint {
@@ -547,12 +512,7 @@ func (k KVStore) usdFeesEnabled(ctx cosmos.Context) bool {
 }
 
 func (k KVStore) DeductNativeTxFeeFromAccount(ctx cosmos.Context, acctAddr cosmos.AccAddress) error {
-	fee := k.GetNativeTxFee(ctx)
-	if fee.IsZero() {
-		return nil // no fee
-	}
-	coins := common.NewCoins(common.NewCoin(common.RuneNative, fee))
-	return k.SendFromAccountToModule(ctx, acctAddr, ReserveName, coins)
+	return nil
 }
 
 // RagnarokAccount remove account and return all assets to the protocol

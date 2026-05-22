@@ -219,8 +219,8 @@ func (o *Observer) deck(ctx context.Context) {
 	}
 }
 
-// handleObservedTxCommitted will be called when an observed tx has been committed to thorchain,
-// notified via AttestationGossip's grpc subscription to thornode..
+// handleObservedTxCommitted will be called when an observed tx has been committed to thornado,
+// notified via AttestationGossip's grpc subscription to thornado..
 func (o *Observer) handleObservedTxCommitted(tx common.ObservedTx) {
 	madeChanges := false
 
@@ -265,7 +265,7 @@ func (o *Observer) handleObservedTxCommitted(tx common.ObservedTx) {
 				}
 			}
 		} else {
-			// if the tx is not final, set tx.CommittedUnFinalised to true to indicate that it has been committed to thorchain but not finalised yet.
+			// if the tx is not final, set tx.CommittedUnFinalised to true to indicate that it has been committed to thornado but not finalised yet.
 			txInItem.CommittedUnFinalised = true
 			if err := o.storage.AddOrUpdateTx(deck); err != nil {
 				o.logger.Error().Err(err).Msg("fail to update tx in storage")
@@ -299,7 +299,7 @@ func (o *Observer) handleObservedTxCommitted(tx common.ObservedTx) {
 		Str("coins", tx.Tx.Coins.String()).
 		Str("gas", common.Coins(tx.Tx.Gas).String()).
 		Str("observed_vault_pubkey", tx.ObservedPubKey.String()).
-		Msg("observed tx committed to thorchain")
+		Msg("observed tx committed to thornado")
 }
 
 func (o *Observer) sendDeck(ctx context.Context) {
@@ -408,7 +408,7 @@ func (o *Observer) sendDeck(ctx context.Context) {
 func (o *Observer) sendToQuorumChecker(deck *types.TxIn, finalised bool, finaliseHeight int64) []int {
 	txs, invalidIndices, err := o.getThorchainTxIns(deck, finalised, finaliseHeight)
 	if err != nil {
-		o.logger.Error().Err(err).Msg("fail to convert txin to thorchain txins")
+		o.logger.Error().Err(err).Msg("fail to convert txin to thornado txins")
 		return nil
 	}
 
@@ -425,13 +425,13 @@ func (o *Observer) sendToQuorumChecker(deck *types.TxIn, finalised bool, finalis
 
 	for _, tx := range inbound {
 		if err := o.attestationGossip.AttestObservedTx(context.Background(), &tx, true); err != nil {
-			o.logger.Err(err).Msg("fail to send inbound tx to thorchain")
+			o.logger.Err(err).Msg("fail to send inbound tx to thornado")
 		}
 	}
 
 	for _, tx := range outbound {
 		if err := o.attestationGossip.AttestObservedTx(context.Background(), &tx, false); err != nil {
-			o.logger.Err(err).Msg("fail to send outbound tx to thorchain")
+			o.logger.Err(err).Msg("fail to send outbound tx to thornado")
 		}
 	}
 
@@ -643,9 +643,9 @@ func (o *Observer) processErrataTx(ctx context.Context) {
 }
 
 // filterErrataTx with confirmation counting logic in place, all inbound tx to asgard will be parked and waiting for confirmation count to reach
-// the target threshold before it get forward to THORChain,  it is possible that when a re-org happened on BTC / ETH
+// the target threshold before it get forward to Thornado,  it is possible that when a re-org happened on BTC / ETH
 // the transaction that has been re-org out ,still in bifrost memory waiting for confirmation, as such, it should be
-// removed from ondeck tx queue, and not forward it to THORChain
+// removed from ondeck tx queue, and not forward it to Thornado
 func (o *Observer) filterErrataTx(block types.ErrataBlock) {
 	o.lock.Lock()
 	defer o.lock.Unlock()
@@ -679,7 +679,7 @@ BlockLoop:
 }
 
 // getThorchainTxIns convert to the type thorchain expected
-// maybe in later THORNode can just refactor this to use the type in thorchain
+// maybe in later Thornado can just refactor this to use the type in thorchain
 func (o *Observer) getThorchainTxIns(txIn *types.TxIn, finalized bool, finaliseHeight int64) (common.ObservedTxs, []int, error) {
 	obsTxs := make(common.ObservedTxs, 0, len(txIn.TxArray))
 	invalidIndices := make([]int, 0)
@@ -796,7 +796,7 @@ func (o *Observer) processNetworkFeeQueue(ctx context.Context) {
 				continue
 			}
 			if err := o.attestationGossip.AttestNetworkFee(ctx, networkFee); err != nil {
-				o.logger.Err(err).Msg("fail to send network fee to thorchain")
+				o.logger.Err(err).Msg("fail to send network fee to thornado")
 			}
 		}
 	}

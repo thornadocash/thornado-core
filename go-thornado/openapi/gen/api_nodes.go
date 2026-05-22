@@ -72,7 +72,7 @@ func (a *NodesApiService) NodeExecute(r ApiNodeRequest) (*Node, *http.Response, 
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/node/{address}"
+	localVarPath := localBasePath + "/thornado/node/{address}"
 	localVarPath = strings.Replace(localVarPath, "{"+"address"+"}", url.PathEscape(parameterToString(r.address, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -182,7 +182,7 @@ func (a *NodesApiService) NodesExecute(r ApiNodesRequest) ([]Node, *http.Respons
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/nodes"
+	localVarPath := localBasePath + "/thornado/nodes"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

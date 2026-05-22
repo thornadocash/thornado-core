@@ -26,7 +26,7 @@ func (s *DecimalsSuite) TestConversion(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(result.String(), Equals, "12345678")
 
-	result, err = ConvertDecimals(amount3, 18, THORChainDecimals)
+	result, err = ConvertDecimals(amount3, 18, ThornadoDecimals)
 	c.Assert(err, IsNil)
 	c.Assert(result.String(), Equals, "120030040050010010010")
 

@@ -33,7 +33,7 @@ type ThorchainBlockScan struct {
 	pubkeyMgr      pubkeymanager.PubKeyValidator
 }
 
-// NewThorchainBlockScan create a new instance of thorchain block scanner
+// NewThorchainBlockScan create a new instance of thornado block scanner
 func NewThorchainBlockScan(cfg config.BifrostBlockScannerConfiguration, scanStorage blockscanner.ScannerStorage, thorchain thorclient.ThorchainBridge, m *metrics.Metrics, pubkeyMgr pubkeymanager.PubKeyValidator) (*ThorchainBlockScan, error) {
 	if scanStorage == nil {
 		return nil, errors.New("scanStorage is nil")
@@ -50,7 +50,7 @@ func NewThorchainBlockScan(cfg config.BifrostBlockScannerConfiguration, scanStor
 		cfg:            cfg,
 		scannerStorage: scanStorage,
 		thorchain:      thorchain,
-		errCounter:     m.GetCounterVec(metrics.ThorchainBlockScannerError),
+		errCounter:     m.GetCounterVec(metrics.ThornadoBlockScannerError),
 		pubkeyMgr:      pubkeyMgr,
 	}, nil
 }
@@ -93,7 +93,7 @@ func (b *ThorchainBlockScan) processKeygenBlock(blockHeight int64) error {
 	pk := b.pubkeyMgr.GetNodePubKey(common.SigningAlgoSecp256k1)
 	keygen, err := b.thorchain.GetKeygenBlock(blockHeight, pk.String())
 	if err != nil {
-		return fmt.Errorf("fail to get keygen from thorchain: %w", err)
+		return fmt.Errorf("fail to get keygen from thornado: %w", err)
 	}
 
 	// custom error (to be dropped and not logged) because the block is

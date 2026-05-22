@@ -60,7 +60,7 @@ func (x KeygenType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(x.String())
 }
 
-// UnmarshalJSON convert string form back to PoolStatus
+// UnmarshalJSON convert string form back to keygen type
 func (x *KeygenType) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {

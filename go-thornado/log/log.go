@@ -80,7 +80,7 @@ func (z SdkLogWrapper) With(keyVals ...interface{}) sdklog.Logger {
 		if !ok {
 			continue
 		}
-		for _, item := range config.GetThornode().LogFilter.Modules {
+		for _, item := range config.GetThornado().LogFilter.Modules {
 			if strings.EqualFold(item, value) {
 				logger := z.Logger.Level(zerolog.WarnLevel).With().Fields(getLogFields(keyVals...)).Logger()
 				return SdkLogWrapper{
@@ -121,7 +121,7 @@ func getLogFields(keyVals ...any) map[string]any {
 
 func (z SdkLogWrapper) filter(msg string) bool {
 	if z.Logger.GetLevel() > zerolog.DebugLevel {
-		for _, filter := range config.GetThornode().LogFilter.Messages {
+		for _, filter := range config.GetThornado().LogFilter.Messages {
 			if filter == msg {
 				return true
 			}

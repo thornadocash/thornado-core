@@ -108,7 +108,7 @@ func (s *ConstantsProviderSuite) TestGetInt64Value_ErrorOnFirstCall(c *C) {
 
 	val, err := cp.GetInt64Value(100, constants.SigningTransactionPeriod)
 	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Matches, ".*fail to get constants from thorchain.*")
+	c.Assert(err.Error(), Matches, ".*fail to get constants from thornado.*")
 	c.Assert(val, Equals, int64(0))
 }
 

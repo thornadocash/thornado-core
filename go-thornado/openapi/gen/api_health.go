@@ -59,7 +59,7 @@ func (a *HealthApiService) PingExecute(r ApiPingRequest) (*Ping, *http.Response,
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/ping"
+	localVarPath := localBasePath + "/thornado/ping"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

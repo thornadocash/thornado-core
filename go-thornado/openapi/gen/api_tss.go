@@ -68,7 +68,7 @@ func (a *TSSApiService) KeygenPubkeyExecute(r ApiKeygenPubkeyRequest) (*KeygenRe
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/keygen/{height}/{pubkey}"
+	localVarPath := localBasePath + "/thornado/keygen/{height}/{pubkey}"
 	localVarPath = strings.Replace(localVarPath, "{"+"height"+"}", url.PathEscape(parameterToString(r.height, "")), -1)
 	localVarPath = strings.Replace(localVarPath, "{"+"pubkey"+"}", url.PathEscape(parameterToString(r.pubkey, "")), -1)
 
@@ -175,7 +175,7 @@ func (a *TSSApiService) KeysignExecute(r ApiKeysignRequest) (*KeysignResponse, *
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/keysign/{height}"
+	localVarPath := localBasePath + "/thornado/keysign/{height}"
 	localVarPath = strings.Replace(localVarPath, "{"+"height"+"}", url.PathEscape(parameterToString(r.height, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -284,7 +284,7 @@ func (a *TSSApiService) KeysignPubkeyExecute(r ApiKeysignPubkeyRequest) (*Keysig
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/keysign/{height}/{pubkey}"
+	localVarPath := localBasePath + "/thornado/keysign/{height}/{pubkey}"
 	localVarPath = strings.Replace(localVarPath, "{"+"height"+"}", url.PathEscape(parameterToString(r.height, "")), -1)
 	localVarPath = strings.Replace(localVarPath, "{"+"pubkey"+"}", url.PathEscape(parameterToString(r.pubkey, "")), -1)
 
@@ -395,7 +395,7 @@ func (a *TSSApiService) MetricsExecute(r ApiMetricsRequest) (*MetricsResponse, *
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/metrics"
+	localVarPath := localBasePath + "/thornado/metrics"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -507,7 +507,7 @@ func (a *TSSApiService) MetricsKeygenExecute(r ApiMetricsKeygenRequest) ([]Keyge
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/metric/keygen/{pubkey}"
+	localVarPath := localBasePath + "/thornado/metric/keygen/{pubkey}"
 	localVarPath = strings.Replace(localVarPath, "{"+"pubkey"+"}", url.PathEscape(parameterToString(r.pubkey, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)

@@ -239,3 +239,102 @@ func (k KVStore) SetShielderNullifierSpent(ctx cosmos.Context, nullifierHash str
 func (k KVStore) ShielderNullifierSpent(ctx cosmos.Context, nullifierHash string) bool {
 	return k.has(ctx, k.GetKey(prefixShielderNullifier, strings.TrimSpace(nullifierHash)))
 }
+
+func (k KVStore) GetNextShielderNodeBondSlot(ctx cosmos.Context) (uint64, error) {
+	var slot uint64
+	found, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderNodeBondSlot, "next"), &slot)
+	if err != nil {
+		return 0, err
+	}
+	if !found {
+		return 0, nil
+	}
+	return slot, nil
+}
+
+func (k KVStore) SetNextShielderNodeBondSlot(ctx cosmos.Context, slot uint64) error {
+	return k.setShielderJSON(ctx, k.GetKey(prefixShielderNodeBondSlot, "next"), slot)
+}
+
+func (k KVStore) AllocateShielderNodeBondSlot(ctx cosmos.Context) (uint64, error) {
+	slot, err := k.GetNextShielderNodeBondSlot(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if err := k.SetNextShielderNodeBondSlot(ctx, slot+1); err != nil {
+		return 0, err
+	}
+	return slot, nil
+}
+
+func (k KVStore) SetShielderValidatorBond(ctx cosmos.Context, bond types.ShielderValidatorBond) error {
+	if err := bond.Valid(); err != nil {
+		return err
+	}
+	return k.setShielderJSON(ctx, k.GetKey(prefixShielderValidatorBond, bond.Key()), bond)
+}
+
+func (k KVStore) GetShielderValidatorBond(ctx cosmos.Context, validatorPubKey string) (types.ShielderValidatorBond, error) {
+	record := types.ShielderValidatorBond{ValidatorPubKey: strings.TrimSpace(validatorPubKey)}
+	found, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderValidatorBond, record.Key()), &record)
+	if err != nil || !found {
+		return types.ShielderValidatorBond{}, err
+	}
+	return record, err
+}
+
+func (k KVStore) SetShielderFeePool(ctx cosmos.Context, pool types.ShielderFeePool) error {
+	return k.setShielderJSON(ctx, k.GetKey(prefixShielderFeePool, "global"), pool)
+}
+
+func (k KVStore) GetShielderFeePool(ctx cosmos.Context) (types.ShielderFeePool, error) {
+	var pool types.ShielderFeePool
+	_, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderFeePool, "global"), &pool)
+	return pool, err
+}
+
+func (k KVStore) SetShielderFeeNotePubKey(ctx cosmos.Context, pubKey common.PubKey, depositID common.TxID) error {
+	if pubKey.IsEmpty() {
+		return fmt.Errorf("missing shielder fee note pubkey")
+	}
+	if depositID.IsEmpty() {
+		return fmt.Errorf("missing shielder fee note deposit id")
+	}
+	return k.setShielderJSON(ctx, k.GetKey(prefixShielderFeeNotePubKey, pubKey.String()), depositID.String())
+}
+
+func (k KVStore) ShielderFeeNotePubKeyUsed(ctx cosmos.Context, pubKey common.PubKey) bool {
+	if pubKey.IsEmpty() {
+		return false
+	}
+	return k.has(ctx, k.GetKey(prefixShielderFeeNotePubKey, pubKey.String()))
+}
+
+func (k KVStore) SetNodeSlotAuction(ctx cosmos.Context, auction types.NodeSlotAuction) error {
+	if err := auction.Valid(); err != nil {
+		return err
+	}
+	return k.setShielderJSON(ctx, k.GetKey(prefixNodeSlotAuction, auction.Key()), auction)
+}
+
+func (k KVStore) GetNodeSlotAuction(ctx cosmos.Context, auctionID string) (types.NodeSlotAuction, error) {
+	record := types.NodeSlotAuction{AuctionID: strings.TrimSpace(auctionID)}
+	_, err := k.getShielderJSON(ctx, k.GetKey(prefixNodeSlotAuction, record.Key()), &record)
+	return record, err
+}
+
+func (k KVStore) SetNodeSlotBid(ctx cosmos.Context, bid types.NodeSlotBid) error {
+	if err := bid.Valid(); err != nil {
+		return err
+	}
+	if err := k.setShielderJSON(ctx, k.GetKey(prefixNodeSlotBid, bid.Key()), bid); err != nil {
+		return err
+	}
+	return k.setShielderJSON(ctx, k.GetKey(prefixNodeSlotAuctionBid, bid.AuctionID, bid.BidID), bid.BidID)
+}
+
+func (k KVStore) GetNodeSlotBid(ctx cosmos.Context, bidID string) (types.NodeSlotBid, error) {
+	record := types.NodeSlotBid{BidID: strings.TrimSpace(bidID)}
+	_, err := k.getShielderJSON(ctx, k.GetKey(prefixNodeSlotBid, record.Key()), &record)
+	return record, err
+}

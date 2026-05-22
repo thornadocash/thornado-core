@@ -9,8 +9,8 @@ import (
 )
 
 // LeaveHandler a handler to process leave request
-// if an operator of THORChain node would like to leave and get their bond back , they have to
-// send a Leave request through THORChain
+// if an operator of Thornado node would like to leave and get their bond back , they have to
+// send a Leave request through Thornado
 type LeaveHandler struct {
 	mgr Manager
 }
@@ -94,7 +94,7 @@ func (h LeaveHandler) handle(ctx cosmos.Context, msg MsgLeave) error {
 			return cosmos.ErrUnauthorized(fmt.Sprintf("%s are not authorized to manage %s", msg.Tx.FromAddress, msg.NodeAddress))
 		}
 	}
-	// THORNode add the node to leave queue
+	// Thornado add the node to leave queue
 
 	bondAddr, err := nodeAcc.BondAddress.AccAddress()
 	if err != nil {

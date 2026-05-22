@@ -11,10 +11,6 @@ const (
 	AsgardName             = types.AsgardName
 	AffiliateCollectorName = types.AffiliateCollectorName
 	TreasuryName           = types.TreasuryName
-	RUNEPoolName           = types.RUNEPoolName
-	TCYClaimingName        = types.TCYClaimingName
-	TCYStakeName           = types.TCYStakeName
-	POLReserveName         = types.POLReserveName
 	BondName               = types.BondName
 	LendingName            = types.LendingName
 	StoreKey               = types.StoreKey
@@ -47,13 +43,11 @@ const (
 )
 
 var (
-	NewPool                    = types.NewPool
 	NewJail                    = types.NewJail
 	NewStreamingSwap           = types.NewStreamingSwap
 	NewNetwork                 = types.NewNetwork
 	NewProtocolOwnedLiquidity  = types.NewProtocolOwnedLiquidity
 	NewPOLReserveDeposit       = types.NewPOLReserveDeposit
-	NewRUNEPool                = types.NewRUNEPool
 	NewObservedTx              = common.NewObservedTx
 	NewTssVoter                = types.NewTssVoter
 	NewBanVoter                = types.NewBanVoter
@@ -67,7 +61,6 @@ var (
 	NewTradeAccount            = types.NewTradeAccount
 	NewTradeUnit               = types.NewTradeUnit
 	NewSecuredAsset            = types.NewSecuredAsset
-	NewRUNEProvider            = types.NewRUNEProvider
 	NewNodeAccount             = types.NewNodeAccount
 	NewBondProviders           = types.NewBondProviders
 	NewBondProvider            = types.NewBondProvider
@@ -75,7 +68,6 @@ var (
 	NewVaultV2                 = types.NewVaultV2
 	NewReserveContributor      = types.NewReserveContributor
 	NewReferenceMemo           = types.NewReferenceMemo
-	NewTHORName                = types.NewTHORName
 	NewEventBond               = types.NewEventBond
 	NewEventMintBurn           = types.NewEventMintBurn
 	GetRandomTx                = types.GetRandomTx
@@ -97,17 +89,10 @@ var (
 	SetupConfigForTest         = types.SetupConfigForTest
 	NewChainContract           = types.NewChainContract
 	NewSwapperClout            = types.NewSwapperClout
-	NewTCYClaimer              = types.NewTCYClaimer
-	NewTCYStaker               = types.NewTCYStaker
 )
 
 type (
 	MsgSwap                  = types.MsgSwap
-	MsgAddLiquidity          = types.MsgAddLiquidity
-	MsgWithdrawLiquidity     = types.MsgWithdrawLiquidity
-	Pool                     = types.Pool
-	Pools                    = types.Pools
-	LiquidityProvider        = types.LiquidityProvider
 	StreamingSwap            = types.StreamingSwap
 	ObservedTxs              = common.ObservedTxs
 	ObservedTxVoter          = types.ObservedTxVoter
@@ -137,8 +122,6 @@ type (
 	TssKeysignMetric         = types.TssKeysignMetric
 	ChainContract            = types.ChainContract
 	ReferenceMemo            = types.ReferenceMemo
-	THORName                 = types.THORName
-	THORNameAlias            = types.THORNameAlias
 	AffiliateFeeCollector    = types.AffiliateFeeCollector
 	SolvencyVoter            = types.SolvencyVoter
 	MinJoinLast              = types.MinJoinLast
@@ -150,13 +133,6 @@ type (
 	TradeAccount             = types.TradeAccount
 	TradeUnit                = types.TradeUnit
 	SecuredAsset             = types.SecuredAsset
-	RUNEProvider             = types.RUNEProvider
-	RUNEPool                 = types.RUNEPool
-	MsgTCYClaim              = types.MsgTCYClaim
-	MsgTCYStake              = types.MsgTCYStake
-	MsgTCYUnstake            = types.MsgTCYUnstake
-	TCYClaimer               = types.TCYClaimer
-	TCYStaker                = types.TCYStaker
 	OraclePrice              = types.OraclePrice
 	PriceFeed                = types.PriceFeed
 	Volume                   = types.Volume

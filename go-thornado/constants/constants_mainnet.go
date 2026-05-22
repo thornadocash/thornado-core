@@ -7,4 +7,4 @@ import (
 	"time"
 )
 
-var ThorchainBlockTime = 6 * time.Second
+var ThornadoBlockTime = 6 * time.Second

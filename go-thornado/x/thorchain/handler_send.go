@@ -28,7 +28,7 @@ func NewBankSendHandler(h BaseHandler[sdk.Msg]) BankSendHandler {
 	return BankSendHandler{h: h}
 }
 
-// Send is the entrypoint for bank MsgSend, passing through to the thorchain handler.
+// Send is the entrypoint for bank MsgSend, passing through to the thornado handler.
 func (h BankSendHandler) Send(goCtx context.Context, msg *bank.MsgSend) (*bank.MsgSendResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 	if _, err := h.h.Run(ctx, msg); err != nil {
@@ -187,11 +187,11 @@ func MsgSendHandle(ctx cosmos.Context, mgr Manager, m sdk.Msg) (*cosmos.Result, 
 
 	k := mgr.Keeper()
 
-	if k.IsChainHalted(ctx, common.THORChain) {
-		return nil, fmt.Errorf("unable to use MsgSend while THORChain is halted")
+	if k.IsChainHalted(ctx, common.Thornado) {
+		return nil, fmt.Errorf("unable to use MsgSend while Thornado is halted")
 	}
 
-	// MsgSend to the thorchain module address is treated as a MsgDeposit for client compatibility reasons.
+	// MsgSend to the thornado module address is treated as a MsgDeposit for client compatibility reasons.
 	// In this case, the memo will be used like in any other MsgDeposit.
 	if msg.ToAddress.Equals(k.GetModuleAccAddress(ModuleName)) {
 		msgDeposit, err := getDeposit(ctx, msg.FromAddress, msg.Amount)

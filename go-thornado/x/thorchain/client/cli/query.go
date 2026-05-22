@@ -25,7 +25,7 @@ func (v ver) String() string {
 func GetQueryCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                        types.ModuleName,
-		Short:                      "Querying commands for the THORChain module",
+		Short:                      "Querying commands for the Thornado module",
 		DisableFlagParsing:         true,
 		SuggestionsMinimumDistance: 2,
 		RunE:                       client.ValidateCmd,
@@ -40,7 +40,7 @@ func GetQueryCmd() *cobra.Command {
 func GetCmdGetVersion() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
-		Short: "Gets the THORChain version and build information",
+		Short: "Gets the Thornado version and build information",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {

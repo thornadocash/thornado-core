@@ -7,8 +7,6 @@ import (
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/blang/semver"
-	"github.com/cosmos/cosmos-sdk/telemetry"
-	"github.com/hashicorp/go-metrics"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/thornadocash/go-thornado/common"
@@ -25,93 +23,9 @@ func isSimulationMode(ctx cosmos.Context) bool {
 }
 
 func refundTx(ctx cosmos.Context, tx ObservedTx, mgr Manager, refundCode uint32, refundReason, sourceModuleName string) error {
-	// If THORNode recognize one of the coins, and therefore able to refund
-	// withholding fees, refund all coins.
-
-	refundCoins := make(common.Coins, 0)
-	for _, coin := range tx.Tx.Coins {
-		// Do not emit Trade/Secured Asset refund event or attempt refund txout,
-		// as Trade/Secured Asset withdrawals take place in the internal handlers
-		// (state changes and event emission only if the internal handler succeeds)
-		// and not in the deposit handler.
-		if coin.Asset.IsTradeAsset() || coin.Asset.IsSecuredAsset() {
-			continue
-		}
-
-		pool, err := mgr.Keeper().GetPool(ctx, coin.Asset.GetLayer1Asset())
-		if err != nil {
-			return fmt.Errorf("fail to get pool: %w", err)
-		}
-
-		// Only attempt an outbound if a fee can be taken from the coin.
-		if coin.IsRune() || !pool.BalanceRune.IsZero() {
-			var vault Vault
-			if !tx.ObservedPubKey.IsEmpty() {
-				vault, err = mgr.Keeper().GetVault(ctx, tx.ObservedPubKey)
-				if err != nil {
-					return fmt.Errorf("fail to get vault: %w", err)
-				}
-				// If the vault is no longer active or retiring and lacks sufficient
-				// balance for this refund, clear it so prepareTxOutItem discovers an
-				// appropriate active vault. This handles expired limit order refunds
-				// where the original inbound vault has been churned out and emptied.
-				if !vault.IsActive() && !vault.IsRetiring() && vault.GetCoin(coin.Asset).Amount.LT(coin.Amount) {
-					vault = Vault{}
-				}
-			}
-
-			toi := TxOutItem{
-				Chain:                 coin.Asset.GetChain(),
-				ToAddress:             tx.Tx.FromAddress,
-				VaultPubKey:           vault.PubKey,
-				VaultPubKeyEddsa:      vault.PubKeyEddsa,
-				Coin:                  coin,
-				Memo:                  "",
-				MaxGas:                []common.Coin{},
-				GasRate:               0,
-				InHash:                tx.Tx.ID,
-				OutHash:               "",
-				ModuleName:            sourceModuleName,
-				TxType:                types.TxOutTypeRefund,
-				Aggregator:            "",
-				AggregatorTargetAsset: "",
-				AggregatorTargetLimit: &cosmos.Uint{},
-			}
-
-			success, err := mgr.TxOutStore().TryAddTxOutItem(ctx, mgr, toi, cosmos.ZeroUint())
-			if err != nil {
-				ctx.Logger().Error("fail to prepare outbound tx", "error", err)
-				// concatenate the refund failure to refundReason
-				refundReason = fmt.Sprintf("%s; fail to refund (%s): %s", refundReason, toi.Coin.String(), err)
-
-				unrefundableCoinCleanup(ctx, mgr, toi, "failed_refund")
-			}
-			if success {
-				refundCoins = append(refundCoins, toi.Coin)
-			}
-		}
-		// Zombie coins are just dropped.
-	}
-
-	// For refund events, emit the event after the txout attempt in order to include the 'fail to refund' reason if unsuccessful.
-	eventRefund := NewEventRefund(refundCode, refundReason, tx.Tx, common.NewFee(common.Coins{}, cosmos.ZeroUint()))
-	if len(refundCoins) > 0 {
-		// create a new TX based on the coins thorchain refund , some of the coins thorchain doesn't refund
-		// coin thorchain doesn't have pool with , likely airdrop
-		newTx := common.NewTx(tx.Tx.ID, tx.Tx.FromAddress, tx.Tx.ToAddress, tx.Tx.Coins, tx.Tx.Gas, tx.Tx.Memo)
-		eventRefund = NewEventRefund(refundCode, refundReason, newTx, common.Fee{}) // fee param not used in downstream event
-	}
-	if err := mgr.EventMgr().EmitEvent(ctx, eventRefund); err != nil {
-		return fmt.Errorf("fail to emit refund event: %w", err)
-	}
-
 	return nil
 }
 
-// unrefundableCoinCleanup - update the accounting for a failed outbound of toi.Coin
-// native rune: send to the reserve
-// native coin besides rune: burn
-// non-native coin: donate to its pool
 func unrefundableCoinCleanup(ctx cosmos.Context, mgr Manager, toi TxOutItem, burnReason string) {
 	coin := toi.Coin
 
@@ -162,108 +76,9 @@ func unrefundableCoinCleanup(ctx cosmos.Context, mgr Manager, toi TxOutItem, bur
 }
 
 func getMaxSwapQuantity(ctx cosmos.Context, mgr Manager, sourceAsset, targetAsset common.Asset, swp StreamingSwap) (uint64, error) {
-	// Interval 0 is rapid streaming. For quantity limits, treat it as 1 block
-	// so rapid requests can still be bounded by swap size and max length rules.
-	interval := swp.Interval
-	if interval == 0 {
-		interval = 1
-	}
-
-	// collect pools involved in this swap
-	minSwapSize := cosmos.ZeroUint()
-	stableSwap := isStableToStable(ctx, mgr.Keeper(), sourceAsset, targetAsset)
-	var sourceAssetPool types.Pool
-	for i, asset := range []common.Asset{sourceAsset, targetAsset} {
-		if asset.IsRune() {
-			continue
-		}
-
-		// get the asset pool
-		pool, err := mgr.Keeper().GetPool(ctx, asset.GetLayer1Asset())
-		if err != nil {
-			ctx.Logger().Error("fail to fetch pool", "error", err)
-			return 0, err
-		}
-
-		// store the source asset pool for later conversion of RUNE to asset
-		if i == 0 {
-			sourceAssetPool = pool
-		}
-
-		// get the configured min slip for this asset
-		minSlip := getMinSlipBps(ctx, mgr.Keeper(), asset, stableSwap)
-		if minSlip.IsZero() {
-			continue
-		}
-
-		// compute the minimum rune swap size for this leg of the swap
-		minRuneSwapSize := common.GetSafeShare(minSlip, cosmos.NewUint(constants.MaxBasisPts), pool.BalanceRune)
-		if minSwapSize.IsZero() || minRuneSwapSize.LT(minSwapSize) {
-			minSwapSize = minRuneSwapSize
-		}
-	}
-
-	// calculate the max swap quantity
-	if !sourceAsset.IsRune() {
-		minSwapSize = sourceAssetPool.RuneValueInAsset(minSwapSize)
-	}
-	if minSwapSize.IsZero() {
-		return 1, nil
-	}
-	maxSwapQuantity := swp.Deposit.Quo(minSwapSize)
-
-	// make sure maxSwapQuantity doesn't infringe on max length that a
-	// streaming swap can exist
-	var maxLength int64
-	if sourceAsset.IsNative() && targetAsset.IsNative() {
-		maxLength = mgr.Keeper().GetConfigInt64(ctx, constants.StreamingSwapMaxLengthNative)
-	} else {
-		maxLength = mgr.Keeper().GetConfigInt64(ctx, constants.StreamingSwapMaxLength)
-	}
-	maxSwapInMaxLength := uint64(maxLength) / interval
-	if maxSwapQuantity.GT(cosmos.NewUint(maxSwapInMaxLength)) {
-		return maxSwapInMaxLength, nil
-	}
-
-	// sanity check that max swap quantity is not zero
-	if maxSwapQuantity.IsZero() {
-		return 1, nil
-	}
-
-	// if swapping with a derived asset, reduce quantity relative to derived
-	// virtual pool depth. The equation for this as follows
-	dbps := cosmos.ZeroUint()
-	for _, asset := range []common.Asset{sourceAsset, targetAsset} {
-		if !asset.IsDerivedAsset() {
-			continue
-		}
-
-		// get the rune depth of the anchor pool(s)
-		runeDepth, _, _ := mgr.NetworkMgr().CalcAnchor(ctx, mgr, asset)
-		dpool, _ := mgr.Keeper().GetPool(ctx, asset) // get the derived asset pool
-		newDbps := common.GetUncappedShare(dpool.BalanceRune, runeDepth, cosmos.NewUint(constants.MaxBasisPts))
-		if dbps.IsZero() || newDbps.LT(dbps) {
-			dbps = newDbps
-		}
-	}
-	if !dbps.IsZero() {
-		// quantity = 1 / (1-dbps)
-		// But since we're dealing in basis points (to avoid float math)
-		// quantity = 10,000 / (10,000 - dbps)
-		maxBasisPoints := cosmos.NewUint(constants.MaxBasisPts)
-		diff := common.SafeSub(maxBasisPoints, dbps)
-		if !diff.IsZero() {
-			newQuantity := maxBasisPoints.Quo(diff)
-			if maxSwapQuantity.GT(newQuantity) {
-				return newQuantity.Uint64(), nil
-			}
-		}
-	}
-
-	return maxSwapQuantity.Uint64(), nil
+	return 1, nil
 }
 
-// isStableToStable returns true if both source and target L1 assets are TOR anchors (stablecoins).
 func isStableToStable(ctx cosmos.Context, k keeper.Keeper, source, target common.Asset) bool {
 	anchors := k.GetAnchors(ctx, common.TOR)
 	if len(anchors) == 0 {
@@ -321,8 +136,8 @@ func refundBond(ctx cosmos.Context, tx common.Tx, acc cosmos.AccAddress, amt cos
 
 	// ensures nodes don't return bond while being churned into the network
 	// (removing their bond last second)
-	if nodeAcc.Status == NodeReady {
-		ctx.Logger().Info("node ready, cannot refund bond", "node address", nodeAcc.NodeAddress, "node pub key", nodeAcc.PubKeySet.Secp256k1)
+	if nodeAcc.Status == NodeSelected {
+		ctx.Logger().Info("node selected, cannot refund bond", "node address", nodeAcc.NodeAddress, "node pub key", nodeAcc.PubKeySet.Secp256k1)
 		return nil
 	}
 
@@ -495,37 +310,13 @@ func addGasFees(ctx cosmos.Context, mgr Manager, tx ObservedTx) error {
 }
 
 func emitPoolBalanceChangedEvent(ctx cosmos.Context, poolMod PoolMod, reason string, mgr Manager) {
-	evt := NewEventPoolBalanceChanged(poolMod, reason)
-	if err := mgr.EventMgr().EmitEvent(ctx, evt); err != nil {
-		ctx.Logger().Error("fail to emit pool balance changed event", "error", err)
-	}
+	_ = mgr.EventMgr().EmitEvent(ctx, NewEventPoolBalanceChanged(poolMod, reason))
 }
 
 func getSynthSupplyRemaining(ctx cosmos.Context, mgr Manager, asset common.Asset) (cosmos.Uint, error) {
-	maxSynths, err := mgr.Keeper().GetMimir(ctx, constants.MaxSynthPerPoolDepth.String())
-	if maxSynths < 0 || err != nil {
-		maxSynths = mgr.GetConstants().GetInt64Value(constants.MaxSynthPerPoolDepth)
-	}
-
-	synthSupply := mgr.Keeper().GetTotalSupply(ctx, asset.GetSyntheticAsset())
-	pool, err := mgr.Keeper().GetPool(ctx, asset.GetLayer1Asset())
-	if err != nil {
-		return cosmos.ZeroUint(), ErrInternal(err, "fail to get pool")
-	}
-
-	if pool.BalanceAsset.IsZero() {
-		return cosmos.ZeroUint(), fmt.Errorf("pool(%s) has zero asset balance", pool.Asset.String())
-	}
-
-	maxSynthSupply := cosmos.NewUint(uint64(maxSynths)).Mul(pool.BalanceAsset.MulUint64(2)).QuoUint64(MaxWithdrawBasisPoints)
-	if maxSynthSupply.LT(synthSupply) {
-		return cosmos.ZeroUint(), fmt.Errorf("synth supply over target (%d/%d)", synthSupply.Uint64(), maxSynthSupply.Uint64())
-	}
-
-	return maxSynthSupply.Sub(synthSupply), nil
+	return cosmos.ZeroUint(), nil
 }
 
-// isSynthMintPaused fails validation if synth supply is already too high, relative to pool depth
 func isSynthMintPaused(ctx cosmos.Context, mgr Manager, targetAsset common.Asset, outputAmt cosmos.Uint) error {
 	// check if the pool is in ragnarok
 	k := "RAGNAROK-" + targetAsset.MimirString()
@@ -571,288 +362,13 @@ func telemInt(input cosmos.Int) float32 {
 }
 
 func emitEndBlockTelemetry(ctx cosmos.Context, mgr Manager) error {
-	// capture panics
-	defer func() {
-		if err := recover(); err != nil {
-			ctx.Logger().Error("panic while emitting end block telemetry", "error", err)
-		}
-	}()
-
-	// emit network data
-	network, err := mgr.Keeper().GetNetwork(ctx)
-	if err != nil {
-		return err
-	}
-
-	telemetry.SetGauge(telem(network.BondRewardRune), "thornode", "network", "bond_reward_rune")
-	telemetry.SetGauge(float32(network.TotalBondUnits.Uint64()), "thornode", "network", "total_bond_units")
-
-	// emit protocol owned liquidity data
-	pol, err := mgr.Keeper().GetPOL(ctx)
-	if err != nil {
-		return err
-	}
-	telemetry.SetGauge(telem(pol.RuneDeposited), "thornode", "pol", "rune_deposited")
-	telemetry.SetGauge(telem(pol.RuneWithdrawn), "thornode", "pol", "rune_withdrawn")
-	telemetry.SetGauge(telemInt(pol.CurrentDeposit()), "thornode", "pol", "current_deposit")
-	polValue, err := polPoolValue(ctx, mgr)
-	if err == nil {
-		telemetry.SetGauge(telem(polValue), "thornode", "pol", "value")
-		telemetry.SetGauge(telemInt(pol.PnL(polValue)), "thornode", "pol", "pnl")
-	}
-
-	// emit module balances
-	for _, name := range []string{ReserveName, AsgardName, BondName} {
-		modAddr := mgr.Keeper().GetModuleAccAddress(name)
-		bal := mgr.Keeper().GetBalance(ctx, modAddr)
-		for _, coin := range bal {
-			modLabel := telemetry.NewLabel("module", name)
-			denom := telemetry.NewLabel("denom", coin.Denom)
-			telemetry.SetGaugeWithLabels(
-				[]string{"thornode", "module", "balance"},
-				telem(cosmos.NewUint(coin.Amount.Uint64())),
-				[]metrics.Label{modLabel, denom},
-			)
-		}
-	}
-
-	// emit node metrics
-	nodes, err := mgr.Keeper().ListValidatorsWithBond(ctx)
-	if err != nil {
-		return err
-	}
-	for _, node := range nodes {
-		telemetry.SetGaugeWithLabels(
-			[]string{"thornode", "node", "bond"},
-			telem(cosmos.NewUint(node.Bond.Uint64())),
-			[]metrics.Label{telemetry.NewLabel("node_address", node.NodeAddress.String()), telemetry.NewLabel("status", node.Status.String())},
-		)
-		var pts int64
-		pts, err = mgr.Keeper().GetNodeAccountSlashPoints(ctx, node.NodeAddress)
-		if err != nil {
-			continue
-		}
-		telemetry.SetGaugeWithLabels(
-			[]string{"thornode", "node", "slash_points"},
-			float32(pts),
-			[]metrics.Label{telemetry.NewLabel("node_address", node.NodeAddress.String())},
-		)
-
-		age := cosmos.NewUint(uint64((ctx.BlockHeight() - node.StatusSince) * common.One))
-		if pts > 0 {
-			leaveScore := age.QuoUint64(uint64(pts))
-			telemetry.SetGaugeWithLabels(
-				[]string{"thornode", "node", "leave_score"},
-				float32(leaveScore.Uint64()),
-				[]metrics.Label{telemetry.NewLabel("node_address", node.NodeAddress.String())},
-			)
-		}
-	}
-
-	// get 1 RUNE price in USD
-	runeUSDPrice := telem(mgr.Keeper().DollarsPerRune(ctx))
-	telemetry.SetGauge(runeUSDPrice, "thornode", "price", "usd", "thor", "rune")
-
-	// emit pool metrics
-	pools, err := mgr.Keeper().GetPools(ctx)
-	if err != nil {
-		return err
-	}
-	for _, pool := range pools {
-		if pool.LPUnits.IsZero() {
-			continue
-		}
-		synthSupply := mgr.Keeper().GetTotalSupply(ctx, pool.Asset.GetSyntheticAsset())
-		labels := []metrics.Label{telemetry.NewLabel("pool", pool.Asset.String()), telemetry.NewLabel("status", pool.Status.String())}
-		telemetry.SetGaugeWithLabels([]string{"thornode", "pool", "balance", "synth"}, telem(synthSupply), labels)
-		telemetry.SetGaugeWithLabels([]string{"thornode", "pool", "balance", "rune"}, telem(pool.BalanceRune), labels)
-		telemetry.SetGaugeWithLabels([]string{"thornode", "pool", "balance", "asset"}, telem(pool.BalanceAsset), labels)
-		telemetry.SetGaugeWithLabels([]string{"thornode", "pool", "pending", "rune"}, telem(pool.PendingInboundRune), labels)
-		telemetry.SetGaugeWithLabels([]string{"thornode", "pool", "pending", "asset"}, telem(pool.PendingInboundAsset), labels)
-
-		telemetry.SetGaugeWithLabels([]string{"thornode", "pool", "units", "pool"}, telem(pool.CalcUnits(synthSupply)), labels)
-		telemetry.SetGaugeWithLabels([]string{"thornode", "pool", "units", "lp"}, telem(pool.LPUnits), labels)
-		telemetry.SetGaugeWithLabels([]string{"thornode", "pool", "units", "synth"}, telem(pool.SynthUnits), labels)
-
-		// pricing
-		price := float32(0)
-		if !pool.BalanceAsset.IsZero() {
-			price = runeUSDPrice * telem(pool.BalanceRune) / telem(pool.BalanceAsset)
-		}
-		telemetry.SetGaugeWithLabels([]string{"thornode", "pool", "price", "usd"}, price, labels)
-
-		// trade accounts
-		var tu TradeUnit
-		tu, err = mgr.Keeper().GetTradeUnit(ctx, pool.Asset.GetTradeAsset())
-		if err != nil {
-			ctx.Logger().Error("fail to get trade unit", "error", err)
-			continue
-		}
-		telemetry.SetGaugeWithLabels([]string{"thornode", "pool", "tradeasset", "units"}, telem(tu.Units), labels)
-		telemetry.SetGaugeWithLabels([]string{"thornode", "pool", "tradeasset", "depth"}, telem(tu.Depth), labels)
-	}
-
-	// emit vault metrics
-	asgards, _ := mgr.Keeper().GetAsgardVaults(ctx)
-	for _, vault := range asgards {
-		if vault.Status != ActiveVault && vault.Status != RetiringVault {
-			continue
-		}
-
-		// calculate the total value of this vault
-		totalValue := cosmos.ZeroUint()
-		for _, coin := range vault.Coins {
-			if coin.IsRune() {
-				totalValue = totalValue.Add(coin.Amount)
-			} else {
-				var pool Pool
-				pool, err = mgr.Keeper().GetPool(ctx, coin.Asset.GetLayer1Asset())
-				if err != nil {
-					continue
-				}
-				totalValue = totalValue.Add(pool.AssetValueInRune(coin.Amount))
-			}
-		}
-		labels := []metrics.Label{telemetry.NewLabel("vault_type", vault.Type.String()), telemetry.NewLabel("pubkey", vault.PubKey.String())}
-		telemetry.SetGaugeWithLabels([]string{"thornode", "vault", "total_value"}, telem(totalValue), labels)
-
-		for _, coin := range vault.Coins {
-			vaultCoinLabel := []metrics.Label{
-				telemetry.NewLabel("vault_type", vault.Type.String()),
-				telemetry.NewLabel("pubkey", vault.PubKey.String()),
-				telemetry.NewLabel("asset", coin.Asset.String()),
-			}
-			telemetry.SetGaugeWithLabels([]string{"thornode", "vault", "balance"}, telem(coin.Amount), vaultCoinLabel)
-		}
-	}
-
-	// emit queue metrics
-	signingTransactionPeriod := mgr.GetConstants().GetInt64Value(constants.SigningTransactionPeriod)
-	startHeight := ctx.BlockHeight() - signingTransactionPeriod
-	txOutDelayMax, err := mgr.Keeper().GetMimir(ctx, constants.TxOutDelayMax.String())
-	if txOutDelayMax <= 0 || err != nil {
-		txOutDelayMax = mgr.GetConstants().GetInt64Value(constants.TxOutDelayMax)
-	}
-	maxTxOutOffset, err := mgr.Keeper().GetMimir(ctx, constants.MaxTxOutOffset.String())
-	if maxTxOutOffset <= 0 || err != nil {
-		maxTxOutOffset = mgr.GetConstants().GetInt64Value(constants.MaxTxOutOffset)
-	}
-	var queueSwap, queueInternal, queueOutbound int64
-	queueScheduledOutboundValue := cosmos.ZeroUint()
-	iterator := mgr.Keeper().GetSwapQueueIterator(ctx)
-	defer iterator.Close()
-	for ; iterator.Valid(); iterator.Next() {
-		var msg MsgSwap
-		if err := mgr.Keeper().Cdc().Unmarshal(iterator.Value(), &msg); err != nil {
-			continue
-		}
-		queueSwap++
-	}
-	for height := startHeight; height <= ctx.BlockHeight(); height++ {
-		txs, err := mgr.Keeper().GetTxOut(ctx, height)
-		if err != nil {
-			continue
-		}
-		for _, tx := range txs.TxArray {
-			if tx.OutHash.IsEmpty() {
-				queueOutbound++
-			}
-		}
-	}
-	cloutSpent := cosmos.ZeroUint()
-	for height := ctx.BlockHeight() + 1; height <= ctx.BlockHeight()+txOutDelayMax; height++ {
-		value, clout, err := mgr.Keeper().GetTxOutValue(ctx, height)
-		if err != nil {
-			ctx.Logger().Error("fail to get tx out array from key value store", "error", err)
-			continue
-		}
-		if height > ctx.BlockHeight()+maxTxOutOffset && value.IsZero() {
-			// we've hit our max offset, and an empty block, we can assume the
-			// rest will be empty as well
-			break
-		}
-		queueScheduledOutboundValue = queueScheduledOutboundValue.Add(value)
-		cloutSpent = cloutSpent.Add(clout)
-	}
-	telemetry.SetGauge(float32(queueInternal), "thornode", "queue", "internal")
-	telemetry.SetGauge(float32(queueOutbound), "thornode", "queue", "outbound")
-	telemetry.SetGauge(float32(queueSwap), "thornode", "queue", "swap")
-	telemetry.SetGauge(telem(cloutSpent), "thornode", "queue", "scheduled", "clout", "rune")
-	telemetry.SetGauge(telem(cloutSpent)*runeUSDPrice, "thornode", "queue", "scheduled", "clout", "usd")
-	telemetry.SetGauge(telem(queueScheduledOutboundValue), "thornode", "queue", "scheduled", "value", "rune")
-	telemetry.SetGauge(telem(queueScheduledOutboundValue)*runeUSDPrice, "thornode", "queue", "scheduled", "value", "usd")
-
 	return nil
 }
 
-func getAvailablePoolsRune(ctx cosmos.Context, keeper keeper.Keeper) (Pools, cosmos.Uint, error) {
-	// Get Available layer 1 pools and sum their RUNE balances.
-	availablePoolsRune := cosmos.ZeroUint()
-	var availablePools Pools
-	iterator := keeper.GetPoolIterator(ctx)
-	defer iterator.Close()
-	for ; iterator.Valid(); iterator.Next() {
-		var pool Pool
-		if err := keeper.Cdc().Unmarshal(iterator.Value(), &pool); err != nil {
-			return nil, cosmos.ZeroUint(), fmt.Errorf("fail to unmarshal pool: %w", err)
-		}
-		if !pool.IsAvailable() {
-			continue
-		}
-		if pool.Asset.IsNative() {
-			continue
-		}
-		if pool.BalanceRune.IsZero() {
-			continue
-		}
-		availablePoolsRune = availablePoolsRune.Add(pool.BalanceRune)
-		availablePools = append(availablePools, pool)
-	}
-	return availablePools, availablePoolsRune, nil
-}
-
 func getVaultsLiquidityRune(ctx cosmos.Context, keeper keeper.Keeper) (cosmos.Uint, error) {
-	// Sum the RUNE values of non-Inactive vault Coins.
-	vaultsLiquidityRune := cosmos.ZeroUint()
-	poolCache := map[common.Asset]Pool{}
-	vaults, err := keeper.GetAsgardVaults(ctx)
-	if err != nil {
-		return cosmos.ZeroUint(), fmt.Errorf("fail to get vaults: %w", err)
-	}
-	for i := range vaults {
-		// cleanupAsgardIndex removes InactiveVaults from the index on churn,
-		// but RetiringVaults which become InactiveVaults and later receive inbounds
-		// are not cleared from the index until the next churn,
-		// so check nevertheless.
-		// Similarly, an InactiveVault inbound (to be automatically refunded)
-		// re-adds that InactiveVault to the Asgard Index with SetVault
-		// until cleared again in the next churn.
-		if vaults[i].Status == InactiveVault {
-			continue
-		}
-
-		for _, coin := range vaults[i].Coins {
-			if coin.IsRune() {
-				vaultsLiquidityRune = vaultsLiquidityRune.Add(coin.Amount)
-				continue
-			}
-
-			pool, ok := poolCache[coin.Asset]
-			if !ok {
-				pool, err = keeper.GetPool(ctx, coin.Asset)
-				if err != nil {
-					return cosmos.ZeroUint(), fmt.Errorf("fail to get pool for asset %s, err:%w", coin.Asset, err)
-				}
-				poolCache[coin.Asset] = pool
-			}
-
-			vaultsLiquidityRune = vaultsLiquidityRune.Add(pool.AssetValueInRune(coin.Amount))
-		}
-	}
-	return vaultsLiquidityRune, nil
+	return cosmos.ZeroUint(), nil
 }
 
-// get the total bond of the bottom 2/3rds active nodes
 func getEffectiveSecurityBond(nas NodeAccounts) cosmos.Uint {
 	amt := cosmos.ZeroUint()
 	sort.SliceStable(nas, func(i, j int) bool {
@@ -1007,83 +523,9 @@ func passiveBackfill(ctx cosmos.Context, mgr Manager, nodeAccount NodeAccount, b
 // atTVLCap - returns bool on if we've hit the TVL hard cap. Coins passed in
 // are included in the calculation
 func atTVLCap(ctx cosmos.Context, coins common.Coins, mgr Manager) bool {
-	// Check if StrictBondLiquidityRatio is enabled
-	strictBondLiquidityRatio := mgr.GetConstants().GetBoolValue(constants.StrictBondLiquidityRatio)
-	if !strictBondLiquidityRatio {
-		return false
-	}
-
-	vaults, err := mgr.Keeper().GetAsgardVaults(ctx)
-	if err != nil {
-		ctx.Logger().Error("fail to get vaults for atTVLCap", "error", err)
-		return true
-	}
-
-	// coins must be copied to a new variable to avoid modifying the original
-	coins = coins.Copy()
-	for _, vault := range vaults {
-		if vault.IsAsgard() && (vault.IsActive() || vault.IsRetiring()) {
-			coins = coins.Add(vault.Coins...)
-		}
-	}
-
-	runeCoin := coins.GetCoin(common.RuneAsset())
-	totalRuneValue := runeCoin.Amount
-	for _, coin := range coins {
-		if coin.IsEmpty() {
-			continue
-		}
-		asset := coin.Asset
-		// while asgard vaults don't contain native assets, the `coins`
-		// parameter might
-		if asset.IsSyntheticAsset() {
-			asset = asset.GetLayer1Asset()
-		}
-		var pool Pool
-		pool, err = mgr.Keeper().GetPool(ctx, asset)
-		if err != nil {
-			ctx.Logger().Error("fail to get pool for atTVLCap", "asset", coin.Asset, "error", err)
-			continue
-		}
-		if !pool.IsAvailable() && !pool.IsStaged() {
-			continue
-		}
-		if pool.BalanceRune.IsZero() || pool.BalanceAsset.IsZero() {
-			continue
-		}
-		if pool.Asset.IsNative() {
-			continue
-		}
-		totalRuneValue = totalRuneValue.Add(pool.AssetValueInRune(coin.Amount))
-	}
-
-	// get effectiveSecurity
-	var nodeAccounts NodeAccounts
-	nodeAccounts, err = mgr.Keeper().ListActiveValidators(ctx)
-	if err != nil {
-		ctx.Logger().Error("fail to get validators to calculate TVL cap", "error", err)
-		return true
-	}
-
-	tvlCapBasisPoints := mgr.Keeper().GetConfigInt64(ctx, constants.TVLCapBasisPoints)
-	security := cosmos.ZeroUint()
-	if tvlCapBasisPoints > 0 {
-		for _, na := range nodeAccounts {
-			security = security.Add(na.Bond)
-		}
-		security = common.GetUncappedShare(cosmos.NewUint(uint64(tvlCapBasisPoints)), cosmos.NewUint(constants.MaxBasisPts), security)
-	} else {
-		security = getEffectiveSecurityBond(nodeAccounts)
-	}
-
-	if totalRuneValue.GT(security) {
-		ctx.Logger().Debug("reached TVL cap", "total rune value", totalRuneValue.String(), "security", security.String())
-		return true
-	}
 	return false
 }
 
-// trunk-ignore(golangci-lint/unused): used by store helper
 func isActionsItemDangling(voter ObservedTxVoter, i int) bool {
 	if i < 0 || i > len(voter.Actions)-1 {
 		// No such Actions item exists in the voter.
@@ -1122,8 +564,6 @@ func IsModuleAccAddress(keeper keeper.Keeper, accAddr cosmos.AccAddress) bool {
 		accAddr.Equals(keeper.GetModuleAccAddress(LendingName)) ||
 		accAddr.Equals(keeper.GetModuleAccAddress(AffiliateCollectorName)) ||
 		accAddr.Equals(keeper.GetModuleAccAddress(ModuleName)) ||
-		accAddr.Equals(keeper.GetModuleAccAddress(TCYClaimingName)) ||
-		accAddr.Equals(keeper.GetModuleAccAddress(TCYStakeName)) ||
 		accAddr.Equals(keeper.GetModuleAccAddress(TreasuryName))
 }
 
@@ -1148,139 +588,22 @@ func getLastChurnHeight(ctx cosmos.Context, k keeper.Keeper) int64 {
 	return lastChurnHeight
 }
 
-////////////////////////////////////////////////////////////////////////////////////////
-// RUNEPool and POL
-////////////////////////////////////////////////////////////////////////////////////////
-
-// reserveExitRUNEPool will release as much reserve ownership of the runepool as
-// possible to providers. The amount is limited by the reserve units and pending rune -
-// whichever is less. The ownership units are adjusted and a corresponding amount of
-// rune is transferred from the runepool module to the reserve.
 func reserveExitRUNEPool(ctx cosmos.Context, mgr Manager) error {
-	runePool, err := mgr.Keeper().GetRUNEPool(ctx)
-	if err != nil {
-		return fmt.Errorf("unable to get runepool: %w", err)
-	}
-
-	pendingRune := mgr.Keeper().GetRuneBalanceOfModule(ctx, RUNEPoolName)
-
-	// if the reserve owns no pol or there are no pending rune, nothing to do
-	if runePool.ReserveUnits.IsZero() || pendingRune.IsZero() {
-		return nil
-	}
-
-	// the reserve will exit as much as possible, limited by reserve share or pending rune
-	reserveExitRune := pendingRune
-	runePoolValue, err := runePoolValue(ctx, mgr)
-	if err != nil {
-		return fmt.Errorf("fail to get pol pool value: %w", err)
-	}
-	reserveRunepoolValue := common.GetSafeShare(runePool.ReserveUnits, runePool.TotalUnits(), runePoolValue)
-	if reserveRunepoolValue.LT(reserveExitRune) {
-		reserveExitRune = reserveRunepoolValue
-	}
-	reserveExitUnits := common.GetSafeShare(reserveExitRune, reserveRunepoolValue, runePool.ReserveUnits)
-
-	// transfer the corresponding rune from runepool module to reserve
-	reserveExitCoins := common.NewCoins(common.NewCoin(common.RuneNative, reserveExitRune))
-	err = mgr.Keeper().SendFromModuleToModule(ctx, RUNEPoolName, ReserveName, reserveExitCoins)
-	if err != nil {
-		return fmt.Errorf("unable to SendFromModuleToModule: %s", err)
-	}
-
-	ctx.Logger().Info("reserve exited runepool", "units", reserveExitUnits, "rune", reserveExitRune)
-
-	// update runepool units
-	runePool.ReserveUnits = common.SafeSub(runePool.ReserveUnits, reserveExitUnits)
-	mgr.Keeper().SetRUNEPool(ctx, runePool)
-
 	return nil
 }
 
-// reserveEnterRUNEPool will acquire the provided rune value of the runepool from the
-// providers to the reserve. The ownership units are adjusted and a corresponding amount
-// of rune is transferred from the reserve to the runepool module. This allows the
-// reserve to reclaim units to allow providers to withdraw.
 func reserveEnterRUNEPool(ctx cosmos.Context, mgr Manager, rune cosmos.Uint) error {
-	runePool, err := mgr.Keeper().GetRUNEPool(ctx)
-	if err != nil {
-		return fmt.Errorf("fail to get runepool: %w", err)
-	}
-
-	// determine the rune value of the units
-	runePoolValue, err := runePoolValue(ctx, mgr)
-	if err != nil {
-		return fmt.Errorf("fail to get runepool value: %w", err)
-	}
-	units := common.GetSafeShare(rune, runePoolValue, runePool.TotalUnits())
-	coins := common.NewCoins(common.NewCoin(common.RuneNative, rune))
-
-	// transfer the rune from the reserve to the runepool
-	err = mgr.Keeper().SendFromModuleToModule(ctx, ReserveName, RUNEPoolName, coins)
-	if err != nil {
-		return fmt.Errorf("fail to transfer rune from reserve to runepool: %w", err)
-	}
-
-	ctx.Logger().Info("reserve entered runepool", "units", units, "rune", rune)
-
-	// update runepool units
-	runePool.ReserveUnits = runePool.ReserveUnits.Add(units)
-	mgr.Keeper().SetRUNEPool(ctx, runePool)
-
 	return nil
 }
 
-// runePoolValue is the POL value in RUNE plus undeployed RUNE in the runepool module.
 func runePoolValue(ctx cosmos.Context, mgr Manager) (cosmos.Uint, error) {
-	polValue, err := polPoolValue(ctx, mgr)
-	if err != nil {
-		return cosmos.ZeroUint(), err
-	}
-
-	// get the total rune in the runepool module
-	pending := mgr.Keeper().GetRuneBalanceOfModule(ctx, RUNEPoolName)
-
-	return polValue.Add(pending), nil
+	return cosmos.ZeroUint(), nil
 }
 
-// polPoolValue - calculates how much the POL is worth in rune
 func polPoolValue(ctx cosmos.Context, mgr Manager) (cosmos.Uint, error) {
-	total := cosmos.ZeroUint()
-
-	polAddress, err := mgr.Keeper().GetModuleAddress(ReserveName)
-	if err != nil {
-		return total, err
-	}
-
-	pools, err := mgr.Keeper().GetPools(ctx)
-	if err != nil {
-		return total, err
-	}
-	for _, pool := range pools {
-		if pool.Asset.IsNative() {
-			continue
-		}
-		if pool.BalanceRune.IsZero() {
-			continue
-		}
-		synthSupply := mgr.Keeper().GetTotalSupply(ctx, pool.Asset.GetSyntheticAsset())
-		pool.CalcUnits(synthSupply)
-		lp, err := mgr.Keeper().GetLiquidityProvider(ctx, pool.Asset, polAddress)
-		if err != nil {
-			return total, err
-		}
-		share := common.GetSafeShare(lp.Units, pool.GetPoolUnits(), pool.BalanceRune)
-		total = total.Add(share.MulUint64(2))
-	}
-
-	return total, nil
+	return cosmos.ZeroUint(), nil
 }
 
-// This removes the first prefix ending with "//" (if there is one) from a KVStore key,
-// such as when obtained through an Iterator, whatever the prefix may be.
-// The "/" at the end of every prefix, together with the "/" added by KVStore GetKey
-// (to ensure that no prefix ever contains another prefix)
-// should ensure that each prefix ends with "//".
 func trimKeyPrefix(key []byte) string {
 	keyString := string(key)
 	if _, after, found := strings.Cut(keyString, "//"); found {

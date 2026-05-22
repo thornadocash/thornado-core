@@ -27,11 +27,11 @@ var Upgrades = []upgrades.Upgrade{
 	// app/upgrades/<semver> with the upgrade and reference it here in the format:
 	// v3_12_0.NewUpgrade(),
 	//
-	// Example pattern: https://gitlab.com/thorchain/thornode/-/merge_requests/3837
+	// Example pattern: https://gitlab.com/thornado/thornado/-/merge_requests/3837
 }
 
 // RegisterUpgradeHandlers registers the chain upgrade handlers
-func (app *THORChainApp) RegisterUpgradeHandlers() {
+func (app *ThornadoApp) RegisterUpgradeHandlers() {
 	// setupLegacyKeyTables(&app.ParamsKeeper)
 	if len(Upgrades) == 0 {
 		// always have a unique upgrade registered for the current version to test in system tests
@@ -39,7 +39,7 @@ func (app *THORChainApp) RegisterUpgradeHandlers() {
 	}
 
 	keepers := upgrades.AppKeepers{
-		ThorchainKeeper:       app.ThorchainKeeper,
+		ThornadoKeeper:        app.ThornadoKeeper,
 		AccountKeeper:         &app.AccountKeeper,
 		ParamsKeeper:          &app.ParamsKeeper,
 		ConsensusParamsKeeper: &app.ConsensusParamsKeeper,

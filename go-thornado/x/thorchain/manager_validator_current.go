@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"sort"
+	"strings"
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -147,8 +148,8 @@ func (vm *ValidatorMgr) churnInner(ctx cosmos.Context) error {
 	redline := vm.k.GetConfigInt64(ctx, constants.BadValidatorRedline)
 	minSlashPointsForBadValidator := vm.k.GetConfigInt64(ctx, constants.MinSlashPointsForBadValidator)
 
-	// update list of ready actors
-	if err := vm.markReadyActors(ctx); err != nil {
+	// update selected actor
+	if err := vm.markSelectedActors(ctx); err != nil {
 		return err
 	}
 
@@ -327,7 +328,7 @@ func (vm *ValidatorMgr) EndBlock(ctx cosmos.Context, mgr Manager) []abci.Validat
 	nodesAfterChange := len(activeNodes) + len(newNodes) - len(removedNodes)
 	if (len(activeNodes) >= int(minimumNodesForBFT) && nodesAfterChange < int(minimumNodesForBFT)) ||
 		(artificialRagnarokBlockHeight > 0 && ctx.BlockHeight() >= artificialRagnarokBlockHeight) {
-		// THORNode don't have enough validators for BFT
+		// Thornado don't have enough validators for BFT
 
 		// Check we're not migrating funds
 		var retiring Vaults
@@ -431,10 +432,10 @@ func (vm *ValidatorMgr) EndBlock(ctx cosmos.Context, mgr Manager) []abci.Validat
 		}
 
 	}
-	// reset all nodes in ready status back to standby status
-	ready, err := vm.k.ListValidatorsByStatus(ctx, NodeReady)
+	// reset all nodes in selected status back to standby status
+	ready, err := vm.k.ListValidatorsByStatus(ctx, NodeSelected)
 	if err != nil {
-		ctx.Logger().Error("fail to get list of ready node accounts", "error", err)
+		ctx.Logger().Error("fail to get list of selected node accounts", "error", err)
 	}
 	for _, na := range ready {
 		na.UpdateStatus(NodeStandby, ctx.BlockHeight())
@@ -493,7 +494,7 @@ func (vm *ValidatorMgr) getChangedNodes(ctx cosmos.Context, activeNodes NodeAcco
 		}
 	}
 
-	// find ready nodes that change to active
+	// find selected nodes that change to active
 	for _, pk := range membership {
 		na, err := vm.k.GetNodeAccountByPubKey(ctx, pk)
 		if err != nil {
@@ -568,7 +569,7 @@ func (vm *ValidatorMgr) payNodeAccountBondAward(ctx cosmos.Context, lastChurnHei
 	// Add to their bond the amount rewarded
 	na.Bond = na.Bond.Add(reward)
 
-	// Minus the number of rune THORNode have awarded them
+	// Minus the number of rune Thornado have awarded them
 	network.BondRewardRune = common.SafeSub(network.BondRewardRune, reward)
 
 	// Minus the number of units na has (do not include slash points)
@@ -637,8 +638,8 @@ func (vm *ValidatorMgr) payNodeAccountBondAward(ctx cosmos.Context, lastChurnHei
 // determines when/if to run each part of the ragnarok process
 func (vm *ValidatorMgr) processRagnarok(ctx cosmos.Context, mgr Manager) error {
 	// execute Ragnarok protocol, no going back
-	// THORNode have to request the fund back now, because once it get to the rotate block height ,
-	// THORNode won't have validators anymore
+	// Thornado have to request the fund back now, because once it get to the rotate block height ,
+	// Thornado won't have validators anymore
 	ragnarokHeight, err := vm.k.GetRagnarokBlockHeight(ctx)
 	if err != nil {
 		return fmt.Errorf("fail to get ragnarok height: %w", err)
@@ -719,8 +720,8 @@ func (vm *ValidatorMgr) getPendingTxOut(ctx cosmos.Context) (int64, error) {
 
 func (vm *ValidatorMgr) ragnarokProtocolStage2(ctx cosmos.Context, nth int64, mgr Manager) error {
 	// Ragnarok Protocol
-	// If THORNode can no longer be BFT, do a graceful shutdown of the entire network.
-	// 1) THORNode will refund the validator's bond
+	// If Thornado can no longer be BFT, do a graceful shutdown of the entire network.
+	// 1) Thornado will refund the validator's bond
 	// 2) return all fund to liquidity providers
 
 	// refund bonders
@@ -748,9 +749,9 @@ func (vm *ValidatorMgr) distributeBondReward(ctx cosmos.Context, mgr Manager) er
 	// this estimate treats lastChurnHeight as the active_block_height of the youngest active node,
 	// rather than the block_height of the first (oldest) Asgard vault.
 	// As an example, note from the below URLs that these 5293733 and 5293728 respectively in block 5336942.
-	// https://gateway.liquify.com/chain/thorchain_api/thorchain/nodes?height=5336942
+	// https://gateway.liquify.com/chain/thornado_api/thornado/nodes?height=5336942
 	// (Nodes .cxmy and .uy3a .)
-	// https://gateway.liquify.com/chain/thorchain_api/thorchain/vaults/asgard?height=5336942
+	// https://gateway.liquify.com/chain/thornado_api/thornado/vaults/asgard?height=5336942
 	lastChurnHeight := int64(0)
 	for _, node := range active {
 		if node.ActiveBlockHeight > lastChurnHeight {
@@ -840,139 +841,9 @@ func (vm *ValidatorMgr) ragnarokBond(ctx cosmos.Context, nth int64, mgr Manager)
 }
 
 func (vm *ValidatorMgr) ragnarokPools(ctx cosmos.Context, nth int64, mgr Manager) error {
-	nas, err := vm.k.ListActiveValidators(ctx)
-	if err != nil {
-		return fmt.Errorf("fail to get active nodes: %w", err)
-	}
-	if len(nas) == 0 {
-		return fmt.Errorf("can't find any active nodes")
-	}
-	na := nas[0]
-
-	position, err := vm.k.GetRagnarokWithdrawPosition(ctx)
-	if err != nil {
-		return fmt.Errorf("fail to get ragnarok position: %w", err)
-	}
-	basisPoints := MaxWithdrawBasisPoints
-	// go through all the pools
-	pools, err := vm.k.GetPools(ctx)
-	if err != nil {
-		return fmt.Errorf("fail to get pools: %w", err)
-	}
-	// set all pools to staged status
-	for _, pool := range pools {
-		if pool.Status != PoolStaged {
-			poolEvent := NewEventPool(pool.Asset, PoolStaged)
-			if err = vm.eventMgr.EmitEvent(ctx, poolEvent); err != nil {
-				ctx.Logger().Error("fail to emit pool event", "error", err)
-			}
-
-			pool.Status = PoolStaged
-			if err = vm.k.SetPool(ctx, pool); err != nil {
-				return fmt.Errorf("fail to set pool %s to Stage status: %w", pool.Asset, err)
-			}
-		}
-	}
-
-	// the following line is pointless, granted. But in this case, removing it
-	// would cause a consensus failure
-	_ = vm.k.GetLowestActiveVersion(ctx)
-
-	nextPool := false
-	maxWithdrawsPerBlock := 20
-	count := 0
-
-	for i := len(pools) - 1; i >= 0; i-- { // iterate backwards
-		pool := pools[i]
-
-		if nextPool { // we've iterated to the next pool after our position pool
-			position.Pool = pool.Asset
-		}
-
-		if !position.Pool.IsEmpty() && !pool.Asset.Equals(position.Pool) {
-			continue
-		}
-
-		nextPool = true
-		position.Pool = pool.Asset
-
-		// withdraw gas asset pool on the back 10 nths
-		if nth <= 10 && pool.Asset.IsGasAsset() {
-			continue
-		}
-
-		j := int64(-1)
-		iterator := vm.k.GetLiquidityProviderIterator(ctx, pool.Asset)
-		defer iterator.Close()
-		for ; iterator.Valid(); iterator.Next() {
-			j++
-			if j == position.Number {
-				position.Number++
-				var lp LiquidityProvider
-				if err = vm.k.Cdc().Unmarshal(iterator.Value(), &lp); err != nil {
-					ctx.Logger().Error("fail to unmarshal liquidity provider", "error", err)
-					continue
-				}
-
-				if lp.Units.IsZero() {
-					continue
-				}
-				var withdrawAddr common.Address
-				withdrawAsset := common.EmptyAsset
-				if !lp.RuneAddress.IsEmpty() {
-					withdrawAddr = lp.RuneAddress
-					// if liquidity provider only add RUNE , then asset address will be empty
-					if lp.AssetAddress.IsEmpty() {
-						withdrawAsset = common.RuneAsset()
-					}
-				} else {
-					// if liquidity provider only add Asset, then RUNE Address will be empty
-					withdrawAddr = lp.AssetAddress
-					withdrawAsset = lp.Asset
-				}
-				withdrawMsg := NewMsgWithdrawLiquidity(
-					common.GetRagnarokTx(pool.Asset.Chain, withdrawAddr, withdrawAddr),
-					withdrawAddr,
-					cosmos.NewUint(uint64(basisPoints)),
-					pool.Asset,
-					withdrawAsset,
-					na.NodeAddress,
-				)
-
-				handler := NewInternalHandler(mgr)
-				_, err = handler(ctx, withdrawMsg)
-				if err != nil {
-					ctx.Logger().Error("fail to withdraw", "liquidity provider", lp.RuneAddress, "error", err)
-				} else if !withdrawAsset.Equals(common.RuneAsset()) {
-					// when withdraw asset is only RUNE , then it should process more , because RUNE asset doesn't leave THORChain
-					count++
-					pending, err := vm.k.GetRagnarokPending(ctx)
-					if err != nil {
-						vm.k.SetRagnarokWithdrawPosition(ctx, position)
-						return fmt.Errorf("fail to get ragnarok pending: %w", err)
-					}
-					vm.k.SetRagnarokPending(ctx, pending+1)
-					if count >= maxWithdrawsPerBlock {
-						break
-					}
-				}
-			}
-		}
-		if count >= maxWithdrawsPerBlock {
-			break
-		}
-		position.Number = 0
-	}
-
-	if count < maxWithdrawsPerBlock { // we've completed all pools/liquidity providers, reset the position
-		position = RagnarokWithdrawPosition{}
-	}
-	vm.k.SetRagnarokWithdrawPosition(ctx, position)
-
 	return nil
 }
 
-// setupValidatorNodes it is one off it only get called when genesis
 func (vm *ValidatorMgr) setupValidatorNodes(ctx cosmos.Context, height int64) error {
 	if height != genesisBlockHeight {
 		ctx.Logger().Info("only need to setup validator node when start up", "height", height)
@@ -988,9 +859,9 @@ func (vm *ValidatorMgr) setupValidatorNodes(ctx cosmos.Context, height int64) er
 		if err := vm.k.Cdc().Unmarshal(iter.Value(), &na); err != nil {
 			return fmt.Errorf("fail to unmarshal node account, %w", err)
 		}
-		// when THORNode first start , THORNode only care about these two status
+		// when Thornado first start , Thornado only care about these two status
 		switch na.Status {
-		case NodeReady:
+		case NodeSelected:
 			readyNodes = append(readyNodes, na)
 		case NodeActive:
 			activeCandidateNodes = append(activeCandidateNodes, na)
@@ -1335,20 +1206,23 @@ func (vm *ValidatorMgr) clearLeaveScores(ctx cosmos.Context) error {
 	return nil
 }
 
-// find any actor that are ready to become "ready" status
-func (vm *ValidatorMgr) markReadyActors(ctx cosmos.Context) error {
-	standby, err := vm.k.ListValidatorsByStatus(ctx, NodeStandby)
-	if err != nil {
-		return err
-	}
-	ready, err := vm.k.ListValidatorsByStatus(ctx, NodeReady)
-	if err != nil {
-		return err
+// find the actor selected for the next validator slot
+func (vm *ValidatorMgr) markSelectedActors(ctx cosmos.Context) error {
+	candidates := NodeAccounts{}
+	for _, status := range []NodeStatus{NodeWhiteListed, NodeStandby, NodeSelected} {
+		nodes, err := vm.k.ListValidatorsByStatus(ctx, status)
+		if err != nil {
+			return err
+		}
+		candidates = append(candidates, nodes...)
 	}
 
-	// check all ready and standby nodes are in "ready" state (upgrade/downgrade as needed)
-	for _, na := range append(standby, ready...) {
+	selected := vm.selectHighestBondedNode(ctx, candidates)
+	for _, na := range candidates {
 		status, _ := vm.NodeAccountPreflightCheck(ctx, na, vm.k.GetConstants())
+		if status == NodeSelected && !na.NodeAddress.Equals(selected.NodeAddress) {
+			status = NodeWhiteListed
+		}
 		na.UpdateStatus(status, ctx.BlockHeight())
 
 		if err := vm.k.SetNodeAccount(ctx, na); err != nil {
@@ -1357,6 +1231,24 @@ func (vm *ValidatorMgr) markReadyActors(ctx cosmos.Context) error {
 	}
 
 	return nil
+}
+
+func (vm *ValidatorMgr) selectHighestBondedNode(ctx cosmos.Context, candidates NodeAccounts) NodeAccount {
+	var selected NodeAccount
+	for _, na := range candidates {
+		status, err := vm.NodeAccountPreflightCheck(ctx, na, vm.k.GetConstants())
+		if err != nil || status != NodeSelected {
+			continue
+		}
+		if selected.IsEmpty() || na.Bond.GT(selected.Bond) {
+			selected = na
+			continue
+		}
+		if na.Bond.Equal(selected.Bond) && na.NodeAddress.String() < selected.NodeAddress.String() {
+			selected = na
+		}
+	}
+	return selected
 }
 
 // NodeAccountPreflightCheck preflight check to find out what the node account's next status will be
@@ -1385,10 +1277,9 @@ func (vm *ValidatorMgr) NodeAccountPreflightCheck(ctx cosmos.Context, na NodeAcc
 		return NodeWhiteListed, fmt.Errorf("node account has not registered their pubkey set")
 	}
 
-	// ensure we have enough rune
-	minBond := vm.k.GetConfigInt64(ctx, constants.MinimumBondInRune)
-	if na.Bond.LT(cosmos.NewUint(uint64(minBond))) {
-		return NodeStandby, fmt.Errorf("node account does not have minimum bond requirement: %d/%d", na.Bond.Uint64(), minBond)
+	requiredBond := vm.requiredBondForNode(ctx, na)
+	if na.Bond.LT(requiredBond) {
+		return NodeWhiteListed, fmt.Errorf("insufficient bond: %d/%d", na.Bond.Uint64(), requiredBond.Uint64())
 	}
 
 	minVersion, _ := vm.k.GetMinJoinLast(ctx)
@@ -1410,14 +1301,32 @@ func (vm *ValidatorMgr) NodeAccountPreflightCheck(ctx cosmos.Context, na NodeAcc
 		return NodeStandby, fmt.Errorf("ragnarok is currently in progress: no churning")
 	}
 
-	return NodeReady, nil
+	return NodeSelected, nil
+}
+
+func (vm *ValidatorMgr) requiredBondForNode(ctx cosmos.Context, na NodeAccount) cosmos.Uint {
+	start := uint64(BondStartAmountSats)
+	if mimir, err := vm.k.GetMimir(ctx, "BondStartAmountSats"); err == nil && mimir > 0 {
+		start = uint64(mimir)
+	}
+	increment := uint64(BondSlotIncrementSats)
+	if mimir, err := vm.k.GetMimir(ctx, "BondSlotIncrementSats"); err == nil && mimir > 0 {
+		increment = uint64(mimir)
+	}
+	slot := uint64(0)
+	if strings.TrimSpace(na.ValidatorConsPubKey) != "" {
+		if bond, err := vm.k.GetShielderValidatorBond(ctx, na.ValidatorConsPubKey); err == nil && bond.ValidatorPubKey != "" {
+			slot = bond.Slot
+		}
+	}
+	return cosmos.NewUint(start + slot*increment)
 }
 
 // Returns a list of nodes to include in the next pool
 func (vm *ValidatorMgr) nextVaultNodeAccounts(ctx cosmos.Context, targetCount int) (NodeAccounts, bool, error) {
 	rotation := false // track if are making any changes to the current active node accounts
 
-	ready, err := vm.k.ListValidatorsByStatus(ctx, NodeReady)
+	ready, err := vm.k.ListValidatorsByStatus(ctx, NodeSelected)
 	if err != nil {
 		return nil, false, err
 	}
@@ -1483,8 +1392,8 @@ func (vm *ValidatorMgr) nextVaultNodeAccounts(ctx cosmos.Context, targetCount in
 		newNode = 1
 	}
 
-	// add ready nodes to become active
-	limit := toRemove + int(newNode) // Max limit of ready nodes to churn in
+	// add selected nodes to become active
+	limit := toRemove + int(newNode) // Max limit of selected nodes to churn in
 	minimumNodesForBFT := vm.k.GetConstants().GetInt64Value(constants.MinimumNodesForBFT)
 	if len(active)+limit < int(minimumNodesForBFT) {
 		limit = int(minimumNodesForBFT) - len(active)
@@ -1495,7 +1404,7 @@ func (vm *ValidatorMgr) nextVaultNodeAccounts(ctx cosmos.Context, targetCount in
 			rotation = true
 			active = append(active, ready[i-1])
 		}
-		if i >= limit || i > len(ready) { // limit adding ready accounts
+		if i >= limit || i > len(ready) { // limit adding selected accounts
 			break
 		}
 	}

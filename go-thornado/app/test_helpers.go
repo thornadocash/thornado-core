@@ -1,6 +1,6 @@
 package app
 
-// Update with thorchain specific setup
+// Update with thornado specific setup
 // These helper functions assume a typical cosmos chain / validator initializations
 
 // import (
@@ -60,7 +60,7 @@ package app
 // 	chainID string,
 // 	withGenesis bool,
 // 	invCheckPeriod uint,
-// ) (*THORChainApp, GenesisState) {
+// ) (*ThornadoApp, GenesisState) {
 // 	db := dbm.NewMemDB()
 // 	nodeHome := t.TempDir()
 // 	snapshotDir := filepath.Join(nodeHome, "data", "snapshots")
@@ -90,7 +90,7 @@ package app
 // }
 
 // // NewChainAppWithCustomOptions initializes a new ChainApp with custom options.
-// func NewChainAppWithCustomOptions(t *testing.T, isCheckTx bool, options SetupOptions) *THORChainApp {
+// func NewChainAppWithCustomOptions(t *testing.T, isCheckTx bool, options SetupOptions) *ThornadoApp {
 // 	t.Helper()
 
 // 	privVal := mock.NewPV()
@@ -139,7 +139,7 @@ package app
 // // Setup initializes a new ChainApp. A Nop logger is set in ChainApp.
 // func Setup(
 // 	t *testing.T,
-// ) *THORChainApp {
+// ) *ThornadoApp {
 // 	t.Helper()
 
 // 	privVal := mock.NewPV()
@@ -179,7 +179,7 @@ package app
 // 	genAccs []authtypes.GenesisAccount,
 // 	chainID string,
 // 	balances ...banktypes.Balance,
-// ) *THORChainApp {
+// ) *ThornadoApp {
 // 	t.Helper()
 
 // 	app, genesisState := setup(
@@ -215,14 +215,14 @@ package app
 // }
 
 // // SetupWithEmptyStore set up a chain app instance with empty DB
-// func SetupWithEmptyStore(t testing.TB) *THORChainApp {
+// func SetupWithEmptyStore(t testing.TB) *ThornadoApp {
 // 	app, _ := setup(t, "testing", false, 0)
 // 	return app
 // }
 
 // // GenesisStateWithSingleValidator initializes GenesisState with a single validator and genesis accounts
 // // that also act as delegators.
-// func GenesisStateWithSingleValidator(t *testing.T, app *THORChainApp) GenesisState {
+// func GenesisStateWithSingleValidator(t *testing.T, app *ThornadoApp) GenesisState {
 // 	t.Helper()
 
 // 	privVal := mock.NewPV()
@@ -252,11 +252,11 @@ package app
 
 // // AddTestAddrsIncremental constructs and returns accNum amount of accounts with an
 // // initial balance of accAmt in random order
-// func AddTestAddrsIncremental(app *THORChainApp, ctx sdk.Context, accNum int, accAmt sdkmath.Int) []sdk.AccAddress {
+// func AddTestAddrsIncremental(app *ThornadoApp, ctx sdk.Context, accNum int, accAmt sdkmath.Int) []sdk.AccAddress {
 // 	return addTestAddrs(app, ctx, accNum, accAmt, simtestutil.CreateIncrementalAccounts)
 // }
 
-// func addTestAddrs(app *THORChainApp, ctx sdk.Context, accNum int, accAmt sdkmath.Int, strategy simtestutil.GenerateAccountStrategy) []sdk.AccAddress {
+// func addTestAddrs(app *ThornadoApp, ctx sdk.Context, accNum int, accAmt sdkmath.Int, strategy simtestutil.GenerateAccountStrategy) []sdk.AccAddress {
 // 	testAddrs := strategy(accNum)
 // 	bondDenom, err := app.StakingKeeper.BondDenom(ctx)
 // 	if err != nil {
@@ -272,7 +272,7 @@ package app
 // 	return testAddrs
 // }
 
-// func initAccountWithCoins(app *THORChainApp, ctx sdk.Context, addr sdk.AccAddress, coins sdk.Coins) {
+// func initAccountWithCoins(app *ThornadoApp, ctx sdk.Context, addr sdk.AccAddress, coins sdk.Coins) {
 // 	err := app.BankKeeper.MintCoins(ctx, minttypes.ModuleName, coins)
 // 	if err != nil {
 // 		panic(err)

@@ -11,8 +11,8 @@ import (
 )
 
 // BeginBlocker application updates every begin block
-func (app *THORChainApp) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
-	haltHeight := config.GetThornode().Cosmos.HaltHeight
+func (app *ThornadoApp) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
+	haltHeight := config.GetThornado().Cosmos.HaltHeight
 	if haltHeight > 0 && ctx.BlockHeight() >= haltHeight {
 		ctx.Logger().Info("halt height reached", "height", ctx.BlockHeight(), "halt height", haltHeight)
 		os.Exit(0)
@@ -21,6 +21,6 @@ func (app *THORChainApp) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
 }
 
 // EndBlocker application updates every end block
-func (app *THORChainApp) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
+func (app *ThornadoApp) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
 	return app.ModuleManager.EndBlock(ctx)
 }

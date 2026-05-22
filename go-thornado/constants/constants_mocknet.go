@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var ThorchainBlockTime = time.Second
+var ThornadoBlockTime = time.Second
 
 // CamelToSnakeUpper converts a camelCase string to SNAKE_CASE.
 // Examples: "PoolCycle" -> "POOL_CYCLE", "L1SlipMinBps" -> "L1_SLIP_MIN_BPS"
@@ -28,14 +28,14 @@ func init() {
 		DesiredValidatorSet:                 12,
 		ChurnInterval:                       60,
 		ChurnRetryInterval:                  30,
-		MinimumBondInRune:                   100_000_000, // 1 rune
+		MinimumBondInRune:                   0,
 		MemolessTxnTTL:                      100,
 		MemolessTxnMaxUse:                   5, // higher limit for testing
 		EnableMemolessOutbound:              1, // Enable memoless outbound for mocknet testing
 		ValidatorMaxRewardRatio:             3,
 		FundMigrationInterval:               15,
 		LiquidityLockUpBlocks:               0,
-		MaxRuneSupply:                       500_000_000_00000000,
+		MaxRuneSupply:                       -1,
 		JailTimeKeygen:                      10,
 		JailTimeKeysign:                     10,
 		AsgardSize:                          6,
@@ -43,18 +43,18 @@ func init() {
 		EnableAdvSwapQueue:                  1,
 		AdvSwapQueueRapidSwapMax:            1, // For testing rapid swaps
 		VirtualMultSynthsBasisPoints:        20_000,
-		MinTxOutVolumeThreshold:             2000000_00000000,
+		MinTxOutVolumeThreshold:             0,
 		MissingBlockChurnOut:                100,
 		MaxMissingBlockChurnOut:             5,
-		TxOutDelayRate:                      2000000_00000000,
+		TxOutDelayRate:                      0,
 		MaxSynthPerPoolDepth:                3_500,
 		MaxSynthsForSaversYield:             5000,
 		AllowWideBlame:                      1,
-		TargetOutboundFeeSurplusRune:        10_000_00000000,
-		MaxOutboundFeeMultiplierBasisPoints: 30_000,
-		MinOutboundFeeMultiplierBasisPoints: 10_00,
+		TargetOutboundFeeSurplusRune:        0,
+		MaxOutboundFeeMultiplierBasisPoints: 0,
+		MinOutboundFeeMultiplierBasisPoints: 0,
 		OperationalVotesMin:                 1, // For regtest single-signer Mimir changes without Admin
-		PreferredAssetOutboundFeeMultiplier: 100,
+		PreferredAssetOutboundFeeMultiplier: 0,
 		TradeAccountsEnabled:                1,
 		MaxAffiliateFeeBasisPoints:          10_000,
 		RUNEPoolDepositMaturityBlocks:       0,

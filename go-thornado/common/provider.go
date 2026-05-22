@@ -19,5 +19,5 @@ const (
 	ProviderLbank     = "lbank"
 	ProviderMexc      = "mexc"
 	ProviderOkx       = "okx"
-	ProviderThorchain = "thorchain"
+	ProviderThornado = "thorchain"
 )

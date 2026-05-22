@@ -9,8 +9,8 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 )
 
-// THORChainDecimals indicate the number of decimal points used in THORChain
-const THORChainDecimals = 8
+// ThornadoDecimals indicate the number of decimal points used in Thornado
+const ThornadoDecimals = 8
 
 // NoCoin is empty Coin
 var NoCoin = Coin{
@@ -82,9 +82,9 @@ func (c Coin) Valid() error {
 	return nil
 }
 
-// IsNative check whether the coin is native on THORChain
+// IsNative check whether the coin is native on Thornado
 func (c Coin) IsNative() bool {
-	return c.Asset.GetChain().Equals(THORChain)
+	return c.Asset.GetChain().Equals(Thornado)
 }
 
 // IsRune checks whether the coin's Asset is RUNE.
@@ -100,7 +100,7 @@ func (c Coin) IsTCY() bool {
 // Native create a new instance of cosmos.Coin
 func (c Coin) Native() (cosmos.Coin, error) {
 	if !c.IsNative() {
-		return cosmos.Coin{}, errors.New("coin is not on thorchain")
+		return cosmos.Coin{}, errors.New("coin is not on thornado")
 	}
 	return cosmos.NewCoin(
 		c.Asset.Native(),

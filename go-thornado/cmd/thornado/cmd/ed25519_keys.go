@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	DefaultEd25519KeyName = `ed-thorchain`
+	DefaultEd25519KeyName = `ed-thornado`
 )
 
 func GetEd25519Keys() *cobra.Command {

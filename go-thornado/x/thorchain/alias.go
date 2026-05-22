@@ -1,8 +1,6 @@
 package thorchain
 
 import (
-	proto "github.com/cosmos/gogoproto/proto"
-
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/x/thorchain/types"
 )
@@ -15,21 +13,9 @@ const (
 	LendingName            = types.LendingName
 	AffiliateCollectorName = types.AffiliateCollectorName
 	TreasuryName           = types.TreasuryName
-	RUNEPoolName           = types.RUNEPoolName
-	TCYClaimingName        = types.TCYClaimingName
-	TCYStakeName           = types.TCYStakeName
-	POLReserveName         = types.POLReserveName
 	RouterKey              = types.RouterKey
 	StoreKey               = types.StoreKey
 	DefaultCodespace       = types.DefaultCodespace
-
-	// pool status
-	PoolAvailable = types.PoolStatus_Available
-	PoolStaged    = types.PoolStatus_Staged
-	PoolSuspended = types.PoolStatus_Suspended
-
-	// Admin config keys
-	MaxWithdrawBasisPoints = types.MaxWithdrawBasisPoints
 
 	// Vaults
 	AsgardVault   = types.VaultType_AsgardVault
@@ -43,7 +29,7 @@ const (
 	NodeActive      = types.NodeStatus_Active
 	NodeWhiteListed = types.NodeStatus_Whitelisted
 	NodeDisabled    = types.NodeStatus_Disabled
-	NodeReady       = types.NodeStatus_Ready
+	NodeSelected    = types.NodeStatus_Selected
 	NodeStandby     = types.NodeStatus_Standby
 	NodeUnknown     = types.NodeStatus_Unknown
 
@@ -58,10 +44,6 @@ const (
 	BondCost     = types.BondType_bond_cost
 	BondReward   = types.BondType_bond_reward
 	AsgardKeygen = types.KeygenType_AsgardKeygen
-
-	// Bond type
-	AddPendingLiquidity      = types.PendingLiquidityType_add
-	WithdrawPendingLiquidity = types.PendingLiquidityType_withdraw
 
 	// Swap Type
 	MarketSwap = types.SwapType_market
@@ -78,18 +60,14 @@ const (
 )
 
 var (
-	NewPool                         = types.NewPool
 	NewNetwork                      = types.NewNetwork
 	NewProtocolOwnedLiquidity       = types.NewProtocolOwnedLiquidity
 	NewPOLReserveDeposit            = types.NewPOLReserveDeposit
-	NewRUNEPool                     = types.NewRUNEPool
 	NewObservedTx                   = common.NewObservedTx
 	NewTssVoter                     = types.NewTssVoter
 	NewBanVoter                     = types.NewBanVoter
 	NewErrataTxVoter                = types.NewErrataTxVoter
 	NewObservedTxVoter              = types.NewObservedTxVoter
-	NewMsgRunePoolDeposit           = types.NewMsgRunePoolDeposit
-	NewMsgRunePoolWithdraw          = types.NewMsgRunePoolWithdraw
 	NewMsgTradeAccountDeposit       = types.NewMsgTradeAccountDeposit
 	NewMsgTradeAccountWithdrawal    = types.NewMsgTradeAccountWithdrawal
 	NewMsgSecuredAssetDeposit       = types.NewMsgSecuredAssetDeposit
@@ -105,14 +83,11 @@ var (
 	NewMsgNoOp                      = types.NewMsgNoOp
 	NewMsgConsolidate               = types.NewMsgConsolidate
 	NewMsgDonate                    = types.NewMsgDonate
-	NewMsgAddLiquidity              = types.NewMsgAddLiquidity
-	NewMsgWithdrawLiquidity         = types.NewMsgWithdrawLiquidity
 	NewMsgSwap                      = types.NewMsgSwap
 	NewMsgModifyLimitSwap           = types.NewMsgModifyLimitSwap
 	NewKeygen                       = types.NewKeygen
 	NewKeygenBlock                  = types.NewKeygenBlock
 	NewMsgSetNodeKeys               = types.NewMsgSetNodeKeys
-	NewMsgManageTHORName            = types.NewMsgManageTHORName
 	NewMsgReferenceMemo             = types.NewMsgReferenceMemo
 	NewMsgSwitch                    = types.NewMsgSwitch
 	NewMsgOperatorRotate            = types.NewMsgOperatorRotate
@@ -128,8 +103,6 @@ var (
 	NewEventLimitSwap               = types.NewEventLimitSwap
 	NewEventModifyLimitSwap         = types.NewEventModifyLimitSwap
 	NewEventLimitSwapClose          = types.NewEventLimitSwapClose
-	NewEventAddLiquidity            = types.NewEventAddLiquidity
-	NewEventWithdraw                = types.NewEventWithdraw
 	NewEventRefund                  = types.NewEventRefund
 	NewEventBond                    = types.NewEventBond
 	NewEventReBond                  = types.NewEventReBond
@@ -149,16 +122,9 @@ var (
 	NewEventTssKeygenMetric         = types.NewEventTssKeygenMetric
 	NewEventTssKeysignMetric        = types.NewEventTssKeysignMetric
 	NewEventPoolBalanceChanged      = types.NewEventPoolBalanceChanged
-	NewEventPendingLiquidity        = types.NewEventPendingLiquidity
-	NewEventTHORName                = types.NewEventTHORName
 	NewEventMintBurn                = types.NewEventMintBurn
 	NewEventVersion                 = types.NewEventVersion
-	NewEventTradeAccountDeposit     = types.NewEventTradeAccountDeposit
-	NewEventTradeAccountWithdraw    = types.NewEventTradeAccountWithdraw
-	NewEventSecuredAssetDeposit     = types.NewEventSecuredAssetDeposit
 	NewEventSecuredAssetWithdraw    = types.NewEventSecuredAssetWithdraw
-	NewEventRUNEPoolDeposit         = types.NewEventRUNEPoolDeposit
-	NewEventRUNEPoolWithdraw        = types.NewEventRUNEPoolWithdraw
 	NewEventSwitch                  = types.NewEventSwitch
 	NewEventOperatorRotate          = types.NewEventOperatorRotate
 	NewEventOraclePrice             = types.NewEventOraclePrice
@@ -191,10 +157,8 @@ var (
 	NewMsgSetIPAddress              = types.NewMsgSetIPAddress
 	NewMsgNetworkFee                = types.NewMsgNetworkFee
 	NewNetworkFee                   = types.NewNetworkFee
-	NewTHORName                     = types.NewTHORName
 	NewReferenceMemo                = types.NewReferenceMemo
 	NewStreamingSwap                = types.NewStreamingSwap
-	GetPoolStatus                   = types.GetPoolStatus
 	GetRandomVault                  = types.GetRandomVault
 	GetRandomTx                     = types.GetRandomTx
 	GetRandomObservedTx             = types.GetRandomObservedTx
@@ -224,12 +188,16 @@ var (
 	NewSolvencyVoter                = types.NewSolvencyVoter
 	NewMsgSolvency                  = types.NewMsgSolvency
 	NewSwapperClout                 = types.NewSwapperClout
-	NewMsgTCYClaim                  = types.NewMsgTCYClaim
-	NewMsgTCYStake                  = types.NewMsgTCYStake
-	NewMsgTCYUnstake                = types.NewMsgTCYUnstake
 	NewMsgShielderRegisterPow       = types.NewMsgShielderRegisterPow
+	NewMsgShielderSettleDeposit     = types.NewMsgShielderSettleDeposit
 	NewMsgShielderPostCommitments   = types.NewMsgShielderPostCommitments
 	NewMsgShielderRequestWithdrawal = types.NewMsgShielderRequestWithdrawal
+	NewMsgShielderSettleFees        = types.NewMsgShielderSettleFees
+	NewMsgShielderSplitFees         = types.NewMsgShielderSplitFees
+	NewMsgNodeSlotAuctionCreate     = types.NewMsgNodeSlotAuctionCreate
+	NewMsgNodeSlotAuctionBidPow     = types.NewMsgNodeSlotAuctionBidPow
+	NewMsgNodeSlotAuctionSelectBid  = types.NewMsgNodeSlotAuctionSelectBid
+	NewMsgNodeSlotAuctionSplit      = types.NewMsgNodeSlotAuctionSplit
 )
 
 type (
@@ -246,8 +214,6 @@ type (
 	MsgSecuredAssetWithdraw      = types.MsgSecuredAssetWithdraw
 	MsgConsolidate               = types.MsgConsolidate
 	MsgDonate                    = types.MsgDonate
-	MsgWithdrawLiquidity         = types.MsgWithdrawLiquidity
-	MsgAddLiquidity              = types.MsgAddLiquidity
 	MsgOutboundTx                = types.MsgOutboundTx
 	MsgMimir                     = types.MsgMimir
 	MsgNodePauseChain            = types.MsgNodePauseChain
@@ -272,26 +238,21 @@ type (
 	MsgTssPool                   = types.MsgTssPool
 	MsgTssKeysignFail            = types.MsgTssKeysignFail
 	MsgNetworkFee                = types.MsgNetworkFee
-	MsgManageTHORName            = types.MsgManageTHORName
 	MsgReferenceMemo             = types.MsgReferenceMemo
 	MsgSolvency                  = types.MsgSolvency
-	MsgRunePoolDeposit           = types.MsgRunePoolDeposit
-	MsgRunePoolWithdraw          = types.MsgRunePoolWithdraw
 	MsgSwitch                    = types.MsgSwitch
-	MsgTCYClaim                  = types.MsgTCYClaim
-	MsgTCYStake                  = types.MsgTCYStake
-	MsgTCYUnstake                = types.MsgTCYUnstake
 	MsgOperatorRotate            = types.MsgOperatorRotate
 	MsgShielderRegisterPow       = types.MsgShielderRegisterPow
+	MsgShielderSettleDeposit     = types.MsgShielderSettleDeposit
 	MsgShielderPostCommitments   = types.MsgShielderPostCommitments
 	MsgShielderRequestWithdrawal = types.MsgShielderRequestWithdrawal
+	MsgShielderSettleFees        = types.MsgShielderSettleFees
+	MsgNodeSlotAuctionCreate     = types.MsgNodeSlotAuctionCreate
+	MsgNodeSlotAuctionBidPow     = types.MsgNodeSlotAuctionBidPow
+	MsgNodeSlotAuctionSelectBid  = types.MsgNodeSlotAuctionSelectBid
+	MsgNodeSlotAuctionSplit      = types.MsgNodeSlotAuctionSplit
 
 	// Keeper structs
-	PoolStatus               = types.PoolStatus
-	Pool                     = types.Pool
-	Pools                    = types.Pools
-	LiquidityProvider        = types.LiquidityProvider
-	LiquidityProviders       = types.LiquidityProviders
 	StreamingSwap            = types.StreamingSwap
 	StreamingSwaps           = types.StreamingSwaps
 	ObservedTxs              = common.ObservedTxs
@@ -308,8 +269,6 @@ type (
 	KeygenBlock              = types.KeygenBlock
 	EventSwap                = types.EventSwap
 	EventAffiliateFee        = types.EventAffiliateFee
-	EventAddLiquidity        = types.EventAddLiquidity
-	EventWithdraw            = types.EventWithdraw
 	EventDonate              = types.EventDonate
 	EventRewards             = types.EventRewards
 	EventErrata              = types.EventErrata
@@ -348,8 +307,6 @@ type (
 	Blame                    = types.Blame
 	Node                     = types.Node
 	ReferenceMemo            = types.ReferenceMemo
-	THORName                 = types.THORName
-	THORNameAlias            = types.THORNameAlias
 	AffiliateFeeCollector    = types.AffiliateFeeCollector
 	NodeMimir                = types.NodeMimir
 	NodeMimirs               = types.NodeMimirs
@@ -357,19 +314,15 @@ type (
 	TradeAccount             = types.TradeAccount
 	TradeUnit                = types.TradeUnit
 	SecuredAsset             = types.SecuredAsset
-	RUNEProvider             = types.RUNEProvider
-	RUNEPool                 = types.RUNEPool
-	TCYClaimer               = types.TCYClaimer
-	TCYStaker                = types.TCYStaker
 	VolumeBucket             = types.VolumeBucket
 	ContractInfo             = types.ContractInfo
 	ShielderSession          = types.ShielderSession
 	ShielderDeposit          = types.ShielderDeposit
 	ShielderWithdrawal       = types.ShielderWithdrawal
+	NodeSlotAuction          = types.NodeSlotAuction
+	NodeSlotBid              = types.NodeSlotBid
 
 	// Proto
 	ProtoStrings = types.ProtoStrings
 	ProtoInt64   = types.ProtoInt64
 )
-
-var _ proto.Message = &types.LiquidityProvider{}

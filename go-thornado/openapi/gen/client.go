@@ -54,8 +54,6 @@ type APIClient struct {
 
 	BlockApi *BlockApiService
 
-	CloutApi *CloutApiService
-
 	CodesApi *CodesApiService
 
 	ExportApi *ExportApiService
@@ -64,59 +62,15 @@ type APIClient struct {
 
 	InvariantsApi *InvariantsApiService
 
-	LimitOrderApi *LimitOrderApiService
-
-	LiquidityProvidersApi *LiquidityProvidersApiService
-
 	MimirApi *MimirApiService
-
-	NetworkApi *NetworkApiService
 
 	NodesApi *NodesApiService
 
-	OracleApi *OracleApiService
-
-	PoolSlipApi *PoolSlipApiService
-
-	PoolsApi *PoolsApiService
-
-	QueueApi *QueueApiService
-
-	QuoteApi *QuoteApiService
-
-	RUNEPoolApi *RUNEPoolApiService
-
 	ReferenceMemosApi *ReferenceMemosApiService
-
-	SaversApi *SaversApiService
-
-	SecuredAssetApi *SecuredAssetApiService
-
-	SecuredAssetsApi *SecuredAssetsApiService
 
 	SmartContractsApi *SmartContractsApiService
 
-	StreamingSwapApi *StreamingSwapApiService
-
-	SupplyApi *SupplyApiService
-
-	SwapApi *SwapApiService
-
-	TCYClaimersApi *TCYClaimersApiService
-
-	TCYStakersApi *TCYStakersApiService
-
 	TSSApi *TSSApiService
-
-	ThornamesApi *ThornamesApiService
-
-	TradeAccountApi *TradeAccountApiService
-
-	TradeAccountsApi *TradeAccountsApiService
-
-	TradeUnitApi *TradeUnitApiService
-
-	TradeUnitsApi *TradeUnitsApiService
 
 	TransactionsApi *TransactionsApiService
 
@@ -142,38 +96,15 @@ func NewAPIClient(cfg *Configuration) *APIClient {
 	c.AuthApi = (*AuthApiService)(&c.common)
 	c.BankApi = (*BankApiService)(&c.common)
 	c.BlockApi = (*BlockApiService)(&c.common)
-	c.CloutApi = (*CloutApiService)(&c.common)
 	c.CodesApi = (*CodesApiService)(&c.common)
 	c.ExportApi = (*ExportApiService)(&c.common)
 	c.HealthApi = (*HealthApiService)(&c.common)
 	c.InvariantsApi = (*InvariantsApiService)(&c.common)
-	c.LimitOrderApi = (*LimitOrderApiService)(&c.common)
-	c.LiquidityProvidersApi = (*LiquidityProvidersApiService)(&c.common)
 	c.MimirApi = (*MimirApiService)(&c.common)
-	c.NetworkApi = (*NetworkApiService)(&c.common)
 	c.NodesApi = (*NodesApiService)(&c.common)
-	c.OracleApi = (*OracleApiService)(&c.common)
-	c.PoolSlipApi = (*PoolSlipApiService)(&c.common)
-	c.PoolsApi = (*PoolsApiService)(&c.common)
-	c.QueueApi = (*QueueApiService)(&c.common)
-	c.QuoteApi = (*QuoteApiService)(&c.common)
-	c.RUNEPoolApi = (*RUNEPoolApiService)(&c.common)
 	c.ReferenceMemosApi = (*ReferenceMemosApiService)(&c.common)
-	c.SaversApi = (*SaversApiService)(&c.common)
-	c.SecuredAssetApi = (*SecuredAssetApiService)(&c.common)
-	c.SecuredAssetsApi = (*SecuredAssetsApiService)(&c.common)
 	c.SmartContractsApi = (*SmartContractsApiService)(&c.common)
-	c.StreamingSwapApi = (*StreamingSwapApiService)(&c.common)
-	c.SupplyApi = (*SupplyApiService)(&c.common)
-	c.SwapApi = (*SwapApiService)(&c.common)
-	c.TCYClaimersApi = (*TCYClaimersApiService)(&c.common)
-	c.TCYStakersApi = (*TCYStakersApiService)(&c.common)
 	c.TSSApi = (*TSSApiService)(&c.common)
-	c.ThornamesApi = (*ThornamesApiService)(&c.common)
-	c.TradeAccountApi = (*TradeAccountApiService)(&c.common)
-	c.TradeAccountsApi = (*TradeAccountsApiService)(&c.common)
-	c.TradeUnitApi = (*TradeUnitApiService)(&c.common)
-	c.TradeUnitsApi = (*TradeUnitsApiService)(&c.common)
 	c.TransactionsApi = (*TransactionsApiService)(&c.common)
 	c.VaultsApi = (*VaultsApiService)(&c.common)
 
@@ -297,9 +228,9 @@ func (c *APIClient) GetConfig() *Configuration {
 }
 
 type formFile struct {
-		fileBytes []byte
-		fileName string
-		formFileName string
+	fileBytes    []byte
+	fileName     string
+	formFileName string
 }
 
 // prepareRequest build the request
@@ -353,11 +284,11 @@ func (c *APIClient) prepareRequest(
 				w.Boundary()
 				part, err := w.CreateFormFile(formFile.formFileName, filepath.Base(formFile.fileName))
 				if err != nil {
-						return nil, err
+					return nil, err
 				}
 				_, err = part.Write(formFile.fileBytes)
 				if err != nil {
-						return nil, err
+					return nil, err
 				}
 			}
 		}

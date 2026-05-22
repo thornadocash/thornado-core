@@ -88,7 +88,7 @@ func (ms msgServer) ShielderRegisterPow(goCtx context.Context, msg *types.MsgShi
 	if err := msg.ValidateBasic(); err != nil {
 		return nil, err
 	}
-	session, err := RegisterShielderPowToken(ctx, ms.mgr.Keeper(), msg.Signer, msg.PowToken)
+	session, err := RegisterShielderPowToken(ctx, ms.mgr.Keeper(), msg.Signer, msg.PowToken, msg.OperatorPubKey, msg.ValidatorPubKey)
 	if err != nil {
 		return nil, err
 	}
@@ -118,6 +118,26 @@ func (ms msgServer) ShielderPostCommitments(goCtx context.Context, msg *types.Ms
 	}, nil
 }
 
+func (ms msgServer) ShielderSettleDeposit(goCtx context.Context, msg *types.MsgShielderSettleDeposit) (*types.MsgShielderSettleDepositResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	depositID, err := common.NewTxID(msg.DepositId)
+	if err != nil {
+		return nil, err
+	}
+	deposit, err := SettleShielderDeposit(ctx, ms.mgr.Keeper(), msg.Signer, depositID)
+	if err != nil {
+		return nil, err
+	}
+	return &types.MsgShielderSettleDepositResponse{
+		DepositId:  deposit.DepositID.String(),
+		Status:     deposit.Status,
+		Settlement: deposit.Settlement,
+	}, nil
+}
+
 func (ms msgServer) ShielderRequestWithdrawal(goCtx context.Context, msg *types.MsgShielderRequestWithdrawal) (*types.MsgShielderRequestWithdrawalResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 	if err := msg.ValidateBasic(); err != nil {
@@ -134,6 +154,93 @@ func (ms msgServer) ShielderRequestWithdrawal(goCtx context.Context, msg *types.
 	return &types.MsgShielderRequestWithdrawalResponse{
 		WithdrawalId: withdrawal.WithdrawalID,
 		Status:       withdrawal.Status,
+	}, nil
+}
+
+func (ms msgServer) ShielderSplitFees(goCtx context.Context, msg *types.MsgShielderSplitFees) (*types.MsgShielderSplitFeesResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	deposit, err := SplitShielderFees(ctx, ms.mgr.Keeper(), msg.Signer, msg.ValidatorPubKey, msg.OperatorSignature, msg.Commitments, msg.FeeNotePubKeys)
+	if err != nil {
+		return nil, err
+	}
+	return &types.MsgShielderSplitFeesResponse{
+		DepositId:  deposit.DepositID.String(),
+		AmountSats: deposit.AmountSats,
+		Status:     deposit.Status,
+	}, nil
+}
+
+func (ms msgServer) ShielderSettleFees(goCtx context.Context, msg *types.MsgShielderSettleFees) (*types.MsgShielderSettleDepositResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	deposit, err := SettleShielderFees(ctx, ms.mgr.Keeper(), msg.Signer, msg.ValidatorPubKey, msg.OperatorSignature)
+	if err != nil {
+		return nil, err
+	}
+	return &types.MsgShielderSettleDepositResponse{
+		DepositId:  deposit.DepositID.String(),
+		Status:     deposit.Status,
+		Settlement: deposit.Settlement,
+	}, nil
+}
+
+func (ms msgServer) NodeSlotAuctionCreate(goCtx context.Context, msg *types.MsgNodeSlotAuctionCreate) (*types.MsgNodeSlotAuctionCreateResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	auction, err := CreateNodeSlotAuction(ctx, ms.mgr.Keeper(), msg.Signer, msg.ValidatorPubKey, msg.ReserveSats, msg.ExpiryHeight)
+	if err != nil {
+		return nil, err
+	}
+	return &types.MsgNodeSlotAuctionCreateResponse{AuctionId: auction.AuctionID}, nil
+}
+
+func (ms msgServer) NodeSlotAuctionBidPow(goCtx context.Context, msg *types.MsgNodeSlotAuctionBidPow) (*types.MsgShielderRegisterPowResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	session, bid, err := RegisterNodeSlotBidPowToken(ctx, ms.mgr.Keeper(), msg.Signer, msg.PowToken, msg.AuctionId, msg.OperatorPubKey, msg.ValidatorPubKey)
+	if err != nil {
+		return nil, err
+	}
+	return &types.MsgShielderRegisterPowResponse{
+		DepositAddress:   session.DepositAddress.String(),
+		VaultPubKey:      session.VaultPubKey.String(),
+		DepositPathIndex: session.DepositPathIndex,
+		BidId:            bid.BidID,
+	}, nil
+}
+
+func (ms msgServer) NodeSlotAuctionSelectBid(goCtx context.Context, msg *types.MsgNodeSlotAuctionSelectBid) (*types.MsgEmpty, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	if _, _, err := SelectNodeSlotBid(ctx, ms.mgr.Keeper(), msg.Signer, msg.AuctionId, msg.BidId); err != nil {
+		return nil, err
+	}
+	return &types.MsgEmpty{}, nil
+}
+
+func (ms msgServer) NodeSlotAuctionSplit(goCtx context.Context, msg *types.MsgNodeSlotAuctionSplit) (*types.MsgShielderPostCommitmentsResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	deposit, err := SplitNodeSlotSale(ctx, ms.mgr.Keeper(), msg.Signer, msg.AuctionId, msg.BidId, msg.Commitments)
+	if err != nil {
+		return nil, err
+	}
+	return &types.MsgShielderPostCommitmentsResponse{
+		DepositId: deposit.DepositID.String(),
+		Status:    deposit.Status,
 	}, nil
 }
 

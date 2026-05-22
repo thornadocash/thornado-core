@@ -1,9 +1,0 @@
-{
-  "account": {
-    "type": "cosmos-sdk/BaseAccount",
-    "address": "thor1hj6k3smf9e8srxkjandp6fqgu02sezgyhnvpuy",
-    "public_key": null,
-    "account_number": "3",
-    "sequence": "5"
-  }
-}

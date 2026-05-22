@@ -20,7 +20,6 @@ import (
 	sdkgrpc "github.com/cosmos/cosmos-sdk/types/grpc"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	gateway "github.com/cosmos/gogogateway"
-	"github.com/gorilla/mux"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
@@ -79,7 +78,7 @@ func (AppModuleBasic) ValidateGenesis(cdc codec.JSONCodec, config client.TxEncod
 }
 
 // RegisterGRPCGatewayRoutes registers the gRPC Gateway routes for the mint module.
-// thornode current doesn't have grpc endpoint yet
+// thornado current doesn't have grpc endpoint yet
 func (AppModuleBasic) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux *runtime.ServeMux) {
 	if err := types.RegisterQueryHandlerClient(context.Background(), mux, types.NewQueryClient(clientCtx)); err != nil {
 		panic(err)
@@ -98,7 +97,7 @@ func (AppModuleBasic) GetTxCmd() *cobra.Command {
 
 // ____________________________________________________________________________
 
-// AppModule implements an application module for the thorchain module.
+// AppModule implements an application module for the thornado module.
 type AppModule struct {
 	AppModuleBasic
 	mgr              *Mgrs
@@ -299,7 +298,7 @@ func CustomGRPCGatewayRouter(apiSvr *api.Server) {
 				}
 			}
 			// The following checked endpoint prefixes have the height query parameter extracted.
-			if strings.HasPrefix(req.URL.Path, "/thorchain/") ||
+			if strings.HasPrefix(req.URL.Path, "/thornado/") ||
 				strings.HasPrefix(req.URL.Path, "/cosmos/") ||
 				strings.HasPrefix(req.URL.Path, "/bank/balances/") ||
 				strings.HasPrefix(req.URL.Path, "/auth/accounts/") {
@@ -315,43 +314,4 @@ func CustomGRPCGatewayRouter(apiSvr *api.Server) {
 			return md
 		}),
 	)
-}
-
-// RegisterSupplyCMCRoute registers the /thorchain/supply/cmc plain-text HTTP handler.
-func RegisterSupplyCMCRoute(router *mux.Router, clientCtx client.Context) {
-	router.HandleFunc("/thorchain/supply/cmc", func(w http.ResponseWriter, r *http.Request) {
-		queryClient := types.NewQueryClient(clientCtx)
-
-		asset := strings.ToLower(r.URL.Query().Get("asset"))
-		typ := strings.ToLower(r.URL.Query().Get("type"))
-
-		var value int64
-		switch asset {
-		case "rune", "":
-			resp, err := queryClient.Supply(r.Context(), &types.QuerySupplyRequest{})
-			if err != nil {
-				http.Error(w, "failed to query rune supply", http.StatusInternalServerError)
-				return
-			}
-			switch typ {
-			case "circulating":
-				value = resp.Circulating
-			case "total":
-				value = resp.Total
-			case "locked":
-				if resp.Locked != nil {
-					value = resp.Locked.Reserve
-				}
-			default:
-				http.Error(w, "type must be circulating, total, or locked", http.StatusBadRequest)
-				return
-			}
-		default:
-			http.Error(w, "asset must be rune", http.StatusBadRequest)
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/plain")
-		fmt.Fprintf(w, "%d", value)
-	}).Methods("GET")
 }

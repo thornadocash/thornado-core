@@ -25,8 +25,6 @@ message QueryTxStagesResponse {
   ];
   InboundConfirmationCountedStage inbound_confirmation_counted = 2;
   InboundFinalisedStage inbound_finalised = 3;
-  SwapStatus swap_status = 4;
-  SwapFinalisedStage swap_finalised = 5;
   OutboundDelayStage outbound_delay = 6;
   OutboundSignedStage outbound_signed = 7;
 }
@@ -158,27 +156,6 @@ message InboundConfirmationCountedStage {
 message InboundFinalisedStage {
   // returns true if the inbound transaction has been finalised (THORChain
   // agreeing it exists)
-  bool completed = 1 [ (gogoproto.jsontag) = "completed" ];
-}
-
-message SwapStatus {
-  // true when awaiting a swap
-  bool pending = 1 [ (gogoproto.jsontag) = "pending" ];
-  StreamingStatus streaming = 2;
-}
-
-message StreamingStatus {
-  // how often each swap is made, in blocks
-  int64 interval = 1 [ (gogoproto.jsontag) = "interval" ];
-  // the total number of swaps in a streaming swaps
-  int64 quantity = 2 [ (gogoproto.jsontag) = "quantity" ];
-  // the amount of swap attempts so far
-  int64 count = 3 [ (gogoproto.jsontag) = "count" ];
-}
-
-message SwapFinalisedStage {
-  // (to be deprecated in favor of swap_status) returns true if an inbound
-  // transaction's swap (successful or refunded) is no longer pending
   bool completed = 1 [ (gogoproto.jsontag) = "completed" ];
 }
 

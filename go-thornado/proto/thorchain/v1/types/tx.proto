@@ -53,8 +53,15 @@ service Msg {
   rpc RejectUpgrade(MsgRejectUpgrade) returns (MsgEmpty);
   rpc PriceFeedQuorumBatch(MsgPriceFeedQuorumBatch) returns (MsgEmpty);
   rpc ShielderRegisterPow(MsgShielderRegisterPow) returns (MsgShielderRegisterPowResponse);
+  rpc ShielderSettleDeposit(MsgShielderSettleDeposit) returns (MsgShielderSettleDepositResponse);
   rpc ShielderPostCommitments(MsgShielderPostCommitments) returns (MsgShielderPostCommitmentsResponse);
   rpc ShielderRequestWithdrawal(MsgShielderRequestWithdrawal) returns (MsgShielderRequestWithdrawalResponse);
+  rpc ShielderSettleFees(MsgShielderSettleFees) returns (MsgShielderSettleDepositResponse);
+  rpc ShielderSplitFees(MsgShielderSplitFees) returns (MsgShielderSplitFeesResponse);
+  rpc NodeSlotAuctionCreate(MsgNodeSlotAuctionCreate) returns (MsgNodeSlotAuctionCreateResponse);
+  rpc NodeSlotAuctionBidPow(MsgNodeSlotAuctionBidPow) returns (MsgShielderRegisterPowResponse);
+  rpc NodeSlotAuctionSelectBid(MsgNodeSlotAuctionSelectBid) returns (MsgEmpty);
+  rpc NodeSlotAuctionSplit(MsgNodeSlotAuctionSplit) returns (MsgShielderPostCommitmentsResponse);
 }
 
 // MsgEmpty is the return type for all current Msg Server messages

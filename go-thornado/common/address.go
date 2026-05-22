@@ -45,7 +45,7 @@ func NewAddress(address string) (Address, error) {
 
 func (addr Address) IsChain(chain Chain) bool {
 	switch chain {
-	case THORChain:
+	case Thornado:
 		prefix, _, _ := bech32.Decode(addr.String())
 		return prefix == "thor" || prefix == "tthor" || prefix == "sthor" || prefix == "cthor"
 	case BTCChain:
@@ -74,7 +74,7 @@ func (addr Address) IsChain(chain Chain) bool {
 }
 
 func (addr Address) GetChain() Chain {
-	for _, chain := range []Chain{THORChain, BTCChain} {
+	for _, chain := range []Chain{Thornado, BTCChain} {
 		if addr.IsChain(chain) {
 			return chain
 		}
@@ -92,7 +92,7 @@ func (addr Address) GetNetwork(chain Chain) ChainNetwork {
 		return currentNetwork
 	}
 	switch chain {
-	case THORChain:
+	case Thornado:
 		prefix, _, _ := bech32.Decode(addr.String())
 		if strings.EqualFold(prefix, "thor") {
 			return mainNetPredicate()

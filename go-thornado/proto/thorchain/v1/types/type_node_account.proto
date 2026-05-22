@@ -14,7 +14,7 @@ enum NodeStatus {
   Unknown = 0;
   Whitelisted = 1;
   Standby = 2;
-  Ready = 3;
+  Selected = 3;
   Active = 4;
   Disabled = 5;
 }

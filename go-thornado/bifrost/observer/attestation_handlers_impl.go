@@ -59,19 +59,19 @@ func (s *AttestationGossip) handleObservedTxAttestation(ctx context.Context, tx 
 
 	hasSuperMajority := types.HasSuperMajority(state.AttestationCount(), total)
 
-	// If we have a supermajority, send to thornode
+	// If we have a supermajority, send to thornado
 	if hasSuperMajority {
 		s.logger.Debug().Msgf("has supermajority: %d/%d", state.AttestationCount(), total)
 
-		s.sendObservedTxAttestationsToThornode(ctx, obsTx, state, k.Inbound, k.AllowFutureObservation, true)
+		s.sendObservedTxAttestationsToThornado(ctx, obsTx, state, k.Inbound, k.AllowFutureObservation, true)
 	} else {
 		s.logger.Debug().Msgf("observed tx attestation received - %s, id: %s, inbound: %t, final: %t, quorum: %d/%d",
 			k.Chain, k.ID, k.Inbound, k.Finalized, state.AttestationCount(), total)
 	}
 }
 
-// sendObservedTxAttestationsToThornode sends attestations to thornode via gRPC
-func (s *AttestationGossip) sendObservedTxAttestationsToThornode(
+// sendObservedTxAttestationsToThornado sends attestations to thornado via gRPC
+func (s *AttestationGossip) sendObservedTxAttestationsToThornado(
 	ctx context.Context,
 	tx common.ObservedTx,
 	state *AttestationState[*common.ObservedTx],
@@ -82,7 +82,7 @@ func (s *AttestationGossip) sendObservedTxAttestationsToThornode(
 		s.logger.Debug().Msg("no unsent observed tx attestations")
 		return
 	}
-	// Send via gRPC to thornode
+	// Send via gRPC to thornado
 	if _, err := s.grpcClient.SendQuorumTx(ctx, &common.QuorumTx{
 		ObsTx:                  tx,
 		Attestations:           unsent,
@@ -93,7 +93,7 @@ func (s *AttestationGossip) sendObservedTxAttestationsToThornode(
 		return
 	}
 
-	s.logger.Info().Msgf("sent quorum tx to thornode - %s, id: %s, inbound: %t, final: %t, attestations: %s",
+	s.logger.Info().Msgf("sent quorum tx to thornado - %s, id: %s, inbound: %t, final: %t, attestations: %s",
 		tx.Tx.Chain, tx.Tx.ID, inbound, tx.IsFinal(), state.State())
 
 	// Mark attestations as sent
@@ -130,24 +130,24 @@ func (s *AttestationGossip) handleNetworkFeeAttestation(ctx context.Context, anf
 	activeValCount := s.activeValidatorCount()
 	hasSuperMajority := types.HasSuperMajority(state.AttestationCount(), activeValCount)
 
-	// If we have a supermajority, send to thornode
+	// If we have a supermajority, send to thornado
 	if hasSuperMajority {
 		s.logger.Debug().Msgf("has supermajority: %d/%d", state.AttestationCount(), activeValCount)
-		s.sendNetworkFeeAttestationsToThornode(ctx, *state.Item, state, true)
+		s.sendNetworkFeeAttestationsToThornado(ctx, *state.Item, state, true)
 	} else {
 		s.logger.Debug().Msgf("network fee attestation received - %s, height: %d, quorum: %d/%d",
 			k.Chain, k.Height, state.AttestationCount(), activeValCount)
 	}
 }
 
-// sendNetworkFeeAttestationsToThornode sends network fee attestations to thornode via gRPC
-func (s *AttestationGossip) sendNetworkFeeAttestationsToThornode(ctx context.Context, networkFee common.NetworkFee, state *AttestationState[*common.NetworkFee], isQuorum bool) {
+// sendNetworkFeeAttestationsToThornado sends network fee attestations to thornado via gRPC
+func (s *AttestationGossip) sendNetworkFeeAttestationsToThornado(ctx context.Context, networkFee common.NetworkFee, state *AttestationState[*common.NetworkFee], isQuorum bool) {
 	unsent := state.UnsentAttestations()
 	if len(unsent) == 0 {
 		s.logger.Debug().Msg("no unsent network fee attestations")
 		return
 	}
-	// Send via gRPC to thornode
+	// Send via gRPC to thornado
 	if _, err := s.grpcClient.SendQuorumNetworkFee(ctx, &common.QuorumNetworkFee{
 		NetworkFee:   &networkFee,
 		Attestations: unsent,
@@ -156,7 +156,7 @@ func (s *AttestationGossip) sendNetworkFeeAttestationsToThornode(ctx context.Con
 		return
 	}
 
-	s.logger.Info().Msgf("sent quorum network fee to thornode - %s, height: %d, attestations: %s",
+	s.logger.Info().Msgf("sent quorum network fee to thornado - %s, height: %d, attestations: %s",
 		networkFee.Chain, networkFee.Height, state.State())
 
 	// Mark attestations as sent
@@ -197,24 +197,24 @@ func (s *AttestationGossip) handleSolvencyAttestation(ctx context.Context, ats c
 	activeValCount := s.activeValidatorCount()
 	hasSuperMajority := types.HasSuperMajority(state.AttestationCount(), activeValCount)
 
-	// If we have a supermajority, send to thornode
+	// If we have a supermajority, send to thornado
 	if hasSuperMajority {
 		s.logger.Debug().Msgf("has supermajority: %d/%d", state.AttestationCount(), activeValCount)
-		s.sendSolvencyAttestationsToThornode(ctx, *state.Item, state, true)
+		s.sendSolvencyAttestationsToThornado(ctx, *state.Item, state, true)
 	} else {
 		s.logger.Debug().Msgf("solvency attestation received - %s, height: %d, quorum: %d/%d",
 			ats.Solvency.Chain, ats.Solvency.Height, state.AttestationCount(), activeValCount)
 	}
 }
 
-// sendSolvencyAttestationsToThornode sends solvency attestations to thornode via gRPC
-func (s *AttestationGossip) sendSolvencyAttestationsToThornode(ctx context.Context, solvency common.Solvency, state *AttestationState[*common.Solvency], isQuorum bool) {
+// sendSolvencyAttestationsToThornado sends solvency attestations to thornado via gRPC
+func (s *AttestationGossip) sendSolvencyAttestationsToThornado(ctx context.Context, solvency common.Solvency, state *AttestationState[*common.Solvency], isQuorum bool) {
 	unsent := state.UnsentAttestations()
 	if len(unsent) == 0 {
 		s.logger.Debug().Msg("no unsent solvency attestations")
 		return
 	}
-	// Send via gRPC to thornode
+	// Send via gRPC to thornado
 	if _, err := s.grpcClient.SendQuorumSolvency(ctx, &common.QuorumSolvency{
 		Solvency:     &solvency,
 		Attestations: unsent,
@@ -223,7 +223,7 @@ func (s *AttestationGossip) sendSolvencyAttestationsToThornode(ctx context.Conte
 		return
 	}
 
-	s.logger.Info().Msgf("sent quorum solvency to thornode - %s, height: %d, coins: %s, pubkey: %s, attestations: %s",
+	s.logger.Info().Msgf("sent quorum solvency to thornado - %s, height: %d, coins: %s, pubkey: %s, attestations: %s",
 		solvency.Chain, solvency.Height, solvency.Coins.String(), solvency.PubKey.String(), state.State())
 
 	// Mark attestations as sent
@@ -260,24 +260,24 @@ func (s *AttestationGossip) handleErrataAttestation(ctx context.Context, aet com
 	activeValCount := s.activeValidatorCount()
 	hasSuperMajority := types.HasSuperMajority(state.AttestationCount(), activeValCount)
 
-	// If we have a supermajority, send to thornode
+	// If we have a supermajority, send to thornado
 	if hasSuperMajority {
 		s.logger.Debug().Msgf("has supermajority: %d/%d", state.AttestationCount(), activeValCount)
-		s.sendErrataAttestationsToThornode(ctx, *state.Item, state, true)
+		s.sendErrataAttestationsToThornado(ctx, *state.Item, state, true)
 	} else {
 		s.logger.Debug().Msgf("errata attestation received - %s, id: %s, quorum: %d/%d",
 			k.Chain, k.Id, state.AttestationCount(), activeValCount)
 	}
 }
 
-// sendErrataAttestationsToThornode sends errata attestations to thornode via gRPC
-func (s *AttestationGossip) sendErrataAttestationsToThornode(ctx context.Context, errata common.ErrataTx, state *AttestationState[*common.ErrataTx], isQuorum bool) {
+// sendErrataAttestationsToThornado sends errata attestations to thornado via gRPC
+func (s *AttestationGossip) sendErrataAttestationsToThornado(ctx context.Context, errata common.ErrataTx, state *AttestationState[*common.ErrataTx], isQuorum bool) {
 	unsent := state.UnsentAttestations()
 	if len(unsent) == 0 {
 		s.logger.Debug().Msg("no unsent errata attestations")
 		return
 	}
-	// Send via gRPC to thornode
+	// Send via gRPC to thornado
 	if _, err := s.grpcClient.SendQuorumErrataTx(ctx, &common.QuorumErrataTx{
 		ErrataTx:     &errata,
 		Attestations: unsent,
@@ -286,7 +286,7 @@ func (s *AttestationGossip) sendErrataAttestationsToThornode(ctx context.Context
 		return
 	}
 
-	s.logger.Info().Msgf("sent quorum errata to thornode - %s - ID: %s - attestations: %s", errata.Chain, errata.Id, state.State())
+	s.logger.Info().Msgf("sent quorum errata to thornado - %s - ID: %s - attestations: %s", errata.Chain, errata.Id, state.State())
 
 	// Mark attestations as sent
 	state.MarkAttestationsSent(isQuorum)
@@ -327,7 +327,7 @@ func (s *AttestationGossip) handlePriceFeedAttestation(ctx context.Context, apf 
 		s.priceFeeds[k] = state
 
 		// we received an updated price feed, start delay to maybe collect
-		// more updated values before sending them to thornode
+		// more updated values before sending them to thornado
 		if s.priceFeedsDelay.IsRunning() {
 			return
 		}
@@ -338,19 +338,19 @@ func (s *AttestationGossip) handlePriceFeedAttestation(ctx context.Context, apf 
 			case <-ctx.Done():
 				return
 			case <-time.After(priceFeedsUpdateDelay):
-				s.sendPriceFeedAttestationsToThornode(ctx)
+				s.sendPriceFeedAttestationsToThornado(ctx)
 				s.priceFeedsDelay.Done()
 			}
 		}()
 	}
 }
 
-// sendPriceFeedAttestationsToThornode sends price feed attestations
-// to thornode via gRPC
+// sendPriceFeedAttestationsToThornado sends price feed attestations
+// to thornado via gRPC
 //
 // To avoid calling the endpoint hundred times per update, all
 // (quorum) price feeds are batched into a single request
-func (s *AttestationGossip) sendPriceFeedAttestationsToThornode(
+func (s *AttestationGossip) sendPriceFeedAttestationsToThornado(
 	ctx context.Context,
 ) {
 	qpfb := common.QuorumPriceFeedBatch{

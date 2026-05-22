@@ -73,6 +73,42 @@ func (KeeperTestSuit) TestShielderState(c *C) {
 	c.Assert(k.SetShielderNullifierSpent(ctx, "nullifier", withdrawalID), IsNil)
 	c.Check(k.ShielderNullifierSpent(ctx, "nullifier"), Equals, true)
 
+	slot, err := k.AllocateShielderNodeBondSlot(ctx)
+	c.Assert(err, IsNil)
+	c.Check(slot, Equals, uint64(0))
+	nextSlot, err := k.AllocateShielderNodeBondSlot(ctx)
+	c.Assert(err, IsNil)
+	c.Check(nextSlot, Equals, uint64(1))
+
+	bond := types.ShielderValidatorBond{
+		ValidatorPubKey: "validator-key",
+		OperatorPubKey:  pubkey,
+		NodeAddress:     owner,
+		Slot:            slot,
+		PendingSats:     50_000_000,
+		BondSats:        100_000_000,
+		CreatedHeight:   ctx.BlockHeight(),
+		UpdatedHeight:   ctx.BlockHeight(),
+	}
+	c.Assert(k.SetShielderValidatorBond(ctx, bond), IsNil)
+	gotBond, err := k.GetShielderValidatorBond(ctx, bond.ValidatorPubKey)
+	c.Assert(err, IsNil)
+	c.Check(gotBond.Slot, Equals, slot)
+	c.Check(gotBond.PendingSats, Equals, uint64(50_000_000))
+	c.Check(gotBond.BondSats, Equals, uint64(100_000_000))
+
+	feePool := types.ShielderFeePool{
+		PendingSats:        2_000_000,
+		TotalSlots:         1,
+		FeePerSlotShare:    20_000_000_000,
+		TotalCollectedSats: 2_000_000,
+	}
+	c.Assert(k.SetShielderFeePool(ctx, feePool), IsNil)
+	gotFeePool, err := k.GetShielderFeePool(ctx)
+	c.Assert(err, IsNil)
+	c.Check(gotFeePool.TotalCollectedSats, Equals, uint64(2_000_000))
+	c.Check(gotFeePool.FeePerSlotShare, Equals, uint64(20_000_000_000))
+
 	empty := types.ShielderWithdrawal{Owner: owner, AmountSats: 1, FeeSats: 0}
 	c.Assert(empty.Valid(), NotNil)
 	c.Assert(types.ShielderDeposit{Owner: owner, AmountSats: 1}.Valid(), NotNil)

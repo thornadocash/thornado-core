@@ -87,7 +87,7 @@ import (
 )
 
 const (
-	appName = "thornode"
+	appName = "thornado"
 	NodeDir = ".thornado"
 )
 
@@ -113,12 +113,12 @@ var maccPerms = map[string][]string{
 }
 
 var (
-	_ runtime.AppI            = (*THORChainApp)(nil)
-	_ servertypes.Application = (*THORChainApp)(nil)
+	_ runtime.AppI            = (*ThornadoApp)(nil)
+	_ servertypes.Application = (*ThornadoApp)(nil)
 )
 
 // ChainApp extended ABCI application
-type THORChainApp struct {
+type ThornadoApp struct {
 	*baseapp.BaseApp
 	legacyAmino       *codec.LegacyAmino
 	appCodec          codec.Codec
@@ -140,7 +140,7 @@ type THORChainApp struct {
 	ParamsKeeper          paramskeeper.Keeper
 	ConsensusParamsKeeper consensusparamkeeper.Keeper
 
-	ThorchainKeeper  thorchainkeeper.Keeper
+	ThornadoKeeper   thorchainkeeper.Keeper
 	EnshrinedBifrost *ebifrost.EnshrinedBifrost
 
 	msgServiceRouter *MsgServiceRouter // router for redirecting Msg service messages
@@ -165,7 +165,7 @@ func NewChainApp(
 	loadLatest bool,
 	appOpts servertypes.AppOptions,
 	baseAppOptions ...func(*baseapp.BaseApp),
-) *THORChainApp {
+) *ThornadoApp {
 	ebifrostConfig, err := ebifrost.ReadEBifrostConfig(appOpts)
 	if err != nil {
 		panic(fmt.Sprintf("error while reading ebifrost config: %s", err))
@@ -239,7 +239,7 @@ func NewChainApp(
 		panic(err)
 	}
 
-	app := &THORChainApp{
+	app := &ThornadoApp{
 		BaseApp:           bApp,
 		legacyAmino:       ec.Amino,
 		appCodec:          ec.Codec,
@@ -339,7 +339,7 @@ func NewChainApp(
 		authtypes.NewModuleAddress(thorchain.ModuleName).String(),
 	)
 
-	app.ThorchainKeeper = thorchainkeeperv1.NewKeeper(
+	app.ThornadoKeeper = thorchainkeeperv1.NewKeeper(
 		app.appCodec, runtime.NewKVStoreService(keys[thorchaintypes.StoreKey]), app.BankKeeper, app.AccountKeeper, app.UpgradeKeeper,
 	)
 
@@ -347,7 +347,7 @@ func NewChainApp(
 	telemetryEnabled := cast.ToBool(appOpts.Get("telemetry.enabled"))
 	testApp := cast.ToBool(appOpts.Get(TestApp))
 
-	mgrs := thorchain.NewManagers(app.ThorchainKeeper, app.appCodec, runtime.NewKVStoreService(keys[thorchaintypes.StoreKey]), app.BankKeeper, app.AccountKeeper, app.UpgradeKeeper)
+	mgrs := thorchain.NewManagers(app.ThornadoKeeper, app.appCodec, runtime.NewKVStoreService(keys[thorchaintypes.StoreKey]), app.BankKeeper, app.AccountKeeper, app.UpgradeKeeper)
 	app.msgServiceRouter.AddCustomRoute("cosmos.bank.v1beta1.Msg", thorchain.NewBankSendHandler(thorchain.NewSendHandler(mgrs)))
 
 	thorchainModule := thorchain.NewAppModule(mgrs, telemetryEnabled, testApp)
@@ -355,7 +355,7 @@ func NewChainApp(
 
 	defaultProposalHandler := baseapp.NewDefaultProposalHandler(bApp.Mempool(), bApp)
 	eBifrostProposalHandler := thorchainkeeperabci.NewProposalHandler(
-		&app.ThorchainKeeper,
+		&app.ThornadoKeeper,
 		app.EnshrinedBifrost,
 		interfaceRegistry,
 		defaultProposalHandler.PrepareProposalHandler(),
@@ -499,7 +499,7 @@ func NewChainApp(
 				SignModeHandler: txConfig.SignModeHandler(),
 				SigGasConsumer:  SigGasConsumer,
 			},
-			THORChainKeeper: app.ThorchainKeeper,
+			ThornadoKeeper: app.ThornadoKeeper,
 		},
 	)
 	if err != nil {
@@ -544,7 +544,7 @@ func NewChainApp(
 	return app
 }
 
-func (app *THORChainApp) FinalizeBlock(req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
+func (app *ThornadoApp) FinalizeBlock(req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
 	// when skipping sdk 47 for sdk 50, the upgrade handler is called too late in BaseApp
 	// this is a hack to ensure that the migration is executed when needed and not panics
 	app.once.Do(func() {
@@ -565,24 +565,24 @@ func (app *THORChainApp) FinalizeBlock(req *abci.RequestFinalizeBlock) (*abci.Re
 	return app.BaseApp.FinalizeBlock(req)
 }
 
-func (app *THORChainApp) setPostHandler() {
+func (app *ThornadoApp) setPostHandler() {
 	app.SetPostHandler(sdk.ChainPostDecorators(ebifrost.NewEnshrineBifrostPostDecorator(app.EnshrinedBifrost)))
 }
 
 // Name returns the name of the App
-func (app *THORChainApp) Name() string { return app.BaseApp.Name() }
+func (app *ThornadoApp) Name() string { return app.BaseApp.Name() }
 
 // PreBlocker application updates every pre block
-func (app *THORChainApp) PreBlocker(ctx sdk.Context, req *abci.RequestFinalizeBlock) (*sdk.ResponsePreBlock, error) {
+func (app *ThornadoApp) PreBlocker(ctx sdk.Context, req *abci.RequestFinalizeBlock) (*sdk.ResponsePreBlock, error) {
 	return app.ModuleManager.PreBlock(ctx)
 }
 
-func (a *THORChainApp) Configurator() module.Configurator {
+func (a *ThornadoApp) Configurator() module.Configurator {
 	return a.configurator
 }
 
 // InitChainer application update at chain initialization
-func (app *THORChainApp) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci.ResponseInitChain, error) {
+func (app *ThornadoApp) InitChainer(ctx sdk.Context, req *abci.RequestInitChain) (*abci.ResponseInitChain, error) {
 	var genesisState GenesisState
 	if err := json.Unmarshal(req.AppStateBytes, &genesisState); err != nil {
 		panic(err)
@@ -596,7 +596,7 @@ func (app *THORChainApp) InitChainer(ctx sdk.Context, req *abci.RequestInitChain
 }
 
 // LoadHeight loads a particular height
-func (app *THORChainApp) LoadHeight(height int64) error {
+func (app *ThornadoApp) LoadHeight(height int64) error {
 	return app.LoadVersion(height)
 }
 
@@ -604,7 +604,7 @@ func (app *THORChainApp) LoadHeight(height int64) error {
 //
 // NOTE: This is solely to be used for testing purposes as it may be desirable
 // for modules to register their own custom testing types.
-func (app *THORChainApp) LegacyAmino() *codec.LegacyAmino {
+func (app *ThornadoApp) LegacyAmino() *codec.LegacyAmino {
 	return app.legacyAmino
 }
 
@@ -612,22 +612,22 @@ func (app *THORChainApp) LegacyAmino() *codec.LegacyAmino {
 //
 // NOTE: This is solely to be used for testing purposes as it may be desirable
 // for modules to register their own custom testing types.
-func (app *THORChainApp) AppCodec() codec.Codec {
+func (app *ThornadoApp) AppCodec() codec.Codec {
 	return app.appCodec
 }
 
 // InterfaceRegistry returns ChainApp's InterfaceRegistry
-func (app *THORChainApp) InterfaceRegistry() types.InterfaceRegistry {
+func (app *ThornadoApp) InterfaceRegistry() types.InterfaceRegistry {
 	return app.interfaceRegistry
 }
 
 // TxConfig returns ChainApp's TxConfig
-func (app *THORChainApp) TxConfig() client.TxConfig {
+func (app *ThornadoApp) TxConfig() client.TxConfig {
 	return app.txConfig
 }
 
 // AutoCliOpts returns the autocli options for the app.
-func (app *THORChainApp) AutoCliOpts() autocli.AppOptions {
+func (app *ThornadoApp) AutoCliOpts() autocli.AppOptions {
 	modules := make(map[string]appmodule.AppModule, 0)
 	for _, m := range app.ModuleManager.Modules {
 		if moduleWithName, ok := m.(module.HasName); ok {
@@ -648,19 +648,19 @@ func (app *THORChainApp) AutoCliOpts() autocli.AppOptions {
 }
 
 // DefaultGenesis returns a default genesis from the registered AppModuleBasic's.
-func (a *THORChainApp) DefaultGenesis() map[string]json.RawMessage {
+func (a *ThornadoApp) DefaultGenesis() map[string]json.RawMessage {
 	return a.BasicModuleManager.DefaultGenesis(a.appCodec)
 }
 
 // GetKey returns the KVStoreKey for the provided store key.
 //
 // NOTE: This is solely to be used for testing purposes.
-func (app *THORChainApp) GetKey(storeKey string) *storetypes.KVStoreKey {
+func (app *ThornadoApp) GetKey(storeKey string) *storetypes.KVStoreKey {
 	return app.keys[storeKey]
 }
 
 // GetStoreKeys returns all the stored store keys.
-func (app *THORChainApp) GetStoreKeys() []storetypes.StoreKey {
+func (app *ThornadoApp) GetStoreKeys() []storetypes.StoreKey {
 	keys := make([]storetypes.StoreKey, 0, len(app.keys))
 	for _, key := range app.keys {
 		keys = append(keys, key)
@@ -674,26 +674,26 @@ func (app *THORChainApp) GetStoreKeys() []storetypes.StoreKey {
 // GetTKey returns the TransientStoreKey for the provided store key.
 //
 // NOTE: This is solely to be used for testing purposes.
-func (app *THORChainApp) GetTKey(storeKey string) *storetypes.TransientStoreKey {
+func (app *ThornadoApp) GetTKey(storeKey string) *storetypes.TransientStoreKey {
 	return app.tkeys[storeKey]
 }
 
 // GetSubspace returns a param subspace for a given module name.
 //
 // NOTE: This is solely to be used for testing purposes.
-func (app *THORChainApp) GetSubspace(moduleName string) paramstypes.Subspace {
+func (app *ThornadoApp) GetSubspace(moduleName string) paramstypes.Subspace {
 	subspace, _ := app.ParamsKeeper.GetSubspace(moduleName)
 	return subspace
 }
 
 // SimulationManager implements the SimulationApp interface
-func (app *THORChainApp) SimulationManager() *module.SimulationManager {
+func (app *ThornadoApp) SimulationManager() *module.SimulationManager {
 	return app.sm
 }
 
 // RegisterAPIRoutes registers all application module routes with the provided
 // API server.
-func (app *THORChainApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.APIConfig) {
+func (app *ThornadoApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.APIConfig) {
 	clientCtx := apiSvr.ClientCtx
 
 	// Must call this before registering any GRPC gateway routes
@@ -711,10 +711,7 @@ func (app *THORChainApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.
 	// Register grpc-gateway routes for all modules.
 	app.BasicModuleManager.RegisterGRPCGatewayRoutes(clientCtx, apiSvr.GRPCGatewayRouter)
 
-	// Register plain-text supply/cmc route (must be before catch-all gRPC gateway).
-	thorchain.RegisterSupplyCMCRoute(apiSvr.Router, clientCtx)
-
-	// register thorchain-specific swagger API from root so that other applications can override easily
+	// register thornado-specific swagger API from root so that other applications can override easily
 	if err := RegisterSwaggerAPI(apiSvr.Router, apiConfig.Swagger); err != nil {
 		panic(err)
 	}
@@ -749,12 +746,12 @@ func RegisterSwaggerAPI(rtr *mux.Router, swaggerEnabled bool) error {
 }
 
 // RegisterTxService implements the Application.RegisterTxService method.
-func (app *THORChainApp) RegisterTxService(clientCtx client.Context) {
+func (app *ThornadoApp) RegisterTxService(clientCtx client.Context) {
 	authtx.RegisterTxService(app.BaseApp.GRPCQueryRouter(), clientCtx, app.BaseApp.Simulate, app.interfaceRegistry)
 }
 
 // RegisterTendermintService implements the Application.RegisterTendermintService method.
-func (app *THORChainApp) RegisterTendermintService(clientCtx client.Context) {
+func (app *ThornadoApp) RegisterTendermintService(clientCtx client.Context) {
 	cmtApp := server.NewCometABCIWrapper(app)
 	cmtservice.RegisterTendermintService(
 		clientCtx,
@@ -764,7 +761,7 @@ func (app *THORChainApp) RegisterTendermintService(clientCtx client.Context) {
 	)
 }
 
-func (app *THORChainApp) RegisterNodeService(clientCtx client.Context, cfg config.Config) {
+func (app *ThornadoApp) RegisterNodeService(clientCtx client.Context, cfg config.Config) {
 	nodeservice.RegisterNodeService(clientCtx, app.GRPCQueryRouter(), cfg)
 
 	if err := app.EnshrinedBifrost.Start(); err != nil && !errors.Is(err, ebifrost.ErrAlreadyStarted) {
@@ -772,7 +769,7 @@ func (app *THORChainApp) RegisterNodeService(clientCtx client.Context, cfg confi
 	}
 }
 
-func (app *THORChainApp) Close() error {
+func (app *ThornadoApp) Close() error {
 	app.EnshrinedBifrost.Stop()
 
 	return app.BaseApp.Close()
@@ -805,12 +802,12 @@ func BlockedAddresses() map[string]bool {
 }
 
 // MsgServiceRouter returns the MsgServiceRouter.
-func (app *THORChainApp) MsgServiceRouter() *MsgServiceRouter {
+func (app *ThornadoApp) MsgServiceRouter() *MsgServiceRouter {
 	return app.msgServiceRouter
 }
 
 // SetInterfaceRegistry sets the InterfaceRegistry.
-func (app *THORChainApp) SetInterfaceRegistry(registry types.InterfaceRegistry) {
+func (app *ThornadoApp) SetInterfaceRegistry(registry types.InterfaceRegistry) {
 	app.interfaceRegistry = registry
 	app.msgServiceRouter.SetInterfaceRegistry(registry)
 	app.BaseApp.SetInterfaceRegistry(registry)

@@ -23,8 +23,6 @@ func (k KVStore) IsTradingHalt(ctx cosmos.Context, msg cosmos.Msg) bool {
 			checkAssets = []common.Asset{m.Tx.Coins[0].Asset, m.TargetAsset}
 		}
 
-	case *MsgAddLiquidity:
-		checkAssets = []common.Asset{m.Asset}
 	}
 
 	if k.IsRagnarok(ctx, checkAssets) {
@@ -48,11 +46,6 @@ func (k KVStore) IsTradingHalt(ctx cosmos.Context, msg cosmos.Msg) bool {
 		}
 
 		return k.IsChainTradingHalted(ctx, source) || k.IsChainTradingHalted(ctx, target) || k.IsGlobalTradingHalted(ctx)
-	case *MsgAddLiquidity:
-		if m.Asset.IsTCY() {
-			return k.IsTCYTradingHalted(ctx)
-		}
-		return k.IsChainTradingHalted(ctx, m.Asset.Chain) || k.IsGlobalTradingHalted(ctx)
 	default:
 		return k.IsGlobalTradingHalted(ctx)
 	}
@@ -142,5 +135,5 @@ func (k KVStore) IsTCYTradingHalted(ctx cosmos.Context) bool {
 		return true
 	}
 
-	return k.IsGlobalTradingHalted(ctx) || k.IsChainHalted(ctx, common.THORChain)
+	return k.IsGlobalTradingHalted(ctx) || k.IsChainHalted(ctx, common.Thornado)
 }

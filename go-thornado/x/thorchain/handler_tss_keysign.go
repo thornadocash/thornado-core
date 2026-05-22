@@ -162,7 +162,7 @@ func (h TssKeysignHandler) handle(ctx cosmos.Context, msg MsgTssKeysignFail) (*c
 	)
 
 	telemetry.IncrCounterWithLabels(
-		[]string{"thornode", "tss", "keysign", "failure"},
+		[]string{"thornado", "tss", "keysign", "failure"},
 		float32(1),
 		[]metrics.Label{telemetry.NewLabel("pubkey", msg.PubKey.String()), telemetry.NewLabel("round", msg.Blame.Round)},
 	)

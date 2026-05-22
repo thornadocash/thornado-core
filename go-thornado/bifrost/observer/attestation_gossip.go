@@ -36,7 +36,7 @@ const (
 	// If chain halts for longer than this, validators will need to restart their bifrosts to re-share their attestations.
 	defaultNonQuorumTimeout = 10 * time.Hour
 
-	// minTimeBetweenAttestations is the minimum time between sending batches of attestations for a quorum tx to thornode.
+	// minTimeBetweenAttestations is the minimum time between sending batches of attestations for a quorum tx to thornado.
 	defaultMinTimeBetweenAttestations = 30 * time.Second
 
 	// how often to prune old observed txs and check if late attestations should be sent.
@@ -155,12 +155,12 @@ type cachedKeySignParty struct {
 func NewAttestationGossip(
 	host host.Host,
 	keys *thorclient.Keys,
-	thornodeBifrostGRPCAddress string,
+	thornadoBifrostGRPCAddress string,
 	bridge thorclient.ThorchainBridge,
 	m *metrics.Metrics,
 	config config.BifrostAttestationGossipConfig,
 ) (*AttestationGossip, error) {
-	cc, err := grpc.NewClient(thornodeBifrostGRPCAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	cc, err := grpc.NewClient(thornadoBifrostGRPCAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
@@ -501,7 +501,7 @@ func (s *AttestationGossip) Start(ctx context.Context) {
 					s.logger.Debug().Msg("sending late observed tx attestations")
 
 					obsTx := state.Item
-					s.sendObservedTxAttestationsToThornode(ctx, *obsTx, state, k.Inbound, k.AllowFutureObservation, false)
+					s.sendObservedTxAttestationsToThornado(ctx, *obsTx, state, k.Inbound, k.AllowFutureObservation, false)
 				}
 				state.mu.Unlock()
 			}
@@ -514,7 +514,7 @@ func (s *AttestationGossip) Start(ctx context.Context) {
 					s.networkFeesPool.PutAttestationState(state)
 				} else if state.ShouldSendLate(s.config.MinTimeBetweenAttestations) {
 					s.logger.Debug().Msg("sending late network fee attestations")
-					s.sendNetworkFeeAttestationsToThornode(ctx, *state.Item, state, false)
+					s.sendNetworkFeeAttestationsToThornado(ctx, *state.Item, state, false)
 				}
 				state.mu.Unlock()
 			}
@@ -527,7 +527,7 @@ func (s *AttestationGossip) Start(ctx context.Context) {
 					s.solvenciesPool.PutAttestationState(state)
 				} else if state.ShouldSendLate(s.config.MinTimeBetweenAttestations) {
 					s.logger.Debug().Msg("sending late solvency attestations")
-					s.sendSolvencyAttestationsToThornode(ctx, *state.Item, state, false)
+					s.sendSolvencyAttestationsToThornado(ctx, *state.Item, state, false)
 				}
 				state.mu.Unlock()
 			}
@@ -540,7 +540,7 @@ func (s *AttestationGossip) Start(ctx context.Context) {
 					s.errataTxsPool.PutAttestationState(state)
 				} else if state.ShouldSendLate(s.config.MinTimeBetweenAttestations) {
 					s.logger.Debug().Msg("sending late errata attestations")
-					s.sendErrataAttestationsToThornode(ctx, *state.Item, state, false)
+					s.sendErrataAttestationsToThornado(ctx, *state.Item, state, false)
 				}
 				state.mu.Unlock()
 			}

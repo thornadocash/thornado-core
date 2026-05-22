@@ -102,7 +102,7 @@ func (p PubKey) GetAddress(chain Chain) (Address, error) {
 	chainNetwork := CurrentChainNetwork
 	var addressString string
 	switch chain {
-	case THORChain:
+	case Thornado:
 		pk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, string(p))
 		if err != nil {
 			return NoAddress, err
@@ -133,7 +133,7 @@ func (p PubKey) GetAddress(chain Chain) (Address, error) {
 }
 
 func (p PubKey) GetThorAddress() (cosmos.AccAddress, error) {
-	addr, err := p.GetAddress(THORChain)
+	addr, err := p.GetAddress(Thornado)
 	if err != nil {
 		return nil, err
 	}

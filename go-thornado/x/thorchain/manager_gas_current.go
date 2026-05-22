@@ -95,99 +95,19 @@ func (gm *GasMgr) GetGas() common.Gas {
 // - inRune: whether the fee should be returned in RUNE. If false the fee is returned in
 // asset units.
 func (gm *GasMgr) GetAssetOutboundFee(ctx cosmos.Context, asset common.Asset, inRune bool) (cosmos.Uint, error) {
-	// If the asset is native to THORChain, no need to charge an outbound fee.
 	if asset.IsNative() {
 		return cosmos.ZeroUint(), nil
 	}
-
 	chainOutboundFee, err := gm.keeper.GetNetworkFee(ctx, asset.GetChain())
 	if err != nil {
 		return cosmos.ZeroUint(), err
 	}
 	if err = chainOutboundFee.Valid(); err != nil {
-		// If the network fee is invalid, usually because consensus hasn't been reached, a
-		// fee can't be deducted. So return 0 and no error
 		return cosmos.ZeroUint(), nil
 	}
-
-	gasPool, err := gm.keeper.GetPool(ctx, asset.GetChain().GetGasAsset())
-	if err != nil {
-		return cosmos.ZeroUint(), err
-	}
-	minOutboundUSD, err := gm.keeper.GetMimir(ctx, constants.MinimumL1OutboundFeeUSD.String())
-	if minOutboundUSD < 0 || err != nil {
-		minOutboundUSD = gm.constantsAccessor.GetInt64Value(constants.MinimumL1OutboundFeeUSD)
-	}
-	runeUSDPrice := gm.keeper.DollarsPerRune(ctx)
-	minAsset := cosmos.ZeroUint()
-	if !runeUSDPrice.IsZero() {
-		// since MinOutboundUSD is in USD value , thus need to figure out how much RUNE
-		// here use GetShare instead GetSafeShare it is because minOutboundUSD can set to more than $1
-		minOutboundInRune := common.GetUncappedShare(cosmos.NewUint(uint64(minOutboundUSD)),
-			runeUSDPrice,
-			cosmos.NewUint(common.One))
-
-		minAsset = gasPool.RuneValueInAsset(minOutboundInRune)
-	}
-
-	outboundFeeWithheldRune, err := gm.keeper.GetOutboundFeeWithheldRune(ctx, asset)
-	if err != nil {
-		ctx.Logger().Error("fail to get outbound fee withheld rune", "outbound asset", asset, "error", err)
-		outboundFeeWithheldRune = cosmos.ZeroUint()
-	}
-	outboundFeeSpentRune, err := gm.keeper.GetOutboundFeeSpentRune(ctx, asset)
-	if err != nil {
-		ctx.Logger().Error("fail to get outbound fee spent rune", "outbound asset", asset, "error", err)
-		outboundFeeSpentRune = cosmos.ZeroUint()
-	}
-
-	targetOutboundFeeSurplus := gm.keeper.GetConfigInt64(ctx, constants.TargetOutboundFeeSurplusRune)
-	maxMultiplierBasisPoints := gm.keeper.GetConfigInt64(ctx, constants.MaxOutboundFeeMultiplierBasisPoints)
-	minMultiplierBasisPoints := gm.keeper.GetConfigInt64(ctx, constants.MinOutboundFeeMultiplierBasisPoints)
-
-	// Calculate outbound fee based on current fee multiplier
 	_, gasRateUnitsPerOne := asset.GetChain().GetGasUnits()
-	chainBaseFee := cosmos.NewUint(chainOutboundFee.TransactionSize).MulUint64(chainOutboundFee.TransactionFeeRate).MulUint64(common.One).Quo(gasRateUnitsPerOne)
-	feeMultiplierBps := gm.CalcOutboundFeeMultiplier(ctx, cosmos.NewUint(uint64(targetOutboundFeeSurplus)), outboundFeeSpentRune, outboundFeeWithheldRune, cosmos.NewUint(uint64(maxMultiplierBasisPoints)), cosmos.NewUint(uint64(minMultiplierBasisPoints)))
-	finalFee := common.GetUncappedShare(feeMultiplierBps, cosmos.NewUint(constants.MaxBasisPts), chainBaseFee)
-
-	fee := cosmos.RoundToDecimal(
-		finalFee,
-		gasPool.Decimals,
-	)
-
-	// Ensure fee is always more than minAsset
-	if fee.LT(minAsset) {
-		fee = minAsset
-	}
-
-	// If feeAsset = gas asset && inRune = false, we are in the correct units, return
-	if asset.Equals(asset.GetChain().GetGasAsset()) && !inRune {
-		return fee, nil
-	}
-
-	if gasPool.BalanceAsset.IsZero() || gasPool.BalanceRune.IsZero() {
-		ctx.Logger().Error("fail to calculate fee as gas pool balance is zero, returning 0 fee", "pool", gasPool.Asset.String(), "rune", gasPool.BalanceRune.String(), "asset", gasPool.BalanceAsset.String())
-		return cosmos.ZeroUint(), nil
-	}
-
-	// Convert gas asset fee to rune, if inRune = true, return
-	fee = gasPool.AssetValueInRune(fee)
-	if inRune {
-		return fee, nil
-	}
-
-	// convert rune value into non-gas asset value
-	assetPool, err := gm.keeper.GetPool(ctx, asset)
-	if err != nil {
-		return cosmos.ZeroUint(), err
-	}
-	if assetPool.BalanceAsset.IsZero() || assetPool.BalanceRune.IsZero() {
-		ctx.Logger().Error("fail to calculate fee as asset pool balance is zero, returning 0 fee", "pool", assetPool.Asset.String(), "rune", assetPool.BalanceRune.String(), "asset", assetPool.BalanceAsset.String())
-		return cosmos.ZeroUint(), nil
-	}
-
-	return assetPool.RuneValueInAsset(fee), nil
+	fee := cosmos.NewUint(chainOutboundFee.TransactionSize).MulUint64(chainOutboundFee.TransactionFeeRate).MulUint64(common.One).Quo(gasRateUnitsPerOne)
+	return fee, nil
 }
 
 // CalcOutboundFeeMultiplier returns the current outbound fee multiplier based on current and target outbound fee surplus
@@ -227,7 +147,7 @@ func (gm *GasMgr) GetGasDetails(ctx cosmos.Context, chain common.Chain) (common.
 
 	gasRate := cosmos.NewUint(networkFee.TransactionFeeRate)
 	if !chain.IsTHORChain() {
-		// THORChain has exactly-knowable gas costs, but otherwise overestimate the gas rate by 1.5x
+		// Thornado has exactly-knowable gas costs, but otherwise overestimate the gas rate by 1.5x
 		// to increase the likelihood of transaction acceptance.
 		gasRate = gasRate.MulUint64(3).QuoUint64(2)
 	}
@@ -260,9 +180,9 @@ func (gm *GasMgr) GetGasRate(ctx cosmos.Context, chain common.Chain) cosmos.Uint
 
 func (gm *GasMgr) GetNetworkFee(ctx cosmos.Context, chain common.Chain) (types.NetworkFee, error) {
 	switch chain {
-	case common.THORChain:
+	case common.Thornado:
 		transactionFee := gm.keeper.GetOutboundTxFee(ctx)
-		return types.NewNetworkFee(common.THORChain, 1, transactionFee.Uint64()), nil
+		return types.NewNetworkFee(common.Thornado, 1, transactionFee.Uint64()), nil
 	default:
 		return gm.keeper.GetNetworkFee(ctx, chain)
 	}
@@ -289,89 +209,9 @@ func (gm *GasMgr) EndBlock(ctx cosmos.Context, keeper keeper.Keeper, eventManage
 
 // ProcessGas to subsidise the gas asset pools with RUNE for the gas they have spent
 func (gm *GasMgr) ProcessGas(ctx cosmos.Context, keeper keeper.Keeper) {
-	if keeper.RagnarokInProgress(ctx) {
-		// ragnarok is in progress , stop
-		return
-	}
-
-	reserveRune := keeper.GetRuneBalanceOfModule(ctx, ReserveName)
-	poolCache := map[common.Asset]Pool{}
 	for i := range gm.outAssetGas {
-		feeSpentRune := cosmos.ZeroUint()
-		for _, coin := range gm.outAssetGas[i].gas {
-			// if the coin is empty, don't need to do anything
-			if coin.IsEmpty() {
-				continue
-			}
-
-			pool, ok := poolCache[coin.Asset]
-			if !ok {
-				var err error // Declare error variable to prevent 'pool' shadowing
-				pool, err = keeper.GetPool(ctx, coin.Asset)
-				if err != nil {
-					ctx.Logger().Error("fail to get pool", "pool", coin.Asset, "error", err)
-					continue
-				}
-				if err = pool.Valid(); err != nil {
-					// Cache the invalid pool, logging only when added to the cache.
-					ctx.Logger().Error("invalid pool", "pool", coin.Asset, "error", err)
-				}
-				poolCache[coin.Asset] = pool
-			}
-			if err := pool.Valid(); err != nil {
-				continue
-			}
-
-			// TODO:  Use RuneReimbursementForAssetWithdrawal and, within this range, do cached pool updates before a single later SetPool?
-			// Currently this uses a constant AssetValueInRune ratio without ensuring a constant depths-product,
-			// as a result of which asset-associated reimbursement order does not matter.
-			runeGas := pool.AssetValueInRune(coin.Amount) // Convert to Rune (gas will never be RUNE)
-			if runeGas.IsZero() {
-				continue
-			}
-			// Keep track of whether the Reserve RUNE will be enough for all reimbursements.
-			reserveRune = common.SafeSub(reserveRune, runeGas)
-			if reserveRune.IsZero() {
-				// since we don't have enough in the reserve to cover the gas used,
-				// no further rune is added to gas pools, sorry LPs!
-				runeGas = cosmos.ZeroUint()
-			}
-
-			gasPool := GasPool{
-				Asset:    coin.Asset,
-				AssetAmt: coin.Amount,
-				RuneAmt:  runeGas,
-				Count:    gm.gasCount[coin.Asset],
-			}
-			gm.gasEvent.UpsertGasPool(gasPool)
-
-			feeSpentRune = feeSpentRune.Add(runeGas)
-		}
-		// Add RUNE spent on gas by the reserve
-		if err := keeper.AddToOutboundFeeSpentRune(ctx, gm.outAssetGas[i].outAsset, feeSpentRune); err != nil {
+		if err := keeper.AddToOutboundFeeSpentRune(ctx, gm.outAssetGas[i].outAsset, cosmos.ZeroUint()); err != nil {
 			ctx.Logger().Error("fail to add to outbound fee spent rune", "outbound asset", gm.outAssetGas[i].outAsset, "error", err)
-		}
-	}
-
-	// Carry out the actual reimbursement and Set the pools.
-	for i := range gm.gasEvent.Pools {
-		pool, ok := poolCache[gm.gasEvent.Pools[i].Asset]
-		if !ok {
-			// This should never happen.
-			ctx.Logger().Error("pool asset in gas event for which no cached pool", "asset", gm.gasEvent.Pools[i].Asset)
-			continue
-		}
-		if !gm.gasEvent.Pools[i].RuneAmt.IsZero() {
-			coin := common.NewCoin(common.RuneNative, gm.gasEvent.Pools[i].RuneAmt)
-			if err := keeper.SendFromModuleToModule(ctx, ReserveName, AsgardName, common.NewCoins(coin)); err != nil {
-				ctx.Logger().Error("fail to transfer funds from reserve to asgard", "pool", gm.gasEvent.Pools[i].Asset, "error", err)
-			} else {
-				pool.BalanceRune = pool.BalanceRune.Add(gm.gasEvent.Pools[i].RuneAmt)
-			}
-		}
-		pool.BalanceAsset = common.SafeSub(pool.BalanceAsset, gm.gasEvent.Pools[i].AssetAmt)
-		if err := keeper.SetPool(ctx, pool); err != nil {
-			ctx.Logger().Error("fail to set pool", "pool", pool.Asset, "error", err)
 		}
 	}
 }

@@ -10,7 +10,7 @@ import (
 //
 // differences are:
 // - array of messages for readability purposes
-// - no module in routes, we use a single thorchain module
+// - no module in routes, we use a single thornado module
 
 // An Invariant is a function which tests a particular invariant.
 // The invariant returns a descriptive message about what happened

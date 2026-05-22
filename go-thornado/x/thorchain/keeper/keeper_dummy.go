@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"cosmossdk.io/log"
-	"cosmossdk.io/math"
 	upgradetypes "cosmossdk.io/x/upgrade/types"
 
 	"github.com/blang/semver"
@@ -201,19 +200,6 @@ func (k KVStoreDummy) GetSecuredAsset(ctx cosmos.Context, asset common.Asset) (S
 func (k KVStoreDummy) SetSecuredAsset(ctx cosmos.Context, unit SecuredAsset)      {}
 func (k KVStoreDummy) GetSecuredAssetIterator(ctx cosmos.Context) cosmos.Iterator { return nil }
 
-func (k KVStoreDummy) GetRUNEPool(ctx cosmos.Context) (RUNEPool, error) {
-	return RUNEPool{}, kaboom
-}
-
-func (k KVStoreDummy) SetRUNEPool(ctx cosmos.Context, rp RUNEPool) {}
-
-func (k KVStoreDummy) GetRUNEProvider(ctx cosmos.Context, addr cosmos.AccAddress) (RUNEProvider, error) {
-	return RUNEProvider{}, kaboom
-}
-func (k KVStoreDummy) SetRUNEProvider(ctx cosmos.Context, rp RUNEProvider)        {}
-func (k KVStoreDummy) GetRUNEProviderIterator(ctx cosmos.Context) cosmos.Iterator { return nil }
-func (k KVStoreDummy) RemoveRUNEProvider(ctx cosmos.Context, rp RUNEProvider)     {}
-
 func (k KVStoreDummy) GetRagnarokBlockHeight(_ cosmos.Context) (int64, error) {
 	return 0, kaboom
 }
@@ -247,28 +233,6 @@ func (k KVStoreDummy) GetPoolBalances(_ cosmos.Context, _, _ common.Asset) (cosm
 	return cosmos.ZeroUint(), cosmos.ZeroUint()
 }
 
-func (k KVStoreDummy) GetPoolIterator(_ cosmos.Context) cosmos.Iterator {
-	return NewDummyIterator()
-}
-func (k KVStoreDummy) SetPoolData(_ cosmos.Context, _ common.Asset, _ PoolStatus) {}
-func (k KVStoreDummy) GetPoolDataIterator(_ cosmos.Context) cosmos.Iterator {
-	return NewDummyIterator()
-}
-func (k KVStoreDummy) EnableAPool(_ cosmos.Context) {}
-
-func (k KVStoreDummy) GetPool(_ cosmos.Context, _ common.Asset) (Pool, error) {
-	return Pool{}, kaboom
-}
-func (k KVStoreDummy) GetPools(_ cosmos.Context) (Pools, error)        { return nil, kaboom }
-func (k KVStoreDummy) SetPool(_ cosmos.Context, _ Pool) error          { return kaboom }
-func (k KVStoreDummy) PoolExist(_ cosmos.Context, _ common.Asset) bool { return false }
-func (k KVStoreDummy) RemovePool(_ cosmos.Context, _ common.Asset)     {}
-
-func (k KVStoreDummy) SetPoolLUVI(ctx cosmos.Context, asset common.Asset, luvi cosmos.Uint) {}
-func (k KVStoreDummy) GetPoolLUVI(ctx cosmos.Context, asset common.Asset) (cosmos.Uint, error) {
-	return cosmos.ZeroUint(), kaboom
-}
-
 func (k KVStoreDummy) GetStreamingSwapIterator(ctx cosmos.Context) cosmos.Iterator { return nil }
 func (k KVStoreDummy) SetStreamingSwap(ctx cosmos.Context, _ StreamingSwap)        {}
 func (k KVStoreDummy) GetStreamingSwap(ctx cosmos.Context, _ common.TxID) (StreamingSwap, error) {
@@ -276,19 +240,6 @@ func (k KVStoreDummy) GetStreamingSwap(ctx cosmos.Context, _ common.TxID) (Strea
 }
 func (k KVStoreDummy) StreamingSwapExists(ctx cosmos.Context, _ common.TxID) bool { return false }
 func (k KVStoreDummy) RemoveStreamingSwap(ctx cosmos.Context, _ common.TxID)      {}
-
-func (k KVStoreDummy) GetLiquidityProviderIterator(_ cosmos.Context, _ common.Asset) cosmos.Iterator {
-	return nil
-}
-
-func (k KVStoreDummy) GetLiquidityProvider(_ cosmos.Context, _ common.Asset, _ common.Address) (LiquidityProvider, error) {
-	return LiquidityProvider{}, kaboom
-}
-func (k KVStoreDummy) SetLiquidityProvider(_ cosmos.Context, _ LiquidityProvider)    {}
-func (k KVStoreDummy) RemoveLiquidityProvider(_ cosmos.Context, _ LiquidityProvider) {}
-func (k KVStoreDummy) GetTotalSupply(ctx cosmos.Context, asset common.Asset) cosmos.Uint {
-	return cosmos.ZeroUint()
-}
 
 func (k KVStoreDummy) TotalActiveValidators(_ cosmos.Context) (int, error) { return 0, kaboom }
 func (k KVStoreDummy) ListValidatorsWithBond(_ cosmos.Context) (NodeAccounts, error) {
@@ -403,6 +354,49 @@ func (k KVStoreDummy) SetTxOut(_ cosmos.Context, _ *TxOut) error                
 func (k KVStoreDummy) AppendTxOut(_ cosmos.Context, _ int64, _ TxOutItem) error { return kaboom }
 func (k KVStoreDummy) ClearTxOut(_ cosmos.Context, _ int64) error               { return kaboom }
 func (k KVStoreDummy) GetTxOutIterator(_ cosmos.Context) cosmos.Iterator        { return nil }
+func (k KVStoreDummy) GetNextShielderNodeBondSlot(_ cosmos.Context) (uint64, error) {
+	return 0, kaboom
+}
+func (k KVStoreDummy) SetNextShielderNodeBondSlot(_ cosmos.Context, _ uint64) error {
+	return kaboom
+}
+func (k KVStoreDummy) AllocateShielderNodeBondSlot(_ cosmos.Context) (uint64, error) {
+	return 0, kaboom
+}
+func (k KVStoreDummy) SetShielderValidatorBond(_ cosmos.Context, _ types.ShielderValidatorBond) error {
+	return kaboom
+}
+func (k KVStoreDummy) GetShielderValidatorBond(_ cosmos.Context, _ string) (types.ShielderValidatorBond, error) {
+	return types.ShielderValidatorBond{}, kaboom
+}
+func (k KVStoreDummy) SetShielderFeePool(_ cosmos.Context, _ types.ShielderFeePool) error {
+	return kaboom
+}
+func (k KVStoreDummy) GetShielderFeePool(_ cosmos.Context) (types.ShielderFeePool, error) {
+	return types.ShielderFeePool{}, kaboom
+}
+func (k KVStoreDummy) SetShielderFeeNotePubKey(_ cosmos.Context, _ common.PubKey, _ common.TxID) error {
+	return kaboom
+}
+func (k KVStoreDummy) ShielderFeeNotePubKeyUsed(_ cosmos.Context, _ common.PubKey) bool {
+	return false
+}
+
+func (k KVStoreDummy) SetNodeSlotAuction(_ cosmos.Context, _ types.NodeSlotAuction) error {
+	return nil
+}
+
+func (k KVStoreDummy) GetNodeSlotAuction(_ cosmos.Context, _ string) (types.NodeSlotAuction, error) {
+	return types.NodeSlotAuction{}, kaboom
+}
+
+func (k KVStoreDummy) SetNodeSlotBid(_ cosmos.Context, _ types.NodeSlotBid) error {
+	return nil
+}
+
+func (k KVStoreDummy) GetNodeSlotBid(_ cosmos.Context, _ string) (types.NodeSlotBid, error) {
+	return types.NodeSlotBid{}, kaboom
+}
 func (k KVStoreDummy) AddToLiquidityFees(_ cosmos.Context, _ common.Asset, _ cosmos.Uint) error {
 	return kaboom
 }
@@ -624,60 +618,6 @@ func (k KVStoreDummy) AddToLimitSwapTTL(ctx cosmos.Context, blockHeight int64, t
 	return kaboom
 }
 
-func (k KVStoreDummy) GetTCYClaimer(ctx cosmos.Context, l1Address common.Address, asset common.Asset) (TCYClaimer, error) {
-	return TCYClaimer{}, nil
-}
-
-func (k KVStoreDummy) SetTCYClaimer(ctx cosmos.Context, record TCYClaimer) error {
-	return nil
-}
-
-func (k KVStoreDummy) GetTCYClaimerIteratorFromL1Address(ctx cosmos.Context, l1Address common.Address) cosmos.Iterator {
-	return nil
-}
-
-func (k KVStoreDummy) GetTCYClaimerIterator(ctx cosmos.Context) cosmos.Iterator {
-	return nil
-}
-
-func (k KVStoreDummy) DeleteTCYClaimer(ctx cosmos.Context, l1Address common.Address, asset common.Asset) {
-}
-
-func (k KVStoreDummy) ListTCYClaimersFromL1Address(ctx cosmos.Context, l1Address common.Address) ([]TCYClaimer, error) {
-	return nil, nil
-}
-
-func (k KVStoreDummy) GetTCYStaker(ctx cosmos.Context, address common.Address) (TCYStaker, error) {
-	return TCYStaker{}, nil
-}
-
-func (k KVStoreDummy) SetTCYStaker(ctx cosmos.Context, record TCYStaker) error {
-	return nil
-}
-
-func (k KVStoreDummy) TCYClaimerExists(ctx cosmos.Context, l1Address common.Address, asset common.Asset) bool {
-	return false
-}
-
-func (k KVStoreDummy) UpdateTCYClaimer(ctx cosmos.Context, l1Address common.Address, asset common.Asset, amount math.Uint) error {
-	return nil
-}
-
-func (k KVStoreDummy) DeleteTCYStaker(ctx cosmos.Context, address common.Address) {
-}
-
-func (k KVStoreDummy) ListTCYStakers(ctx cosmos.Context) ([]TCYStaker, error) {
-	return nil, nil
-}
-
-func (k KVStoreDummy) TCYStakerExists(ctx cosmos.Context, address common.Address) bool {
-	return false
-}
-
-func (k KVStoreDummy) UpdateTCYStaker(ctx cosmos.Context, address common.Address, amount math.Uint) error {
-	return nil
-}
-
 func (k KVStoreDummy) GetMimir(_ cosmos.Context, key string) (int64, error) { return 0, kaboom }
 func (k KVStoreDummy) GetMimirWithRef(_ cosmos.Context, template string, key ...any) (int64, error) {
 	return 0, kaboom
@@ -773,14 +713,6 @@ func (k KVStoreDummy) GetSolvencyVoter(_ cosmos.Context, _ common.TxID, _ common
 	return SolvencyVoter{}, kaboom
 }
 
-func (k KVStoreDummy) THORNameExists(ctx cosmos.Context, _ string) bool { return false }
-func (k KVStoreDummy) GetTHORName(ctx cosmos.Context, _ string) (THORName, error) {
-	return THORName{}, kaboom
-}
-func (k KVStoreDummy) SetTHORName(ctx cosmos.Context, name THORName)          {}
-func (k KVStoreDummy) GetTHORNameIterator(ctx cosmos.Context) cosmos.Iterator { return nil }
-func (k KVStoreDummy) DeleteTHORName(ctx cosmos.Context, _ string) error      { return kaboom }
-
 func (k KVStoreDummy) SetAffiliateCollector(_ cosmos.Context, _ AffiliateFeeCollector) {}
 func (k KVStoreDummy) GetAffiliateCollector(_ cosmos.Context, _ cosmos.AccAddress) (AffiliateFeeCollector, error) {
 	return AffiliateFeeCollector{}, kaboom
@@ -860,16 +792,8 @@ func (k KVStoreDummy) GetOutboundTxFee(ctx cosmos.Context) cosmos.Uint {
 	return cosmos.ZeroUint()
 }
 
-func (k KVStoreDummy) GetTHORNameRegisterFee(ctx cosmos.Context) cosmos.Uint {
-	return cosmos.ZeroUint()
-}
-
-func (k KVStoreDummy) GetTHORNamePerBlockFee(ctx cosmos.Context) cosmos.Uint {
-	return cosmos.ZeroUint()
-}
-
 func (k KVStoreDummy) DeductNativeTxFeeFromAccount(ctx cosmos.Context, acctAddr cosmos.AccAddress) error {
-	return kaboom
+	return nil
 }
 
 func (k KVStoreDummy) ReferenceMemoExists(ctx cosmos.Context, _ common.Asset, _ string) bool {

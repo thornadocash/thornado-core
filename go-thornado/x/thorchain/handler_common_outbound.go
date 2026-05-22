@@ -74,13 +74,13 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 	}
 	h.mgr.Keeper().SetObservedTxInVoter(ctx, voter)
 
-	if tx.Tx.Chain.Equals(common.THORChain) {
+	if tx.Tx.Chain.Equals(common.Thornado) {
 		return &cosmos.Result{}, nil
 	}
 
 	shouldSlash := true
 	signingTransPeriod := h.mgr.GetConstants().GetInt64Value(constants.SigningTransactionPeriod)
-	// every Signing Transaction Period , THORNode will check whether a
+	// every Signing Transaction Period , Thornado will check whether a
 	// TxOutItem had been sent by signer or not
 	// if a txout item that is older than SigningTransactionPeriod, but has not
 	// been sent out by signer , LackSigning will create a new TxOutItem
@@ -106,11 +106,6 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 		}
 	}
 
-	// Pool cache to reduce repeated store reads during the nested loop.
-	// The loop may check multiple TxOutItems with the same asset, so caching
-	// prevents redundant GetPool calls.
-	poolCache := make(map[common.Asset]Pool)
-
 	for height := latestHeight; height >= earliestHeight; height-- {
 		// update txOut record with our TxID that sent funds out of the pool
 		var txOut *TxOut
@@ -124,10 +119,10 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 		// not empty
 		for i, txOutItem := range txOut.TxArray {
 			// withdraw , refund etc, one inbound tx might result two outbound
-			// txes, THORNode have to correlate outbound tx back to the
-			// inbound, and also txitem , thus THORNode could record both
+			// txes, Thornado have to correlate outbound tx back to the
+			// inbound, and also txitem , thus Thornado could record both
 			// outbound tx hash correctly given every tx item will only have
-			// one coin in it , THORNode could use that to identify which tx it
+			// one coin in it , Thornado could use that to identify which tx it
 			// is
 
 			// Use deterministic case-insensitive comparison for aggregator fields.
@@ -145,23 +140,6 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 					tx.ObservedPubKey.Equals(txOutItem.VaultPubKeyEddsa)) {
 
 				matchCoin := tx.Tx.Coins.EqualsEx(common.Coins{txOutItem.Coin})
-				if !matchCoin {
-					// In case the mismatch is caused by decimals, round the tx out item's amount and compare it again.
-					// Use pool cache to avoid repeated store reads for the same asset.
-					p, ok := poolCache[txOutItem.Coin.Asset]
-					if !ok {
-						p, err = h.mgr.Keeper().GetPool(ctx, txOutItem.Coin.Asset)
-						if err != nil {
-							ctx.Logger().Error("fail to get pool", "error", err)
-						}
-						poolCache[txOutItem.Coin.Asset] = p
-					}
-					if !p.IsEmpty() {
-						matchCoin = tx.Tx.Coins.EqualsEx(common.Coins{
-							common.NewCoin(txOutItem.Coin.Asset, cosmos.RoundToDecimal(txOutItem.Coin.Amount, p.Decimals)),
-						})
-					}
-				}
 				// when outbound is gas asset
 				if !matchCoin && txOutItem.Coin.Asset.Equals(txOutItem.Chain.GetGasAsset()) {
 					asset := txOutItem.Chain.GetGasAsset()
@@ -183,7 +161,7 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 								}, false)
 							}
 						} else if maxGasAmt.LT(realGasAmt) {
-							// signer spend more than the maximum gas prescribed by THORChain , slash it
+							// signer spend more than the maximum gas prescribed by Thornado , slash it
 							ctx.Logger().Info("slash node", "max gas", maxGasAmt, "real gas spend", realGasAmt, "gap", common.SafeSub(realGasAmt, maxGasAmt).String())
 							matchCoin = false
 						}

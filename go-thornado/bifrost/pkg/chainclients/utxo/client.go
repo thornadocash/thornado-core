@@ -76,7 +76,7 @@ type Client struct {
 	stopchan              chan struct{}
 	currentBlockHeight    stdatomic.Int64
 
-	// ---------- thornode state ----------
+	// ---------- thornado state ----------
 	bridge      thorclient.ThorchainBridge
 	asgardCache stdatomic.Pointer[utxo.AsgardCache]
 
@@ -134,7 +134,7 @@ func NewClient(
 	}
 	thorPrivateKey, err := thorKeys.GetPrivateKey()
 	if err != nil {
-		return nil, fmt.Errorf("fail to get THORChain private key: %w", err)
+		return nil, fmt.Errorf("fail to get Thornado private key: %w", err)
 	}
 	nodePrivKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), thorPrivateKey.Bytes())
 	nodePubKey, err := bech32AccountPubKey(nodePrivKey)
@@ -282,7 +282,7 @@ func (c *Client) Start(
 	c.blockScanner.Start(globalTxsQueue, globalNetworkFeeQueue)
 	c.wg.Add(1)
 	go runners.SolvencyCheckRunner(
-		c.GetChain(), c, c.bridge, c.stopchan, c.wg, constants.ThorchainBlockTime,
+		c.GetChain(), c, c.bridge, c.stopchan, c.wg, constants.ThornadoBlockTime,
 	)
 }
 
@@ -779,11 +779,11 @@ func (c *Client) ReportSolvency(height int64) error {
 			Bool("solvent", solvent).
 			Msg("reporting solvency")
 
-		// send solvency to thorchain via global queue consumed by the observer
+		// send solvency to thornado via global queue consumed by the observer
 		select {
 		case c.globalSolvencyQueue <- msgs[i]:
-		case <-time.After(constants.ThorchainBlockTime):
-			c.log.Warn().Msgf("timeout sending solvency to thorchain")
+		case <-time.After(constants.ThornadoBlockTime):
+			c.log.Warn().Msgf("timeout sending solvency to thornado")
 		}
 	}
 

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -21,13 +22,20 @@ func GetCmdShielder() *cobra.Command {
 	}
 
 	cmd.AddCommand(GetCmdShielderRegisterPow())
+	cmd.AddCommand(GetCmdShielderSettleDeposit())
 	cmd.AddCommand(GetCmdShielderPostCommitments())
 	cmd.AddCommand(GetCmdShielderWithdraw())
+	cmd.AddCommand(GetCmdShielderSettleFees())
+	cmd.AddCommand(GetCmdShielderSplitFees())
+	cmd.AddCommand(GetCmdNodeSlotAuctionCreate())
+	cmd.AddCommand(GetCmdNodeSlotAuctionBidPow())
+	cmd.AddCommand(GetCmdNodeSlotAuctionSelectBid())
+	cmd.AddCommand(GetCmdNodeSlotAuctionSplit())
 	return cmd
 }
 
 func GetCmdShielderRegisterPow() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "register-pow [pow-token]",
 		Short: "register POW token and request a Bitcoin deposit address",
 		Args:  cobra.ExactArgs(1),
@@ -37,13 +45,24 @@ func GetCmdShielderRegisterPow() *cobra.Command {
 				return err
 			}
 
-			msg := types.NewMsgShielderRegisterPow(args[0], clientCtx.GetFromAddress())
+			operatorPubKey, err := cmd.Flags().GetString("operator-pubkey")
+			if err != nil {
+				return err
+			}
+			validatorPubKey, err := cmd.Flags().GetString("validator-pubkey")
+			if err != nil {
+				return err
+			}
+			msg := types.NewMsgShielderRegisterPow(args[0], clientCtx.GetFromAddress(), operatorPubKey, validatorPubKey)
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
+	cmd.Flags().String("operator-pubkey", "", "operator mnemonic root pubkey for validator bond deposits")
+	cmd.Flags().String("validator-pubkey", "", "validator consensus pubkey to bond for")
+	return cmd
 }
 
 func GetCmdShielderPostCommitments() *cobra.Command {
@@ -67,6 +86,29 @@ func GetCmdShielderPostCommitments() *cobra.Command {
 			}
 
 			msg := types.NewMsgShielderPostCommitments(depositID, commitments, clientCtx.GetFromAddress())
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+}
+
+func GetCmdShielderSettleDeposit() *cobra.Command {
+	return &cobra.Command{
+		Use:   "settle-deposit [deposit-id]",
+		Short: "settle a confirmed Shielder deposit before splitting notes",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			depositID, err := common.NewTxID(args[0])
+			if err != nil {
+				return fmt.Errorf("invalid deposit id: %w", err)
+			}
+			msg := types.NewMsgShielderSettleDeposit(depositID, clientCtx.GetFromAddress())
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
@@ -102,6 +144,164 @@ func GetCmdShielderWithdraw() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
+}
+
+func GetCmdShielderSplitFees() *cobra.Command {
+	return &cobra.Command{
+		Use:   "split-fees [validator-pubkey] [operator-signature-hex] [commitments-json-or-csv] [fee-note-pubkeys-json-or-csv]",
+		Short: "claim validator fee share into private Shielder notes",
+		Args:  cobra.ExactArgs(4),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			signature, err := hex.DecodeString(strings.TrimSpace(args[1]))
+			if err != nil {
+				return fmt.Errorf("invalid operator signature hex: %w", err)
+			}
+			commitments, err := parseCommitmentsArg(args[2])
+			if err != nil {
+				return err
+			}
+			feeNotePubKeys, err := parseCommitmentsArg(args[3])
+			if err != nil {
+				return err
+			}
+			msg := types.NewMsgShielderSplitFees(args[0], signature, commitments, feeNotePubKeys, clientCtx.GetFromAddress())
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+}
+
+func GetCmdShielderSettleFees() *cobra.Command {
+	return &cobra.Command{
+		Use:   "settle-fees [validator-pubkey] [operator-signature-hex]",
+		Short: "settle validator fee entitlement before splitting notes",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			signature, err := hex.DecodeString(strings.TrimSpace(args[1]))
+			if err != nil {
+				return fmt.Errorf("invalid operator signature hex: %w", err)
+			}
+			msg := types.NewMsgShielderSettleFees(args[0], signature, clientCtx.GetFromAddress())
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+}
+
+func GetCmdNodeSlotAuctionCreate() *cobra.Command {
+	return &cobra.Command{
+		Use:   "auction-create [seller-validator-pubkey] [reserve-sats] [expiry-height]",
+		Short: "list a standby node slot for auction",
+		Args:  cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			reserve, err := parseUintArg(args[1], "reserve-sats")
+			if err != nil {
+				return err
+			}
+			expiry, err := parseIntArg(args[2], "expiry-height")
+			if err != nil {
+				return err
+			}
+			msg := types.NewMsgNodeSlotAuctionCreate(args[0], reserve, expiry, clientCtx.GetFromAddress())
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+}
+
+func GetCmdNodeSlotAuctionBidPow() *cobra.Command {
+	return &cobra.Command{
+		Use:   "auction-bid-pow [auction-id] [pow-token] [operator-pubkey] [validator-pubkey]",
+		Short: "request a Bitcoin deposit address for a node slot auction bid",
+		Args:  cobra.ExactArgs(4),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			msg := types.NewMsgNodeSlotAuctionBidPow(args[0], args[1], args[2], args[3], clientCtx.GetFromAddress())
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+}
+
+func GetCmdNodeSlotAuctionSelectBid() *cobra.Command {
+	return &cobra.Command{
+		Use:   "auction-select-bid [auction-id] [bid-id]",
+		Short: "select a winning bid for a node slot auction",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			msg := types.NewMsgNodeSlotAuctionSelectBid(args[0], args[1], clientCtx.GetFromAddress())
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+}
+
+func GetCmdNodeSlotAuctionSplit() *cobra.Command {
+	return &cobra.Command{
+		Use:   "auction-split [auction-id] [bid-id] [seller-commitments-json-or-csv]",
+		Short: "split a winning node slot bid into seller notes and unwithdrawable bond commitments",
+		Args:  cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			commitments, err := parseCommitmentsArg(args[2])
+			if err != nil {
+				return err
+			}
+			msg := types.NewMsgNodeSlotAuctionSplit(args[0], args[1], commitments, clientCtx.GetFromAddress())
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+}
+
+func parseUintArg(raw, name string) (uint64, error) {
+	var v uint64
+	if _, err := fmt.Sscanf(strings.TrimSpace(raw), "%d", &v); err != nil {
+		return 0, fmt.Errorf("invalid %s: %w", name, err)
+	}
+	return v, nil
+}
+
+func parseIntArg(raw, name string) (int64, error) {
+	var v int64
+	if _, err := fmt.Sscanf(strings.TrimSpace(raw), "%d", &v); err != nil {
+		return 0, fmt.Errorf("invalid %s: %w", name, err)
+	}
+	return v, nil
 }
 
 func parseCommitmentsArg(raw string) ([]string, error) {

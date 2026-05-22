@@ -359,7 +359,7 @@ func (s *SlasherImpl) LackSigning(ctx cosmos.Context, mgr Manager) error {
 						// If the currently-assigned vault is an ActiveVault and the only one with enough funds for the outbound,
 						// the item should be reassigned to the same vault rather than assigned to another vault without enough funds;
 						// this is especially important for GAIA outbounds, for which insufficient-funds failures
-						// have THORChain-unobserved gas costs (causing churn-migration-jamming vault insolvency).
+						// have Thornado-unobserved gas costs (causing churn-migration-jamming vault insolvency).
 						// As such, re-add the (now free) funds of the outbound being replaced.
 						if active[i].PubKey.Equals(toi.VaultPubKey) {
 							active[i].Coins = active[i].Coins.Add(toi.Coin)
@@ -462,12 +462,6 @@ func (s *SlasherImpl) LackSigning(ctx cosmos.Context, mgr Manager) error {
 				}
 			}
 
-			// if a pool with the asset name doesn't exist, skip rescheduling
-			if !toi.Coin.IsRune() && !s.keeper.PoolExist(ctx, toi.Coin.Asset) {
-				ctx.Logger().Error("fail to add outbound to queue", "error", "coin is not rune and does not have an associated pool")
-				continue
-			}
-
 			// Apply memoless outbound logic before rescheduling
 			applyMemolessOutboundLogic(mgr.GetVersion(), &toi, enableMemolessOutbound)
 
@@ -524,17 +518,6 @@ func (s *SlasherImpl) SlashVault(ctx cosmos.Context, vaultPK common.PubKey, coin
 		if coin.IsEmpty() {
 			continue
 		}
-		pool, err := s.keeper.GetPool(ctx, coin.Asset)
-		if err != nil {
-			ctx.Logger().Error("fail to get pool for slash", "asset", coin.Asset, "error", err)
-			continue
-		}
-		// THORChain doesn't even have a pool for the asset
-		if pool.IsEmpty() {
-			ctx.Logger().Error("cannot slash for an empty pool", "asset", coin.Asset)
-			continue
-		}
-
 		// Recalculate totalBond for each coin to reflect bond reductions from prior iterations
 		totalBond := cosmos.ZeroUint()
 		for _, member := range membership {
@@ -551,12 +534,8 @@ func (s *SlasherImpl) SlashVault(ctx cosmos.Context, vaultPK common.PubKey, coin
 		if stolenAssetValue.GT(vaultAmount) {
 			stolenAssetValue = vaultAmount
 		}
-		if stolenAssetValue.GT(pool.BalanceAsset) {
-			stolenAssetValue = pool.BalanceAsset
-		}
 
-		// stolenRuneValue is the value in RUNE of the missing funds
-		stolenRuneValue := pool.AssetValueInRune(stolenAssetValue)
+		stolenRuneValue := stolenAssetValue
 
 		if stolenRuneValue.IsZero() {
 			continue
@@ -618,8 +597,6 @@ func (s *SlasherImpl) SlashVault(ctx cosmos.Context, vaultPK common.PubKey, coin
 		if !runeToAsgard.IsZero() {
 			if err := s.keeper.SendFromModuleToModule(ctx, BondName, AsgardName, common.NewCoins(common.NewCoin(common.RuneAsset(), runeToAsgard))); err != nil {
 				ctx.Logger().Error("fail to send slash fund to asgard module", "pk", vaultPK, "error", err)
-			} else {
-				s.updatePoolFromSlash(ctx, pool, common.NewCoin(coin.Asset, stolenAssetValue), runeToAsgard, mgr)
 			}
 		}
 	}
@@ -647,7 +624,7 @@ func (s *SlasherImpl) slashAndUpdateNodeAccount(ctx cosmos.Context, na types.Nod
 	metricLabels, _ := ctx.Context().Value(constants.CtxMetricLabels).([]metrics.Label)
 	slashAmountRuneFloat, _ := new(big.Float).SetInt(slashAmountRune.BigInt()).Float32()
 	telemetry.IncrCounterWithLabels(
-		[]string{"thornode", "bond_slash"},
+		[]string{"thornado", "bond_slash"},
 		slashAmountRuneFloat,
 		append(
 			metricLabels,
@@ -685,27 +662,7 @@ func (s *SlasherImpl) DecSlashPoints(ctx cosmos.Context, point int64, addresses 
 }
 
 // updatePoolFromSlash updates a pool's depths and emits appropriate events after a slash
-func (s *SlasherImpl) updatePoolFromSlash(ctx cosmos.Context, pool types.Pool, stolenAsset common.Coin, runeCreditAmt cosmos.Uint, mgr Manager) {
-	pool.BalanceAsset = common.SafeSub(pool.BalanceAsset, stolenAsset.Amount)
-	pool.BalanceRune = pool.BalanceRune.Add(runeCreditAmt)
-	if err := s.keeper.SetPool(ctx, pool); err != nil {
-		ctx.Logger().Error("fail to save pool for slash", "asset", pool.Asset, "error", err)
-		return
-	}
-	poolSlashAmt := []PoolAmt{
-		{
-			Asset:  pool.Asset,
-			Amount: 0 - int64(stolenAsset.Amount.Uint64()),
-		},
-		{
-			Asset:  common.RuneAsset(),
-			Amount: int64(runeCreditAmt.Uint64()),
-		},
-	}
-	eventSlash := NewEventSlash(pool.Asset, poolSlashAmt)
-	if err := mgr.EventMgr().EmitEvent(ctx, eventSlash); err != nil {
-		ctx.Logger().Error("fail to emit slash event", "error", err)
-	}
+func (s *SlasherImpl) updatePoolFromSlash(ctx cosmos.Context, asset common.Asset, stolenAsset common.Coin, runeCreditAmt cosmos.Uint, mgr Manager) {
 }
 
 func (s *SlasherImpl) needsNewVault(ctx cosmos.Context, mgr Manager, vault Vault, signingTransPeriod, startHeight int64, toi TxOutItem) bool {
@@ -753,7 +710,7 @@ func (s *SlasherImpl) needsNewVault(ctx cosmos.Context, mgr Manager, vault Vault
 				if err != nil {
 					continue
 				}
-				addr, err := pk.GetAddress(common.THORChain)
+				addr, err := pk.GetAddress(common.Thornado)
 				if err != nil {
 					continue
 				}

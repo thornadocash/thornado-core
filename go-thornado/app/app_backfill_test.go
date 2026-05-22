@@ -76,14 +76,14 @@ func TestRegisterSwaggerAPIDisabled(t *testing.T) {
 	require.NoError(t, err)
 
 	// ping endpoint should still be registered
-	req := httptest.NewRequest(http.MethodGet, "/thorchain/ping", nil)
+	req := httptest.NewRequest(http.MethodGet, "/thornado/ping", nil)
 	rr := httptest.NewRecorder()
 	rtr.ServeHTTP(rr, req)
 	require.Equal(t, http.StatusOK, rr.Code)
 	require.Contains(t, rr.Body.String(), "pong")
 
 	// swagger doc routes should NOT be registered when disabled
-	for _, path := range []string{"/thorchain/doc", "/thorchain/doc/openapi.yaml", "/thorchain/doc/openapi.json"} {
+	for _, path := range []string{"/thornado/doc", "/thornado/doc/openapi.yaml", "/thornado/doc/openapi.json"} {
 		req = httptest.NewRequest(http.MethodGet, path, nil)
 		rr = httptest.NewRecorder()
 		rtr.ServeHTTP(rr, req)
@@ -97,13 +97,13 @@ func TestRegisterSwaggerAPIEnabled(t *testing.T) {
 	require.NoError(t, err)
 
 	// ping endpoint
-	req := httptest.NewRequest(http.MethodGet, "/thorchain/ping", nil)
+	req := httptest.NewRequest(http.MethodGet, "/thornado/ping", nil)
 	rr := httptest.NewRecorder()
 	rtr.ServeHTTP(rr, req)
 	require.Equal(t, http.StatusOK, rr.Code)
 
 	// swagger doc routes should be registered when enabled
-	for _, path := range []string{"/thorchain/doc", "/thorchain/doc/openapi.yaml", "/thorchain/doc/openapi.json"} {
+	for _, path := range []string{"/thornado/doc", "/thornado/doc/openapi.yaml", "/thornado/doc/openapi.json"} {
 		req = httptest.NewRequest(http.MethodGet, path, nil)
 		rr = httptest.NewRecorder()
 		rtr.ServeHTTP(rr, req)

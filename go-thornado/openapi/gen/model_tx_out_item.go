@@ -34,7 +34,7 @@ type TxOutItem struct {
 	AggregatorTargetAsset *string `json:"aggregator_target_asset,omitempty"`
 	// the minimum number of tokens the swapper wants to receive of the output asset
 	AggregatorTargetLimit *string `json:"aggregator_target_limit,omitempty"`
-	// clout spent in RUNE for the outbound
+	// clout spent for the outbound
 	CloutSpent *string `json:"clout_spent,omitempty"`
 }
 
@@ -627,5 +627,4 @@ func (v *NullableTxOutItem) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
 

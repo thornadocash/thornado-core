@@ -48,16 +48,13 @@ func (h BondHandler) validate(ctx cosmos.Context, msg MsgBond) error {
 	if err := msg.ValidateBasic(); err != nil {
 		return err
 	}
-	// When RUNE is on thorchain , pay bond doesn't need to be active node
-	// in fact , usually the node will not be active at the time it bond
-
 	nodeAccount, err := h.mgr.Keeper().GetNodeAccount(ctx, msg.NodeAddress)
 	if err != nil {
 		return ErrInternal(err, fmt.Sprintf("fail to get node account(%s)", msg.NodeAddress))
 	}
 
-	if nodeAccount.Status == NodeReady {
-		return ErrInternal(nil, "cannot add bond while node is ready status")
+	if nodeAccount.Status == NodeSelected {
+		return ErrInternal(nil, "cannot add bond while node is selected")
 	}
 
 	bondPause := h.mgr.Keeper().GetConfigInt64(ctx, constants.PauseBond)
@@ -77,15 +74,15 @@ func (h BondHandler) validate(ctx cosmos.Context, msg MsgBond) error {
 		}
 	}
 
-	if !msg.BondAddress.IsChain(common.THORChain) {
-		return cosmos.ErrUnknownRequest(fmt.Sprintf("bonding address is NOT a THORChain address: %s", msg.BondAddress.String()))
+	if !msg.BondAddress.IsChain(common.Thornado) {
+		return cosmos.ErrUnknownRequest(fmt.Sprintf("bonding address is NOT a Thornado address: %s", msg.BondAddress.String()))
 	}
 
-	// Validate bond provider address is a THORChain address if provided
+	// Validate bond provider address is a Thornado address if provided
 	if !msg.BondProviderAddress.Empty() {
 		bondProviderAddr := common.Address(msg.BondProviderAddress.String())
-		if !bondProviderAddr.IsChain(common.THORChain) {
-			return cosmos.ErrUnknownRequest(fmt.Sprintf("bond provider address is NOT a THORChain address: %s", msg.BondProviderAddress.String()))
+		if !bondProviderAddr.IsChain(common.Thornado) {
+			return cosmos.ErrUnknownRequest(fmt.Sprintf("bond provider address is NOT a Thornado address: %s", msg.BondProviderAddress.String()))
 		}
 	}
 
@@ -137,7 +134,7 @@ func (h BondHandler) handle(ctx cosmos.Context, msg MsgBond) (err error) {
 	}
 
 	if nodeAccount.Status == NodeUnknown {
-		// THORNode will not have pub keys at the moment, so have to leave it empty
+		// Thornado will not have pub keys at the moment, so have to leave it empty
 		emptyPubKeySet := common.PubKeySet{
 			Secp256k1: common.EmptyPubKey,
 			Ed25519:   common.EmptyPubKey,
@@ -163,23 +160,6 @@ func (h BondHandler) handle(ctx cosmos.Context, msg MsgBond) (err error) {
 	bp.Adjust(nodeAccount.Bond)
 
 	nodeAccount.Bond = nodeAccount.Bond.Add(msg.Bond)
-
-	acct := h.mgr.Keeper().GetAccount(ctx, msg.NodeAddress)
-
-	// when node bond for the first time , send 1 RUNE to node address
-	// so as the node address will be created on THORChain otherwise node account won't be able to send tx
-	if acct == nil && nodeAccount.Bond.GTE(cosmos.NewUint(common.One)) {
-		coin := common.NewCoin(common.RuneNative, cosmos.NewUint(common.One))
-		if err = h.mgr.Keeper().SendFromModuleToAccount(ctx, BondName, msg.NodeAddress, common.NewCoins(coin)); err != nil {
-			return ErrInternal(err, "fail to send one RUNE to node address")
-		}
-		nodeAccount.Bond = common.SafeSub(nodeAccount.Bond, cosmos.NewUint(common.One))
-		msg.Bond = common.SafeSub(msg.Bond, cosmos.NewUint(common.One))
-		bondEvent := NewEventBond(cosmos.NewUint(common.One), BondCost, common.Tx{ID: msg.TxIn.ID}, &nodeAccount, nil)
-		if err = h.mgr.EventMgr().EmitEvent(ctx, bondEvent); err != nil {
-			ctx.Logger().Error("fail to emit bond event", "error", err)
-		}
-	}
 
 	// if bonder is node operator, add additional bonding address
 	if msg.BondAddress.Equals(nodeAccount.BondAddress) && !msg.BondProviderAddress.Empty() {

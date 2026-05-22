@@ -19,7 +19,7 @@ type AppKeepers struct {
 	// trunk-ignore(golangci-lint/staticcheck): deprecated TODO: SDK 0.53 cleanup
 	ParamsKeeper          *paramskeeper.Keeper
 	ConsensusParamsKeeper *consensusparamkeeper.Keeper
-	ThorchainKeeper       thorchainKeeper.Keeper
+	ThornadoKeeper        thorchainKeeper.Keeper
 	Codec                 codec.Codec
 	GetStoreKey           func(storeKey string) *storetypes.KVStoreKey
 }

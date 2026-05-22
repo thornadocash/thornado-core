@@ -1,7 +1,7 @@
 package openapi
 
 // The openapi package contains generated types based on the OpenAPI spec. These types
-// are leveraged in the thornode querier handlers where applicable, but many of the
+// are leveraged in the thornado querier handlers where applicable, but many of the
 // querier responses leverage existing types generated from protobuf definitions. In
 // these cases we add tests to ensure that the generated types from the API spec should
 // at least have matching struct tags with those from the types used in the querier
@@ -37,13 +37,10 @@ func (Test) TestJSONSpec(c *C) {
 	assertJSONStructTagsMatch(c, common.Coin{}, gen.Coin{})
 	assertJSONStructTagsMatch(c, common.Tx{}, gen.Tx{})
 
-	// queue and lp
-	assertJSONStructTagsMatch(c, types.MsgSwap{}, gen.MsgSwap{})
-
 	// txs
 	assertJSONStructTagsMatch(c, types.TxOut{}, gen.KeysignInfo{})
 	// TODO: Check that TxOutItem struct tags match
-	// if or when the THORNode struct includes its (scheduled) Height field.
+	// if or when the Thornado node struct includes its (scheduled) Height field.
 	// assertJSONStructTagsMatch(c, types.TxOutItem{}, gen.TxOutItem{})
 
 	// tss

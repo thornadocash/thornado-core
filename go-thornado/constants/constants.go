@@ -38,7 +38,7 @@ const StreamingSwapMinBPFeeMulti = int64(100)
 // "width" of a volume bucket (15min)
 const VolumeBucketSeconds = int64(900)
 
-// used to preserve precision when determining the dollar price of rune.
+// used to preserve precision when determining dollar-denominated config values.
 const DollarMulti = 1e9
 
 // Per-chain maximum gas for a single transaction on EVM chains.

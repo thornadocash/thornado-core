@@ -11,10 +11,10 @@ import (
 // ConstantsProvider which will query thorchain to get the constants value per request
 // it will also cache the constant values internally
 type ConstantsProvider struct {
-	requestHeight int64 // the block height last request to thorchain to retrieve constant values
+	requestHeight int64 // the block height last request to thornado to retrieve constant values
 	bridge        thorclient.ThorchainBridge
 	constantsLock *sync.Mutex
-	constants     map[string]int64 // the constant values get from thorchain and cached in memory
+	constants     map[string]int64 // the constant values get from thornado and cached in memory
 }
 
 // NewConstantsProvider create a new instance of ConstantsProvider
@@ -30,7 +30,7 @@ func NewConstantsProvider(bridge thorclient.ThorchainBridge) *ConstantsProvider 
 // GetInt64Value get the constant value that match the given key
 func (cp *ConstantsProvider) GetInt64Value(thorchainBlockHeight int64, key constants.ConstantName) (int64, error) {
 	if err := cp.EnsureConstants(thorchainBlockHeight); err != nil {
-		return 0, fmt.Errorf("fail to get constants from thorchain: %w", err)
+		return 0, fmt.Errorf("fail to get constants from thornado: %w", err)
 	}
 	cp.constantsLock.Lock()
 	defer cp.constantsLock.Unlock()

@@ -66,71 +66,9 @@ func (m Migrator) Migrate2to3(ctx sdk.Context) error {
 
 // Migrate3to4 migrates from version 4 to 5.
 func (m Migrator) Migrate4to5(ctx sdk.Context) error {
-	// Loads the manager for this migration (we are in the x/upgrade's preblock)
-	// Note, we do not require the manager loaded for this migration, but it is okay
-	// to load it earlier and this is the pattern for migrations to follow.
-	if err := m.mgr.LoadManagerIfNecessary(ctx); err != nil {
-		return err
-	}
-
-	// ------------------------------ TCY ------------------------------
-
-	totalTCYCoin := common.NewCoin(common.TCY, cosmos.NewUint(210_000_000_00000000))
-	err := m.mgr.Keeper().MintToModule(ctx, ModuleName, totalTCYCoin)
-	if err != nil {
-		return err
-	}
-
-	// Claims 206_606_541_28874864
-	claimingModuleCoin := common.NewCoin(common.TCY, cosmos.NewUint(206_606_541_28874864))
-	err = m.mgr.Keeper().SendFromModuleToModule(ctx, ModuleName, TCYClaimingName, common.NewCoins(claimingModuleCoin))
-	if err != nil {
-		return err
-	}
-
-	// 210M minus claims: 206_606_541_28874864
-	treasuryCoin := common.NewCoin(common.TCY, totalTCYCoin.Amount.Sub(claimingModuleCoin.Amount))
-	treasuryAddress, err := common.NewAddress("thor10qh5272ktq4wes8ex343ky9rsuehcypddjh08k")
-	if err != nil {
-		return err
-	}
-
-	treasuryAccAddress, err := treasuryAddress.AccAddress()
-	if err != nil {
-		return err
-	}
-
-	err = m.mgr.Keeper().SendFromModuleToAccount(ctx, ModuleName, treasuryAccAddress, common.NewCoins(treasuryCoin))
-	if err != nil {
-		return err
-	}
-
-	err = setTCYClaims(ctx, m.mgr)
-	if err != nil {
-		return err
-	}
-
-	// ------------------------------ Bond Slash Refund ------------------------------
-
-	for _, slashRefund := range mainnetSlashRefunds4to5 {
-		recipient, err := cosmos.AccAddressFromBech32(slashRefund.address)
-		if err != nil {
-			ctx.Logger().Error("error parsing address in store migration", "error", err)
-			continue
-		}
-		amount := cosmos.NewUint(slashRefund.amount)
-		refundCoins := common.NewCoins(common.NewCoin(common.RuneAsset(), amount))
-		if err := m.mgr.Keeper().SendFromModuleToAccount(ctx, ReserveName, recipient, refundCoins); err != nil {
-			ctx.Logger().Error("fail to store migration transfer RUNE from Reserve to recipient", "error", err, "recipient", recipient, "amount", amount)
-		}
-	}
-
-	// ------------------------------ Mimir Cleanup ------------------------------
-
-	return m.ClearObsoleteMimirs(ctx)
+	return nil
 }
 
-// Migrate5to6 migrates from version 5 to 6.
 func (m Migrator) Migrate5to6(ctx sdk.Context) error {
 	// Loads the manager for this migration (we are in the x/upgrade's preblock)
 	// Note, we do not require the manager loaded for this migration, but it is okay
@@ -294,122 +232,9 @@ func (m Migrator) Migrate10to11(ctx sdk.Context) error {
 
 // Migrate11to12 migrates from version 11 to 12.
 func (m Migrator) Migrate11to12(ctx sdk.Context) error {
-	// loads the manager for this migration
-	if err := m.mgr.LoadManagerIfNecessary(ctx); err != nil {
-		return err
-	}
-
-	// avax.usdc asset
-	avaxUSDC, err := common.NewAsset("AVAX.USDC-0XB97EF9EF8734C71904D8002F8B6BC66DD9C48A6E")
-	if err != nil {
-		return fmt.Errorf("failed to parse AVAX.USDC asset: %w", err)
-	}
-
-	// records to be removed
-	removeLPs := []LiquidityProvider{
-		// https://gateway.liquify.com/chain/thorchain_api/cosmos/tx/v1beta1/txs/5BF8911A9DD947EC1EE7E990085ECB21DD7E395F152B5137F7CD73B76E46870A
-		{
-			RuneAddress:  "thor1pe0pspu4ep85gxr5h9l6k49g024vemtr80hg4c",
-			AssetAddress: "0x03c42ab083bd46202ee430AfC4D3dd8eD8c76c07",
-		},
-		// https://gateway.liquify.com/chain/thorchain_api/cosmos/tx/v1beta1/txs/248CE4B07E6A63E8CA3E111754849DD560FA9F4BF83BF2FD0B0B40947633B1B9
-		{
-			RuneAddress:  "",
-			AssetAddress: "0x467a0ec2d2f23f0bb165eb7e44a9b16b12f5a7b4",
-		},
-		// affiliate position for the prior add liquidity transaction
-		{
-			RuneAddress:  "thor122h9hlrugzdny9ct95z6g7afvpzu34s73uklju",
-			AssetAddress: "",
-		},
-	}
-
-	// get the pool
-	pool, err := m.mgr.Keeper().GetPool(ctx, avaxUSDC)
-	if err != nil {
-		return fmt.Errorf("failed to get AVAX.USDC pool: %w", err)
-	}
-
-	for _, lp := range removeLPs {
-		// fetch the record
-		lp, err = m.mgr.Keeper().GetLiquidityProvider(ctx, avaxUSDC, lp.GetAddress())
-		if err != nil {
-			ctx.Logger().Error("failed to get liquidity provider ",
-				"error", err,
-				"rune_address", lp.RuneAddress,
-				"asset_address", lp.AssetAddress)
-			continue
-		}
-
-		// remove the units from the pool
-		pool.LPUnits = common.SafeSub(pool.LPUnits, lp.Units)
-		ctx.Logger().Info("adjusted pool LP units",
-			"asset", avaxUSDC.String(),
-			"removed_units", lp.Units.String(),
-			"new_pool_lp_units", pool.LPUnits.String())
-
-		// remove the record
-		m.mgr.Keeper().RemoveLiquidityProvider(ctx, lp)
-		ctx.Logger().Info("removed bad liquidity provider record",
-			"asset", avaxUSDC.String(),
-			"rune_address", lp.RuneAddress,
-			"asset_address", lp.AssetAddress,
-		)
-	}
-
-	// save the updated pool
-	if err := m.mgr.Keeper().SetPool(ctx, pool); err != nil {
-		return fmt.Errorf("failed to save updated pool: %w", err)
-	}
-
-	// remove obsolete/typo mimir keys
-	obsoleteMimirs := []string{
-		"HALTRADING",
-		"ADR012",
-		"ADR020",
-		"ADR18",
-		"DEPRECATEILP",
-		"FULLIMPLOSSPROTECTIONBLOCKS",
-		"ILPCUTOFF",
-		"KILLSWITCHSTART",
-		"PROPOSAL6",
-		"VOTEDOFM",
-		"VOTELENDING",
-		"VOTEMAXSYNTHSFORSAVERSYIELD",
-		"ENABLEAVAXCHAIN",
-		"ENABLEBSC",
-		"ENABLESAVINGSVAULTS",
-		"ADD-CHAIN-BASE",
-		"ADD-CHAIN-XRP",
-	}
-
-	for _, key := range obsoleteMimirs {
-		if err := m.mgr.Keeper().DeleteMimir(ctx, key); err != nil {
-			ctx.Logger().Error("failed to delete obsolete mimir", "key", key, "error", err)
-			continue
-		}
-		ctx.Logger().Info("deleted obsolete mimir", "key", key)
-	}
-
-	// refund 43F310A416A4ED8CF8B645B1EBBB5E25FB89F9777A4350F7023DEB62B90EA3AD
-	refundRune := common.NewCoin(common.RuneNative, cosmos.NewUint(40000000000))
-	userAddr, err := common.NewAddress("thor1dvvr4kdeurs8fdwgrql6je7l2v9ma73dp50n7m")
-	if err != nil {
-		return err
-	}
-	userAccAddr, err := userAddr.AccAddress()
-	if err != nil {
-		return err
-	}
-	err = m.mgr.Keeper().SendFromModuleToAccount(ctx, ReserveName, userAccAddr, common.NewCoins(refundRune))
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
-// Migrate12to13 migrates from version 12 to 13.
 func (m Migrator) Migrate12to13(ctx sdk.Context) error {
 	// Loads the manager for this migration (we are in the x/upgrade's preblock)
 	// Note, we do not require the manager loaded for this migration, but it is okay

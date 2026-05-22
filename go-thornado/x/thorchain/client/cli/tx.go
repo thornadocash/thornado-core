@@ -24,7 +24,7 @@ import (
 func GetTxCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                        types.ModuleName,
-		Short:                      "THORChain transaction subcommands",
+		Short:                      "Thornado transaction subcommands",
 		SuggestionsMinimumDistance: 2,
 		RunE:                       client.ValidateCmd,
 	}
@@ -388,7 +388,7 @@ func GetCmdObserveTxIns() *cobra.Command {
 	// setup flags
 	cmd.Flags().String("raw-observations", "", "raw json array of txs to observe")
 	cmd.Flags().String("txids", "", "comma separated list of tx ids to observe")
-	cmd.Flags().String("thornode-api", "", "thornode api endpoint")
+	cmd.Flags().String("thornado-api", "", "thornado api endpoint")
 
 	cmd.RunE = observeTxs(false)
 
@@ -406,7 +406,7 @@ func GetCmdObserveTxOuts() *cobra.Command {
 	// setup flags
 	cmd.Flags().String("raw-observations", "", "raw json array of txs to observe")
 	cmd.Flags().String("txids", "", "comma separated list of tx ids to observe")
-	cmd.Flags().String("thornode-api", "", "thornode api endpoint")
+	cmd.Flags().String("thornado-api", "", "thornado api endpoint")
 
 	cmd.RunE = observeTxs(true)
 
@@ -433,7 +433,7 @@ func observeTxs(outbound bool) func(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		thorNodeAPI, err := cmd.Flags().GetString("thornode-api")
+		thorNodeAPI, err := cmd.Flags().GetString("thornado-api")
 		if err != nil {
 			return err
 		}
@@ -448,7 +448,7 @@ func observeTxs(outbound bool) func(cmd *cobra.Command, args []string) error {
 		}
 		// if txids is set, the thornoode api endpoint must be set
 		if txids != "" && thorNodeAPI == "" {
-			return fmt.Errorf("--txids requires --thornode-api")
+			return fmt.Errorf("--txids requires --thornado-api")
 		}
 
 		// ensure node address is set
@@ -517,9 +517,9 @@ func observeTxs(outbound bool) func(cmd *cobra.Command, args []string) error {
 
 // findLackingObservation retrieves the highest count observation this node did not
 // broadcast for the provided transaction ID.
-func findLackingObservation(txid, address, thornodeAPI string) (*common.ObservedTx, error) {
-	// get tx details from thornode API
-	url := fmt.Sprintf("%s/thorchain/tx/details/%s", thornodeAPI, txid)
+func findLackingObservation(txid, address, thornadoAPI string) (*common.ObservedTx, error) {
+	// get tx details from thornado API
+	url := fmt.Sprintf("%s/thornado/tx/details/%s", thornadoAPI, txid)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tx details: %w", err)

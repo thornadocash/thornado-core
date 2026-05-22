@@ -22,7 +22,7 @@ type SolvencyCheckProvider interface {
 }
 
 // SolvencyCheckRunner when a chain get marked as insolvent , and then get halt automatically , the chain client will stop scanning blocks , as a result , solvency checker will
-// not report current solvency status to THORNode anymore, this method is to ensure that the chain client will continue to do solvency check even when the chain has been halted
+// not report current solvency status to Thornado anymore, this method is to ensure that the chain client will continue to do solvency check even when the chain has been halted
 func SolvencyCheckRunner(chain common.Chain,
 	provider SolvencyCheckProvider,
 	bridge thorclient.ThorchainBridge,
@@ -41,7 +41,7 @@ func SolvencyCheckRunner(chain common.Chain,
 		return
 	}
 	if backOffDuration == 0 {
-		backOffDuration = constants.ThorchainBlockTime
+		backOffDuration = constants.ThornadoBlockTime
 	}
 	for {
 		select {
@@ -64,16 +64,16 @@ func SolvencyCheckRunner(chain common.Chain,
 
 			thorHeight, err := bridge.GetBlockHeight()
 			if err != nil {
-				logger.Err(err).Msg("fail to get THORChain block height")
+				logger.Err(err).Msg("fail to get Thornado block height")
 				continue
 			}
 
-			// Halt<chain>Chain values > 1 are height-based and should not activate until THORChain
+			// Halt<chain>Chain values > 1 are height-based and should not activate until Thornado
 			// reaches that height. A value of 1 is treated as an immediate admin halt and should
 			// not trigger runner-driven solvency checks.
 			chainHalted := haltHeight > 1 && thorHeight >= haltHeight
 			// Solvency halts are also height-based, though in practice they are expected to be set
-			// to the current THORChain height by the solvency handler.
+			// to the current Thornado height by the solvency handler.
 			solvencyHalted := solvencyHaltHeight > 0 && thorHeight >= solvencyHaltHeight
 			// When the chain is not actively halted, the normal chain client will report solvency
 			// when needed.
@@ -131,7 +131,7 @@ func IsVaultSolvent(chain common.Chain, account common.Account, vault types.Vaul
 		}
 
 		gap := asgardCoin.Amount.Sub(walletAmt)
-		// thornode allow 10x of MaxGas as the gap
+		// thornado allow 10x of MaxGas as the gap
 		if asgardCoin.Asset.IsGasAsset() && gap.LT(currentGasFee10x) {
 			continue
 		}

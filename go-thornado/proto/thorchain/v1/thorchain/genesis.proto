@@ -4,12 +4,9 @@ package thorchain;
 option go_package = "github.com/thornadocash/go-thornado/x/thorchain";
 
 import "common/common.proto";
-import "types/type_pool.proto";
 import "types/type_chain_contract.proto";
 import "types/type_network_fee.proto";
-import "types/msg_swap.proto";
 import "types/type_affiliate_fee_collector.proto";
-import "types/type_streaming_swap.proto";
 import "types/type_network.proto";
 import "types/type_pol.proto";
 import "types/type_pol_reserve.proto";
@@ -19,16 +16,10 @@ import "types/type_tx_out.proto";
 import "types/type_mimir.proto";
 import "types/type_node_account.proto";
 import "types/type_observed_tx.proto";
-import "types/type_liquidity_provider.proto";
-import "types/type_thorname.proto";
 import "types/type_reference_memo.proto";
 import "types/type_clout.proto";
 import "types/type_trade_account.proto";
-import "types/type_rune_provider.proto";
-import "types/type_rune_pool.proto";
 import "types/type_secured_asset.proto";
-import "types/type_tcy_claimer.proto";
-import "types/type_tcy_staker.proto";
 import "gogoproto/gogo.proto";
 
 message lastChainHeight {
@@ -42,12 +33,7 @@ message mimir {
 }
 
 message GenesisState {
-  repeated types.Pool pools = 1 [ (gogoproto.nullable) = false ];
-  repeated types.LiquidityProvider liquidity_providers = 2 [
-    (gogoproto.castrepeated) =
-        "github.com/thornadocash/go-thornado/x/thorchain/types.LiquidityProviders",
-    (gogoproto.nullable) = false
-  ];
+  reserved 1, 2;
   repeated types.ObservedTxVoter observed_tx_in_voters = 3 [
     (gogoproto.castrepeated) =
         "github.com/thornadocash/go-thornado/x/thorchain/types.ObservedTxVoters",
@@ -81,22 +67,19 @@ message GenesisState {
   ];
   types.Network network = 13 [ (gogoproto.nullable) = false ];
   reserved 14, 15, 16, 17, 18;
-  repeated types.MsgSwap adv_swap_queue_items = 19
-      [ (gogoproto.nullable) = false ];
+  reserved 19;
   repeated types.NetworkFee network_fees = 20 [ (gogoproto.nullable) = false ];
   reserved 21;
   repeated types.ChainContract chain_contracts = 22
       [ (gogoproto.nullable) = false ];
-  repeated types.THORName THORNames = 23 [ (gogoproto.nullable) = false ];
+  reserved 23;
   repeated mimir mimirs = 24 [ (gogoproto.nullable) = false ];
   // store_version is deprecated in v3.0.0
   int64 store_version = 25 [ deprecated = true ];
   repeated types.BondProviders bond_providers = 26
       [ (gogoproto.nullable) = false ];
   types.ProtocolOwnedLiquidity POL = 27 [ (gogoproto.nullable) = false ];
-  repeated types.StreamingSwap streaming_swaps = 29
-      [ (gogoproto.nullable) = false ];
-  repeated types.MsgSwap swap_queue_items = 30 [ (gogoproto.nullable) = false ];
+  reserved 29, 30;
   repeated types.SwapperClout swapper_clout = 31
       [ (gogoproto.nullable) = false ];
   repeated types.TradeAccount trade_accounts = 32
@@ -110,16 +93,13 @@ message GenesisState {
     (gogoproto.castrepeated) = "github.com/thornadocash/go-thornado/common.Coins",
     (gogoproto.nullable) = false
   ];
-  repeated types.RUNEProvider rune_providers = 36
-      [ (gogoproto.nullable) = false ];
-  types.RUNEPool rune_pool = 37 [ (gogoproto.nullable) = false ];
+  reserved 36, 37;
   repeated types.NodeMimir nodeMimirs = 38 [ (gogoproto.nullable) = false ];
   repeated types.AffiliateFeeCollector affiliate_collectors = 39
       [ (gogoproto.nullable) = false ];
   repeated types.SecuredAsset secured_assets = 41
       [ (gogoproto.nullable) = false ];
-  repeated types.TCYClaimer tcy_claimers = 42 [ (gogoproto.nullable) = false ];
-  repeated types.TCYStaker tcy_stakers = 43 [ (gogoproto.nullable) = false ];
+  reserved 42, 43;
   repeated types.ReferenceMemo reference_memos = 44
       [ (gogoproto.nullable) = false ];
   repeated types.POLReserveDeposit pol_reserve_deposits = 45

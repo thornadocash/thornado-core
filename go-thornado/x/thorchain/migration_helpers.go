@@ -5,7 +5,6 @@ import (
 
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
-	tcyclaimlist "github.com/thornadocash/go-thornado/common/tcyclaimlist"
 	"github.com/thornadocash/go-thornado/x/thorchain/types"
 )
 
@@ -156,49 +155,13 @@ func unsafeAddRefundOutbound(ctx cosmos.Context, mgr *Mgrs, inHash, destAddr str
 // }
 
 func setTCYClaims(ctx cosmos.Context, mgr *Mgrs) error {
-	claimers, err := getTCYClaimsFromData()
-	if err != nil {
-		return err
-	}
-
-	total := len(claimers)
-	for i, claimer := range claimers {
-		// Log every 100 claims
-		if i%100 == 0 {
-			ctx.Logger().Info("setting tcy claimers", "total", total, "number", i)
-		}
-
-		if err = mgr.Keeper().UpdateTCYClaimer(ctx, claimer.L1Address, claimer.Asset, claimer.Amount); err != nil {
-			ctx.Logger().Error("failed to set tcy claimer", "address", claimer.L1Address.String(), "error", err)
-		}
-	}
-
 	return nil
 }
 
-func getTCYClaimsFromData() ([]types.TCYClaimer, error) {
-	var claimers []types.TCYClaimer
-	for _, tcyClaimJSON := range tcyclaimlist.GetTCYClaimsList() {
-		var asset common.Asset
-		asset, err := common.NewAsset(tcyClaimJSON.Asset)
-		if err != nil {
-			return claimers, err
-		}
-
-		claimer := types.TCYClaimer{
-			Asset:     asset,
-			L1Address: common.Address(tcyClaimJSON.Address),
-			Amount:    cosmos.NewUint(tcyClaimJSON.TCYClaim),
-		}
-		claimers = append(claimers, claimer)
-	}
-
-	return claimers, nil
+func getTCYClaimsFromData() ([]common.Coin, error) {
+	return nil, nil
 }
 
-// makeFakeTxInObservation accepts an array of unobserved inbounds, queries for active
-// node accounts, and makes a fake observation for each validator and unobserved TxIn.
-// trunk-ignore(golangci-lint/unused)
 func makeFakeTxInObservation(ctx cosmos.Context, mgr Manager, txs ObservedTxs) error {
 	activeNodes, err := mgr.Keeper().ListActiveValidators(ctx)
 	if err != nil {

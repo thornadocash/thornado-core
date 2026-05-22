@@ -72,7 +72,7 @@ func (a *InvariantsApiService) InvariantExecute(r ApiInvariantRequest) (*Invaria
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/invariant/{invariant}"
+	localVarPath := localBasePath + "/thornado/invariant/{invariant}"
 	localVarPath = strings.Replace(localVarPath, "{"+"invariant"+"}", url.PathEscape(parameterToString(r.invariant, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -182,7 +182,7 @@ func (a *InvariantsApiService) InvariantsExecute(r ApiInvariantsRequest) (*Invar
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/invariants"
+	localVarPath := localBasePath + "/thornado/invariants"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

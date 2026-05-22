@@ -72,7 +72,7 @@ func (a *TransactionsApiService) TxExecute(r ApiTxRequest) (*TxResponse, *http.R
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/tx/{hash}"
+	localVarPath := localBasePath + "/thornado/tx/{hash}"
 	localVarPath = strings.Replace(localVarPath, "{"+"hash"+"}", url.PathEscape(parameterToString(r.hash, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -185,7 +185,7 @@ func (a *TransactionsApiService) TxSignersExecute(r ApiTxSignersRequest) (*TxDet
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/tx/details/{hash}"
+	localVarPath := localBasePath + "/thornado/tx/details/{hash}"
 	localVarPath = strings.Replace(localVarPath, "{"+"hash"+"}", url.PathEscape(parameterToString(r.hash, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -269,7 +269,7 @@ func (r ApiTxSignersOldRequest) Execute() (*TxSignersResponse, *http.Response, e
 /*
 TxSignersOld Method for TxSignersOld
 
-Deprecated - migrate to /thorchain/tx/details.
+Deprecated - migrate to /thornado/tx/details.
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
  @param hash
@@ -298,7 +298,7 @@ func (a *TransactionsApiService) TxSignersOldExecute(r ApiTxSignersOldRequest) (
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/tx/{hash}/signers"
+	localVarPath := localBasePath + "/thornado/tx/{hash}/signers"
 	localVarPath = strings.Replace(localVarPath, "{"+"hash"+"}", url.PathEscape(parameterToString(r.hash, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -411,7 +411,7 @@ func (a *TransactionsApiService) TxStagesExecute(r ApiTxStagesRequest) (*TxStage
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/tx/stages/{hash}"
+	localVarPath := localBasePath + "/thornado/tx/stages/{hash}"
 	localVarPath = strings.Replace(localVarPath, "{"+"hash"+"}", url.PathEscape(parameterToString(r.hash, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -524,7 +524,7 @@ func (a *TransactionsApiService) TxStatusExecute(r ApiTxStatusRequest) (*TxStatu
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/tx/status/{hash}"
+	localVarPath := localBasePath + "/thornado/tx/status/{hash}"
 	localVarPath = strings.Replace(localVarPath, "{"+"hash"+"}", url.PathEscape(parameterToString(r.hash, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)

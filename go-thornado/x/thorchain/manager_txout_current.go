@@ -276,7 +276,7 @@ func (tos *TxOutStorage) cachedTryAddTxOutItem(ctx cosmos.Context, mgr Manager, 
 	}
 
 	// Add total outbound fee to the OutboundGasWithheldRune. totalOutboundFeeRune will be 0 if these are Migration outbounds
-	// Don't count outbounds on THORChain ($RUNE and Synths)
+	// Don't count outbounds on Thornado ($RUNE and Synths)
 	if !totalOutboundFeeRune.IsZero() && !toi.Chain.IsTHORChain() {
 		if err := mgr.Keeper().AddToOutboundFeeWithheldRune(ctx, toi.Coin.Asset, totalOutboundFeeRune); err != nil {
 			ctx.Logger().Error("fail to add to outbound fee withheld rune", "outbound asset", toi.Coin.Asset, "error", err)
@@ -426,7 +426,7 @@ func (tos *TxOutStorage) DiscoverOutbounds(ctx cosmos.Context, transactionFeeAmo
 	}
 
 	for _, vault := range vaults {
-		// Ensure THORNode are not sending from and to the same address
+		// Ensure Thornado are not sending from and to the same address
 		fromAddr, err := vault.GetAddress(toi.Chain)
 		if err != nil || fromAddr.IsEmpty() || toi.ToAddress.Equals(fromAddr) {
 			continue
@@ -535,11 +535,6 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 		return outputs, cosmos.ZeroUint(), fmt.Errorf("to address(%s), is not of chain(%s)", toi.ToAddress, toi.Chain)
 	}
 
-	// ensure amount is rounded to appropriate decimals
-	pool, err := tos.keeper.GetPool(ctx, toi.Coin.Asset.GetLayer1Asset())
-	if err != nil {
-		return nil, cosmos.ZeroUint(), fmt.Errorf("fail to get pool for txout manager: %w", err)
-	}
 	transactionFeeAmount, err := tos.gasManager.GetAssetOutboundFee(ctx, toi.Coin.Asset, false)
 	if err != nil {
 		return nil, cosmos.ZeroUint(), fmt.Errorf("fail to get outbound fee: %w", err)
@@ -549,7 +544,7 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 		return nil, cosmos.ZeroUint(), fmt.Errorf("fail to get max gas details: %w", err)
 	}
 
-	// Here is the VaultPubKey selection, if not a THORChain-native outbound.
+	// Here is the VaultPubKey selection, if not a Thornado-native outbound.
 	if toi.Chain.IsTHORChain() {
 		outputs = append(outputs, toi)
 	} else {
@@ -557,7 +552,7 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 			// a vault is already manually selected, blindly go forth with that
 			outputs = append(outputs, toi)
 		} else {
-			// THORNode don't have a vault already selected to send from, discover one.
+			// Thornado don't have a vault already selected to send from, discover one.
 			// List all pending outbounds for the asset, this will be used
 			// to deduct balances of vaults that have outstanding txs assigned
 			pendingOutbounds := tos.keeper.GetPendingOutbounds(ctx, toi.Coin.Asset)
@@ -623,7 +618,7 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 				maxGasCoin,
 			}
 			// THOR Chain doesn't need to have max gas
-			if outputs[i].MaxGas.IsEmpty() && !outputs[i].Chain.Equals(common.THORChain) {
+			if outputs[i].MaxGas.IsEmpty() && !outputs[i].Chain.Equals(common.Thornado) {
 				return nil, cosmos.ZeroUint(), fmt.Errorf("max gas cannot be empty: %s", outputs[i].MaxGas)
 			}
 
@@ -632,12 +627,12 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 
 		feeDeduction := true
 
-		// THORChain txouts by nature allow fee deduction, but InactiveVault outbounds
+		// Thornado txouts by nature allow fee deduction, but InactiveVault outbounds
 		// require either no deduction or gas cost deduction instead.
 		if !outputs[i].Chain.IsTHORChain() {
 			vault, err := tos.keeper.GetVault(ctx, outputs[i].VaultPubKey)
 			if err != nil {
-				// An error is assumed for an empty VaultPubKey (THORChain outbound),
+				// An error is assumed for an empty VaultPubKey (Thornado outbound),
 				// but here avoided by the earlier conditional.
 				ctx.Logger().Error("fail to get vault", "error", err)
 			}
@@ -649,8 +644,8 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 				feeDeduction = false
 			}
 
-			// Keep gas cost (instead of outbound fee) deduction within the not-THORChain conditional
-			// to never deduct for THORChain-outbound Ragnarok memos,
+			// Keep gas cost (instead of outbound fee) deduction within the not-Thornado conditional
+			// to never deduct for Thornado-outbound Ragnarok memos,
 			// as these are set by the withdraw handler for BlankTxID actions like POL withdrawals.
 			if !feeDeduction && outputs[i].Coin.Asset.IsGasAsset() {
 				gasAmt := outputs[i].MaxGas.ToCoins().GetCoin(outputs[i].Coin.Asset).Amount
@@ -668,7 +663,7 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 				outputs[i].Coin.Amount = common.SafeSub(outputs[i].Coin.Amount, runeFee)
 				fee := common.NewFee(common.Coins{common.NewCoin(outputs[i].Coin.Asset, runeFee)}, cosmos.ZeroUint())
 				feeEvents = append(feeEvents, NewEventFee(outputs[i].InHash, fee, cosmos.ZeroUint()))
-			} else if !pool.GetPoolUnits().IsZero() { // if pool units is zero, no asset fee is taken
+			} else {
 				assetFee := transactionFeeAmount
 				if outputs[i].Coin.Amount.LTE(assetFee) {
 					assetFee = outputs[i].Coin.Amount // Fee is the full amount
@@ -719,16 +714,7 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 					}
 				}
 
-				poolDeduct := pool.RuneDisbursementForAssetAdd(assetFee)
-				if poolDeduct.GT(pool.BalanceRune) {
-					poolDeduct = pool.BalanceRune
-				}
-				finalRuneFee = finalRuneFee.Add(poolDeduct)
-				if !outputs[i].Coin.Asset.IsSyntheticAsset() {
-					pool.BalanceAsset = pool.BalanceAsset.Add(assetFee) // Add Asset fee to Pool
-				}
-				pool.BalanceRune = common.SafeSub(pool.BalanceRune, poolDeduct) // Deduct Rune from Pool
-				fee := common.NewFee(common.Coins{common.NewCoin(outputs[i].Coin.Asset, assetFee)}, poolDeduct)
+				fee := common.NewFee(common.Coins{common.NewCoin(outputs[i].Coin.Asset, assetFee)}, cosmos.ZeroUint())
 				feeEvents = append(feeEvents, NewEventFee(outputs[i].InHash, fee, cosmos.ZeroUint()))
 			}
 		}
@@ -743,8 +729,7 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 		// If the outbound coin is synthetic, respecting decimals is unnecessary
 		// and leaves unburnt synths in the Pool Module
 		if !outputs[i].Coin.Asset.IsSyntheticAsset() {
-			// sanity check: ensure outbound amount respect asset decimals
-			outputs[i].Coin.Amount = cosmos.RoundToDecimal(outputs[i].Coin.Amount, pool.Decimals)
+			outputs[i].Coin.Amount = cosmos.RoundToDecimal(outputs[i].Coin.Amount, int64(common.ThornadoDecimals))
 		}
 
 		if !outputs[i].InHash.Equals(common.BlankTxID) {
@@ -761,11 +746,6 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 		finalOutput = append(finalOutput, outputs[i])
 	}
 
-	if !pool.IsEmpty() {
-		if err := tos.keeper.SetPool(ctx, pool); err != nil { // Set Pool
-			return nil, cosmos.ZeroUint(), fmt.Errorf("fail to save pool: %w", err)
-		}
-	}
 	for _, feeEvent := range feeEvents {
 		if err := tos.eventMgr.EmitFeeEvent(ctx, feeEvent); err != nil {
 			ctx.Logger().Error("fail to emit fee event", "error", err)
@@ -837,7 +817,7 @@ func (tos *TxOutStorage) addToBlockOut(ctx cosmos.Context, mgr Manager, item TxO
 		telemetry.NewLabel("pubkey", item.VaultPubKey.String()),
 		telemetry.NewLabel("memo_type", "disabled"),
 	}
-	telemetry.SetGaugeWithLabels([]string{"thornode", "vault", "out_txn"}, float32(1), labels)
+	telemetry.SetGaugeWithLabels([]string{"thornado", "vault", "out_txn"}, float32(1), labels)
 
 	if err := tos.eventMgr.EmitEvent(ctx, NewEventScheduledOutbound(item)); err != nil {
 		ctx.Logger().Error("fail to emit scheduled outbound event", "error", err)
@@ -1040,7 +1020,7 @@ func (tos *TxOutStorage) nativeTxOut(ctx cosmos.Context, mgr Manager, toi TxOutI
 
 	toi.ModuleName = toi.GetModuleName() // Ensure that non-"".
 
-	// mint if we're sending from THORChain module
+	// mint if we're sending from Thornado module
 	if toi.ModuleName == ModuleName {
 		if err = tos.keeper.MintToModule(ctx, toi.ModuleName, toi.Coin); err != nil {
 			return fmt.Errorf("fail to mint coins during txout: %w", err)
@@ -1063,12 +1043,6 @@ func (tos *TxOutStorage) nativeTxOut(ctx cosmos.Context, mgr Manager, toi TxOutI
 		return err
 	}
 
-	claimingAddress, err := tos.keeper.GetModuleAddress(TCYClaimingName)
-	if err != nil {
-		ctx.Logger().Error("fail to get from address", "err", err)
-		return err
-	}
-
 	// send funds to/from modules
 	var sdkErr error
 
@@ -1079,8 +1053,6 @@ func (tos *TxOutStorage) nativeTxOut(ctx cosmos.Context, mgr Manager, toi TxOutI
 		sdkErr = tos.keeper.SendFromModuleToModule(ctx, toi.ModuleName, ReserveName, common.NewCoins(toi.Coin))
 	case affColAddress.Equals(toi.ToAddress):
 		sdkErr = tos.keeper.SendFromModuleToModule(ctx, toi.ModuleName, AffiliateCollectorName, common.NewCoins(toi.Coin))
-	case claimingAddress.Equals(toi.ToAddress):
-		sdkErr = tos.keeper.SendFromModuleToModule(ctx, toi.ModuleName, TCYClaimingName, common.NewCoins(toi.Coin))
 	default:
 		sdkErr = tos.keeper.SendFromModuleToAccount(ctx, toi.ModuleName, addr, common.NewCoins(toi.Coin))
 	}

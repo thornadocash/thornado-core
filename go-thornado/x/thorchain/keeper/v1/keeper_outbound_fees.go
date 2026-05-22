@@ -9,11 +9,7 @@ import (
 )
 
 func (k KVStore) GetOutboundTxFee(ctx cosmos.Context) cosmos.Uint {
-	if k.usdFeesEnabled(ctx) {
-		return k.DollarConfigInRune(ctx, constants.NativeOutboundFeeUSD)
-	}
-	fee := k.GetConfigInt64(ctx, constants.OutboundTransactionFee)
-	return cosmos.SafeUintFromInt64(fee)
+	return cosmos.ZeroUint()
 }
 
 // GetOutboundFeeWithheldRune - record of RUNE collected by the Reserve for an Asset's outbound fees

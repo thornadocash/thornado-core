@@ -39,7 +39,7 @@ func init() {
 	}()
 }
 
-func (app *THORChainApp) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
+func (app *ThornadoApp) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
 	// Use an artificial timestamp, to ensure block time specific changes
 	// are consistent and don't change block hashes (eg. 24h volume calculation)
 	timestamp := time.Unix(ctx.BlockHeight(), 0).UTC()
@@ -49,7 +49,7 @@ func (app *THORChainApp) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
 }
 
 // EndBlocker application updates every end block
-func (app *THORChainApp) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
+func (app *ThornadoApp) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
 	defer func() { end <- struct{}{} }()
 	// Use an artificial timestamp, to ensure block time specific changes
 	// are consistent and don't change block hashes (eg. 24h volume calculation)

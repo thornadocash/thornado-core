@@ -7,6 +7,6 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 load_localnet_env
 
 run_hook_or_explain \
-  THORNODE_BOOTSTRAP_CMD \
-  "Thornode validator bootstrap" \
+  THORNADO_BOOTSTRAP_CMD \
+  "Thornado validator bootstrap" \
   "initialize validators, create node accounts, bond nodes, and prepare churn"

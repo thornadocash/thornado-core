@@ -82,25 +82,11 @@ func (k KVStore) GetTxOutValue(ctx cosmos.Context, height int64) (cosmos.Uint, c
 func (k KVStore) GetTOIsValue(ctx cosmos.Context, tois ...TxOutItem) (cosmos.Uint, cosmos.Uint) {
 	runeValue := cosmos.ZeroUint()
 	cloutValue := cosmos.ZeroUint()
-	poolCache := map[common.Asset]Pool{} // Cache the pools to avoid duplicated GetPool calls
 	for i := range tois {
 		for _, coin := range append(common.Coins{tois[i].Coin}, tois[i].MaxGas...) {
 			if coin.IsRune() {
 				runeValue = runeValue.Add(coin.Amount)
-				continue
 			}
-
-			pool, ok := poolCache[coin.Asset]
-			if !ok {
-				var err error
-				pool, err = k.GetPool(ctx, coin.Asset.GetLayer1Asset())
-				if err != nil {
-					_ = dbError(ctx, fmt.Sprintf("unable to get pool : %s", coin.Asset), err)
-					continue
-				}
-				poolCache[coin.Asset] = pool
-			}
-			runeValue = runeValue.Add(pool.AssetValueInRune(coin.Amount))
 		}
 
 		if tois[i].CloutSpent != nil {

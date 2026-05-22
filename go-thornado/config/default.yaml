@@ -19,23 +19,9 @@ bifrost:
     read_timeout: 30s
     write_timeout: 30s
     chains:
-      - AVAX
-      - BCH
       - BTC
-      - DOGE
-      - ETH
-      - GAIA
-      - LTC
-      - BSC
-      - BASE
-      - TRON
-      - XRP
-      - NOBLE
-      - SOL
-      - POL
-      - ZEC
-  thorchain:
-    chain_id: thorchain
+  thornado:
+    chain_id: thornado
     chain_host: localhost:1317
     chain_rpc: ""
     chain_ebifrost: localhost:50051
@@ -87,7 +73,7 @@ bifrost:
       disabled: false
       chain_id: BTC
       cosmos_chain_id: ""
-      username: thorchain
+      username: thornado
       password: password
       http_post_mode: 1
       disable_tls: 1
@@ -162,7 +148,7 @@ bifrost:
 thor:
   node_relay_url: https://node-relay-bot.herokuapp.com
   vault_pubkeys_cutoff_blocks: 1_000_000
-  seed_nodes_endpoint: https://gateway.liquify.com/chain/thorchain_api/thorchain/nodes
+  seed_nodes_endpoint: https://gateway.liquify.com/chain/thornado_api/thornado/nodes
   stagenet_admin_addresses: "sthor1gdq9qejfy33jctztqdrg5v4hvxnytmvjhduacc" # 9R official stagenet
   api:
     quote:
@@ -245,7 +231,7 @@ thor:
     state_sync:
       enable: false
       # Must be archive nodes. Liquify will be the trusted source by default.
-      rpc_servers: https://gateway.liquify.com/chain/thorchain_rpc,https://gateway.liquify.com/chain/thorchain_rpc
+      rpc_servers: https://gateway.liquify.com/chain/thornado_rpc,https://gateway.liquify.com/chain/thornado_rpc
       trust_height: 0
       trust_hash: ""
       trust_period: 360h0m0s

@@ -31,7 +31,7 @@ type YggdrasilVault struct {
 	Status string `json:"status"`
 	// current node bond
 	Bond string `json:"bond"`
-	// value in rune of the vault's assets
+	// estimated value of the vault's assets
 	TotalValue string `json:"total_value"`
 	Addresses []VaultAddress `json:"addresses"`
 }
@@ -576,5 +576,4 @@ func (v *NullableYggdrasilVault) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
 

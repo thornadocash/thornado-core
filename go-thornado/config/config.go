@@ -63,12 +63,12 @@ type Config struct {
 	Bifrost  Bifrost  `mapstructure:"bifrost"`
 }
 
-// GetThornode returns the global thornode configuration.
-func GetThornode() Thornode {
+// GetThornado returns the global thornado configuration.
+func GetThornado() Thornode {
 	return config.Thornode
 }
 
-// GetBifrost returns the global thornode configuration.
+// GetBifrost returns the global thornado configuration.
 func GetBifrost() Bifrost {
 	return config.Bifrost
 }
@@ -91,7 +91,7 @@ func Init() {
 	// TODO: The following can be cleaned once all deployments are updated to use
 	// explicit keys for the new configuration package. In the meantime we will preserve
 	// mappings from historical environment for backwards compatibility.
-	assert(viper.BindEnv("bifrost.thorchain.signer_name", "SIGNER_NAME"))
+	assert(viper.BindEnv("bifrost.thornado.signer_name", "SIGNER_NAME"))
 	assert(viper.BindEnv(
 		"bifrost.chains.btc.block_scanner.block_height_discover_back_off",
 		"BLOCK_SCANNER_BACKOFF",
@@ -106,10 +106,10 @@ func Init() {
 	))
 	assert(viper.BindEnv("bifrost.tss.bootstrap_peers", "PEER"))
 	assert(viper.BindEnv("bifrost.tss.external_ip", "EXTERNAL_IP"))
-	assert(viper.BindEnv("bifrost.thorchain.chain_id", "CHAIN_ID"))
-	assert(viper.BindEnv("bifrost.thorchain.chain_host", "CHAIN_API"))
+	assert(viper.BindEnv("bifrost.thornado.chain_id", "CHAIN_ID"))
+	assert(viper.BindEnv("bifrost.thornado.chain_host", "CHAIN_API"))
 	assert(viper.BindEnv(
-		"bifrost.thorchain.chain_rpc",
+		"bifrost.thornado.chain_rpc",
 		"CHAIN_RPC",
 	))
 	assert(viper.BindEnv(
@@ -183,7 +183,7 @@ func InitBifrost() {
 	}
 
 	// set signer password explicitly from environment variable
-	config.Bifrost.Thorchain.SignerPasswd = os.Getenv("SIGNER_PASSWD")
+	config.Bifrost.Thornado.SignerPasswd = os.Getenv("SIGNER_PASSWD")
 
 	// set bootstrap peers from seeds endpoint if unset
 	if len(config.Bifrost.TSS.BootstrapPeers) == 0 {
@@ -196,18 +196,18 @@ func InitThornode(ctx context.Context) {
 	// initialization and overwrite configuration we apply in this package.
 	for _, env := range os.Environ() {
 		envKey := strings.Split(env, "=")[0]
-		if strings.HasPrefix(envKey, "THORNODE_") {
+		if strings.HasPrefix(envKey, "THORNADO_") {
 			log.Warn().Msgf("environment variable %s could overwrite config", env)
 		}
 	}
 
 	// if auto statesync enable, find latest snapshot height and hash that should exist
 	if config.Thornode.AutoStateSync.Enabled {
-		thornodeAutoStateSync(ctx)
+		thornadoAutoStateSync(ctx)
 	}
 
 	// dynamically set seeds
-	seedAddrs, tmSeeds := thornodeSeeds()
+	seedAddrs, tmSeeds := thornadoSeeds()
 	config.Thornode.Tendermint.P2P.Seeds = strings.Join(tmSeeds, ",")
 
 	// set the Tendermint external address
@@ -243,7 +243,7 @@ func InitThornode(ctx context.Context) {
 
 	// fetch genesis
 	if len(seedAddrs) > 0 {
-		thornodeFetchGenesis(seedAddrs)
+		thornadoFetchGenesis(seedAddrs)
 	} else {
 		log.Warn().Msg("no seeds, skipping genesis fetch")
 	}
@@ -262,7 +262,7 @@ type Thornode struct {
 	// observed by bifrost.
 	VaultPubkeysCutoffBlocks int64 `mapstructure:"vault_pubkeys_cutoff_blocks"`
 
-	// SeedNodesEndpoint is the full URL to a /thorchain/nodes endpoint for finding active
+	// SeedNodesEndpoint is the full URL to a /thornado/nodes endpoint for finding active
 	// validators to seed genesis and peers.
 	SeedNodesEndpoint string `mapstructure:"seed_nodes_endpoint"`
 
@@ -272,7 +272,7 @@ type Thornode struct {
 	// consensus failure on sync from genesis.
 	StagenetAdminAddresses []string `mapstructure:"stagenet_admin_addresses"`
 
-	// API contains THORnode-specific API configuration.
+	// API contains Thornado-specific API configuration.
 	API struct {
 		// Quote contains configuration for the quote endpoints.
 		Quote struct {
@@ -287,7 +287,7 @@ type Thornode struct {
 			MaxLag time.Duration `mapstructure:"max_lag"`
 		} `mapstructure:"quote"`
 
-		// Pagination sets the pagination defaults for THORNode API endpoints that page.
+		// Pagination sets the pagination defaults for Thornado API endpoints that page.
 		Pagination struct {
 			// DefaultPageSize is the default page size for paginated endpoints.
 			DefaultPageSize uint64 `mapstructure:"default_page_size"`
@@ -297,7 +297,7 @@ type Thornode struct {
 		} `mapstructure:"pagination"`
 	} `mapstructure:"api"`
 
-	// Telemetry contains THORnode-specific telemetry configuration.
+	// Telemetry contains Thornado-specific telemetry configuration.
 	Telemetry struct {
 		// SlashPoints enables slash point telemetry. This creates a file in the node home
 		// directory with JSON events for all slash increments and decrements. This feature
@@ -421,7 +421,7 @@ type Thornode struct {
 
 type Bifrost struct {
 	Signer            BifrostSignerConfiguration     `mapstructure:"signer"`
-	Thorchain         BifrostClientConfiguration     `mapstructure:"thorchain"`
+	Thornado          BifrostClientConfiguration     `mapstructure:"thornado"`
 	AttestationGossip BifrostAttestationGossipConfig `mapstructure:"attestation_gossip"`
 	Metrics           BifrostMetricsConfiguration    `mapstructure:"metrics"`
 	Chains            struct {
@@ -514,7 +514,7 @@ type BifrostAttestationGossipConfig struct {
 	// If chain halts for longer than this, validators will need to restart their bifrosts to re-share their attestations.
 	NonQuorumTimeout time.Duration `mapstructure:"non_quorum_timeout"`
 
-	// minTimeBetweenAttestations is the minimum time between sending batches of attestations for a quorum tx to thornode.
+	// minTimeBetweenAttestations is the minimum time between sending batches of attestations for a quorum tx to thornado.
 	MinTimeBetweenAttestations time.Duration `mapstructure:"min_time_between_attestations"`
 
 	// how many random peers to ask for their attestation state on startup.
@@ -523,10 +523,10 @@ type BifrostAttestationGossipConfig struct {
 	// delay before asking peers for their attestation state on startup.
 	AskPeersDelay time.Duration `mapstructure:"ask_peers_delay"`
 
-	// how many attestations to batch together before sending to thornode.
+	// how many attestations to batch together before sending to thornado.
 	MaxBatchSize int64 `mapstructure:"max_batch_size"`
 
-	// how often to send batches of attestations to thornode.
+	// how often to send batches of attestations to thornado.
 	BatchInterval time.Duration `mapstructure:"batch_interval"`
 
 	// how long to wait when sending a single attestation to a peer before giving up.
@@ -683,7 +683,7 @@ type BifrostBlockScannerConfiguration struct {
 	CosmosGRPCTLS bool `mapstructure:"cosmos_grpc_tls"`
 
 	// GasCacheBlocks is the number of blocks worth of gas price data cached to determine
-	// the gas price reported to Thorchain.
+	// the gas price reported to Thornado.
 	GasCacheBlocks int `mapstructure:"gas_cache_blocks"`
 
 	// Concurrency is the number of goroutines used for RPC requests on data within a
@@ -787,7 +787,7 @@ func (c BifrostTSSConfiguration) GetExternalIP() string {
 type WhitelistCosmosAsset struct {
 	Denom           string `mapstructure:"denom"`
 	Decimals        int    `mapstructure:"decimals"`
-	THORChainSymbol string `mapstructure:"symbol"`
+	ThornadoSymbol string `mapstructure:"symbol"`
 }
 
 // GetBootstrapPeers return the internal bootstrap peers in a slice of maddr.Multiaddr
@@ -862,7 +862,7 @@ func resolveAddrs(addrs []string) []string {
 	return resolvedAddrs
 }
 
-func thornodeSeeds() (seedAddrs, tmSeeds []string) {
+func thornadoSeeds() (seedAddrs, tmSeeds []string) {
 	// use environment variable if set
 	seeds := os.Getenv("SEEDS")
 	if seeds != "" {
@@ -944,7 +944,7 @@ func thornodeSeeds() (seedAddrs, tmSeeds []string) {
 	return
 }
 
-func thornodeAutoStateSync(ctx context.Context) {
+func thornadoAutoStateSync(ctx context.Context) {
 	// if we already have a state assume we have a snapshot and skip
 	dataDir := os.ExpandEnv("$HOME/.thornado/data/state.db")
 	if _, err := os.Stat(dataDir); err == nil {
@@ -993,7 +993,7 @@ func thornodeAutoStateSync(ctx context.Context) {
 	log.Fatal().Msg("failed to determine statesync trust height from any rpc host")
 }
 
-func thornodeFetchGenesis(seeds []string) {
+func thornadoFetchGenesis(seeds []string) {
 	home := os.ExpandEnv("$HOME/.thornado")
 	genesisPath := filepath.Join(home, "config", "genesis.json")
 

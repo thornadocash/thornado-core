@@ -230,7 +230,7 @@ func (tx Tx) Valid() error {
 	if err := tx.Coins.Valid(); err != nil {
 		return err
 	}
-	if !tx.Chain.Equals(THORChain) && len(tx.Gas) == 0 {
+	if !tx.Chain.Equals(Thornado) && len(tx.Gas) == 0 {
 		return errors.New("must have at least 1 gas coin")
 	}
 	if err := tx.Gas.Valid(); err != nil {

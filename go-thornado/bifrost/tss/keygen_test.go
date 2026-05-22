@@ -53,7 +53,7 @@ func (*KeyGenTestSuite) setupKeysForTest(c *C) string {
 	cdc := codec.NewProtoCodec(registry)
 	kb, err := cKeys.New(cosmos.KeyringServiceName(), cKeys.BackendFile, thorcliDir, buf, cdc)
 	c.Assert(err, IsNil)
-	info, _, err := kb.NewMnemonic(signerNameForTest, cKeys.English, cmd.THORChainHDPath, signerPasswordForTest, hd.Secp256k1)
+	info, _, err := kb.NewMnemonic(signerNameForTest, cKeys.English, cmd.ThornadoHDPath, signerPasswordForTest, hd.Secp256k1)
 	c.Assert(err, IsNil)
 	c.Logf("name:%s", info.Name)
 	return thorcliDir

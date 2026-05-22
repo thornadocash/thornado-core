@@ -206,17 +206,7 @@ func insolvencyCheck(ctx cosmos.Context, mgr Manager, vault Vault, coins common.
 			continue
 		}
 
-		// Convert the gap to RUNE value using the pool
-		pool, err := mgr.Keeper().GetPool(ctx, c.Asset.GetLayer1Asset())
-		if err != nil {
-			ctx.Logger().Error("fail to get pool for solvency check", "asset", c.Asset.String(), "error", err)
-			// If we can't get the pool, treat as insolvent to be safe
-			return true
-		}
-		gapInRune := pool.AssetValueInRune(gap)
-		// If pool has no liquidity, we can't value the gap in RUNE.
-		// Treat as insolvent to be conservative: a zero-liquidity pool should not
-		// allow a real insolvency to go undetected.
+		gapInRune := gap
 		if gapInRune.IsZero() && !gap.IsZero() {
 			ctx.Logger().Info("cannot value gap for solvency check (pool has no liquidity), treating as insolvent", "asset", c.Asset.String(), "gap", gap.String())
 			return true

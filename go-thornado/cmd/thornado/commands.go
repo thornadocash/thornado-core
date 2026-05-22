@@ -169,7 +169,7 @@ func addModuleInitFlags(startCmd *cobra.Command) {
 func renderConfigCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:                        "render-config",
-		Short:                      "renders tendermint and cosmos config from thornode base config",
+		Short:                      "renders tendermint and cosmos config from thornado base config",
 		DisableFlagParsing:         true,
 		SuggestionsMinimumDistance: 2,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -304,7 +304,7 @@ func appExport(
 	appOpts servertypes.AppOptions,
 	modulesToExport []string,
 ) (servertypes.ExportedApp, error) {
-	var chainApp *app.THORChainApp
+	var chainApp *app.ThornadoApp
 	// this check is necessary as we use the flag in x/upgrade.
 	// we can exit more gracefully by checking the flag here.
 	homePath, ok := appOpts.Get(flags.FlagHome).(string)

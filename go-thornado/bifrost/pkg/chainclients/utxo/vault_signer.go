@@ -99,7 +99,7 @@ func (s *frostVaultSigner) RemoteSign(msg []byte, algo common.SigningAlgo, poolP
 	payload, err := json.Marshal(frostSignRequest{
 		Withdrawal: frostWithdrawalRequest{
 			WithdrawalID:  frostSessionID(poolPubKey, msg),
-			Recipient:     "thornode-bifrost-raw-payload",
+			Recipient:     "thornado-bifrost-raw-payload",
 			AmountSats:    0,
 			FeeSats:       0,
 			NullifierHash: hex.EncodeToString(msg),

@@ -18,16 +18,16 @@ var (
 	// BTCAsset BTC
 	BTCAsset = Asset{Chain: BTCChain, Symbol: "BTC", Ticker: "BTC", Synth: false}
 	// RuneNative RUNE on thorchain
-	RuneNative = Asset{Chain: THORChain, Symbol: "RUNE", Ticker: "RUNE", Synth: false}
-	TCY        = Asset{Chain: THORChain, Symbol: "TCY", Ticker: "TCY", Synth: false}
-	TOR        = Asset{Chain: THORChain, Symbol: "TOR", Ticker: "TOR", Synth: false}
-	THORBTC    = Asset{Chain: THORChain, Symbol: "BTC", Ticker: "BTC", Synth: false}
+	RuneNative = Asset{Chain: Thornado, Symbol: "RUNE", Ticker: "RUNE", Synth: false}
+	TCY        = Asset{Chain: Thornado, Symbol: "TCY", Ticker: "TCY", Synth: false}
+	TOR        = Asset{Chain: Thornado, Symbol: "TOR", Ticker: "TOR", Synth: false}
+	THORBTC    = Asset{Chain: Thornado, Symbol: "BTC", Ticker: "BTC", Synth: false}
 	// Whitelisted assets
-	RUJI = Asset{Chain: THORChain, Symbol: "RUJI", Ticker: "RUJI", Synth: false}
-	NAMI = Asset{Chain: THORChain, Symbol: "NAMI", Ticker: "NAMI", Synth: false}
-	LQDY = Asset{Chain: THORChain, Symbol: "LQDY", Ticker: "LQDY", Synth: false}
-	AUTO = Asset{Chain: THORChain, Symbol: "AUTO", Ticker: "AUTO", Synth: false}
-	XUSK = Asset{Chain: THORChain, Symbol: "XUSK", Ticker: "XUSK", Synth: false}
+	RUJI = Asset{Chain: Thornado, Symbol: "RUJI", Ticker: "RUJI", Synth: false}
+	NAMI = Asset{Chain: Thornado, Symbol: "NAMI", Ticker: "NAMI", Synth: false}
+	LQDY = Asset{Chain: Thornado, Symbol: "LQDY", Ticker: "LQDY", Synth: false}
+	AUTO = Asset{Chain: Thornado, Symbol: "AUTO", Ticker: "AUTO", Synth: false}
+	XUSK = Asset{Chain: Thornado, Symbol: "XUSK", Ticker: "XUSK", Synth: false}
 )
 
 var _ sdk.CustomProtobufType = (*Asset)(nil)
@@ -58,7 +58,7 @@ func NewAsset(input string) (Asset, error) {
 		parts = []string{input}
 	}
 	if len(parts) == 1 {
-		asset.Chain = THORChain
+		asset.Chain = Thornado
 		sym = parts[0]
 	} else {
 		asset.Chain, err = NewChain(parts[0])
@@ -129,7 +129,7 @@ func (a Asset) Equals(a2 Asset) bool {
 
 func (a Asset) GetChain() Chain {
 	if a.Synth || a.Trade || a.Secured {
-		return THORChain
+		return Thornado
 	}
 	return a.Chain
 }
@@ -191,7 +191,7 @@ func (a Asset) GetSecuredAsset() Asset {
 // Get derived asset of asset
 func (a Asset) GetDerivedAsset() Asset {
 	return Asset{
-		Chain:  THORChain,
+		Chain:  Thornado,
 		Symbol: a.Symbol,
 		Ticker: a.Ticker,
 		Synth:  false,
@@ -220,7 +220,7 @@ func (a Asset) IsDerivedAsset() bool {
 	return !a.Synth && !a.Trade && !a.Secured && a.GetChain().IsTHORChain() && !a.IsRune() && !a.IsTCY() && !a.IsWhitelisted()
 }
 
-// Native return native asset, only relevant on THORChain
+// Native return native asset, only relevant on Thornado
 func (a Asset) Native() string {
 	switch {
 	case a.IsRune():
@@ -308,7 +308,7 @@ func (a Asset) IsWhitelisted() bool {
 }
 
 // IsNative is a helper function, returns true when the asset is a native
-// asset to THORChain (ie rune, a synth, etc)
+// asset to Thornado (ie rune, a synth, etc)
 func (a Asset) IsNative() bool {
 	return a.GetChain().IsTHORChain()
 }

@@ -72,7 +72,7 @@ func (a *SmartContractsApiService) ContractInfoExecute(r ApiContractInfoRequest)
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/contract/{address}"
+	localVarPath := localBasePath + "/thornado/contract/{address}"
 	localVarPath = strings.Replace(localVarPath, "{"+"address"+"}", url.PathEscape(parameterToString(r.address, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -196,7 +196,7 @@ func (a *SmartContractsApiService) ContractInfosExecute(r ApiContractInfosReques
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/contracts"
+	localVarPath := localBasePath + "/thornado/contracts"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

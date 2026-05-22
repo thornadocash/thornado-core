@@ -35,7 +35,7 @@ func MakeEncodingConfig() params.EncodingConfig {
 	return makeEncodingConfig(tempApp)
 }
 
-func makeEncodingConfig(tempApp *THORChainApp) params.EncodingConfig {
+func makeEncodingConfig(tempApp *ThornadoApp) params.EncodingConfig {
 	encodingConfig := params.EncodingConfig{
 		InterfaceRegistry: tempApp.InterfaceRegistry(),
 		Codec:             tempApp.AppCodec(),

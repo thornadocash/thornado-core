@@ -210,8 +210,8 @@ func TestProcessAttestation(t *testing.T) {
 	})
 }
 
-// TestSendAttestationsToThornode tests sending attestations to Thornode
-func TestSendAttestationsToThornode(t *testing.T) {
+// TestSendAttestationsToThornado tests sending attestations to Thornado
+func TestSendAttestationsToThornado(t *testing.T) {
 	// Create test instances
 	ag, _, _, grpcClient, _, _ := setupTestGossip(t)
 
@@ -252,8 +252,8 @@ func TestSendAttestationsToThornode(t *testing.T) {
 		return &ebifrost.SendQuorumTxResult{}, nil
 	}
 
-	// Send attestations to Thornode
-	ag.sendObservedTxAttestationsToThornode(context.Background(), *obsTx, state, true, false, true)
+	// Send attestations to Thornado
+	ag.sendObservedTxAttestationsToThornado(context.Background(), *obsTx, state, true, false, true)
 
 	// Verify the tx was sent with the correct data
 	require.NotNil(t, sentTx)
@@ -450,11 +450,11 @@ func TestRefactoredHandlersIntegration(t *testing.T) {
 		// Wait for processing to complete
 		time.Sleep(200 * time.Millisecond)
 
-		// Verify all types were sent to thornode
-		assert.Len(t, sentTxs, 2, "Should have sent txs to thornode")
-		assert.Len(t, sentFees, 2, "Should have sent network fee to thornode")
-		assert.Len(t, sentSolvencies, 2, "Should have sent solvency to thornode")
-		assert.Len(t, sentErratas, 2, "Should have sent errata tx to thornode")
+		// Verify all types were sent to thornado
+		assert.Len(t, sentTxs, 2, "Should have sent txs to thornado")
+		assert.Len(t, sentFees, 2, "Should have sent network fee to thornado")
+		assert.Len(t, sentSolvencies, 2, "Should have sent solvency to thornado")
+		assert.Len(t, sentErratas, 2, "Should have sent errata tx to thornado")
 
 		// Verify correct data was sent for each type
 		sentAttestations := 0

@@ -75,7 +75,7 @@ func (a *ReferenceMemosApiService) ReferenceMemoExecute(r ApiReferenceMemoReques
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/memo/{asset}/{reference}"
+	localVarPath := localBasePath + "/thornado/memo/{asset}/{reference}"
 	localVarPath = strings.Replace(localVarPath, "{"+"asset"+"}", url.PathEscape(parameterToString(r.asset, "")), -1)
 	localVarPath = strings.Replace(localVarPath, "{"+"reference"+"}", url.PathEscape(parameterToString(r.reference, "")), -1)
 
@@ -189,7 +189,7 @@ func (a *ReferenceMemosApiService) ReferenceMemoByHashExecute(r ApiReferenceMemo
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/memo/{hash}"
+	localVarPath := localBasePath + "/thornado/memo/{hash}"
 	localVarPath = strings.Replace(localVarPath, "{"+"hash"+"}", url.PathEscape(parameterToString(r.hash, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -305,7 +305,7 @@ func (a *ReferenceMemosApiService) ReferenceMemoCheckExecute(r ApiReferenceMemoC
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/memo/check/{asset}/{amount}"
+	localVarPath := localBasePath + "/thornado/memo/check/{asset}/{amount}"
 	localVarPath = strings.Replace(localVarPath, "{"+"asset"+"}", url.PathEscape(parameterToString(r.asset, "")), -1)
 	localVarPath = strings.Replace(localVarPath, "{"+"amount"+"}", url.PathEscape(parameterToString(r.amount, "")), -1)
 

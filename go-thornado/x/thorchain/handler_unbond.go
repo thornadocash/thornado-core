@@ -56,8 +56,8 @@ func (h UnBondHandler) validate(ctx cosmos.Context, msg MsgUnBond) error {
 		return ErrInternal(err, fmt.Sprintf("fail to get node account(%s)", msg.NodeAddress))
 	}
 
-	if na.Status == NodeActive || na.Status == NodeReady {
-		return cosmos.ErrUnknownRequest("cannot unbond while node is in active or ready status")
+	if na.Status == NodeActive || na.Status == NodeSelected {
+		return cosmos.ErrUnknownRequest("cannot unbond while node is active or selected")
 	}
 
 	if h.mgr.Keeper().GetConfigInt64(ctx, constants.PauseUnbond) > 0 {

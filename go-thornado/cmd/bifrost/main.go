@@ -68,22 +68,22 @@ func main() {
 	if err = m.Start(); err != nil {
 		log.Fatal().Err(err).Msg("fail to start metric collector")
 	}
-	if len(cfg.Thorchain.SignerName) == 0 {
+	if len(cfg.Thornado.SignerName) == 0 {
 		log.Fatal().Msg("signer name is empty")
 	}
-	if len(cfg.Thorchain.SignerPasswd) == 0 {
+	if len(cfg.Thornado.SignerPasswd) == 0 {
 		log.Fatal().Msg("signer password is empty")
 	}
-	kb, _, err := thorclient.GetKeyringKeybase(cfg.Thorchain.ChainHomeFolder, cfg.Thorchain.SignerName, cfg.Thorchain.SignerPasswd)
+	kb, _, err := thorclient.GetKeyringKeybase(cfg.Thornado.ChainHomeFolder, cfg.Thornado.SignerName, cfg.Thornado.SignerPasswd)
 	if err != nil {
 		log.Fatal().Err(err).Msg("fail to get keyring keybase")
 	}
 
-	k := thorclient.NewKeysWithKeybase(kb, cfg.Thorchain.SignerName, cfg.Thorchain.SignerPasswd)
-	// thorchain bridge
-	thorchainBridge, err := thorclient.NewThorchainBridge(cfg.Thorchain, m, k)
+	k := thorclient.NewKeysWithKeybase(kb, cfg.Thornado.SignerName, cfg.Thornado.SignerPasswd)
+	// thornado bridge
+	thorchainBridge, err := thorclient.NewThorchainBridge(cfg.Thornado, m, k)
 	if err != nil {
-		log.Fatal().Err(err).Msg("fail to create new thorchain bridge")
+		log.Fatal().Err(err).Msg("fail to create new thornado bridge")
 	}
 	if err = thorchainBridge.EnsureNodeWhitelistedWithTimeout(); err != nil {
 		log.Fatal().Err(err).Msg("node account is not whitelisted, can't start")
@@ -118,8 +118,8 @@ func main() {
 	tmPrivateKeyEddsa := tcommon.CosmosPrivateKeyToTMPrivateKey(priKeyEddsa)
 
 	consts := constants.NewConstantValue()
-	jailTimeKeygen := time.Duration(consts.GetInt64Value(constants.JailTimeKeygen)) * constants.ThorchainBlockTime
-	jailTimeKeysign := time.Duration(consts.GetInt64Value(constants.JailTimeKeysign)) * constants.ThorchainBlockTime
+	jailTimeKeygen := time.Duration(consts.GetInt64Value(constants.JailTimeKeygen)) * constants.ThornadoBlockTime
+	jailTimeKeysign := time.Duration(consts.GetInt64Value(constants.JailTimeKeysign)) * constants.ThornadoBlockTime
 	if cfg.Signer.KeygenTimeout >= jailTimeKeygen {
 		log.Fatal().
 			Stringer("keygenTimeout", cfg.Signer.KeygenTimeout).
@@ -197,7 +197,7 @@ func main() {
 	ctx := context.Background()
 
 	// start observer notifier
-	ag, err := observer.NewAttestationGossip(comm.GetHost(), k, cfg.Thorchain.ChainEBifrost, thorchainBridge, m, cfg.AttestationGossip)
+	ag, err := observer.NewAttestationGossip(comm.GetHost(), k, cfg.Thornado.ChainEBifrost, thorchainBridge, m, cfg.AttestationGossip)
 
 	// start observer
 	obs, err := observer.NewObserver(pubkeyMgr, chains, thorchainBridge, m, cfgChains[tcommon.BTCChain].BlockScanner.DBPath, tssKeysignMetricMgr, ag, *deckDump)
@@ -208,7 +208,7 @@ func main() {
 		log.Fatal().Err(err).Msg("fail to start observer")
 	}
 
-	// enable observer to react to notifications from thornode
+	// enable observer to react to notifications from thornado
 	// that come through the grpc connection within AttestationGossip.
 	ag.SetObserverHandleObservedTxCommitted(obs)
 

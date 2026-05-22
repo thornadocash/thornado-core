@@ -15,7 +15,7 @@ import (
 
 // GetPubKeyCmd cosmos sdk removed pubkey support recently , as a result of that , all pubkey will be print out in protobuf json format
 // like{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"AivZERqhB2H3l4JC7RYG3TeaaUwKf4N/mdxDqDXyZRpF"}
-// THORChain need the pubkey in bech32 encoded format, this command is to convert the protobuf json back to bech32 encoded format
+// Thornado needs the pubkey in bech32 encoded format, this command is to convert the protobuf json back to bech32 encoded format
 func GetPubKeyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pubkey",

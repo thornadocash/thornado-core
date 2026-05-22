@@ -134,7 +134,6 @@ func (m *MockThorchainBridge) GetMimirWithRef(template, ref string) (int64, erro
 func (m *MockThorchainBridge) GetInboundOutbound(txIns common.ObservedTxs) (common.ObservedTxs, common.ObservedTxs, error) {
 	return nil, nil, nil
 }
-func (m *MockThorchainBridge) GetPools() (types.Pools, error) { return nil, nil }
 func (m *MockThorchainBridge) GetPubKeys() ([]thorclient.PubKeyContractAddressPair, error) {
 	return nil, nil
 }
@@ -145,10 +144,6 @@ func (m *MockThorchainBridge) GetAsgardPubKeys() ([]thorclient.PubKeyContractAdd
 
 func (m *MockThorchainBridge) GetSolvencyMsg(height int64, chain common.Chain, pubKey common.PubKey, coins common.Coins) *types.MsgSolvency {
 	return nil
-}
-
-func (m *MockThorchainBridge) GetTHORName(name string) (types.THORName, error) {
-	return types.THORName{}, nil
 }
 
 func (m *MockThorchainBridge) GetThorchainVersion() (semver.Version, error) {

@@ -69,7 +69,7 @@ func (a *VaultsApiService) AsgardExecute(r ApiAsgardRequest) ([]Vault, *http.Res
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/vaults/asgard"
+	localVarPath := localBasePath + "/thornado/vaults/asgard"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -181,7 +181,7 @@ func (a *VaultsApiService) VaultExecute(r ApiVaultRequest) (*Vault, *http.Respon
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/vault/{pubkey}"
+	localVarPath := localBasePath + "/thornado/vault/{pubkey}"
 	localVarPath = strings.Replace(localVarPath, "{"+"pubkey"+"}", url.PathEscape(parameterToString(r.pubkey, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -291,7 +291,7 @@ func (a *VaultsApiService) VaultPubkeysExecute(r ApiVaultPubkeysRequest) (*Vault
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/vaults/pubkeys"
+	localVarPath := localBasePath + "/thornado/vaults/pubkeys"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -400,7 +400,7 @@ func (a *VaultsApiService) VaultSolvencyExecute(r ApiVaultSolvencyRequest) (*Vau
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/vaults/solvency"
+	localVarPath := localBasePath + "/thornado/vaults/solvency"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -509,7 +509,7 @@ func (a *VaultsApiService) YggdrasilExecute(r ApiYggdrasilRequest) ([]YggdrasilV
 		return localVarReturnValue, nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thorchain/vaults/yggdrasil"
+	localVarPath := localBasePath + "/thornado/vaults/yggdrasil"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

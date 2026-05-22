@@ -15,7 +15,7 @@ import (
 
 // ExportAppStateAndValidators exports the state of the application for a genesis
 // file.
-func (app *THORChainApp) ExportAppStateAndValidators(forZeroHeight bool, jailAllowedAddrs, modulesToExport []string) (servertypes.ExportedApp, error) {
+func (app *ThornadoApp) ExportAppStateAndValidators(forZeroHeight bool, jailAllowedAddrs, modulesToExport []string) (servertypes.ExportedApp, error) {
 	// as if they could withdraw from the start of the next block
 	ctx := app.NewContextLegacy(true, cmtproto.Header{Height: app.LastBlockHeight()})
 
@@ -48,7 +48,7 @@ func (app *THORChainApp) ExportAppStateAndValidators(forZeroHeight bool, jailAll
 // NOTE zero height genesis is a temporary feature which will be deprecated
 //
 //	in favor of export at a block height
-func (app *THORChainApp) prepForZeroHeightGenesis(ctx sdk.Context, jailAllowedAddrs []string) {
+func (app *ThornadoApp) prepForZeroHeightGenesis(ctx sdk.Context, jailAllowedAddrs []string) {
 	var err error
 
 	// set context height to zero
