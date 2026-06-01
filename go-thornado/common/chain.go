@@ -5,14 +5,12 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 )
 
 const (
 	BTCChain = Chain("BTC")
-	Thornado = Chain("THOR")
 
 	SigningAlgoSecp256k1 = SigningAlgo("secp256k1")
 	SigningAlgoEd25519   = SigningAlgo("ed25519")
@@ -20,7 +18,6 @@ const (
 
 var AllChains = [...]Chain{
 	BTCChain,
-	Thornado,
 }
 
 type SigningAlgo string
@@ -52,7 +49,7 @@ func NewChain(chainID string) (Chain, error) {
 	if err := chain.Valid(); err != nil {
 		return chain, err
 	}
-	if !chain.Equals(BTCChain) && !chain.Equals(Thornado) {
+	if !chain.Equals(BTCChain) {
 		return chain, errors.New("unsupported chain")
 	}
 	return chain, nil
@@ -61,10 +58,6 @@ func NewChain(chainID string) (Chain, error) {
 // Equals compare two chain to see whether they represent the same chain
 func (c Chain) Equals(c2 Chain) bool {
 	return strings.EqualFold(c.String(), c2.String())
-}
-
-func (c Chain) IsThornado() bool {
-	return c.Equals(Thornado)
 }
 
 func GetEVMChains() []Chain {
@@ -109,8 +102,6 @@ func (c Chain) GetSigningAlgo() SigningAlgo {
 // GetGasAsset chain's base asset
 func (c Chain) GetGasAsset() Asset {
 	switch c {
-	case Thornado:
-		return RuneNative
 	case BTCChain:
 		return BTCAsset
 	default:
@@ -167,16 +158,11 @@ func (c Chain) AddressPrefix(cn ChainNetwork) string {
 	switch cn {
 	case MockNet:
 		switch c {
-		case Thornado:
-			// TODO update this to use mocknet address prefix
-			return types.GetConfig().GetBech32AccountAddrPrefix()
 		case BTCChain:
 			return chaincfg.RegressionNetParams.Bech32HRPSegwit
 		}
 	case MainNet, StageNet, ChainNet:
 		switch c {
-		case Thornado:
-			return types.GetConfig().GetBech32AccountAddrPrefix()
 		case BTCChain:
 			return chaincfg.MainNetParams.Bech32HRPSegwit
 		}
@@ -206,7 +192,6 @@ func (c Chain) P2WPKHOutputValue() int64 {
 	}
 }
 
-// MaxMemoLength returns zero because Thornado does not accept transaction memos.
 func (c Chain) MaxMemoLength() int {
 	return 0
 }
@@ -227,8 +212,6 @@ func (c Chain) ApproximateBlockMilliseconds() int64 {
 	switch c {
 	case BTCChain:
 		return 600_000
-	case Thornado:
-		return 6_000
 	default:
 		return 0
 	}
@@ -238,8 +221,6 @@ func (c Chain) InboundNotes() string {
 	switch c {
 	case BTCChain:
 		return "First output should be to inbound_address, second output should be change back to self. Do not include data outputs, send below the dust threshold, or use exotic spend scripts, locks, or address formats."
-	case Thornado:
-		return "Broadcast a MsgDeposit to the Thornado network with the appropriate memo. Do not use multi-in, multi-out transactions."
 	default:
 		return ""
 	}

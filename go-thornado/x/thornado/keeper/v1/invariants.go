@@ -13,11 +13,11 @@ import (
 func (k KVStore) InvariantRoutes() []common.InvariantRoute {
 	return []common.InvariantRoute{
 		common.NewInvariantRoute("thornado", ThornadoInvariant(k)),
-		common.NewInvariantRoute("shielder_deposits", ShielderDepositInvariant(k)),
+		common.NewInvariantRoute("deposits", DepositRecordInvariant(k)),
 		common.NewInvariantRoute("shielder_vault_addresses", ShielderVaultAddressInvariant(k)),
-		common.NewInvariantRoute("shielder_bonds", ShielderBondInvariant(k)),
+		common.NewInvariantRoute("node_bonds", NodeBondInvariant(k)),
 		common.NewInvariantRoute("node_slot_auctions", NodeSlotAuctionInvariant(k)),
-		common.NewInvariantRoute("shielder_fees", ShielderFeeInvariant(k)),
+		common.NewInvariantRoute("fees", FeeInvariant(k)),
 	}
 }
 
@@ -35,15 +35,15 @@ func ThornadoInvariant(k KVStore) common.Invariant {
 	}
 }
 
-func ShielderDepositInvariant(k KVStore) common.Invariant {
+func DepositRecordInvariant(k KVStore) common.Invariant {
 	return func(ctx cosmos.Context) (msg []string, broken bool) {
-		iterator := k.GetShielderDepositIterator(ctx)
+		iterator := k.GetDepositRecordIterator(ctx)
 		defer iterator.Close()
 
 		for ; iterator.Valid(); iterator.Next() {
-			var deposit types.ShielderDeposit
+			var deposit types.DepositRecord
 			if err := json.Unmarshal(iterator.Value(), &deposit); err != nil {
-				msg = append(msg, fmt.Sprintf("invalid shielder deposit encoding: %s", string(iterator.Key())))
+				msg = append(msg, fmt.Sprintf("invalid deposit encoding: %s", string(iterator.Key())))
 				broken = true
 				continue
 			}
@@ -52,7 +52,7 @@ func ShielderDepositInvariant(k KVStore) common.Invariant {
 				broken = true
 			}
 			switch deposit.Status {
-			case types.ShielderStatusDepositMatched:
+			case types.DepositStatusDepositMatched:
 				if deposit.Settlement != "" {
 					msg = append(msg, fmt.Sprintf("%s: matched deposit has settlement %s", deposit.DepositID, deposit.Settlement))
 					broken = true
@@ -61,10 +61,10 @@ func ShielderDepositInvariant(k KVStore) common.Invariant {
 					msg = append(msg, fmt.Sprintf("%s: matched deposit has commitments", deposit.DepositID))
 					broken = true
 				}
-			case types.ShielderStatusSettled:
+			case types.DepositStatusSettled:
 				msg = append(msg, fmt.Sprintf("%s: persisted transient settlement", deposit.DepositID))
 				broken = true
-			case types.ShielderStatusCommitted:
+			case types.DepositStatusCommitted:
 				if deposit.Settlement == "" {
 					msg = append(msg, fmt.Sprintf("%s: committed deposit missing settlement", deposit.DepositID))
 					broken = true
@@ -83,23 +83,23 @@ func ShielderDepositInvariant(k KVStore) common.Invariant {
 				msg = append(msg, fmt.Sprintf("%s: invalid deposit status %s", deposit.DepositID, deposit.Status))
 				broken = true
 			}
-			if deposit.Settlement == types.ShielderSettlementUser && (deposit.IsNodeBond() || deposit.AuctionID != "") {
+			if deposit.Settlement == types.DepositSettlementUser && (deposit.IsNodeBond() || deposit.AuctionID != "") {
 				msg = append(msg, fmt.Sprintf("%s: user settlement has operator metadata", deposit.DepositID))
 				broken = true
 			}
-			if deposit.Settlement == types.ShielderSettlementOperatorBond && !deposit.IsNodeBond() {
+			if deposit.Settlement == types.DepositSettlementOperatorBond && !deposit.IsNodeBond() {
 				msg = append(msg, fmt.Sprintf("%s: bond settlement missing node pubkey", deposit.DepositID))
 				broken = true
 			}
-			if deposit.Settlement == types.ShielderSettlementOperatorBond && deposit.Status == types.ShielderStatusCommitted && !deposit.BondConfirmed {
+			if deposit.Settlement == types.DepositSettlementOperatorBond && deposit.Status == types.DepositStatusCommitted && !deposit.BondConfirmed {
 				msg = append(msg, fmt.Sprintf("%s: committed bond deposit not confirmed", deposit.DepositID))
 				broken = true
 			}
-			if deposit.Settlement == types.ShielderSettlementOperatorSale && (deposit.AuctionID == "" || deposit.SellerPayoutSats+deposit.ProtocolBondSats != deposit.AmountSats) {
+			if deposit.Settlement == types.DepositSettlementOperatorSale && (deposit.AuctionID == "" || deposit.SellerPayoutSats+deposit.ProtocolBondSats != deposit.AmountSats) {
 				msg = append(msg, fmt.Sprintf("%s: invalid node sale settlement amounts", deposit.DepositID))
 				broken = true
 			}
-			if deposit.Settlement == types.ShielderSettlementOperatorFee && !deposit.DepositAddress.IsNoop() {
+			if deposit.Settlement == types.DepositSettlementOperatorFee && !deposit.DepositAddress.IsNoop() {
 				msg = append(msg, fmt.Sprintf("%s: fee settlement must use noop deposit address", deposit.DepositID))
 				broken = true
 			}
@@ -110,13 +110,13 @@ func ShielderDepositInvariant(k KVStore) common.Invariant {
 
 func ShielderVaultAddressInvariant(k KVStore) common.Invariant {
 	return func(ctx cosmos.Context) (msg []string, broken bool) {
-		iterator := k.GetShielderDepositAddressIterator(ctx)
+		iterator := k.GetDepositAddressIterator(ctx)
 		defer iterator.Close()
 
 		for ; iterator.Valid(); iterator.Next() {
-			var record types.ShielderDepositAddress
+			var record types.DepositAddress
 			if err := json.Unmarshal(iterator.Value(), &record); err != nil {
-				msg = append(msg, fmt.Sprintf("invalid shielder deposit address encoding: %s", string(iterator.Key())))
+				msg = append(msg, fmt.Sprintf("invalid deposit address encoding: %s", string(iterator.Key())))
 				broken = true
 				continue
 			}
@@ -142,9 +142,9 @@ func ShielderVaultAddressInvariant(k KVStore) common.Invariant {
 	}
 }
 
-func ShielderBondInvariant(k KVStore) common.Invariant {
+func NodeBondInvariant(k KVStore) common.Invariant {
 	return func(ctx cosmos.Context) (msg []string, broken bool) {
-		pool, err := k.GetShielderFeePool(ctx)
+		pool, err := k.GetFeePool(ctx)
 		if err != nil {
 			return []string{fmt.Sprintf("fee pool error: %v", err)}, true
 		}
@@ -247,9 +247,9 @@ func NodeSlotAuctionInvariant(k KVStore) common.Invariant {
 	}
 }
 
-func ShielderFeeInvariant(k KVStore) common.Invariant {
+func FeeInvariant(k KVStore) common.Invariant {
 	return func(ctx cosmos.Context) (msg []string, broken bool) {
-		pool, err := k.GetShielderFeePool(ctx)
+		pool, err := k.GetFeePool(ctx)
 		if err != nil {
 			return []string{fmt.Sprintf("fee pool error: %v", err)}, true
 		}

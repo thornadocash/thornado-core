@@ -17,16 +17,6 @@ var (
 	EmptyAsset = Asset{Symbol: "", Ticker: "", Synth: false}
 	// BTCAsset BTC
 	BTCAsset = Asset{Chain: BTCChain, Symbol: "BTC", Ticker: "BTC", Synth: false}
-	// RuneNative RUNE on thornado
-	RuneNative = Asset{Chain: Thornado, Symbol: "RUNE", Ticker: "RUNE", Synth: false}
-	TOR        = Asset{Chain: Thornado, Symbol: "TOR", Ticker: "TOR", Synth: false}
-	THORBTC    = Asset{Chain: Thornado, Symbol: "BTC", Ticker: "BTC", Synth: false}
-	// Whitelisted assets
-	RUJI = Asset{Chain: Thornado, Symbol: "RUJI", Ticker: "RUJI", Synth: false}
-	NAMI = Asset{Chain: Thornado, Symbol: "NAMI", Ticker: "NAMI", Synth: false}
-	LQDY = Asset{Chain: Thornado, Symbol: "LQDY", Ticker: "LQDY", Synth: false}
-	AUTO = Asset{Chain: Thornado, Symbol: "AUTO", Ticker: "AUTO", Synth: false}
-	XUSK = Asset{Chain: Thornado, Symbol: "XUSK", Ticker: "XUSK", Synth: false}
 )
 
 var _ sdk.CustomProtobufType = (*Asset)(nil)
@@ -57,7 +47,7 @@ func NewAsset(input string) (Asset, error) {
 		parts = []string{input}
 	}
 	if len(parts) == 1 {
-		asset.Chain = Thornado
+		asset.Chain = BTCChain
 		sym = parts[0]
 	} else {
 		asset.Chain, err = NewChain(parts[0])
@@ -89,7 +79,6 @@ func NewAssetWithShortCodesV3_1_0(input string) (Asset, error) {
 	shorts := make(map[string]string)
 
 	shorts[BTCAsset.ShortCode()] = BTCAsset.String()
-	shorts[RuneNative.ShortCode()] = RuneNative.String()
 
 	long, ok := shorts[input]
 	if ok {
@@ -109,15 +98,6 @@ func (a Asset) Valid() error {
 	if (a.Synth && a.Trade) || (a.Trade && a.Secured) || (a.Secured && a.Synth) {
 		return fmt.Errorf("assets can only be one of trade, synth or secured")
 	}
-	if a.Synth && a.Chain.IsThornado() {
-		return fmt.Errorf("synth asset cannot have chain THOR: %s", a)
-	}
-	if a.Trade && a.Chain.IsThornado() {
-		return fmt.Errorf("trade asset cannot have chain THOR: %s", a)
-	}
-	if a.Secured && a.Chain.IsThornado() {
-		return fmt.Errorf("secured asset cannot have chain THOR: %s", a)
-	}
 	return nil
 }
 
@@ -127,9 +107,6 @@ func (a Asset) Equals(a2 Asset) bool {
 }
 
 func (a Asset) GetChain() Chain {
-	if a.Synth || a.Trade || a.Secured {
-		return Thornado
-	}
 	return a.Chain
 }
 
@@ -190,7 +167,7 @@ func (a Asset) GetSecuredAsset() Asset {
 // Get derived asset of asset
 func (a Asset) GetDerivedAsset() Asset {
 	return Asset{
-		Chain:  Thornado,
+		Chain:  BTCChain,
 		Symbol: a.Symbol,
 		Ticker: a.Ticker,
 		Synth:  false,
@@ -216,28 +193,11 @@ func (a Asset) IsVaultAsset() bool {
 
 // Check if asset is a derived asset
 func (a Asset) IsDerivedAsset() bool {
-	return !a.Synth && !a.Trade && !a.Secured && a.GetChain().IsThornado() && !a.IsRune() && !a.IsWhitelisted()
+	return false
 }
 
-// Native return native asset, only relevant on Thornado
+// Native returns the native denomination for the asset.
 func (a Asset) Native() string {
-	switch {
-	case a.IsRune():
-		return "rune"
-	case a.Equals(TOR):
-		return "tor"
-	case a.Equals(RUJI):
-		return "x/ruji"
-	case a.Equals(NAMI):
-		return "thor.nami"
-	case a.Equals(LQDY):
-		return "thor.lqdy"
-	case a.Equals(XUSK):
-		return "thor.xusk"
-	case a.Equals(AUTO):
-		return "thor.auto"
-	}
-
 	return strings.ToLower(a.String())
 }
 
@@ -264,8 +224,6 @@ func (a Asset) String() string {
 // ShortCode returns the short code for the asset.
 func (a Asset) ShortCode() string {
 	switch a.String() {
-	case "THOR.RUNE":
-		return "r"
 	case "BTC.BTC":
 		return "b"
 	default:
@@ -282,27 +240,19 @@ func (a Asset) IsGasAsset() bool {
 	return a.Equals(gasAsset)
 }
 
-// IsRune is a helper function ,return true only when the asset represent RUNE
+// IsRune is retained for compatibility; Thornado has no RUNE asset.
 func (a Asset) IsRune() bool {
-	return RuneAsset().Equals(a)
+	return false
 }
 
-// IsWhitelisted is a helper function, return true when the asset is whitelisted for a base layer pool
+// IsWhitelisted is retained for compatibility; Thornado has no internal whitelist.
 func (a Asset) IsWhitelisted() bool {
-	whitelist := map[Asset]bool{
-		RUJI: true,
-		NAMI: true,
-		LQDY: true,
-		XUSK: true,
-		AUTO: true,
-	}
-	return whitelist[a]
+	return false
 }
 
-// IsNative is a helper function, returns true when the asset is a native
-// asset to Thornado (ie rune, a synth, etc)
+// IsNative returns false because Thornado has no internal chain asset.
 func (a Asset) IsNative() bool {
-	return a.GetChain().IsThornado()
+	return false
 }
 
 func (a Asset) IsExternalL1Asset() bool {
@@ -337,11 +287,6 @@ func (a Asset) MarshalJSONPB(*jsonpb.Marshaler) ([]byte, error) {
 // UnmarshalJSONPB implement jsonpb.Unmarshaler
 func (a *Asset) UnmarshalJSONPB(unmarshal *jsonpb.Unmarshaler, content []byte) error {
 	return a.UnmarshalJSON(content)
-}
-
-// RuneAsset return RUNE Asset depends on different environment
-func RuneAsset() Asset {
-	return RuneNative
 }
 
 // Replace pool name "." with a "-" for Config key checking.

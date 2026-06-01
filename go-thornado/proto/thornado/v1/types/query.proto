@@ -11,10 +11,13 @@ import "types/query_balance_module.proto";
 import "types/query_ban.proto";
 import "types/query_block.proto";
 import "types/query_constant_values.proto";
+import "types/query_deposit.proto";
 import "types/query_export.proto";
 import "types/query_invariants.proto";
 import "types/query_keystore.proto";
 import "types/query_last_block.proto";
+import "types/query_network_fee.proto";
+import "types/query_fee.proto";
 import "types/query_config.proto";
 import "types/query_node.proto";
 import "types/query_shielder.proto";
@@ -24,6 +27,7 @@ import "types/query_upgrade.proto";
 import "types/query_vault.proto";
 import "types/query_version.proto";
 import "types/type_ban_voter.proto";
+import "types/type_network_fee.proto";
 import "types/type_tss_metric.proto";
 
 option (gogoproto.marshaler_all) = true;
@@ -101,6 +105,10 @@ service Query {
     option (google.api.http).get = "/thornado/lastblock";
   }
 
+  rpc NetworkFeeCurrent(QueryNetworkFeeRequest) returns (NetworkFee) {
+    option (google.api.http).get = "/thornado/network_fee";
+  }
+
   rpc Vault(QueryVaultRequest) returns (QueryVaultResponse) {
     option (google.api.http).get = "/thornado/vault/{pub_key}";
   }
@@ -125,12 +133,24 @@ service Query {
     option (google.api.http).get = "/thornado/txout";
   }
 
-  rpc ShielderDeposit(QueryShielderDepositRequest) returns (QueryShielderDepositResponse) {
+  rpc TxOutOut(QueryTxOutRequest) returns (QueryTxOutResponse) {
+    option (google.api.http).get = "/thornado/txout/out";
+  }
+
+  rpc TxOutInternal(QueryTxOutRequest) returns (QueryTxOutResponse) {
+    option (google.api.http).get = "/thornado/txout/internal";
+  }
+
+  rpc TxOutAll(QueryTxOutRequest) returns (QueryTxOutResponse) {
+    option (google.api.http).get = "/thornado/txout/all";
+  }
+
+  rpc Deposit(QueryDepositRequest) returns (QueryDepositResponse) {
     option (google.api.http).get = "/thornado/deposit/{deposit_id}";
   }
 
-  rpc ShielderWithdrawal(QueryShielderWithdrawalRequest) returns (QueryShielderWithdrawalResponse) {
-    option (google.api.http).get = "/thornado/shielder/withdrawal/{withdrawal_id}";
+  rpc ShielderRedeem(QueryShielderRedeemRequest) returns (QueryShielderRedeemResponse) {
+    option (google.api.http).get = "/thornado/shielder/redeem/{withdrawal_id}";
   }
 
   rpc ShielderNullifier(QueryShielderNullifierRequest) returns (QueryShielderNullifierResponse) {
@@ -141,19 +161,19 @@ service Query {
     option (google.api.http).get = "/thornado/shielder/roots";
   }
 
-  rpc ShielderWithdrawalQuote(QueryShielderWithdrawalQuoteRequest) returns (QueryShielderWithdrawalQuoteResponse) {
-    option (google.api.http).get = "/thornado/shielder/withdrawal/quote/{amount_sats}";
+  rpc ShielderRedeemQuote(QueryShielderRedeemQuoteRequest) returns (QueryShielderRedeemQuoteResponse) {
+    option (google.api.http).get = "/thornado/shielder/redeem/quote/{amount_sats}";
   }
 
-  rpc ShielderFeePool(QueryShielderFeePoolRequest) returns (QueryShielderFeePoolResponse) {
+  rpc FeePool(QueryFeePoolRequest) returns (QueryFeePoolResponse) {
     option (google.api.http).get = "/thornado/fees";
   }
 
-  rpc ShielderSession(QueryShielderSessionRequest) returns (QueryShielderSessionResponse) {
+  rpc DepositSession(QueryDepositSessionRequest) returns (QueryDepositSessionResponse) {
     option (google.api.http).get = "/thornado/deposit/session/{owner}";
   }
 
-  rpc ShielderBond(QueryShielderBondRequest) returns (QueryShielderBondResponse) {
+  rpc NodeBond(QueryNodeBondRequest) returns (QueryNodeBondResponse) {
     option (google.api.http).get = "/thornado/bond/{node_pub_key}";
   }
 
@@ -177,11 +197,11 @@ service Query {
     option (google.api.http).get = "/thornado/deposit/address/{address}";
   }
 
-  rpc ShielderFeeEntitlement(QueryShielderFeeEntitlementRequest) returns (QueryShielderFeeEntitlementResponse) {
+  rpc NodeFeeEntitlement(QueryNodeFeeEntitlementRequest) returns (QueryNodeFeeEntitlementResponse) {
     option (google.api.http).get = "/thornado/fee/entitlement/{node_pub_key}";
   }
 
-  rpc ShielderFeeEntitlements(QueryShielderFeeEntitlementsRequest) returns (QueryShielderFeeEntitlementsResponse) {
+  rpc NodeFeeEntitlements(QueryNodeFeeEntitlementsRequest) returns (QueryNodeFeeEntitlementsResponse) {
     option (google.api.http).get = "/thornado/fee/entitlements";
   }
 

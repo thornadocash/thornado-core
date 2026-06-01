@@ -12,14 +12,14 @@ import (
 type ConfigName int
 
 const (
-	Chain_BlocksPerYear ConfigName = iota
-	Chain_PauseNodeBlocks
+	Chain_BlockTimeSeconds ConfigName = iota
+	Chain_PauseNodeMinutes
 
 	BlockSign_DoublePenaltyPoints
 	BlockSign_MissPenaltyPoints
 
-	Churn_IntervalBlocks
-	Churn_RetryIntervalBlocks
+	Churn_IntervalMinutes
+	Churn_RetryIntervalMinutes
 
 	Config_OperationalVotesMin
 
@@ -32,28 +32,29 @@ const (
 
 	Deposit_AmountMinSats
 	Deposit_PowDifficultyMin
-	Deposit_PowExpiryBlocks
-	Deposit_SessionExpiryBlocks
-	Deposit_SweepRetryIntervalBlocks
+	Deposit_PowExpiryMinutes
+	Deposit_SessionExpiryMinutes
+	Deposit_SweepRetryIntervalMinutes
+	Deposit_RefundIfForgottenDays
 
-	DoubleSign_MaxAgeBlocks
+	DoubleSign_MaxAgeMinutes
 
 	Halt_ChainGlobal
 	Halt_Churning
 	Halt_SigningGlobal
 	Halt_SolvencyCheck
 
-	Keygen_FailJailBlocks
+	Keygen_FailJailMinutes
 	Keygen_FailPenaltyPoints
-	Keygen_RetryIntervalBlocks
+	Keygen_RetryIntervalMinutes
 
-	Keysign_FailJailBlocks
+	Keysign_FailJailMinutes
 	Keysign_FailPenaltyPoints
-	Keysign_PeriodBlocks
+	Keysign_PeriodMinutes
 
 	Node_BadPenaltyPointsMin
 	Node_BadRedline
-	Node_BFTMin
+	Vault_BaseMembersMin
 	Node_BondSlotIncrementSats
 	Node_BondStartAmountSats
 	Node_PenaltyChurnOutThreshold
@@ -62,11 +63,11 @@ const (
 	Node_MissingBlocksTrackMax
 	Node_SetDesired
 
-	NodeSale_AuctionExpiryBlocksMax
-	NodeSale_AuctionExpiryBlocksMin
+	NodeSale_AuctionExpiryMaxMinutes
+	NodeSale_AuctionExpiryMinMinutes
 	NodeSale_BidAmountMinSats
 
-	Observation_DelayFlexibilityBlocks
+	Observation_DelayFlexibilityMinutes
 	Observation_MissPenaltyPoints
 	Observation_SubmitPenaltyPoints
 
@@ -84,12 +85,13 @@ const (
 
 	Upgrade_ProposalCountMax
 
-	Vault_MigrationIntervalBlocks
+	Vault_MigrationIntervalMinutes
 	Vault_MigrationRounds
 	Vault_RetiredRecoveryAttemptsMax
 
 	Withdrawal_FeeBasisPoints
 	Withdrawal_FeeMinSats
+	Withdrawal_BatchWindowMinutes
 )
 
 // ConfigValues define methods used to get constant values

@@ -35,53 +35,53 @@ func (k KVStore) getShielderJSON(ctx cosmos.Context, key []byte, record any) (bo
 	return true, nil
 }
 
-func (k KVStore) SetShielderSession(ctx cosmos.Context, session types.ShielderSession) error {
+func (k KVStore) SetDepositSession(ctx cosmos.Context, session types.DepositSession) error {
 	if err := session.Valid(); err != nil {
 		return err
 	}
-	if err := k.setShielderJSON(ctx, k.GetKey(prefixShielderSession, session.Key()), session); err != nil {
+	if err := k.setShielderJSON(ctx, k.GetKey(prefixDepositSession, session.Key()), session); err != nil {
 		return err
 	}
 	return k.setShielderJSON(ctx, k.GetKey(prefixShielderPowToken, session.PowToken), session.Key())
 }
 
-func (k KVStore) GetShielderSession(ctx cosmos.Context, owner cosmos.AccAddress) (types.ShielderSession, error) {
-	record := types.ShielderSession{Owner: owner}
-	_, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderSession, owner.String()), &record)
+func (k KVStore) GetDepositSession(ctx cosmos.Context, owner cosmos.AccAddress) (types.DepositSession, error) {
+	record := types.DepositSession{Owner: owner}
+	_, err := k.getShielderJSON(ctx, k.GetKey(prefixDepositSession, owner.String()), &record)
 	return record, err
 }
 
-func (k KVStore) GetShielderSessionByPowToken(ctx cosmos.Context, powToken string) (types.ShielderSession, error) {
+func (k KVStore) GetDepositSessionByPowToken(ctx cosmos.Context, powToken string) (types.DepositSession, error) {
 	var owner string
 	found, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderPowToken, strings.TrimSpace(powToken)), &owner)
 	if err != nil {
-		return types.ShielderSession{}, err
+		return types.DepositSession{}, err
 	}
 	if !found || owner == "" {
-		return types.ShielderSession{}, fmt.Errorf("shielder pow token not found")
+		return types.DepositSession{}, fmt.Errorf("deposit pow token not found")
 	}
 	addr, err := cosmos.AccAddressFromBech32(owner)
 	if err != nil {
-		return types.ShielderSession{}, err
+		return types.DepositSession{}, err
 	}
-	return k.GetShielderSession(ctx, addr)
+	return k.GetDepositSession(ctx, addr)
 }
 
-func (k KVStore) SetShielderDepositAddress(ctx cosmos.Context, record types.ShielderDepositAddress) error {
+func (k KVStore) SetDepositAddress(ctx cosmos.Context, record types.DepositAddress) error {
 	if err := record.Valid(); err != nil {
 		return err
 	}
-	return k.setShielderJSON(ctx, k.GetKey(prefixShielderDepositAddress, record.Key()), record)
+	return k.setShielderJSON(ctx, k.GetKey(prefixDepositAddress, record.Key()), record)
 }
 
-func (k KVStore) GetShielderDepositAddress(ctx cosmos.Context, address common.Address) (types.ShielderDepositAddress, error) {
-	record := types.ShielderDepositAddress{Address: address}
-	_, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderDepositAddress, address.String()), &record)
+func (k KVStore) GetDepositAddress(ctx cosmos.Context, address common.Address) (types.DepositAddress, error) {
+	record := types.DepositAddress{Address: address}
+	_, err := k.getShielderJSON(ctx, k.GetKey(prefixDepositAddress, address.String()), &record)
 	return record, err
 }
 
-func (k KVStore) GetShielderDepositAddressIterator(ctx cosmos.Context) cosmos.Iterator {
-	return k.getIterator(ctx, prefixShielderDepositAddress)
+func (k KVStore) GetDepositAddressIterator(ctx cosmos.Context) cosmos.Iterator {
+	return k.getIterator(ctx, prefixDepositAddress)
 }
 
 func (k KVStore) GetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey) (uint64, error) {
@@ -120,21 +120,24 @@ func (k KVStore) AllocateVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey c
 	return index, nil
 }
 
-func (k KVStore) SetShielderDeposit(ctx cosmos.Context, deposit types.ShielderDeposit) error {
+func (k KVStore) SetDepositRecord(ctx cosmos.Context, deposit types.DepositRecord) error {
 	if err := deposit.Valid(); err != nil {
 		return err
 	}
-	return k.setShielderJSON(ctx, k.GetKey(prefixShielderDeposit, deposit.Key()), deposit)
+	return k.setShielderJSON(ctx, k.GetKey(prefixDepositRecord, deposit.Key()), deposit)
 }
 
-func (k KVStore) GetShielderDeposit(ctx cosmos.Context, depositID common.TxID) (types.ShielderDeposit, error) {
-	record := types.ShielderDeposit{DepositID: depositID}
-	_, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderDeposit, depositID.String()), &record)
+func (k KVStore) GetDepositRecord(ctx cosmos.Context, depositID common.TxID) (types.DepositRecord, error) {
+	record := types.DepositRecord{DepositID: depositID}
+	found, err := k.getShielderJSON(ctx, k.GetKey(prefixDepositRecord, depositID.String()), &record)
+	if !found {
+		return types.DepositRecord{}, err
+	}
 	return record, err
 }
 
-func (k KVStore) GetShielderDepositIterator(ctx cosmos.Context) cosmos.Iterator {
-	return k.getIterator(ctx, prefixShielderDeposit)
+func (k KVStore) GetDepositRecordIterator(ctx cosmos.Context) cosmos.Iterator {
+	return k.getIterator(ctx, prefixDepositRecord)
 }
 
 func (k KVStore) SetShielderCommitment(ctx cosmos.Context, commitment string, depositID common.TxID) error {
@@ -217,36 +220,36 @@ func shielderDenominationPrefix(denominationSats uint64) string {
 }
 
 func shielderDenominationCommitmentKey(denominationSats uint64, commitment string) []byte {
-	return []byte(shielderDenominationPrefix(denominationSats) + strings.ToUpper(strings.TrimSpace(commitment)))
+	return []byte(shielderDenominationPrefix(denominationSats) + strings.TrimSpace(commitment))
 }
 
 func shielderMerkleRootKey(denominationSats uint64, root string) []byte {
-	return []byte(fmt.Sprintf("%s%020d/%s", prefixShielderMerkleRoot, denominationSats, strings.ToUpper(strings.TrimSpace(root))))
+	return []byte(fmt.Sprintf("%s%020d/%s", prefixShielderMerkleRoot, denominationSats, strings.TrimSpace(root)))
 }
 
-func (k KVStore) SetShielderWithdrawal(ctx cosmos.Context, withdrawal types.ShielderWithdrawal) error {
+func (k KVStore) SetShielderRedeem(ctx cosmos.Context, withdrawal types.ShielderRedeem) error {
 	if err := withdrawal.Valid(); err != nil {
 		return err
 	}
-	return k.setShielderJSON(ctx, k.GetKey(prefixShielderWithdrawal, withdrawal.Key()), withdrawal)
+	return k.setShielderJSON(ctx, k.GetKey(prefixShielderRedeem, withdrawal.Key()), withdrawal)
 }
 
-func (k KVStore) GetShielderWithdrawal(ctx cosmos.Context, withdrawalID string) (types.ShielderWithdrawal, error) {
-	record := types.ShielderWithdrawal{WithdrawalID: withdrawalID}
-	_, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderWithdrawal, withdrawalID), &record)
+func (k KVStore) GetShielderRedeem(ctx cosmos.Context, withdrawalID string) (types.ShielderRedeem, error) {
+	record := types.ShielderRedeem{WithdrawalID: withdrawalID}
+	_, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderRedeem, withdrawalID), &record)
 	return record, err
 }
 
-func (k KVStore) GetShielderWithdrawalByNullifier(ctx cosmos.Context, nullifierHash string) (types.ShielderWithdrawal, error) {
+func (k KVStore) GetShielderRedeemByNullifier(ctx cosmos.Context, nullifierHash string) (types.ShielderRedeem, error) {
 	var withdrawalID string
 	found, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderNullifier, strings.TrimSpace(nullifierHash)), &withdrawalID)
 	if err != nil {
-		return types.ShielderWithdrawal{}, err
+		return types.ShielderRedeem{}, err
 	}
 	if !found || withdrawalID == "" {
-		return types.ShielderWithdrawal{}, nil
+		return types.ShielderRedeem{}, nil
 	}
-	return k.GetShielderWithdrawal(ctx, withdrawalID)
+	return k.GetShielderRedeem(ctx, withdrawalID)
 }
 
 func (k KVStore) SetShielderNullifierSpent(ctx cosmos.Context, nullifierHash string, withdrawalID string) error {
@@ -255,7 +258,7 @@ func (k KVStore) SetShielderNullifierSpent(ctx cosmos.Context, nullifierHash str
 		return fmt.Errorf("missing shielder nullifier")
 	}
 	if strings.TrimSpace(withdrawalID) == "" {
-		return fmt.Errorf("missing shielder withdrawal id")
+		return fmt.Errorf("missing shielder redeem id")
 	}
 	return k.setShielderJSON(ctx, k.GetKey(prefixShielderNullifier, nullifierHash), withdrawalID)
 }
@@ -271,7 +274,7 @@ func (k KVStore) GetNextShielderNodeBondSlot(ctx cosmos.Context) (uint64, error)
 		return 0, err
 	}
 	if !found {
-		return 0, nil
+		return 1, nil
 	}
 	return slot, nil
 }
@@ -311,31 +314,33 @@ func (k KVStore) GetShielderNodeBondIterator(ctx cosmos.Context) cosmos.Iterator
 	return k.getIterator(ctx, prefixShielderNodeBond)
 }
 
-func (k KVStore) SetShielderFeePool(ctx cosmos.Context, pool types.ShielderFeePool) error {
-	return k.setShielderJSON(ctx, k.GetKey(prefixShielderFeePool, "global"), pool)
+func (k KVStore) SetFeePool(ctx cosmos.Context, pool types.FeePool) error {
+	return k.setShielderJSON(ctx, k.GetKey(prefixFeePool, "global"), pool)
 }
 
-func (k KVStore) GetShielderFeePool(ctx cosmos.Context) (types.ShielderFeePool, error) {
-	var pool types.ShielderFeePool
-	_, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderFeePool, "global"), &pool)
+func (k KVStore) GetFeePool(ctx cosmos.Context) (types.FeePool, error) {
+	var pool types.FeePool
+	_, err := k.getShielderJSON(ctx, k.GetKey(prefixFeePool, "global"), &pool)
 	return pool, err
 }
 
-func (k KVStore) SetShielderFeeNotePubKey(ctx cosmos.Context, pubKey common.PubKey, depositID common.TxID) error {
-	if pubKey.IsEmpty() {
+func (k KVStore) SetShielderFeeNotePubKey(ctx cosmos.Context, pubKey string, depositID common.TxID) error {
+	pubKey = strings.TrimSpace(pubKey)
+	if pubKey == "" {
 		return fmt.Errorf("missing shielder fee note pubkey")
 	}
 	if depositID.IsEmpty() {
 		return fmt.Errorf("missing shielder fee note deposit id")
 	}
-	return k.setShielderJSON(ctx, k.GetKey(prefixShielderFeeNotePubKey, pubKey.String()), depositID.String())
+	return k.setShielderJSON(ctx, k.GetKey(prefixShielderFeeNotePubKey, pubKey), depositID.String())
 }
 
-func (k KVStore) ShielderFeeNotePubKeyUsed(ctx cosmos.Context, pubKey common.PubKey) bool {
-	if pubKey.IsEmpty() {
+func (k KVStore) ShielderFeeNotePubKeyUsed(ctx cosmos.Context, pubKey string) bool {
+	pubKey = strings.TrimSpace(pubKey)
+	if pubKey == "" {
 		return false
 	}
-	return k.has(ctx, k.GetKey(prefixShielderFeeNotePubKey, pubKey.String()))
+	return k.has(ctx, k.GetKey(prefixShielderFeeNotePubKey, pubKey))
 }
 
 func (k KVStore) SetNodeSlotAuction(ctx cosmos.Context, auction types.NodeSlotAuction) error {

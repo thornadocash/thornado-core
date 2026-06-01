@@ -23,8 +23,6 @@ message TxOutItem {
             "github.com/thornadocash/go-thornado/common.PubKey" ];
   common.Coin coin = 4
       [ (gogoproto.nullable) = false, (gogoproto.jsontag) = "coin" ];
-  string memo = 5;
-  string original_memo = 16;
   repeated common.Coin max_gas = 6 [
     (gogoproto.castrepeated) = "github.com/thornadocash/go-thornado/common.Gas",
     (gogoproto.nullable) = false,
@@ -58,4 +56,9 @@ message TxOut {
   option (gogoproto.stringer) = true;
   int64 height = 1;
   repeated TxOutItem tx_array = 2 [ (gogoproto.nullable) = false ];
+  uint64 epoch = 3;
+  string status = 4;
+  string signing_leader = 5 [
+    (gogoproto.casttype) = "github.com/thornadocash/go-thornado/common.PubKey"
+  ];
 }

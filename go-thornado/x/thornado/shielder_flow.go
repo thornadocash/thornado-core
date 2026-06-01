@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
@@ -18,13 +17,13 @@ import (
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
-type ShielderWithdrawalRequest struct {
+type ShielderRedeemRequest struct {
 	Owner  cosmos.AccAddress
 	Proof  json.RawMessage
 	Public json.RawMessage
 }
 
-type shielderWithdrawalPublicInputs struct {
+type shielderRedeemPublicInputs struct {
 	NullifierHash    string `json:"nullifier_hash"`
 	MerkleRoot       string `json:"merkle_root"`
 	DenominationSats uint64 `json:"denomination_sats"`
@@ -37,209 +36,6 @@ type shielderNoteCommitment struct {
 	Commitment       string `json:"commitment"`
 }
 
-func RegisterShielderPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, powToken, operatorPubKey, nodePubKey string) (types.ShielderSession, error) {
-	return registerShielderPowToken(ctx, k, owner, powToken, operatorPubKey, nodePubKey, "")
-}
-
-func RegisterNodeSlotBidPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, powToken, auctionID, operatorPubKey, nodePubKey string) (types.ShielderSession, types.NodeSlotBid, error) {
-	auctionID = strings.TrimSpace(auctionID)
-	if auctionID == "" {
-		return types.ShielderSession{}, types.NodeSlotBid{}, fmt.Errorf("missing node slot auction id")
-	}
-	auction, err := k.GetNodeSlotAuction(ctx, auctionID)
-	if err != nil {
-		return types.ShielderSession{}, types.NodeSlotBid{}, err
-	}
-	if auction.AuctionID == "" || auction.Status != types.NodeSlotAuctionOpen {
-		return types.ShielderSession{}, types.NodeSlotBid{}, fmt.Errorf("node slot auction is not open")
-	}
-	if auction.ExpiryHeight <= ctx.BlockHeight() {
-		return types.ShielderSession{}, types.NodeSlotBid{}, fmt.Errorf("node slot auction expired")
-	}
-	session, err := registerShielderPowToken(ctx, k, owner, powToken, operatorPubKey, nodePubKey, auctionID)
-	if err != nil {
-		return types.ShielderSession{}, types.NodeSlotBid{}, err
-	}
-	bidID := nodeSlotBidID(auctionID, owner, session.DepositPathIndex)
-	bid := types.NodeSlotBid{
-		BidID:          bidID,
-		AuctionID:      auctionID,
-		Bidder:         owner,
-		OperatorPubKey: session.OperatorPubKey,
-		NodePubKey:     session.NodePubKey,
-		CreatedHeight:  ctx.BlockHeight(),
-		UpdatedHeight:  ctx.BlockHeight(),
-	}
-	if err := k.SetNodeSlotBid(ctx, bid); err != nil {
-		return types.ShielderSession{}, types.NodeSlotBid{}, err
-	}
-	return session, bid, nil
-}
-
-func registerShielderPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, powToken, operatorPubKey, nodePubKey, auctionID string) (types.ShielderSession, error) {
-	if owner.Empty() {
-		return types.ShielderSession{}, fmt.Errorf("missing shielder owner")
-	}
-	powToken = strings.TrimSpace(powToken)
-	if powToken == "" {
-		return types.ShielderSession{}, fmt.Errorf("missing shielder pow token")
-	}
-	if err := validateDepositPowToken(ctx, k, owner, powToken); err != nil {
-		return types.ShielderSession{}, err
-	}
-	operatorPubKey = strings.TrimSpace(operatorPubKey)
-	nodePubKey = strings.TrimSpace(nodePubKey)
-	auctionID = strings.TrimSpace(auctionID)
-	var operator common.PubKey
-	if operatorPubKey != "" {
-		var err error
-		operator, err = common.NewPubKey(operatorPubKey)
-		if err != nil {
-			return types.ShielderSession{}, fmt.Errorf("invalid shielder operator pubkey: %w", err)
-		}
-	}
-	if nodePubKey != "" {
-		if operator.IsEmpty() {
-			return types.ShielderSession{}, fmt.Errorf("bond deposits require operator pubkey")
-		}
-		if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, nodePubKey); err != nil {
-			return types.ShielderSession{}, fmt.Errorf("invalid shielder node pubkey: %w", err)
-		}
-	}
-	if auctionID != "" && nodePubKey == "" {
-		return types.ShielderSession{}, fmt.Errorf("node slot auction bids require node pubkey")
-	}
-	if existing, err := k.GetShielderSessionByPowToken(ctx, powToken); err == nil && !existing.DepositAddress.IsEmpty() {
-		expiry := k.GetConfigInt64(ctx, constants.Deposit_PowExpiryBlocks)
-		if expiry <= 0 || existing.CreatedHeight+expiry >= ctx.BlockHeight() {
-			return types.ShielderSession{}, fmt.Errorf("shielder pow token already used")
-		}
-	}
-
-	vault, _, err := currentBTCVaultAddress(ctx, k)
-	if err != nil {
-		return types.ShielderSession{}, err
-	}
-	pathIndex, err := k.AllocateVaultDepositPathIndex(ctx, vault.PubKey)
-	if err != nil {
-		return types.ShielderSession{}, err
-	}
-	address, err := vault.DeriveBTCAddress(pathIndex)
-	if err != nil {
-		return types.ShielderSession{}, err
-	}
-
-	session := types.ShielderSession{
-		Owner:            owner,
-		PowToken:         powToken,
-		DepositAddress:   address,
-		VaultPubKey:      vault.PubKey,
-		DepositPathIndex: pathIndex,
-		OperatorPubKey:   operator,
-		NodePubKey:       nodePubKey,
-		AuctionID:        auctionID,
-		CreatedHeight:    ctx.BlockHeight(),
-		Status:           types.ShielderStatusAddressIssued,
-	}
-	mapping := types.ShielderDepositAddress{
-		Address:        address,
-		VaultPubKey:    vault.PubKey,
-		PathIndex:      pathIndex,
-		Owner:          owner,
-		PowToken:       powToken,
-		OperatorPubKey: operator,
-		NodePubKey:     nodePubKey,
-		AuctionID:      auctionID,
-		CreatedHeight:  ctx.BlockHeight(),
-	}
-	if err := k.SetShielderDepositAddress(ctx, mapping); err != nil {
-		return types.ShielderSession{}, err
-	}
-	return session, k.SetShielderSession(ctx, session)
-}
-
-func MatchShielderDeposit(ctx cosmos.Context, mgr Manager, tx ObservedTx) (types.ShielderDeposit, error) {
-	k := mgr.Keeper()
-	if tx.Tx.ID.IsEmpty() {
-		return types.ShielderDeposit{}, fmt.Errorf("missing shielder deposit tx id")
-	}
-	if !tx.Tx.Chain.Equals(common.BTCChain) {
-		return types.ShielderDeposit{}, fmt.Errorf("shielder deposit must be bitcoin")
-	}
-	coin := tx.Tx.Coins.GetCoin(common.BTCAsset)
-	if coin.IsEmpty() || coin.Amount.IsZero() {
-		return types.ShielderDeposit{}, fmt.Errorf("missing shielder bitcoin deposit amount")
-	}
-
-	mapping, err := k.GetShielderDepositAddress(ctx, tx.Tx.ToAddress)
-	if err != nil {
-		return types.ShielderDeposit{}, err
-	}
-	if mapping.VaultPubKey.IsEmpty() {
-		return types.ShielderDeposit{}, fmt.Errorf("shielder deposit address not registered")
-	}
-	session, err := k.GetShielderSession(ctx, mapping.Owner)
-	if err != nil {
-		return types.ShielderDeposit{}, err
-	}
-	if session.DepositAddress.IsEmpty() {
-		return types.ShielderDeposit{}, fmt.Errorf("shielder session not found")
-	}
-	if expiry := k.GetConfigInt64(ctx, constants.Deposit_SessionExpiryBlocks); expiry > 0 && session.CreatedHeight+expiry < ctx.BlockHeight() {
-		return types.ShielderDeposit{}, fmt.Errorf("shielder deposit session expired")
-	}
-	if !tx.Tx.ToAddress.Equals(session.DepositAddress) || !mapping.VaultPubKey.Equals(session.VaultPubKey) || mapping.PathIndex != session.DepositPathIndex {
-		return types.ShielderDeposit{}, fmt.Errorf("shielder deposit mapping mismatch")
-	}
-	if minDeposit := uint64(k.GetConfigInt64(ctx, constants.Deposit_AmountMinSats)); coin.Amount.Uint64() < minDeposit {
-		return types.ShielderDeposit{}, fmt.Errorf("shielder deposit below dust threshold: %d/%d", coin.Amount.Uint64(), minDeposit)
-	}
-
-	deposit := types.ShielderDeposit{
-		DepositID:        tx.Tx.ID,
-		Owner:            session.Owner,
-		AmountSats:       coin.Amount.Uint64(),
-		DepositAddress:   tx.Tx.ToAddress,
-		VaultPubKey:      session.VaultPubKey,
-		DepositPathIndex: session.DepositPathIndex,
-		OperatorPubKey:   session.OperatorPubKey,
-		NodePubKey:       session.NodePubKey,
-		AuctionID:        session.AuctionID,
-		MatchedHeight:    ctx.BlockHeight(),
-		Status:           types.ShielderStatusDepositMatched,
-	}
-	if session.AuctionID != "" {
-		bidID := nodeSlotBidID(session.AuctionID, session.Owner, session.DepositPathIndex)
-		bid, err := k.GetNodeSlotBid(ctx, bidID)
-		if err != nil {
-			return types.ShielderDeposit{}, err
-		}
-		if bid.BidID == "" {
-			return types.ShielderDeposit{}, fmt.Errorf("node slot bid not found")
-		}
-		bid.DepositID = tx.Tx.ID
-		bid.AmountSats = coin.Amount.Uint64()
-		bid.UpdatedHeight = ctx.BlockHeight()
-		if err := k.SetNodeSlotBid(ctx, bid); err != nil {
-			return types.ShielderDeposit{}, err
-		}
-	}
-	if err := k.SetShielderDeposit(ctx, deposit); err != nil {
-		return types.ShielderDeposit{}, err
-	}
-
-	session.DepositID = tx.Tx.ID
-	session.Status = types.ShielderStatusDepositMatched
-	if err := k.SetShielderSession(ctx, session); err != nil {
-		return types.ShielderDeposit{}, err
-	}
-	if err := queueVaultPathSweep(ctx, mgr, tx, session.VaultPubKey, session.DepositPathIndex); err != nil {
-		return types.ShielderDeposit{}, err
-	}
-
-	return deposit, nil
-}
-
 func CreateNodeSlotAuction(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAddress, nodePubKey string, reserveSats uint64, expiryHeight int64) (types.NodeSlotAuction, error) {
 	if seller.Empty() {
 		return types.NodeSlotAuction{}, fmt.Errorf("missing node slot auction seller")
@@ -248,10 +44,10 @@ func CreateNodeSlotAuction(ctx cosmos.Context, k keeper.Keeper, seller cosmos.Ac
 		return types.NodeSlotAuction{}, fmt.Errorf("node slot auction expiry must be in the future")
 	}
 	duration := expiryHeight - ctx.BlockHeight()
-	if minExpiry := k.GetConfigInt64(ctx, constants.NodeSale_AuctionExpiryBlocksMin); minExpiry > 0 && duration < minExpiry {
+	if minExpiry := getConfigDurationBlocks(ctx, k, constants.NodeSale_AuctionExpiryMinMinutes); minExpiry > 0 && duration < minExpiry {
 		return types.NodeSlotAuction{}, fmt.Errorf("node slot auction expiry below minimum: %d/%d", duration, minExpiry)
 	}
-	if maxExpiry := k.GetConfigInt64(ctx, constants.NodeSale_AuctionExpiryBlocksMax); maxExpiry > 0 && duration > maxExpiry {
+	if maxExpiry := getConfigDurationBlocks(ctx, k, constants.NodeSale_AuctionExpiryMaxMinutes); maxExpiry > 0 && duration > maxExpiry {
 		return types.NodeSlotAuction{}, fmt.Errorf("node slot auction expiry above maximum: %d/%d", duration, maxExpiry)
 	}
 	bond, err := k.GetShielderNodeBond(ctx, nodePubKey)
@@ -321,11 +117,11 @@ func SelectNodeSlotBid(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAdd
 	if bid.AmountSats < auction.ReserveSats {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, fmt.Errorf("node slot bid below reserve")
 	}
-	deposit, err := k.GetShielderDeposit(ctx, bid.DepositID)
+	deposit, err := k.GetDepositRecord(ctx, bid.DepositID)
 	if err != nil {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, err
 	}
-	if deposit.DepositID.IsEmpty() || deposit.Status != types.ShielderStatusDepositMatched {
+	if deposit.DepositID.IsEmpty() || deposit.Status != types.DepositStatusDepositMatched {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, fmt.Errorf("node slot bid deposit is not settleable")
 	}
 	auction.SelectedBidID = bid.BidID
@@ -342,55 +138,55 @@ func SelectNodeSlotBid(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAdd
 	return auction, bid, nil
 }
 
-func SplitNodeSlotSale(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAddress, auctionID, bidID string, sellerCommitments []string) (types.ShielderDeposit, error) {
+func SplitNodeSlotSale(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAddress, auctionID, bidID string, sellerCommitments []string) (types.DepositRecord, error) {
 	auction, err := k.GetNodeSlotAuction(ctx, auctionID)
 	if err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	if auction.AuctionID == "" || auction.Status != types.NodeSlotAuctionSelected || auction.SelectedBidID != strings.TrimSpace(bidID) {
-		return types.ShielderDeposit{}, fmt.Errorf("node slot auction bid not selected")
+		return types.DepositRecord{}, fmt.Errorf("node slot auction bid not selected")
 	}
 	if !auction.Seller.Equals(seller) {
-		return types.ShielderDeposit{}, fmt.Errorf("node slot auction seller mismatch")
+		return types.DepositRecord{}, fmt.Errorf("node slot auction seller mismatch")
 	}
 	bid, err := k.GetNodeSlotBid(ctx, bidID)
 	if err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	if bid.BidID == "" || bid.Settled {
-		return types.ShielderDeposit{}, fmt.Errorf("node slot bid is not settleable")
+		return types.DepositRecord{}, fmt.Errorf("node slot bid is not settleable")
 	}
-	deposit, err := k.GetShielderDeposit(ctx, bid.DepositID)
+	deposit, err := k.GetDepositRecord(ctx, bid.DepositID)
 	if err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	if deposit.DepositID.IsEmpty() || len(deposit.Commitments) > 0 {
-		return types.ShielderDeposit{}, fmt.Errorf("node slot sale deposit is not splittable")
+		return types.DepositRecord{}, fmt.Errorf("node slot sale deposit is not splittable")
 	}
-	if deposit.Status != types.ShielderStatusDepositMatched {
-		return types.ShielderDeposit{}, fmt.Errorf("node slot sale deposit is not matched")
+	if deposit.Status != types.DepositStatusDepositMatched {
+		return types.DepositRecord{}, fmt.Errorf("node slot sale deposit is not matched")
 	}
 	sellerPayout := auction.OriginalBondSats
 	if bid.AmountSats < sellerPayout {
 		sellerPayout = bid.AmountSats
 	}
 	deposit.Owner = seller
-	deposit.Settlement = types.ShielderSettlementOperatorSale
+	deposit.Settlement = types.DepositSettlementOperatorSale
 	deposit.SellerPayoutSats = sellerPayout
 	deposit.ProtocolBondSats = bid.AmountSats - sellerPayout
-	deposit.Status = types.ShielderStatusSettled
+	deposit.Status = types.DepositStatusSettled
 	sellerNotes, err := parseShielderNoteCommitments(sellerCommitments, deposit.SellerPayoutSats, false)
 	if err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	sellerNotes, floorRemainder, err := applyShielderNoteFloor(ctx, k, sellerNotes, deposit.SellerPayoutSats)
 	if err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	if floorRemainder > 0 {
 		deposit.SellerPayoutSats -= floorRemainder
-		if err := addShielderWithdrawalFee(ctx, k, floorRemainder); err != nil {
-			return types.ShielderDeposit{}, err
+		if err := addWithdrawalFee(ctx, k, floorRemainder); err != nil {
+			return types.DepositRecord{}, err
 		}
 	}
 	var sellerTotal uint64
@@ -398,50 +194,56 @@ func SplitNodeSlotSale(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAdd
 		sellerTotal += note.DenominationSats
 	}
 	if sellerTotal != deposit.SellerPayoutSats {
-		return types.ShielderDeposit{}, fmt.Errorf("node slot seller commitments do not match payout amount")
+		return types.DepositRecord{}, fmt.Errorf("node slot seller commitments do not match payout amount")
 	}
 	allNotes := append([]shielderNoteCommitment{}, sellerNotes...)
 	if deposit.ProtocolBondSats != 0 {
+		protocolCommitment, err := nodeSlotSaleProtocolCommitment(auction, bid, deposit.ProtocolBondSats, 0)
+		if err != nil {
+			return types.DepositRecord{}, err
+		}
 		allNotes = append(allNotes, shielderNoteCommitment{
 			DenominationSats: deposit.ProtocolBondSats,
-			Commitment:       nodeSlotSaleProtocolCommitment(auction, bid, deposit.ProtocolBondSats, 0),
+			Commitment:       protocolCommitment,
 		})
 	}
 	if err := insertShielderCommitments(ctx, k, deposit.DepositID, allNotes); err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	deposit.Commitments = shielderCommitmentStrings(allNotes)
-	deposit.Status = types.ShielderStatusCommitted
+	deposit.Status = types.DepositStatusCommitted
 	deposit.BondConfirmed = true
 	if err := transferNodeSlotSaleBond(ctx, k, auction, bid, deposit.ProtocolBondSats); err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	auction.Status = types.NodeSlotAuctionSettled
 	auction.UpdatedHeight = ctx.BlockHeight()
 	bid.Settled = true
 	bid.UpdatedHeight = ctx.BlockHeight()
-	if err := k.SetShielderDeposit(ctx, deposit); err != nil {
-		return types.ShielderDeposit{}, err
+	if err := k.SetDepositRecord(ctx, deposit); err != nil {
+		return types.DepositRecord{}, err
 	}
 	if err := k.SetNodeSlotAuction(ctx, auction); err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	if err := k.SetNodeSlotBid(ctx, bid); err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	return deposit, nil
 }
 
-func recordPendingShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, session types.ShielderSession, amountSats uint64) (uint64, error) {
+func recordPendingShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, session types.DepositSession, amountSats uint64) (uint64, error) {
 	nodePubKey := strings.TrimSpace(session.NodePubKey)
 	if nodePubKey == "" {
 		return 0, nil
 	}
-	consPubKey, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, nodePubKey)
-	if err != nil {
-		return 0, fmt.Errorf("invalid shielder node pubkey: %w", err)
+	if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, nodePubKey); err != nil {
+		return 0, fmt.Errorf("invalid node pubkey: %w", err)
 	}
-	nodeAddress := sdk.AccAddress(consPubKey.Address().Bytes())
+	nodeAddress, err := session.OperatorPubKey.GetThorAddress()
+	if err != nil {
+		return 0, fmt.Errorf("invalid shielder operator pubkey address: %w", err)
+	}
 	bond, err := k.GetShielderNodeBond(ctx, nodePubKey)
 	if err != nil {
 		return 0, err
@@ -450,6 +252,10 @@ func recordPendingShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, session 
 		slot, err := k.AllocateShielderNodeBondSlot(ctx)
 		if err != nil {
 			return 0, err
+		}
+		requiredSats := shielderBondRequiredSats(ctx, k, slot)
+		if amountSats < requiredSats {
+			return 0, fmt.Errorf("node bond below required amount: %d/%d", amountSats, requiredSats)
 		}
 		bond = types.ShielderNodeBond{
 			NodePubKey:     nodePubKey,
@@ -471,7 +277,7 @@ func recordPendingShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, session 
 	return bond.Slot, nil
 }
 
-func confirmShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, deposit types.ShielderDeposit) error {
+func confirmShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, deposit types.DepositRecord) error {
 	if !deposit.IsNodeBond() {
 		return nil
 	}
@@ -486,7 +292,7 @@ func confirmShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, deposit types.
 		return fmt.Errorf("shielder node pending bond underflow")
 	}
 	bond.PendingSats -= deposit.AmountSats
-	pool, err := distributeShielderFeePool(ctx, k)
+	pool, err := distributeFeePool(ctx, k)
 	if err != nil {
 		return err
 	}
@@ -518,133 +324,136 @@ func confirmShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, deposit types.
 	if err := k.SetShielderNodeBond(ctx, bond); err != nil {
 		return err
 	}
-	if err := k.SetShielderFeePool(ctx, pool); err != nil {
+	if err := k.SetFeePool(ctx, pool); err != nil {
 		return err
 	}
 	return nil
 }
 
-func PostShielderCommitments(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, depositID common.TxID, commitments []string) (types.ShielderDeposit, error) {
+func PostShielderSplit(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, depositID common.TxID, commitments []string) (types.DepositRecord, error) {
 	if owner.Empty() {
-		return types.ShielderDeposit{}, fmt.Errorf("missing shielder owner")
+		return types.DepositRecord{}, fmt.Errorf("missing deposit owner")
 	}
 	if len(commitments) == 0 {
-		return types.ShielderDeposit{}, fmt.Errorf("missing shielder commitments")
+		return types.DepositRecord{}, fmt.Errorf("missing shielder commitments")
 	}
 
-	deposit, err := k.GetShielderDeposit(ctx, depositID)
+	deposit, err := k.GetDepositRecord(ctx, depositID)
 	if err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	if deposit.DepositID.IsEmpty() {
-		return types.ShielderDeposit{}, fmt.Errorf("shielder deposit not found")
+		return types.DepositRecord{}, fmt.Errorf("deposit not found")
 	}
 	if !deposit.Owner.Equals(owner) {
-		return types.ShielderDeposit{}, fmt.Errorf("shielder deposit owner mismatch")
+		return types.DepositRecord{}, fmt.Errorf("deposit owner mismatch")
 	}
 	if len(deposit.Commitments) > 0 {
-		return types.ShielderDeposit{}, fmt.Errorf("shielder deposit already split")
+		return types.DepositRecord{}, fmt.Errorf("deposit already split")
 	}
 	if deposit.AuctionID != "" {
-		return types.ShielderDeposit{}, fmt.Errorf("node sale bid deposits split through auction-split")
+		return types.DepositRecord{}, fmt.Errorf("node sale bid deposits split through auction-split")
 	}
 	switch deposit.Status {
-	case types.ShielderStatusDepositMatched:
+	case types.DepositStatusDepositMatched:
 		if deposit.IsNodeBond() {
-			nodeSlot, err := recordPendingShielderNodeBond(ctx, k, types.ShielderSession{
+			nodeSlot, err := recordPendingShielderNodeBond(ctx, k, types.DepositSession{
 				Owner:          deposit.Owner,
 				OperatorPubKey: deposit.OperatorPubKey,
 				NodePubKey:     deposit.NodePubKey,
 			}, deposit.AmountSats)
 			if err != nil {
-				return types.ShielderDeposit{}, err
+				return types.DepositRecord{}, err
 			}
 			deposit.NodeSlot = nodeSlot
-			deposit.Settlement = types.ShielderSettlementOperatorBond
+			deposit.Settlement = types.DepositSettlementOperatorBond
 		} else {
-			deposit.Settlement = types.ShielderSettlementUser
+			deposit.Settlement = types.DepositSettlementUser
 		}
-		deposit.Status = types.ShielderStatusSettled
-	case types.ShielderStatusSettled:
+		deposit.Status = types.DepositStatusSettled
+	case types.DepositStatusSettled:
 		if deposit.Settlement == "" {
-			return types.ShielderDeposit{}, fmt.Errorf("shielder deposit missing settlement")
+			return types.DepositRecord{}, fmt.Errorf("deposit missing settlement")
 		}
 	default:
-		return types.ShielderDeposit{}, fmt.Errorf("shielder deposit is not matched")
+		return types.DepositRecord{}, fmt.Errorf("deposit is not matched")
 	}
 
-	noteCommitments, err := parseShielderNoteCommitments(commitments, deposit.AmountSats, deposit.Settlement == types.ShielderSettlementOperatorBond)
+	noteCommitments, err := parseShielderNoteCommitments(commitments, deposit.AmountSats, deposit.Settlement == types.DepositSettlementOperatorBond)
 	if err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	noteCommitments, floorRemainder, err := applyShielderNoteFloor(ctx, k, noteCommitments, deposit.AmountSats)
 	if err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	if floorRemainder > 0 {
 		deposit.AmountSats -= floorRemainder
-		if err := addShielderWithdrawalFee(ctx, k, floorRemainder); err != nil {
-			return types.ShielderDeposit{}, err
+		if err := addWithdrawalFee(ctx, k, floorRemainder); err != nil {
+			return types.DepositRecord{}, err
 		}
 	}
 	seen := make(map[string]struct{}, len(noteCommitments))
 	var total uint64
 	for idx, note := range noteCommitments {
-		if deposit.Settlement == types.ShielderSettlementOperatorBond {
-			note.Commitment = shielderBondCommitment(deposit, note.DenominationSats, idx)
+		if deposit.Settlement == types.DepositSettlementOperatorBond {
+			note.Commitment, err = shielderBondCommitment(deposit, note.DenominationSats, idx)
+			if err != nil {
+				return types.DepositRecord{}, err
+			}
 			noteCommitments[idx] = note
 		}
 		if note.Commitment == "" {
-			return types.ShielderDeposit{}, fmt.Errorf("empty shielder commitment")
+			return types.DepositRecord{}, fmt.Errorf("empty shielder commitment")
 		}
 		if _, ok := seen[note.Commitment]; ok {
-			return types.ShielderDeposit{}, fmt.Errorf("duplicate shielder commitment")
+			return types.DepositRecord{}, fmt.Errorf("duplicate shielder commitment")
 		}
 		if k.ShielderCommitmentExists(ctx, note.Commitment) {
-			return types.ShielderDeposit{}, fmt.Errorf("shielder commitment already exists")
+			return types.DepositRecord{}, fmt.Errorf("shielder commitment already exists")
 		}
 		total += note.DenominationSats
 		seen[note.Commitment] = struct{}{}
 	}
 	if total != deposit.AmountSats {
-		return types.ShielderDeposit{}, fmt.Errorf("shielder commitment denominations do not match deposit amount")
+		return types.DepositRecord{}, fmt.Errorf("shielder commitment denominations do not match deposit amount")
 	}
 
 	deposit.Commitments = make([]string, 0, len(noteCommitments))
 	for _, note := range noteCommitments {
 		deposit.Commitments = append(deposit.Commitments, note.Commitment)
 	}
-	if deposit.Settlement == types.ShielderSettlementOperatorBond {
+	if deposit.Settlement == types.DepositSettlementOperatorBond {
 		if err := confirmShielderNodeBond(ctx, k, deposit); err != nil {
-			return types.ShielderDeposit{}, err
+			return types.DepositRecord{}, err
 		}
 		deposit.BondConfirmed = true
 	}
-	deposit.Status = types.ShielderStatusCommitted
-	if err := k.SetShielderDeposit(ctx, deposit); err != nil {
-		return types.ShielderDeposit{}, err
+	deposit.Status = types.DepositStatusCommitted
+	if err := k.SetDepositRecord(ctx, deposit); err != nil {
+		return types.DepositRecord{}, err
 	}
 	byDenomination := make(map[uint64][]string)
 	for _, note := range noteCommitments {
 		if err := k.SetShielderCommitment(ctx, note.Commitment, depositID); err != nil {
-			return types.ShielderDeposit{}, err
+			return types.DepositRecord{}, err
 		}
 		if err := k.SetShielderDenominationCommitment(ctx, note.DenominationSats, note.Commitment, depositID); err != nil {
-			return types.ShielderDeposit{}, err
+			return types.DepositRecord{}, err
 		}
 		byDenomination[note.DenominationSats] = append(byDenomination[note.DenominationSats], note.Commitment)
 	}
 	for denomination := range byDenomination {
 		leaves, err := k.GetShielderDenominationCommitments(ctx, denomination)
 		if err != nil {
-			return types.ShielderDeposit{}, err
+			return types.DepositRecord{}, err
 		}
 		root, err := ComputeShielderMerkleRoot(leaves)
 		if err != nil {
-			return types.ShielderDeposit{}, err
+			return types.DepositRecord{}, err
 		}
 		if err := k.SetShielderMerkleRoot(ctx, denomination, root); err != nil {
-			return types.ShielderDeposit{}, err
+			return types.DepositRecord{}, err
 		}
 	}
 	return deposit, nil
@@ -712,7 +521,7 @@ func applyShielderNoteFloor(ctx cosmos.Context, k keeper.Keeper, notes []shielde
 	return filtered, feeRemainder, nil
 }
 
-func shielderBondCommitment(deposit types.ShielderDeposit, denominationSats uint64, index int) string {
+func shielderBondCommitment(deposit types.DepositRecord, denominationSats uint64, index int) (string, error) {
 	raw := fmt.Sprintf("thornado:bond-commitment:v1|%s|%s|%s|%d|%d|%d|%s",
 		deposit.DepositID.String(),
 		deposit.OperatorPubKey.String(),
@@ -723,7 +532,7 @@ func shielderBondCommitment(deposit types.ShielderDeposit, denominationSats uint
 		deposit.VaultPubKey.String(),
 	)
 	sum := sha256.Sum256([]byte(raw))
-	return strings.ToUpper(hex.EncodeToString(sum[:]))
+	return ComputeProtocolShielderCommitment(strings.ToUpper(hex.EncodeToString(sum[:])), denominationSats)
 }
 
 func insertShielderCommitments(ctx cosmos.Context, k keeper.Keeper, depositID common.TxID, notes []shielderNoteCommitment) error {
@@ -786,7 +595,7 @@ func nodeSlotBidID(auctionID string, bidder cosmos.AccAddress, pathIndex uint64)
 	return strings.ToUpper(hex.EncodeToString(sum[:]))
 }
 
-func nodeSlotSaleProtocolCommitment(auction types.NodeSlotAuction, bid types.NodeSlotBid, denominationSats uint64, index int) string {
+func nodeSlotSaleProtocolCommitment(auction types.NodeSlotAuction, bid types.NodeSlotBid, denominationSats uint64, index int) (string, error) {
 	sum := sha256.Sum256([]byte(fmt.Sprintf("thornado:node-slot-sale-bond:v1|%s|%s|%s|%d|%d|%d",
 		auction.AuctionID,
 		bid.BidID,
@@ -795,15 +604,17 @@ func nodeSlotSaleProtocolCommitment(auction types.NodeSlotAuction, bid types.Nod
 		denominationSats,
 		index,
 	)))
-	return strings.ToUpper(hex.EncodeToString(sum[:]))
+	return ComputeProtocolShielderCommitment(strings.ToUpper(hex.EncodeToString(sum[:])), denominationSats)
 }
 
 func transferNodeSlotSaleBond(ctx cosmos.Context, k keeper.Keeper, auction types.NodeSlotAuction, bid types.NodeSlotBid, extraBondSats uint64) error {
-	consPubKey, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, bid.NodePubKey)
-	if err != nil {
+	if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, bid.NodePubKey); err != nil {
 		return fmt.Errorf("invalid winning node pubkey: %w", err)
 	}
-	newNodeAddress := sdk.AccAddress(consPubKey.Address().Bytes())
+	newNodeAddress, err := bid.OperatorPubKey.GetThorAddress()
+	if err != nil {
+		return fmt.Errorf("invalid winning operator pubkey address: %w", err)
+	}
 	oldBond, err := k.GetShielderNodeBond(ctx, auction.SellerNodePubKey)
 	if err != nil {
 		return err
@@ -827,7 +638,7 @@ func transferNodeSlotSaleBond(ctx cosmos.Context, k keeper.Keeper, auction types
 		CreatedHeight:  ctx.BlockHeight(),
 		UpdatedHeight:  ctx.BlockHeight(),
 	}
-	pool, err := distributeShielderFeePool(ctx, k)
+	pool, err := distributeFeePool(ctx, k)
 	if err != nil {
 		return err
 	}
@@ -858,102 +669,88 @@ func transferNodeSlotSaleBond(ctx cosmos.Context, k keeper.Keeper, auction types
 	if err := k.SetNodeAccount(ctx, nodeAccount); err != nil {
 		return err
 	}
-	return k.SetShielderFeePool(ctx, pool)
+	return k.SetFeePool(ctx, pool)
 }
 
-func RequestShielderWithdrawal(ctx cosmos.Context, k keeper.Keeper, req ShielderWithdrawalRequest) (types.ShielderWithdrawal, error) {
+func AuthorizeShielderRedeem(ctx cosmos.Context, k keeper.Keeper, req ShielderRedeemRequest) (types.ShielderRedeem, error) {
 	if req.Owner.Empty() {
-		return types.ShielderWithdrawal{}, fmt.Errorf("missing shielder withdrawal owner")
+		return types.ShielderRedeem{}, fmt.Errorf("missing shielder redeem owner")
 	}
-	if err := VerifyShielderWithdrawalJSON(req.Proof, req.Public); err != nil {
-		return types.ShielderWithdrawal{}, err
+	if err := VerifyShielderRedeemJSON(req.Proof, req.Public); err != nil {
+		return types.ShielderRedeem{}, err
 	}
 
-	publicInputs, err := parseShielderWithdrawalPublicInputs(req.Public)
+	publicInputs, err := parseShielderRedeemPublicInputs(req.Public)
 	if err != nil {
-		return types.ShielderWithdrawal{}, err
+		return types.ShielderRedeem{}, err
 	}
 	if k.ShielderNullifierSpent(ctx, publicInputs.NullifierHash) {
-		return types.ShielderWithdrawal{}, fmt.Errorf("shielder nullifier already spent")
+		return types.ShielderRedeem{}, fmt.Errorf("shielder nullifier already spent")
 	}
 	if !k.ShielderMerkleRootExists(ctx, publicInputs.DenominationSats, publicInputs.MerkleRoot) {
-		return types.ShielderWithdrawal{}, fmt.Errorf("unknown shielder merkle root")
+		return types.ShielderRedeem{}, fmt.Errorf("unknown shielder merkle root")
 	}
 
 	recipient, err := common.NewAddress(publicInputs.Recipient)
 	if err != nil {
-		return types.ShielderWithdrawal{}, fmt.Errorf("invalid shielder withdrawal recipient: %w", err)
+		return types.ShielderRedeem{}, fmt.Errorf("invalid shielder redeem recipient: %w", err)
 	}
 	if !recipient.GetChain().Equals(common.BTCChain) {
-		return types.ShielderWithdrawal{}, fmt.Errorf("shielder withdrawal recipient must be bitcoin")
+		return types.ShielderRedeem{}, fmt.Errorf("shielder redeem recipient must be bitcoin")
 	}
 
 	vault, _, err := currentBTCVaultAddress(ctx, k)
 	if err != nil {
-		return types.ShielderWithdrawal{}, err
+		return types.ShielderRedeem{}, err
 	}
 
-	withdrawalID := shielderWithdrawalID(publicInputs.NullifierHash, recipient.String())
+	withdrawalID := shielderRedeemID(publicInputs.NullifierHash, recipient.String())
 	inHash, err := common.NewTxID(withdrawalID)
 	if err != nil {
-		return types.ShielderWithdrawal{}, err
+		return types.ShielderRedeem{}, err
 	}
-	feeSats := shielderWithdrawalFeeSats(ctx, k, publicInputs.DenominationSats)
-	if feeSats >= publicInputs.DenominationSats {
-		return types.ShielderWithdrawal{}, fmt.Errorf("shielder withdrawal fee exceeds denomination")
-	}
-	if publicInputs.FeeSats != 0 && publicInputs.FeeSats != feeSats {
-		return types.ShielderWithdrawal{}, fmt.Errorf("invalid shielder withdrawal fee: %d/%d", publicInputs.FeeSats, feeSats)
-	}
-
-	withdrawal := types.ShielderWithdrawal{
+	withdrawal := types.ShielderRedeem{
 		WithdrawalID:    withdrawalID,
 		Owner:           req.Owner,
 		NullifierHash:   publicInputs.NullifierHash,
 		MerkleRoot:      publicInputs.MerkleRoot,
 		Recipient:       recipient,
 		AmountSats:      publicInputs.DenominationSats,
-		FeeSats:         feeSats,
+		FeeSats:         publicInputs.FeeSats,
 		InHash:          inHash,
 		VaultPubKey:     vault.PubKey,
 		RequestedHeight: ctx.BlockHeight(),
-		Status:          types.ShielderStatusKeysignQueued,
+		Status:          types.ShielderRedeemStatusAuthorized,
 		Proof:           append(json.RawMessage(nil), req.Proof...),
 		Public:          append(json.RawMessage(nil), req.Public...),
 	}
 	if err := withdrawal.Valid(); err != nil {
-		return types.ShielderWithdrawal{}, err
+		return types.ShielderRedeem{}, err
 	}
 
-	if err := k.SetShielderWithdrawal(ctx, withdrawal); err != nil {
-		return types.ShielderWithdrawal{}, err
+	if err := k.SetShielderRedeem(ctx, withdrawal); err != nil {
+		return types.ShielderRedeem{}, err
 	}
 	if err := k.SetShielderNullifierSpent(ctx, withdrawal.NullifierHash, withdrawal.WithdrawalID); err != nil {
-		return types.ShielderWithdrawal{}, err
-	}
-	if err := addShielderWithdrawalFee(ctx, k, withdrawal.FeeSats); err != nil {
-		return types.ShielderWithdrawal{}, err
-	}
-	if err := queueShielderWithdrawalKeysign(ctx, k, withdrawal); err != nil {
-		return types.ShielderWithdrawal{}, err
+		return types.ShielderRedeem{}, err
 	}
 
 	return withdrawal, nil
 }
 
-func shielderWithdrawalFeeSats(ctx cosmos.Context, k keeper.Keeper, amountSats uint64) uint64 {
-	fee := shielderWithdrawalFeeSatsForBp(amountSats, shielderWithdrawalFeeBp(ctx, k))
+func withdrawalFeeSats(ctx cosmos.Context, k keeper.Keeper, amountSats uint64) uint64 {
+	fee := withdrawalFeeSatsForBp(amountSats, withdrawalFeeBp(ctx, k))
 	if minFee := uint64(k.GetConfigInt64(ctx, constants.Withdrawal_FeeMinSats)); fee < minFee {
 		return minFee
 	}
 	return fee
 }
 
-func shielderWithdrawalFeeSatsForBp(amountSats, feeBp uint64) uint64 {
+func withdrawalFeeSatsForBp(amountSats, feeBp uint64) uint64 {
 	return amountSats * feeBp / 10_000
 }
 
-func shielderWithdrawalFeeBp(ctx cosmos.Context, k keeper.Keeper) uint64 {
+func withdrawalFeeBp(ctx cosmos.Context, k keeper.Keeper) uint64 {
 	return uint64(k.GetConfigInt64(ctx, constants.Withdrawal_FeeBasisPoints))
 }
 
@@ -990,171 +787,164 @@ func validateDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.A
 	return nil
 }
 
-func addShielderWithdrawalFee(ctx cosmos.Context, k keeper.Keeper, amountSats uint64) error {
+func addWithdrawalFee(ctx cosmos.Context, k keeper.Keeper, amountSats uint64) error {
 	if amountSats == 0 {
 		return nil
 	}
-	pool, err := k.GetShielderFeePool(ctx)
+	pool, err := k.GetFeePool(ctx)
 	if err != nil {
 		return err
 	}
 	pool.PendingSats += amountSats
 	pool.TotalCollectedSats += amountSats
-	return setDistributedShielderFeePool(ctx, k, pool)
+	return setDistributedFeePool(ctx, k, pool)
 }
 
-func distributeShielderFeePool(ctx cosmos.Context, k keeper.Keeper) (types.ShielderFeePool, error) {
-	pool, err := k.GetShielderFeePool(ctx)
+func distributeFeePool(ctx cosmos.Context, k keeper.Keeper) (types.FeePool, error) {
+	pool, err := k.GetFeePool(ctx)
 	if err != nil {
 		return pool, err
 	}
-	return pool, setDistributedShielderFeePool(ctx, k, pool)
+	if err := setDistributedFeePool(ctx, k, pool); err != nil {
+		return pool, err
+	}
+	return k.GetFeePool(ctx)
 }
 
-func setDistributedShielderFeePool(ctx cosmos.Context, k keeper.Keeper, pool types.ShielderFeePool) error {
+func setDistributedFeePool(ctx cosmos.Context, k keeper.Keeper, pool types.FeePool) error {
 	if pool.PendingSats != 0 && pool.TotalSlots != 0 {
-		feeShareScale := uint64(k.GetConfigInt64(ctx, constants.Shielder_FeeShareScale))
-		increment := mulDivSats(pool.PendingSats, feeShareScale, pool.TotalSlots)
+		increment := pool.PendingSats / pool.TotalSlots
 		if increment != 0 {
-			distributed := mulDivSats(increment, pool.TotalSlots, feeShareScale)
+			distributed := increment * pool.TotalSlots
 			pool.FeePerSlotShare += increment
 			pool.PendingSats -= distributed
 		}
 	}
-	return k.SetShielderFeePool(ctx, pool)
+	return k.SetFeePool(ctx, pool)
 }
 
-func mulDivSats(a, b, c uint64) uint64 {
-	if c == 0 || a == 0 || b == 0 {
-		return 0
-	}
-	product := new(big.Int).Mul(new(big.Int).SetUint64(a), new(big.Int).SetUint64(b))
-	product.Div(product, new(big.Int).SetUint64(c))
-	return product.Uint64()
-}
-
-func SplitShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, nodePubKey string, operatorSignature []byte, commitments, feeNotePubKeys []string) (types.ShielderDeposit, error) {
+func SplitShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, nodePubKey string, operatorSignature []byte, commitments, feeNotePubKeys []string) (types.DepositRecord, error) {
 	if owner.Empty() {
-		return types.ShielderDeposit{}, fmt.Errorf("missing shielder fee owner")
+		return types.DepositRecord{}, fmt.Errorf("missing shielder fee owner")
 	}
 	if len(commitments) == 0 {
-		return types.ShielderDeposit{}, fmt.Errorf("missing shielder fee commitments")
+		return types.DepositRecord{}, fmt.Errorf("missing shielder fee commitments")
 	}
 	bond, err := k.GetShielderNodeBond(ctx, nodePubKey)
 	if err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	if bond.NodePubKey == "" || !bond.FeeShareActive {
-		return types.ShielderDeposit{}, fmt.Errorf("shielder node has no confirmed bond")
+		return types.DepositRecord{}, fmt.Errorf("shielder node has no confirmed bond")
 	}
 	if !bond.PendingFeeDepositID.IsEmpty() {
-		return types.ShielderDeposit{}, fmt.Errorf("shielder fee settlement already pending split")
+		return types.DepositRecord{}, fmt.Errorf("shielder fee settlement already pending split")
 	}
-	pool, err := distributeShielderFeePool(ctx, k)
+	pool, err := distributeFeePool(ctx, k)
 	if err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	accrued := pool.FeePerSlotShare
 	if accrued <= bond.FeeDebtSats {
-		return types.ShielderDeposit{}, fmt.Errorf("no shielder fees claimable")
+		return types.DepositRecord{}, fmt.Errorf("no shielder fees claimable")
 	}
 	claimSats := accrued - bond.FeeDebtSats
 	depositID, err := shielderFeeDepositID(nodePubKey, owner, accrued, ctx.BlockHeight())
 	if err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
-	deposit := types.ShielderDeposit{
+	deposit := types.DepositRecord{
 		DepositID:      depositID,
 		Owner:          owner,
 		AmountSats:     claimSats,
 		DepositAddress: common.NoopAddress,
 		MatchedHeight:  ctx.BlockHeight(),
-		Status:         types.ShielderStatusSettled,
-		Settlement:     types.ShielderSettlementOperatorFee,
+		Status:         types.DepositStatusSettled,
+		Settlement:     types.DepositSettlementOperatorFee,
 	}
 	noteCommitments, err := parseShielderNoteCommitments(commitments, deposit.AmountSats, false)
 	if err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	noteCommitments, floorRemainder, err := applyShielderNoteFloor(ctx, k, noteCommitments, deposit.AmountSats)
 	if err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	if floorRemainder > 0 {
 		deposit.AmountSats -= floorRemainder
 		claimSats = deposit.AmountSats
-		if err := addShielderWithdrawalFee(ctx, k, floorRemainder); err != nil {
-			return types.ShielderDeposit{}, err
+		if err := addWithdrawalFee(ctx, k, floorRemainder); err != nil {
+			return types.DepositRecord{}, err
 		}
 	}
 	notePubKeys, err := parseShielderFeeNotePubKeys(feeNotePubKeys, len(noteCommitments))
 	if err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
 	var total uint64
 	for _, note := range noteCommitments {
 		total += note.DenominationSats
 	}
 	if total != deposit.AmountSats {
-		return types.ShielderDeposit{}, fmt.Errorf("shielder fee commitment denominations do not match claim amount")
+		return types.DepositRecord{}, fmt.Errorf("shielder fee commitment denominations do not match claim amount")
 	}
 	authPayload := shielderFeeClaimPayload(nodePubKey, owner, accrued, pool.FeePerSlotShare, noteCommitments, notePubKeys)
 	if err := verifySecp256K1SignaturePayload(bond.OperatorPubKey, operatorSignature, authPayload); err != nil {
-		return types.ShielderDeposit{}, fmt.Errorf("invalid shielder fee operator signature: %w", err)
+		return types.DepositRecord{}, fmt.Errorf("invalid shielder fee operator signature: %w", err)
 	}
 	seen := make(map[string]struct{}, len(noteCommitments))
 	byDenomination := make(map[uint64][]string)
 	for idx, note := range noteCommitments {
 		if note.Commitment == "" {
-			return types.ShielderDeposit{}, fmt.Errorf("empty shielder fee commitment")
+			return types.DepositRecord{}, fmt.Errorf("empty shielder fee commitment")
 		}
 		if _, ok := seen[note.Commitment]; ok {
-			return types.ShielderDeposit{}, fmt.Errorf("duplicate shielder fee commitment")
+			return types.DepositRecord{}, fmt.Errorf("duplicate shielder fee commitment")
 		}
 		if k.ShielderCommitmentExists(ctx, note.Commitment) {
-			return types.ShielderDeposit{}, fmt.Errorf("shielder fee commitment already exists")
+			return types.DepositRecord{}, fmt.Errorf("shielder fee commitment already exists")
 		}
 		if k.ShielderFeeNotePubKeyUsed(ctx, notePubKeys[idx]) {
-			return types.ShielderDeposit{}, fmt.Errorf("shielder fee note pubkey already used")
+			return types.DepositRecord{}, fmt.Errorf("shielder fee note pubkey already used")
 		}
 		seen[note.Commitment] = struct{}{}
 		deposit.Commitments = append(deposit.Commitments, note.Commitment)
 		if err := k.SetShielderCommitment(ctx, note.Commitment, deposit.DepositID); err != nil {
-			return types.ShielderDeposit{}, err
+			return types.DepositRecord{}, err
 		}
 		if err := k.SetShielderDenominationCommitment(ctx, note.DenominationSats, note.Commitment, deposit.DepositID); err != nil {
-			return types.ShielderDeposit{}, err
+			return types.DepositRecord{}, err
 		}
 		if err := k.SetShielderFeeNotePubKey(ctx, notePubKeys[idx], deposit.DepositID); err != nil {
-			return types.ShielderDeposit{}, err
+			return types.DepositRecord{}, err
 		}
 		byDenomination[note.DenominationSats] = append(byDenomination[note.DenominationSats], note.Commitment)
 	}
 	for denomination := range byDenomination {
 		leaves, err := k.GetShielderDenominationCommitments(ctx, denomination)
 		if err != nil {
-			return types.ShielderDeposit{}, err
+			return types.DepositRecord{}, err
 		}
 		root, err := ComputeShielderMerkleRoot(leaves)
 		if err != nil {
-			return types.ShielderDeposit{}, err
+			return types.DepositRecord{}, err
 		}
 		if err := k.SetShielderMerkleRoot(ctx, denomination, root); err != nil {
-			return types.ShielderDeposit{}, err
+			return types.DepositRecord{}, err
 		}
 	}
 	bond.FeeDebtSats = accrued
 	bond.UpdatedHeight = ctx.BlockHeight()
 	pool.TotalClaimedSats += claimSats
-	deposit.Status = types.ShielderStatusCommitted
-	if err := k.SetShielderDeposit(ctx, deposit); err != nil {
-		return types.ShielderDeposit{}, err
+	deposit.Status = types.DepositStatusCommitted
+	if err := k.SetDepositRecord(ctx, deposit); err != nil {
+		return types.DepositRecord{}, err
 	}
 	if err := k.SetShielderNodeBond(ctx, bond); err != nil {
-		return types.ShielderDeposit{}, err
+		return types.DepositRecord{}, err
 	}
-	if err := k.SetShielderFeePool(ctx, pool); err != nil {
-		return types.ShielderDeposit{}, err
+	if err := k.SetFeePool(ctx, pool); err != nil {
+		return types.DepositRecord{}, err
 	}
 	return deposit, nil
 }
@@ -1164,30 +954,30 @@ func shielderFeeDepositID(nodePubKey string, owner cosmos.AccAddress, accrued ui
 	return common.NewTxID(strings.ToUpper(hex.EncodeToString(sum[:])))
 }
 
-func parseShielderFeeNotePubKeys(raw []string, expected int) ([]common.PubKey, error) {
+func parseShielderFeeNotePubKeys(raw []string, expected int) ([]string, error) {
 	if len(raw) != expected {
 		return nil, fmt.Errorf("shielder fee note pubkey count mismatch")
 	}
-	result := make([]common.PubKey, 0, len(raw))
+	result := make([]string, 0, len(raw))
 	seen := make(map[string]struct{}, len(raw))
 	for _, item := range raw {
-		pubKey, err := common.NewPubKey(strings.TrimSpace(item))
-		if err != nil {
-			return nil, fmt.Errorf("invalid shielder fee note pubkey: %w", err)
-		}
-		if pubKey.IsEmpty() {
+		pubKey := strings.TrimSpace(item)
+		if pubKey == "" {
 			return nil, fmt.Errorf("missing shielder fee note pubkey")
 		}
-		if _, ok := seen[pubKey.String()]; ok {
+		if _, err := hex.DecodeString(pubKey); err != nil || len(pubKey) != 66 {
+			return nil, fmt.Errorf("invalid shielder fee note pubkey")
+		}
+		if _, ok := seen[pubKey]; ok {
 			return nil, fmt.Errorf("duplicate shielder fee note pubkey")
 		}
-		seen[pubKey.String()] = struct{}{}
+		seen[pubKey] = struct{}{}
 		result = append(result, pubKey)
 	}
 	return result, nil
 }
 
-func shielderFeeClaimPayload(nodePubKey string, owner cosmos.AccAddress, accrued, feePerSlotShare uint64, notes []shielderNoteCommitment, notePubKeys []common.PubKey) []byte {
+func shielderFeeClaimPayload(nodePubKey string, owner cosmos.AccAddress, accrued, feePerSlotShare uint64, notes []shielderNoteCommitment, notePubKeys []string) []byte {
 	parts := []string{
 		"thornado:fee-claim:v1",
 		nodePubKey,
@@ -1196,7 +986,7 @@ func shielderFeeClaimPayload(nodePubKey string, owner cosmos.AccAddress, accrued
 		fmt.Sprintf("%d", feePerSlotShare),
 	}
 	for idx, note := range notes {
-		parts = append(parts, fmt.Sprintf("%d:%s:%s", note.DenominationSats, note.Commitment, notePubKeys[idx].String()))
+		parts = append(parts, fmt.Sprintf("%d:%s:%s", note.DenominationSats, note.Commitment, strings.TrimSpace(notePubKeys[idx])))
 	}
 	sum := sha256.Sum256([]byte(strings.Join(parts, "|")))
 	return sum[:]
@@ -1223,8 +1013,8 @@ func verifySecp256K1SignaturePayload(pk common.PubKey, sig []byte, payload []byt
 	return nil
 }
 
-func parseShielderWithdrawalPublicInputs(raw json.RawMessage) (shielderWithdrawalPublicInputs, error) {
-	var publicInputs shielderWithdrawalPublicInputs
+func parseShielderRedeemPublicInputs(raw json.RawMessage) (shielderRedeemPublicInputs, error) {
+	var publicInputs shielderRedeemPublicInputs
 	if err := json.Unmarshal(raw, &publicInputs); err != nil {
 		return publicInputs, fmt.Errorf("invalid shielder public inputs: %w", err)
 	}
@@ -1241,23 +1031,6 @@ func parseShielderWithdrawalPublicInputs(raw json.RawMessage) (shielderWithdrawa
 		return publicInputs, fmt.Errorf("shielder fee exceeds denomination")
 	}
 	return publicInputs, nil
-}
-
-func queueShielderWithdrawalKeysign(ctx cosmos.Context, k keeper.Keeper, withdrawal types.ShielderWithdrawal) error {
-	amount := withdrawal.AmountSats - withdrawal.FeeSats
-	item := TxOutItem{
-		Chain:       common.BTCChain,
-		ToAddress:   withdrawal.Recipient,
-		VaultPubKey: withdrawal.VaultPubKey,
-		Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(amount)),
-		Memo:        "SHIELDER:" + withdrawal.WithdrawalID,
-		MaxGas:      common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(withdrawal.FeeSats))},
-		GasRate:     1,
-		InHash:      withdrawal.InHash,
-		ModuleName:  AsgardName,
-		TxType:      types.TxOutTypeOut,
-	}
-	return k.AppendTxOut(ctx, ctx.BlockHeight(), item)
 }
 
 func queueVaultPathSweep(ctx cosmos.Context, mgr Manager, tx ObservedTx, sourcePubKey common.PubKey, pathIndex uint64) error {
@@ -1308,7 +1081,7 @@ func queueVaultPathSweep(ctx cosmos.Context, mgr Manager, tx ObservedTx, sourceP
 		MaxGas:         common.Gas{maxGasCoin},
 		GasRate:        gasRate,
 		InHash:         tx.Tx.ID,
-		ModuleName:     AsgardName,
+		ModuleName:     BaseName,
 		VaultPathIndex: pathIndex,
 		TxType:         txType,
 	}
@@ -1323,7 +1096,7 @@ func queueVaultPathSweep(ctx cosmos.Context, mgr Manager, tx ObservedTx, sourceP
 }
 
 func currentBTCVaultAddress(ctx cosmos.Context, k keeper.Keeper) (Vault, common.Address, error) {
-	vaults, err := k.GetAsgardVaultsByStatus(ctx, ActiveVault)
+	vaults, err := k.GetBaseVaultsByStatus(ctx, ActiveVault)
 	if err != nil {
 		return Vault{}, common.NoAddress, err
 	}
@@ -1339,7 +1112,7 @@ func currentBTCVaultAddress(ctx cosmos.Context, k keeper.Keeper) (Vault, common.
 	return Vault{}, common.NoAddress, fmt.Errorf("no active shielder bitcoin vault address")
 }
 
-func shielderWithdrawalID(parts ...string) string {
+func shielderRedeemID(parts ...string) string {
 	sum := sha256.Sum256([]byte(strings.Join(parts, "|")))
 	return strings.ToUpper(hex.EncodeToString(sum[:]))
 }

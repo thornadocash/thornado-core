@@ -87,15 +87,30 @@ Class | Method | HTTP request | Description
 *DefaultApi* | [**ThornadoConfigGet**](docs/DefaultApi.md#thornadoconfigget) | **Get** /thornado/config | Config values
 *DefaultApi* | [**ThornadoDepositAddressAddressGet**](docs/DefaultApi.md#thornadodepositaddressaddressget) | **Get** /thornado/deposit/address/{address} | Deposit address mapping
 *DefaultApi* | [**ThornadoDepositDepositIdGet**](docs/DefaultApi.md#thornadodepositdepositidget) | **Get** /thornado/deposit/{deposit_id} | Deposit
+*DefaultApi* | [**ThornadoDepositSessionOwnerGet**](docs/DefaultApi.md#thornadodepositsessionownerget) | **Get** /thornado/deposit/session/{owner} | Deposit session
 *DefaultApi* | [**ThornadoFeeEntitlementNodePubKeyGet**](docs/DefaultApi.md#thornadofeeentitlementnodepubkeyget) | **Get** /thornado/fee/entitlement/{node_pub_key} | Node fee entitlement
+*DefaultApi* | [**ThornadoFeeEntitlementsGet**](docs/DefaultApi.md#thornadofeeentitlementsget) | **Get** /thornado/fee/entitlements | Node fee entitlements
 *DefaultApi* | [**ThornadoFeesGet**](docs/DefaultApi.md#thornadofeesget) | **Get** /thornado/fees | Fee pool
+*DefaultApi* | [**ThornadoKeygenHeightPubKeyGet**](docs/DefaultApi.md#thornadokeygenheightpubkeyget) | **Get** /thornado/keygen/{height}/{pub_key} | Keygen block by vault pubkey
+*DefaultApi* | [**ThornadoKeysignHeightGet**](docs/DefaultApi.md#thornadokeysignheightget) | **Get** /thornado/keysign/{height} | TxOut keysign items
+*DefaultApi* | [**ThornadoKeysignHeightPubKeyGet**](docs/DefaultApi.md#thornadokeysignheightpubkeyget) | **Get** /thornado/keysign/{height}/{pub_key} | TxOut keysign items by vault pubkey
 *DefaultApi* | [**ThornadoLastblockGet**](docs/DefaultApi.md#thornadolastblockget) | **Get** /thornado/lastblock | Last observed blocks
+*DefaultApi* | [**ThornadoMetricKeygenPubKeyGet**](docs/DefaultApi.md#thornadometrickeygenpubkeyget) | **Get** /thornado/metric/keygen/{pub_key} | Keygen metric by vault pubkey
+*DefaultApi* | [**ThornadoMetricsGet**](docs/DefaultApi.md#thornadometricsget) | **Get** /thornado/metrics | Keygen and keysign metrics
+*DefaultApi* | [**ThornadoNetworkFeeGet**](docs/DefaultApi.md#thornadonetworkfeeget) | **Get** /thornado/network_fee | BTC network fee
+*DefaultApi* | [**ThornadoNodeAddressAddressGet**](docs/DefaultApi.md#thornadonodeaddressaddressget) | **Get** /thornado/node/address/{address} | Node by address
+*DefaultApi* | [**ThornadoNodeAuctionAuctionIdBidsGet**](docs/DefaultApi.md#thornadonodeauctionauctionidbidsget) | **Get** /thornado/node/auction/{auction_id}/bids | Node slot auction bids
 *DefaultApi* | [**ThornadoNodeAuctionAuctionIdGet**](docs/DefaultApi.md#thornadonodeauctionauctionidget) | **Get** /thornado/node/auction/{auction_id} | Node slot auction
+*DefaultApi* | [**ThornadoNodeAuctionsGet**](docs/DefaultApi.md#thornadonodeauctionsget) | **Get** /thornado/node/auctions | Node slot auctions
 *DefaultApi* | [**ThornadoNodeBidBidIdGet**](docs/DefaultApi.md#thornadonodebidbididget) | **Get** /thornado/node/bid/{bid_id} | Node slot bid
+*DefaultApi* | [**ThornadoNodeMetricsGet**](docs/DefaultApi.md#thornadonodemetricsget) | **Get** /thornado/node/metrics | Node metrics
+*DefaultApi* | [**ThornadoNodeSlotSlotGet**](docs/DefaultApi.md#thornadonodeslotslotget) | **Get** /thornado/node/slot/{slot} | Node slot
+*DefaultApi* | [**ThornadoNodesGet**](docs/DefaultApi.md#thornadonodesget) | **Get** /thornado/nodes | Nodes
 *DefaultApi* | [**ThornadoPingGet**](docs/DefaultApi.md#thornadopingget) | **Get** /thornado/ping | Ping
-*DefaultApi* | [**ThornadoSessionOwnerGet**](docs/DefaultApi.md#thornadosessionownerget) | **Get** /thornado/session/{owner} | Deposit session
-*DefaultApi* | [**ThornadoTssKeygenGet**](docs/DefaultApi.md#thornadotsskeygenget) | **Get** /thornado/tss/keygen | TSS keygen metrics
-*DefaultApi* | [**ThornadoTssKeysignGet**](docs/DefaultApi.md#thornadotsskeysignget) | **Get** /thornado/tss/keysign | TSS keysign metrics
+*DefaultApi* | [**ThornadoShielderNullifierNullifierHashGet**](docs/DefaultApi.md#thornadoshieldernullifiernullifierhashget) | **Get** /thornado/shielder/nullifier/{nullifier_hash} | Shielder nullifier
+*DefaultApi* | [**ThornadoShielderRedeemQuoteAmountSatsGet**](docs/DefaultApi.md#thornadoshielderredeemquoteamountsatsget) | **Get** /thornado/shielder/redeem/quote/{amount_sats} | Shielder redeem quote
+*DefaultApi* | [**ThornadoShielderRedeemWithdrawalIdGet**](docs/DefaultApi.md#thornadoshielderredeemwithdrawalidget) | **Get** /thornado/shielder/redeem/{withdrawal_id} | Shielder redeem
+*DefaultApi* | [**ThornadoShielderRootsGet**](docs/DefaultApi.md#thornadoshielderrootsget) | **Get** /thornado/shielder/roots | Shielder roots
 *DefaultApi* | [**ThornadoTxHashGet**](docs/DefaultApi.md#thornadotxhashget) | **Get** /thornado/tx/{hash} | Transaction
 *DefaultApi* | [**ThornadoTxoutGet**](docs/DefaultApi.md#thornadotxoutget) | **Get** /thornado/txout | TxOut queue
 *DefaultApi* | [**ThornadoVaultPubKeyGet**](docs/DefaultApi.md#thornadovaultpubkeyget) | **Get** /thornado/vault/{pub_key} | Vault

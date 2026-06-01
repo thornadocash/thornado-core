@@ -2,7 +2,6 @@ package types
 
 import (
 	"errors"
-	"strings"
 
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
@@ -60,8 +59,7 @@ func (m *ObservedTxVoter) matchActionItem(outboundTx common.Tx) bool {
 			}
 
 		}
-		if strings.EqualFold(toi.GetMemo(), outboundTx.Memo) &&
-			toi.ToAddress.Equals(outboundTx.ToAddress) &&
+		if toi.ToAddress.Equals(outboundTx.ToAddress) &&
 			toi.Chain.Equals(outboundTx.Chain) &&
 			matchCoin {
 			return true

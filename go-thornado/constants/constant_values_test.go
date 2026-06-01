@@ -13,13 +13,13 @@ var _ = Suite(&ConstantsTestSuite{})
 
 func (ConstantsTestSuite) TestConfigName_String(c *C) {
 	constantNames := []ConfigName{
-		Chain_BlocksPerYear,
-		Node_BFTMin,
+		Chain_BlockTimeSeconds,
+		Vault_BaseMembersMin,
 		Node_SetDesired,
-		Churn_IntervalBlocks,
+		Churn_IntervalMinutes,
 		Observation_MissPenaltyPoints,
-		Keysign_PeriodBlocks,
-		DoubleSign_MaxAgeBlocks,
+		Keysign_PeriodMinutes,
+		DoubleSign_MaxAgeMinutes,
 		Node_BadPenaltyPointsMin,
 	}
 	for _, item := range constantNames {

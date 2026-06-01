@@ -146,8 +146,8 @@ func (gm *GasMgr) GetGasDetails(ctx cosmos.Context, chain common.Chain) (common.
 	}
 
 	gasRate := cosmos.NewUint(networkFee.TransactionFeeRate)
-	if !chain.IsThornado() {
-		// Thornado has exactly-knowable gas costs, but otherwise overestimate the gas rate by 1.5x
+	if !chain.Equals(common.BTCChain) {
+		// BTCChain has exactly-knowable gas costs, but otherwise overestimate the gas rate by 1.5x
 		// to increase the likelihood of transaction acceptance.
 		gasRate = gasRate.MulUint64(3).QuoUint64(2)
 	}
@@ -179,13 +179,7 @@ func (gm *GasMgr) GetGasRate(ctx cosmos.Context, chain common.Chain) cosmos.Uint
 }
 
 func (gm *GasMgr) GetNetworkFee(ctx cosmos.Context, chain common.Chain) (types.NetworkFee, error) {
-	switch chain {
-	case common.Thornado:
-		transactionFee := gm.keeper.GetOutboundTxFee(ctx)
-		return types.NewNetworkFee(common.Thornado, 1, transactionFee.Uint64()), nil
-	default:
-		return gm.keeper.GetNetworkFee(ctx, chain)
-	}
+	return gm.keeper.GetNetworkFee(ctx, chain)
 }
 
 // GetMaxGas will calculate the maximum gas fee a tx can use

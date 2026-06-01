@@ -1,6 +1,7 @@
 package thornadoclient
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -39,22 +40,21 @@ import (
 const (
 	AuthAccountEndpoint      = "/cosmos/auth/v1beta1/accounts"
 	BroadcastTxsEndpoint     = "/"
-	ConstantsEndpoint        = "/thornado/constants"
 	KeygenEndpoint           = "/thornado/keygen"
 	KeysignEndpoint          = "/thornado/keysign"
 	LastBlockEndpoint        = "/thornado/lastblock"
-	NodeAccountEndpoint      = "/thornado/node"
+	NodeAccountEndpoint      = "/thornado/node/address"
 	NodeAccountsEndpoint     = "/thornado/nodes"
 	SignerMembershipEndpoint = "/thornado/vaults/%s/signers"
 	StatusEndpoint           = "/status"
 	VaultEndpoint            = "/thornado/vault/%s"
-	AsgardVault              = "/thornado/vaults/asgard"
+	BaseVaultEndpoint        = "/thornado/vaults/base"
 	PubKeysEndpoint          = "/thornado/vaults/pubkeys"
-	ThornadoConstants        = "/thornado/constants"
 	RagnarokEndpoint         = "/thornado/ragnarok"
 	ConfigEndpoint           = "/thornado/config"
+	ConfigDefaultsEndpoint   = "/thornado/config/defaults"
 	ChainVersionEndpoint     = "/thornado/version"
-	InboundAddressesEndpoint = "/thornado/inbound_addresses"
+	NetworkFeeEndpoint       = "/thornado/network_fee"
 )
 
 // thornadoBridge will be used to send tx to Thornado
@@ -76,7 +76,7 @@ type ThornadoBridge interface {
 	EnsureNodeWhitelistedWithTimeout() error
 	FetchNodeStatus() (stypes.NodeStatus, error)
 	FetchActiveNodes() ([]common.PubKey, error)
-	GetAsgards() (stypes.Vaults, error)
+	GetBaseVaults() (stypes.Vaults, error)
 	GetVault(pubkey string) (stypes.Vault, error)
 	GetConfig() config.BifrostClientConfiguration
 	GetConstants() (map[string]int64, error)
@@ -88,13 +88,13 @@ type ThornadoBridge interface {
 	GetConfigValueWithRef(template, ref string) (int64, error)
 	GetInboundOutbound(txIns common.ObservedTxs) (common.ObservedTxs, common.ObservedTxs, error)
 	GetPubKeys() ([]PubKeyAddressPair, error)
-	GetAsgardPubKeys() ([]PubKeyAddressPair, error)
+	GetBasePubKeys() ([]PubKeyAddressPair, error)
 	GetSolvencyMsg(height int64, chain common.Chain, pubKey common.PubKey, coins common.Coins) *stypes.MsgSolvency
 	GetThornadoVersion() (semver.Version, error)
 	IsCatchingUp() (bool, error)
 	HasNetworkFee(chain common.Chain) (bool, error)
 	GetNetworkFee(chain common.Chain) (transactionSize, transactionFeeRate uint64, err error)
-	PostKeysignFailure(blame stypes.Blame, height int64, memo string, coins common.Coins, pubkey common.PubKey) (common.TxID, error)
+	PostKeysignFailure(blame stypes.Blame, height int64, coins common.Coins, pubkey common.PubKey) (common.TxID, error)
 	PostNetworkFee(height int64, chain common.Chain, transactionSize, transactionRate uint64) (common.TxID, error)
 	RagnarokInProgress() (bool, error)
 	WaitToCatchUp() error
@@ -284,8 +284,8 @@ func (b *thornadoBridge) GetConfig() config.BifrostClientConfiguration {
 	return b.cfg
 }
 
-// PostKeysignFailure generate and  post a keysign fail tx to thorchan
-func (b *thornadoBridge) PostKeysignFailure(blame stypes.Blame, height int64, memo string, coins common.Coins, pubkey common.PubKey) (common.TxID, error) {
+// PostKeysignFailure generates and posts a keysign failure tx to Thornado.
+func (b *thornadoBridge) PostKeysignFailure(blame stypes.Blame, height int64, coins common.Coins, pubkey common.PubKey) (common.TxID, error) {
 	start := time.Now()
 	defer func() {
 		b.m.GetHistograms(metrics.SignToThornadoDuration).Observe(time.Since(start).Seconds())
@@ -299,7 +299,7 @@ func (b *thornadoBridge) PostKeysignFailure(blame stypes.Blame, height int64, me
 	if err != nil {
 		return common.BlankTxID, fmt.Errorf("failed to get signer address: %w", err)
 	}
-	msg, err := stypes.NewMsgTssKeysignFail(height, blame, memo, coins, signerAddr, pubkey)
+	msg, err := stypes.NewMsgTssKeysignFail(height, blame, coins, signerAddr, pubkey)
 	if err != nil {
 		return common.BlankTxID, fmt.Errorf("fail to create keysign fail message: %w", err)
 	}
@@ -368,8 +368,13 @@ func (b *thornadoBridge) GetInboundOutbound(txIns common.ObservedTxs) (common.Ob
 		}
 		vaultToAddress := tx.Tx.ToAddress.Equals(obAddr)
 		vaultFromAddress := tx.Tx.FromAddress.Equals(obAddr)
-		if chain.Equals(common.BTCChain) && !vaultFromAddress {
-			vaultFromAddress = isDerivedBTCVaultAddress(tx.Tx.FromAddress, tx.ObservedPubKey)
+		if chain.Equals(common.BTCChain) {
+			if !vaultToAddress {
+				vaultToAddress = isDerivedBTCVaultAddress(tx.Tx.ToAddress, tx.ObservedPubKey)
+			}
+			if !vaultFromAddress {
+				vaultFromAddress = isDerivedBTCVaultAddress(tx.Tx.FromAddress, tx.ObservedPubKey)
+			}
 		}
 		var inInboundArray, inOutboundArray bool
 		if vaultToAddress {
@@ -379,10 +384,9 @@ func (b *thornadoBridge) GetInboundOutbound(txIns common.ObservedTxs) (common.Ob
 			inOutboundArray = outbound.Contains(tx)
 		}
 
-		// cancels have to/from the same vault with no memo
-		isCancelTransaction := tx.Tx.ToAddress.Equals(tx.Tx.FromAddress) && tx.Tx.Memo == ""
+		isCancelTransaction := tx.Tx.ToAddress.Equals(tx.Tx.FromAddress)
 
-		// for consolidate UTXO tx, both From & To address will be the asgard address
+		// for consolidate UTXO tx, both From & To address will be the base address
 		// thus here we need to make sure that one add to inbound , the other add to outbound
 		switch {
 		case vaultToAddress && vaultFromAddress && !tx.Tx.FromAddress.Equals(tx.Tx.ToAddress):
@@ -531,70 +535,58 @@ func (b *thornadoBridge) IsCatchingUp() (bool, error) {
 	return resp.Result.SyncInfo.CatchingUp, nil
 }
 
-// HasNetworkFee checks whether the given chain has set a network fee - determined by
-// whether the `outbound_tx_size` for the inbound address response is non-zero.
+// HasNetworkFee checks whether the BTC network fee has been posted.
 func (b *thornadoBridge) HasNetworkFee(chain common.Chain) (bool, error) {
-	buf, s, err := b.getWithPath(InboundAddressesEndpoint)
+	transactionSize, _, err := b.GetNetworkFee(chain)
 	if err != nil {
-		return false, fmt.Errorf("fail to get inbound addresses: %w", err)
+		return false, err
 	}
-	if s != http.StatusOK {
-		return false, fmt.Errorf("unexpected status code: %d", s)
-	}
-
-	var resp []openapi.InboundAddress
-	if err = json.Unmarshal(buf, &resp); err != nil {
-		return false, fmt.Errorf("fail to unmarshal inbound addresses: %w", err)
-	}
-
-	for _, addr := range resp {
-		if addr.Chain != nil && *addr.Chain == chain.String() && addr.OutboundTxSize != nil {
-			var size int64
-			size, err = strconv.ParseInt(*addr.OutboundTxSize, 10, 64)
-			if err != nil {
-				return false, fmt.Errorf("fail to parse outbound_tx_size: %w", err)
-			}
-			return size > 0, nil
-		}
-	}
-
-	return false, fmt.Errorf("no inbound address found for chain: %s", chain)
+	return transactionSize > 0, nil
 }
 
 // GetNetworkFee get chain's network fee from Thornado.
 func (b *thornadoBridge) GetNetworkFee(chain common.Chain) (transactionSize, transactionFeeRate uint64, err error) {
-	buf, s, err := b.getWithPath(InboundAddressesEndpoint)
+	if !chain.Equals(common.BTCChain) {
+		return 0, 0, fmt.Errorf("unsupported network fee chain: %s", chain)
+	}
+	buf, s, err := b.getWithPath(NetworkFeeEndpoint)
 	if err != nil {
-		return 0, 0, fmt.Errorf("fail to get inbound addresses: %w", err)
+		return 0, 0, fmt.Errorf("fail to get network fee: %w", err)
 	}
 	if s != http.StatusOK {
 		return 0, 0, fmt.Errorf("unexpected status code: %d", s)
 	}
-	var resp []openapi.InboundAddress
-	if err = json.Unmarshal(buf, &resp); err != nil {
-		return 0, 0, fmt.Errorf("fail to unmarshal to json: %w", err)
+	var nf struct {
+		Chain              common.Chain `json:"chain"`
+		TransactionSize    any          `json:"transaction_size"`
+		TransactionFeeRate any          `json:"transaction_fee_rate"`
 	}
+	if err = json.Unmarshal(buf, &nf); err != nil {
+		return 0, 0, fmt.Errorf("fail to unmarshal network fee: %w", err)
+	}
+	transactionSize, err = parseNetworkFeeUint64(nf.TransactionSize)
+	if err != nil {
+		return 0, 0, fmt.Errorf("fail to unmarshal network fee transaction size: %w", err)
+	}
+	transactionFeeRate, err = parseNetworkFeeUint64(nf.TransactionFeeRate)
+	if err != nil {
+		return 0, 0, fmt.Errorf("fail to unmarshal network fee transaction fee rate: %w", err)
+	}
+	return transactionSize, transactionFeeRate, nil
+}
 
-	for _, addr := range resp {
-		if addr.Chain != nil && *addr.Chain == chain.String() {
-			// Default values if nil or unfound are 0.
-			if addr.OutboundTxSize != nil {
-				transactionSize, err = strconv.ParseUint(*addr.OutboundTxSize, 10, 64)
-				if err != nil {
-					return 0, 0, fmt.Errorf("fail to parse outbound_tx_size: %w", err)
-				}
-			}
-			if addr.ObservedFeeRate != nil {
-				transactionFeeRate, err = strconv.ParseUint(*addr.ObservedFeeRate, 10, 64)
-				if err != nil {
-					return 0, 0, fmt.Errorf("fail to parse observed_fee_rate: %w", err)
-				}
-			}
-			// Having found the chain, do not continue through the remaining chains.
-			break
+func parseNetworkFeeUint64(v any) (uint64, error) {
+	switch t := v.(type) {
+	case string:
+		return strconv.ParseUint(t, 10, 64)
+	case float64:
+		if t < 0 || t != float64(uint64(t)) {
+			return 0, fmt.Errorf("invalid uint64 value: %v", t)
 		}
+		return uint64(t), nil
+	default:
+		return 0, fmt.Errorf("unsupported type %T", v)
 	}
-	return
 }
 
 // WaitToCatchUp wait for thornado to catch up
@@ -613,18 +605,18 @@ func (b *thornadoBridge) WaitToCatchUp() error {
 	return nil
 }
 
-// GetAsgards retrieve all the asgard vaults from thornado
-func (b *thornadoBridge) GetAsgards() (stypes.Vaults, error) {
-	buf, s, err := b.getWithPath(AsgardVault)
+// GetBaseVaults retrieves the active base vaults from Thornado.
+func (b *thornadoBridge) GetBaseVaults() (stypes.Vaults, error) {
+	buf, s, err := b.getWithPath(BaseVaultEndpoint)
 	if err != nil {
-		return nil, fmt.Errorf("fail to get asgard vaults: %w", err)
+		return nil, fmt.Errorf("fail to get base vaults: %w", err)
 	}
 	if s != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code %d", s)
 	}
 	var vaults stypes.Vaults
 	if err = json.Unmarshal(buf, &vaults); err != nil {
-		return nil, fmt.Errorf("fail to unmarshal asgard vaults from json: %w", err)
+		return nil, fmt.Errorf("fail to unmarshal base vaults from json: %w", err)
 	}
 	return vaults, nil
 }
@@ -648,7 +640,7 @@ func (b *thornadoBridge) GetVault(pubkey string) (stypes.Vault, error) {
 func (b *thornadoBridge) getVaultPubkeys() ([]byte, error) {
 	buf, s, err := b.getWithPath(PubKeysEndpoint)
 	if err != nil {
-		return nil, fmt.Errorf("fail to get asgard vaults: %w", err)
+		return nil, fmt.Errorf("fail to get vault pubkeys: %w", err)
 	}
 	if s != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code %d", s)
@@ -663,7 +655,10 @@ func (b *thornadoBridge) GetPubKeys() ([]PubKeyAddressPair, error) {
 	if err != nil {
 		return nil, fmt.Errorf("fail to get vault pubkeys ,err: %w", err)
 	}
-	var result openapi.VaultPubkeysResponse
+	var result struct {
+		Base     []openapi.VaultInfo `json:"base"`
+		Inactive []openapi.VaultInfo `json:"inactive"`
+	}
 	if err = json.Unmarshal(buf, &result); err != nil {
 		return nil, fmt.Errorf("fail to unmarshal pubkeys: %w", err)
 	}
@@ -698,7 +693,7 @@ func (b *thornadoBridge) GetPubKeys() ([]PubKeyAddressPair, error) {
 	}
 
 	// process active vaults
-	for _, v := range result.Asgard {
+	for _, v := range result.Base {
 		processVault(v, false)
 	}
 
@@ -710,18 +705,21 @@ func (b *thornadoBridge) GetPubKeys() ([]PubKeyAddressPair, error) {
 	return addressPairs, nil
 }
 
-// GetAsgardPubKeys retrieves asgard vault pubkeys.
-func (b *thornadoBridge) GetAsgardPubKeys() ([]PubKeyAddressPair, error) {
+// GetBasePubKeys retrieves base vault pubkeys.
+func (b *thornadoBridge) GetBasePubKeys() ([]PubKeyAddressPair, error) {
 	buf, err := b.getVaultPubkeys()
 	if err != nil {
 		return nil, fmt.Errorf("fail to get vault pubkeys ,err: %w", err)
 	}
-	var result openapi.VaultPubkeysResponse
+	var result struct {
+		Base     []openapi.VaultInfo `json:"base"`
+		Inactive []openapi.VaultInfo `json:"inactive"`
+	}
 	if err = json.Unmarshal(buf, &result); err != nil {
 		return nil, fmt.Errorf("fail to unmarshal pubkeys: %w", err)
 	}
 	var addressPairs []PubKeyAddressPair
-	for _, v := range append(result.Asgard, result.Inactive...) {
+	for _, v := range append(result.Base, result.Inactive...) {
 		if v.PubKeyEddsa != nil {
 			kp := PubKeyAddressPair{
 				PubKey: common.PubKey(*v.PubKeyEddsa),
@@ -760,22 +758,16 @@ func (b *thornadoBridge) PostNetworkFee(height int64, chain common.Chain, transa
 	return b.Broadcast(msg)
 }
 
-// GetConstants from thornado
+// GetConstants returns grouped genesis defaults flattened for legacy callers.
 func (b *thornadoBridge) GetConstants() (map[string]int64, error) {
-	var result struct {
-		Int64Values map[string]int64 `json:"int_64_values"`
-	}
-	buf, s, err := b.getWithPath(ThornadoConstants)
+	buf, s, err := b.getWithPath(ConfigDefaultsEndpoint)
 	if err != nil {
-		return nil, fmt.Errorf("fail to get constants: %w", err)
+		return nil, fmt.Errorf("fail to get config defaults: %w", err)
 	}
 	if s != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", s)
 	}
-	if err = json.Unmarshal(buf, &result); err != nil {
-		return nil, fmt.Errorf("fail to unmarshal to json: %w", err)
-	}
-	return result.Int64Values, nil
+	return decodeConfigInt64Values(buf)
 }
 
 // RagnarokInProgress is to query thornado to check whether ragnarok had been triggered
@@ -810,28 +802,111 @@ func (b *thornadoBridge) GetThornadoVersion() (semver.Version, error) {
 	return semver.MustParse(version.Current), nil
 }
 
-// GetConfig - get config settings
+// GetConfigValue returns an override value, or the genesis default when unset.
 func (b *thornadoBridge) GetConfigValue(key string) (int64, error) {
-	buf, s, err := b.getWithPath(ConfigEndpoint + "/key/" + key)
+	values, err := b.getConfigValues(ConfigEndpoint)
 	if err != nil {
-		return 0, fmt.Errorf("fail to get config: %w", err)
+		return 0, err
 	}
-	if s != http.StatusOK {
-		return 0, fmt.Errorf("unexpected status code: %d", s)
+	if value, ok := lookupConfigValue(values, key); ok {
+		return value, nil
 	}
-	var value int64
-	if err = json.Unmarshal(buf, &value); err != nil {
-		return 0, fmt.Errorf("fail to unmarshal config: %w", err)
+	values, err = b.getConfigValues(ConfigDefaultsEndpoint)
+	if err != nil {
+		return 0, err
 	}
-	return value, nil
+	if value, ok := lookupConfigValue(values, key); ok {
+		return value, nil
+	}
+	return 0, fmt.Errorf("config key not found: %s", key)
 }
 
-// GetConfigWithRef is a helper function to more readably insert references (such as Asset ConfigString or Chain) into Config key templates.
+// GetConfigWithRef inserts a reference into a Config key template.
 func (b *thornadoBridge) GetConfigValueWithRef(template, ref string) (int64, error) {
-	// 'template' should be something like "Halt%sChain" (to halt an arbitrary specified chain)
-	// or "Ragnarok-%s" (to halt the pool of an arbitrary specified Asset (ConfigString used for Assets to join Chain and Symbol with a hyphen).
 	key := fmt.Sprintf(template, ref)
 	return b.GetConfigValue(key)
+}
+
+func (b *thornadoBridge) getConfigValues(endpoint string) (map[string]int64, error) {
+	buf, s, err := b.getWithPath(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get config values: %w", err)
+	}
+	if s != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", s)
+	}
+	return decodeConfigInt64Values(buf)
+}
+
+func decodeConfigInt64Values(buf []byte) (map[string]int64, error) {
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal(buf, &top); err != nil {
+		return nil, fmt.Errorf("fail to unmarshal config: %w", err)
+	}
+	values := make(map[string]int64)
+	for key, raw := range top {
+		if value, ok := parseConfigInt64(raw); ok {
+			values[key] = value
+			continue
+		}
+
+		var entries map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &entries); err != nil {
+			continue
+		}
+		for name, raw := range entries {
+			if value, ok := parseConfigInt64(raw); ok {
+				values[key+"_"+name] = value
+			}
+		}
+	}
+	return values, nil
+}
+
+func parseConfigInt64(raw json.RawMessage) (int64, bool) {
+	var entry struct {
+		Value json.RawMessage `json:"value"`
+	}
+	if err := json.Unmarshal(raw, &entry); err == nil && len(entry.Value) > 0 {
+		raw = entry.Value
+	}
+
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	var value any
+	if err := dec.Decode(&value); err != nil {
+		return 0, false
+	}
+	switch v := value.(type) {
+	case json.Number:
+		n, err := v.Int64()
+		return n, err == nil
+	case string:
+		n, err := strconv.ParseInt(v, 10, 64)
+		return n, err == nil
+	default:
+		return 0, false
+	}
+}
+
+func lookupConfigValue(values map[string]int64, key string) (int64, bool) {
+	if value, ok := values[key]; ok {
+		return value, true
+	}
+	normalizedKey := normalizeConfigKey(key)
+	for candidate, value := range values {
+		normalizedCandidate := normalizeConfigKey(candidate)
+		if normalizedCandidate == normalizedKey || strings.HasSuffix(normalizedCandidate, normalizedKey) {
+			return value, true
+		}
+	}
+	return 0, false
+}
+
+func normalizeConfigKey(key string) string {
+	key = strings.ReplaceAll(key, "_", "")
+	key = strings.ReplaceAll(key, "-", "")
+	return strings.ToUpper(key)
 }
 
 // PubKeyAddressPair is a vault pubkey plus signing metadata.

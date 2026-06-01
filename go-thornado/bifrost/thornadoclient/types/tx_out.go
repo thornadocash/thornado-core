@@ -15,8 +15,6 @@ type TxOutItem struct {
 	ToAddress             common.Address `json:"to"`
 	VaultPubKey           common.PubKey  `json:"vault_pubkey"`
 	Coins                 common.Coins   `json:"coins"`
-	Memo                  string         `json:"memo"`
-	OriginalMemo          string         `json:"original_memo,omitempty"`
 	MaxGas                common.Gas     `json:"max_gas"`
 	GasRate               int64          `json:"gas_rate"`
 	InHash                common.TxID    `json:"in_hash"`
@@ -33,22 +31,13 @@ type TxOutItem struct {
 
 // Hash return a sha256 hash that can uniquely represent the TxOutItem
 func (tx TxOutItem) Hash() string {
-	str := fmt.Sprintf("%s|%s|%s|%s|%s|%s", tx.Chain, tx.ToAddress, tx.VaultPubKey, tx.Coins, tx.Memo, tx.InHash)
+	str := fmt.Sprintf("%s|%s|%s|%s|%s", tx.Chain, tx.ToAddress, tx.VaultPubKey, tx.Coins, tx.InHash)
 	return fmt.Sprintf("%X", sha256.Sum256([]byte(str)))
-}
-
-// GetMemo returns the memo to use for parsing/validation purposes.
-// For memoless outbounds, this returns OriginalMemo since Memo is empty.
-func (tx TxOutItem) GetMemo() string {
-	if tx.Memo == "" && tx.OriginalMemo != "" {
-		return tx.OriginalMemo
-	}
-	return tx.Memo
 }
 
 // CacheHash return a hash that doesn't include VaultPubKey , thus this one can be used as cache key for txOutItem across different vaults
 func (tx TxOutItem) CacheHash() string {
-	str := fmt.Sprintf("%s|%s|%s|%s|%s", tx.Chain, tx.ToAddress, tx.Coins, tx.Memo, tx.InHash)
+	str := fmt.Sprintf("%s|%s|%s|%s", tx.Chain, tx.ToAddress, tx.Coins, tx.InHash)
 	return fmt.Sprintf("%X", sha256.Sum256([]byte(str)))
 }
 
@@ -75,9 +64,6 @@ func (tx TxOutItem) Equals(tx2 TxOutItem) bool {
 		return false
 	}
 	if !tx.InHash.Equals(tx2.InHash) {
-		return false
-	}
-	if !strings.EqualFold(tx.Memo, tx2.Memo) {
 		return false
 	}
 	if tx.GasRate != tx2.GasRate {
@@ -119,8 +105,6 @@ type TxArrayItem struct {
 	ToAddress             common.Address `json:"to_address,omitempty"`
 	VaultPubKey           common.PubKey  `json:"vault_pub_key,omitempty"`
 	Coin                  common.Coin    `json:"coin"`
-	Memo                  string         `json:"memo,omitempty"`
-	OriginalMemo          string         `json:"original_memo,omitempty"`
 	MaxGas                common.Gas     `json:"max_gas"`
 	GasRate               int64          `json:"gas_rate,omitempty"`
 	InHash                common.TxID    `json:"in_hash,omitempty"`
@@ -141,8 +125,6 @@ func (tx TxArrayItem) TxOutItem(height int64) TxOutItem {
 		ToAddress:             tx.ToAddress,
 		VaultPubKey:           tx.VaultPubKey,
 		Coins:                 common.Coins{tx.Coin},
-		Memo:                  tx.Memo,
-		OriginalMemo:          tx.OriginalMemo,
 		MaxGas:                tx.MaxGas,
 		GasRate:               tx.GasRate,
 		InHash:                tx.InHash,
@@ -159,8 +141,11 @@ func (tx TxArrayItem) TxOutItem(height int64) TxOutItem {
 
 // TxOut represent the tx out information , bifrost need to sign and process
 type TxOut struct {
-	Height  int64         `json:"height"`
-	TxArray []TxArrayItem `json:"tx_array"`
+	Height        int64         `json:"height"`
+	TxArray       []TxArrayItem `json:"tx_array"`
+	Epoch         uint64        `json:"epoch,omitempty"`
+	Status        string        `json:"status,omitempty"`
+	SigningLeader common.PubKey `json:"signing_leader,omitempty"`
 }
 
 func BroadcastCacheKey(vault, chain string) string {

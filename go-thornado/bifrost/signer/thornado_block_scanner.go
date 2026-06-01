@@ -1,6 +1,7 @@
 package signer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -17,6 +18,7 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
+	"github.com/thornadocash/go-thornado/constants"
 	ttypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
@@ -42,7 +44,7 @@ func NewThornadoBlockScan(cfg config.BifrostBlockScannerConfiguration, scanStora
 		return nil, errors.New("metric is nil")
 	}
 	return &ThornadoBlockScan{
-		logger:         log.With().Str("module", "blockscanner").Str("chain", "THOR").Logger(),
+		logger:         log.With().Str("module", "blockscanner").Str("chain", "BTC").Logger(),
 		wg:             &sync.WaitGroup{},
 		stopChan:       make(chan struct{}),
 		txOutChan:      make(chan types.TxOut),
@@ -65,13 +67,33 @@ func (b *ThornadoBlockScan) GetKeygenMessages() <-chan ttypes.KeygenBlock {
 }
 
 func (b *ThornadoBlockScan) GetHeight() (int64, error) {
-	return b.thornado.GetBlockHeight()
+	timeout := b.cfg.HTTPRequestTimeout
+	if timeout <= 0 {
+		timeout = constants.ThornadoBlockTime
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	status, err := b.thornado.GetContext().Client.Status(ctx)
+	if err != nil {
+		return 0, err
+	}
+	height := status.SyncInfo.LatestBlockHeight
+	const scannerLagBlocks = 2
+	if height <= scannerLagBlocks {
+		return 0, nil
+	}
+	return height - scannerLagBlocks, nil
 }
 
-// ThornadoBlockScan's GetNetworkFee only exists to satisfy the BlockScannerFetcher interface
-// and should never be called, since broadcast network fees are for external chains' observed fees.
+func (b *ThornadoBlockScan) NetworkFeeUpdateEnabled() bool {
+	return false
+}
+
+// ThornadoBlockScan's GetNetworkFee only exists to satisfy the BlockScannerFetcher interface.
+// The generic block scanner skips timed network-fee updates for this scanner.
 func (b *ThornadoBlockScan) GetNetworkFee() (transactionSize, transactionFeeRate uint64) {
-	b.logger.Error().Msg("ThornadoBlockScan GetNetworkFee was called (which should never happen)")
+	b.logger.Debug().Msg("ThornadoBlockScan GetNetworkFee called")
 	return 0, 0
 }
 
@@ -83,9 +105,11 @@ func (b *ThornadoBlockScan) FetchTxs(height, _ int64) (types.TxIn, error) {
 	if err := b.processTxOutBlock(height); err != nil {
 		return types.TxIn{}, err
 	}
-	if err := b.processKeygenBlock(height); err != nil {
-		return types.TxIn{}, err
-	}
+	go func(blockHeight int64) {
+		if err := b.processKeygenBlock(blockHeight); err != nil {
+			b.logger.Error().Err(err).Int64("block", blockHeight).Msg("fail to process keygen block")
+		}
+	}(height)
 	return types.TxIn{}, nil
 }
 
@@ -96,10 +120,8 @@ func (b *ThornadoBlockScan) processKeygenBlock(blockHeight int64) error {
 		return fmt.Errorf("fail to get keygen from thornado: %w", err)
 	}
 
-	// custom error (to be dropped and not logged) because the block is
-	// available yet
 	if keygen.Height == 0 {
-		return btypes.ErrUnavailableBlock
+		return nil
 	}
 
 	if len(keygen.Keygens) > 0 {

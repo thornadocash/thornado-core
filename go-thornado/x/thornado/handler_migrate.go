@@ -58,9 +58,6 @@ func (h MigrateHandler) handle(ctx cosmos.Context, msg MsgMigrate) (*cosmos.Resu
 		if !migTx.Chain.Equals(tx.Chain) {
 			continue
 		}
-		// migrate is the memo used by thornado to identify fund migration between asgard vault.
-		// it use migrate:{block height} to mark a tx out caused by vault rotation
-		// this type of tx out is special , because it doesn't have relevant tx in to trigger it, it is trigger by thornado itself.
 		var fromAddress common.Address
 		var addrErr error
 		switch tx.Chain.GetSigningAlgo() {

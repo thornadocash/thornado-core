@@ -25,19 +25,19 @@ import (
 // Address Checks
 ////////////////////////////////////////////////////////////////////////////////////////
 
-func (c *Client) getAsgardAddress() ([]common.Address, error) {
-	return btc.GetAsgardAddressCached(&c.asgardCache, c.cfg.ChainID, c.bridge, constants.ThornadoBlockTime)
+func (c *Client) getBaseAddress() ([]common.Address, error) {
+	return btc.GetBaseAddressCached(&c.baseCache, c.cfg.ChainID, c.bridge, constants.ThornadoBlockTime)
 }
 
-func (c *Client) isAsgardAddress(addressToCheck string) bool {
-	asgards, err := c.getAsgardAddress()
+func (c *Client) isBaseAddress(addressToCheck string) bool {
+	baseVaults, err := c.getBaseAddress()
 	if err != nil {
-		c.log.Err(err).Msg("fail to get asgard addresses")
-		if len(asgards) == 0 {
+		c.log.Err(err).Msg("fail to get base addresses")
+		if len(baseVaults) == 0 {
 			return false
 		}
 	}
-	for _, addr := range asgards {
+	for _, addr := range baseVaults {
 		if strings.EqualFold(addr.String(), addressToCheck) {
 			return true
 		}
@@ -416,7 +416,10 @@ func (c *Client) getTxIn(tx *btcjson.TxRawResult, height int64, isMemPool bool, 
 	addresses := c.getAddressesFromScriptPubKey(output.ScriptPubKey)
 	toAddr := addresses[0]
 
-	isInbound := c.isAsgardAddress(toAddr)
+	isInbound := c.isBaseAddress(toAddr)
+	if isMemPool && isInbound && !c.isBaseAddress(sender) {
+		return types.TxInItem{}, nil
+	}
 	if isInbound {
 		// only inbound UTXO need to be validated against multi-sig
 		if !c.isValidUTXO(output.ScriptPubKey.Hex) {
@@ -441,8 +444,7 @@ func (c *Client) getTxIn(tx *btcjson.TxRawResult, height int64, isMemPool bool, 
 		Coins: common.Coins{
 			common.NewCoin(c.cfg.ChainID.GetGasAsset(), cosmos.NewUint(amt)),
 		},
-		Memo: "",
-		Gas:  gas,
+		Gas: gas,
 	}, nil
 }
 
@@ -552,6 +554,7 @@ func (c *Client) extractTxs(block *btcjson.GetBlockVerboseTxResult) (types.TxIn,
 	var txItems []*types.TxInItem
 	for idx, tx := range block.Tx {
 		// mempool transaction get committed to block , thus remove it from mempool cache
+		c.removeFromMemPoolCache(tx.Txid)
 		c.removeFromMemPoolCache(tx.Hash)
 		var txInItem types.TxInItem
 		txInItem, err = c.getTxIn(&block.Tx[idx], block.Height, false, vinZeroTxs)
@@ -622,9 +625,9 @@ func (c *Client) ignoreTx(tx *btcjson.TxRawResult, height int64) bool {
 // outbound tx.
 // logic is if sender is a vault then prefer the first Vout with value,
 // else prefer the first Vout with value that's to a vault
-// an exception need to be made for consolidate tx , because consolidate tx will be send from asgard back asgard itself
+// an exception need to be made for consolidate tx , because consolidate tx will be send from base back base itself
 func (c *Client) getOutput(sender string, tx *btcjson.TxRawResult, consolidate bool) (btcjson.Vout, error) {
-	isSenderAsgard := c.isAsgardAddress(sender)
+	isSenderBase := c.isBaseAddress(sender)
 	for _, vout := range tx.Vout {
 		// analyze-ignore(float-comparison)
 		if vout.Value <= 0 {
@@ -641,7 +644,7 @@ func (c *Client) getOutput(sender string, tx *btcjson.TxRawResult, consolidate b
 		// if the sender is a vault then assume the first Vout is the output (and a later Vout could be change).
 		// If the sender isn't a vault, then do do not for instance
 		// return a change address Vout as the output if before the vault-inbound Vout.
-		if !isSenderAsgard && !c.isAsgardAddress(receiver) {
+		if !isSenderBase && !c.isBaseAddress(receiver) {
 			continue
 		}
 
@@ -655,13 +658,13 @@ func (c *Client) getOutput(sender string, tx *btcjson.TxRawResult, consolidate b
 	return btcjson.Vout{}, btypes.ErrFailOutputMatchCriteria
 }
 
-// isFromAsgard returns true if the tx is from asgard and false if not or on error.
+// isFromBase returns true if the tx is from base and false if not or on error.
 // Since this is used to determine UTXOs used for outbounds, the risk of false negative
 // is only that vault members may not find consensus on the outbound, whereas aborting
 // on the error would guarantee the member is not a part of consensus. Returning a false
 // negative should never be done, as it could result in members using an unconfirmed or
-// dust VIN not sent by asgard in an outbound, which can be gamed by a malicious party.
-func (c *Client) isFromAsgard(txid string) bool {
+// dust VIN not sent by base in an outbound, which can be gamed by a malicious party.
+func (c *Client) isFromBase(txid string) bool {
 	// lookup the txid
 	tx, err := c.rpc.GetRawTransactionVerbose(txid)
 	if err != nil {
@@ -676,8 +679,8 @@ func (c *Client) isFromAsgard(txid string) bool {
 		return false
 	}
 
-	// check if the sender is an asgard address
-	return c.isAsgardAddress(sender)
+	// check if the sender is an base address
+	return c.isBaseAddress(sender)
 }
 
 // getSender returns sender address for a btc tx, using vin:0
@@ -782,11 +785,11 @@ func (c *Client) getCoinbaseValue(blockHeight int64) (int64, error) {
 
 // getBlockRequiredConfirmation find out how many confirmation the given txIn need to have before it can be send to Thornado
 func (c *Client) getBlockRequiredConfirmation(txIn types.TxIn, height int64) (int64, error) {
-	asgardAddresses, err := c.getAsgardAddress()
+	baseAddresses, err := c.getBaseAddress()
 	if err != nil {
-		c.log.Err(err).Msg("fail to get asgard addresses")
+		c.log.Err(err).Msg("fail to get base addresses")
 	}
-	totalTxValue := txIn.GetTotalTransactionValue(c.cfg.ChainID.GetGasAsset(), asgardAddresses)
+	totalTxValue := txIn.GetTotalTransactionValue(c.cfg.ChainID.GetGasAsset(), baseAddresses)
 	totalFeeAndSubsidy, err := c.getCoinbaseValue(height)
 	if err != nil {
 		c.log.Err(err).Msgf("fail to get coinbase value")

@@ -11,23 +11,41 @@ import (
 const (
 	TxOutTypeOut         = "out"
 	TxOutTypeMigrate     = "migrate"
-	TxOutTypeRefund      = "refund"
 	TxOutTypeSweep       = "sweep"
 	TxOutTypeConsolidate = "consolidate"
+
+	TxOutStatusPendingBatch = "pending_batch"
+	TxOutStatusPendingSign  = "pending_sign"
 )
 
 func NormalizeTxOutType(txType string) string {
 	switch strings.ToLower(strings.TrimSpace(txType)) {
 	case TxOutTypeMigrate:
 		return TxOutTypeMigrate
-	case TxOutTypeRefund:
-		return TxOutTypeRefund
 	case TxOutTypeSweep:
 		return TxOutTypeSweep
 	case TxOutTypeConsolidate:
 		return TxOutTypeConsolidate
 	default:
 		return TxOutTypeOut
+	}
+}
+
+func IsBatchableTxOutType(txType string) bool {
+	switch NormalizeTxOutType(txType) {
+	case TxOutTypeOut:
+		return true
+	default:
+		return false
+	}
+}
+
+func IsInternalTxOutType(txType string) bool {
+	switch NormalizeTxOutType(txType) {
+	case TxOutTypeSweep, TxOutTypeConsolidate, TxOutTypeMigrate:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -78,9 +96,6 @@ func (m TxOutItem) Equals(toi2 TxOutItem) bool {
 	if !m.InHash.Equals(toi2.InHash) {
 		return false
 	}
-	if m.Memo != toi2.Memo {
-		return false
-	}
 	if m.GasRate != toi2.GasRate {
 		return false
 	}
@@ -93,24 +108,16 @@ func (m TxOutItem) String() string {
 	sb.WriteString("To Address:" + m.ToAddress.String())
 	sb.WriteString("Asset:" + m.Coin.Asset.String())
 	sb.WriteString("Amount:" + m.Coin.Amount.String())
-	sb.WriteString("Memo:" + m.Memo)
 	sb.WriteString("GasRate:" + strconv.FormatInt(m.GasRate, 10))
 	return sb.String()
 }
 
 func (toi TxOutItem) GetModuleName() string {
-	// toi.ModuleName is frequently "", assumed to be AsgardName by default.
+	// toi.ModuleName is frequently "", assumed to be BaseName by default.
 	if toi.ModuleName == "" {
-		return AsgardName
+		return BaseName
 	}
 	return toi.ModuleName
-}
-
-func (toi TxOutItem) GetMemo() string {
-	if toi.OriginalMemo != "" {
-		return toi.OriginalMemo
-	}
-	return toi.Memo
 }
 
 func (toi TxOutItem) GetTxType() string {
@@ -123,7 +130,7 @@ func (toi TxOutItem) GetTxType() string {
 func (toi TxOutItem) Hash() string {
 	// Bifrost uses Coins (slice) which formats as "<amount> <asset>" for single coin.
 	// Thornado uses Coin (singular) which has the same String() format.
-	str := fmt.Sprintf("%s|%s|%s|%s|%s|%s", toi.Chain, toi.ToAddress, toi.VaultPubKey, toi.Coin, toi.Memo, toi.InHash)
+	str := fmt.Sprintf("%s|%s|%s|%s|%s", toi.Chain, toi.ToAddress, toi.VaultPubKey, toi.Coin, toi.InHash)
 	return fmt.Sprintf("%X", sha256.Sum256([]byte(str)))
 }
 

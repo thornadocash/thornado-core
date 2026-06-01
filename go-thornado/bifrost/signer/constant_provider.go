@@ -42,7 +42,10 @@ func (cp *ConstantsProvider) EnsureConstants(thornadoBlockHeight int64) error {
 		return cp.getConstantsFromThornado(thornadoBlockHeight)
 	}
 	cp.constantsLock.Lock()
-	churnInterval := cp.constants[constants.Churn_IntervalBlocks.String()]
+	churnInterval := constants.MinutesToBlocks(
+		cp.constants[constants.Churn_IntervalMinutes.String()],
+		cp.constants[constants.Chain_BlockTimeSeconds.String()],
+	)
 	cp.constantsLock.Unlock()
 	// Thornado will have new version and constants only when new node get rotated in , and the new version get consensus
 	if thornadoBlockHeight-cp.requestHeight < churnInterval {

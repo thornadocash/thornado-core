@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strings"
 
-	sdkmath "cosmossdk.io/math"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/thornadocash/go-thornado/common"
@@ -21,56 +20,8 @@ func isSimulationMode(ctx cosmos.Context) bool {
 	return ok && simulationMode
 }
 
-func refundTx(ctx cosmos.Context, tx ObservedTx, mgr Manager, refundCode uint32, refundReason, sourceModuleName string) error {
-	return nil
-}
-
-func unrefundableCoinCleanup(ctx cosmos.Context, mgr Manager, toi TxOutItem, burnReason string) {
-	coin := toi.Coin
-
-	if coin.Asset.IsTradeAsset() {
-		return
-	}
-
-	sourceModuleName := toi.GetModuleName() // Ensure that non-"".
-
-	// For context in emitted events, retrieve the original transaction that prompted the cleanup.
-	// If there is no retrievable transaction, leave those fields empty.
-	voter, err := mgr.Keeper().GetObservedTxInVoter(ctx, toi.InHash)
-	if err != nil {
-		ctx.Logger().Error("fail to get observed tx in", "error", err, "hash", toi.InHash.String())
-		return
-	}
-	tx := voter.Tx.Tx
-	// For emitted events' amounts (such as EventDonate), replace the Coins with the coin being cleaned up.
-	tx.Coins = common.NewCoins(toi.Coin)
-
-	// Select course of action according to coin type:
-	// External coin, native coin which isn't RUNE, or native RUNE (not from the Reserve).
-	switch {
-	case !coin.Asset.IsNative():
-		// If unable to refund external-chain coins, add them to their pools
-		// (so they aren't left in the vaults with no reflection in the pools).
-		// Failed-refund external coins have earlier been established to have existing pools with non-zero BalanceRune.
-
-		ctx.Logger().Error("fail to refund non-native tx, leaving coins in vault", "toi.InHash", toi.InHash, "toi.Coin", toi.Coin)
-		return
-	case sourceModuleName != ReserveName:
-		// If unable to refund THOR.RUNE, send it to the Reserve.
-		err := mgr.Keeper().SendFromModuleToModule(ctx, sourceModuleName, ReserveName, common.NewCoins(coin))
-		if err != nil {
-			ctx.Logger().Error("fail to send native coin to Reserve during cleanup", "error", err)
-			return
-		}
-
-	default:
-		// If not satisfying the other conditions this coin should be a native coin in the Reserve,
-		// so leave it there.
-	}
-}
-
 func isStableToStable(ctx cosmos.Context, k keeper.Keeper, source, target common.Asset) bool {
-	anchors := k.GetAnchors(ctx, common.TOR)
+	anchors := k.GetAnchors(ctx, common.BTCAsset)
 	if len(anchors) == 0 {
 		return false
 	}
@@ -104,7 +55,7 @@ func isSignedByActiveNodeAccounts(ctx cosmos.Context, k keeper.Keeper, signers [
 		return false
 	}
 	for _, signer := range signers {
-		if signer.Equals(k.GetModuleAccAddress(AsgardName)) {
+		if signer.Equals(k.GetModuleAccAddress(BaseName)) {
 			continue
 		}
 		if err := signedByActiveNodeAccount(ctx, k, signer); err != nil {
@@ -181,9 +132,8 @@ func addGasFees(ctx cosmos.Context, mgr Manager, tx ObservedTx) error {
 		return err
 	}
 
-	// If the vault is an InactiveVault doing an automatic refund,
-	// any balance is not represented in the pools,
-	// so the Reserve should not reimburse the gas pool.
+	// If the vault is inactive, any balance is not represented in active vault
+	// accounting, so the Reserve should not reimburse the gas pool.
 	if vault.Status == InactiveVault {
 		return nil
 	}
@@ -413,8 +363,7 @@ func isActionsItemDangling(voter ObservedTxVoter, i int) bool {
 				matchCoin = true
 			}
 		}
-		if strings.EqualFold(toi.Memo, outboundTx.Memo) &&
-			toi.ToAddress.Equals(outboundTx.ToAddress) &&
+		if toi.ToAddress.Equals(outboundTx.ToAddress) &&
 			toi.Chain.Equals(outboundTx.Chain) &&
 			matchCoin {
 			return false
@@ -424,7 +373,7 @@ func isActionsItemDangling(voter ObservedTxVoter, i int) bool {
 }
 
 func IsModuleAccAddress(keeper keeper.Keeper, accAddr cosmos.AccAddress) bool {
-	return accAddr.Equals(keeper.GetModuleAccAddress(AsgardName)) ||
+	return accAddr.Equals(keeper.GetModuleAccAddress(BaseName)) ||
 		accAddr.Equals(keeper.GetModuleAccAddress(BondName)) ||
 		accAddr.Equals(keeper.GetModuleAccAddress(ReserveName)) ||
 		accAddr.Equals(keeper.GetModuleAccAddress(LendingName)) ||
@@ -434,9 +383,9 @@ func IsModuleAccAddress(keeper keeper.Keeper, accAddr cosmos.AccAddress) bool {
 
 // getLastChurnHeight returns the block height of the last churn.
 func getLastChurnHeight(ctx cosmos.Context, k keeper.Keeper) int64 {
-	vaults, err := k.GetAsgardVaultsByStatus(ctx, ActiveVault)
+	vaults, err := k.GetBaseVaultsByStatus(ctx, ActiveVault)
 	if err != nil {
-		ctx.Logger().Error("failed to get asgard vaults", "error", err)
+		ctx.Logger().Error("failed to get base vaults", "error", err)
 		return 0
 	}
 	// calculate last churn block height
@@ -486,34 +435,8 @@ func leadingZeros(length int, str string) string {
 	return str
 }
 
-// isOutboundFakeGasTx returns true if the observed outbound is a "fake gas" transaction
-// for a failed outbound. When an outbound fails (e.g., out of gas), bifrost
-// observes the failed transaction and reports it as an outbound observation with
-// amount=1 wei and memo="OUT:failed_txhash" so the gas can be accounted for. This
-// should not trigger slashing as it's a legitimate observation of a failed transaction.
-// Checks are:
-// - must only have one coin in outbound
-// - coin asset must be the gas asset
-// - coin amount must be 1
-// - memo must start with "OUT:" (bifrost sets memo to OUT:txhash for failed tx observations)
 func isOutboundFakeGasTx(tx ObservedTx) bool {
-	isLenCoins1 := len(tx.Tx.Coins) == 1
-	if !isLenCoins1 {
-		return false
-	}
-	asset := tx.Tx.Coins[0].Asset
-	gasAsset := asset.Chain.GetGasAsset()
-	isAssetGasAsset := asset.Equals(gasAsset)
-	if !isAssetGasAsset {
-		return false
-	}
-
-	if !tx.Tx.Coins[0].Amount.Equal(sdkmath.NewUint(1)) {
-		return false
-	}
-
-	// fake gas txs have a self-referential out memo
-	return tx.Tx.Memo == "OUT:"+tx.Tx.ID.String()
+	return false
 }
 
 // isCancelOrApprovalTx returns true if the observed outbound is a cancel transaction
@@ -551,11 +474,6 @@ func isCancelOrApprovalTx(tx ObservedTx) bool {
 	// but bifrost scanner converts them to DustThreshold to make them observable)
 	dustThreshold := asset.Chain.DustThreshold()
 	if !tx.Tx.Coins[0].Amount.Equal(dustThreshold) {
-		return false
-	}
-
-	// Must have no memo
-	if tx.Tx.Memo != "" {
 		return false
 	}
 

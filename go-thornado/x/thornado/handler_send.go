@@ -109,13 +109,6 @@ func getThorSend(msg sdk.Msg) (*MsgSend, error) {
 }
 
 func getDeposit(ctx cosmos.Context, fromAddress sdk.AccAddress, sdkCoins sdk.Coins) (*MsgDeposit, error) {
-	var memo string
-	ctxTxMemo := ctx.Context().Value(ContextKeyTxMemo)
-	if ctxTxMemo != nil {
-		if m, ok := ctxTxMemo.(string); ok {
-			memo = m
-		}
-	}
 	coins := make(common.Coins, len(sdkCoins))
 	for i, coin := range sdkCoins {
 		asset, err := common.NewAsset(
@@ -132,7 +125,7 @@ func getDeposit(ctx cosmos.Context, fromAddress sdk.AccAddress, sdkCoins sdk.Coi
 			Amount: math.NewUintFromBigInt(coin.Amount.BigInt()),
 		}
 	}
-	return NewMsgDeposit(coins, memo, fromAddress), nil
+	return NewMsgDeposit(coins, fromAddress), nil
 }
 
 // SendAnteHandler called by the ante handler to gate mempool entry
@@ -159,7 +152,6 @@ func MsgSendValidate(ctx cosmos.Context, mgr Manager, m sdk.Msg) error {
 	k := mgr.Keeper()
 	isThorModAddr := msg.ToAddress.Equals(k.GetModuleAccAddress(ModuleName))
 
-	// Allow MsgSend with memo-based MsgDeposit is allowed to the thor module address
 	if isThorModAddr {
 		msgDeposit, err := getDeposit(ctx, msg.GetSigners()[0], msg.Amount)
 		if err != nil {
@@ -187,12 +179,11 @@ func MsgSendHandle(ctx cosmos.Context, mgr Manager, m sdk.Msg) (*cosmos.Result, 
 
 	k := mgr.Keeper()
 
-	if k.IsChainHalted(ctx, common.Thornado) {
-		return nil, fmt.Errorf("unable to use MsgSend while Thornado is halted")
+	if k.IsChainHalted(ctx, common.BTCChain) {
+		return nil, fmt.Errorf("unable to use MsgSend while BTCChain is halted")
 	}
 
 	// MsgSend to the thornado module address is treated as a MsgDeposit for client compatibility reasons.
-	// In this case, the memo will be used like in any other MsgDeposit.
 	if msg.ToAddress.Equals(k.GetModuleAccAddress(ModuleName)) {
 		msgDeposit, err := getDeposit(ctx, msg.FromAddress, msg.Amount)
 		if err != nil {

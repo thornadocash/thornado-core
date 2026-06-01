@@ -39,3 +39,21 @@ func TestInvalidWithdrawalReportsRustError(t *testing.T) {
 		t.Fatal("expected non-empty error")
 	}
 }
+
+func TestMinimumFeeDenominationSupported(t *testing.T) {
+	receiptJSON, err := DeriveSplitReceipt("fee-claim", 100_000, "operator-seed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var receipt struct {
+		Notes []struct {
+			DenominationSats uint64 `json:"denomination_sats"`
+		} `json:"notes"`
+	}
+	if err := json.Unmarshal([]byte(receiptJSON), &receipt); err != nil {
+		t.Fatal(err)
+	}
+	if len(receipt.Notes) != 1 || receipt.Notes[0].DenominationSats != 100_000 {
+		t.Fatalf("unexpected fee receipt notes: %#v", receipt.Notes)
+	}
+}

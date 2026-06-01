@@ -51,5 +51,5 @@ func getInternalHandlerMapping(mgr Manager) map[string]MsgHandler {
 }
 
 func processOneTxIn(ctx cosmos.Context, keeper keeper.Keeper, tx ObservedTx, signer cosmos.AccAddress) (cosmos.Msg, error) {
-	return nil, errInvalidMemo
+	return nil, errInvalidMessage
 }

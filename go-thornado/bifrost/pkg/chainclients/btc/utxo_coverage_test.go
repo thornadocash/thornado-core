@@ -13,6 +13,7 @@ import (
 	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/bifrost/tss"
 	"github.com/thornadocash/go-thornado/common"
+	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
@@ -22,95 +23,104 @@ import (
 
 type mockBridge struct {
 	thornadoclient.ThornadoBridge
-	asgardPubKeys   []thornadoclient.PubKeyAddressPair
-	asgardErr       error
+	basePubKeys     []thornadoclient.PubKeyAddressPair
+	baseErr         error
 	postKeysignTxID common.TxID
 	postKeysignErr  error
 }
 
-func (m *mockBridge) GetAsgardPubKeys() ([]thornadoclient.PubKeyAddressPair, error) {
-	return m.asgardPubKeys, m.asgardErr
+func (m *mockBridge) GetBasePubKeys() ([]thornadoclient.PubKeyAddressPair, error) {
+	return m.basePubKeys, m.baseErr
 }
 
-func (m *mockBridge) PostKeysignFailure(_ types.Blame, _ int64, _ string, _ common.Coins, _ common.PubKey) (common.TxID, error) {
+func (m *mockBridge) GetConfigValue(key string) (int64, error) {
+	switch key {
+	case constants.BTC_ConfMultiplierBasisPoints.String(), constants.BTC_MaxConfirmations.String():
+		return 1, nil
+	default:
+		return 0, nil
+	}
+}
+
+func (m *mockBridge) PostKeysignFailure(_ types.Blame, _ int64, _ common.Coins, _ common.PubKey) (common.TxID, error) {
 	return m.postKeysignTxID, m.postKeysignErr
 }
 
 // -------------------------------------------------------------------------------------
-// GetAsgardAddress Tests
+// GetBaseAddress Tests
 // -------------------------------------------------------------------------------------
 
-type GetAsgardAddressSuite struct{}
+type GetBaseAddressSuite struct{}
 
-var _ = Suite(&GetAsgardAddressSuite{})
+var _ = Suite(&GetBaseAddressSuite{})
 
-func (s *GetAsgardAddressSuite) TestGetAsgardAddress_BridgeError(c *C) {
+func (s *GetBaseAddressSuite) TestGetBaseAddress_BridgeError(c *C) {
 	bridge := &mockBridge{
-		asgardErr: errors.New("fail to get asgards"),
+		baseErr: errors.New("fail to get baseVaults"),
 	}
-	addrs, err := GetAsgardAddress(common.BTCChain, bridge)
+	addrs, err := GetBaseAddress(common.BTCChain, bridge)
 	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "fail to get asgards : fail to get asgards")
+	c.Assert(err.Error(), Equals, "fail to get baseVaults : fail to get baseVaults")
 	c.Assert(addrs, IsNil)
 }
 
-func (s *GetAsgardAddressSuite) TestGetAsgardAddress_Empty(c *C) {
+func (s *GetBaseAddressSuite) TestGetBaseAddress_Empty(c *C) {
 	bridge := &mockBridge{
-		asgardPubKeys: []thornadoclient.PubKeyAddressPair{},
+		basePubKeys: []thornadoclient.PubKeyAddressPair{},
 	}
-	addrs, err := GetAsgardAddress(common.BTCChain, bridge)
+	addrs, err := GetBaseAddress(common.BTCChain, bridge)
 	c.Assert(err, IsNil)
 	c.Assert(addrs, HasLen, 0)
 }
 
-func (s *GetAsgardAddressSuite) TestGetAsgardAddress_FiltersNonSecp256k1(c *C) {
+func (s *GetBaseAddressSuite) TestGetBaseAddress_FiltersNonSecp256k1(c *C) {
 	bridge := &mockBridge{
-		asgardPubKeys: []thornadoclient.PubKeyAddressPair{
+		basePubKeys: []thornadoclient.PubKeyAddressPair{
 			{
 				PubKey: types.GetRandomPubKey(),
 				Algo:   common.SigningAlgoEd25519,
 			},
 		},
 	}
-	addrs, err := GetAsgardAddress(common.BTCChain, bridge)
+	addrs, err := GetBaseAddress(common.BTCChain, bridge)
 	c.Assert(err, IsNil)
 	c.Assert(addrs, HasLen, 0)
 }
 
-func (s *GetAsgardAddressSuite) TestGetAsgardAddress_Secp256k1Success(c *C) {
+func (s *GetBaseAddressSuite) TestGetBaseAddress_Secp256k1Success(c *C) {
 	pk := types.GetRandomPubKey()
 	bridge := &mockBridge{
-		asgardPubKeys: []thornadoclient.PubKeyAddressPair{
+		basePubKeys: []thornadoclient.PubKeyAddressPair{
 			{
 				PubKey: pk,
 				Algo:   common.SigningAlgoSecp256k1,
 			},
 		},
 	}
-	addrs, err := GetAsgardAddress(common.BTCChain, bridge)
+	addrs, err := GetBaseAddress(common.BTCChain, bridge)
 	c.Assert(err, IsNil)
 	c.Assert(len(addrs) > 0, Equals, true)
 }
 
-func (s *GetAsgardAddressSuite) TestGetAsgardAddress_BadPubKeySkipped(c *C) {
+func (s *GetBaseAddressSuite) TestGetBaseAddress_BadPubKeySkipped(c *C) {
 	bridge := &mockBridge{
-		asgardPubKeys: []thornadoclient.PubKeyAddressPair{
+		basePubKeys: []thornadoclient.PubKeyAddressPair{
 			{
 				PubKey: common.PubKey("invalid-pub-key"),
 				Algo:   common.SigningAlgoSecp256k1,
 			},
 		},
 	}
-	addrs, err := GetAsgardAddress(common.BTCChain, bridge)
+	addrs, err := GetBaseAddress(common.BTCChain, bridge)
 	c.Assert(err, IsNil)
 	// Bad pub key should be skipped, not cause an error
 	c.Assert(addrs, HasLen, 0)
 }
 
-func (s *GetAsgardAddressSuite) TestGetAsgardAddress_MixedAlgos(c *C) {
+func (s *GetBaseAddressSuite) TestGetBaseAddress_MixedAlgos(c *C) {
 	pk := types.GetRandomPubKey()
 	bridge := &mockBridge{
-		asgardPubKeys: []thornadoclient.PubKeyAddressPair{
+		basePubKeys: []thornadoclient.PubKeyAddressPair{
 			{
 				PubKey: common.PubKey("invalid"),
 				Algo:   common.SigningAlgoEd25519,
@@ -125,10 +135,10 @@ func (s *GetAsgardAddressSuite) TestGetAsgardAddress_MixedAlgos(c *C) {
 			},
 		},
 	}
-	addrs, err := GetAsgardAddress(common.BTCChain, bridge)
+	addrs, err := GetBaseAddress(common.BTCChain, bridge)
 	c.Assert(err, IsNil)
-	// First: skipped (ed25519), Second: added (secp256k1 valid), Third: skipped (bad key)
-	c.Assert(len(addrs), Equals, 1)
+	// First: skipped (ed25519), Second: base address plus BTC deposit lookahead, Third: skipped (bad key)
+	c.Assert(len(addrs), Equals, int(common.DepositAddressLookahead)+1)
 }
 
 // -------------------------------------------------------------------------------------

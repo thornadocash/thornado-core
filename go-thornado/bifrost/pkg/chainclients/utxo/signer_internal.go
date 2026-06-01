@@ -89,12 +89,12 @@ func (c *Client) getUtxoToSpendAtPath(pubkey common.PubKey, pathIndex uint64, to
 			if sweepDust && item.Amount < minUTXOAmt && item.Confirmations >= minConfirmations {
 				// Allow confirmed sub-dust UTXOs through for migration sweeps
 			} else {
-				// use all UTXOs sent from asgard, regardless of confirmations or dust threshold
+				// use all UTXOs sent from base, regardless of confirmations or dust threshold
 				isSelfTx := c.isSelfTransaction(item.TxID)
 
-				// confirm sender of the UTXO is not asgard in case of lost block meta
+				// confirm sender of the UTXO is not base in case of lost block meta
 				if !isSelfTx {
-					isSelfTx = c.isFromAsgard(item.TxID)
+					isSelfTx = c.isFromBase(item.TxID)
 				}
 				if !isSelfTx {
 					continue
@@ -387,14 +387,10 @@ func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx,
 	}
 
 	outputAmount := int64(coinToCustomer.Amount.Uint64())
-	sourceAddr, sourceAddrErr := c.getVaultAddressAtPath(tx.VaultPubKey, tx.VaultPathIndex)
-	if sourceAddrErr != nil {
-		return nil, nil, fmt.Errorf("fail to get source address: %w", sourceAddrErr)
-	}
-	// Thornado vault-to-vault sends are Thornado custody sweeps. Spend the full
-	// selected balance to the destination so child/old vault addresses do not
-	// retain change.
-	if tx.TxType == "consolidate" || !tx.ToAddress.Equals(sourceAddr) {
+	// Explicit internal tx types are custody sweeps. Spend the full selected
+	// balance so child/old vault addresses do not retain change.
+	switch tx.TxType {
+	case "consolidate", "migrate", "sweep":
 		outputAmount = totalAmt - int64(gasAmt)
 		if outputAmount <= 0 {
 			return nil, nil, fmt.Errorf("not enough balance to sweep vault path: %d", outputAmount)

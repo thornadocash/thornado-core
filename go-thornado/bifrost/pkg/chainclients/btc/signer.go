@@ -35,7 +35,7 @@ func PostKeysignFailure(
 		}
 
 		// key sign error forward the keysign blame to thornado
-		txID, err := thornadoBridge.PostKeysignFailure(keysignError.Blame, thornadoHeight, "", tx.Coins, tx.VaultPubKey)
+		txID, err := thornadoBridge.PostKeysignFailure(keysignError.Blame, thornadoHeight, tx.Coins, tx.VaultPubKey)
 		if err != nil {
 			logger.Error().Err(err).Msg("fail to post keysign failure to thornado")
 			utxoErr = multierror.Append(utxoErr, fmt.Errorf("fail to post keysign failure to Thornado: %w", err))

@@ -5,7 +5,6 @@ option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
 
 import "gogoproto/gogo.proto";
 import "common/common.proto";
-import "types/query_shielder.proto";
 
 option (gogoproto.marshaler_all) = true;
 
@@ -82,7 +81,84 @@ message QueryNodeSlotRequest {
   string height = 2;
 }
 
-message QueryNodeSlotResponse { QueryShielderBondResponse bond = 1; }
+message QueryNodeSlotResponse { QueryNodeBondResponse bond = 1; }
+
+message QueryNodeBondRequest {
+  string node_pub_key = 1;
+  string height = 2;
+}
+
+message QueryNodeBondResponse {
+  string node_pub_key = 1;
+  string operator_pub_key = 2;
+  string node_address = 3;
+  uint64 slot = 4;
+  uint64 pending_sats = 5;
+  uint64 bond_sats = 6;
+  uint64 fee_debt_sats = 7;
+  bool fee_share_active = 8;
+  string pending_fee_deposit_id = 9;
+  bool sold = 10;
+  string sold_auction_id = 11;
+  int64 created_height = 12;
+  int64 updated_height = 13;
+  string node_status = 14;
+  int64 slash_points = 15;
+}
+
+message QueryNodeSlotAuctionRequest {
+  string auction_id = 1;
+  string height = 2;
+}
+
+message QueryNodeSlotAuctionResponse {
+  string auction_id = 1;
+  string seller = 2;
+  string seller_operator_pub_key = 3;
+  string seller_node_pub_key = 4;
+  uint64 slot = 5;
+  uint64 original_bond_sats = 6;
+  uint64 reserve_sats = 7;
+  int64 expiry_height = 8;
+  string selected_bid_id = 9;
+  string status = 10;
+  int64 created_height = 11;
+  int64 updated_height = 12;
+}
+
+message QueryNodeSlotAuctionsRequest { string height = 1; }
+
+message QueryNodeSlotAuctionsResponse {
+  repeated QueryNodeSlotAuctionResponse auctions = 1;
+}
+
+message QueryNodeSlotBidRequest {
+  string bid_id = 1;
+  string height = 2;
+}
+
+message QueryNodeSlotBidResponse {
+  string bid_id = 1;
+  string auction_id = 2;
+  string bidder = 3;
+  string operator_pub_key = 4;
+  string node_pub_key = 5;
+  string deposit_id = 6;
+  uint64 amount_sats = 7;
+  bool selected = 8;
+  bool settled = 9;
+  int64 created_height = 10;
+  int64 updated_height = 11;
+}
+
+message QueryNodeSlotAuctionBidsRequest {
+  string auction_id = 1;
+  string height = 2;
+}
+
+message QueryNodeSlotAuctionBidsResponse {
+  repeated QueryNodeSlotBidResponse bids = 1;
+}
 
 message NodeJail {
   int64 release_height = 1;

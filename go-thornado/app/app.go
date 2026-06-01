@@ -68,6 +68,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/params"
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
+	"github.com/cosmos/cosmos-sdk/x/staking"
 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/cosmos/gogoproto/proto"
@@ -105,11 +106,11 @@ var maccPerms = map[string][]string{
 	minttypes.ModuleName:           {authtypes.Minter},
 	stakingtypes.BondedPoolName:    {authtypes.Burner, authtypes.Staking},
 	stakingtypes.NotBondedPoolName: {authtypes.Burner, authtypes.Staking},
-	thornado.ModuleName:           {authtypes.Minter, authtypes.Burner},
-	thornado.AsgardName:           {},
-	thornado.BondName:             {},
-	thornado.ReserveName:          {},
-	thornado.TreasuryName:         {},
+	thornado.ModuleName:            {authtypes.Minter, authtypes.Burner},
+	thornado.BaseName:              {},
+	thornado.BondName:              {},
+	thornado.ReserveName:           {},
+	thornado.TreasuryName:          {},
 }
 
 var (
@@ -374,6 +375,7 @@ func NewChainApp(
 	genutilModule := genutil.NewAppModule(app.AccountKeeper, app.StakingKeeper, app, txConfig)
 	// trunk-ignore(golangci-lint/staticcheck): deprecated TODO: SDK 0.53 cleanup
 	paramsModule := params.NewAppModule(app.ParamsKeeper)
+	stakingModule := staking.NewAppModule(app.appCodec, app.StakingKeeper, app.AccountKeeper, app.BankKeeper, app.GetSubspace(stakingtypes.ModuleName))
 	upgradeModule := upgrade.NewAppModule(app.UpgradeKeeper, app.AccountKeeper.AddressCodec())
 
 	app.ModuleManager = module.NewManager(
@@ -381,6 +383,7 @@ func NewChainApp(
 		authModule,
 		authzModule,
 		bankModule,
+		stakingModule,
 		upgradeModule,
 		paramsModule,
 		consensusModule,
@@ -400,6 +403,7 @@ func NewChainApp(
 		upgradeModule,
 		paramsModule,
 		consensusModule,
+		stakingModule,
 		mint.NewAppModule(app.appCodec, app.MintKeeper, app.AccountKeeper, nil, app.GetSubspace(minttypes.ModuleName)),
 		// non sdk modules
 		thornadoModule,
@@ -416,6 +420,7 @@ func NewChainApp(
 	app.ModuleManager.SetOrderBeginBlockers(
 		genutiltypes.ModuleName,
 		authz.ModuleName,
+		stakingtypes.ModuleName,
 
 		// additional non simd modules
 		thornadotypes.ModuleName,
@@ -424,6 +429,7 @@ func NewChainApp(
 	app.ModuleManager.SetOrderEndBlockers(
 		genutiltypes.ModuleName,
 		authz.ModuleName,
+		stakingtypes.ModuleName,
 
 		// additional non simd modules
 		thornadotypes.ModuleName,
@@ -437,6 +443,7 @@ func NewChainApp(
 		authtypes.ModuleName,
 		authz.ModuleName,
 		banktypes.ModuleName,
+		stakingtypes.ModuleName,
 		genutiltypes.ModuleName,
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,

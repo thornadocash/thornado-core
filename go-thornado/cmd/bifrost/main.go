@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -103,8 +104,8 @@ func main() {
 	tmPrivateKey := tcommon.CosmosPrivateKeyToTMPrivateKey(priKey)
 
 	consts := constants.NewConfigValue()
-	jailTimeKeygen := time.Duration(consts.GetInt64Value(constants.Keygen_FailJailBlocks)) * constants.ThornadoBlockTime
-	jailTimeKeysign := time.Duration(consts.GetInt64Value(constants.Keysign_FailJailBlocks)) * constants.ThornadoBlockTime
+	jailTimeKeygen := time.Duration(consts.GetInt64Value(constants.Keygen_FailJailMinutes)) * time.Minute
+	jailTimeKeysign := time.Duration(consts.GetInt64Value(constants.Keysign_FailJailMinutes)) * time.Minute
 	if cfg.Signer.KeygenTimeout >= jailTimeKeygen {
 		log.Fatal().
 			Stringer("keygenTimeout", cfg.Signer.KeygenTimeout).
@@ -118,11 +119,16 @@ func main() {
 			Msg("keysign timeout must be shorter than jail time")
 	}
 
+	localStateFolder := filepath.Dir(cfg.Signer.SignerDbPath)
+	if localStateFolder == "." || localStateFolder == "" {
+		localStateFolder = app.DefaultNodeHome
+	}
+
 	// Start P2P with bonded node gating enabled
 	comm, stateManager, err := p2p.StartP2PWithBridge(
 		cfg.TSS,
 		tmPrivateKey,
-		app.DefaultNodeHome,
+		localStateFolder,
 		thornadoBridge,
 	)
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
 )
 
-// DepositHandler is to process native messages on Thornado
+// DepositHandler is to process native messages on BTCChain
 type DepositHandler struct {
 	mgr Manager
 }
@@ -51,13 +51,13 @@ func (h DepositHandler) validate(ctx cosmos.Context, msg MsgDeposit) error {
 }
 
 func (h DepositHandler) handle(ctx cosmos.Context, msg MsgDeposit, idx uint16) (*cosmos.Result, error) {
-	if h.mgr.Keeper().IsChainHalted(ctx, common.Thornado) {
-		return nil, fmt.Errorf("unable to use MsgDeposit while Thornado is halted")
+	if h.mgr.Keeper().IsChainHalted(ctx, common.BTCChain) {
+		return nil, fmt.Errorf("unable to use MsgDeposit while BTCChain is halted")
 	}
 
 	coins, err := msg.Coins.Native()
 	if err != nil {
-		return nil, ErrInternal(err, "coins are native to Thornado")
+		return nil, ErrInternal(err, "coins are native to BTCChain")
 	}
 
 	// HasCoins always returns false if the address has no balances
@@ -67,7 +67,7 @@ func (h DepositHandler) handle(ctx cosmos.Context, msg MsgDeposit, idx uint16) (
 		return nil, se.ErrInsufficientFunds
 	}
 
-	return nil, fmt.Errorf("MsgDeposit memo routing is disabled in Thornado; use explicit Shielder or node-management messages")
+	return nil, fmt.Errorf("MsgDeposit routing is disabled in BTCChain; use explicit Shielder or node-management messages")
 }
 
 // DepositAnteHandler called by the ante handler to gate mempool entry

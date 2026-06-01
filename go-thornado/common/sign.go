@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"os"
 
-	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 )
 
@@ -16,16 +15,20 @@ func Sign(buf []byte) ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 
-	// TODO: confirm this signing mode which is only for ledger devices.
-	// Not applicable if ledger devices will never be used.
-	// SIGN_MODE_LEGACY_AMINO_JSON will be removed in the future for SIGN_MODE_TEXTUAL
-	signingMode := signing.SignMode_SIGN_MODE_LEGACY_AMINO_JSON
-	sig, pubkey, err := kbs.Keybase.Sign(kbs.SignerName, buf, signingMode)
+	sig, err := kbs.Sign(buf)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return sig, pubkey.Bytes(), nil
+	pubkey, err := kbs.Keybase.Key(kbs.SignerName)
+	if err != nil {
+		return nil, nil, err
+	}
+	pk, err := pubkey.GetPubKey()
+	if err != nil {
+		return nil, nil, err
+	}
+	return sig, pk.Bytes(), nil
 }
 
 func SignBase64(buf []byte) (string, string, error) {

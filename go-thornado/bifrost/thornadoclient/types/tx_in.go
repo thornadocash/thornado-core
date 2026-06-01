@@ -24,7 +24,6 @@ type TxIn struct {
 type TxInItem struct {
 	BlockHeight           int64         `json:"block_height"`
 	Tx                    string        `json:"tx"`
-	Memo                  string        `json:"memo"`
 	Sender                string        `json:"sender"`
 	To                    string        `json:"to"` // to address
 	Coins                 common.Coins  `json:"coins"`
@@ -40,7 +39,6 @@ type TxInStatus byte
 func NewTxInItem(
 	blockHeight int64,
 	tx string,
-	memo string,
 	sender string,
 	to string,
 	coins common.Coins,
@@ -53,7 +51,6 @@ func NewTxInItem(
 	return &TxInItem{
 		BlockHeight:           blockHeight,
 		Tx:                    tx,
-		Memo:                  memo,
 		Sender:                sender,
 		To:                    to,
 		Coins:                 coins,
@@ -76,9 +73,6 @@ func (t *TxInItem) Equals(other *TxInItem) bool {
 		return false
 	}
 	if t.Tx != other.Tx {
-		return false
-	}
-	if t.Memo != other.Memo {
 		return false
 	}
 	if t.Sender != other.Sender {
@@ -110,9 +104,6 @@ func (t *TxInItem) EqualsObservedTx(other common.ObservedTx) bool {
 	if !txId.Equals(other.Tx.ID) {
 		return false
 	}
-	if t.Memo != other.Tx.Memo {
-		return false
-	}
 	if t.Sender != other.Tx.FromAddress.String() {
 		return false
 	}
@@ -135,7 +126,6 @@ func (t *TxInItem) Copy() *TxInItem {
 	return &TxInItem{
 		BlockHeight:           t.BlockHeight,
 		Tx:                    t.Tx,
-		Memo:                  t.Memo,
 		Sender:                t.Sender,
 		To:                    t.To,
 		Coins:                 t.Coins.Copy(),
@@ -152,7 +142,6 @@ func (t *TxInItem) Copy() *TxInItem {
 func (t *TxInItem) IsEmpty() bool {
 	return t.BlockHeight == 0 &&
 		t.Tx == "" &&
-		t.Memo == "" &&
 		t.Sender == "" &&
 		t.To == "" &&
 		t.Coins.IsEmpty() &&
@@ -162,7 +151,7 @@ func (t *TxInItem) IsEmpty() bool {
 
 // CacheHash calculate the has used for signer cache
 func (t *TxInItem) CacheHash(chain common.Chain, inboundHash string) string {
-	str := fmt.Sprintf("%s|%s|%s|%s|%s", chain, t.To, t.Coins, t.Memo, inboundHash)
+	str := fmt.Sprintf("%s|%s|%s|%s", chain, t.To, t.Coins, inboundHash)
 	return fmt.Sprintf("%X", sha256.Sum256([]byte(str)))
 }
 
@@ -174,13 +163,13 @@ func (t *TxInItem) CacheVault(chain common.Chain) string {
 func (t TxIn) GetTotalTransactionValue(asset common.Asset, excludeFrom []common.Address) cosmos.Uint {
 	total := cosmos.ZeroUint()
 	for _, item := range t.TxArray {
-		fromAsgard := false
+		fromBase := false
 		for _, fromAddress := range excludeFrom {
 			if strings.EqualFold(fromAddress.String(), item.Sender) {
-				fromAsgard = true
+				fromBase = true
 			}
 		}
-		if fromAsgard {
+		if fromBase {
 			continue
 		}
 		c := item.Coins.GetCoin(asset)

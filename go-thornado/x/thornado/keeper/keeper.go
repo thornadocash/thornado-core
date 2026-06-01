@@ -101,7 +101,7 @@ type KeeperNodeAccount interface {
 	GetNodeAccount(ctx cosmos.Context, addr cosmos.AccAddress) (NodeAccount, error)
 	GetNodeAccountByPubKey(ctx cosmos.Context, pk common.PubKey) (NodeAccount, error)
 	SetNodeAccount(ctx cosmos.Context, na NodeAccount) error
-	EnsureNodeKeysUnique(ctx cosmos.Context, consensusPubKey string, pubKeys common.PubKeySet) error
+	EnsureNodeKeysUnique(ctx cosmos.Context, signer cosmos.AccAddress, consensusPubKey string, pubKeys common.PubKeySet) error
 	GetNodeAccountIterator(ctx cosmos.Context) cosmos.Iterator
 	GetNodeAccountSlashPoints(_ cosmos.Context, _ cosmos.AccAddress) (int64, error)
 	SetNodeAccountSlashPoints(_ cosmos.Context, _ cosmos.AccAddress, _ int64)
@@ -162,16 +162,18 @@ type KeeperTxOut interface {
 }
 
 type KeeperShielder interface {
-	SetShielderSession(ctx cosmos.Context, session types.ShielderSession) error
-	GetShielderSession(ctx cosmos.Context, owner cosmos.AccAddress) (types.ShielderSession, error)
-	GetShielderSessionByPowToken(ctx cosmos.Context, powToken string) (types.ShielderSession, error)
-	SetShielderDepositAddress(ctx cosmos.Context, record types.ShielderDepositAddress) error
-	GetShielderDepositAddress(ctx cosmos.Context, address common.Address) (types.ShielderDepositAddress, error)
+	SetDepositSession(ctx cosmos.Context, session types.DepositSession) error
+	GetDepositSession(ctx cosmos.Context, owner cosmos.AccAddress) (types.DepositSession, error)
+	GetDepositSessionByPowToken(ctx cosmos.Context, powToken string) (types.DepositSession, error)
+	SetDepositAddress(ctx cosmos.Context, record types.DepositAddress) error
+	GetDepositAddress(ctx cosmos.Context, address common.Address) (types.DepositAddress, error)
+	GetDepositAddressIterator(ctx cosmos.Context) cosmos.Iterator
 	GetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey) (uint64, error)
 	SetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey, index uint64) error
 	AllocateVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey) (uint64, error)
-	SetShielderDeposit(ctx cosmos.Context, deposit types.ShielderDeposit) error
-	GetShielderDeposit(ctx cosmos.Context, depositID common.TxID) (types.ShielderDeposit, error)
+	SetDepositRecord(ctx cosmos.Context, deposit types.DepositRecord) error
+	GetDepositRecord(ctx cosmos.Context, depositID common.TxID) (types.DepositRecord, error)
+	GetDepositRecordIterator(ctx cosmos.Context) cosmos.Iterator
 	SetShielderCommitment(ctx cosmos.Context, commitment string, depositID common.TxID) error
 	ShielderCommitmentExists(ctx cosmos.Context, commitment string) bool
 	SetShielderDenominationCommitment(ctx cosmos.Context, denominationSats uint64, commitment string, depositID common.TxID) error
@@ -179,9 +181,9 @@ type KeeperShielder interface {
 	SetShielderMerkleRoot(ctx cosmos.Context, denominationSats uint64, root string) error
 	ShielderMerkleRootExists(ctx cosmos.Context, denominationSats uint64, root string) bool
 	GetShielderMerkleRootIterator(ctx cosmos.Context) cosmos.Iterator
-	SetShielderWithdrawal(ctx cosmos.Context, withdrawal types.ShielderWithdrawal) error
-	GetShielderWithdrawal(ctx cosmos.Context, withdrawalID string) (types.ShielderWithdrawal, error)
-	GetShielderWithdrawalByNullifier(ctx cosmos.Context, nullifierHash string) (types.ShielderWithdrawal, error)
+	SetShielderRedeem(ctx cosmos.Context, withdrawal types.ShielderRedeem) error
+	GetShielderRedeem(ctx cosmos.Context, withdrawalID string) (types.ShielderRedeem, error)
+	GetShielderRedeemByNullifier(ctx cosmos.Context, nullifierHash string) (types.ShielderRedeem, error)
 	SetShielderNullifierSpent(ctx cosmos.Context, nullifierHash string, withdrawalID string) error
 	ShielderNullifierSpent(ctx cosmos.Context, nullifierHash string) bool
 	GetNextShielderNodeBondSlot(ctx cosmos.Context) (uint64, error)
@@ -190,10 +192,10 @@ type KeeperShielder interface {
 	SetShielderNodeBond(ctx cosmos.Context, bond types.ShielderNodeBond) error
 	GetShielderNodeBond(ctx cosmos.Context, nodePubKey string) (types.ShielderNodeBond, error)
 	GetShielderNodeBondIterator(ctx cosmos.Context) cosmos.Iterator
-	SetShielderFeePool(ctx cosmos.Context, pool types.ShielderFeePool) error
-	GetShielderFeePool(ctx cosmos.Context) (types.ShielderFeePool, error)
-	SetShielderFeeNotePubKey(ctx cosmos.Context, pubKey common.PubKey, depositID common.TxID) error
-	ShielderFeeNotePubKeyUsed(ctx cosmos.Context, pubKey common.PubKey) bool
+	SetFeePool(ctx cosmos.Context, pool types.FeePool) error
+	GetFeePool(ctx cosmos.Context) (types.FeePool, error)
+	SetShielderFeeNotePubKey(ctx cosmos.Context, pubKey string, depositID common.TxID) error
+	ShielderFeeNotePubKeyUsed(ctx cosmos.Context, pubKey string) bool
 	SetNodeSlotAuction(ctx cosmos.Context, auction types.NodeSlotAuction) error
 	GetNodeSlotAuction(ctx cosmos.Context, auctionID string) (types.NodeSlotAuction, error)
 	GetNodeSlotAuctionIterator(ctx cosmos.Context) cosmos.Iterator
@@ -212,15 +214,15 @@ type KeeperVault interface {
 	SetVault(ctx cosmos.Context, vault Vault) error
 	GetVault(ctx cosmos.Context, pk common.PubKey) (Vault, error)
 	HasValidVaultPools(ctx cosmos.Context) (bool, error)
-	GetAsgardVaults(ctx cosmos.Context) (Vaults, error)
-	GetAsgardVaultsByStatus(_ cosmos.Context, _ VaultStatus) (Vaults, error)
+	GetBaseVaults(ctx cosmos.Context) (Vaults, error)
+	GetBaseVaultsByStatus(_ cosmos.Context, _ VaultStatus) (Vaults, error)
 	GetLeastSecure(_ cosmos.Context, _ Vaults, _ int64) Vault
 	GetMostSecure(_ cosmos.Context, _ Vaults, _ int64) Vault
 	GetMostSecureStrict(_ cosmos.Context, _ Vaults, _ int64) Vault
 	SortBySecurity(_ cosmos.Context, _ Vaults, _ int64) Vaults
 	GetPendingOutbounds(_ cosmos.Context, _ common.Asset) []TxOutItem
 	DeleteVault(ctx cosmos.Context, pk common.PubKey) error
-	RemoveFromAsgardIndex(ctx cosmos.Context, pubkey common.PubKey) error
+	RemoveFromBaseIndex(ctx cosmos.Context, pubkey common.PubKey) error
 }
 
 // KeeperNetwork func to access network data in key value store

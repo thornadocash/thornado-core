@@ -69,7 +69,7 @@ func (h ConsolidateHandler) handle(ctx cosmos.Context, msg MsgConsolidate) (*cos
 	if err != nil {
 		ctx.Logger().Error("unable to get vault for consolidation", "error", err)
 	} else { // nolint
-		if !vault.IsAsgard() {
+		if !vault.IsBase() {
 			shouldSlash = true
 		}
 	}

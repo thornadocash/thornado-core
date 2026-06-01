@@ -86,7 +86,7 @@ func (h ConfigHandler) handle(ctx cosmos.Context, msg MsgConfig) error {
 		return fmt.Errorf("fail to save node account: %w", err)
 	}
 	// move set config cost from bond module to reserve
-	coin := common.NewCoin(common.RuneNative, cost)
+	coin := common.NewCoin(common.BTCAsset, cost)
 	if !cost.IsZero() {
 		if err = h.mgr.Keeper().SendFromModuleToModule(ctx, BondName, ReserveName, common.NewCoins(coin)); err != nil {
 			ctx.Logger().Error("fail to transfer funds from bond to reserve", "error", err)

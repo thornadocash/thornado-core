@@ -10,18 +10,23 @@ import (
 )
 
 const (
-	ShielderStatusAddressIssued  = "address_issued"
-	ShielderStatusDepositMatched = "deposit_matched"
-	ShielderStatusSettled        = "settled"
-	ShielderStatusCommitted      = "committed"
-	ShielderStatusKeysignQueued  = "keysign_queued"
+	DepositStatusAddressIssued  = "address_issued"
+	DepositStatusDepositMatched = "deposit_matched"
+	DepositStatusReturnQueued   = "return_queued"
+	DepositStatusSettled        = "settled"
+	DepositStatusCommitted      = "committed"
+	DepositStatusKeysignQueued  = "keysign_queued"
 )
 
 const (
-	ShielderSettlementUser         = "user"
-	ShielderSettlementOperatorBond = "operator_bond"
-	ShielderSettlementOperatorSale = "operator_sale"
-	ShielderSettlementOperatorFee  = "operator_fee"
+	ShielderRedeemStatusAuthorized = "authorized"
+)
+
+const (
+	DepositSettlementUser         = "user"
+	DepositSettlementOperatorBond = "operator_bond"
+	DepositSettlementOperatorSale = "operator_sale"
+	DepositSettlementOperatorFee  = "operator_fee"
 )
 
 const (
@@ -31,7 +36,7 @@ const (
 	NodeSlotAuctionSettled  = "settled"
 )
 
-type ShielderSession struct {
+type DepositSession struct {
 	Owner            cosmos.AccAddress `json:"owner"`
 	PowToken         string            `json:"pow_token"`
 	DepositAddress   common.Address    `json:"deposit_address"`
@@ -45,31 +50,32 @@ type ShielderSession struct {
 	DepositID        common.TxID       `json:"deposit_id,omitempty"`
 }
 
-func (m ShielderSession) Key() string {
+func (m DepositSession) Key() string {
 	return m.Owner.String()
 }
 
-func (m ShielderSession) Valid() error {
+func (m DepositSession) Valid() error {
 	if m.Owner.Empty() {
-		return fmt.Errorf("missing shielder owner")
+		return fmt.Errorf("missing deposit owner")
 	}
 	if strings.TrimSpace(m.PowToken) == "" {
-		return fmt.Errorf("missing shielder pow token")
+		return fmt.Errorf("missing deposit pow token")
 	}
 	if m.DepositAddress.IsEmpty() {
-		return fmt.Errorf("missing shielder deposit address")
+		return fmt.Errorf("missing deposit address")
 	}
 	if m.VaultPubKey.IsEmpty() {
-		return fmt.Errorf("missing shielder vault pubkey")
+		return fmt.Errorf("missing deposit vault pubkey")
 	}
 	return nil
 }
 
-type ShielderDeposit struct {
+type DepositRecord struct {
 	DepositID        common.TxID       `json:"deposit_id"`
 	Owner            cosmos.AccAddress `json:"owner"`
 	AmountSats       uint64            `json:"amount_sats"`
 	DepositAddress   common.Address    `json:"deposit_address"`
+	ReturnAddress    common.Address    `json:"return_address,omitempty"`
 	VaultPubKey      common.PubKey     `json:"vault_pub_key"`
 	DepositPathIndex uint64            `json:"deposit_path_index"`
 	OperatorPubKey   common.PubKey     `json:"operator_pub_key,omitempty"`
@@ -85,34 +91,34 @@ type ShielderDeposit struct {
 	Commitments      []string          `json:"commitments,omitempty"`
 }
 
-func (m ShielderDeposit) Key() string {
+func (m DepositRecord) Key() string {
 	return m.DepositID.String()
 }
 
-func (m ShielderDeposit) IsNodeBond() bool {
+func (m DepositRecord) IsNodeBond() bool {
 	return strings.TrimSpace(m.NodePubKey) != ""
 }
 
-func (m ShielderDeposit) Valid() error {
+func (m DepositRecord) Valid() error {
 	if m.DepositID.IsEmpty() {
-		return fmt.Errorf("missing shielder deposit id")
+		return fmt.Errorf("missing deposit id")
 	}
 	if m.Owner.Empty() {
-		return fmt.Errorf("missing shielder deposit owner")
+		return fmt.Errorf("missing deposit owner")
 	}
 	if m.AmountSats == 0 {
-		return fmt.Errorf("missing shielder deposit amount")
+		return fmt.Errorf("missing deposit amount")
 	}
 	if m.DepositAddress.IsEmpty() {
-		return fmt.Errorf("missing shielder deposit address")
+		return fmt.Errorf("missing deposit address")
 	}
 	if m.VaultPubKey.IsEmpty() && !m.DepositAddress.IsNoop() {
-		return fmt.Errorf("missing shielder deposit vault pubkey")
+		return fmt.Errorf("missing deposit vault pubkey")
 	}
 	return nil
 }
 
-type ShielderDepositAddress struct {
+type DepositAddress struct {
 	Address        common.Address    `json:"address"`
 	VaultPubKey    common.PubKey     `json:"vault_pub_key"`
 	PathIndex      uint64            `json:"path_index"`
@@ -124,7 +130,7 @@ type ShielderDepositAddress struct {
 	CreatedHeight  int64             `json:"created_height"`
 }
 
-func (m ShielderDepositAddress) Key() string {
+func (m DepositAddress) Key() string {
 	return m.Address.String()
 }
 
@@ -242,7 +248,7 @@ func (m ShielderNodeBond) Valid() error {
 	return nil
 }
 
-type ShielderFeePool struct {
+type FeePool struct {
 	PendingSats        uint64 `json:"pending_sats,omitempty"`
 	TotalSlots         uint64 `json:"total_slots"`
 	FeePerSlotShare    uint64 `json:"fee_per_slot_share"`
@@ -250,26 +256,26 @@ type ShielderFeePool struct {
 	TotalClaimedSats   uint64 `json:"total_claimed_sats"`
 }
 
-func (m ShielderDepositAddress) Valid() error {
+func (m DepositAddress) Valid() error {
 	if m.Address.IsEmpty() {
-		return fmt.Errorf("missing shielder deposit address")
+		return fmt.Errorf("missing deposit address")
 	}
 	if m.VaultPubKey.IsEmpty() {
-		return fmt.Errorf("missing shielder deposit address vault pubkey")
+		return fmt.Errorf("missing deposit address vault pubkey")
 	}
 	if m.PathIndex == common.MainVaultPathIndex {
-		return fmt.Errorf("shielder deposit address path index cannot be zero")
+		return fmt.Errorf("deposit address path index cannot be zero")
 	}
 	if m.Owner.Empty() {
-		return fmt.Errorf("missing shielder deposit address owner")
+		return fmt.Errorf("missing deposit address owner")
 	}
 	if strings.TrimSpace(m.PowToken) == "" {
-		return fmt.Errorf("missing shielder deposit address pow token")
+		return fmt.Errorf("missing deposit address pow token")
 	}
 	return nil
 }
 
-type ShielderWithdrawal struct {
+type ShielderRedeem struct {
 	WithdrawalID    string            `json:"withdrawal_id"`
 	Owner           cosmos.AccAddress `json:"owner"`
 	NullifierHash   string            `json:"nullifier_hash"`
@@ -285,16 +291,16 @@ type ShielderWithdrawal struct {
 	Public          json.RawMessage   `json:"public,omitempty"`
 }
 
-func (m ShielderWithdrawal) Key() string {
+func (m ShielderRedeem) Key() string {
 	return m.WithdrawalID
 }
 
-func (m ShielderWithdrawal) Valid() error {
+func (m ShielderRedeem) Valid() error {
 	if strings.TrimSpace(m.WithdrawalID) == "" {
-		return fmt.Errorf("missing shielder withdrawal id")
+		return fmt.Errorf("missing shielder redeem id")
 	}
 	if m.Owner.Empty() {
-		return fmt.Errorf("missing shielder withdrawal owner")
+		return fmt.Errorf("missing shielder redeem owner")
 	}
 	if strings.TrimSpace(m.NullifierHash) == "" {
 		return fmt.Errorf("missing shielder nullifier hash")
@@ -303,19 +309,19 @@ func (m ShielderWithdrawal) Valid() error {
 		return fmt.Errorf("missing shielder merkle root")
 	}
 	if m.Recipient.IsEmpty() {
-		return fmt.Errorf("missing shielder withdrawal recipient")
+		return fmt.Errorf("missing shielder redeem recipient")
 	}
 	if m.AmountSats == 0 {
-		return fmt.Errorf("missing shielder withdrawal amount")
+		return fmt.Errorf("missing shielder redeem amount")
 	}
 	if m.FeeSats >= m.AmountSats {
-		return fmt.Errorf("shielder withdrawal fee exceeds amount")
+		return fmt.Errorf("shielder redeem fee exceeds amount")
 	}
 	if m.InHash.IsEmpty() {
-		return fmt.Errorf("missing shielder withdrawal in hash")
+		return fmt.Errorf("missing shielder redeem in hash")
 	}
 	if m.VaultPubKey.IsEmpty() {
-		return fmt.Errorf("missing shielder withdrawal vault pubkey")
+		return fmt.Errorf("missing shielder redeem vault pubkey")
 	}
 	return nil
 }

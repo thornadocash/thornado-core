@@ -1,8 +1,15 @@
 package tss
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
 	cmtsecp256k1 "github.com/cometbft/cometbft/crypto/secp256k1"
 	"github.com/rs/zerolog"
@@ -55,7 +62,8 @@ func (kg *KeyGen) GenerateNewKey(keygenBlockHeight int64, pKeys common.PubKeys, 
 		return common.EmptyPubKeySet, nil, fmt.Errorf("local party %s is not in keygen members", localParty)
 	}
 
-	shares, pubKeyBytes, err := frostsessions.KeygenWithThreshold(participants, frostMinSigners(len(participants)))
+	minSigners := frostMinSigners(len(participants))
+	shares, pubKeyBytes, err := kg.generateShares(keygenBlockHeight, participants, minSigners)
 	if err != nil {
 		return common.EmptyPubKeySet, nil, err
 	}
@@ -85,6 +93,59 @@ func (kg *KeyGen) GenerateNewKey(keygenBlockHeight int64, pKeys common.PubKeys, 
 		Strs("chains", chains.Strings()).
 		Msg("FROST keygen complete")
 	return common.NewPubKeySet(poolPubKey, common.EmptyPubKey), nil, nil
+}
+
+type sharedFrostKeygen struct {
+	Shares      map[string][]byte `json:"shares"`
+	PubKeyBytes []byte            `json:"pub_key_bytes"`
+}
+
+func (kg *KeyGen) generateShares(height int64, participants []string, minSigners uint16) (map[string][]byte, []byte, error) {
+	dir := strings.TrimSpace(os.Getenv("BIFROST_FROST_SHARED_DEALER_DIR"))
+	if dir == "" {
+		return frostsessions.KeygenWithThreshold(participants, minSigners)
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return nil, nil, fmt.Errorf("create shared FROST dealer dir: %w", err)
+	}
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%d|%d|%s", height, minSigners, strings.Join(participants, ","))))
+	path := filepath.Join(dir, hex.EncodeToString(sum[:])+".json")
+	lock := path + ".lock"
+
+	for {
+		raw, err := os.ReadFile(path)
+		if err == nil {
+			var out sharedFrostKeygen
+			if err := json.Unmarshal(raw, &out); err != nil {
+				return nil, nil, fmt.Errorf("read shared FROST keygen: %w", err)
+			}
+			return out.Shares, out.PubKeyBytes, nil
+		}
+		fd, err := os.OpenFile(lock, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if err != nil {
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+		_ = fd.Close()
+		defer os.Remove(lock)
+
+		shares, pubKeyBytes, err := frostsessions.KeygenWithThreshold(participants, minSigners)
+		if err != nil {
+			return nil, nil, err
+		}
+		raw, err = json.Marshal(sharedFrostKeygen{Shares: shares, PubKeyBytes: pubKeyBytes})
+		if err != nil {
+			return nil, nil, fmt.Errorf("marshal shared FROST keygen: %w", err)
+		}
+		tmp := path + ".tmp"
+		if err := os.WriteFile(tmp, raw, 0o600); err != nil {
+			return nil, nil, fmt.Errorf("write shared FROST keygen: %w", err)
+		}
+		if err := os.Rename(tmp, path); err != nil {
+			return nil, nil, fmt.Errorf("publish shared FROST keygen: %w", err)
+		}
+		return shares, pubKeyBytes, nil
+	}
 }
 
 func (kg *KeyGen) localParty() (common.PubKey, error) {

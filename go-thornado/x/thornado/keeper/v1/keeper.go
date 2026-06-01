@@ -36,8 +36,8 @@ const (
 	prefixLastObserveHeight       types.DbPrefix = "last_observe_height/"
 	prefixNodeAccount             types.DbPrefix = "node_account/"
 	prefixVault                   types.DbPrefix = "vault/"
-	prefixVaultAsgardIndex        types.DbPrefix = "vault_asgard_index/"
-	prefixVaultAsgardEDDSAIndex   types.DbPrefix = "vault_asgard_eddsa_index/"
+	prefixVaultBaseIndex          types.DbPrefix = "vault_base_index/"
+	prefixVaultBaseEDDSAIndex     types.DbPrefix = "vault_base_eddsa_index/"
 	prefixNetwork                 types.DbPrefix = "network/"
 	prefixObservingAddresses      types.DbPrefix = "observing_addresses/"
 	prefixTss                     types.DbPrefix = "tss/"
@@ -61,19 +61,19 @@ const (
 	prefixUpgradeProposals        types.DbPrefix = "upgr_props/"
 	prefixUpgradeVotes            types.DbPrefix = "upgr_votes/"
 	prefixOraclePrice             types.DbPrefix = "oracle_price/"
-	prefixShielderSession         types.DbPrefix = "shielder_session/"
-	prefixShielderPowToken        types.DbPrefix = "shielder_pow/"
-	prefixShielderDepositAddress  types.DbPrefix = "shielder_deposit_address/"
+	prefixDepositSession          types.DbPrefix = "deposit_session/"
+	prefixShielderPowToken        types.DbPrefix = "deposit_pow/"
+	prefixDepositAddress          types.DbPrefix = "deposit_address/"
 	prefixVaultDepositPathIndex   types.DbPrefix = "vault_deposit_path_index/"
-	prefixShielderDeposit         types.DbPrefix = "shielder_deposit/"
+	prefixDepositRecord           types.DbPrefix = "deposit_record/"
 	prefixShielderCommitment      types.DbPrefix = "shielder_commitment/"
 	prefixShielderDenomCommitment types.DbPrefix = "shielder_denom_commitment/"
 	prefixShielderMerkleRoot      types.DbPrefix = "shielder_merkle_root/"
-	prefixShielderWithdrawal      types.DbPrefix = "shielder_withdrawal/"
+	prefixShielderRedeem          types.DbPrefix = "shielder_withdrawal/"
 	prefixShielderNullifier       types.DbPrefix = "shielder_nullifier/"
 	prefixShielderNodeBond        types.DbPrefix = "shielder_node_bond/"
 	prefixShielderNodeBondSlot    types.DbPrefix = "shielder_node_bond_slot/"
-	prefixShielderFeePool         types.DbPrefix = "shielder_fee_pool/"
+	prefixFeePool                 types.DbPrefix = "fee_pool/"
 	prefixShielderFeeNotePubKey   types.DbPrefix = "shielder_fee_note_pubkey/"
 	prefixNodeSlotAuction         types.DbPrefix = "node_slot_auction/"
 	prefixNodeSlotBid             types.DbPrefix = "node_slot_bid/"
@@ -325,7 +325,7 @@ func (k KVStore) getUint(ctx cosmos.Context, key []byte, record *cosmos.Uint) (b
 
 // GetRuneBalanceOfModule get the RUNE balance
 func (k KVStore) GetRuneBalanceOfModule(ctx cosmos.Context, moduleName string) cosmos.Uint {
-	return k.GetBalanceOfModule(ctx, moduleName, common.RuneNative.Native())
+	return k.GetBalanceOfModule(ctx, moduleName, common.BTCAsset.Native())
 }
 
 func (k KVStore) GetBalanceOfModule(ctx cosmos.Context, moduleName, denom string) cosmos.Uint {

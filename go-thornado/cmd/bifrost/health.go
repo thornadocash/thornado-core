@@ -218,7 +218,7 @@ func (s *HealthServer) currentSigning(w http.ResponseWriter, _ *http.Request) {
 	res := make([]VaultResponse, 0)
 
 	thornado := config.GetBifrost().Thornado.ChainHost
-	url := fmt.Sprintf("http://%s%s", thornado, thornadoclient.AsgardVault)
+	url := fmt.Sprintf("http://%s%s", thornado, thornadoclient.BaseVaultEndpoint)
 	resp, err := http.Get(url)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("fail to get thornado status")
@@ -337,8 +337,8 @@ func (s *HealthServer) chainScanner(w http.ResponseWriter, _ *http.Request) {
 		if err != nil {
 			s.logger.Error().Err(err).Msg("fail to parse thornado height")
 		}
-		res[common.Thornado.String()] = ScannerResponse{
-			Chain:              common.Thornado.String(),
+		res[common.BTCChain.String()] = ScannerResponse{
+			Chain:              common.BTCChain.String(),
 			ChainHeight:        height,
 			BlockScannerHeight: -1, // TODO: pending for thornado
 			ScannerHeightDiff:  -1,

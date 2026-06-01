@@ -294,7 +294,6 @@ func (o *Observer) handleObservedTxCommitted(tx common.ObservedTx) {
 		Int64("height", tx.BlockHeight).
 		Str("from", tx.Tx.FromAddress.String()).
 		Str("to", tx.Tx.ToAddress.String()).
-		Str("memo", tx.Tx.Memo).
 		Str("coins", tx.Tx.Coins.String()).
 		Str("gas", common.Coins(tx.Tx.Gas).String()).
 		Str("observed_vault_pubkey", tx.ObservedPubKey.String()).
@@ -542,7 +541,6 @@ func (o *Observer) processObservedTx(txIn types.TxIn) {
 						Int64("height", txInItem.BlockHeight).
 						Str("from", txInItem.Sender).
 						Str("to", txInItem.To).
-						Str("memo", txInItem.Memo).
 						Str("coins", txInItem.Coins.String()).
 						Str("gas", common.Coins(txInItem.Gas).String()).
 						Str("observed_vault_pubkey", txInItem.ObservedVaultPubKey.String()).
@@ -599,7 +597,7 @@ func (o *Observer) filterObservations(chain common.Chain, items []*types.TxInIte
 		}
 
 		// skip creating a duplicate cancel observation
-		isCancel := txInItem.Sender == txInItem.To && txInItem.Memo == ""
+		isCancel := txInItem.Sender == txInItem.To
 		if isCancel {
 			continue
 		}
@@ -641,7 +639,7 @@ func (o *Observer) processErrataTx(ctx context.Context) {
 	}
 }
 
-// filterErrataTx with confirmation counting logic in place, all inbound tx to asgard will be parked and waiting for confirmation count to reach
+// filterErrataTx with confirmation counting logic in place, all inbound tx to base will be parked and waiting for confirmation count to reach
 // the target threshold before it get forward to Thornado,  it is possible that when a re-org happened on BTC / ETH
 // the transaction that has been re-org out ,still in bifrost memory waiting for confirmation, as such, it should be
 // removed from ondeck tx queue, and not forward it to Thornado
@@ -694,11 +692,6 @@ func (o *Observer) getThornadoTxIns(txIn *types.TxIn, finalized bool, finaliseHe
 			o.logger.Info().Msgf("item(%+v) , coins are empty , so ignore", item)
 			isInvalid = true
 		}
-		if item.Memo != "" {
-			o.logger.Info().Msgf("tx (%s) memo (%s) is disabled", item.Tx, item.Memo)
-			isInvalid = true
-		}
-
 		if len(item.To) == 0 {
 			o.logger.Info().Msgf("tx (%s) to address is empty,ignore it", item.Tx)
 			isInvalid = true
@@ -747,7 +740,7 @@ func (o *Observer) getThornadoTxIns(txIn *types.TxIn, finalized bool, finaliseHe
 			height = finaliseHeight
 		}
 		// Strip out any empty Coin from Coins and Gas, as even one empty Coin will make a MsgObservedTxIn for instance fail validation.
-		tx := common.NewTx(txID, sender, to, item.Coins.NoneEmpty(), item.Gas.NoneEmpty(), item.Memo)
+		tx := common.NewTx(txID, sender, to, item.Coins.NoneEmpty(), item.Gas.NoneEmpty())
 		obsTx := common.NewObservedTx(tx, height, item.ObservedVaultPubKey, finaliseHeight)
 		obsTx.KeysignMs = o.tssKeysignMetricMgr.GetTssKeysignMetric(item.Tx)
 		obsTx.Aggregator = item.Aggregator

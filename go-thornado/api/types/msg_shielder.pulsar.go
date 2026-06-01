@@ -15,31 +15,31 @@ import (
 )
 
 var (
-	md_MsgShielderRegisterPow                  protoreflect.MessageDescriptor
-	fd_MsgShielderRegisterPow_pow_token        protoreflect.FieldDescriptor
-	fd_MsgShielderRegisterPow_signer           protoreflect.FieldDescriptor
-	fd_MsgShielderRegisterPow_operator_pub_key protoreflect.FieldDescriptor
-	fd_MsgShielderRegisterPow_node_pub_key     protoreflect.FieldDescriptor
+	md_MsgDepositRequestPow                  protoreflect.MessageDescriptor
+	fd_MsgDepositRequestPow_pow_token        protoreflect.FieldDescriptor
+	fd_MsgDepositRequestPow_signer           protoreflect.FieldDescriptor
+	fd_MsgDepositRequestPow_operator_pub_key protoreflect.FieldDescriptor
+	fd_MsgDepositRequestPow_node_pub_key     protoreflect.FieldDescriptor
 )
 
 func init() {
 	file_types_msg_shielder_proto_init()
-	md_MsgShielderRegisterPow = File_types_msg_shielder_proto.Messages().ByName("MsgShielderRegisterPow")
-	fd_MsgShielderRegisterPow_pow_token = md_MsgShielderRegisterPow.Fields().ByName("pow_token")
-	fd_MsgShielderRegisterPow_signer = md_MsgShielderRegisterPow.Fields().ByName("signer")
-	fd_MsgShielderRegisterPow_operator_pub_key = md_MsgShielderRegisterPow.Fields().ByName("operator_pub_key")
-	fd_MsgShielderRegisterPow_node_pub_key = md_MsgShielderRegisterPow.Fields().ByName("node_pub_key")
+	md_MsgDepositRequestPow = File_types_msg_shielder_proto.Messages().ByName("MsgDepositRequestPow")
+	fd_MsgDepositRequestPow_pow_token = md_MsgDepositRequestPow.Fields().ByName("pow_token")
+	fd_MsgDepositRequestPow_signer = md_MsgDepositRequestPow.Fields().ByName("signer")
+	fd_MsgDepositRequestPow_operator_pub_key = md_MsgDepositRequestPow.Fields().ByName("operator_pub_key")
+	fd_MsgDepositRequestPow_node_pub_key = md_MsgDepositRequestPow.Fields().ByName("node_pub_key")
 }
 
-var _ protoreflect.Message = (*fastReflection_MsgShielderRegisterPow)(nil)
+var _ protoreflect.Message = (*fastReflection_MsgDepositRequestPow)(nil)
 
-type fastReflection_MsgShielderRegisterPow MsgShielderRegisterPow
+type fastReflection_MsgDepositRequestPow MsgDepositRequestPow
 
-func (x *MsgShielderRegisterPow) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_MsgShielderRegisterPow)(x)
+func (x *MsgDepositRequestPow) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_MsgDepositRequestPow)(x)
 }
 
-func (x *MsgShielderRegisterPow) slowProtoReflect() protoreflect.Message {
+func (x *MsgDepositRequestPow) slowProtoReflect() protoreflect.Message {
 	mi := &file_types_msg_shielder_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -51,43 +51,43 @@ func (x *MsgShielderRegisterPow) slowProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-var _fastReflection_MsgShielderRegisterPow_messageType fastReflection_MsgShielderRegisterPow_messageType
-var _ protoreflect.MessageType = fastReflection_MsgShielderRegisterPow_messageType{}
+var _fastReflection_MsgDepositRequestPow_messageType fastReflection_MsgDepositRequestPow_messageType
+var _ protoreflect.MessageType = fastReflection_MsgDepositRequestPow_messageType{}
 
-type fastReflection_MsgShielderRegisterPow_messageType struct{}
+type fastReflection_MsgDepositRequestPow_messageType struct{}
 
-func (x fastReflection_MsgShielderRegisterPow_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_MsgShielderRegisterPow)(nil)
+func (x fastReflection_MsgDepositRequestPow_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_MsgDepositRequestPow)(nil)
 }
-func (x fastReflection_MsgShielderRegisterPow_messageType) New() protoreflect.Message {
-	return new(fastReflection_MsgShielderRegisterPow)
+func (x fastReflection_MsgDepositRequestPow_messageType) New() protoreflect.Message {
+	return new(fastReflection_MsgDepositRequestPow)
 }
-func (x fastReflection_MsgShielderRegisterPow_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_MsgShielderRegisterPow
+func (x fastReflection_MsgDepositRequestPow_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_MsgDepositRequestPow
 }
 
 // Descriptor returns message descriptor, which contains only the protobuf
 // type information for the message.
-func (x *fastReflection_MsgShielderRegisterPow) Descriptor() protoreflect.MessageDescriptor {
-	return md_MsgShielderRegisterPow
+func (x *fastReflection_MsgDepositRequestPow) Descriptor() protoreflect.MessageDescriptor {
+	return md_MsgDepositRequestPow
 }
 
 // Type returns the message type, which encapsulates both Go and protobuf
 // type information. If the Go type information is not needed,
 // it is recommended that the message descriptor be used instead.
-func (x *fastReflection_MsgShielderRegisterPow) Type() protoreflect.MessageType {
-	return _fastReflection_MsgShielderRegisterPow_messageType
+func (x *fastReflection_MsgDepositRequestPow) Type() protoreflect.MessageType {
+	return _fastReflection_MsgDepositRequestPow_messageType
 }
 
 // New returns a newly allocated and mutable empty message.
-func (x *fastReflection_MsgShielderRegisterPow) New() protoreflect.Message {
-	return new(fastReflection_MsgShielderRegisterPow)
+func (x *fastReflection_MsgDepositRequestPow) New() protoreflect.Message {
+	return new(fastReflection_MsgDepositRequestPow)
 }
 
 // Interface unwraps the message reflection interface and
 // returns the underlying ProtoMessage interface.
-func (x *fastReflection_MsgShielderRegisterPow) Interface() protoreflect.ProtoMessage {
-	return (*MsgShielderRegisterPow)(x)
+func (x *fastReflection_MsgDepositRequestPow) Interface() protoreflect.ProtoMessage {
+	return (*MsgDepositRequestPow)(x)
 }
 
 // Range iterates over every populated field in an undefined order,
@@ -95,28 +95,28 @@ func (x *fastReflection_MsgShielderRegisterPow) Interface() protoreflect.ProtoMe
 // Range returns immediately if f returns false.
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
-func (x *fastReflection_MsgShielderRegisterPow) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+func (x *fastReflection_MsgDepositRequestPow) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
 	if x.PowToken != "" {
 		value := protoreflect.ValueOfString(x.PowToken)
-		if !f(fd_MsgShielderRegisterPow_pow_token, value) {
+		if !f(fd_MsgDepositRequestPow_pow_token, value) {
 			return
 		}
 	}
 	if len(x.Signer) != 0 {
 		value := protoreflect.ValueOfBytes(x.Signer)
-		if !f(fd_MsgShielderRegisterPow_signer, value) {
+		if !f(fd_MsgDepositRequestPow_signer, value) {
 			return
 		}
 	}
 	if x.OperatorPubKey != "" {
 		value := protoreflect.ValueOfString(x.OperatorPubKey)
-		if !f(fd_MsgShielderRegisterPow_operator_pub_key, value) {
+		if !f(fd_MsgDepositRequestPow_operator_pub_key, value) {
 			return
 		}
 	}
 	if x.NodePubKey != "" {
 		value := protoreflect.ValueOfString(x.NodePubKey)
-		if !f(fd_MsgShielderRegisterPow_node_pub_key, value) {
+		if !f(fd_MsgDepositRequestPow_node_pub_key, value) {
 			return
 		}
 	}
@@ -133,21 +133,21 @@ func (x *fastReflection_MsgShielderRegisterPow) Range(f func(protoreflect.FieldD
 // In other cases (aside from the nullable cases above),
 // a proto3 scalar field is populated if it contains a non-zero value, and
 // a repeated field is populated if it is non-empty.
-func (x *fastReflection_MsgShielderRegisterPow) Has(fd protoreflect.FieldDescriptor) bool {
+func (x *fastReflection_MsgDepositRequestPow) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.MsgShielderRegisterPow.pow_token":
+	case "types.MsgDepositRequestPow.pow_token":
 		return x.PowToken != ""
-	case "types.MsgShielderRegisterPow.signer":
+	case "types.MsgDepositRequestPow.signer":
 		return len(x.Signer) != 0
-	case "types.MsgShielderRegisterPow.operator_pub_key":
+	case "types.MsgDepositRequestPow.operator_pub_key":
 		return x.OperatorPubKey != ""
-	case "types.MsgShielderRegisterPow.node_pub_key":
+	case "types.MsgDepositRequestPow.node_pub_key":
 		return x.NodePubKey != ""
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRegisterPow"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgDepositRequestPow"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRegisterPow does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgDepositRequestPow does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -157,21 +157,21 @@ func (x *fastReflection_MsgShielderRegisterPow) Has(fd protoreflect.FieldDescrip
 // associated with the given field number.
 //
 // Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRegisterPow) Clear(fd protoreflect.FieldDescriptor) {
+func (x *fastReflection_MsgDepositRequestPow) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.MsgShielderRegisterPow.pow_token":
+	case "types.MsgDepositRequestPow.pow_token":
 		x.PowToken = ""
-	case "types.MsgShielderRegisterPow.signer":
+	case "types.MsgDepositRequestPow.signer":
 		x.Signer = nil
-	case "types.MsgShielderRegisterPow.operator_pub_key":
+	case "types.MsgDepositRequestPow.operator_pub_key":
 		x.OperatorPubKey = ""
-	case "types.MsgShielderRegisterPow.node_pub_key":
+	case "types.MsgDepositRequestPow.node_pub_key":
 		x.NodePubKey = ""
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRegisterPow"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgDepositRequestPow"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRegisterPow does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgDepositRequestPow does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -181,25 +181,25 @@ func (x *fastReflection_MsgShielderRegisterPow) Clear(fd protoreflect.FieldDescr
 // the default value of a bytes scalar is guaranteed to be a copy.
 // For unpopulated composite types, it returns an empty, read-only view
 // of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_MsgShielderRegisterPow) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgDepositRequestPow) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.MsgShielderRegisterPow.pow_token":
+	case "types.MsgDepositRequestPow.pow_token":
 		value := x.PowToken
 		return protoreflect.ValueOfString(value)
-	case "types.MsgShielderRegisterPow.signer":
+	case "types.MsgDepositRequestPow.signer":
 		value := x.Signer
 		return protoreflect.ValueOfBytes(value)
-	case "types.MsgShielderRegisterPow.operator_pub_key":
+	case "types.MsgDepositRequestPow.operator_pub_key":
 		value := x.OperatorPubKey
 		return protoreflect.ValueOfString(value)
-	case "types.MsgShielderRegisterPow.node_pub_key":
+	case "types.MsgDepositRequestPow.node_pub_key":
 		value := x.NodePubKey
 		return protoreflect.ValueOfString(value)
 	default:
 		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRegisterPow"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgDepositRequestPow"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRegisterPow does not contain field %s", descriptor.FullName()))
+		panic(fmt.Errorf("message types.MsgDepositRequestPow does not contain field %s", descriptor.FullName()))
 	}
 }
 
@@ -213,21 +213,21 @@ func (x *fastReflection_MsgShielderRegisterPow) Get(descriptor protoreflect.Fiel
 // empty, read-only value, then it panics.
 //
 // Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRegisterPow) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+func (x *fastReflection_MsgDepositRequestPow) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.MsgShielderRegisterPow.pow_token":
+	case "types.MsgDepositRequestPow.pow_token":
 		x.PowToken = value.Interface().(string)
-	case "types.MsgShielderRegisterPow.signer":
+	case "types.MsgDepositRequestPow.signer":
 		x.Signer = value.Bytes()
-	case "types.MsgShielderRegisterPow.operator_pub_key":
+	case "types.MsgDepositRequestPow.operator_pub_key":
 		x.OperatorPubKey = value.Interface().(string)
-	case "types.MsgShielderRegisterPow.node_pub_key":
+	case "types.MsgDepositRequestPow.node_pub_key":
 		x.NodePubKey = value.Interface().(string)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRegisterPow"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgDepositRequestPow"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRegisterPow does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgDepositRequestPow does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -241,52 +241,52 @@ func (x *fastReflection_MsgShielderRegisterPow) Set(fd protoreflect.FieldDescrip
 // It panics if the field does not contain a composite type.
 //
 // Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRegisterPow) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgDepositRequestPow) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.MsgShielderRegisterPow.pow_token":
-		panic(fmt.Errorf("field pow_token of message types.MsgShielderRegisterPow is not mutable"))
-	case "types.MsgShielderRegisterPow.signer":
-		panic(fmt.Errorf("field signer of message types.MsgShielderRegisterPow is not mutable"))
-	case "types.MsgShielderRegisterPow.operator_pub_key":
-		panic(fmt.Errorf("field operator_pub_key of message types.MsgShielderRegisterPow is not mutable"))
-	case "types.MsgShielderRegisterPow.node_pub_key":
-		panic(fmt.Errorf("field node_pub_key of message types.MsgShielderRegisterPow is not mutable"))
+	case "types.MsgDepositRequestPow.pow_token":
+		panic(fmt.Errorf("field pow_token of message types.MsgDepositRequestPow is not mutable"))
+	case "types.MsgDepositRequestPow.signer":
+		panic(fmt.Errorf("field signer of message types.MsgDepositRequestPow is not mutable"))
+	case "types.MsgDepositRequestPow.operator_pub_key":
+		panic(fmt.Errorf("field operator_pub_key of message types.MsgDepositRequestPow is not mutable"))
+	case "types.MsgDepositRequestPow.node_pub_key":
+		panic(fmt.Errorf("field node_pub_key of message types.MsgDepositRequestPow is not mutable"))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRegisterPow"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgDepositRequestPow"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRegisterPow does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgDepositRequestPow does not contain field %s", fd.FullName()))
 	}
 }
 
 // NewField returns a new value that is assignable to the field
 // for the given descriptor. For scalars, this returns the default value.
 // For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_MsgShielderRegisterPow) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgDepositRequestPow) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.MsgShielderRegisterPow.pow_token":
+	case "types.MsgDepositRequestPow.pow_token":
 		return protoreflect.ValueOfString("")
-	case "types.MsgShielderRegisterPow.signer":
+	case "types.MsgDepositRequestPow.signer":
 		return protoreflect.ValueOfBytes(nil)
-	case "types.MsgShielderRegisterPow.operator_pub_key":
+	case "types.MsgDepositRequestPow.operator_pub_key":
 		return protoreflect.ValueOfString("")
-	case "types.MsgShielderRegisterPow.node_pub_key":
+	case "types.MsgDepositRequestPow.node_pub_key":
 		return protoreflect.ValueOfString("")
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRegisterPow"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgDepositRequestPow"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRegisterPow does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgDepositRequestPow does not contain field %s", fd.FullName()))
 	}
 }
 
 // WhichOneof reports which field within the oneof is populated,
 // returning nil if none are populated.
 // It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_MsgShielderRegisterPow) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+func (x *fastReflection_MsgDepositRequestPow) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
 	switch d.FullName() {
 	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.MsgShielderRegisterPow", d.FullName()))
+		panic(fmt.Errorf("%s is not a oneof field in types.MsgDepositRequestPow", d.FullName()))
 	}
 	panic("unreachable")
 }
@@ -294,7 +294,7 @@ func (x *fastReflection_MsgShielderRegisterPow) WhichOneof(d protoreflect.OneofD
 // GetUnknown retrieves the entire list of unknown fields.
 // The caller may only mutate the contents of the RawFields
 // if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_MsgShielderRegisterPow) GetUnknown() protoreflect.RawFields {
+func (x *fastReflection_MsgDepositRequestPow) GetUnknown() protoreflect.RawFields {
 	return x.unknownFields
 }
 
@@ -305,7 +305,7 @@ func (x *fastReflection_MsgShielderRegisterPow) GetUnknown() protoreflect.RawFie
 // An empty RawFields may be passed to clear the fields.
 //
 // SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRegisterPow) SetUnknown(fields protoreflect.RawFields) {
+func (x *fastReflection_MsgDepositRequestPow) SetUnknown(fields protoreflect.RawFields) {
 	x.unknownFields = fields
 }
 
@@ -317,7 +317,7 @@ func (x *fastReflection_MsgShielderRegisterPow) SetUnknown(fields protoreflect.R
 // message type, but the details are implementation dependent.
 // Validity is not part of the protobuf data model, and may not
 // be preserved in marshaling or other operations.
-func (x *fastReflection_MsgShielderRegisterPow) IsValid() bool {
+func (x *fastReflection_MsgDepositRequestPow) IsValid() bool {
 	return x != nil
 }
 
@@ -327,9 +327,9 @@ func (x *fastReflection_MsgShielderRegisterPow) IsValid() bool {
 // The returned methods type is identical to
 // "google.golang.org/protobuf/runtime/protoiface".Methods.
 // Consult the protoiface package documentation for details.
-func (x *fastReflection_MsgShielderRegisterPow) ProtoMethods() *protoiface.Methods {
+func (x *fastReflection_MsgDepositRequestPow) ProtoMethods() *protoiface.Methods {
 	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*MsgShielderRegisterPow)
+		x := input.Message.Interface().(*MsgDepositRequestPow)
 		if x == nil {
 			return protoiface.SizeOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -367,7 +367,7 @@ func (x *fastReflection_MsgShielderRegisterPow) ProtoMethods() *protoiface.Metho
 	}
 
 	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*MsgShielderRegisterPow)
+		x := input.Message.Interface().(*MsgDepositRequestPow)
 		if x == nil {
 			return protoiface.MarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -425,7 +425,7 @@ func (x *fastReflection_MsgShielderRegisterPow) ProtoMethods() *protoiface.Metho
 		}, nil
 	}
 	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*MsgShielderRegisterPow)
+		x := input.Message.Interface().(*MsgDepositRequestPow)
 		if x == nil {
 			return protoiface.UnmarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -457,10 +457,10 @@ func (x *fastReflection_MsgShielderRegisterPow) ProtoMethods() *protoiface.Metho
 			fieldNum := int32(wire >> 3)
 			wireType := int(wire & 0x7)
 			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderRegisterPow: wiretype end group for non-group")
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgDepositRequestPow: wiretype end group for non-group")
 			}
 			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderRegisterPow: illegal tag %d (wire type %d)", fieldNum, wire)
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgDepositRequestPow: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
 			case 1:
@@ -629,31 +629,31 @@ func (x *fastReflection_MsgShielderRegisterPow) ProtoMethods() *protoiface.Metho
 }
 
 var (
-	md_MsgShielderRegisterPowResponse                    protoreflect.MessageDescriptor
-	fd_MsgShielderRegisterPowResponse_deposit_address    protoreflect.FieldDescriptor
-	fd_MsgShielderRegisterPowResponse_vault_pub_key      protoreflect.FieldDescriptor
-	fd_MsgShielderRegisterPowResponse_deposit_path_index protoreflect.FieldDescriptor
-	fd_MsgShielderRegisterPowResponse_bid_id             protoreflect.FieldDescriptor
+	md_MsgDepositRequestPowResponse                    protoreflect.MessageDescriptor
+	fd_MsgDepositRequestPowResponse_deposit_address    protoreflect.FieldDescriptor
+	fd_MsgDepositRequestPowResponse_vault_pub_key      protoreflect.FieldDescriptor
+	fd_MsgDepositRequestPowResponse_deposit_path_index protoreflect.FieldDescriptor
+	fd_MsgDepositRequestPowResponse_bid_id             protoreflect.FieldDescriptor
 )
 
 func init() {
 	file_types_msg_shielder_proto_init()
-	md_MsgShielderRegisterPowResponse = File_types_msg_shielder_proto.Messages().ByName("MsgShielderRegisterPowResponse")
-	fd_MsgShielderRegisterPowResponse_deposit_address = md_MsgShielderRegisterPowResponse.Fields().ByName("deposit_address")
-	fd_MsgShielderRegisterPowResponse_vault_pub_key = md_MsgShielderRegisterPowResponse.Fields().ByName("vault_pub_key")
-	fd_MsgShielderRegisterPowResponse_deposit_path_index = md_MsgShielderRegisterPowResponse.Fields().ByName("deposit_path_index")
-	fd_MsgShielderRegisterPowResponse_bid_id = md_MsgShielderRegisterPowResponse.Fields().ByName("bid_id")
+	md_MsgDepositRequestPowResponse = File_types_msg_shielder_proto.Messages().ByName("MsgDepositRequestPowResponse")
+	fd_MsgDepositRequestPowResponse_deposit_address = md_MsgDepositRequestPowResponse.Fields().ByName("deposit_address")
+	fd_MsgDepositRequestPowResponse_vault_pub_key = md_MsgDepositRequestPowResponse.Fields().ByName("vault_pub_key")
+	fd_MsgDepositRequestPowResponse_deposit_path_index = md_MsgDepositRequestPowResponse.Fields().ByName("deposit_path_index")
+	fd_MsgDepositRequestPowResponse_bid_id = md_MsgDepositRequestPowResponse.Fields().ByName("bid_id")
 }
 
-var _ protoreflect.Message = (*fastReflection_MsgShielderRegisterPowResponse)(nil)
+var _ protoreflect.Message = (*fastReflection_MsgDepositRequestPowResponse)(nil)
 
-type fastReflection_MsgShielderRegisterPowResponse MsgShielderRegisterPowResponse
+type fastReflection_MsgDepositRequestPowResponse MsgDepositRequestPowResponse
 
-func (x *MsgShielderRegisterPowResponse) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_MsgShielderRegisterPowResponse)(x)
+func (x *MsgDepositRequestPowResponse) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_MsgDepositRequestPowResponse)(x)
 }
 
-func (x *MsgShielderRegisterPowResponse) slowProtoReflect() protoreflect.Message {
+func (x *MsgDepositRequestPowResponse) slowProtoReflect() protoreflect.Message {
 	mi := &file_types_msg_shielder_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -665,43 +665,43 @@ func (x *MsgShielderRegisterPowResponse) slowProtoReflect() protoreflect.Message
 	return mi.MessageOf(x)
 }
 
-var _fastReflection_MsgShielderRegisterPowResponse_messageType fastReflection_MsgShielderRegisterPowResponse_messageType
-var _ protoreflect.MessageType = fastReflection_MsgShielderRegisterPowResponse_messageType{}
+var _fastReflection_MsgDepositRequestPowResponse_messageType fastReflection_MsgDepositRequestPowResponse_messageType
+var _ protoreflect.MessageType = fastReflection_MsgDepositRequestPowResponse_messageType{}
 
-type fastReflection_MsgShielderRegisterPowResponse_messageType struct{}
+type fastReflection_MsgDepositRequestPowResponse_messageType struct{}
 
-func (x fastReflection_MsgShielderRegisterPowResponse_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_MsgShielderRegisterPowResponse)(nil)
+func (x fastReflection_MsgDepositRequestPowResponse_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_MsgDepositRequestPowResponse)(nil)
 }
-func (x fastReflection_MsgShielderRegisterPowResponse_messageType) New() protoreflect.Message {
-	return new(fastReflection_MsgShielderRegisterPowResponse)
+func (x fastReflection_MsgDepositRequestPowResponse_messageType) New() protoreflect.Message {
+	return new(fastReflection_MsgDepositRequestPowResponse)
 }
-func (x fastReflection_MsgShielderRegisterPowResponse_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_MsgShielderRegisterPowResponse
+func (x fastReflection_MsgDepositRequestPowResponse_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_MsgDepositRequestPowResponse
 }
 
 // Descriptor returns message descriptor, which contains only the protobuf
 // type information for the message.
-func (x *fastReflection_MsgShielderRegisterPowResponse) Descriptor() protoreflect.MessageDescriptor {
-	return md_MsgShielderRegisterPowResponse
+func (x *fastReflection_MsgDepositRequestPowResponse) Descriptor() protoreflect.MessageDescriptor {
+	return md_MsgDepositRequestPowResponse
 }
 
 // Type returns the message type, which encapsulates both Go and protobuf
 // type information. If the Go type information is not needed,
 // it is recommended that the message descriptor be used instead.
-func (x *fastReflection_MsgShielderRegisterPowResponse) Type() protoreflect.MessageType {
-	return _fastReflection_MsgShielderRegisterPowResponse_messageType
+func (x *fastReflection_MsgDepositRequestPowResponse) Type() protoreflect.MessageType {
+	return _fastReflection_MsgDepositRequestPowResponse_messageType
 }
 
 // New returns a newly allocated and mutable empty message.
-func (x *fastReflection_MsgShielderRegisterPowResponse) New() protoreflect.Message {
-	return new(fastReflection_MsgShielderRegisterPowResponse)
+func (x *fastReflection_MsgDepositRequestPowResponse) New() protoreflect.Message {
+	return new(fastReflection_MsgDepositRequestPowResponse)
 }
 
 // Interface unwraps the message reflection interface and
 // returns the underlying ProtoMessage interface.
-func (x *fastReflection_MsgShielderRegisterPowResponse) Interface() protoreflect.ProtoMessage {
-	return (*MsgShielderRegisterPowResponse)(x)
+func (x *fastReflection_MsgDepositRequestPowResponse) Interface() protoreflect.ProtoMessage {
+	return (*MsgDepositRequestPowResponse)(x)
 }
 
 // Range iterates over every populated field in an undefined order,
@@ -709,28 +709,28 @@ func (x *fastReflection_MsgShielderRegisterPowResponse) Interface() protoreflect
 // Range returns immediately if f returns false.
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
-func (x *fastReflection_MsgShielderRegisterPowResponse) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+func (x *fastReflection_MsgDepositRequestPowResponse) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
 	if x.DepositAddress != "" {
 		value := protoreflect.ValueOfString(x.DepositAddress)
-		if !f(fd_MsgShielderRegisterPowResponse_deposit_address, value) {
+		if !f(fd_MsgDepositRequestPowResponse_deposit_address, value) {
 			return
 		}
 	}
 	if x.VaultPubKey != "" {
 		value := protoreflect.ValueOfString(x.VaultPubKey)
-		if !f(fd_MsgShielderRegisterPowResponse_vault_pub_key, value) {
+		if !f(fd_MsgDepositRequestPowResponse_vault_pub_key, value) {
 			return
 		}
 	}
 	if x.DepositPathIndex != uint64(0) {
 		value := protoreflect.ValueOfUint64(x.DepositPathIndex)
-		if !f(fd_MsgShielderRegisterPowResponse_deposit_path_index, value) {
+		if !f(fd_MsgDepositRequestPowResponse_deposit_path_index, value) {
 			return
 		}
 	}
 	if x.BidId != "" {
 		value := protoreflect.ValueOfString(x.BidId)
-		if !f(fd_MsgShielderRegisterPowResponse_bid_id, value) {
+		if !f(fd_MsgDepositRequestPowResponse_bid_id, value) {
 			return
 		}
 	}
@@ -747,21 +747,21 @@ func (x *fastReflection_MsgShielderRegisterPowResponse) Range(f func(protoreflec
 // In other cases (aside from the nullable cases above),
 // a proto3 scalar field is populated if it contains a non-zero value, and
 // a repeated field is populated if it is non-empty.
-func (x *fastReflection_MsgShielderRegisterPowResponse) Has(fd protoreflect.FieldDescriptor) bool {
+func (x *fastReflection_MsgDepositRequestPowResponse) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.MsgShielderRegisterPowResponse.deposit_address":
+	case "types.MsgDepositRequestPowResponse.deposit_address":
 		return x.DepositAddress != ""
-	case "types.MsgShielderRegisterPowResponse.vault_pub_key":
+	case "types.MsgDepositRequestPowResponse.vault_pub_key":
 		return x.VaultPubKey != ""
-	case "types.MsgShielderRegisterPowResponse.deposit_path_index":
+	case "types.MsgDepositRequestPowResponse.deposit_path_index":
 		return x.DepositPathIndex != uint64(0)
-	case "types.MsgShielderRegisterPowResponse.bid_id":
+	case "types.MsgDepositRequestPowResponse.bid_id":
 		return x.BidId != ""
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRegisterPowResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgDepositRequestPowResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRegisterPowResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgDepositRequestPowResponse does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -771,21 +771,21 @@ func (x *fastReflection_MsgShielderRegisterPowResponse) Has(fd protoreflect.Fiel
 // associated with the given field number.
 //
 // Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRegisterPowResponse) Clear(fd protoreflect.FieldDescriptor) {
+func (x *fastReflection_MsgDepositRequestPowResponse) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.MsgShielderRegisterPowResponse.deposit_address":
+	case "types.MsgDepositRequestPowResponse.deposit_address":
 		x.DepositAddress = ""
-	case "types.MsgShielderRegisterPowResponse.vault_pub_key":
+	case "types.MsgDepositRequestPowResponse.vault_pub_key":
 		x.VaultPubKey = ""
-	case "types.MsgShielderRegisterPowResponse.deposit_path_index":
+	case "types.MsgDepositRequestPowResponse.deposit_path_index":
 		x.DepositPathIndex = uint64(0)
-	case "types.MsgShielderRegisterPowResponse.bid_id":
+	case "types.MsgDepositRequestPowResponse.bid_id":
 		x.BidId = ""
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRegisterPowResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgDepositRequestPowResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRegisterPowResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgDepositRequestPowResponse does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -795,25 +795,25 @@ func (x *fastReflection_MsgShielderRegisterPowResponse) Clear(fd protoreflect.Fi
 // the default value of a bytes scalar is guaranteed to be a copy.
 // For unpopulated composite types, it returns an empty, read-only view
 // of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_MsgShielderRegisterPowResponse) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgDepositRequestPowResponse) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.MsgShielderRegisterPowResponse.deposit_address":
+	case "types.MsgDepositRequestPowResponse.deposit_address":
 		value := x.DepositAddress
 		return protoreflect.ValueOfString(value)
-	case "types.MsgShielderRegisterPowResponse.vault_pub_key":
+	case "types.MsgDepositRequestPowResponse.vault_pub_key":
 		value := x.VaultPubKey
 		return protoreflect.ValueOfString(value)
-	case "types.MsgShielderRegisterPowResponse.deposit_path_index":
+	case "types.MsgDepositRequestPowResponse.deposit_path_index":
 		value := x.DepositPathIndex
 		return protoreflect.ValueOfUint64(value)
-	case "types.MsgShielderRegisterPowResponse.bid_id":
+	case "types.MsgDepositRequestPowResponse.bid_id":
 		value := x.BidId
 		return protoreflect.ValueOfString(value)
 	default:
 		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRegisterPowResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgDepositRequestPowResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRegisterPowResponse does not contain field %s", descriptor.FullName()))
+		panic(fmt.Errorf("message types.MsgDepositRequestPowResponse does not contain field %s", descriptor.FullName()))
 	}
 }
 
@@ -827,21 +827,21 @@ func (x *fastReflection_MsgShielderRegisterPowResponse) Get(descriptor protorefl
 // empty, read-only value, then it panics.
 //
 // Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRegisterPowResponse) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+func (x *fastReflection_MsgDepositRequestPowResponse) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.MsgShielderRegisterPowResponse.deposit_address":
+	case "types.MsgDepositRequestPowResponse.deposit_address":
 		x.DepositAddress = value.Interface().(string)
-	case "types.MsgShielderRegisterPowResponse.vault_pub_key":
+	case "types.MsgDepositRequestPowResponse.vault_pub_key":
 		x.VaultPubKey = value.Interface().(string)
-	case "types.MsgShielderRegisterPowResponse.deposit_path_index":
+	case "types.MsgDepositRequestPowResponse.deposit_path_index":
 		x.DepositPathIndex = value.Uint()
-	case "types.MsgShielderRegisterPowResponse.bid_id":
+	case "types.MsgDepositRequestPowResponse.bid_id":
 		x.BidId = value.Interface().(string)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRegisterPowResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgDepositRequestPowResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRegisterPowResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgDepositRequestPowResponse does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -855,52 +855,52 @@ func (x *fastReflection_MsgShielderRegisterPowResponse) Set(fd protoreflect.Fiel
 // It panics if the field does not contain a composite type.
 //
 // Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRegisterPowResponse) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgDepositRequestPowResponse) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.MsgShielderRegisterPowResponse.deposit_address":
-		panic(fmt.Errorf("field deposit_address of message types.MsgShielderRegisterPowResponse is not mutable"))
-	case "types.MsgShielderRegisterPowResponse.vault_pub_key":
-		panic(fmt.Errorf("field vault_pub_key of message types.MsgShielderRegisterPowResponse is not mutable"))
-	case "types.MsgShielderRegisterPowResponse.deposit_path_index":
-		panic(fmt.Errorf("field deposit_path_index of message types.MsgShielderRegisterPowResponse is not mutable"))
-	case "types.MsgShielderRegisterPowResponse.bid_id":
-		panic(fmt.Errorf("field bid_id of message types.MsgShielderRegisterPowResponse is not mutable"))
+	case "types.MsgDepositRequestPowResponse.deposit_address":
+		panic(fmt.Errorf("field deposit_address of message types.MsgDepositRequestPowResponse is not mutable"))
+	case "types.MsgDepositRequestPowResponse.vault_pub_key":
+		panic(fmt.Errorf("field vault_pub_key of message types.MsgDepositRequestPowResponse is not mutable"))
+	case "types.MsgDepositRequestPowResponse.deposit_path_index":
+		panic(fmt.Errorf("field deposit_path_index of message types.MsgDepositRequestPowResponse is not mutable"))
+	case "types.MsgDepositRequestPowResponse.bid_id":
+		panic(fmt.Errorf("field bid_id of message types.MsgDepositRequestPowResponse is not mutable"))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRegisterPowResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgDepositRequestPowResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRegisterPowResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgDepositRequestPowResponse does not contain field %s", fd.FullName()))
 	}
 }
 
 // NewField returns a new value that is assignable to the field
 // for the given descriptor. For scalars, this returns the default value.
 // For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_MsgShielderRegisterPowResponse) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgDepositRequestPowResponse) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.MsgShielderRegisterPowResponse.deposit_address":
+	case "types.MsgDepositRequestPowResponse.deposit_address":
 		return protoreflect.ValueOfString("")
-	case "types.MsgShielderRegisterPowResponse.vault_pub_key":
+	case "types.MsgDepositRequestPowResponse.vault_pub_key":
 		return protoreflect.ValueOfString("")
-	case "types.MsgShielderRegisterPowResponse.deposit_path_index":
+	case "types.MsgDepositRequestPowResponse.deposit_path_index":
 		return protoreflect.ValueOfUint64(uint64(0))
-	case "types.MsgShielderRegisterPowResponse.bid_id":
+	case "types.MsgDepositRequestPowResponse.bid_id":
 		return protoreflect.ValueOfString("")
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRegisterPowResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgDepositRequestPowResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRegisterPowResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgDepositRequestPowResponse does not contain field %s", fd.FullName()))
 	}
 }
 
 // WhichOneof reports which field within the oneof is populated,
 // returning nil if none are populated.
 // It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_MsgShielderRegisterPowResponse) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+func (x *fastReflection_MsgDepositRequestPowResponse) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
 	switch d.FullName() {
 	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.MsgShielderRegisterPowResponse", d.FullName()))
+		panic(fmt.Errorf("%s is not a oneof field in types.MsgDepositRequestPowResponse", d.FullName()))
 	}
 	panic("unreachable")
 }
@@ -908,7 +908,7 @@ func (x *fastReflection_MsgShielderRegisterPowResponse) WhichOneof(d protoreflec
 // GetUnknown retrieves the entire list of unknown fields.
 // The caller may only mutate the contents of the RawFields
 // if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_MsgShielderRegisterPowResponse) GetUnknown() protoreflect.RawFields {
+func (x *fastReflection_MsgDepositRequestPowResponse) GetUnknown() protoreflect.RawFields {
 	return x.unknownFields
 }
 
@@ -919,7 +919,7 @@ func (x *fastReflection_MsgShielderRegisterPowResponse) GetUnknown() protoreflec
 // An empty RawFields may be passed to clear the fields.
 //
 // SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRegisterPowResponse) SetUnknown(fields protoreflect.RawFields) {
+func (x *fastReflection_MsgDepositRequestPowResponse) SetUnknown(fields protoreflect.RawFields) {
 	x.unknownFields = fields
 }
 
@@ -931,7 +931,7 @@ func (x *fastReflection_MsgShielderRegisterPowResponse) SetUnknown(fields protor
 // message type, but the details are implementation dependent.
 // Validity is not part of the protobuf data model, and may not
 // be preserved in marshaling or other operations.
-func (x *fastReflection_MsgShielderRegisterPowResponse) IsValid() bool {
+func (x *fastReflection_MsgDepositRequestPowResponse) IsValid() bool {
 	return x != nil
 }
 
@@ -941,9 +941,9 @@ func (x *fastReflection_MsgShielderRegisterPowResponse) IsValid() bool {
 // The returned methods type is identical to
 // "google.golang.org/protobuf/runtime/protoiface".Methods.
 // Consult the protoiface package documentation for details.
-func (x *fastReflection_MsgShielderRegisterPowResponse) ProtoMethods() *protoiface.Methods {
+func (x *fastReflection_MsgDepositRequestPowResponse) ProtoMethods() *protoiface.Methods {
 	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*MsgShielderRegisterPowResponse)
+		x := input.Message.Interface().(*MsgDepositRequestPowResponse)
 		if x == nil {
 			return protoiface.SizeOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -980,7 +980,7 @@ func (x *fastReflection_MsgShielderRegisterPowResponse) ProtoMethods() *protoifa
 	}
 
 	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*MsgShielderRegisterPowResponse)
+		x := input.Message.Interface().(*MsgDepositRequestPowResponse)
 		if x == nil {
 			return protoiface.MarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -1036,7 +1036,7 @@ func (x *fastReflection_MsgShielderRegisterPowResponse) ProtoMethods() *protoifa
 		}, nil
 	}
 	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*MsgShielderRegisterPowResponse)
+		x := input.Message.Interface().(*MsgDepositRequestPowResponse)
 		if x == nil {
 			return protoiface.UnmarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -1068,10 +1068,10 @@ func (x *fastReflection_MsgShielderRegisterPowResponse) ProtoMethods() *protoifa
 			fieldNum := int32(wire >> 3)
 			wireType := int(wire & 0x7)
 			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderRegisterPowResponse: wiretype end group for non-group")
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgDepositRequestPowResponse: wiretype end group for non-group")
 			}
 			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderRegisterPowResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgDepositRequestPowResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
 			case 1:
@@ -1224,76 +1224,76 @@ func (x *fastReflection_MsgShielderRegisterPowResponse) ProtoMethods() *protoifa
 	}
 }
 
-var _ protoreflect.List = (*_MsgShielderPostCommitments_2_list)(nil)
+var _ protoreflect.List = (*_MsgShielderSplit_2_list)(nil)
 
-type _MsgShielderPostCommitments_2_list struct {
+type _MsgShielderSplit_2_list struct {
 	list *[]string
 }
 
-func (x *_MsgShielderPostCommitments_2_list) Len() int {
+func (x *_MsgShielderSplit_2_list) Len() int {
 	if x.list == nil {
 		return 0
 	}
 	return len(*x.list)
 }
 
-func (x *_MsgShielderPostCommitments_2_list) Get(i int) protoreflect.Value {
+func (x *_MsgShielderSplit_2_list) Get(i int) protoreflect.Value {
 	return protoreflect.ValueOfString((*x.list)[i])
 }
 
-func (x *_MsgShielderPostCommitments_2_list) Set(i int, value protoreflect.Value) {
+func (x *_MsgShielderSplit_2_list) Set(i int, value protoreflect.Value) {
 	valueUnwrapped := value.String()
 	concreteValue := valueUnwrapped
 	(*x.list)[i] = concreteValue
 }
 
-func (x *_MsgShielderPostCommitments_2_list) Append(value protoreflect.Value) {
+func (x *_MsgShielderSplit_2_list) Append(value protoreflect.Value) {
 	valueUnwrapped := value.String()
 	concreteValue := valueUnwrapped
 	*x.list = append(*x.list, concreteValue)
 }
 
-func (x *_MsgShielderPostCommitments_2_list) AppendMutable() protoreflect.Value {
-	panic(fmt.Errorf("AppendMutable can not be called on message MsgShielderPostCommitments at list field Commitments as it is not of Message kind"))
+func (x *_MsgShielderSplit_2_list) AppendMutable() protoreflect.Value {
+	panic(fmt.Errorf("AppendMutable can not be called on message MsgShielderSplit at list field Commitments as it is not of Message kind"))
 }
 
-func (x *_MsgShielderPostCommitments_2_list) Truncate(n int) {
+func (x *_MsgShielderSplit_2_list) Truncate(n int) {
 	*x.list = (*x.list)[:n]
 }
 
-func (x *_MsgShielderPostCommitments_2_list) NewElement() protoreflect.Value {
+func (x *_MsgShielderSplit_2_list) NewElement() protoreflect.Value {
 	v := ""
 	return protoreflect.ValueOfString(v)
 }
 
-func (x *_MsgShielderPostCommitments_2_list) IsValid() bool {
+func (x *_MsgShielderSplit_2_list) IsValid() bool {
 	return x.list != nil
 }
 
 var (
-	md_MsgShielderPostCommitments             protoreflect.MessageDescriptor
-	fd_MsgShielderPostCommitments_deposit_id  protoreflect.FieldDescriptor
-	fd_MsgShielderPostCommitments_commitments protoreflect.FieldDescriptor
-	fd_MsgShielderPostCommitments_signer      protoreflect.FieldDescriptor
+	md_MsgShielderSplit             protoreflect.MessageDescriptor
+	fd_MsgShielderSplit_deposit_id  protoreflect.FieldDescriptor
+	fd_MsgShielderSplit_commitments protoreflect.FieldDescriptor
+	fd_MsgShielderSplit_signer      protoreflect.FieldDescriptor
 )
 
 func init() {
 	file_types_msg_shielder_proto_init()
-	md_MsgShielderPostCommitments = File_types_msg_shielder_proto.Messages().ByName("MsgShielderPostCommitments")
-	fd_MsgShielderPostCommitments_deposit_id = md_MsgShielderPostCommitments.Fields().ByName("deposit_id")
-	fd_MsgShielderPostCommitments_commitments = md_MsgShielderPostCommitments.Fields().ByName("commitments")
-	fd_MsgShielderPostCommitments_signer = md_MsgShielderPostCommitments.Fields().ByName("signer")
+	md_MsgShielderSplit = File_types_msg_shielder_proto.Messages().ByName("MsgShielderSplit")
+	fd_MsgShielderSplit_deposit_id = md_MsgShielderSplit.Fields().ByName("deposit_id")
+	fd_MsgShielderSplit_commitments = md_MsgShielderSplit.Fields().ByName("commitments")
+	fd_MsgShielderSplit_signer = md_MsgShielderSplit.Fields().ByName("signer")
 }
 
-var _ protoreflect.Message = (*fastReflection_MsgShielderPostCommitments)(nil)
+var _ protoreflect.Message = (*fastReflection_MsgShielderSplit)(nil)
 
-type fastReflection_MsgShielderPostCommitments MsgShielderPostCommitments
+type fastReflection_MsgShielderSplit MsgShielderSplit
 
-func (x *MsgShielderPostCommitments) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_MsgShielderPostCommitments)(x)
+func (x *MsgShielderSplit) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_MsgShielderSplit)(x)
 }
 
-func (x *MsgShielderPostCommitments) slowProtoReflect() protoreflect.Message {
+func (x *MsgShielderSplit) slowProtoReflect() protoreflect.Message {
 	mi := &file_types_msg_shielder_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1305,43 +1305,43 @@ func (x *MsgShielderPostCommitments) slowProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-var _fastReflection_MsgShielderPostCommitments_messageType fastReflection_MsgShielderPostCommitments_messageType
-var _ protoreflect.MessageType = fastReflection_MsgShielderPostCommitments_messageType{}
+var _fastReflection_MsgShielderSplit_messageType fastReflection_MsgShielderSplit_messageType
+var _ protoreflect.MessageType = fastReflection_MsgShielderSplit_messageType{}
 
-type fastReflection_MsgShielderPostCommitments_messageType struct{}
+type fastReflection_MsgShielderSplit_messageType struct{}
 
-func (x fastReflection_MsgShielderPostCommitments_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_MsgShielderPostCommitments)(nil)
+func (x fastReflection_MsgShielderSplit_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_MsgShielderSplit)(nil)
 }
-func (x fastReflection_MsgShielderPostCommitments_messageType) New() protoreflect.Message {
-	return new(fastReflection_MsgShielderPostCommitments)
+func (x fastReflection_MsgShielderSplit_messageType) New() protoreflect.Message {
+	return new(fastReflection_MsgShielderSplit)
 }
-func (x fastReflection_MsgShielderPostCommitments_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_MsgShielderPostCommitments
+func (x fastReflection_MsgShielderSplit_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_MsgShielderSplit
 }
 
 // Descriptor returns message descriptor, which contains only the protobuf
 // type information for the message.
-func (x *fastReflection_MsgShielderPostCommitments) Descriptor() protoreflect.MessageDescriptor {
-	return md_MsgShielderPostCommitments
+func (x *fastReflection_MsgShielderSplit) Descriptor() protoreflect.MessageDescriptor {
+	return md_MsgShielderSplit
 }
 
 // Type returns the message type, which encapsulates both Go and protobuf
 // type information. If the Go type information is not needed,
 // it is recommended that the message descriptor be used instead.
-func (x *fastReflection_MsgShielderPostCommitments) Type() protoreflect.MessageType {
-	return _fastReflection_MsgShielderPostCommitments_messageType
+func (x *fastReflection_MsgShielderSplit) Type() protoreflect.MessageType {
+	return _fastReflection_MsgShielderSplit_messageType
 }
 
 // New returns a newly allocated and mutable empty message.
-func (x *fastReflection_MsgShielderPostCommitments) New() protoreflect.Message {
-	return new(fastReflection_MsgShielderPostCommitments)
+func (x *fastReflection_MsgShielderSplit) New() protoreflect.Message {
+	return new(fastReflection_MsgShielderSplit)
 }
 
 // Interface unwraps the message reflection interface and
 // returns the underlying ProtoMessage interface.
-func (x *fastReflection_MsgShielderPostCommitments) Interface() protoreflect.ProtoMessage {
-	return (*MsgShielderPostCommitments)(x)
+func (x *fastReflection_MsgShielderSplit) Interface() protoreflect.ProtoMessage {
+	return (*MsgShielderSplit)(x)
 }
 
 // Range iterates over every populated field in an undefined order,
@@ -1349,22 +1349,22 @@ func (x *fastReflection_MsgShielderPostCommitments) Interface() protoreflect.Pro
 // Range returns immediately if f returns false.
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
-func (x *fastReflection_MsgShielderPostCommitments) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+func (x *fastReflection_MsgShielderSplit) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
 	if x.DepositId != "" {
 		value := protoreflect.ValueOfString(x.DepositId)
-		if !f(fd_MsgShielderPostCommitments_deposit_id, value) {
+		if !f(fd_MsgShielderSplit_deposit_id, value) {
 			return
 		}
 	}
 	if len(x.Commitments) != 0 {
-		value := protoreflect.ValueOfList(&_MsgShielderPostCommitments_2_list{list: &x.Commitments})
-		if !f(fd_MsgShielderPostCommitments_commitments, value) {
+		value := protoreflect.ValueOfList(&_MsgShielderSplit_2_list{list: &x.Commitments})
+		if !f(fd_MsgShielderSplit_commitments, value) {
 			return
 		}
 	}
 	if len(x.Signer) != 0 {
 		value := protoreflect.ValueOfBytes(x.Signer)
-		if !f(fd_MsgShielderPostCommitments_signer, value) {
+		if !f(fd_MsgShielderSplit_signer, value) {
 			return
 		}
 	}
@@ -1381,19 +1381,19 @@ func (x *fastReflection_MsgShielderPostCommitments) Range(f func(protoreflect.Fi
 // In other cases (aside from the nullable cases above),
 // a proto3 scalar field is populated if it contains a non-zero value, and
 // a repeated field is populated if it is non-empty.
-func (x *fastReflection_MsgShielderPostCommitments) Has(fd protoreflect.FieldDescriptor) bool {
+func (x *fastReflection_MsgShielderSplit) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.MsgShielderPostCommitments.deposit_id":
+	case "types.MsgShielderSplit.deposit_id":
 		return x.DepositId != ""
-	case "types.MsgShielderPostCommitments.commitments":
+	case "types.MsgShielderSplit.commitments":
 		return len(x.Commitments) != 0
-	case "types.MsgShielderPostCommitments.signer":
+	case "types.MsgShielderSplit.signer":
 		return len(x.Signer) != 0
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderPostCommitments"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderSplit"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderPostCommitments does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderSplit does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -1403,19 +1403,19 @@ func (x *fastReflection_MsgShielderPostCommitments) Has(fd protoreflect.FieldDes
 // associated with the given field number.
 //
 // Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderPostCommitments) Clear(fd protoreflect.FieldDescriptor) {
+func (x *fastReflection_MsgShielderSplit) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.MsgShielderPostCommitments.deposit_id":
+	case "types.MsgShielderSplit.deposit_id":
 		x.DepositId = ""
-	case "types.MsgShielderPostCommitments.commitments":
+	case "types.MsgShielderSplit.commitments":
 		x.Commitments = nil
-	case "types.MsgShielderPostCommitments.signer":
+	case "types.MsgShielderSplit.signer":
 		x.Signer = nil
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderPostCommitments"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderSplit"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderPostCommitments does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderSplit does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -1425,25 +1425,25 @@ func (x *fastReflection_MsgShielderPostCommitments) Clear(fd protoreflect.FieldD
 // the default value of a bytes scalar is guaranteed to be a copy.
 // For unpopulated composite types, it returns an empty, read-only view
 // of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_MsgShielderPostCommitments) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgShielderSplit) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.MsgShielderPostCommitments.deposit_id":
+	case "types.MsgShielderSplit.deposit_id":
 		value := x.DepositId
 		return protoreflect.ValueOfString(value)
-	case "types.MsgShielderPostCommitments.commitments":
+	case "types.MsgShielderSplit.commitments":
 		if len(x.Commitments) == 0 {
-			return protoreflect.ValueOfList(&_MsgShielderPostCommitments_2_list{})
+			return protoreflect.ValueOfList(&_MsgShielderSplit_2_list{})
 		}
-		listValue := &_MsgShielderPostCommitments_2_list{list: &x.Commitments}
+		listValue := &_MsgShielderSplit_2_list{list: &x.Commitments}
 		return protoreflect.ValueOfList(listValue)
-	case "types.MsgShielderPostCommitments.signer":
+	case "types.MsgShielderSplit.signer":
 		value := x.Signer
 		return protoreflect.ValueOfBytes(value)
 	default:
 		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderPostCommitments"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderSplit"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderPostCommitments does not contain field %s", descriptor.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderSplit does not contain field %s", descriptor.FullName()))
 	}
 }
 
@@ -1457,21 +1457,21 @@ func (x *fastReflection_MsgShielderPostCommitments) Get(descriptor protoreflect.
 // empty, read-only value, then it panics.
 //
 // Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderPostCommitments) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+func (x *fastReflection_MsgShielderSplit) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.MsgShielderPostCommitments.deposit_id":
+	case "types.MsgShielderSplit.deposit_id":
 		x.DepositId = value.Interface().(string)
-	case "types.MsgShielderPostCommitments.commitments":
+	case "types.MsgShielderSplit.commitments":
 		lv := value.List()
-		clv := lv.(*_MsgShielderPostCommitments_2_list)
+		clv := lv.(*_MsgShielderSplit_2_list)
 		x.Commitments = *clv.list
-	case "types.MsgShielderPostCommitments.signer":
+	case "types.MsgShielderSplit.signer":
 		x.Signer = value.Bytes()
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderPostCommitments"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderSplit"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderPostCommitments does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderSplit does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -1485,53 +1485,53 @@ func (x *fastReflection_MsgShielderPostCommitments) Set(fd protoreflect.FieldDes
 // It panics if the field does not contain a composite type.
 //
 // Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderPostCommitments) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgShielderSplit) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.MsgShielderPostCommitments.commitments":
+	case "types.MsgShielderSplit.commitments":
 		if x.Commitments == nil {
 			x.Commitments = []string{}
 		}
-		value := &_MsgShielderPostCommitments_2_list{list: &x.Commitments}
+		value := &_MsgShielderSplit_2_list{list: &x.Commitments}
 		return protoreflect.ValueOfList(value)
-	case "types.MsgShielderPostCommitments.deposit_id":
-		panic(fmt.Errorf("field deposit_id of message types.MsgShielderPostCommitments is not mutable"))
-	case "types.MsgShielderPostCommitments.signer":
-		panic(fmt.Errorf("field signer of message types.MsgShielderPostCommitments is not mutable"))
+	case "types.MsgShielderSplit.deposit_id":
+		panic(fmt.Errorf("field deposit_id of message types.MsgShielderSplit is not mutable"))
+	case "types.MsgShielderSplit.signer":
+		panic(fmt.Errorf("field signer of message types.MsgShielderSplit is not mutable"))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderPostCommitments"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderSplit"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderPostCommitments does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderSplit does not contain field %s", fd.FullName()))
 	}
 }
 
 // NewField returns a new value that is assignable to the field
 // for the given descriptor. For scalars, this returns the default value.
 // For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_MsgShielderPostCommitments) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgShielderSplit) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.MsgShielderPostCommitments.deposit_id":
+	case "types.MsgShielderSplit.deposit_id":
 		return protoreflect.ValueOfString("")
-	case "types.MsgShielderPostCommitments.commitments":
+	case "types.MsgShielderSplit.commitments":
 		list := []string{}
-		return protoreflect.ValueOfList(&_MsgShielderPostCommitments_2_list{list: &list})
-	case "types.MsgShielderPostCommitments.signer":
+		return protoreflect.ValueOfList(&_MsgShielderSplit_2_list{list: &list})
+	case "types.MsgShielderSplit.signer":
 		return protoreflect.ValueOfBytes(nil)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderPostCommitments"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderSplit"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderPostCommitments does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderSplit does not contain field %s", fd.FullName()))
 	}
 }
 
 // WhichOneof reports which field within the oneof is populated,
 // returning nil if none are populated.
 // It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_MsgShielderPostCommitments) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+func (x *fastReflection_MsgShielderSplit) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
 	switch d.FullName() {
 	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.MsgShielderPostCommitments", d.FullName()))
+		panic(fmt.Errorf("%s is not a oneof field in types.MsgShielderSplit", d.FullName()))
 	}
 	panic("unreachable")
 }
@@ -1539,7 +1539,7 @@ func (x *fastReflection_MsgShielderPostCommitments) WhichOneof(d protoreflect.On
 // GetUnknown retrieves the entire list of unknown fields.
 // The caller may only mutate the contents of the RawFields
 // if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_MsgShielderPostCommitments) GetUnknown() protoreflect.RawFields {
+func (x *fastReflection_MsgShielderSplit) GetUnknown() protoreflect.RawFields {
 	return x.unknownFields
 }
 
@@ -1550,7 +1550,7 @@ func (x *fastReflection_MsgShielderPostCommitments) GetUnknown() protoreflect.Ra
 // An empty RawFields may be passed to clear the fields.
 //
 // SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderPostCommitments) SetUnknown(fields protoreflect.RawFields) {
+func (x *fastReflection_MsgShielderSplit) SetUnknown(fields protoreflect.RawFields) {
 	x.unknownFields = fields
 }
 
@@ -1562,7 +1562,7 @@ func (x *fastReflection_MsgShielderPostCommitments) SetUnknown(fields protorefle
 // message type, but the details are implementation dependent.
 // Validity is not part of the protobuf data model, and may not
 // be preserved in marshaling or other operations.
-func (x *fastReflection_MsgShielderPostCommitments) IsValid() bool {
+func (x *fastReflection_MsgShielderSplit) IsValid() bool {
 	return x != nil
 }
 
@@ -1572,9 +1572,9 @@ func (x *fastReflection_MsgShielderPostCommitments) IsValid() bool {
 // The returned methods type is identical to
 // "google.golang.org/protobuf/runtime/protoiface".Methods.
 // Consult the protoiface package documentation for details.
-func (x *fastReflection_MsgShielderPostCommitments) ProtoMethods() *protoiface.Methods {
+func (x *fastReflection_MsgShielderSplit) ProtoMethods() *protoiface.Methods {
 	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*MsgShielderPostCommitments)
+		x := input.Message.Interface().(*MsgShielderSplit)
 		if x == nil {
 			return protoiface.SizeOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -1610,7 +1610,7 @@ func (x *fastReflection_MsgShielderPostCommitments) ProtoMethods() *protoiface.M
 	}
 
 	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*MsgShielderPostCommitments)
+		x := input.Message.Interface().(*MsgShielderSplit)
 		if x == nil {
 			return protoiface.MarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -1663,7 +1663,7 @@ func (x *fastReflection_MsgShielderPostCommitments) ProtoMethods() *protoiface.M
 		}, nil
 	}
 	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*MsgShielderPostCommitments)
+		x := input.Message.Interface().(*MsgShielderSplit)
 		if x == nil {
 			return protoiface.UnmarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -1695,10 +1695,10 @@ func (x *fastReflection_MsgShielderPostCommitments) ProtoMethods() *protoiface.M
 			fieldNum := int32(wire >> 3)
 			wireType := int(wire & 0x7)
 			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderPostCommitments: wiretype end group for non-group")
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderSplit: wiretype end group for non-group")
 			}
 			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderPostCommitments: illegal tag %d (wire type %d)", fieldNum, wire)
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderSplit: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
 			case 1:
@@ -1835,27 +1835,27 @@ func (x *fastReflection_MsgShielderPostCommitments) ProtoMethods() *protoiface.M
 }
 
 var (
-	md_MsgShielderPostCommitmentsResponse            protoreflect.MessageDescriptor
-	fd_MsgShielderPostCommitmentsResponse_deposit_id protoreflect.FieldDescriptor
-	fd_MsgShielderPostCommitmentsResponse_status     protoreflect.FieldDescriptor
+	md_MsgShielderSplitResponse            protoreflect.MessageDescriptor
+	fd_MsgShielderSplitResponse_deposit_id protoreflect.FieldDescriptor
+	fd_MsgShielderSplitResponse_status     protoreflect.FieldDescriptor
 )
 
 func init() {
 	file_types_msg_shielder_proto_init()
-	md_MsgShielderPostCommitmentsResponse = File_types_msg_shielder_proto.Messages().ByName("MsgShielderPostCommitmentsResponse")
-	fd_MsgShielderPostCommitmentsResponse_deposit_id = md_MsgShielderPostCommitmentsResponse.Fields().ByName("deposit_id")
-	fd_MsgShielderPostCommitmentsResponse_status = md_MsgShielderPostCommitmentsResponse.Fields().ByName("status")
+	md_MsgShielderSplitResponse = File_types_msg_shielder_proto.Messages().ByName("MsgShielderSplitResponse")
+	fd_MsgShielderSplitResponse_deposit_id = md_MsgShielderSplitResponse.Fields().ByName("deposit_id")
+	fd_MsgShielderSplitResponse_status = md_MsgShielderSplitResponse.Fields().ByName("status")
 }
 
-var _ protoreflect.Message = (*fastReflection_MsgShielderPostCommitmentsResponse)(nil)
+var _ protoreflect.Message = (*fastReflection_MsgShielderSplitResponse)(nil)
 
-type fastReflection_MsgShielderPostCommitmentsResponse MsgShielderPostCommitmentsResponse
+type fastReflection_MsgShielderSplitResponse MsgShielderSplitResponse
 
-func (x *MsgShielderPostCommitmentsResponse) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_MsgShielderPostCommitmentsResponse)(x)
+func (x *MsgShielderSplitResponse) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_MsgShielderSplitResponse)(x)
 }
 
-func (x *MsgShielderPostCommitmentsResponse) slowProtoReflect() protoreflect.Message {
+func (x *MsgShielderSplitResponse) slowProtoReflect() protoreflect.Message {
 	mi := &file_types_msg_shielder_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1867,43 +1867,43 @@ func (x *MsgShielderPostCommitmentsResponse) slowProtoReflect() protoreflect.Mes
 	return mi.MessageOf(x)
 }
 
-var _fastReflection_MsgShielderPostCommitmentsResponse_messageType fastReflection_MsgShielderPostCommitmentsResponse_messageType
-var _ protoreflect.MessageType = fastReflection_MsgShielderPostCommitmentsResponse_messageType{}
+var _fastReflection_MsgShielderSplitResponse_messageType fastReflection_MsgShielderSplitResponse_messageType
+var _ protoreflect.MessageType = fastReflection_MsgShielderSplitResponse_messageType{}
 
-type fastReflection_MsgShielderPostCommitmentsResponse_messageType struct{}
+type fastReflection_MsgShielderSplitResponse_messageType struct{}
 
-func (x fastReflection_MsgShielderPostCommitmentsResponse_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_MsgShielderPostCommitmentsResponse)(nil)
+func (x fastReflection_MsgShielderSplitResponse_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_MsgShielderSplitResponse)(nil)
 }
-func (x fastReflection_MsgShielderPostCommitmentsResponse_messageType) New() protoreflect.Message {
-	return new(fastReflection_MsgShielderPostCommitmentsResponse)
+func (x fastReflection_MsgShielderSplitResponse_messageType) New() protoreflect.Message {
+	return new(fastReflection_MsgShielderSplitResponse)
 }
-func (x fastReflection_MsgShielderPostCommitmentsResponse_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_MsgShielderPostCommitmentsResponse
+func (x fastReflection_MsgShielderSplitResponse_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_MsgShielderSplitResponse
 }
 
 // Descriptor returns message descriptor, which contains only the protobuf
 // type information for the message.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) Descriptor() protoreflect.MessageDescriptor {
-	return md_MsgShielderPostCommitmentsResponse
+func (x *fastReflection_MsgShielderSplitResponse) Descriptor() protoreflect.MessageDescriptor {
+	return md_MsgShielderSplitResponse
 }
 
 // Type returns the message type, which encapsulates both Go and protobuf
 // type information. If the Go type information is not needed,
 // it is recommended that the message descriptor be used instead.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) Type() protoreflect.MessageType {
-	return _fastReflection_MsgShielderPostCommitmentsResponse_messageType
+func (x *fastReflection_MsgShielderSplitResponse) Type() protoreflect.MessageType {
+	return _fastReflection_MsgShielderSplitResponse_messageType
 }
 
 // New returns a newly allocated and mutable empty message.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) New() protoreflect.Message {
-	return new(fastReflection_MsgShielderPostCommitmentsResponse)
+func (x *fastReflection_MsgShielderSplitResponse) New() protoreflect.Message {
+	return new(fastReflection_MsgShielderSplitResponse)
 }
 
 // Interface unwraps the message reflection interface and
 // returns the underlying ProtoMessage interface.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) Interface() protoreflect.ProtoMessage {
-	return (*MsgShielderPostCommitmentsResponse)(x)
+func (x *fastReflection_MsgShielderSplitResponse) Interface() protoreflect.ProtoMessage {
+	return (*MsgShielderSplitResponse)(x)
 }
 
 // Range iterates over every populated field in an undefined order,
@@ -1911,16 +1911,16 @@ func (x *fastReflection_MsgShielderPostCommitmentsResponse) Interface() protoref
 // Range returns immediately if f returns false.
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+func (x *fastReflection_MsgShielderSplitResponse) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
 	if x.DepositId != "" {
 		value := protoreflect.ValueOfString(x.DepositId)
-		if !f(fd_MsgShielderPostCommitmentsResponse_deposit_id, value) {
+		if !f(fd_MsgShielderSplitResponse_deposit_id, value) {
 			return
 		}
 	}
 	if x.Status != "" {
 		value := protoreflect.ValueOfString(x.Status)
-		if !f(fd_MsgShielderPostCommitmentsResponse_status, value) {
+		if !f(fd_MsgShielderSplitResponse_status, value) {
 			return
 		}
 	}
@@ -1937,17 +1937,17 @@ func (x *fastReflection_MsgShielderPostCommitmentsResponse) Range(f func(protore
 // In other cases (aside from the nullable cases above),
 // a proto3 scalar field is populated if it contains a non-zero value, and
 // a repeated field is populated if it is non-empty.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) Has(fd protoreflect.FieldDescriptor) bool {
+func (x *fastReflection_MsgShielderSplitResponse) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.MsgShielderPostCommitmentsResponse.deposit_id":
+	case "types.MsgShielderSplitResponse.deposit_id":
 		return x.DepositId != ""
-	case "types.MsgShielderPostCommitmentsResponse.status":
+	case "types.MsgShielderSplitResponse.status":
 		return x.Status != ""
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderPostCommitmentsResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderSplitResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderPostCommitmentsResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderSplitResponse does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -1957,17 +1957,17 @@ func (x *fastReflection_MsgShielderPostCommitmentsResponse) Has(fd protoreflect.
 // associated with the given field number.
 //
 // Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) Clear(fd protoreflect.FieldDescriptor) {
+func (x *fastReflection_MsgShielderSplitResponse) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.MsgShielderPostCommitmentsResponse.deposit_id":
+	case "types.MsgShielderSplitResponse.deposit_id":
 		x.DepositId = ""
-	case "types.MsgShielderPostCommitmentsResponse.status":
+	case "types.MsgShielderSplitResponse.status":
 		x.Status = ""
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderPostCommitmentsResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderSplitResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderPostCommitmentsResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderSplitResponse does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -1977,19 +1977,19 @@ func (x *fastReflection_MsgShielderPostCommitmentsResponse) Clear(fd protoreflec
 // the default value of a bytes scalar is guaranteed to be a copy.
 // For unpopulated composite types, it returns an empty, read-only view
 // of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgShielderSplitResponse) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.MsgShielderPostCommitmentsResponse.deposit_id":
+	case "types.MsgShielderSplitResponse.deposit_id":
 		value := x.DepositId
 		return protoreflect.ValueOfString(value)
-	case "types.MsgShielderPostCommitmentsResponse.status":
+	case "types.MsgShielderSplitResponse.status":
 		value := x.Status
 		return protoreflect.ValueOfString(value)
 	default:
 		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderPostCommitmentsResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderSplitResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderPostCommitmentsResponse does not contain field %s", descriptor.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderSplitResponse does not contain field %s", descriptor.FullName()))
 	}
 }
 
@@ -2003,17 +2003,17 @@ func (x *fastReflection_MsgShielderPostCommitmentsResponse) Get(descriptor proto
 // empty, read-only value, then it panics.
 //
 // Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+func (x *fastReflection_MsgShielderSplitResponse) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.MsgShielderPostCommitmentsResponse.deposit_id":
+	case "types.MsgShielderSplitResponse.deposit_id":
 		x.DepositId = value.Interface().(string)
-	case "types.MsgShielderPostCommitmentsResponse.status":
+	case "types.MsgShielderSplitResponse.status":
 		x.Status = value.Interface().(string)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderPostCommitmentsResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderSplitResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderPostCommitmentsResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderSplitResponse does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -2027,44 +2027,44 @@ func (x *fastReflection_MsgShielderPostCommitmentsResponse) Set(fd protoreflect.
 // It panics if the field does not contain a composite type.
 //
 // Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgShielderSplitResponse) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.MsgShielderPostCommitmentsResponse.deposit_id":
-		panic(fmt.Errorf("field deposit_id of message types.MsgShielderPostCommitmentsResponse is not mutable"))
-	case "types.MsgShielderPostCommitmentsResponse.status":
-		panic(fmt.Errorf("field status of message types.MsgShielderPostCommitmentsResponse is not mutable"))
+	case "types.MsgShielderSplitResponse.deposit_id":
+		panic(fmt.Errorf("field deposit_id of message types.MsgShielderSplitResponse is not mutable"))
+	case "types.MsgShielderSplitResponse.status":
+		panic(fmt.Errorf("field status of message types.MsgShielderSplitResponse is not mutable"))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderPostCommitmentsResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderSplitResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderPostCommitmentsResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderSplitResponse does not contain field %s", fd.FullName()))
 	}
 }
 
 // NewField returns a new value that is assignable to the field
 // for the given descriptor. For scalars, this returns the default value.
 // For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgShielderSplitResponse) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.MsgShielderPostCommitmentsResponse.deposit_id":
+	case "types.MsgShielderSplitResponse.deposit_id":
 		return protoreflect.ValueOfString("")
-	case "types.MsgShielderPostCommitmentsResponse.status":
+	case "types.MsgShielderSplitResponse.status":
 		return protoreflect.ValueOfString("")
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderPostCommitmentsResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderSplitResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderPostCommitmentsResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderSplitResponse does not contain field %s", fd.FullName()))
 	}
 }
 
 // WhichOneof reports which field within the oneof is populated,
 // returning nil if none are populated.
 // It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+func (x *fastReflection_MsgShielderSplitResponse) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
 	switch d.FullName() {
 	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.MsgShielderPostCommitmentsResponse", d.FullName()))
+		panic(fmt.Errorf("%s is not a oneof field in types.MsgShielderSplitResponse", d.FullName()))
 	}
 	panic("unreachable")
 }
@@ -2072,7 +2072,7 @@ func (x *fastReflection_MsgShielderPostCommitmentsResponse) WhichOneof(d protore
 // GetUnknown retrieves the entire list of unknown fields.
 // The caller may only mutate the contents of the RawFields
 // if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) GetUnknown() protoreflect.RawFields {
+func (x *fastReflection_MsgShielderSplitResponse) GetUnknown() protoreflect.RawFields {
 	return x.unknownFields
 }
 
@@ -2083,7 +2083,7 @@ func (x *fastReflection_MsgShielderPostCommitmentsResponse) GetUnknown() protore
 // An empty RawFields may be passed to clear the fields.
 //
 // SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) SetUnknown(fields protoreflect.RawFields) {
+func (x *fastReflection_MsgShielderSplitResponse) SetUnknown(fields protoreflect.RawFields) {
 	x.unknownFields = fields
 }
 
@@ -2095,7 +2095,7 @@ func (x *fastReflection_MsgShielderPostCommitmentsResponse) SetUnknown(fields pr
 // message type, but the details are implementation dependent.
 // Validity is not part of the protobuf data model, and may not
 // be preserved in marshaling or other operations.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) IsValid() bool {
+func (x *fastReflection_MsgShielderSplitResponse) IsValid() bool {
 	return x != nil
 }
 
@@ -2105,9 +2105,9 @@ func (x *fastReflection_MsgShielderPostCommitmentsResponse) IsValid() bool {
 // The returned methods type is identical to
 // "google.golang.org/protobuf/runtime/protoiface".Methods.
 // Consult the protoiface package documentation for details.
-func (x *fastReflection_MsgShielderPostCommitmentsResponse) ProtoMethods() *protoiface.Methods {
+func (x *fastReflection_MsgShielderSplitResponse) ProtoMethods() *protoiface.Methods {
 	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*MsgShielderPostCommitmentsResponse)
+		x := input.Message.Interface().(*MsgShielderSplitResponse)
 		if x == nil {
 			return protoiface.SizeOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -2137,7 +2137,7 @@ func (x *fastReflection_MsgShielderPostCommitmentsResponse) ProtoMethods() *prot
 	}
 
 	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*MsgShielderPostCommitmentsResponse)
+		x := input.Message.Interface().(*MsgShielderSplitResponse)
 		if x == nil {
 			return protoiface.MarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -2181,7 +2181,7 @@ func (x *fastReflection_MsgShielderPostCommitmentsResponse) ProtoMethods() *prot
 		}, nil
 	}
 	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*MsgShielderPostCommitmentsResponse)
+		x := input.Message.Interface().(*MsgShielderSplitResponse)
 		if x == nil {
 			return protoiface.UnmarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -2213,10 +2213,10 @@ func (x *fastReflection_MsgShielderPostCommitmentsResponse) ProtoMethods() *prot
 			fieldNum := int32(wire >> 3)
 			wireType := int(wire & 0x7)
 			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderPostCommitmentsResponse: wiretype end group for non-group")
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderSplitResponse: wiretype end group for non-group")
 			}
 			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderPostCommitmentsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderSplitResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
 			case 1:
@@ -2319,29 +2319,29 @@ func (x *fastReflection_MsgShielderPostCommitmentsResponse) ProtoMethods() *prot
 }
 
 var (
-	md_MsgShielderRequestWithdrawal        protoreflect.MessageDescriptor
-	fd_MsgShielderRequestWithdrawal_proof  protoreflect.FieldDescriptor
-	fd_MsgShielderRequestWithdrawal_public protoreflect.FieldDescriptor
-	fd_MsgShielderRequestWithdrawal_signer protoreflect.FieldDescriptor
+	md_MsgShielderRedeem        protoreflect.MessageDescriptor
+	fd_MsgShielderRedeem_proof  protoreflect.FieldDescriptor
+	fd_MsgShielderRedeem_public protoreflect.FieldDescriptor
+	fd_MsgShielderRedeem_signer protoreflect.FieldDescriptor
 )
 
 func init() {
 	file_types_msg_shielder_proto_init()
-	md_MsgShielderRequestWithdrawal = File_types_msg_shielder_proto.Messages().ByName("MsgShielderRequestWithdrawal")
-	fd_MsgShielderRequestWithdrawal_proof = md_MsgShielderRequestWithdrawal.Fields().ByName("proof")
-	fd_MsgShielderRequestWithdrawal_public = md_MsgShielderRequestWithdrawal.Fields().ByName("public")
-	fd_MsgShielderRequestWithdrawal_signer = md_MsgShielderRequestWithdrawal.Fields().ByName("signer")
+	md_MsgShielderRedeem = File_types_msg_shielder_proto.Messages().ByName("MsgShielderRedeem")
+	fd_MsgShielderRedeem_proof = md_MsgShielderRedeem.Fields().ByName("proof")
+	fd_MsgShielderRedeem_public = md_MsgShielderRedeem.Fields().ByName("public")
+	fd_MsgShielderRedeem_signer = md_MsgShielderRedeem.Fields().ByName("signer")
 }
 
-var _ protoreflect.Message = (*fastReflection_MsgShielderRequestWithdrawal)(nil)
+var _ protoreflect.Message = (*fastReflection_MsgShielderRedeem)(nil)
 
-type fastReflection_MsgShielderRequestWithdrawal MsgShielderRequestWithdrawal
+type fastReflection_MsgShielderRedeem MsgShielderRedeem
 
-func (x *MsgShielderRequestWithdrawal) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_MsgShielderRequestWithdrawal)(x)
+func (x *MsgShielderRedeem) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_MsgShielderRedeem)(x)
 }
 
-func (x *MsgShielderRequestWithdrawal) slowProtoReflect() protoreflect.Message {
+func (x *MsgShielderRedeem) slowProtoReflect() protoreflect.Message {
 	mi := &file_types_msg_shielder_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2353,43 +2353,43 @@ func (x *MsgShielderRequestWithdrawal) slowProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-var _fastReflection_MsgShielderRequestWithdrawal_messageType fastReflection_MsgShielderRequestWithdrawal_messageType
-var _ protoreflect.MessageType = fastReflection_MsgShielderRequestWithdrawal_messageType{}
+var _fastReflection_MsgShielderRedeem_messageType fastReflection_MsgShielderRedeem_messageType
+var _ protoreflect.MessageType = fastReflection_MsgShielderRedeem_messageType{}
 
-type fastReflection_MsgShielderRequestWithdrawal_messageType struct{}
+type fastReflection_MsgShielderRedeem_messageType struct{}
 
-func (x fastReflection_MsgShielderRequestWithdrawal_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_MsgShielderRequestWithdrawal)(nil)
+func (x fastReflection_MsgShielderRedeem_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_MsgShielderRedeem)(nil)
 }
-func (x fastReflection_MsgShielderRequestWithdrawal_messageType) New() protoreflect.Message {
-	return new(fastReflection_MsgShielderRequestWithdrawal)
+func (x fastReflection_MsgShielderRedeem_messageType) New() protoreflect.Message {
+	return new(fastReflection_MsgShielderRedeem)
 }
-func (x fastReflection_MsgShielderRequestWithdrawal_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_MsgShielderRequestWithdrawal
+func (x fastReflection_MsgShielderRedeem_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_MsgShielderRedeem
 }
 
 // Descriptor returns message descriptor, which contains only the protobuf
 // type information for the message.
-func (x *fastReflection_MsgShielderRequestWithdrawal) Descriptor() protoreflect.MessageDescriptor {
-	return md_MsgShielderRequestWithdrawal
+func (x *fastReflection_MsgShielderRedeem) Descriptor() protoreflect.MessageDescriptor {
+	return md_MsgShielderRedeem
 }
 
 // Type returns the message type, which encapsulates both Go and protobuf
 // type information. If the Go type information is not needed,
 // it is recommended that the message descriptor be used instead.
-func (x *fastReflection_MsgShielderRequestWithdrawal) Type() protoreflect.MessageType {
-	return _fastReflection_MsgShielderRequestWithdrawal_messageType
+func (x *fastReflection_MsgShielderRedeem) Type() protoreflect.MessageType {
+	return _fastReflection_MsgShielderRedeem_messageType
 }
 
 // New returns a newly allocated and mutable empty message.
-func (x *fastReflection_MsgShielderRequestWithdrawal) New() protoreflect.Message {
-	return new(fastReflection_MsgShielderRequestWithdrawal)
+func (x *fastReflection_MsgShielderRedeem) New() protoreflect.Message {
+	return new(fastReflection_MsgShielderRedeem)
 }
 
 // Interface unwraps the message reflection interface and
 // returns the underlying ProtoMessage interface.
-func (x *fastReflection_MsgShielderRequestWithdrawal) Interface() protoreflect.ProtoMessage {
-	return (*MsgShielderRequestWithdrawal)(x)
+func (x *fastReflection_MsgShielderRedeem) Interface() protoreflect.ProtoMessage {
+	return (*MsgShielderRedeem)(x)
 }
 
 // Range iterates over every populated field in an undefined order,
@@ -2397,22 +2397,22 @@ func (x *fastReflection_MsgShielderRequestWithdrawal) Interface() protoreflect.P
 // Range returns immediately if f returns false.
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
-func (x *fastReflection_MsgShielderRequestWithdrawal) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+func (x *fastReflection_MsgShielderRedeem) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
 	if len(x.Proof) != 0 {
 		value := protoreflect.ValueOfBytes(x.Proof)
-		if !f(fd_MsgShielderRequestWithdrawal_proof, value) {
+		if !f(fd_MsgShielderRedeem_proof, value) {
 			return
 		}
 	}
 	if len(x.Public) != 0 {
 		value := protoreflect.ValueOfBytes(x.Public)
-		if !f(fd_MsgShielderRequestWithdrawal_public, value) {
+		if !f(fd_MsgShielderRedeem_public, value) {
 			return
 		}
 	}
 	if len(x.Signer) != 0 {
 		value := protoreflect.ValueOfBytes(x.Signer)
-		if !f(fd_MsgShielderRequestWithdrawal_signer, value) {
+		if !f(fd_MsgShielderRedeem_signer, value) {
 			return
 		}
 	}
@@ -2429,19 +2429,19 @@ func (x *fastReflection_MsgShielderRequestWithdrawal) Range(f func(protoreflect.
 // In other cases (aside from the nullable cases above),
 // a proto3 scalar field is populated if it contains a non-zero value, and
 // a repeated field is populated if it is non-empty.
-func (x *fastReflection_MsgShielderRequestWithdrawal) Has(fd protoreflect.FieldDescriptor) bool {
+func (x *fastReflection_MsgShielderRedeem) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.MsgShielderRequestWithdrawal.proof":
+	case "types.MsgShielderRedeem.proof":
 		return len(x.Proof) != 0
-	case "types.MsgShielderRequestWithdrawal.public":
+	case "types.MsgShielderRedeem.public":
 		return len(x.Public) != 0
-	case "types.MsgShielderRequestWithdrawal.signer":
+	case "types.MsgShielderRedeem.signer":
 		return len(x.Signer) != 0
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRequestWithdrawal"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRedeem"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRequestWithdrawal does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderRedeem does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -2451,19 +2451,19 @@ func (x *fastReflection_MsgShielderRequestWithdrawal) Has(fd protoreflect.FieldD
 // associated with the given field number.
 //
 // Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRequestWithdrawal) Clear(fd protoreflect.FieldDescriptor) {
+func (x *fastReflection_MsgShielderRedeem) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.MsgShielderRequestWithdrawal.proof":
+	case "types.MsgShielderRedeem.proof":
 		x.Proof = nil
-	case "types.MsgShielderRequestWithdrawal.public":
+	case "types.MsgShielderRedeem.public":
 		x.Public = nil
-	case "types.MsgShielderRequestWithdrawal.signer":
+	case "types.MsgShielderRedeem.signer":
 		x.Signer = nil
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRequestWithdrawal"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRedeem"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRequestWithdrawal does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderRedeem does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -2473,22 +2473,22 @@ func (x *fastReflection_MsgShielderRequestWithdrawal) Clear(fd protoreflect.Fiel
 // the default value of a bytes scalar is guaranteed to be a copy.
 // For unpopulated composite types, it returns an empty, read-only view
 // of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_MsgShielderRequestWithdrawal) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgShielderRedeem) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.MsgShielderRequestWithdrawal.proof":
+	case "types.MsgShielderRedeem.proof":
 		value := x.Proof
 		return protoreflect.ValueOfBytes(value)
-	case "types.MsgShielderRequestWithdrawal.public":
+	case "types.MsgShielderRedeem.public":
 		value := x.Public
 		return protoreflect.ValueOfBytes(value)
-	case "types.MsgShielderRequestWithdrawal.signer":
+	case "types.MsgShielderRedeem.signer":
 		value := x.Signer
 		return protoreflect.ValueOfBytes(value)
 	default:
 		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRequestWithdrawal"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRedeem"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRequestWithdrawal does not contain field %s", descriptor.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderRedeem does not contain field %s", descriptor.FullName()))
 	}
 }
 
@@ -2502,19 +2502,19 @@ func (x *fastReflection_MsgShielderRequestWithdrawal) Get(descriptor protoreflec
 // empty, read-only value, then it panics.
 //
 // Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRequestWithdrawal) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+func (x *fastReflection_MsgShielderRedeem) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.MsgShielderRequestWithdrawal.proof":
+	case "types.MsgShielderRedeem.proof":
 		x.Proof = value.Bytes()
-	case "types.MsgShielderRequestWithdrawal.public":
+	case "types.MsgShielderRedeem.public":
 		x.Public = value.Bytes()
-	case "types.MsgShielderRequestWithdrawal.signer":
+	case "types.MsgShielderRedeem.signer":
 		x.Signer = value.Bytes()
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRequestWithdrawal"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRedeem"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRequestWithdrawal does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderRedeem does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -2528,48 +2528,48 @@ func (x *fastReflection_MsgShielderRequestWithdrawal) Set(fd protoreflect.FieldD
 // It panics if the field does not contain a composite type.
 //
 // Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRequestWithdrawal) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgShielderRedeem) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.MsgShielderRequestWithdrawal.proof":
-		panic(fmt.Errorf("field proof of message types.MsgShielderRequestWithdrawal is not mutable"))
-	case "types.MsgShielderRequestWithdrawal.public":
-		panic(fmt.Errorf("field public of message types.MsgShielderRequestWithdrawal is not mutable"))
-	case "types.MsgShielderRequestWithdrawal.signer":
-		panic(fmt.Errorf("field signer of message types.MsgShielderRequestWithdrawal is not mutable"))
+	case "types.MsgShielderRedeem.proof":
+		panic(fmt.Errorf("field proof of message types.MsgShielderRedeem is not mutable"))
+	case "types.MsgShielderRedeem.public":
+		panic(fmt.Errorf("field public of message types.MsgShielderRedeem is not mutable"))
+	case "types.MsgShielderRedeem.signer":
+		panic(fmt.Errorf("field signer of message types.MsgShielderRedeem is not mutable"))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRequestWithdrawal"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRedeem"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRequestWithdrawal does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderRedeem does not contain field %s", fd.FullName()))
 	}
 }
 
 // NewField returns a new value that is assignable to the field
 // for the given descriptor. For scalars, this returns the default value.
 // For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_MsgShielderRequestWithdrawal) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgShielderRedeem) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.MsgShielderRequestWithdrawal.proof":
+	case "types.MsgShielderRedeem.proof":
 		return protoreflect.ValueOfBytes(nil)
-	case "types.MsgShielderRequestWithdrawal.public":
+	case "types.MsgShielderRedeem.public":
 		return protoreflect.ValueOfBytes(nil)
-	case "types.MsgShielderRequestWithdrawal.signer":
+	case "types.MsgShielderRedeem.signer":
 		return protoreflect.ValueOfBytes(nil)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRequestWithdrawal"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRedeem"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRequestWithdrawal does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderRedeem does not contain field %s", fd.FullName()))
 	}
 }
 
 // WhichOneof reports which field within the oneof is populated,
 // returning nil if none are populated.
 // It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_MsgShielderRequestWithdrawal) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+func (x *fastReflection_MsgShielderRedeem) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
 	switch d.FullName() {
 	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.MsgShielderRequestWithdrawal", d.FullName()))
+		panic(fmt.Errorf("%s is not a oneof field in types.MsgShielderRedeem", d.FullName()))
 	}
 	panic("unreachable")
 }
@@ -2577,7 +2577,7 @@ func (x *fastReflection_MsgShielderRequestWithdrawal) WhichOneof(d protoreflect.
 // GetUnknown retrieves the entire list of unknown fields.
 // The caller may only mutate the contents of the RawFields
 // if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_MsgShielderRequestWithdrawal) GetUnknown() protoreflect.RawFields {
+func (x *fastReflection_MsgShielderRedeem) GetUnknown() protoreflect.RawFields {
 	return x.unknownFields
 }
 
@@ -2588,7 +2588,7 @@ func (x *fastReflection_MsgShielderRequestWithdrawal) GetUnknown() protoreflect.
 // An empty RawFields may be passed to clear the fields.
 //
 // SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRequestWithdrawal) SetUnknown(fields protoreflect.RawFields) {
+func (x *fastReflection_MsgShielderRedeem) SetUnknown(fields protoreflect.RawFields) {
 	x.unknownFields = fields
 }
 
@@ -2600,7 +2600,7 @@ func (x *fastReflection_MsgShielderRequestWithdrawal) SetUnknown(fields protoref
 // message type, but the details are implementation dependent.
 // Validity is not part of the protobuf data model, and may not
 // be preserved in marshaling or other operations.
-func (x *fastReflection_MsgShielderRequestWithdrawal) IsValid() bool {
+func (x *fastReflection_MsgShielderRedeem) IsValid() bool {
 	return x != nil
 }
 
@@ -2610,9 +2610,9 @@ func (x *fastReflection_MsgShielderRequestWithdrawal) IsValid() bool {
 // The returned methods type is identical to
 // "google.golang.org/protobuf/runtime/protoiface".Methods.
 // Consult the protoiface package documentation for details.
-func (x *fastReflection_MsgShielderRequestWithdrawal) ProtoMethods() *protoiface.Methods {
+func (x *fastReflection_MsgShielderRedeem) ProtoMethods() *protoiface.Methods {
 	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*MsgShielderRequestWithdrawal)
+		x := input.Message.Interface().(*MsgShielderRedeem)
 		if x == nil {
 			return protoiface.SizeOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -2646,7 +2646,7 @@ func (x *fastReflection_MsgShielderRequestWithdrawal) ProtoMethods() *protoiface
 	}
 
 	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*MsgShielderRequestWithdrawal)
+		x := input.Message.Interface().(*MsgShielderRedeem)
 		if x == nil {
 			return protoiface.MarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -2697,7 +2697,7 @@ func (x *fastReflection_MsgShielderRequestWithdrawal) ProtoMethods() *protoiface
 		}, nil
 	}
 	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*MsgShielderRequestWithdrawal)
+		x := input.Message.Interface().(*MsgShielderRedeem)
 		if x == nil {
 			return protoiface.UnmarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -2729,10 +2729,10 @@ func (x *fastReflection_MsgShielderRequestWithdrawal) ProtoMethods() *protoiface
 			fieldNum := int32(wire >> 3)
 			wireType := int(wire & 0x7)
 			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderRequestWithdrawal: wiretype end group for non-group")
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderRedeem: wiretype end group for non-group")
 			}
 			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderRequestWithdrawal: illegal tag %d (wire type %d)", fieldNum, wire)
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderRedeem: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
 			case 1:
@@ -2873,27 +2873,27 @@ func (x *fastReflection_MsgShielderRequestWithdrawal) ProtoMethods() *protoiface
 }
 
 var (
-	md_MsgShielderRequestWithdrawalResponse               protoreflect.MessageDescriptor
-	fd_MsgShielderRequestWithdrawalResponse_withdrawal_id protoreflect.FieldDescriptor
-	fd_MsgShielderRequestWithdrawalResponse_status        protoreflect.FieldDescriptor
+	md_MsgShielderRedeemResponse               protoreflect.MessageDescriptor
+	fd_MsgShielderRedeemResponse_withdrawal_id protoreflect.FieldDescriptor
+	fd_MsgShielderRedeemResponse_status        protoreflect.FieldDescriptor
 )
 
 func init() {
 	file_types_msg_shielder_proto_init()
-	md_MsgShielderRequestWithdrawalResponse = File_types_msg_shielder_proto.Messages().ByName("MsgShielderRequestWithdrawalResponse")
-	fd_MsgShielderRequestWithdrawalResponse_withdrawal_id = md_MsgShielderRequestWithdrawalResponse.Fields().ByName("withdrawal_id")
-	fd_MsgShielderRequestWithdrawalResponse_status = md_MsgShielderRequestWithdrawalResponse.Fields().ByName("status")
+	md_MsgShielderRedeemResponse = File_types_msg_shielder_proto.Messages().ByName("MsgShielderRedeemResponse")
+	fd_MsgShielderRedeemResponse_withdrawal_id = md_MsgShielderRedeemResponse.Fields().ByName("withdrawal_id")
+	fd_MsgShielderRedeemResponse_status = md_MsgShielderRedeemResponse.Fields().ByName("status")
 }
 
-var _ protoreflect.Message = (*fastReflection_MsgShielderRequestWithdrawalResponse)(nil)
+var _ protoreflect.Message = (*fastReflection_MsgShielderRedeemResponse)(nil)
 
-type fastReflection_MsgShielderRequestWithdrawalResponse MsgShielderRequestWithdrawalResponse
+type fastReflection_MsgShielderRedeemResponse MsgShielderRedeemResponse
 
-func (x *MsgShielderRequestWithdrawalResponse) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_MsgShielderRequestWithdrawalResponse)(x)
+func (x *MsgShielderRedeemResponse) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_MsgShielderRedeemResponse)(x)
 }
 
-func (x *MsgShielderRequestWithdrawalResponse) slowProtoReflect() protoreflect.Message {
+func (x *MsgShielderRedeemResponse) slowProtoReflect() protoreflect.Message {
 	mi := &file_types_msg_shielder_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -2905,43 +2905,43 @@ func (x *MsgShielderRequestWithdrawalResponse) slowProtoReflect() protoreflect.M
 	return mi.MessageOf(x)
 }
 
-var _fastReflection_MsgShielderRequestWithdrawalResponse_messageType fastReflection_MsgShielderRequestWithdrawalResponse_messageType
-var _ protoreflect.MessageType = fastReflection_MsgShielderRequestWithdrawalResponse_messageType{}
+var _fastReflection_MsgShielderRedeemResponse_messageType fastReflection_MsgShielderRedeemResponse_messageType
+var _ protoreflect.MessageType = fastReflection_MsgShielderRedeemResponse_messageType{}
 
-type fastReflection_MsgShielderRequestWithdrawalResponse_messageType struct{}
+type fastReflection_MsgShielderRedeemResponse_messageType struct{}
 
-func (x fastReflection_MsgShielderRequestWithdrawalResponse_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_MsgShielderRequestWithdrawalResponse)(nil)
+func (x fastReflection_MsgShielderRedeemResponse_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_MsgShielderRedeemResponse)(nil)
 }
-func (x fastReflection_MsgShielderRequestWithdrawalResponse_messageType) New() protoreflect.Message {
-	return new(fastReflection_MsgShielderRequestWithdrawalResponse)
+func (x fastReflection_MsgShielderRedeemResponse_messageType) New() protoreflect.Message {
+	return new(fastReflection_MsgShielderRedeemResponse)
 }
-func (x fastReflection_MsgShielderRequestWithdrawalResponse_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_MsgShielderRequestWithdrawalResponse
+func (x fastReflection_MsgShielderRedeemResponse_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_MsgShielderRedeemResponse
 }
 
 // Descriptor returns message descriptor, which contains only the protobuf
 // type information for the message.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) Descriptor() protoreflect.MessageDescriptor {
-	return md_MsgShielderRequestWithdrawalResponse
+func (x *fastReflection_MsgShielderRedeemResponse) Descriptor() protoreflect.MessageDescriptor {
+	return md_MsgShielderRedeemResponse
 }
 
 // Type returns the message type, which encapsulates both Go and protobuf
 // type information. If the Go type information is not needed,
 // it is recommended that the message descriptor be used instead.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) Type() protoreflect.MessageType {
-	return _fastReflection_MsgShielderRequestWithdrawalResponse_messageType
+func (x *fastReflection_MsgShielderRedeemResponse) Type() protoreflect.MessageType {
+	return _fastReflection_MsgShielderRedeemResponse_messageType
 }
 
 // New returns a newly allocated and mutable empty message.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) New() protoreflect.Message {
-	return new(fastReflection_MsgShielderRequestWithdrawalResponse)
+func (x *fastReflection_MsgShielderRedeemResponse) New() protoreflect.Message {
+	return new(fastReflection_MsgShielderRedeemResponse)
 }
 
 // Interface unwraps the message reflection interface and
 // returns the underlying ProtoMessage interface.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) Interface() protoreflect.ProtoMessage {
-	return (*MsgShielderRequestWithdrawalResponse)(x)
+func (x *fastReflection_MsgShielderRedeemResponse) Interface() protoreflect.ProtoMessage {
+	return (*MsgShielderRedeemResponse)(x)
 }
 
 // Range iterates over every populated field in an undefined order,
@@ -2949,16 +2949,16 @@ func (x *fastReflection_MsgShielderRequestWithdrawalResponse) Interface() protor
 // Range returns immediately if f returns false.
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+func (x *fastReflection_MsgShielderRedeemResponse) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
 	if x.WithdrawalId != "" {
 		value := protoreflect.ValueOfString(x.WithdrawalId)
-		if !f(fd_MsgShielderRequestWithdrawalResponse_withdrawal_id, value) {
+		if !f(fd_MsgShielderRedeemResponse_withdrawal_id, value) {
 			return
 		}
 	}
 	if x.Status != "" {
 		value := protoreflect.ValueOfString(x.Status)
-		if !f(fd_MsgShielderRequestWithdrawalResponse_status, value) {
+		if !f(fd_MsgShielderRedeemResponse_status, value) {
 			return
 		}
 	}
@@ -2975,17 +2975,17 @@ func (x *fastReflection_MsgShielderRequestWithdrawalResponse) Range(f func(proto
 // In other cases (aside from the nullable cases above),
 // a proto3 scalar field is populated if it contains a non-zero value, and
 // a repeated field is populated if it is non-empty.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) Has(fd protoreflect.FieldDescriptor) bool {
+func (x *fastReflection_MsgShielderRedeemResponse) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.MsgShielderRequestWithdrawalResponse.withdrawal_id":
+	case "types.MsgShielderRedeemResponse.withdrawal_id":
 		return x.WithdrawalId != ""
-	case "types.MsgShielderRequestWithdrawalResponse.status":
+	case "types.MsgShielderRedeemResponse.status":
 		return x.Status != ""
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRequestWithdrawalResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRedeemResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRequestWithdrawalResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderRedeemResponse does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -2995,17 +2995,17 @@ func (x *fastReflection_MsgShielderRequestWithdrawalResponse) Has(fd protoreflec
 // associated with the given field number.
 //
 // Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) Clear(fd protoreflect.FieldDescriptor) {
+func (x *fastReflection_MsgShielderRedeemResponse) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.MsgShielderRequestWithdrawalResponse.withdrawal_id":
+	case "types.MsgShielderRedeemResponse.withdrawal_id":
 		x.WithdrawalId = ""
-	case "types.MsgShielderRequestWithdrawalResponse.status":
+	case "types.MsgShielderRedeemResponse.status":
 		x.Status = ""
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRequestWithdrawalResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRedeemResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRequestWithdrawalResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderRedeemResponse does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -3015,19 +3015,19 @@ func (x *fastReflection_MsgShielderRequestWithdrawalResponse) Clear(fd protorefl
 // the default value of a bytes scalar is guaranteed to be a copy.
 // For unpopulated composite types, it returns an empty, read-only view
 // of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgShielderRedeemResponse) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.MsgShielderRequestWithdrawalResponse.withdrawal_id":
+	case "types.MsgShielderRedeemResponse.withdrawal_id":
 		value := x.WithdrawalId
 		return protoreflect.ValueOfString(value)
-	case "types.MsgShielderRequestWithdrawalResponse.status":
+	case "types.MsgShielderRedeemResponse.status":
 		value := x.Status
 		return protoreflect.ValueOfString(value)
 	default:
 		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRequestWithdrawalResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRedeemResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRequestWithdrawalResponse does not contain field %s", descriptor.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderRedeemResponse does not contain field %s", descriptor.FullName()))
 	}
 }
 
@@ -3041,17 +3041,17 @@ func (x *fastReflection_MsgShielderRequestWithdrawalResponse) Get(descriptor pro
 // empty, read-only value, then it panics.
 //
 // Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+func (x *fastReflection_MsgShielderRedeemResponse) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.MsgShielderRequestWithdrawalResponse.withdrawal_id":
+	case "types.MsgShielderRedeemResponse.withdrawal_id":
 		x.WithdrawalId = value.Interface().(string)
-	case "types.MsgShielderRequestWithdrawalResponse.status":
+	case "types.MsgShielderRedeemResponse.status":
 		x.Status = value.Interface().(string)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRequestWithdrawalResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRedeemResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRequestWithdrawalResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderRedeemResponse does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -3065,44 +3065,44 @@ func (x *fastReflection_MsgShielderRequestWithdrawalResponse) Set(fd protoreflec
 // It panics if the field does not contain a composite type.
 //
 // Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgShielderRedeemResponse) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.MsgShielderRequestWithdrawalResponse.withdrawal_id":
-		panic(fmt.Errorf("field withdrawal_id of message types.MsgShielderRequestWithdrawalResponse is not mutable"))
-	case "types.MsgShielderRequestWithdrawalResponse.status":
-		panic(fmt.Errorf("field status of message types.MsgShielderRequestWithdrawalResponse is not mutable"))
+	case "types.MsgShielderRedeemResponse.withdrawal_id":
+		panic(fmt.Errorf("field withdrawal_id of message types.MsgShielderRedeemResponse is not mutable"))
+	case "types.MsgShielderRedeemResponse.status":
+		panic(fmt.Errorf("field status of message types.MsgShielderRedeemResponse is not mutable"))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRequestWithdrawalResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRedeemResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRequestWithdrawalResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderRedeemResponse does not contain field %s", fd.FullName()))
 	}
 }
 
 // NewField returns a new value that is assignable to the field
 // for the given descriptor. For scalars, this returns the default value.
 // For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgShielderRedeemResponse) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.MsgShielderRequestWithdrawalResponse.withdrawal_id":
+	case "types.MsgShielderRedeemResponse.withdrawal_id":
 		return protoreflect.ValueOfString("")
-	case "types.MsgShielderRequestWithdrawalResponse.status":
+	case "types.MsgShielderRedeemResponse.status":
 		return protoreflect.ValueOfString("")
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRequestWithdrawalResponse"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgShielderRedeemResponse"))
 		}
-		panic(fmt.Errorf("message types.MsgShielderRequestWithdrawalResponse does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgShielderRedeemResponse does not contain field %s", fd.FullName()))
 	}
 }
 
 // WhichOneof reports which field within the oneof is populated,
 // returning nil if none are populated.
 // It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+func (x *fastReflection_MsgShielderRedeemResponse) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
 	switch d.FullName() {
 	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.MsgShielderRequestWithdrawalResponse", d.FullName()))
+		panic(fmt.Errorf("%s is not a oneof field in types.MsgShielderRedeemResponse", d.FullName()))
 	}
 	panic("unreachable")
 }
@@ -3110,7 +3110,7 @@ func (x *fastReflection_MsgShielderRequestWithdrawalResponse) WhichOneof(d proto
 // GetUnknown retrieves the entire list of unknown fields.
 // The caller may only mutate the contents of the RawFields
 // if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) GetUnknown() protoreflect.RawFields {
+func (x *fastReflection_MsgShielderRedeemResponse) GetUnknown() protoreflect.RawFields {
 	return x.unknownFields
 }
 
@@ -3121,7 +3121,7 @@ func (x *fastReflection_MsgShielderRequestWithdrawalResponse) GetUnknown() proto
 // An empty RawFields may be passed to clear the fields.
 //
 // SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) SetUnknown(fields protoreflect.RawFields) {
+func (x *fastReflection_MsgShielderRedeemResponse) SetUnknown(fields protoreflect.RawFields) {
 	x.unknownFields = fields
 }
 
@@ -3133,7 +3133,7 @@ func (x *fastReflection_MsgShielderRequestWithdrawalResponse) SetUnknown(fields 
 // message type, but the details are implementation dependent.
 // Validity is not part of the protobuf data model, and may not
 // be preserved in marshaling or other operations.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) IsValid() bool {
+func (x *fastReflection_MsgShielderRedeemResponse) IsValid() bool {
 	return x != nil
 }
 
@@ -3143,9 +3143,9 @@ func (x *fastReflection_MsgShielderRequestWithdrawalResponse) IsValid() bool {
 // The returned methods type is identical to
 // "google.golang.org/protobuf/runtime/protoiface".Methods.
 // Consult the protoiface package documentation for details.
-func (x *fastReflection_MsgShielderRequestWithdrawalResponse) ProtoMethods() *protoiface.Methods {
+func (x *fastReflection_MsgShielderRedeemResponse) ProtoMethods() *protoiface.Methods {
 	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*MsgShielderRequestWithdrawalResponse)
+		x := input.Message.Interface().(*MsgShielderRedeemResponse)
 		if x == nil {
 			return protoiface.SizeOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -3175,7 +3175,7 @@ func (x *fastReflection_MsgShielderRequestWithdrawalResponse) ProtoMethods() *pr
 	}
 
 	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*MsgShielderRequestWithdrawalResponse)
+		x := input.Message.Interface().(*MsgShielderRedeemResponse)
 		if x == nil {
 			return protoiface.MarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -3219,7 +3219,7 @@ func (x *fastReflection_MsgShielderRequestWithdrawalResponse) ProtoMethods() *pr
 		}, nil
 	}
 	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*MsgShielderRequestWithdrawalResponse)
+		x := input.Message.Interface().(*MsgShielderRedeemResponse)
 		if x == nil {
 			return protoiface.UnmarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -3251,10 +3251,10 @@ func (x *fastReflection_MsgShielderRequestWithdrawalResponse) ProtoMethods() *pr
 			fieldNum := int32(wire >> 3)
 			wireType := int(wire & 0x7)
 			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderRequestWithdrawalResponse: wiretype end group for non-group")
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderRedeemResponse: wiretype end group for non-group")
 			}
 			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderRequestWithdrawalResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgShielderRedeemResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
 			case 1:
@@ -7605,7 +7605,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type MsgShielderRegisterPow struct {
+type MsgDepositRequestPow struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -7616,8 +7616,8 @@ type MsgShielderRegisterPow struct {
 	NodePubKey     string `protobuf:"bytes,4,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
 }
 
-func (x *MsgShielderRegisterPow) Reset() {
-	*x = MsgShielderRegisterPow{}
+func (x *MsgDepositRequestPow) Reset() {
+	*x = MsgDepositRequestPow{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_msg_shielder_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -7625,46 +7625,46 @@ func (x *MsgShielderRegisterPow) Reset() {
 	}
 }
 
-func (x *MsgShielderRegisterPow) String() string {
+func (x *MsgDepositRequestPow) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*MsgShielderRegisterPow) ProtoMessage() {}
+func (*MsgDepositRequestPow) ProtoMessage() {}
 
-// Deprecated: Use MsgShielderRegisterPow.ProtoReflect.Descriptor instead.
-func (*MsgShielderRegisterPow) Descriptor() ([]byte, []int) {
+// Deprecated: Use MsgDepositRequestPow.ProtoReflect.Descriptor instead.
+func (*MsgDepositRequestPow) Descriptor() ([]byte, []int) {
 	return file_types_msg_shielder_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *MsgShielderRegisterPow) GetPowToken() string {
+func (x *MsgDepositRequestPow) GetPowToken() string {
 	if x != nil {
 		return x.PowToken
 	}
 	return ""
 }
 
-func (x *MsgShielderRegisterPow) GetSigner() []byte {
+func (x *MsgDepositRequestPow) GetSigner() []byte {
 	if x != nil {
 		return x.Signer
 	}
 	return nil
 }
 
-func (x *MsgShielderRegisterPow) GetOperatorPubKey() string {
+func (x *MsgDepositRequestPow) GetOperatorPubKey() string {
 	if x != nil {
 		return x.OperatorPubKey
 	}
 	return ""
 }
 
-func (x *MsgShielderRegisterPow) GetNodePubKey() string {
+func (x *MsgDepositRequestPow) GetNodePubKey() string {
 	if x != nil {
 		return x.NodePubKey
 	}
 	return ""
 }
 
-type MsgShielderRegisterPowResponse struct {
+type MsgDepositRequestPowResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -7675,8 +7675,8 @@ type MsgShielderRegisterPowResponse struct {
 	BidId            string `protobuf:"bytes,4,opt,name=bid_id,json=bidId,proto3" json:"bid_id,omitempty"`
 }
 
-func (x *MsgShielderRegisterPowResponse) Reset() {
-	*x = MsgShielderRegisterPowResponse{}
+func (x *MsgDepositRequestPowResponse) Reset() {
+	*x = MsgDepositRequestPowResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_msg_shielder_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -7684,46 +7684,46 @@ func (x *MsgShielderRegisterPowResponse) Reset() {
 	}
 }
 
-func (x *MsgShielderRegisterPowResponse) String() string {
+func (x *MsgDepositRequestPowResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*MsgShielderRegisterPowResponse) ProtoMessage() {}
+func (*MsgDepositRequestPowResponse) ProtoMessage() {}
 
-// Deprecated: Use MsgShielderRegisterPowResponse.ProtoReflect.Descriptor instead.
-func (*MsgShielderRegisterPowResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use MsgDepositRequestPowResponse.ProtoReflect.Descriptor instead.
+func (*MsgDepositRequestPowResponse) Descriptor() ([]byte, []int) {
 	return file_types_msg_shielder_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *MsgShielderRegisterPowResponse) GetDepositAddress() string {
+func (x *MsgDepositRequestPowResponse) GetDepositAddress() string {
 	if x != nil {
 		return x.DepositAddress
 	}
 	return ""
 }
 
-func (x *MsgShielderRegisterPowResponse) GetVaultPubKey() string {
+func (x *MsgDepositRequestPowResponse) GetVaultPubKey() string {
 	if x != nil {
 		return x.VaultPubKey
 	}
 	return ""
 }
 
-func (x *MsgShielderRegisterPowResponse) GetDepositPathIndex() uint64 {
+func (x *MsgDepositRequestPowResponse) GetDepositPathIndex() uint64 {
 	if x != nil {
 		return x.DepositPathIndex
 	}
 	return 0
 }
 
-func (x *MsgShielderRegisterPowResponse) GetBidId() string {
+func (x *MsgDepositRequestPowResponse) GetBidId() string {
 	if x != nil {
 		return x.BidId
 	}
 	return ""
 }
 
-type MsgShielderPostCommitments struct {
+type MsgShielderSplit struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -7733,8 +7733,8 @@ type MsgShielderPostCommitments struct {
 	Signer      []byte   `protobuf:"bytes,3,opt,name=signer,proto3" json:"signer,omitempty"`
 }
 
-func (x *MsgShielderPostCommitments) Reset() {
-	*x = MsgShielderPostCommitments{}
+func (x *MsgShielderSplit) Reset() {
+	*x = MsgShielderSplit{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_msg_shielder_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -7742,39 +7742,39 @@ func (x *MsgShielderPostCommitments) Reset() {
 	}
 }
 
-func (x *MsgShielderPostCommitments) String() string {
+func (x *MsgShielderSplit) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*MsgShielderPostCommitments) ProtoMessage() {}
+func (*MsgShielderSplit) ProtoMessage() {}
 
-// Deprecated: Use MsgShielderPostCommitments.ProtoReflect.Descriptor instead.
-func (*MsgShielderPostCommitments) Descriptor() ([]byte, []int) {
+// Deprecated: Use MsgShielderSplit.ProtoReflect.Descriptor instead.
+func (*MsgShielderSplit) Descriptor() ([]byte, []int) {
 	return file_types_msg_shielder_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *MsgShielderPostCommitments) GetDepositId() string {
+func (x *MsgShielderSplit) GetDepositId() string {
 	if x != nil {
 		return x.DepositId
 	}
 	return ""
 }
 
-func (x *MsgShielderPostCommitments) GetCommitments() []string {
+func (x *MsgShielderSplit) GetCommitments() []string {
 	if x != nil {
 		return x.Commitments
 	}
 	return nil
 }
 
-func (x *MsgShielderPostCommitments) GetSigner() []byte {
+func (x *MsgShielderSplit) GetSigner() []byte {
 	if x != nil {
 		return x.Signer
 	}
 	return nil
 }
 
-type MsgShielderPostCommitmentsResponse struct {
+type MsgShielderSplitResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -7783,8 +7783,8 @@ type MsgShielderPostCommitmentsResponse struct {
 	Status    string `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
 }
 
-func (x *MsgShielderPostCommitmentsResponse) Reset() {
-	*x = MsgShielderPostCommitmentsResponse{}
+func (x *MsgShielderSplitResponse) Reset() {
+	*x = MsgShielderSplitResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_msg_shielder_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -7792,32 +7792,32 @@ func (x *MsgShielderPostCommitmentsResponse) Reset() {
 	}
 }
 
-func (x *MsgShielderPostCommitmentsResponse) String() string {
+func (x *MsgShielderSplitResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*MsgShielderPostCommitmentsResponse) ProtoMessage() {}
+func (*MsgShielderSplitResponse) ProtoMessage() {}
 
-// Deprecated: Use MsgShielderPostCommitmentsResponse.ProtoReflect.Descriptor instead.
-func (*MsgShielderPostCommitmentsResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use MsgShielderSplitResponse.ProtoReflect.Descriptor instead.
+func (*MsgShielderSplitResponse) Descriptor() ([]byte, []int) {
 	return file_types_msg_shielder_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *MsgShielderPostCommitmentsResponse) GetDepositId() string {
+func (x *MsgShielderSplitResponse) GetDepositId() string {
 	if x != nil {
 		return x.DepositId
 	}
 	return ""
 }
 
-func (x *MsgShielderPostCommitmentsResponse) GetStatus() string {
+func (x *MsgShielderSplitResponse) GetStatus() string {
 	if x != nil {
 		return x.Status
 	}
 	return ""
 }
 
-type MsgShielderRequestWithdrawal struct {
+type MsgShielderRedeem struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -7827,8 +7827,8 @@ type MsgShielderRequestWithdrawal struct {
 	Signer []byte `protobuf:"bytes,3,opt,name=signer,proto3" json:"signer,omitempty"`
 }
 
-func (x *MsgShielderRequestWithdrawal) Reset() {
-	*x = MsgShielderRequestWithdrawal{}
+func (x *MsgShielderRedeem) Reset() {
+	*x = MsgShielderRedeem{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_msg_shielder_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -7836,39 +7836,39 @@ func (x *MsgShielderRequestWithdrawal) Reset() {
 	}
 }
 
-func (x *MsgShielderRequestWithdrawal) String() string {
+func (x *MsgShielderRedeem) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*MsgShielderRequestWithdrawal) ProtoMessage() {}
+func (*MsgShielderRedeem) ProtoMessage() {}
 
-// Deprecated: Use MsgShielderRequestWithdrawal.ProtoReflect.Descriptor instead.
-func (*MsgShielderRequestWithdrawal) Descriptor() ([]byte, []int) {
+// Deprecated: Use MsgShielderRedeem.ProtoReflect.Descriptor instead.
+func (*MsgShielderRedeem) Descriptor() ([]byte, []int) {
 	return file_types_msg_shielder_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *MsgShielderRequestWithdrawal) GetProof() []byte {
+func (x *MsgShielderRedeem) GetProof() []byte {
 	if x != nil {
 		return x.Proof
 	}
 	return nil
 }
 
-func (x *MsgShielderRequestWithdrawal) GetPublic() []byte {
+func (x *MsgShielderRedeem) GetPublic() []byte {
 	if x != nil {
 		return x.Public
 	}
 	return nil
 }
 
-func (x *MsgShielderRequestWithdrawal) GetSigner() []byte {
+func (x *MsgShielderRedeem) GetSigner() []byte {
 	if x != nil {
 		return x.Signer
 	}
 	return nil
 }
 
-type MsgShielderRequestWithdrawalResponse struct {
+type MsgShielderRedeemResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -7877,8 +7877,8 @@ type MsgShielderRequestWithdrawalResponse struct {
 	Status       string `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
 }
 
-func (x *MsgShielderRequestWithdrawalResponse) Reset() {
-	*x = MsgShielderRequestWithdrawalResponse{}
+func (x *MsgShielderRedeemResponse) Reset() {
+	*x = MsgShielderRedeemResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_msg_shielder_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -7886,25 +7886,25 @@ func (x *MsgShielderRequestWithdrawalResponse) Reset() {
 	}
 }
 
-func (x *MsgShielderRequestWithdrawalResponse) String() string {
+func (x *MsgShielderRedeemResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*MsgShielderRequestWithdrawalResponse) ProtoMessage() {}
+func (*MsgShielderRedeemResponse) ProtoMessage() {}
 
-// Deprecated: Use MsgShielderRequestWithdrawalResponse.ProtoReflect.Descriptor instead.
-func (*MsgShielderRequestWithdrawalResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use MsgShielderRedeemResponse.ProtoReflect.Descriptor instead.
+func (*MsgShielderRedeemResponse) Descriptor() ([]byte, []int) {
 	return file_types_msg_shielder_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *MsgShielderRequestWithdrawalResponse) GetWithdrawalId() string {
+func (x *MsgShielderRedeemResponse) GetWithdrawalId() string {
 	if x != nil {
 		return x.WithdrawalId
 	}
 	return ""
 }
 
-func (x *MsgShielderRequestWithdrawalResponse) GetStatus() string {
+func (x *MsgShielderRedeemResponse) GetStatus() string {
 	if x != nil {
 		return x.Status
 	}
@@ -8307,36 +8307,35 @@ var file_types_msg_shielder_proto_rawDesc = []byte{
 	0x6c, 0x64, 0x65, 0x72, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x05, 0x74, 0x79, 0x70, 0x65,
 	0x73, 0x1a, 0x11, 0x61, 0x6d, 0x69, 0x6e, 0x6f, 0x2f, 0x61, 0x6d, 0x69, 0x6e, 0x6f, 0x2e, 0x70,
 	0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x14, 0x67, 0x6f, 0x67, 0x6f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f,
-	0x67, 0x6f, 0x67, 0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0xfd, 0x01, 0x0a, 0x16, 0x4d,
-	0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74,
-	0x65, 0x72, 0x50, 0x6f, 0x77, 0x12, 0x1b, 0x0a, 0x09, 0x70, 0x6f, 0x77, 0x5f, 0x74, 0x6f, 0x6b,
-	0x65, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70, 0x6f, 0x77, 0x54, 0x6f, 0x6b,
-	0x65, 0x6e, 0x12, 0x54, 0x0a, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x18, 0x02, 0x20, 0x01,
-	0x28, 0x0c, 0x42, 0x3c, 0xfa, 0xde, 0x1f, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
-	0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73,
-	0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64,
-	0x64, 0x72, 0x65, 0x73, 0x73, 0x9a, 0xe7, 0xb0, 0x2a, 0x06, 0x62, 0x65, 0x63, 0x68, 0x33, 0x32,
-	0x52, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x12, 0x28, 0x0a, 0x10, 0x6f, 0x70, 0x65, 0x72,
-	0x61, 0x74, 0x6f, 0x72, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x0e, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x50, 0x75, 0x62, 0x4b,
-	0x65, 0x79, 0x12, 0x20, 0x0a, 0x0c, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b,
-	0x65, 0x79, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6e, 0x6f, 0x64, 0x65, 0x50, 0x75,
-	0x62, 0x4b, 0x65, 0x79, 0x3a, 0x24, 0x8a, 0xe7, 0xb0, 0x2a, 0x1f, 0x74, 0x68, 0x6f, 0x72, 0x6e,
-	0x61, 0x64, 0x6f, 0x2f, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x52,
-	0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x50, 0x6f, 0x77, 0x22, 0xb2, 0x01, 0x0a, 0x1e, 0x4d,
-	0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74,
-	0x65, 0x72, 0x50, 0x6f, 0x77, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x27, 0x0a,
-	0x0f, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x41,
-	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x22, 0x0a, 0x0d, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x5f,
-	0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x76,
-	0x61, 0x75, 0x6c, 0x74, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x2c, 0x0a, 0x12, 0x64, 0x65,
-	0x70, 0x6f, 0x73, 0x69, 0x74, 0x5f, 0x70, 0x61, 0x74, 0x68, 0x5f, 0x69, 0x6e, 0x64, 0x65, 0x78,
-	0x18, 0x03, 0x20, 0x01, 0x28, 0x04, 0x52, 0x10, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x50,
-	0x61, 0x74, 0x68, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x12, 0x15, 0x0a, 0x06, 0x62, 0x69, 0x64, 0x5f,
-	0x69, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x62, 0x69, 0x64, 0x49, 0x64, 0x22,
-	0xdd, 0x01, 0x0a, 0x1a, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x50,
-	0x6f, 0x73, 0x74, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x12, 0x1d,
+	0x67, 0x6f, 0x67, 0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0xf9, 0x01, 0x0a, 0x14, 0x4d,
+	0x73, 0x67, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x50, 0x6f, 0x77, 0x12, 0x1b, 0x0a, 0x09, 0x70, 0x6f, 0x77, 0x5f, 0x74, 0x6f, 0x6b, 0x65, 0x6e,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70, 0x6f, 0x77, 0x54, 0x6f, 0x6b, 0x65, 0x6e,
+	0x12, 0x54, 0x0a, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c,
+	0x42, 0x3c, 0xfa, 0xde, 0x1f, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d,
+	0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73,
+	0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64, 0x72,
+	0x65, 0x73, 0x73, 0x9a, 0xe7, 0xb0, 0x2a, 0x06, 0x62, 0x65, 0x63, 0x68, 0x33, 0x32, 0x52, 0x06,
+	0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x12, 0x28, 0x0a, 0x10, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74,
+	0x6f, 0x72, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x0e, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79,
+	0x12, 0x20, 0x0a, 0x0c, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79,
+	0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6e, 0x6f, 0x64, 0x65, 0x50, 0x75, 0x62, 0x4b,
+	0x65, 0x79, 0x3a, 0x22, 0x8a, 0xe7, 0xb0, 0x2a, 0x1d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64,
+	0x6f, 0x2f, 0x4d, 0x73, 0x67, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x50, 0x6f, 0x77, 0x22, 0xb0, 0x01, 0x0a, 0x1c, 0x4d, 0x73, 0x67, 0x44, 0x65,
+	0x70, 0x6f, 0x73, 0x69, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x50, 0x6f, 0x77, 0x52,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x27, 0x0a, 0x0f, 0x64, 0x65, 0x70, 0x6f, 0x73,
+	0x69, 0x74, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x0e, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73,
+	0x12, 0x22, 0x0a, 0x0d, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65,
+	0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x50, 0x75,
+	0x62, 0x4b, 0x65, 0x79, 0x12, 0x2c, 0x0a, 0x12, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x5f,
+	0x70, 0x61, 0x74, 0x68, 0x5f, 0x69, 0x6e, 0x64, 0x65, 0x78, 0x18, 0x03, 0x20, 0x01, 0x28, 0x04,
+	0x52, 0x10, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x50, 0x61, 0x74, 0x68, 0x49, 0x6e, 0x64,
+	0x65, 0x78, 0x12, 0x15, 0x0a, 0x06, 0x62, 0x69, 0x64, 0x5f, 0x69, 0x64, 0x18, 0x04, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x05, 0x62, 0x69, 0x64, 0x49, 0x64, 0x22, 0xc9, 0x01, 0x0a, 0x10, 0x4d, 0x73,
+	0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x12, 0x1d,
 	0x0a, 0x0a, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01,
 	0x28, 0x09, 0x52, 0x09, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x49, 0x64, 0x12, 0x20, 0x0a,
 	0x0b, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x18, 0x02, 0x20, 0x03,
@@ -8346,137 +8345,134 @@ var file_types_msg_shielder_proto_rawDesc = []byte{
 	0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73, 0x64,
 	0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64, 0x72, 0x65,
 	0x73, 0x73, 0x9a, 0xe7, 0xb0, 0x2a, 0x06, 0x62, 0x65, 0x63, 0x68, 0x33, 0x32, 0x52, 0x06, 0x73,
-	0x69, 0x67, 0x6e, 0x65, 0x72, 0x3a, 0x28, 0x8a, 0xe7, 0xb0, 0x2a, 0x23, 0x74, 0x68, 0x6f, 0x72,
+	0x69, 0x67, 0x6e, 0x65, 0x72, 0x3a, 0x1e, 0x8a, 0xe7, 0xb0, 0x2a, 0x19, 0x74, 0x68, 0x6f, 0x72,
 	0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72,
-	0x50, 0x6f, 0x73, 0x74, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x22,
-	0x5b, 0x0a, 0x22, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x50, 0x6f,
-	0x73, 0x74, 0x43, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74,
-	0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x64, 0x65, 0x70, 0x6f, 0x73,
-	0x69, 0x74, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x22, 0xce, 0x01, 0x0a,
-	0x1c, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x12, 0x14, 0x0a,
-	0x05, 0x70, 0x72, 0x6f, 0x6f, 0x66, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x05, 0x70, 0x72,
-	0x6f, 0x6f, 0x66, 0x12, 0x16, 0x0a, 0x06, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x0c, 0x52, 0x06, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x12, 0x54, 0x0a, 0x06, 0x73,
-	0x69, 0x67, 0x6e, 0x65, 0x72, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x3c, 0xfa, 0xde, 0x1f,
-	0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d,
-	0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79,
-	0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x9a, 0xe7,
-	0xb0, 0x2a, 0x06, 0x62, 0x65, 0x63, 0x68, 0x33, 0x32, 0x52, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65,
-	0x72, 0x3a, 0x2a, 0x8a, 0xe7, 0xb0, 0x2a, 0x25, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f,
-	0x2f, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x22, 0x63, 0x0a,
-	0x24, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x57, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x23, 0x0a, 0x0d, 0x77, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61,
-	0x77, 0x61, 0x6c, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x77, 0x69,
-	0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74,
-	0x61, 0x74, 0x75, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74,
-	0x75, 0x73, 0x22, 0xae, 0x02, 0x0a, 0x14, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64,
-	0x65, 0x72, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x46, 0x65, 0x65, 0x73, 0x12, 0x20, 0x0a, 0x0c, 0x6e,
-	0x6f, 0x64, 0x65, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x0a, 0x6e, 0x6f, 0x64, 0x65, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x2d, 0x0a,
-	0x12, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x74,
-	0x75, 0x72, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x11, 0x6f, 0x70, 0x65, 0x72, 0x61,
-	0x74, 0x6f, 0x72, 0x53, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65, 0x12, 0x20, 0x0a, 0x0b,
-	0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28,
-	0x09, 0x52, 0x0b, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x12, 0x29,
-	0x0a, 0x11, 0x66, 0x65, 0x65, 0x5f, 0x6e, 0x6f, 0x74, 0x65, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b,
-	0x65, 0x79, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0e, 0x66, 0x65, 0x65, 0x4e, 0x6f,
-	0x74, 0x65, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x73, 0x12, 0x54, 0x0a, 0x06, 0x73, 0x69, 0x67,
-	0x6e, 0x65, 0x72, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x3c, 0xfa, 0xde, 0x1f, 0x2d, 0x67,
-	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73,
-	0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65,
-	0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x9a, 0xe7, 0xb0, 0x2a,
-	0x06, 0x62, 0x65, 0x63, 0x68, 0x33, 0x32, 0x52, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x3a,
-	0x22, 0x8a, 0xe7, 0xb0, 0x2a, 0x1d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x4d,
-	0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x46,
-	0x65, 0x65, 0x73, 0x22, 0x76, 0x0a, 0x1c, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64,
-	0x65, 0x72, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x46, 0x65, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x5f, 0x69,
-	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74,
-	0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x73, 0x61, 0x74,
-	0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0a, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x53,
-	0x61, 0x74, 0x73, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x03, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x22, 0x82, 0x02, 0x0a, 0x18,
-	0x4d, 0x73, 0x67, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69,
-	0x6f, 0x6e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x12, 0x20, 0x0a, 0x0c, 0x6e, 0x6f, 0x64, 0x65,
-	0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a,
-	0x6e, 0x6f, 0x64, 0x65, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x21, 0x0a, 0x0c, 0x72, 0x65,
-	0x73, 0x65, 0x72, 0x76, 0x65, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x04,
-	0x52, 0x0b, 0x72, 0x65, 0x73, 0x65, 0x72, 0x76, 0x65, 0x53, 0x61, 0x74, 0x73, 0x12, 0x23, 0x0a,
-	0x0d, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x03,
-	0x20, 0x01, 0x28, 0x03, 0x52, 0x0c, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x48, 0x65, 0x69, 0x67,
-	0x68, 0x74, 0x12, 0x54, 0x0a, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x18, 0x04, 0x20, 0x01,
-	0x28, 0x0c, 0x42, 0x3c, 0xfa, 0xde, 0x1f, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
-	0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73,
-	0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64,
-	0x64, 0x72, 0x65, 0x73, 0x73, 0x9a, 0xe7, 0xb0, 0x2a, 0x06, 0x62, 0x65, 0x63, 0x68, 0x33, 0x32,
-	0x52, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x3a, 0x26, 0x8a, 0xe7, 0xb0, 0x2a, 0x21, 0x74,
-	0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x4d, 0x73, 0x67, 0x4e, 0x6f, 0x64, 0x65, 0x53,
-	0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65,
-	0x22, 0x41, 0x0a, 0x20, 0x4d, 0x73, 0x67, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41,
-	0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x65, 0x73, 0x70,
-	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f,
-	0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f,
-	0x6e, 0x49, 0x64, 0x22, 0xa0, 0x02, 0x0a, 0x18, 0x4d, 0x73, 0x67, 0x4e, 0x6f, 0x64, 0x65, 0x53,
-	0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0x69, 0x64, 0x50, 0x6f, 0x77,
-	0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12,
-	0x1b, 0x0a, 0x09, 0x70, 0x6f, 0x77, 0x5f, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x02, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x08, 0x70, 0x6f, 0x77, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x12, 0x28, 0x0a, 0x10,
-	0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79,
-	0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72,
-	0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x20, 0x0a, 0x0c, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x70,
-	0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6e, 0x6f,
-	0x64, 0x65, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x54, 0x0a, 0x06, 0x73, 0x69, 0x67, 0x6e,
-	0x65, 0x72, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x3c, 0xfa, 0xde, 0x1f, 0x2d, 0x67, 0x69,
-	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f,
-	0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73,
-	0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x9a, 0xe7, 0xb0, 0x2a, 0x06,
-	0x62, 0x65, 0x63, 0x68, 0x33, 0x32, 0x52, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x3a, 0x26,
-	0x8a, 0xe7, 0xb0, 0x2a, 0x21, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x4d, 0x73,
-	0x67, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e,
-	0x42, 0x69, 0x64, 0x50, 0x6f, 0x77, 0x22, 0xd4, 0x01, 0x0a, 0x1b, 0x4d, 0x73, 0x67, 0x4e, 0x6f,
-	0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x65, 0x6c,
-	0x65, 0x63, 0x74, 0x42, 0x69, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f,
-	0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x75, 0x63, 0x74,
-	0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x15, 0x0a, 0x06, 0x62, 0x69, 0x64, 0x5f, 0x69, 0x64, 0x18,
-	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x62, 0x69, 0x64, 0x49, 0x64, 0x12, 0x54, 0x0a, 0x06,
+	0x53, 0x70, 0x6c, 0x69, 0x74, 0x22, 0x51, 0x0a, 0x18, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69, 0x65,
+	0x6c, 0x64, 0x65, 0x72, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x5f, 0x69, 0x64, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x49, 0x64,
+	0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x22, 0xb8, 0x01, 0x0a, 0x11, 0x4d, 0x73, 0x67,
+	0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x52, 0x65, 0x64, 0x65, 0x65, 0x6d, 0x12, 0x14,
+	0x0a, 0x05, 0x70, 0x72, 0x6f, 0x6f, 0x66, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x05, 0x70,
+	0x72, 0x6f, 0x6f, 0x66, 0x12, 0x16, 0x0a, 0x06, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x0c, 0x52, 0x06, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x12, 0x54, 0x0a, 0x06,
 	0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x3c, 0xfa, 0xde,
 	0x1f, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73,
 	0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74,
 	0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x9a,
 	0xe7, 0xb0, 0x2a, 0x06, 0x62, 0x65, 0x63, 0x68, 0x33, 0x32, 0x52, 0x06, 0x73, 0x69, 0x67, 0x6e,
-	0x65, 0x72, 0x3a, 0x29, 0x8a, 0xe7, 0xb0, 0x2a, 0x24, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64,
+	0x65, 0x72, 0x3a, 0x1f, 0x8a, 0xe7, 0xb0, 0x2a, 0x1a, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64,
+	0x6f, 0x2f, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x52, 0x65, 0x64,
+	0x65, 0x65, 0x6d, 0x22, 0x58, 0x0a, 0x19, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64,
+	0x65, 0x72, 0x52, 0x65, 0x64, 0x65, 0x65, 0x6d, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x12, 0x23, 0x0a, 0x0d, 0x77, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x5f, 0x69,
+	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x77, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61,
+	0x77, 0x61, 0x6c, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x22, 0xae, 0x02,
+	0x0a, 0x14, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x53, 0x70, 0x6c,
+	0x69, 0x74, 0x46, 0x65, 0x65, 0x73, 0x12, 0x20, 0x0a, 0x0c, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x70,
+	0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6e, 0x6f,
+	0x64, 0x65, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x2d, 0x0a, 0x12, 0x6f, 0x70, 0x65, 0x72,
+	0x61, 0x74, 0x6f, 0x72, 0x5f, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x0c, 0x52, 0x11, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x53, 0x69,
+	0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65, 0x12, 0x20, 0x0a, 0x0b, 0x63, 0x6f, 0x6d, 0x6d, 0x69,
+	0x74, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0b, 0x63, 0x6f,
+	0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x12, 0x29, 0x0a, 0x11, 0x66, 0x65, 0x65,
+	0x5f, 0x6e, 0x6f, 0x74, 0x65, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x73, 0x18, 0x04,
+	0x20, 0x03, 0x28, 0x09, 0x52, 0x0e, 0x66, 0x65, 0x65, 0x4e, 0x6f, 0x74, 0x65, 0x50, 0x75, 0x62,
+	0x4b, 0x65, 0x79, 0x73, 0x12, 0x54, 0x0a, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x18, 0x05,
+	0x20, 0x01, 0x28, 0x0c, 0x42, 0x3c, 0xfa, 0xde, 0x1f, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
+	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d,
+	0x6f, 0x73, 0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63,
+	0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x9a, 0xe7, 0xb0, 0x2a, 0x06, 0x62, 0x65, 0x63, 0x68,
+	0x33, 0x32, 0x52, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x3a, 0x22, 0x8a, 0xe7, 0xb0, 0x2a,
+	0x1d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69,
+	0x65, 0x6c, 0x64, 0x65, 0x72, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x46, 0x65, 0x65, 0x73, 0x22, 0x76,
+	0x0a, 0x1c, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x53, 0x70, 0x6c,
+	0x69, 0x74, 0x46, 0x65, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1d,
+	0x0a, 0x0a, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x09, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x49, 0x64, 0x12, 0x1f, 0x0a,
+	0x0b, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x04, 0x52, 0x0a, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x53, 0x61, 0x74, 0x73, 0x12, 0x16,
+	0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06,
+	0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x22, 0x82, 0x02, 0x0a, 0x18, 0x4d, 0x73, 0x67, 0x4e, 0x6f,
+	0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x43, 0x72, 0x65,
+	0x61, 0x74, 0x65, 0x12, 0x20, 0x0a, 0x0c, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x70, 0x75, 0x62, 0x5f,
+	0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6e, 0x6f, 0x64, 0x65, 0x50,
+	0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x21, 0x0a, 0x0c, 0x72, 0x65, 0x73, 0x65, 0x72, 0x76, 0x65,
+	0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0b, 0x72, 0x65, 0x73,
+	0x65, 0x72, 0x76, 0x65, 0x53, 0x61, 0x74, 0x73, 0x12, 0x23, 0x0a, 0x0d, 0x65, 0x78, 0x70, 0x69,
+	0x72, 0x79, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52,
+	0x0c, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x54, 0x0a,
+	0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x3c, 0xfa,
+	0xde, 0x1f, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f,
+	0x73, 0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73, 0x64, 0x6b, 0x2f,
+	0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73,
+	0x9a, 0xe7, 0xb0, 0x2a, 0x06, 0x62, 0x65, 0x63, 0x68, 0x33, 0x32, 0x52, 0x06, 0x73, 0x69, 0x67,
+	0x6e, 0x65, 0x72, 0x3a, 0x26, 0x8a, 0xe7, 0xb0, 0x2a, 0x21, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61,
+	0x64, 0x6f, 0x2f, 0x4d, 0x73, 0x67, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75,
+	0x63, 0x74, 0x69, 0x6f, 0x6e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x22, 0x41, 0x0a, 0x20, 0x4d,
+	0x73, 0x67, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f,
+	0x6e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
+	0x1d, 0x0a, 0x0a, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x22, 0xa0,
+	0x02, 0x0a, 0x18, 0x4d, 0x73, 0x67, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75,
+	0x63, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0x69, 0x64, 0x50, 0x6f, 0x77, 0x12, 0x1d, 0x0a, 0x0a, 0x61,
+	0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x09, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x1b, 0x0a, 0x09, 0x70, 0x6f,
+	0x77, 0x5f, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70,
+	0x6f, 0x77, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x12, 0x28, 0x0a, 0x10, 0x6f, 0x70, 0x65, 0x72, 0x61,
+	0x74, 0x6f, 0x72, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x0e, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x50, 0x75, 0x62, 0x4b, 0x65,
+	0x79, 0x12, 0x20, 0x0a, 0x0c, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65,
+	0x79, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6e, 0x6f, 0x64, 0x65, 0x50, 0x75, 0x62,
+	0x4b, 0x65, 0x79, 0x12, 0x54, 0x0a, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x18, 0x05, 0x20,
+	0x01, 0x28, 0x0c, 0x42, 0x3c, 0xfa, 0xde, 0x1f, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
+	0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f,
+	0x73, 0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41,
+	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x9a, 0xe7, 0xb0, 0x2a, 0x06, 0x62, 0x65, 0x63, 0x68, 0x33,
+	0x32, 0x52, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x3a, 0x26, 0x8a, 0xe7, 0xb0, 0x2a, 0x21,
+	0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x4d, 0x73, 0x67, 0x4e, 0x6f, 0x64, 0x65,
+	0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0x69, 0x64, 0x50, 0x6f,
+	0x77, 0x22, 0xd4, 0x01, 0x0a, 0x1b, 0x4d, 0x73, 0x67, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f,
+	0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x42, 0x69,
+	0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64,
+	0x12, 0x15, 0x0a, 0x06, 0x62, 0x69, 0x64, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x05, 0x62, 0x69, 0x64, 0x49, 0x64, 0x12, 0x54, 0x0a, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65,
+	0x72, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x3c, 0xfa, 0xde, 0x1f, 0x2d, 0x67, 0x69, 0x74,
+	0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f, 0x63,
+	0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e,
+	0x41, 0x63, 0x63, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x9a, 0xe7, 0xb0, 0x2a, 0x06, 0x62,
+	0x65, 0x63, 0x68, 0x33, 0x32, 0x52, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x3a, 0x29, 0x8a,
+	0xe7, 0xb0, 0x2a, 0x24, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x4d, 0x73, 0x67,
+	0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53,
+	0x65, 0x6c, 0x65, 0x63, 0x74, 0x42, 0x69, 0x64, 0x22, 0xee, 0x01, 0x0a, 0x17, 0x4d, 0x73, 0x67,
+	0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53,
+	0x70, 0x6c, 0x69, 0x74, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f,
+	0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f,
+	0x6e, 0x49, 0x64, 0x12, 0x15, 0x0a, 0x06, 0x62, 0x69, 0x64, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x05, 0x62, 0x69, 0x64, 0x49, 0x64, 0x12, 0x20, 0x0a, 0x0b, 0x63, 0x6f,
+	0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x09, 0x52,
+	0x0b, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x12, 0x54, 0x0a, 0x06,
+	0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x3c, 0xfa, 0xde,
+	0x1f, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73,
+	0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74,
+	0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x9a,
+	0xe7, 0xb0, 0x2a, 0x06, 0x62, 0x65, 0x63, 0x68, 0x33, 0x32, 0x52, 0x06, 0x73, 0x69, 0x67, 0x6e,
+	0x65, 0x72, 0x3a, 0x25, 0x8a, 0xe7, 0xb0, 0x2a, 0x20, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64,
 	0x6f, 0x2f, 0x4d, 0x73, 0x67, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63,
-	0x74, 0x69, 0x6f, 0x6e, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x42, 0x69, 0x64, 0x22, 0xee, 0x01,
-	0x0a, 0x17, 0x4d, 0x73, 0x67, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63,
-	0x74, 0x69, 0x6f, 0x6e, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x75, 0x63,
-	0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61,
-	0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x15, 0x0a, 0x06, 0x62, 0x69, 0x64, 0x5f,
-	0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x62, 0x69, 0x64, 0x49, 0x64, 0x12,
-	0x20, 0x0a, 0x0b, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x18, 0x03,
-	0x20, 0x03, 0x28, 0x09, 0x52, 0x0b, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e, 0x74,
-	0x73, 0x12, 0x54, 0x0a, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x18, 0x04, 0x20, 0x01, 0x28,
-	0x0c, 0x42, 0x3c, 0xfa, 0xde, 0x1f, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
-	0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d,
-	0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64,
-	0x72, 0x65, 0x73, 0x73, 0x9a, 0xe7, 0xb0, 0x2a, 0x06, 0x62, 0x65, 0x63, 0x68, 0x33, 0x32, 0x52,
-	0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x3a, 0x25, 0x8a, 0xe7, 0xb0, 0x2a, 0x20, 0x74, 0x68,
-	0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x4d, 0x73, 0x67, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c,
-	0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x42, 0x80,
-	0x01, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x42, 0x10, 0x4d, 0x73,
-	0x67, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01,
-	0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f,
-	0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f,
-	0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2,
-	0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05,
-	0x54, 0x79, 0x70, 0x65, 0x73, 0xe2, 0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50,
-	0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65,
-	0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x74, 0x69, 0x6f, 0x6e, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x42, 0x80, 0x01, 0x0a, 0x09, 0x63, 0x6f,
+	0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x42, 0x10, 0x4d, 0x73, 0x67, 0x53, 0x68, 0x69, 0x65,
+	0x6c, 0x64, 0x65, 0x72, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74,
+	0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f,
+	0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f,
+	0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58,
+	0xaa, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73,
+	0xe2, 0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61,
+	0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -8493,19 +8489,19 @@ func file_types_msg_shielder_proto_rawDescGZIP() []byte {
 
 var file_types_msg_shielder_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_types_msg_shielder_proto_goTypes = []interface{}{
-	(*MsgShielderRegisterPow)(nil),               // 0: types.MsgShielderRegisterPow
-	(*MsgShielderRegisterPowResponse)(nil),       // 1: types.MsgShielderRegisterPowResponse
-	(*MsgShielderPostCommitments)(nil),           // 2: types.MsgShielderPostCommitments
-	(*MsgShielderPostCommitmentsResponse)(nil),   // 3: types.MsgShielderPostCommitmentsResponse
-	(*MsgShielderRequestWithdrawal)(nil),         // 4: types.MsgShielderRequestWithdrawal
-	(*MsgShielderRequestWithdrawalResponse)(nil), // 5: types.MsgShielderRequestWithdrawalResponse
-	(*MsgShielderSplitFees)(nil),                 // 6: types.MsgShielderSplitFees
-	(*MsgShielderSplitFeesResponse)(nil),         // 7: types.MsgShielderSplitFeesResponse
-	(*MsgNodeSlotAuctionCreate)(nil),             // 8: types.MsgNodeSlotAuctionCreate
-	(*MsgNodeSlotAuctionCreateResponse)(nil),     // 9: types.MsgNodeSlotAuctionCreateResponse
-	(*MsgNodeSlotAuctionBidPow)(nil),             // 10: types.MsgNodeSlotAuctionBidPow
-	(*MsgNodeSlotAuctionSelectBid)(nil),          // 11: types.MsgNodeSlotAuctionSelectBid
-	(*MsgNodeSlotAuctionSplit)(nil),              // 12: types.MsgNodeSlotAuctionSplit
+	(*MsgDepositRequestPow)(nil),             // 0: types.MsgDepositRequestPow
+	(*MsgDepositRequestPowResponse)(nil),     // 1: types.MsgDepositRequestPowResponse
+	(*MsgShielderSplit)(nil),                 // 2: types.MsgShielderSplit
+	(*MsgShielderSplitResponse)(nil),         // 3: types.MsgShielderSplitResponse
+	(*MsgShielderRedeem)(nil),                // 4: types.MsgShielderRedeem
+	(*MsgShielderRedeemResponse)(nil),        // 5: types.MsgShielderRedeemResponse
+	(*MsgShielderSplitFees)(nil),             // 6: types.MsgShielderSplitFees
+	(*MsgShielderSplitFeesResponse)(nil),     // 7: types.MsgShielderSplitFeesResponse
+	(*MsgNodeSlotAuctionCreate)(nil),         // 8: types.MsgNodeSlotAuctionCreate
+	(*MsgNodeSlotAuctionCreateResponse)(nil), // 9: types.MsgNodeSlotAuctionCreateResponse
+	(*MsgNodeSlotAuctionBidPow)(nil),         // 10: types.MsgNodeSlotAuctionBidPow
+	(*MsgNodeSlotAuctionSelectBid)(nil),      // 11: types.MsgNodeSlotAuctionSelectBid
+	(*MsgNodeSlotAuctionSplit)(nil),          // 12: types.MsgNodeSlotAuctionSplit
 }
 var file_types_msg_shielder_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -8522,7 +8518,7 @@ func file_types_msg_shielder_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_types_msg_shielder_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MsgShielderRegisterPow); i {
+			switch v := v.(*MsgDepositRequestPow); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8534,7 +8530,7 @@ func file_types_msg_shielder_proto_init() {
 			}
 		}
 		file_types_msg_shielder_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MsgShielderRegisterPowResponse); i {
+			switch v := v.(*MsgDepositRequestPowResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8546,7 +8542,7 @@ func file_types_msg_shielder_proto_init() {
 			}
 		}
 		file_types_msg_shielder_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MsgShielderPostCommitments); i {
+			switch v := v.(*MsgShielderSplit); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8558,7 +8554,7 @@ func file_types_msg_shielder_proto_init() {
 			}
 		}
 		file_types_msg_shielder_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MsgShielderPostCommitmentsResponse); i {
+			switch v := v.(*MsgShielderSplitResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8570,7 +8566,7 @@ func file_types_msg_shielder_proto_init() {
 			}
 		}
 		file_types_msg_shielder_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MsgShielderRequestWithdrawal); i {
+			switch v := v.(*MsgShielderRedeem); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8582,7 +8578,7 @@ func file_types_msg_shielder_proto_init() {
 			}
 		}
 		file_types_msg_shielder_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MsgShielderRequestWithdrawalResponse); i {
+			switch v := v.(*MsgShielderRedeemResponse); i {
 			case 0:
 				return &v.state
 			case 1:

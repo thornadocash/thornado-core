@@ -131,14 +131,13 @@ message QueryTxOutRequest {
 
 message QueryTxOutResponse {
   TxOut txout = 1 [ (gogoproto.nullable) = false ];
+  repeated TxOut txouts = 2 [ (gogoproto.nullable) = false ];
 }
 
 message PlannedOutTx {
   string chain = 1 [ (gogoproto.jsontag) = "chain" ];
   string to_address = 2 [ (gogoproto.jsontag) = "to_address" ];
   common.Coin coin = 3 [ (gogoproto.jsontag) = "coin" ];
-  // returns true if the planned transaction has a refund memo
-  bool refund = 4 [ (gogoproto.jsontag) = "refund" ];
 }
 
 message InboundObservedStage {

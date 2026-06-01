@@ -105,39 +105,39 @@ func IsVaultSolvent(chain common.Chain, account common.Account, vault types.Vaul
 	// Intentionally compare against vault expectations, treating an absent wallet asset as
 	// zero. Iterating wallet coins can miss vault-required assets that are absent from the
 	// wallet and incorrectly appear solvent.
-	for _, asgardCoin := range vault.Coins {
-		if !asgardCoin.Asset.Chain.Equals(chain) {
+	for _, baseCoin := range vault.Coins {
+		if !baseCoin.Asset.Chain.Equals(chain) {
 			continue
 		}
-		if asgardCoin.Amount.IsZero() {
+		if baseCoin.Amount.IsZero() {
 			continue
 		}
 
 		walletAmt := cosmos.ZeroUint()
-		walletCoin := account.Coins.GetCoin(asgardCoin.Asset)
+		walletCoin := account.Coins.GetCoin(baseCoin.Asset)
 		if walletCoin.IsEmpty() {
 			logger.Info().
-				Stringer("asset", asgardCoin.Asset).
-				Stringer("amount", asgardCoin.Amount).
+				Stringer("asset", baseCoin.Asset).
+				Stringer("amount", baseCoin.Amount).
 				Msg("asset exists in vault but not in wallet, insolvent")
 		} else {
 			walletAmt = walletCoin.Amount
 		}
 
-		// when wallet has more coins or equal exactly as asgard , then the vault is solvent
-		if walletAmt.GTE(asgardCoin.Amount) {
+		// when wallet has more coins or equal exactly as base , then the vault is solvent
+		if walletAmt.GTE(baseCoin.Amount) {
 			continue
 		}
 
-		gap := asgardCoin.Amount.Sub(walletAmt)
+		gap := baseCoin.Amount.Sub(walletAmt)
 		// thornado allow 10x of MaxGas as the gap
-		if asgardCoin.Asset.IsGasAsset() && gap.LT(currentGasFee10x) {
+		if baseCoin.Asset.IsGasAsset() && gap.LT(currentGasFee10x) {
 			continue
 		}
 		logger.Info().
 			Stringer("chain", chain).
-			Stringer("asset", asgardCoin.Asset).
-			Stringer("asgard_amount", asgardCoin.Amount).
+			Stringer("asset", baseCoin.Asset).
+			Stringer("base_amount", baseCoin.Amount).
 			Stringer("wallet_amount", walletAmt).
 			Stringer("gap", gap).
 			Msg("insolvency detected")

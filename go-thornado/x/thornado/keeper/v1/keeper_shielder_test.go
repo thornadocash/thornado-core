@@ -15,35 +15,35 @@ func (KeeperTestSuit) TestShielderState(c *C) {
 	addr := GetRandomBTCAddress()
 	txid := GetRandomTxHash()
 
-	session := types.ShielderSession{
+	session := types.DepositSession{
 		Owner:          owner,
 		PowToken:       "pow-token",
 		DepositAddress: addr,
 		VaultPubKey:    pubkey,
 		CreatedHeight:  ctx.BlockHeight(),
-		Status:         types.ShielderStatusAddressIssued,
+		Status:         types.DepositStatusAddressIssued,
 	}
-	c.Assert(k.SetShielderSession(ctx, session), IsNil)
+	c.Assert(k.SetDepositSession(ctx, session), IsNil)
 
-	gotSession, err := k.GetShielderSession(ctx, owner)
+	gotSession, err := k.GetDepositSession(ctx, owner)
 	c.Assert(err, IsNil)
 	c.Check(gotSession.PowToken, Equals, "pow-token")
 
-	gotByPow, err := k.GetShielderSessionByPowToken(ctx, "pow-token")
+	gotByPow, err := k.GetDepositSessionByPowToken(ctx, "pow-token")
 	c.Assert(err, IsNil)
 	c.Check(gotByPow.Owner.String(), Equals, owner.String())
 
-	deposit := types.ShielderDeposit{
+	deposit := types.DepositRecord{
 		DepositID:      txid,
 		Owner:          owner,
 		AmountSats:     100_000,
 		DepositAddress: addr,
 		VaultPubKey:    pubkey,
 		MatchedHeight:  ctx.BlockHeight(),
-		Status:         types.ShielderStatusDepositMatched,
+		Status:         types.DepositStatusDepositMatched,
 	}
-	c.Assert(k.SetShielderDeposit(ctx, deposit), IsNil)
-	gotDeposit, err := k.GetShielderDeposit(ctx, txid)
+	c.Assert(k.SetDepositRecord(ctx, deposit), IsNil)
+	gotDeposit, err := k.GetDepositRecord(ctx, txid)
 	c.Assert(err, IsNil)
 	c.Check(gotDeposit.AmountSats, Equals, uint64(100_000))
 
@@ -51,7 +51,7 @@ func (KeeperTestSuit) TestShielderState(c *C) {
 	c.Check(k.ShielderCommitmentExists(ctx, "commitment-1"), Equals, true)
 
 	withdrawalID := "ABCDEF"
-	withdrawal := types.ShielderWithdrawal{
+	withdrawal := types.ShielderRedeem{
 		WithdrawalID:    withdrawalID,
 		Owner:           owner,
 		NullifierHash:   "nullifier",
@@ -62,10 +62,10 @@ func (KeeperTestSuit) TestShielderState(c *C) {
 		InHash:          common.BlankTxID,
 		VaultPubKey:     pubkey,
 		RequestedHeight: ctx.BlockHeight(),
-		Status:          types.ShielderStatusKeysignQueued,
+		Status:          types.DepositStatusKeysignQueued,
 	}
-	c.Assert(k.SetShielderWithdrawal(ctx, withdrawal), IsNil)
-	gotWithdrawal, err := k.GetShielderWithdrawal(ctx, withdrawalID)
+	c.Assert(k.SetShielderRedeem(ctx, withdrawal), IsNil)
+	gotWithdrawal, err := k.GetShielderRedeem(ctx, withdrawalID)
 	c.Assert(err, IsNil)
 	c.Check(gotWithdrawal.NullifierHash, Equals, "nullifier")
 
@@ -75,10 +75,10 @@ func (KeeperTestSuit) TestShielderState(c *C) {
 
 	slot, err := k.AllocateShielderNodeBondSlot(ctx)
 	c.Assert(err, IsNil)
-	c.Check(slot, Equals, uint64(0))
+	c.Check(slot, Equals, uint64(1))
 	nextSlot, err := k.AllocateShielderNodeBondSlot(ctx)
 	c.Assert(err, IsNil)
-	c.Check(nextSlot, Equals, uint64(1))
+	c.Check(nextSlot, Equals, uint64(2))
 
 	bond := types.ShielderNodeBond{
 		NodePubKey:     "node-key",
@@ -97,22 +97,22 @@ func (KeeperTestSuit) TestShielderState(c *C) {
 	c.Check(gotBond.PendingSats, Equals, uint64(50_000_000))
 	c.Check(gotBond.BondSats, Equals, uint64(100_000_000))
 
-	feePool := types.ShielderFeePool{
+	feePool := types.FeePool{
 		PendingSats:        2_000_000,
 		TotalSlots:         1,
 		FeePerSlotShare:    20_000_000_000,
 		TotalCollectedSats: 2_000_000,
 	}
-	c.Assert(k.SetShielderFeePool(ctx, feePool), IsNil)
-	gotFeePool, err := k.GetShielderFeePool(ctx)
+	c.Assert(k.SetFeePool(ctx, feePool), IsNil)
+	gotFeePool, err := k.GetFeePool(ctx)
 	c.Assert(err, IsNil)
 	c.Check(gotFeePool.TotalCollectedSats, Equals, uint64(2_000_000))
 	c.Check(gotFeePool.FeePerSlotShare, Equals, uint64(20_000_000_000))
 
-	empty := types.ShielderWithdrawal{Owner: owner, AmountSats: 1, FeeSats: 0}
+	empty := types.ShielderRedeem{Owner: owner, AmountSats: 1, FeeSats: 0}
 	c.Assert(empty.Valid(), NotNil)
-	c.Assert(types.ShielderDeposit{Owner: owner, AmountSats: 1}.Valid(), NotNil)
-	c.Assert(types.ShielderSession{Owner: cosmos.AccAddress{}}.Valid(), NotNil)
+	c.Assert(types.DepositRecord{Owner: owner, AmountSats: 1}.Valid(), NotNil)
+	c.Assert(types.DepositSession{Owner: cosmos.AccAddress{}}.Valid(), NotNil)
 }
 
 func (KeeperTestSuit) TestShielderInvariants(c *C) {
@@ -123,21 +123,21 @@ func (KeeperTestSuit) TestShielderInvariants(c *C) {
 	depositID := GetRandomTxHash()
 	commitment := "COMMITMENT_A"
 
-	deposit := types.ShielderDeposit{
+	deposit := types.DepositRecord{
 		DepositID:      depositID,
 		Owner:          owner,
 		AmountSats:     100_000,
 		DepositAddress: depositAddress,
 		VaultPubKey:    vaultPubKey,
-		Settlement:     types.ShielderSettlementUser,
+		Settlement:     types.DepositSettlementUser,
 		MatchedHeight:  ctx.BlockHeight(),
-		Status:         types.ShielderStatusCommitted,
+		Status:         types.DepositStatusCommitted,
 		Commitments:    []string{commitment},
 	}
-	c.Assert(k.SetShielderDeposit(ctx, deposit), IsNil)
+	c.Assert(k.SetDepositRecord(ctx, deposit), IsNil)
 	c.Assert(k.SetShielderCommitment(ctx, commitment, depositID), IsNil)
 	c.Assert(k.SetNextVaultDepositPathIndex(ctx, vaultPubKey, 2), IsNil)
-	c.Assert(k.SetShielderDepositAddress(ctx, types.ShielderDepositAddress{
+	c.Assert(k.SetDepositAddress(ctx, types.DepositAddress{
 		Address:       depositAddress,
 		VaultPubKey:   vaultPubKey,
 		PathIndex:     1,
@@ -161,7 +161,7 @@ func (KeeperTestSuit) TestShielderInvariants(c *C) {
 	}
 	c.Assert(k.SetNodeAccount(ctx, NewNodeAccount(owner, NodeStandby, common.EmptyPubKeySet, bond.NodePubKey, cosmos.NewUint(bond.BondSats), bondAddress, ctx.BlockHeight())), IsNil)
 	c.Assert(k.SetShielderNodeBond(ctx, bond), IsNil)
-	c.Assert(k.SetShielderFeePool(ctx, types.ShielderFeePool{TotalSlots: 1}), IsNil)
+	c.Assert(k.SetFeePool(ctx, types.FeePool{TotalSlots: 1}), IsNil)
 
 	for _, route := range k.InvariantRoutes() {
 		msg, broken := route.Invariant(ctx)
@@ -169,8 +169,8 @@ func (KeeperTestSuit) TestShielderInvariants(c *C) {
 	}
 
 	deposit.Commitments = []string{"MISSING_INDEX"}
-	c.Assert(k.SetShielderDeposit(ctx, deposit), IsNil)
-	msg, broken := ShielderDepositInvariant(k)(ctx)
+	c.Assert(k.SetDepositRecord(ctx, deposit), IsNil)
+	msg, broken := DepositRecordInvariant(k)(ctx)
 	c.Check(broken, Equals, true)
 	c.Check(len(msg) > 0, Equals, true)
 

@@ -103,7 +103,7 @@ func (s *SlasherImpl) BeginBlock(ctx cosmos.Context, constAccessor constants.Con
 // https://blog.cosmos.network/consensus-compare-casper-vs-tendermint-6df154ad56ae
 func (s *SlasherImpl) HandleDoubleSign(ctx cosmos.Context, addr crypto.Address, infractionHeight int64, constAccessor constants.ConfigValues, nodeAddresses []nodeAddressValidatorAddressPair) error {
 	// check if we're recent enough to slash for this behavior
-	maxAge := s.keeper.GetConfigInt64(ctx, constants.DoubleSign_MaxAgeBlocks)
+	maxAge := getConfigDurationBlocks(ctx, s.keeper, constants.DoubleSign_MaxAgeMinutes)
 	if (ctx.BlockHeight() - infractionHeight) > maxAge {
 		ctx.Logger().Info("double sign detected but too old to be slashed", "infraction height", fmt.Sprintf("%d", infractionHeight), "address", addr.String())
 		return nil
@@ -198,7 +198,7 @@ func (s *SlasherImpl) HandleMissingSign(ctx cosmos.Context, addr crypto.Address,
 func (s *SlasherImpl) LackSigning(ctx cosmos.Context, mgr Manager) error {
 	var resultErr error
 	maxOutboundAttempts := s.keeper.GetConfigInt64(ctx, constants.TxOut_MaxAttempts)
-	signingTransPeriod := mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)
+	signingTransPeriod := getConfigDurationBlocks(ctx, mgr.Keeper(), constants.Keysign_PeriodMinutes)
 	if signingTransPeriod == 0 {
 		return fmt.Errorf("invalid signing transaction period: %d", signingTransPeriod)
 	}
@@ -244,7 +244,6 @@ func (s *SlasherImpl) LackSigning(ctx cosmos.Context, mgr Manager) error {
 						ToAddress: toi.ToAddress,
 						Coins:     []common.Coin{toi.Coin},
 						Gas:       toi.MaxGas,
-						Memo:      toi.Memo,
 					}
 					eve := NewEventSecurity(etx, "frozen vault reschedule")
 					if err = mgr.EventMgr().EmitEvent(ctx, eve); err != nil {
@@ -338,9 +337,9 @@ func (s *SlasherImpl) LackSigning(ctx cosmos.Context, mgr Manager) error {
 
 			if !frozen && s.needsNewVault(ctx, mgr, vault, signingTransPeriod, voter.FinalisedHeight, toi) {
 				var active types.Vaults
-				active, err = s.keeper.GetAsgardVaultsByStatus(ctx, ActiveVault)
+				active, err = s.keeper.GetBaseVaultsByStatus(ctx, ActiveVault)
 				if err != nil {
-					resultErr = fmt.Errorf("fail to get active asgard vaults: %w", err)
+					resultErr = fmt.Errorf("fail to get active base vaults: %w", err)
 				} else {
 					// Deduct the asset's pending outbound funds to represent only the available funds.
 					pendingOutbounds := mgr.Keeper().GetPendingOutbounds(ctx, toi.Coin.Asset)
@@ -350,7 +349,7 @@ func (s *SlasherImpl) LackSigning(ctx cosmos.Context, mgr Manager) error {
 						// If the currently-assigned vault is an ActiveVault and the only one with enough funds for the outbound,
 						// the item should be reassigned to the same vault rather than assigned to another vault without enough funds;
 						// this is especially important for GAIA outbounds, for which insufficient-funds failures
-						// have Thornado-unobserved gas costs (causing churn-migration-jamming vault insolvency).
+						// have BTCChain-unobserved gas costs (causing churn-migration-jamming vault insolvency).
 						// As such, re-add the (now free) funds of the outbound being replaced.
 						if active[i].PubKey.Equals(toi.VaultPubKey) {
 							active[i].Coins = active[i].Coins.Add(toi.Coin)
@@ -378,15 +377,15 @@ func (s *SlasherImpl) LackSigning(ctx cosmos.Context, mgr Manager) error {
 
 					if len(available) == 0 {
 						// we need to give it somewhere to send from, even if that
-						// asgard doesn't have enough funds. This is because if we
+						// base doesn't have enough funds. This is because if we
 						// don't the transaction will just be dropped on the floor,
-						// which is bad. Instead it may try to send from an asgard that
+						// which is bad. Instead it may try to send from an base that
 						// doesn't have enough funds, fail, and then get rescheduled
 						// again later. Maybe by then the network will have enough
 						// funds to satisfy.
-						// TODO add split logic to send it out from multiple asgards in
+						// TODO add split logic to send it out from multiple baseVaults in
 						// this edge case.
-						ctx.Logger().Error("unable to determine asgard vault to send funds, trying first asgard")
+						ctx.Logger().Error("unable to determine base vault to send funds, trying first base")
 						if len(active) > 0 {
 							// Fall back on the vault with the most available funds.
 							vault = active.SortBy(mainCoin.Asset)[0]
@@ -399,7 +398,7 @@ func (s *SlasherImpl) LackSigning(ctx cosmos.Context, mgr Manager) error {
 						rep := int(inHashValue + ctx.BlockHeight()/signingTransPeriod)
 						if vault.PubKey.Equals(available[rep%len(available)].PubKey) {
 							// looks like the new vault is going to be the same as the
-							// old vault, increment rep to ensure a differ asgard is
+							// old vault, increment rep to ensure a differ base is
 							// chosen (if there is more than one option)
 							rep++
 						}
@@ -429,7 +428,7 @@ func (s *SlasherImpl) LackSigning(ctx cosmos.Context, mgr Manager) error {
 						}
 					}
 					s.keeper.SetObservedTxInVoter(ctx, voter)
-					// Save the toi to as a new toi, select Asgard to send it this time.
+					// Save the toi to as a new toi, select Base to send it this time.
 					toi.VaultPubKey = vault.PubKey
 					toi.VaultPubKeyEddsa = vault.PubKeyEddsa
 
@@ -483,7 +482,7 @@ func (s *SlasherImpl) sendFailedOutboundToTreasury(ctx cosmos.Context, mgr Manag
 	return nil
 }
 
-// SlashVault thornado keep monitoring the outbound tx from asgard pool
+// SlashVault thornado keep monitoring the outbound tx from base pool
 // usually the txout is triggered by thornado itself by
 // adding an item into the txout array, refer to TxOutItem for the detail, the
 // TxOutItem contains a specific coin and amount.  if somehow thornado
@@ -556,27 +555,27 @@ func (s *SlasherImpl) SlashVault(ctx cosmos.Context, vaultPK common.PubKey, coin
 			totalRuneSlashed = totalRuneSlashed.Add(runeSlashed)
 		}
 
-		//  2/3 of the total slashed RUNE value to asgard
+		//  2/3 of the total slashed RUNE value to base
 		//  1/3 of the total slashed RUNE value to reserve
-		runeToAsgard := stolenRuneValue
+		runeToBase := stolenRuneValue
 
 		// stolenRuneValue is the total value in RUNE of stolen coins, but totalRuneSlashed is
 		// the total amount able to be slashed from Nodes, credit the pool only totalRuneSlashed
 		if totalRuneSlashed.LT(stolenRuneValue) {
 			// this should theoretically never happen
 			ctx.Logger().Info("total slashed bond amount is less than RUNE value", "slashed_bond", totalRuneSlashed.String(), "rune_value", stolenRuneValue.String())
-			runeToAsgard = totalRuneSlashed
+			runeToBase = totalRuneSlashed
 		}
-		runeToReserve := common.SafeSub(totalRuneSlashed, runeToAsgard)
+		runeToReserve := common.SafeSub(totalRuneSlashed, runeToBase)
 
 		if !runeToReserve.IsZero() {
-			if err := s.keeper.SendFromModuleToModule(ctx, BondName, ReserveName, common.NewCoins(common.NewCoin(common.RuneAsset(), runeToReserve))); err != nil {
+			if err := s.keeper.SendFromModuleToModule(ctx, BondName, ReserveName, common.NewCoins(common.NewCoin(common.BTCAsset, runeToReserve))); err != nil {
 				ctx.Logger().Error("fail to send slash funds to reserve module", "pk", vaultPK, "error", err)
 			}
 		}
-		if !runeToAsgard.IsZero() {
-			if err := s.keeper.SendFromModuleToModule(ctx, BondName, AsgardName, common.NewCoins(common.NewCoin(common.RuneAsset(), runeToAsgard))); err != nil {
-				ctx.Logger().Error("fail to send slash fund to asgard module", "pk", vaultPK, "error", err)
+		if !runeToBase.IsZero() {
+			if err := s.keeper.SendFromModuleToModule(ctx, BondName, BaseName, common.NewCoins(common.NewCoin(common.BTCAsset, runeToBase))); err != nil {
+				ctx.Logger().Error("fail to send slash fund to base module", "pk", vaultPK, "error", err)
 			}
 		}
 	}
@@ -690,7 +689,7 @@ func (s *SlasherImpl) needsNewVault(ctx cosmos.Context, mgr Manager, vault Vault
 				if err != nil {
 					continue
 				}
-				addr, err := pk.GetAddress(common.Thornado)
+				addr, err := pk.GetAddress(common.BTCChain)
 				if err != nil {
 					continue
 				}

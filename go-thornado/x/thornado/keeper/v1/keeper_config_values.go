@@ -103,17 +103,8 @@ func (k KVStore) SetNodePauseChain(ctx cosmos.Context, acc cosmos.AccAddress) {
 }
 
 func (k KVStore) IsOperationalConfig(key string) bool {
-	exactMatches := []string{
-		constants.ConfigKeyEnableFrostBTC,
-	}
-	for i := range exactMatches {
-		if strings.EqualFold(key, exactMatches[i]) {
-			return true
-		}
-	}
-
 	exactUnmatches := []string{
-		constants.Chain_PauseNodeBlocks.String(),
+		constants.Chain_PauseNodeMinutes.String(),
 		constants.Slash_PauseThreshold.String(),
 	}
 	for i := range exactUnmatches {

@@ -19,54 +19,58 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Query_Account_FullMethodName                 = "/types.Query/Account"
-	Query_Balances_FullMethodName                = "/types.Query/Balances"
-	Query_Export_FullMethodName                  = "/types.Query/Export"
-	Query_Node_FullMethodName                    = "/types.Query/Node"
-	Query_Nodes_FullMethodName                   = "/types.Query/Nodes"
-	Query_NodeMetrics_FullMethodName             = "/types.Query/NodeMetrics"
-	Query_NodeSlot_FullMethodName                = "/types.Query/NodeSlot"
-	Query_Ban_FullMethodName                     = "/types.Query/Ban"
-	Query_ConfigValues_FullMethodName            = "/types.Query/ConfigValues"
-	Query_ConfigNodesAllValues_FullMethodName    = "/types.Query/ConfigNodesAllValues"
-	Query_ConfigNodesValues_FullMethodName       = "/types.Query/ConfigNodesValues"
-	Query_ConfigNodeValues_FullMethodName        = "/types.Query/ConfigNodeValues"
-	Query_Version_FullMethodName                 = "/types.Query/Version"
-	Query_Invariant_FullMethodName               = "/types.Query/Invariant"
-	Query_Invariants_FullMethodName              = "/types.Query/Invariants"
-	Query_BalanceModule_FullMethodName           = "/types.Query/BalanceModule"
-	Query_ConfigDefaults_FullMethodName          = "/types.Query/ConfigDefaults"
-	Query_LastBlocks_FullMethodName              = "/types.Query/LastBlocks"
-	Query_Vault_FullMethodName                   = "/types.Query/Vault"
-	Query_BaseVaults_FullMethodName              = "/types.Query/BaseVaults"
-	Query_VaultsPubkeys_FullMethodName           = "/types.Query/VaultsPubkeys"
-	Query_VaultSolvency_FullMethodName           = "/types.Query/VaultSolvency"
-	Query_Tx_FullMethodName                      = "/types.Query/Tx"
-	Query_TxOut_FullMethodName                   = "/types.Query/TxOut"
-	Query_ShielderDeposit_FullMethodName         = "/types.Query/ShielderDeposit"
-	Query_ShielderWithdrawal_FullMethodName      = "/types.Query/ShielderWithdrawal"
-	Query_ShielderNullifier_FullMethodName       = "/types.Query/ShielderNullifier"
-	Query_ShielderRoots_FullMethodName           = "/types.Query/ShielderRoots"
-	Query_ShielderWithdrawalQuote_FullMethodName = "/types.Query/ShielderWithdrawalQuote"
-	Query_ShielderFeePool_FullMethodName         = "/types.Query/ShielderFeePool"
-	Query_ShielderSession_FullMethodName         = "/types.Query/ShielderSession"
-	Query_ShielderBond_FullMethodName            = "/types.Query/ShielderBond"
-	Query_NodeSlotAuction_FullMethodName         = "/types.Query/NodeSlotAuction"
-	Query_NodeSlotAuctions_FullMethodName        = "/types.Query/NodeSlotAuctions"
-	Query_NodeSlotBid_FullMethodName             = "/types.Query/NodeSlotBid"
-	Query_NodeSlotAuctionBids_FullMethodName     = "/types.Query/NodeSlotAuctionBids"
-	Query_VaultDepositAddress_FullMethodName     = "/types.Query/VaultDepositAddress"
-	Query_ShielderFeeEntitlement_FullMethodName  = "/types.Query/ShielderFeeEntitlement"
-	Query_ShielderFeeEntitlements_FullMethodName = "/types.Query/ShielderFeeEntitlements"
-	Query_Block_FullMethodName                   = "/types.Query/Block"
-	Query_TssKeygenMetric_FullMethodName         = "/types.Query/TssKeygenMetric"
-	Query_TssMetric_FullMethodName               = "/types.Query/TssMetric"
-	Query_Keysign_FullMethodName                 = "/types.Query/Keysign"
-	Query_KeysignPubkey_FullMethodName           = "/types.Query/KeysignPubkey"
-	Query_Keygen_FullMethodName                  = "/types.Query/Keygen"
-	Query_UpgradeProposals_FullMethodName        = "/types.Query/UpgradeProposals"
-	Query_UpgradeProposal_FullMethodName         = "/types.Query/UpgradeProposal"
-	Query_UpgradeVotes_FullMethodName            = "/types.Query/UpgradeVotes"
+	Query_Account_FullMethodName              = "/types.Query/Account"
+	Query_Balances_FullMethodName             = "/types.Query/Balances"
+	Query_Export_FullMethodName               = "/types.Query/Export"
+	Query_Node_FullMethodName                 = "/types.Query/Node"
+	Query_Nodes_FullMethodName                = "/types.Query/Nodes"
+	Query_NodeMetrics_FullMethodName          = "/types.Query/NodeMetrics"
+	Query_NodeSlot_FullMethodName             = "/types.Query/NodeSlot"
+	Query_Ban_FullMethodName                  = "/types.Query/Ban"
+	Query_ConfigValues_FullMethodName         = "/types.Query/ConfigValues"
+	Query_ConfigNodesAllValues_FullMethodName = "/types.Query/ConfigNodesAllValues"
+	Query_ConfigNodesValues_FullMethodName    = "/types.Query/ConfigNodesValues"
+	Query_ConfigNodeValues_FullMethodName     = "/types.Query/ConfigNodeValues"
+	Query_Version_FullMethodName              = "/types.Query/Version"
+	Query_Invariant_FullMethodName            = "/types.Query/Invariant"
+	Query_Invariants_FullMethodName           = "/types.Query/Invariants"
+	Query_BalanceModule_FullMethodName        = "/types.Query/BalanceModule"
+	Query_ConfigDefaults_FullMethodName       = "/types.Query/ConfigDefaults"
+	Query_LastBlocks_FullMethodName           = "/types.Query/LastBlocks"
+	Query_NetworkFeeCurrent_FullMethodName    = "/types.Query/NetworkFeeCurrent"
+	Query_Vault_FullMethodName                = "/types.Query/Vault"
+	Query_BaseVaults_FullMethodName           = "/types.Query/BaseVaults"
+	Query_VaultsPubkeys_FullMethodName        = "/types.Query/VaultsPubkeys"
+	Query_VaultSolvency_FullMethodName        = "/types.Query/VaultSolvency"
+	Query_Tx_FullMethodName                   = "/types.Query/Tx"
+	Query_TxOut_FullMethodName                = "/types.Query/TxOut"
+	Query_TxOutOut_FullMethodName             = "/types.Query/TxOutOut"
+	Query_TxOutInternal_FullMethodName        = "/types.Query/TxOutInternal"
+	Query_TxOutAll_FullMethodName             = "/types.Query/TxOutAll"
+	Query_Deposit_FullMethodName              = "/types.Query/Deposit"
+	Query_ShielderRedeem_FullMethodName       = "/types.Query/ShielderRedeem"
+	Query_ShielderNullifier_FullMethodName    = "/types.Query/ShielderNullifier"
+	Query_ShielderRoots_FullMethodName        = "/types.Query/ShielderRoots"
+	Query_ShielderRedeemQuote_FullMethodName  = "/types.Query/ShielderRedeemQuote"
+	Query_FeePool_FullMethodName              = "/types.Query/FeePool"
+	Query_DepositSession_FullMethodName       = "/types.Query/DepositSession"
+	Query_NodeBond_FullMethodName             = "/types.Query/NodeBond"
+	Query_NodeSlotAuction_FullMethodName      = "/types.Query/NodeSlotAuction"
+	Query_NodeSlotAuctions_FullMethodName     = "/types.Query/NodeSlotAuctions"
+	Query_NodeSlotBid_FullMethodName          = "/types.Query/NodeSlotBid"
+	Query_NodeSlotAuctionBids_FullMethodName  = "/types.Query/NodeSlotAuctionBids"
+	Query_VaultDepositAddress_FullMethodName  = "/types.Query/VaultDepositAddress"
+	Query_NodeFeeEntitlement_FullMethodName   = "/types.Query/NodeFeeEntitlement"
+	Query_NodeFeeEntitlements_FullMethodName  = "/types.Query/NodeFeeEntitlements"
+	Query_Block_FullMethodName                = "/types.Query/Block"
+	Query_TssKeygenMetric_FullMethodName      = "/types.Query/TssKeygenMetric"
+	Query_TssMetric_FullMethodName            = "/types.Query/TssMetric"
+	Query_Keysign_FullMethodName              = "/types.Query/Keysign"
+	Query_KeysignPubkey_FullMethodName        = "/types.Query/KeysignPubkey"
+	Query_Keygen_FullMethodName               = "/types.Query/Keygen"
+	Query_UpgradeProposals_FullMethodName     = "/types.Query/UpgradeProposals"
+	Query_UpgradeProposal_FullMethodName      = "/types.Query/UpgradeProposal"
+	Query_UpgradeVotes_FullMethodName         = "/types.Query/UpgradeVotes"
 )
 
 // QueryClient is the client API for Query service.
@@ -91,27 +95,31 @@ type QueryClient interface {
 	BalanceModule(ctx context.Context, in *QueryBalanceModuleRequest, opts ...grpc.CallOption) (*QueryBalanceModuleResponse, error)
 	ConfigDefaults(ctx context.Context, in *QueryConfigDefaultsRequest, opts ...grpc.CallOption) (*QueryConfigDefaultsResponse, error)
 	LastBlocks(ctx context.Context, in *QueryLastBlocksRequest, opts ...grpc.CallOption) (*QueryLastBlocksResponse, error)
+	NetworkFeeCurrent(ctx context.Context, in *QueryNetworkFeeRequest, opts ...grpc.CallOption) (*NetworkFee, error)
 	Vault(ctx context.Context, in *QueryVaultRequest, opts ...grpc.CallOption) (*QueryVaultResponse, error)
 	BaseVaults(ctx context.Context, in *QueryBaseVaultsRequest, opts ...grpc.CallOption) (*QueryBaseVaultsResponse, error)
 	VaultsPubkeys(ctx context.Context, in *QueryVaultsPubkeysRequest, opts ...grpc.CallOption) (*QueryVaultsPubkeysResponse, error)
 	VaultSolvency(ctx context.Context, in *QueryVaultSolvencyRequest, opts ...grpc.CallOption) (*QueryVaultSolvencyResponse, error)
 	Tx(ctx context.Context, in *QueryTxRequest, opts ...grpc.CallOption) (*QueryTxResponse, error)
 	TxOut(ctx context.Context, in *QueryTxOutRequest, opts ...grpc.CallOption) (*QueryTxOutResponse, error)
-	ShielderDeposit(ctx context.Context, in *QueryShielderDepositRequest, opts ...grpc.CallOption) (*QueryShielderDepositResponse, error)
-	ShielderWithdrawal(ctx context.Context, in *QueryShielderWithdrawalRequest, opts ...grpc.CallOption) (*QueryShielderWithdrawalResponse, error)
+	TxOutOut(ctx context.Context, in *QueryTxOutRequest, opts ...grpc.CallOption) (*QueryTxOutResponse, error)
+	TxOutInternal(ctx context.Context, in *QueryTxOutRequest, opts ...grpc.CallOption) (*QueryTxOutResponse, error)
+	TxOutAll(ctx context.Context, in *QueryTxOutRequest, opts ...grpc.CallOption) (*QueryTxOutResponse, error)
+	Deposit(ctx context.Context, in *QueryDepositRequest, opts ...grpc.CallOption) (*QueryDepositResponse, error)
+	ShielderRedeem(ctx context.Context, in *QueryShielderRedeemRequest, opts ...grpc.CallOption) (*QueryShielderRedeemResponse, error)
 	ShielderNullifier(ctx context.Context, in *QueryShielderNullifierRequest, opts ...grpc.CallOption) (*QueryShielderNullifierResponse, error)
 	ShielderRoots(ctx context.Context, in *QueryShielderRootsRequest, opts ...grpc.CallOption) (*QueryShielderRootsResponse, error)
-	ShielderWithdrawalQuote(ctx context.Context, in *QueryShielderWithdrawalQuoteRequest, opts ...grpc.CallOption) (*QueryShielderWithdrawalQuoteResponse, error)
-	ShielderFeePool(ctx context.Context, in *QueryShielderFeePoolRequest, opts ...grpc.CallOption) (*QueryShielderFeePoolResponse, error)
-	ShielderSession(ctx context.Context, in *QueryShielderSessionRequest, opts ...grpc.CallOption) (*QueryShielderSessionResponse, error)
-	ShielderBond(ctx context.Context, in *QueryShielderBondRequest, opts ...grpc.CallOption) (*QueryShielderBondResponse, error)
+	ShielderRedeemQuote(ctx context.Context, in *QueryShielderRedeemQuoteRequest, opts ...grpc.CallOption) (*QueryShielderRedeemQuoteResponse, error)
+	FeePool(ctx context.Context, in *QueryFeePoolRequest, opts ...grpc.CallOption) (*QueryFeePoolResponse, error)
+	DepositSession(ctx context.Context, in *QueryDepositSessionRequest, opts ...grpc.CallOption) (*QueryDepositSessionResponse, error)
+	NodeBond(ctx context.Context, in *QueryNodeBondRequest, opts ...grpc.CallOption) (*QueryNodeBondResponse, error)
 	NodeSlotAuction(ctx context.Context, in *QueryNodeSlotAuctionRequest, opts ...grpc.CallOption) (*QueryNodeSlotAuctionResponse, error)
 	NodeSlotAuctions(ctx context.Context, in *QueryNodeSlotAuctionsRequest, opts ...grpc.CallOption) (*QueryNodeSlotAuctionsResponse, error)
 	NodeSlotBid(ctx context.Context, in *QueryNodeSlotBidRequest, opts ...grpc.CallOption) (*QueryNodeSlotBidResponse, error)
 	NodeSlotAuctionBids(ctx context.Context, in *QueryNodeSlotAuctionBidsRequest, opts ...grpc.CallOption) (*QueryNodeSlotAuctionBidsResponse, error)
 	VaultDepositAddress(ctx context.Context, in *QueryVaultDepositAddressRequest, opts ...grpc.CallOption) (*QueryVaultDepositAddressResponse, error)
-	ShielderFeeEntitlement(ctx context.Context, in *QueryShielderFeeEntitlementRequest, opts ...grpc.CallOption) (*QueryShielderFeeEntitlementResponse, error)
-	ShielderFeeEntitlements(ctx context.Context, in *QueryShielderFeeEntitlementsRequest, opts ...grpc.CallOption) (*QueryShielderFeeEntitlementsResponse, error)
+	NodeFeeEntitlement(ctx context.Context, in *QueryNodeFeeEntitlementRequest, opts ...grpc.CallOption) (*QueryNodeFeeEntitlementResponse, error)
+	NodeFeeEntitlements(ctx context.Context, in *QueryNodeFeeEntitlementsRequest, opts ...grpc.CallOption) (*QueryNodeFeeEntitlementsResponse, error)
 	Block(ctx context.Context, in *QueryBlockRequest, opts ...grpc.CallOption) (*QueryBlockResponse, error)
 	TssKeygenMetric(ctx context.Context, in *QueryTssKeygenMetricRequest, opts ...grpc.CallOption) (*QueryTssKeygenMetricResponse, error)
 	TssMetric(ctx context.Context, in *QueryTssMetricRequest, opts ...grpc.CallOption) (*QueryTssMetricResponse, error)
@@ -293,6 +301,15 @@ func (c *queryClient) LastBlocks(ctx context.Context, in *QueryLastBlocksRequest
 	return out, nil
 }
 
+func (c *queryClient) NetworkFeeCurrent(ctx context.Context, in *QueryNetworkFeeRequest, opts ...grpc.CallOption) (*NetworkFee, error) {
+	out := new(NetworkFee)
+	err := c.cc.Invoke(ctx, Query_NetworkFeeCurrent_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *queryClient) Vault(ctx context.Context, in *QueryVaultRequest, opts ...grpc.CallOption) (*QueryVaultResponse, error) {
 	out := new(QueryVaultResponse)
 	err := c.cc.Invoke(ctx, Query_Vault_FullMethodName, in, out, opts...)
@@ -347,18 +364,45 @@ func (c *queryClient) TxOut(ctx context.Context, in *QueryTxOutRequest, opts ...
 	return out, nil
 }
 
-func (c *queryClient) ShielderDeposit(ctx context.Context, in *QueryShielderDepositRequest, opts ...grpc.CallOption) (*QueryShielderDepositResponse, error) {
-	out := new(QueryShielderDepositResponse)
-	err := c.cc.Invoke(ctx, Query_ShielderDeposit_FullMethodName, in, out, opts...)
+func (c *queryClient) TxOutOut(ctx context.Context, in *QueryTxOutRequest, opts ...grpc.CallOption) (*QueryTxOutResponse, error) {
+	out := new(QueryTxOutResponse)
+	err := c.cc.Invoke(ctx, Query_TxOutOut_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queryClient) ShielderWithdrawal(ctx context.Context, in *QueryShielderWithdrawalRequest, opts ...grpc.CallOption) (*QueryShielderWithdrawalResponse, error) {
-	out := new(QueryShielderWithdrawalResponse)
-	err := c.cc.Invoke(ctx, Query_ShielderWithdrawal_FullMethodName, in, out, opts...)
+func (c *queryClient) TxOutInternal(ctx context.Context, in *QueryTxOutRequest, opts ...grpc.CallOption) (*QueryTxOutResponse, error) {
+	out := new(QueryTxOutResponse)
+	err := c.cc.Invoke(ctx, Query_TxOutInternal_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) TxOutAll(ctx context.Context, in *QueryTxOutRequest, opts ...grpc.CallOption) (*QueryTxOutResponse, error) {
+	out := new(QueryTxOutResponse)
+	err := c.cc.Invoke(ctx, Query_TxOutAll_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) Deposit(ctx context.Context, in *QueryDepositRequest, opts ...grpc.CallOption) (*QueryDepositResponse, error) {
+	out := new(QueryDepositResponse)
+	err := c.cc.Invoke(ctx, Query_Deposit_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) ShielderRedeem(ctx context.Context, in *QueryShielderRedeemRequest, opts ...grpc.CallOption) (*QueryShielderRedeemResponse, error) {
+	out := new(QueryShielderRedeemResponse)
+	err := c.cc.Invoke(ctx, Query_ShielderRedeem_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -383,36 +427,36 @@ func (c *queryClient) ShielderRoots(ctx context.Context, in *QueryShielderRootsR
 	return out, nil
 }
 
-func (c *queryClient) ShielderWithdrawalQuote(ctx context.Context, in *QueryShielderWithdrawalQuoteRequest, opts ...grpc.CallOption) (*QueryShielderWithdrawalQuoteResponse, error) {
-	out := new(QueryShielderWithdrawalQuoteResponse)
-	err := c.cc.Invoke(ctx, Query_ShielderWithdrawalQuote_FullMethodName, in, out, opts...)
+func (c *queryClient) ShielderRedeemQuote(ctx context.Context, in *QueryShielderRedeemQuoteRequest, opts ...grpc.CallOption) (*QueryShielderRedeemQuoteResponse, error) {
+	out := new(QueryShielderRedeemQuoteResponse)
+	err := c.cc.Invoke(ctx, Query_ShielderRedeemQuote_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queryClient) ShielderFeePool(ctx context.Context, in *QueryShielderFeePoolRequest, opts ...grpc.CallOption) (*QueryShielderFeePoolResponse, error) {
-	out := new(QueryShielderFeePoolResponse)
-	err := c.cc.Invoke(ctx, Query_ShielderFeePool_FullMethodName, in, out, opts...)
+func (c *queryClient) FeePool(ctx context.Context, in *QueryFeePoolRequest, opts ...grpc.CallOption) (*QueryFeePoolResponse, error) {
+	out := new(QueryFeePoolResponse)
+	err := c.cc.Invoke(ctx, Query_FeePool_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queryClient) ShielderSession(ctx context.Context, in *QueryShielderSessionRequest, opts ...grpc.CallOption) (*QueryShielderSessionResponse, error) {
-	out := new(QueryShielderSessionResponse)
-	err := c.cc.Invoke(ctx, Query_ShielderSession_FullMethodName, in, out, opts...)
+func (c *queryClient) DepositSession(ctx context.Context, in *QueryDepositSessionRequest, opts ...grpc.CallOption) (*QueryDepositSessionResponse, error) {
+	out := new(QueryDepositSessionResponse)
+	err := c.cc.Invoke(ctx, Query_DepositSession_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queryClient) ShielderBond(ctx context.Context, in *QueryShielderBondRequest, opts ...grpc.CallOption) (*QueryShielderBondResponse, error) {
-	out := new(QueryShielderBondResponse)
-	err := c.cc.Invoke(ctx, Query_ShielderBond_FullMethodName, in, out, opts...)
+func (c *queryClient) NodeBond(ctx context.Context, in *QueryNodeBondRequest, opts ...grpc.CallOption) (*QueryNodeBondResponse, error) {
+	out := new(QueryNodeBondResponse)
+	err := c.cc.Invoke(ctx, Query_NodeBond_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -464,18 +508,18 @@ func (c *queryClient) VaultDepositAddress(ctx context.Context, in *QueryVaultDep
 	return out, nil
 }
 
-func (c *queryClient) ShielderFeeEntitlement(ctx context.Context, in *QueryShielderFeeEntitlementRequest, opts ...grpc.CallOption) (*QueryShielderFeeEntitlementResponse, error) {
-	out := new(QueryShielderFeeEntitlementResponse)
-	err := c.cc.Invoke(ctx, Query_ShielderFeeEntitlement_FullMethodName, in, out, opts...)
+func (c *queryClient) NodeFeeEntitlement(ctx context.Context, in *QueryNodeFeeEntitlementRequest, opts ...grpc.CallOption) (*QueryNodeFeeEntitlementResponse, error) {
+	out := new(QueryNodeFeeEntitlementResponse)
+	err := c.cc.Invoke(ctx, Query_NodeFeeEntitlement_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queryClient) ShielderFeeEntitlements(ctx context.Context, in *QueryShielderFeeEntitlementsRequest, opts ...grpc.CallOption) (*QueryShielderFeeEntitlementsResponse, error) {
-	out := new(QueryShielderFeeEntitlementsResponse)
-	err := c.cc.Invoke(ctx, Query_ShielderFeeEntitlements_FullMethodName, in, out, opts...)
+func (c *queryClient) NodeFeeEntitlements(ctx context.Context, in *QueryNodeFeeEntitlementsRequest, opts ...grpc.CallOption) (*QueryNodeFeeEntitlementsResponse, error) {
+	out := new(QueryNodeFeeEntitlementsResponse)
+	err := c.cc.Invoke(ctx, Query_NodeFeeEntitlements_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -585,27 +629,31 @@ type QueryServer interface {
 	BalanceModule(context.Context, *QueryBalanceModuleRequest) (*QueryBalanceModuleResponse, error)
 	ConfigDefaults(context.Context, *QueryConfigDefaultsRequest) (*QueryConfigDefaultsResponse, error)
 	LastBlocks(context.Context, *QueryLastBlocksRequest) (*QueryLastBlocksResponse, error)
+	NetworkFeeCurrent(context.Context, *QueryNetworkFeeRequest) (*NetworkFee, error)
 	Vault(context.Context, *QueryVaultRequest) (*QueryVaultResponse, error)
 	BaseVaults(context.Context, *QueryBaseVaultsRequest) (*QueryBaseVaultsResponse, error)
 	VaultsPubkeys(context.Context, *QueryVaultsPubkeysRequest) (*QueryVaultsPubkeysResponse, error)
 	VaultSolvency(context.Context, *QueryVaultSolvencyRequest) (*QueryVaultSolvencyResponse, error)
 	Tx(context.Context, *QueryTxRequest) (*QueryTxResponse, error)
 	TxOut(context.Context, *QueryTxOutRequest) (*QueryTxOutResponse, error)
-	ShielderDeposit(context.Context, *QueryShielderDepositRequest) (*QueryShielderDepositResponse, error)
-	ShielderWithdrawal(context.Context, *QueryShielderWithdrawalRequest) (*QueryShielderWithdrawalResponse, error)
+	TxOutOut(context.Context, *QueryTxOutRequest) (*QueryTxOutResponse, error)
+	TxOutInternal(context.Context, *QueryTxOutRequest) (*QueryTxOutResponse, error)
+	TxOutAll(context.Context, *QueryTxOutRequest) (*QueryTxOutResponse, error)
+	Deposit(context.Context, *QueryDepositRequest) (*QueryDepositResponse, error)
+	ShielderRedeem(context.Context, *QueryShielderRedeemRequest) (*QueryShielderRedeemResponse, error)
 	ShielderNullifier(context.Context, *QueryShielderNullifierRequest) (*QueryShielderNullifierResponse, error)
 	ShielderRoots(context.Context, *QueryShielderRootsRequest) (*QueryShielderRootsResponse, error)
-	ShielderWithdrawalQuote(context.Context, *QueryShielderWithdrawalQuoteRequest) (*QueryShielderWithdrawalQuoteResponse, error)
-	ShielderFeePool(context.Context, *QueryShielderFeePoolRequest) (*QueryShielderFeePoolResponse, error)
-	ShielderSession(context.Context, *QueryShielderSessionRequest) (*QueryShielderSessionResponse, error)
-	ShielderBond(context.Context, *QueryShielderBondRequest) (*QueryShielderBondResponse, error)
+	ShielderRedeemQuote(context.Context, *QueryShielderRedeemQuoteRequest) (*QueryShielderRedeemQuoteResponse, error)
+	FeePool(context.Context, *QueryFeePoolRequest) (*QueryFeePoolResponse, error)
+	DepositSession(context.Context, *QueryDepositSessionRequest) (*QueryDepositSessionResponse, error)
+	NodeBond(context.Context, *QueryNodeBondRequest) (*QueryNodeBondResponse, error)
 	NodeSlotAuction(context.Context, *QueryNodeSlotAuctionRequest) (*QueryNodeSlotAuctionResponse, error)
 	NodeSlotAuctions(context.Context, *QueryNodeSlotAuctionsRequest) (*QueryNodeSlotAuctionsResponse, error)
 	NodeSlotBid(context.Context, *QueryNodeSlotBidRequest) (*QueryNodeSlotBidResponse, error)
 	NodeSlotAuctionBids(context.Context, *QueryNodeSlotAuctionBidsRequest) (*QueryNodeSlotAuctionBidsResponse, error)
 	VaultDepositAddress(context.Context, *QueryVaultDepositAddressRequest) (*QueryVaultDepositAddressResponse, error)
-	ShielderFeeEntitlement(context.Context, *QueryShielderFeeEntitlementRequest) (*QueryShielderFeeEntitlementResponse, error)
-	ShielderFeeEntitlements(context.Context, *QueryShielderFeeEntitlementsRequest) (*QueryShielderFeeEntitlementsResponse, error)
+	NodeFeeEntitlement(context.Context, *QueryNodeFeeEntitlementRequest) (*QueryNodeFeeEntitlementResponse, error)
+	NodeFeeEntitlements(context.Context, *QueryNodeFeeEntitlementsRequest) (*QueryNodeFeeEntitlementsResponse, error)
 	Block(context.Context, *QueryBlockRequest) (*QueryBlockResponse, error)
 	TssKeygenMetric(context.Context, *QueryTssKeygenMetricRequest) (*QueryTssKeygenMetricResponse, error)
 	TssMetric(context.Context, *QueryTssMetricRequest) (*QueryTssMetricResponse, error)
@@ -676,6 +724,9 @@ func (UnimplementedQueryServer) ConfigDefaults(context.Context, *QueryConfigDefa
 func (UnimplementedQueryServer) LastBlocks(context.Context, *QueryLastBlocksRequest) (*QueryLastBlocksResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LastBlocks not implemented")
 }
+func (UnimplementedQueryServer) NetworkFeeCurrent(context.Context, *QueryNetworkFeeRequest) (*NetworkFee, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NetworkFeeCurrent not implemented")
+}
 func (UnimplementedQueryServer) Vault(context.Context, *QueryVaultRequest) (*QueryVaultResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Vault not implemented")
 }
@@ -694,11 +745,20 @@ func (UnimplementedQueryServer) Tx(context.Context, *QueryTxRequest) (*QueryTxRe
 func (UnimplementedQueryServer) TxOut(context.Context, *QueryTxOutRequest) (*QueryTxOutResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method TxOut not implemented")
 }
-func (UnimplementedQueryServer) ShielderDeposit(context.Context, *QueryShielderDepositRequest) (*QueryShielderDepositResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShielderDeposit not implemented")
+func (UnimplementedQueryServer) TxOutOut(context.Context, *QueryTxOutRequest) (*QueryTxOutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TxOutOut not implemented")
 }
-func (UnimplementedQueryServer) ShielderWithdrawal(context.Context, *QueryShielderWithdrawalRequest) (*QueryShielderWithdrawalResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShielderWithdrawal not implemented")
+func (UnimplementedQueryServer) TxOutInternal(context.Context, *QueryTxOutRequest) (*QueryTxOutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TxOutInternal not implemented")
+}
+func (UnimplementedQueryServer) TxOutAll(context.Context, *QueryTxOutRequest) (*QueryTxOutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TxOutAll not implemented")
+}
+func (UnimplementedQueryServer) Deposit(context.Context, *QueryDepositRequest) (*QueryDepositResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Deposit not implemented")
+}
+func (UnimplementedQueryServer) ShielderRedeem(context.Context, *QueryShielderRedeemRequest) (*QueryShielderRedeemResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShielderRedeem not implemented")
 }
 func (UnimplementedQueryServer) ShielderNullifier(context.Context, *QueryShielderNullifierRequest) (*QueryShielderNullifierResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderNullifier not implemented")
@@ -706,17 +766,17 @@ func (UnimplementedQueryServer) ShielderNullifier(context.Context, *QueryShielde
 func (UnimplementedQueryServer) ShielderRoots(context.Context, *QueryShielderRootsRequest) (*QueryShielderRootsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderRoots not implemented")
 }
-func (UnimplementedQueryServer) ShielderWithdrawalQuote(context.Context, *QueryShielderWithdrawalQuoteRequest) (*QueryShielderWithdrawalQuoteResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShielderWithdrawalQuote not implemented")
+func (UnimplementedQueryServer) ShielderRedeemQuote(context.Context, *QueryShielderRedeemQuoteRequest) (*QueryShielderRedeemQuoteResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShielderRedeemQuote not implemented")
 }
-func (UnimplementedQueryServer) ShielderFeePool(context.Context, *QueryShielderFeePoolRequest) (*QueryShielderFeePoolResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShielderFeePool not implemented")
+func (UnimplementedQueryServer) FeePool(context.Context, *QueryFeePoolRequest) (*QueryFeePoolResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FeePool not implemented")
 }
-func (UnimplementedQueryServer) ShielderSession(context.Context, *QueryShielderSessionRequest) (*QueryShielderSessionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShielderSession not implemented")
+func (UnimplementedQueryServer) DepositSession(context.Context, *QueryDepositSessionRequest) (*QueryDepositSessionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DepositSession not implemented")
 }
-func (UnimplementedQueryServer) ShielderBond(context.Context, *QueryShielderBondRequest) (*QueryShielderBondResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShielderBond not implemented")
+func (UnimplementedQueryServer) NodeBond(context.Context, *QueryNodeBondRequest) (*QueryNodeBondResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NodeBond not implemented")
 }
 func (UnimplementedQueryServer) NodeSlotAuction(context.Context, *QueryNodeSlotAuctionRequest) (*QueryNodeSlotAuctionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NodeSlotAuction not implemented")
@@ -733,11 +793,11 @@ func (UnimplementedQueryServer) NodeSlotAuctionBids(context.Context, *QueryNodeS
 func (UnimplementedQueryServer) VaultDepositAddress(context.Context, *QueryVaultDepositAddressRequest) (*QueryVaultDepositAddressResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VaultDepositAddress not implemented")
 }
-func (UnimplementedQueryServer) ShielderFeeEntitlement(context.Context, *QueryShielderFeeEntitlementRequest) (*QueryShielderFeeEntitlementResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShielderFeeEntitlement not implemented")
+func (UnimplementedQueryServer) NodeFeeEntitlement(context.Context, *QueryNodeFeeEntitlementRequest) (*QueryNodeFeeEntitlementResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NodeFeeEntitlement not implemented")
 }
-func (UnimplementedQueryServer) ShielderFeeEntitlements(context.Context, *QueryShielderFeeEntitlementsRequest) (*QueryShielderFeeEntitlementsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShielderFeeEntitlements not implemented")
+func (UnimplementedQueryServer) NodeFeeEntitlements(context.Context, *QueryNodeFeeEntitlementsRequest) (*QueryNodeFeeEntitlementsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NodeFeeEntitlements not implemented")
 }
 func (UnimplementedQueryServer) Block(context.Context, *QueryBlockRequest) (*QueryBlockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Block not implemented")
@@ -1103,6 +1163,24 @@ func _Query_LastBlocks_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_NetworkFeeCurrent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryNetworkFeeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).NetworkFeeCurrent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_NetworkFeeCurrent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).NetworkFeeCurrent(ctx, req.(*QueryNetworkFeeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Query_Vault_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(QueryVaultRequest)
 	if err := dec(in); err != nil {
@@ -1211,38 +1289,92 @@ func _Query_TxOut_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_ShielderDeposit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryShielderDepositRequest)
+func _Query_TxOutOut_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryTxOutRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).ShielderDeposit(ctx, in)
+		return srv.(QueryServer).TxOutOut(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_ShielderDeposit_FullMethodName,
+		FullMethod: Query_TxOutOut_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ShielderDeposit(ctx, req.(*QueryShielderDepositRequest))
+		return srv.(QueryServer).TxOutOut(ctx, req.(*QueryTxOutRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_ShielderWithdrawal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryShielderWithdrawalRequest)
+func _Query_TxOutInternal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryTxOutRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).ShielderWithdrawal(ctx, in)
+		return srv.(QueryServer).TxOutInternal(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_ShielderWithdrawal_FullMethodName,
+		FullMethod: Query_TxOutInternal_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ShielderWithdrawal(ctx, req.(*QueryShielderWithdrawalRequest))
+		return srv.(QueryServer).TxOutInternal(ctx, req.(*QueryTxOutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_TxOutAll_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryTxOutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).TxOutAll(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_TxOutAll_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).TxOutAll(ctx, req.(*QueryTxOutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_Deposit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryDepositRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).Deposit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_Deposit_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).Deposit(ctx, req.(*QueryDepositRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_ShielderRedeem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryShielderRedeemRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).ShielderRedeem(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_ShielderRedeem_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).ShielderRedeem(ctx, req.(*QueryShielderRedeemRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1283,74 +1415,74 @@ func _Query_ShielderRoots_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_ShielderWithdrawalQuote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryShielderWithdrawalQuoteRequest)
+func _Query_ShielderRedeemQuote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryShielderRedeemQuoteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).ShielderWithdrawalQuote(ctx, in)
+		return srv.(QueryServer).ShielderRedeemQuote(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_ShielderWithdrawalQuote_FullMethodName,
+		FullMethod: Query_ShielderRedeemQuote_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ShielderWithdrawalQuote(ctx, req.(*QueryShielderWithdrawalQuoteRequest))
+		return srv.(QueryServer).ShielderRedeemQuote(ctx, req.(*QueryShielderRedeemQuoteRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_ShielderFeePool_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryShielderFeePoolRequest)
+func _Query_FeePool_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryFeePoolRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).ShielderFeePool(ctx, in)
+		return srv.(QueryServer).FeePool(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_ShielderFeePool_FullMethodName,
+		FullMethod: Query_FeePool_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ShielderFeePool(ctx, req.(*QueryShielderFeePoolRequest))
+		return srv.(QueryServer).FeePool(ctx, req.(*QueryFeePoolRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_ShielderSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryShielderSessionRequest)
+func _Query_DepositSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryDepositSessionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).ShielderSession(ctx, in)
+		return srv.(QueryServer).DepositSession(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_ShielderSession_FullMethodName,
+		FullMethod: Query_DepositSession_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ShielderSession(ctx, req.(*QueryShielderSessionRequest))
+		return srv.(QueryServer).DepositSession(ctx, req.(*QueryDepositSessionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_ShielderBond_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryShielderBondRequest)
+func _Query_NodeBond_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryNodeBondRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).ShielderBond(ctx, in)
+		return srv.(QueryServer).NodeBond(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_ShielderBond_FullMethodName,
+		FullMethod: Query_NodeBond_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ShielderBond(ctx, req.(*QueryShielderBondRequest))
+		return srv.(QueryServer).NodeBond(ctx, req.(*QueryNodeBondRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1445,38 +1577,38 @@ func _Query_VaultDepositAddress_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_ShielderFeeEntitlement_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryShielderFeeEntitlementRequest)
+func _Query_NodeFeeEntitlement_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryNodeFeeEntitlementRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).ShielderFeeEntitlement(ctx, in)
+		return srv.(QueryServer).NodeFeeEntitlement(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_ShielderFeeEntitlement_FullMethodName,
+		FullMethod: Query_NodeFeeEntitlement_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ShielderFeeEntitlement(ctx, req.(*QueryShielderFeeEntitlementRequest))
+		return srv.(QueryServer).NodeFeeEntitlement(ctx, req.(*QueryNodeFeeEntitlementRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_ShielderFeeEntitlements_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryShielderFeeEntitlementsRequest)
+func _Query_NodeFeeEntitlements_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryNodeFeeEntitlementsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).ShielderFeeEntitlements(ctx, in)
+		return srv.(QueryServer).NodeFeeEntitlements(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_ShielderFeeEntitlements_FullMethodName,
+		FullMethod: Query_NodeFeeEntitlements_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).ShielderFeeEntitlements(ctx, req.(*QueryShielderFeeEntitlementsRequest))
+		return srv.(QueryServer).NodeFeeEntitlements(ctx, req.(*QueryNodeFeeEntitlementsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1723,6 +1855,10 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Query_LastBlocks_Handler,
 		},
 		{
+			MethodName: "NetworkFeeCurrent",
+			Handler:    _Query_NetworkFeeCurrent_Handler,
+		},
+		{
 			MethodName: "Vault",
 			Handler:    _Query_Vault_Handler,
 		},
@@ -1747,12 +1883,24 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Query_TxOut_Handler,
 		},
 		{
-			MethodName: "ShielderDeposit",
-			Handler:    _Query_ShielderDeposit_Handler,
+			MethodName: "TxOutOut",
+			Handler:    _Query_TxOutOut_Handler,
 		},
 		{
-			MethodName: "ShielderWithdrawal",
-			Handler:    _Query_ShielderWithdrawal_Handler,
+			MethodName: "TxOutInternal",
+			Handler:    _Query_TxOutInternal_Handler,
+		},
+		{
+			MethodName: "TxOutAll",
+			Handler:    _Query_TxOutAll_Handler,
+		},
+		{
+			MethodName: "Deposit",
+			Handler:    _Query_Deposit_Handler,
+		},
+		{
+			MethodName: "ShielderRedeem",
+			Handler:    _Query_ShielderRedeem_Handler,
 		},
 		{
 			MethodName: "ShielderNullifier",
@@ -1763,20 +1911,20 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Query_ShielderRoots_Handler,
 		},
 		{
-			MethodName: "ShielderWithdrawalQuote",
-			Handler:    _Query_ShielderWithdrawalQuote_Handler,
+			MethodName: "ShielderRedeemQuote",
+			Handler:    _Query_ShielderRedeemQuote_Handler,
 		},
 		{
-			MethodName: "ShielderFeePool",
-			Handler:    _Query_ShielderFeePool_Handler,
+			MethodName: "FeePool",
+			Handler:    _Query_FeePool_Handler,
 		},
 		{
-			MethodName: "ShielderSession",
-			Handler:    _Query_ShielderSession_Handler,
+			MethodName: "DepositSession",
+			Handler:    _Query_DepositSession_Handler,
 		},
 		{
-			MethodName: "ShielderBond",
-			Handler:    _Query_ShielderBond_Handler,
+			MethodName: "NodeBond",
+			Handler:    _Query_NodeBond_Handler,
 		},
 		{
 			MethodName: "NodeSlotAuction",
@@ -1799,12 +1947,12 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Query_VaultDepositAddress_Handler,
 		},
 		{
-			MethodName: "ShielderFeeEntitlement",
-			Handler:    _Query_ShielderFeeEntitlement_Handler,
+			MethodName: "NodeFeeEntitlement",
+			Handler:    _Query_NodeFeeEntitlement_Handler,
 		},
 		{
-			MethodName: "ShielderFeeEntitlements",
-			Handler:    _Query_ShielderFeeEntitlements_Handler,
+			MethodName: "NodeFeeEntitlements",
+			Handler:    _Query_NodeFeeEntitlements_Handler,
 		},
 		{
 			MethodName: "Block",

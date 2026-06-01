@@ -23,7 +23,7 @@ const (
 
 var alphaNumRegex = regexp.MustCompile("^[:_A-Za-z0-9]*$")
 
-// NewAddress create a new Address. Supports THOR bech32 and Bitcoin addresses.
+// NewAddress creates a new Address. Supports Thornado bech32 account and Bitcoin addresses.
 func NewAddress(address string) (Address, error) {
 	if len(address) == 0 {
 		return NoAddress, nil
@@ -45,9 +45,6 @@ func NewAddress(address string) (Address, error) {
 
 func (addr Address) IsChain(chain Chain) bool {
 	switch chain {
-	case Thornado:
-		prefix, _, _ := bech32.Decode(addr.String())
-		return prefix == "thor" || prefix == "tthor" || prefix == "sthor" || prefix == "cthor"
 	case BTCChain:
 		prefix, _, err := bech32.Decode(addr.String())
 		if err == nil && (prefix == "bc" || prefix == "tb") {
@@ -74,7 +71,7 @@ func (addr Address) IsChain(chain Chain) bool {
 }
 
 func (addr Address) GetChain() Chain {
-	for _, chain := range []Chain{Thornado, BTCChain} {
+	for _, chain := range []Chain{BTCChain} {
 		if addr.IsChain(chain) {
 			return chain
 		}
@@ -92,20 +89,6 @@ func (addr Address) GetNetwork(chain Chain) ChainNetwork {
 		return currentNetwork
 	}
 	switch chain {
-	case Thornado:
-		prefix, _, _ := bech32.Decode(addr.String())
-		if strings.EqualFold(prefix, "thor") {
-			return mainNetPredicate()
-		}
-		if strings.EqualFold(prefix, "tthor") {
-			return MockNet
-		}
-		if strings.EqualFold(prefix, "sthor") {
-			return StageNet
-		}
-		if strings.EqualFold(prefix, "cthor") {
-			return ChainNet
-		}
 	case BTCChain:
 		prefix, _, _ := bech32.Decode(addr.String())
 		switch prefix {

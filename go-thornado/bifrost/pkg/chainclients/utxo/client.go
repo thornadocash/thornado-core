@@ -62,6 +62,8 @@ type Client struct {
 	wg             *sync.WaitGroup
 	signerLock     *sync.Mutex
 	vaultLocks     map[string]*sync.Mutex
+	vaultPathLock  sync.RWMutex
+	vaultPaths     map[string]map[uint64]struct{}
 	networkFeeLock sync.Mutex
 	solvencyLock   sync.Mutex
 
@@ -77,8 +79,8 @@ type Client struct {
 	currentBlockHeight    stdatomic.Int64
 
 	// ---------- thornado state ----------
-	bridge      thornadoclient.ThornadoBridge
-	asgardCache stdatomic.Pointer[btc.AsgardCache]
+	bridge    thornadoclient.ThornadoBridge
+	baseCache stdatomic.Pointer[btc.BaseCache]
 
 	// ---------- fees / solvency ----------
 	minRelayFeeSats         stdatomic.Uint64
@@ -154,6 +156,7 @@ func NewClient(
 		wg:                        &sync.WaitGroup{},
 		signerLock:                &sync.Mutex{},
 		vaultLocks:                make(map[string]*sync.Mutex),
+		vaultPaths:                make(map[string]map[uint64]struct{}),
 		stopchan:                  make(chan struct{}),
 		bridge:                    bridge,
 		regexpRemoveTrailingZeros: regexp.MustCompile(`(?:00)+$`),
@@ -218,6 +221,10 @@ func (c *Client) GetHeight() (int64, error) {
 func (c *Client) GetNetworkFee() (transactionSize, transactionFeeRate uint64) {
 	transactionSize = c.cfg.UTXO.EstimatedAverageTxSize
 	return transactionSize, c.lastFeeRate.Load()
+}
+
+func (c *Client) IsFrostVault(pubkey common.PubKey) bool {
+	return c.isFrostVault(pubkey)
 }
 
 // GetBlockScannerHeight returns blockscanner height
@@ -329,8 +336,36 @@ func (c *Client) RegisterPublicKeyAtPath(pubkey common.PubKey, pathIndex uint64)
 			Str("pubkey", pubkey.String()).
 			Str("addr", addr.String()).
 			Msg("fail to import address")
+		return err
 	}
-	return err
+	c.rememberVaultPath(pubkey, pathIndex)
+	return nil
+}
+
+func (c *Client) rememberVaultPath(pubkey common.PubKey, pathIndex uint64) {
+	c.vaultPathLock.Lock()
+	defer c.vaultPathLock.Unlock()
+
+	key := pubkey.String()
+	if c.vaultPaths[key] == nil {
+		c.vaultPaths[key] = make(map[uint64]struct{})
+	}
+	c.vaultPaths[key][pathIndex] = struct{}{}
+}
+
+func (c *Client) registeredVaultPaths(pubkey common.PubKey) []uint64 {
+	c.vaultPathLock.RLock()
+	defer c.vaultPathLock.RUnlock()
+
+	paths := c.vaultPaths[pubkey.String()]
+	if len(paths) == 0 {
+		return []uint64{common.MainVaultPathIndex}
+	}
+	result := make([]uint64, 0, len(paths))
+	for path := range paths {
+		result = append(result, path)
+	}
+	return result
 }
 
 // GetAccount returns the account details for the given public key.
@@ -340,28 +375,29 @@ func (c *Client) GetAccount(pubkey common.PubKey, height *big.Int) (common.Accou
 		return acct, errors.New("pubkey can't be empty")
 	}
 
-	// get all unspent utxos
-	addr, err := c.getVaultAddress(pubkey)
-	if err != nil {
-		return acct, fmt.Errorf("fail to get address from pubkey(%s): %w", pubkey, err)
-	}
-	utxos, err := c.rpc.ListUnspent(addr.String())
-	if err != nil {
-		return acct, fmt.Errorf("fail to get UTXOs: %w", err)
-	}
-
 	total := 0.0
-	for _, item := range utxos {
-		if !c.isValidUTXO(item.ScriptPubKey) {
-			continue
+	for _, pathIndex := range c.registeredVaultPaths(pubkey) {
+		addr, err := c.getVaultAddressAtPath(pubkey, pathIndex)
+		if err != nil {
+			return acct, fmt.Errorf("fail to get address from pubkey(%s) path(%d): %w", pubkey, pathIndex, err)
 		}
-		if item.Confirmations == 0 {
-			// pending tx in mempool, only count sends from asgard
-			if !c.isSelfTransaction(item.TxID) && !c.isFromAsgard(item.TxID) {
+		utxos, err := c.rpc.ListUnspent(addr.String())
+		if err != nil {
+			return acct, fmt.Errorf("fail to get UTXOs: %w", err)
+		}
+
+		for _, item := range utxos {
+			if !c.isValidUTXO(item.ScriptPubKey) {
 				continue
 			}
+			if item.Confirmations == 0 {
+				// pending tx in mempool, only count sends from base
+				if !c.isSelfTransaction(item.TxID) && !c.isFromBase(item.TxID) {
+					continue
+				}
+			}
+			total += item.Amount
 		}
-		total += item.Amount
 	}
 	totalAmt, err := btcutil.NewAmount(total)
 	if err != nil {
@@ -402,7 +438,7 @@ func (c *Client) OnObservedTxIn(txIn types.TxInItem, blockHeight int64) {
 	if _, err = c.temporalStorage.TrackObservedTx(txIn.Tx); err != nil {
 		c.log.Err(err).Msgf("fail to add hash (%s) to observed tx cache", txIn.Tx)
 	}
-	if c.isAsgardAddress(txIn.Sender) {
+	if c.isBaseAddress(txIn.Sender) {
 		c.log.Debug().Int64("height", blockHeight).Msgf("add hash %s as self transaction", txIn.Tx)
 		blockMeta.AddSelfTransaction(txIn.Tx)
 	} else {
@@ -588,13 +624,16 @@ func (c *Client) FetchMemPool(height int64) (types.TxIn, error) {
 			var txInItem types.TxInItem
 			txInItem, err = c.getTxIn(result, height, true, nil)
 			if err != nil {
+				c.removeFromMemPoolCache(batch[i])
 				c.log.Debug().Err(err).Msg("fail to get TxInItem")
 				continue
 			}
 			if txInItem.IsEmpty() {
+				c.removeFromMemPoolCache(batch[i])
 				continue
 			}
 			if txInItem.Coins.IsEmpty() {
+				c.removeFromMemPoolCache(batch[i])
 				continue
 			}
 
@@ -707,7 +746,7 @@ func (c *Client) shouldReportSolvency(height int64) bool {
 	return true
 }
 
-// ReportSolvency reports solvency for all asgard vaults.
+// ReportSolvency reports solvency for all base vaults.
 func (c *Client) ReportSolvency(height int64) error {
 	c.solvencyLock.Lock()
 	defer c.solvencyLock.Unlock()
@@ -716,20 +755,20 @@ func (c *Client) ReportSolvency(height int64) error {
 		return nil
 	}
 
-	// fetch all asgard vaults
-	asgardVaults, err := c.bridge.GetAsgards()
+	// fetch all base vaults
+	baseVaults, err := c.bridge.GetBaseVaults()
 	if err != nil {
-		return fmt.Errorf("fail to get asgards: %w", err)
+		return fmt.Errorf("fail to get baseVaults: %w", err)
 	}
 
 	currentGasFee := cosmos.NewUint(3 * c.cfg.UTXO.EstimatedAverageTxSize * c.lastFeeRate.Load())
 
-	// report insolvent asgard vaults,
+	// report insolvent base vaults,
 	// or else all if the chain is halted and all are solvent
-	chainVaults := asgardVaults[:0]
-	for _, asgard := range asgardVaults {
-		if asgard.HasFundsForChain(c.cfg.ChainID) {
-			chainVaults = append(chainVaults, asgard)
+	chainVaults := baseVaults[:0]
+	for _, base := range baseVaults {
+		if base.HasFundsForChain(c.cfg.ChainID) {
+			chainVaults = append(chainVaults, base)
 		}
 	}
 
@@ -763,7 +802,7 @@ func (c *Client) ReportSolvency(height int64) error {
 	// report that all the chain-specific vaults are solvent.
 	// If there are any insolvent vaults, report only them.
 	// Not reporting both solvent and insolvent vaults is to avoid noise (spam):
-	// Reporting both could halt-and-unhalt SolvencyHalt in the same THOR block
+	// Reporting both could halt-and-unhalt SolvencyHalt in the same Thornado block
 	// (resetting its height), plus making it harder to know at a glance from solvency reports which vaults were insolvent.
 	solvent := false
 	allVaultsProcessed := len(chainVaults) > 0 && processedVaults == len(chainVaults)
@@ -774,7 +813,7 @@ func (c *Client) ReportSolvency(height int64) error {
 
 	for i := range msgs {
 		c.log.Info().
-			Stringer("asgard", msgs[i].PubKey).
+			Stringer("base", msgs[i].PubKey).
 			Interface("coins", msgs[i].Coins).
 			Bool("solvent", solvent).
 			Msg("reporting solvency")

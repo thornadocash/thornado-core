@@ -15,7 +15,6 @@ const (
 	CodeBadVersion             uint32 = 101
 	CodeInvalidMessage         uint32 = 102
 	CodeInvalidVault           uint32 = 104
-	CodeInvalidMemo            uint32 = 105
 	CodeWithdrawFailValidation uint32 = 130
 	CodeFailAddOutboundTx      uint32 = 131
 	CodeFailSaveEvent          uint32 = 132
@@ -30,7 +29,6 @@ var (
 	errInvalidVersion         = fmt.Errorf("bad version")
 	errBadVersion             = errorsmod.Register(DefaultCodespace, CodeBadVersion, errInvalidVersion.Error())
 	errInvalidMessage         = errorsmod.Register(DefaultCodespace, CodeInvalidMessage, "invalid message")
-	errInvalidMemo            = errorsmod.Register(DefaultCodespace, CodeInvalidMemo, "invalid memo")
 	errFailSaveEvent          = errorsmod.Register(DefaultCodespace, CodeFailSaveEvent, "fail to save add events")
 	errFailAddOutboundTx      = errorsmod.Register(DefaultCodespace, CodeFailAddOutboundTx, "prepare outbound tx not successful")
 	errWithdrawFailValidation = errorsmod.Register(DefaultCodespace, CodeWithdrawFailValidation, "fail to validate withdraw")

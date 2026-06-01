@@ -67,7 +67,7 @@ type pipeline struct {
 
 // NewPipeline creates a new pipeline instance using the provided concurrency for active
 // and retiring vault status semaphores. The inactive vault status semaphore will always
-// be 1 - allowing only 1 concurrent signing routine for inactive vault refunds.
+// be 1 - allowing only 1 concurrent signing routine for inactive vault recovery.
 func newPipeline(concurrency int64) (*pipeline, error) {
 	log.Info().Int64("concurrency", concurrency).Msg("creating new signer pipeline")
 
@@ -102,10 +102,18 @@ func newPipeline(concurrency int64) (*pipeline, error) {
 // status semaphore and vault/chain lock when they are complete.
 func (p *pipeline) SpawnSignings(s pipelineSigner, bridge thornadoclient.ThornadoBridge) {
 	allItems := s.storageList()
+	blockHeight, err := bridge.GetBlockHeight()
+	if err != nil {
+		log.Err(err).Msg("failed to get current block height for signer pipeline")
+		return
+	}
 
 	// gather all vault/chain combinations with an out item in retry
 	retryItems := make(map[vaultChain][]TxOutStoreItem)
 	for _, item := range allItems {
+		if item.DeferredUntilHeight > blockHeight {
+			continue
+		}
 		if item.Round7Retry || len(item.SignedTx) > 0 {
 			vc := vaultChain{item.TxOutItem.VaultPubKey, item.TxOutItem.Chain}
 			retryItems[vc] = append(retryItems[vc], item)
@@ -131,6 +139,9 @@ func (p *pipeline) SpawnSignings(s pipelineSigner, bridge thornadoclient.Thornad
 
 	// add all items from vault/chains with no items in retry
 	for _, item := range allItems {
+		if item.DeferredUntilHeight > blockHeight {
+			continue
+		}
 		vc := vaultChain{item.TxOutItem.VaultPubKey, item.TxOutItem.Chain}
 		if _, ok := retryItems[vc]; !ok {
 			itemsToSign = append(itemsToSign, item)

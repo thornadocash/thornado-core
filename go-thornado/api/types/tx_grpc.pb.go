@@ -19,37 +19,37 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Msg_Ban_FullMethodName                       = "/types.Msg/Ban"
-	Msg_Deposit_FullMethodName                   = "/types.Msg/Deposit"
-	Msg_ErrataTx_FullMethodName                  = "/types.Msg/ErrataTx"
-	Msg_ErrataTxQuorum_FullMethodName            = "/types.Msg/ErrataTxQuorum"
-	Msg_Config_FullMethodName                    = "/types.Msg/Config"
-	Msg_NetworkFee_FullMethodName                = "/types.Msg/NetworkFee"
-	Msg_NetworkFeeQuorum_FullMethodName          = "/types.Msg/NetworkFeeQuorum"
-	Msg_NodePauseChain_FullMethodName            = "/types.Msg/NodePauseChain"
-	Msg_ObservedTxIn_FullMethodName              = "/types.Msg/ObservedTxIn"
-	Msg_ObservedTxOut_FullMethodName             = "/types.Msg/ObservedTxOut"
-	Msg_ObservedTxQuorum_FullMethodName          = "/types.Msg/ObservedTxQuorum"
-	Msg_ThorSend_FullMethodName                  = "/types.Msg/ThorSend"
-	Msg_SetIPAddress_FullMethodName              = "/types.Msg/SetIPAddress"
-	Msg_SetNodeKeys_FullMethodName               = "/types.Msg/SetNodeKeys"
-	Msg_Solvency_FullMethodName                  = "/types.Msg/Solvency"
-	Msg_SolvencyQuorum_FullMethodName            = "/types.Msg/SolvencyQuorum"
-	Msg_TssKeysignFail_FullMethodName            = "/types.Msg/TssKeysignFail"
-	Msg_TssPool_FullMethodName                   = "/types.Msg/TssPool"
-	Msg_SetVersion_FullMethodName                = "/types.Msg/SetVersion"
-	Msg_ProposeUpgrade_FullMethodName            = "/types.Msg/ProposeUpgrade"
-	Msg_ApproveUpgrade_FullMethodName            = "/types.Msg/ApproveUpgrade"
-	Msg_RejectUpgrade_FullMethodName             = "/types.Msg/RejectUpgrade"
-	Msg_PriceFeedQuorumBatch_FullMethodName      = "/types.Msg/PriceFeedQuorumBatch"
-	Msg_ShielderRegisterPow_FullMethodName       = "/types.Msg/ShielderRegisterPow"
-	Msg_ShielderPostCommitments_FullMethodName   = "/types.Msg/ShielderPostCommitments"
-	Msg_ShielderRequestWithdrawal_FullMethodName = "/types.Msg/ShielderRequestWithdrawal"
-	Msg_ShielderSplitFees_FullMethodName         = "/types.Msg/ShielderSplitFees"
-	Msg_NodeSlotAuctionCreate_FullMethodName     = "/types.Msg/NodeSlotAuctionCreate"
-	Msg_NodeSlotAuctionBidPow_FullMethodName     = "/types.Msg/NodeSlotAuctionBidPow"
-	Msg_NodeSlotAuctionSelectBid_FullMethodName  = "/types.Msg/NodeSlotAuctionSelectBid"
-	Msg_NodeSlotAuctionSplit_FullMethodName      = "/types.Msg/NodeSlotAuctionSplit"
+	Msg_Ban_FullMethodName                      = "/types.Msg/Ban"
+	Msg_Deposit_FullMethodName                  = "/types.Msg/Deposit"
+	Msg_ErrataTx_FullMethodName                 = "/types.Msg/ErrataTx"
+	Msg_ErrataTxQuorum_FullMethodName           = "/types.Msg/ErrataTxQuorum"
+	Msg_Config_FullMethodName                   = "/types.Msg/Config"
+	Msg_NetworkFee_FullMethodName               = "/types.Msg/NetworkFee"
+	Msg_NetworkFeeQuorum_FullMethodName         = "/types.Msg/NetworkFeeQuorum"
+	Msg_NodePauseChain_FullMethodName           = "/types.Msg/NodePauseChain"
+	Msg_ObservedTxIn_FullMethodName             = "/types.Msg/ObservedTxIn"
+	Msg_ObservedTxOut_FullMethodName            = "/types.Msg/ObservedTxOut"
+	Msg_ObservedTxQuorum_FullMethodName         = "/types.Msg/ObservedTxQuorum"
+	Msg_ThorSend_FullMethodName                 = "/types.Msg/ThorSend"
+	Msg_SetIPAddress_FullMethodName             = "/types.Msg/SetIPAddress"
+	Msg_SetNodeKeys_FullMethodName              = "/types.Msg/SetNodeKeys"
+	Msg_Solvency_FullMethodName                 = "/types.Msg/Solvency"
+	Msg_SolvencyQuorum_FullMethodName           = "/types.Msg/SolvencyQuorum"
+	Msg_TssKeysignFail_FullMethodName           = "/types.Msg/TssKeysignFail"
+	Msg_TssPool_FullMethodName                  = "/types.Msg/TssPool"
+	Msg_SetVersion_FullMethodName               = "/types.Msg/SetVersion"
+	Msg_ProposeUpgrade_FullMethodName           = "/types.Msg/ProposeUpgrade"
+	Msg_ApproveUpgrade_FullMethodName           = "/types.Msg/ApproveUpgrade"
+	Msg_RejectUpgrade_FullMethodName            = "/types.Msg/RejectUpgrade"
+	Msg_PriceFeedQuorumBatch_FullMethodName     = "/types.Msg/PriceFeedQuorumBatch"
+	Msg_DepositRequestPow_FullMethodName        = "/types.Msg/DepositRequestPow"
+	Msg_ShielderSplit_FullMethodName            = "/types.Msg/ShielderSplit"
+	Msg_ShielderRedeem_FullMethodName           = "/types.Msg/ShielderRedeem"
+	Msg_ShielderSplitFees_FullMethodName        = "/types.Msg/ShielderSplitFees"
+	Msg_NodeSlotAuctionCreate_FullMethodName    = "/types.Msg/NodeSlotAuctionCreate"
+	Msg_NodeSlotAuctionBidPow_FullMethodName    = "/types.Msg/NodeSlotAuctionBidPow"
+	Msg_NodeSlotAuctionSelectBid_FullMethodName = "/types.Msg/NodeSlotAuctionSelectBid"
+	Msg_NodeSlotAuctionSplit_FullMethodName     = "/types.Msg/NodeSlotAuctionSplit"
 )
 
 // MsgClient is the client API for Msg service.
@@ -79,14 +79,14 @@ type MsgClient interface {
 	ApproveUpgrade(ctx context.Context, in *MsgApproveUpgrade, opts ...grpc.CallOption) (*MsgEmpty, error)
 	RejectUpgrade(ctx context.Context, in *MsgRejectUpgrade, opts ...grpc.CallOption) (*MsgEmpty, error)
 	PriceFeedQuorumBatch(ctx context.Context, in *MsgPriceFeedQuorumBatch, opts ...grpc.CallOption) (*MsgEmpty, error)
-	ShielderRegisterPow(ctx context.Context, in *MsgShielderRegisterPow, opts ...grpc.CallOption) (*MsgShielderRegisterPowResponse, error)
-	ShielderPostCommitments(ctx context.Context, in *MsgShielderPostCommitments, opts ...grpc.CallOption) (*MsgShielderPostCommitmentsResponse, error)
-	ShielderRequestWithdrawal(ctx context.Context, in *MsgShielderRequestWithdrawal, opts ...grpc.CallOption) (*MsgShielderRequestWithdrawalResponse, error)
+	DepositRequestPow(ctx context.Context, in *MsgDepositRequestPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error)
+	ShielderSplit(ctx context.Context, in *MsgShielderSplit, opts ...grpc.CallOption) (*MsgShielderSplitResponse, error)
+	ShielderRedeem(ctx context.Context, in *MsgShielderRedeem, opts ...grpc.CallOption) (*MsgShielderRedeemResponse, error)
 	ShielderSplitFees(ctx context.Context, in *MsgShielderSplitFees, opts ...grpc.CallOption) (*MsgShielderSplitFeesResponse, error)
 	NodeSlotAuctionCreate(ctx context.Context, in *MsgNodeSlotAuctionCreate, opts ...grpc.CallOption) (*MsgNodeSlotAuctionCreateResponse, error)
-	NodeSlotAuctionBidPow(ctx context.Context, in *MsgNodeSlotAuctionBidPow, opts ...grpc.CallOption) (*MsgShielderRegisterPowResponse, error)
+	NodeSlotAuctionBidPow(ctx context.Context, in *MsgNodeSlotAuctionBidPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error)
 	NodeSlotAuctionSelectBid(ctx context.Context, in *MsgNodeSlotAuctionSelectBid, opts ...grpc.CallOption) (*MsgEmpty, error)
-	NodeSlotAuctionSplit(ctx context.Context, in *MsgNodeSlotAuctionSplit, opts ...grpc.CallOption) (*MsgShielderPostCommitmentsResponse, error)
+	NodeSlotAuctionSplit(ctx context.Context, in *MsgNodeSlotAuctionSplit, opts ...grpc.CallOption) (*MsgShielderSplitResponse, error)
 }
 
 type msgClient struct {
@@ -304,27 +304,27 @@ func (c *msgClient) PriceFeedQuorumBatch(ctx context.Context, in *MsgPriceFeedQu
 	return out, nil
 }
 
-func (c *msgClient) ShielderRegisterPow(ctx context.Context, in *MsgShielderRegisterPow, opts ...grpc.CallOption) (*MsgShielderRegisterPowResponse, error) {
-	out := new(MsgShielderRegisterPowResponse)
-	err := c.cc.Invoke(ctx, Msg_ShielderRegisterPow_FullMethodName, in, out, opts...)
+func (c *msgClient) DepositRequestPow(ctx context.Context, in *MsgDepositRequestPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error) {
+	out := new(MsgDepositRequestPowResponse)
+	err := c.cc.Invoke(ctx, Msg_DepositRequestPow_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *msgClient) ShielderPostCommitments(ctx context.Context, in *MsgShielderPostCommitments, opts ...grpc.CallOption) (*MsgShielderPostCommitmentsResponse, error) {
-	out := new(MsgShielderPostCommitmentsResponse)
-	err := c.cc.Invoke(ctx, Msg_ShielderPostCommitments_FullMethodName, in, out, opts...)
+func (c *msgClient) ShielderSplit(ctx context.Context, in *MsgShielderSplit, opts ...grpc.CallOption) (*MsgShielderSplitResponse, error) {
+	out := new(MsgShielderSplitResponse)
+	err := c.cc.Invoke(ctx, Msg_ShielderSplit_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *msgClient) ShielderRequestWithdrawal(ctx context.Context, in *MsgShielderRequestWithdrawal, opts ...grpc.CallOption) (*MsgShielderRequestWithdrawalResponse, error) {
-	out := new(MsgShielderRequestWithdrawalResponse)
-	err := c.cc.Invoke(ctx, Msg_ShielderRequestWithdrawal_FullMethodName, in, out, opts...)
+func (c *msgClient) ShielderRedeem(ctx context.Context, in *MsgShielderRedeem, opts ...grpc.CallOption) (*MsgShielderRedeemResponse, error) {
+	out := new(MsgShielderRedeemResponse)
+	err := c.cc.Invoke(ctx, Msg_ShielderRedeem_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -349,8 +349,8 @@ func (c *msgClient) NodeSlotAuctionCreate(ctx context.Context, in *MsgNodeSlotAu
 	return out, nil
 }
 
-func (c *msgClient) NodeSlotAuctionBidPow(ctx context.Context, in *MsgNodeSlotAuctionBidPow, opts ...grpc.CallOption) (*MsgShielderRegisterPowResponse, error) {
-	out := new(MsgShielderRegisterPowResponse)
+func (c *msgClient) NodeSlotAuctionBidPow(ctx context.Context, in *MsgNodeSlotAuctionBidPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error) {
+	out := new(MsgDepositRequestPowResponse)
 	err := c.cc.Invoke(ctx, Msg_NodeSlotAuctionBidPow_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -367,8 +367,8 @@ func (c *msgClient) NodeSlotAuctionSelectBid(ctx context.Context, in *MsgNodeSlo
 	return out, nil
 }
 
-func (c *msgClient) NodeSlotAuctionSplit(ctx context.Context, in *MsgNodeSlotAuctionSplit, opts ...grpc.CallOption) (*MsgShielderPostCommitmentsResponse, error) {
-	out := new(MsgShielderPostCommitmentsResponse)
+func (c *msgClient) NodeSlotAuctionSplit(ctx context.Context, in *MsgNodeSlotAuctionSplit, opts ...grpc.CallOption) (*MsgShielderSplitResponse, error) {
+	out := new(MsgShielderSplitResponse)
 	err := c.cc.Invoke(ctx, Msg_NodeSlotAuctionSplit_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -403,14 +403,14 @@ type MsgServer interface {
 	ApproveUpgrade(context.Context, *MsgApproveUpgrade) (*MsgEmpty, error)
 	RejectUpgrade(context.Context, *MsgRejectUpgrade) (*MsgEmpty, error)
 	PriceFeedQuorumBatch(context.Context, *MsgPriceFeedQuorumBatch) (*MsgEmpty, error)
-	ShielderRegisterPow(context.Context, *MsgShielderRegisterPow) (*MsgShielderRegisterPowResponse, error)
-	ShielderPostCommitments(context.Context, *MsgShielderPostCommitments) (*MsgShielderPostCommitmentsResponse, error)
-	ShielderRequestWithdrawal(context.Context, *MsgShielderRequestWithdrawal) (*MsgShielderRequestWithdrawalResponse, error)
+	DepositRequestPow(context.Context, *MsgDepositRequestPow) (*MsgDepositRequestPowResponse, error)
+	ShielderSplit(context.Context, *MsgShielderSplit) (*MsgShielderSplitResponse, error)
+	ShielderRedeem(context.Context, *MsgShielderRedeem) (*MsgShielderRedeemResponse, error)
 	ShielderSplitFees(context.Context, *MsgShielderSplitFees) (*MsgShielderSplitFeesResponse, error)
 	NodeSlotAuctionCreate(context.Context, *MsgNodeSlotAuctionCreate) (*MsgNodeSlotAuctionCreateResponse, error)
-	NodeSlotAuctionBidPow(context.Context, *MsgNodeSlotAuctionBidPow) (*MsgShielderRegisterPowResponse, error)
+	NodeSlotAuctionBidPow(context.Context, *MsgNodeSlotAuctionBidPow) (*MsgDepositRequestPowResponse, error)
 	NodeSlotAuctionSelectBid(context.Context, *MsgNodeSlotAuctionSelectBid) (*MsgEmpty, error)
-	NodeSlotAuctionSplit(context.Context, *MsgNodeSlotAuctionSplit) (*MsgShielderPostCommitmentsResponse, error)
+	NodeSlotAuctionSplit(context.Context, *MsgNodeSlotAuctionSplit) (*MsgShielderSplitResponse, error)
 	mustEmbedUnimplementedMsgServer()
 }
 
@@ -487,14 +487,14 @@ func (UnimplementedMsgServer) RejectUpgrade(context.Context, *MsgRejectUpgrade) 
 func (UnimplementedMsgServer) PriceFeedQuorumBatch(context.Context, *MsgPriceFeedQuorumBatch) (*MsgEmpty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PriceFeedQuorumBatch not implemented")
 }
-func (UnimplementedMsgServer) ShielderRegisterPow(context.Context, *MsgShielderRegisterPow) (*MsgShielderRegisterPowResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShielderRegisterPow not implemented")
+func (UnimplementedMsgServer) DepositRequestPow(context.Context, *MsgDepositRequestPow) (*MsgDepositRequestPowResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DepositRequestPow not implemented")
 }
-func (UnimplementedMsgServer) ShielderPostCommitments(context.Context, *MsgShielderPostCommitments) (*MsgShielderPostCommitmentsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShielderPostCommitments not implemented")
+func (UnimplementedMsgServer) ShielderSplit(context.Context, *MsgShielderSplit) (*MsgShielderSplitResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShielderSplit not implemented")
 }
-func (UnimplementedMsgServer) ShielderRequestWithdrawal(context.Context, *MsgShielderRequestWithdrawal) (*MsgShielderRequestWithdrawalResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ShielderRequestWithdrawal not implemented")
+func (UnimplementedMsgServer) ShielderRedeem(context.Context, *MsgShielderRedeem) (*MsgShielderRedeemResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShielderRedeem not implemented")
 }
 func (UnimplementedMsgServer) ShielderSplitFees(context.Context, *MsgShielderSplitFees) (*MsgShielderSplitFeesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderSplitFees not implemented")
@@ -502,13 +502,13 @@ func (UnimplementedMsgServer) ShielderSplitFees(context.Context, *MsgShielderSpl
 func (UnimplementedMsgServer) NodeSlotAuctionCreate(context.Context, *MsgNodeSlotAuctionCreate) (*MsgNodeSlotAuctionCreateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NodeSlotAuctionCreate not implemented")
 }
-func (UnimplementedMsgServer) NodeSlotAuctionBidPow(context.Context, *MsgNodeSlotAuctionBidPow) (*MsgShielderRegisterPowResponse, error) {
+func (UnimplementedMsgServer) NodeSlotAuctionBidPow(context.Context, *MsgNodeSlotAuctionBidPow) (*MsgDepositRequestPowResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NodeSlotAuctionBidPow not implemented")
 }
 func (UnimplementedMsgServer) NodeSlotAuctionSelectBid(context.Context, *MsgNodeSlotAuctionSelectBid) (*MsgEmpty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NodeSlotAuctionSelectBid not implemented")
 }
-func (UnimplementedMsgServer) NodeSlotAuctionSplit(context.Context, *MsgNodeSlotAuctionSplit) (*MsgShielderPostCommitmentsResponse, error) {
+func (UnimplementedMsgServer) NodeSlotAuctionSplit(context.Context, *MsgNodeSlotAuctionSplit) (*MsgShielderSplitResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NodeSlotAuctionSplit not implemented")
 }
 func (UnimplementedMsgServer) mustEmbedUnimplementedMsgServer() {}
@@ -938,56 +938,56 @@ func _Msg_PriceFeedQuorumBatch_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Msg_ShielderRegisterPow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgShielderRegisterPow)
+func _Msg_DepositRequestPow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgDepositRequestPow)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MsgServer).ShielderRegisterPow(ctx, in)
+		return srv.(MsgServer).DepositRequestPow(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Msg_ShielderRegisterPow_FullMethodName,
+		FullMethod: Msg_DepositRequestPow_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).ShielderRegisterPow(ctx, req.(*MsgShielderRegisterPow))
+		return srv.(MsgServer).DepositRequestPow(ctx, req.(*MsgDepositRequestPow))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Msg_ShielderPostCommitments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgShielderPostCommitments)
+func _Msg_ShielderSplit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgShielderSplit)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MsgServer).ShielderPostCommitments(ctx, in)
+		return srv.(MsgServer).ShielderSplit(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Msg_ShielderPostCommitments_FullMethodName,
+		FullMethod: Msg_ShielderSplit_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).ShielderPostCommitments(ctx, req.(*MsgShielderPostCommitments))
+		return srv.(MsgServer).ShielderSplit(ctx, req.(*MsgShielderSplit))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Msg_ShielderRequestWithdrawal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgShielderRequestWithdrawal)
+func _Msg_ShielderRedeem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgShielderRedeem)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MsgServer).ShielderRequestWithdrawal(ctx, in)
+		return srv.(MsgServer).ShielderRedeem(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Msg_ShielderRequestWithdrawal_FullMethodName,
+		FullMethod: Msg_ShielderRedeem_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).ShielderRequestWithdrawal(ctx, req.(*MsgShielderRequestWithdrawal))
+		return srv.(MsgServer).ShielderRedeem(ctx, req.(*MsgShielderRedeem))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1182,16 +1182,16 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Msg_PriceFeedQuorumBatch_Handler,
 		},
 		{
-			MethodName: "ShielderRegisterPow",
-			Handler:    _Msg_ShielderRegisterPow_Handler,
+			MethodName: "DepositRequestPow",
+			Handler:    _Msg_DepositRequestPow_Handler,
 		},
 		{
-			MethodName: "ShielderPostCommitments",
-			Handler:    _Msg_ShielderPostCommitments_Handler,
+			MethodName: "ShielderSplit",
+			Handler:    _Msg_ShielderSplit_Handler,
 		},
 		{
-			MethodName: "ShielderRequestWithdrawal",
-			Handler:    _Msg_ShielderRequestWithdrawal_Handler,
+			MethodName: "ShielderRedeem",
+			Handler:    _Msg_ShielderRedeem_Handler,
 		},
 		{
 			MethodName: "ShielderSplitFees",

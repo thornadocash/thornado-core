@@ -110,7 +110,7 @@ func (k KVStore) RemoveLowBondNodeAccounts(ctx cosmos.Context) error {
 				return dbError(ctx, "", fmt.Errorf("fail to parse bond address(%s)", na.BondAddress))
 			}
 
-			coin := common.NewCoin(common.RuneAsset(), na.Bond)
+			coin := common.NewCoin(common.BTCAsset, na.Bond)
 			if err = k.SendFromModuleToAccount(ctx, BondName, to, common.NewCoins(coin)); err != nil {
 				ctx.Logger().Error("failed to return bond pool coins", "error", err)
 				continue
@@ -248,7 +248,7 @@ func (k KVStore) SetNodeAccount(ctx cosmos.Context, na NodeAccount) error {
 
 // EnsureNodeKeysUnique check the given consensus pubkey and pubkey set against all the the node account
 // return an error when it is overlap with any existing account
-func (k KVStore) EnsureNodeKeysUnique(ctx cosmos.Context, consensusPubKey string, pubKeys common.PubKeySet) error {
+func (k KVStore) EnsureNodeKeysUnique(ctx cosmos.Context, signer cosmos.AccAddress, consensusPubKey string, pubKeys common.PubKeySet) error {
 	if strings.TrimSpace(consensusPubKey) == "" {
 		return dbError(ctx, "", errors.New("Node Consensus Key cannot be empty"))
 	}
@@ -262,6 +262,9 @@ func (k KVStore) EnsureNodeKeysUnique(ctx cosmos.Context, consensusPubKey string
 		var na NodeAccount
 		if err := k.cdc.Unmarshal(iter.Value(), &na); err != nil {
 			return dbError(ctx, "Unmarshal: node account", err)
+		}
+		if na.NodeAddress.Equals(signer) {
+			continue
 		}
 		if na.NodeConsPubKey == consensusPubKey {
 			return dbError(ctx, "", fmt.Errorf("%s already exist", na.NodeConsPubKey))
@@ -362,7 +365,7 @@ func (k KVStore) DecNodeAccountSlashPoints(ctx cosmos.Context, addr cosmos.AccAd
 
 	metricLabels, _ := ctx.Context().Value(constants.CtxMetricLabels).([]metrics.Label)
 	telemetry.IncrCounterWithLabels(
-		[]string{"thornado", "point_slash_refund"},
+		[]string{"thornado", "point_slash_return"},
 		float32(dec),
 		append(
 			metricLabels,

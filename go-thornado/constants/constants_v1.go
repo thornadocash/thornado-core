@@ -5,16 +5,16 @@ func NewConfigValue() *ConfigVals {
 	return &ConfigVals{
 		int64values: map[ConfigName]int64{
 			// Chain
-			Chain_BlocksPerYear:   5256000,
-			Chain_PauseNodeBlocks: 720,
+			Chain_BlockTimeSeconds: 6,
+			Chain_PauseNodeMinutes: 72,
 
 			// BlockSign
 			BlockSign_DoublePenaltyPoints: 1000,
 			BlockSign_MissPenaltyPoints:   1,
 
 			// Churn
-			Churn_IntervalBlocks:      43200,
-			Churn_RetryIntervalBlocks: 720,
+			Churn_IntervalMinutes:      4320,
+			Churn_RetryIntervalMinutes: 72,
 
 			// Config
 			Config_OperationalVotesMin: 3,
@@ -28,14 +28,15 @@ func NewConfigValue() *ConfigVals {
 			BTC_MaxSatsPerVByte:           9765,
 
 			// Deposit
-			Deposit_AmountMinSats:            546,
-			Deposit_PowDifficultyMin:         0,
-			Deposit_PowExpiryBlocks:          0,
-			Deposit_SessionExpiryBlocks:      0,
-			Deposit_SweepRetryIntervalBlocks: 720,
+			Deposit_AmountMinSats:             546,
+			Deposit_PowDifficultyMin:          0,
+			Deposit_PowExpiryMinutes:          0,
+			Deposit_SessionExpiryMinutes:      0,
+			Deposit_SweepRetryIntervalMinutes: 72,
+			Deposit_RefundIfForgottenDays:     30,
 
 			// DoubleSign
-			DoubleSign_MaxAgeBlocks: 24,
+			DoubleSign_MaxAgeMinutes: 3,
 
 			// Halt
 			Halt_ChainGlobal:   0,
@@ -44,19 +45,19 @@ func NewConfigValue() *ConfigVals {
 			Halt_SolvencyCheck: 0,
 
 			// Keygen
-			Keygen_FailJailBlocks:      720 * 6,
-			Keygen_FailPenaltyPoints:   720,
-			Keygen_RetryIntervalBlocks: 0,
+			Keygen_FailJailMinutes:      432,
+			Keygen_FailPenaltyPoints:    720,
+			Keygen_RetryIntervalMinutes: 0,
 
 			// Keysign
-			Keysign_FailJailBlocks:    60,
+			Keysign_FailJailMinutes:   6,
 			Keysign_FailPenaltyPoints: 2,
-			Keysign_PeriodBlocks:      300,
+			Keysign_PeriodMinutes:     30,
 
 			// Node
 			Node_BadPenaltyPointsMin:      100,
 			Node_BadRedline:               3,
-			Node_BFTMin:                   4,
+			Vault_BaseMembersMin:          4,
 			Node_BondSlotIncrementSats:    100_000_000,
 			Node_BondStartAmountSats:      100_000_000,
 			Node_PenaltyChurnOutThreshold: 100,
@@ -66,14 +67,14 @@ func NewConfigValue() *ConfigVals {
 			Node_SetDesired:               100,
 
 			// NodeSale
-			NodeSale_AuctionExpiryBlocksMax: 43200,
-			NodeSale_AuctionExpiryBlocksMin: 1,
-			NodeSale_BidAmountMinSats:       546,
+			NodeSale_AuctionExpiryMaxMinutes: 4320,
+			NodeSale_AuctionExpiryMinMinutes: 1,
+			NodeSale_BidAmountMinSats:        546,
 
 			// Observation
-			Observation_DelayFlexibilityBlocks: 10,
-			Observation_MissPenaltyPoints:      2,
-			Observation_SubmitPenaltyPoints:    1,
+			Observation_DelayFlexibilityMinutes: 1,
+			Observation_MissPenaltyPoints:       2,
+			Observation_SubmitPenaltyPoints:     1,
 
 			// Shielder
 			Shielder_FeeShareScale:     1_000_000_000_000,
@@ -88,13 +89,14 @@ func NewConfigValue() *ConfigVals {
 			TxOut_MaxAttempts:                0,
 			UTXO_MaxSpendCount:               15,
 			Upgrade_ProposalCountMax:         3,
-			Vault_MigrationIntervalBlocks:    360,
+			Vault_MigrationIntervalMinutes:   36,
 			Vault_MigrationRounds:            2,
 			Vault_RetiredRecoveryAttemptsMax: 100,
 
 			// Withdrawal
-			Withdrawal_FeeBasisPoints: 200,
-			Withdrawal_FeeMinSats:     10_000,
+			Withdrawal_FeeBasisPoints:     100,
+			Withdrawal_FeeMinSats:         100_000,
+			Withdrawal_BatchWindowMinutes: 10,
 		},
 		boolValues:   map[ConfigName]bool{},
 		stringValues: map[ConfigName]string{},

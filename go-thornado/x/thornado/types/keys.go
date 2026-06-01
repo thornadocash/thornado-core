@@ -7,8 +7,8 @@ const (
 	DefaultCodespace = ModuleName
 	// ReserveName the module account name to keep reserve
 	ReserveName = "reserve"
-	// AsgardName the module account name to keep asgard fund
-	AsgardName = "asgard"
+	// BaseName the module account name to keep base fund
+	BaseName = "base"
 	// BondName the name of account used to store bond
 	BondName = "bond"
 	// LendingName

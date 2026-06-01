@@ -821,6 +821,96 @@ func (a *DefaultApiService) ThornadoDepositDepositIdGetExecute(r ApiThornadoDepo
 	return localVarHTTPResponse, nil
 }
 
+type ApiThornadoDepositSessionOwnerGetRequest struct {
+	ctx context.Context
+	ApiService *DefaultApiService
+	owner string
+}
+
+func (r ApiThornadoDepositSessionOwnerGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoDepositSessionOwnerGetExecute(r)
+}
+
+/*
+ThornadoDepositSessionOwnerGet Deposit session
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param owner
+ @return ApiThornadoDepositSessionOwnerGetRequest
+*/
+func (a *DefaultApiService) ThornadoDepositSessionOwnerGet(ctx context.Context, owner string) ApiThornadoDepositSessionOwnerGetRequest {
+	return ApiThornadoDepositSessionOwnerGetRequest{
+		ApiService: a,
+		ctx: ctx,
+		owner: owner,
+	}
+}
+
+// Execute executes the request
+func (a *DefaultApiService) ThornadoDepositSessionOwnerGetExecute(r ApiThornadoDepositSessionOwnerGetRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoDepositSessionOwnerGet")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/thornado/deposit/session/{owner}"
+	localVarPath = strings.Replace(localVarPath, "{"+"owner"+"}", url.PathEscape(parameterToString(r.owner, "")), -1)
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
+
 type ApiThornadoFeeEntitlementNodePubKeyGetRequest struct {
 	ctx context.Context
 	ApiService *DefaultApiService
@@ -861,6 +951,92 @@ func (a *DefaultApiService) ThornadoFeeEntitlementNodePubKeyGetExecute(r ApiThor
 
 	localVarPath := localBasePath + "/thornado/fee/entitlement/{node_pub_key}"
 	localVarPath = strings.Replace(localVarPath, "{"+"node_pub_key"+"}", url.PathEscape(parameterToString(r.nodePubKey, "")), -1)
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
+
+type ApiThornadoFeeEntitlementsGetRequest struct {
+	ctx context.Context
+	ApiService *DefaultApiService
+}
+
+func (r ApiThornadoFeeEntitlementsGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoFeeEntitlementsGetExecute(r)
+}
+
+/*
+ThornadoFeeEntitlementsGet Node fee entitlements
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiThornadoFeeEntitlementsGetRequest
+*/
+func (a *DefaultApiService) ThornadoFeeEntitlementsGet(ctx context.Context) ApiThornadoFeeEntitlementsGetRequest {
+	return ApiThornadoFeeEntitlementsGetRequest{
+		ApiService: a,
+		ctx: ctx,
+	}
+}
+
+// Execute executes the request
+func (a *DefaultApiService) ThornadoFeeEntitlementsGetExecute(r ApiThornadoFeeEntitlementsGetRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoFeeEntitlementsGet")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/thornado/fee/entitlements"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -997,6 +1173,284 @@ func (a *DefaultApiService) ThornadoFeesGetExecute(r ApiThornadoFeesGetRequest) 
 	return localVarHTTPResponse, nil
 }
 
+type ApiThornadoKeygenHeightPubKeyGetRequest struct {
+	ctx context.Context
+	ApiService *DefaultApiService
+	height int64
+	pubKey string
+}
+
+func (r ApiThornadoKeygenHeightPubKeyGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoKeygenHeightPubKeyGetExecute(r)
+}
+
+/*
+ThornadoKeygenHeightPubKeyGet Keygen block by vault pubkey
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param height
+ @param pubKey
+ @return ApiThornadoKeygenHeightPubKeyGetRequest
+*/
+func (a *DefaultApiService) ThornadoKeygenHeightPubKeyGet(ctx context.Context, height int64, pubKey string) ApiThornadoKeygenHeightPubKeyGetRequest {
+	return ApiThornadoKeygenHeightPubKeyGetRequest{
+		ApiService: a,
+		ctx: ctx,
+		height: height,
+		pubKey: pubKey,
+	}
+}
+
+// Execute executes the request
+func (a *DefaultApiService) ThornadoKeygenHeightPubKeyGetExecute(r ApiThornadoKeygenHeightPubKeyGetRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoKeygenHeightPubKeyGet")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/thornado/keygen/{height}/{pub_key}"
+	localVarPath = strings.Replace(localVarPath, "{"+"height"+"}", url.PathEscape(parameterToString(r.height, "")), -1)
+	localVarPath = strings.Replace(localVarPath, "{"+"pub_key"+"}", url.PathEscape(parameterToString(r.pubKey, "")), -1)
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
+
+type ApiThornadoKeysignHeightGetRequest struct {
+	ctx context.Context
+	ApiService *DefaultApiService
+	height int64
+}
+
+func (r ApiThornadoKeysignHeightGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoKeysignHeightGetExecute(r)
+}
+
+/*
+ThornadoKeysignHeightGet TxOut keysign items
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param height
+ @return ApiThornadoKeysignHeightGetRequest
+*/
+func (a *DefaultApiService) ThornadoKeysignHeightGet(ctx context.Context, height int64) ApiThornadoKeysignHeightGetRequest {
+	return ApiThornadoKeysignHeightGetRequest{
+		ApiService: a,
+		ctx: ctx,
+		height: height,
+	}
+}
+
+// Execute executes the request
+func (a *DefaultApiService) ThornadoKeysignHeightGetExecute(r ApiThornadoKeysignHeightGetRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoKeysignHeightGet")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/thornado/keysign/{height}"
+	localVarPath = strings.Replace(localVarPath, "{"+"height"+"}", url.PathEscape(parameterToString(r.height, "")), -1)
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
+
+type ApiThornadoKeysignHeightPubKeyGetRequest struct {
+	ctx context.Context
+	ApiService *DefaultApiService
+	height int64
+	pubKey string
+}
+
+func (r ApiThornadoKeysignHeightPubKeyGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoKeysignHeightPubKeyGetExecute(r)
+}
+
+/*
+ThornadoKeysignHeightPubKeyGet TxOut keysign items by vault pubkey
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param height
+ @param pubKey
+ @return ApiThornadoKeysignHeightPubKeyGetRequest
+*/
+func (a *DefaultApiService) ThornadoKeysignHeightPubKeyGet(ctx context.Context, height int64, pubKey string) ApiThornadoKeysignHeightPubKeyGetRequest {
+	return ApiThornadoKeysignHeightPubKeyGetRequest{
+		ApiService: a,
+		ctx: ctx,
+		height: height,
+		pubKey: pubKey,
+	}
+}
+
+// Execute executes the request
+func (a *DefaultApiService) ThornadoKeysignHeightPubKeyGetExecute(r ApiThornadoKeysignHeightPubKeyGetRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoKeysignHeightPubKeyGet")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/thornado/keysign/{height}/{pub_key}"
+	localVarPath = strings.Replace(localVarPath, "{"+"height"+"}", url.PathEscape(parameterToString(r.height, "")), -1)
+	localVarPath = strings.Replace(localVarPath, "{"+"pub_key"+"}", url.PathEscape(parameterToString(r.pubKey, "")), -1)
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
+
 type ApiThornadoLastblockGetRequest struct {
 	ctx context.Context
 	ApiService *DefaultApiService
@@ -1033,6 +1487,448 @@ func (a *DefaultApiService) ThornadoLastblockGetExecute(r ApiThornadoLastblockGe
 	}
 
 	localVarPath := localBasePath + "/thornado/lastblock"
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
+
+type ApiThornadoMetricKeygenPubKeyGetRequest struct {
+	ctx context.Context
+	ApiService *DefaultApiService
+	pubKey string
+}
+
+func (r ApiThornadoMetricKeygenPubKeyGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoMetricKeygenPubKeyGetExecute(r)
+}
+
+/*
+ThornadoMetricKeygenPubKeyGet Keygen metric by vault pubkey
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param pubKey
+ @return ApiThornadoMetricKeygenPubKeyGetRequest
+*/
+func (a *DefaultApiService) ThornadoMetricKeygenPubKeyGet(ctx context.Context, pubKey string) ApiThornadoMetricKeygenPubKeyGetRequest {
+	return ApiThornadoMetricKeygenPubKeyGetRequest{
+		ApiService: a,
+		ctx: ctx,
+		pubKey: pubKey,
+	}
+}
+
+// Execute executes the request
+func (a *DefaultApiService) ThornadoMetricKeygenPubKeyGetExecute(r ApiThornadoMetricKeygenPubKeyGetRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoMetricKeygenPubKeyGet")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/thornado/metric/keygen/{pub_key}"
+	localVarPath = strings.Replace(localVarPath, "{"+"pub_key"+"}", url.PathEscape(parameterToString(r.pubKey, "")), -1)
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
+
+type ApiThornadoMetricsGetRequest struct {
+	ctx context.Context
+	ApiService *DefaultApiService
+}
+
+func (r ApiThornadoMetricsGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoMetricsGetExecute(r)
+}
+
+/*
+ThornadoMetricsGet Keygen and keysign metrics
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiThornadoMetricsGetRequest
+*/
+func (a *DefaultApiService) ThornadoMetricsGet(ctx context.Context) ApiThornadoMetricsGetRequest {
+	return ApiThornadoMetricsGetRequest{
+		ApiService: a,
+		ctx: ctx,
+	}
+}
+
+// Execute executes the request
+func (a *DefaultApiService) ThornadoMetricsGetExecute(r ApiThornadoMetricsGetRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoMetricsGet")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/thornado/metrics"
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
+
+type ApiThornadoNetworkFeeGetRequest struct {
+	ctx context.Context
+	ApiService *DefaultApiService
+}
+
+func (r ApiThornadoNetworkFeeGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoNetworkFeeGetExecute(r)
+}
+
+/*
+ThornadoNetworkFeeGet BTC network fee
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiThornadoNetworkFeeGetRequest
+*/
+func (a *DefaultApiService) ThornadoNetworkFeeGet(ctx context.Context) ApiThornadoNetworkFeeGetRequest {
+	return ApiThornadoNetworkFeeGetRequest{
+		ApiService: a,
+		ctx: ctx,
+	}
+}
+
+// Execute executes the request
+func (a *DefaultApiService) ThornadoNetworkFeeGetExecute(r ApiThornadoNetworkFeeGetRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoNetworkFeeGet")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/thornado/network_fee"
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
+
+type ApiThornadoNodeAddressAddressGetRequest struct {
+	ctx context.Context
+	ApiService *DefaultApiService
+	address string
+}
+
+func (r ApiThornadoNodeAddressAddressGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoNodeAddressAddressGetExecute(r)
+}
+
+/*
+ThornadoNodeAddressAddressGet Node by address
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param address
+ @return ApiThornadoNodeAddressAddressGetRequest
+*/
+func (a *DefaultApiService) ThornadoNodeAddressAddressGet(ctx context.Context, address string) ApiThornadoNodeAddressAddressGetRequest {
+	return ApiThornadoNodeAddressAddressGetRequest{
+		ApiService: a,
+		ctx: ctx,
+		address: address,
+	}
+}
+
+// Execute executes the request
+func (a *DefaultApiService) ThornadoNodeAddressAddressGetExecute(r ApiThornadoNodeAddressAddressGetRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoNodeAddressAddressGet")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/thornado/node/address/{address}"
+	localVarPath = strings.Replace(localVarPath, "{"+"address"+"}", url.PathEscape(parameterToString(r.address, "")), -1)
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
+
+type ApiThornadoNodeAuctionAuctionIdBidsGetRequest struct {
+	ctx context.Context
+	ApiService *DefaultApiService
+	auctionId string
+}
+
+func (r ApiThornadoNodeAuctionAuctionIdBidsGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoNodeAuctionAuctionIdBidsGetExecute(r)
+}
+
+/*
+ThornadoNodeAuctionAuctionIdBidsGet Node slot auction bids
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param auctionId
+ @return ApiThornadoNodeAuctionAuctionIdBidsGetRequest
+*/
+func (a *DefaultApiService) ThornadoNodeAuctionAuctionIdBidsGet(ctx context.Context, auctionId string) ApiThornadoNodeAuctionAuctionIdBidsGetRequest {
+	return ApiThornadoNodeAuctionAuctionIdBidsGetRequest{
+		ApiService: a,
+		ctx: ctx,
+		auctionId: auctionId,
+	}
+}
+
+// Execute executes the request
+func (a *DefaultApiService) ThornadoNodeAuctionAuctionIdBidsGetExecute(r ApiThornadoNodeAuctionAuctionIdBidsGetRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoNodeAuctionAuctionIdBidsGet")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/thornado/node/auction/{auction_id}/bids"
+	localVarPath = strings.Replace(localVarPath, "{"+"auction_id"+"}", url.PathEscape(parameterToString(r.auctionId, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -1173,6 +2069,92 @@ func (a *DefaultApiService) ThornadoNodeAuctionAuctionIdGetExecute(r ApiThornado
 	return localVarHTTPResponse, nil
 }
 
+type ApiThornadoNodeAuctionsGetRequest struct {
+	ctx context.Context
+	ApiService *DefaultApiService
+}
+
+func (r ApiThornadoNodeAuctionsGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoNodeAuctionsGetExecute(r)
+}
+
+/*
+ThornadoNodeAuctionsGet Node slot auctions
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiThornadoNodeAuctionsGetRequest
+*/
+func (a *DefaultApiService) ThornadoNodeAuctionsGet(ctx context.Context) ApiThornadoNodeAuctionsGetRequest {
+	return ApiThornadoNodeAuctionsGetRequest{
+		ApiService: a,
+		ctx: ctx,
+	}
+}
+
+// Execute executes the request
+func (a *DefaultApiService) ThornadoNodeAuctionsGetExecute(r ApiThornadoNodeAuctionsGetRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoNodeAuctionsGet")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/thornado/node/auctions"
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
+
 type ApiThornadoNodeBidBidIdGetRequest struct {
 	ctx context.Context
 	ApiService *DefaultApiService
@@ -1213,6 +2195,268 @@ func (a *DefaultApiService) ThornadoNodeBidBidIdGetExecute(r ApiThornadoNodeBidB
 
 	localVarPath := localBasePath + "/thornado/node/bid/{bid_id}"
 	localVarPath = strings.Replace(localVarPath, "{"+"bid_id"+"}", url.PathEscape(parameterToString(r.bidId, "")), -1)
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
+
+type ApiThornadoNodeMetricsGetRequest struct {
+	ctx context.Context
+	ApiService *DefaultApiService
+}
+
+func (r ApiThornadoNodeMetricsGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoNodeMetricsGetExecute(r)
+}
+
+/*
+ThornadoNodeMetricsGet Node metrics
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiThornadoNodeMetricsGetRequest
+*/
+func (a *DefaultApiService) ThornadoNodeMetricsGet(ctx context.Context) ApiThornadoNodeMetricsGetRequest {
+	return ApiThornadoNodeMetricsGetRequest{
+		ApiService: a,
+		ctx: ctx,
+	}
+}
+
+// Execute executes the request
+func (a *DefaultApiService) ThornadoNodeMetricsGetExecute(r ApiThornadoNodeMetricsGetRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoNodeMetricsGet")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/thornado/node/metrics"
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
+
+type ApiThornadoNodeSlotSlotGetRequest struct {
+	ctx context.Context
+	ApiService *DefaultApiService
+	slot int64
+}
+
+func (r ApiThornadoNodeSlotSlotGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoNodeSlotSlotGetExecute(r)
+}
+
+/*
+ThornadoNodeSlotSlotGet Node slot
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param slot
+ @return ApiThornadoNodeSlotSlotGetRequest
+*/
+func (a *DefaultApiService) ThornadoNodeSlotSlotGet(ctx context.Context, slot int64) ApiThornadoNodeSlotSlotGetRequest {
+	return ApiThornadoNodeSlotSlotGetRequest{
+		ApiService: a,
+		ctx: ctx,
+		slot: slot,
+	}
+}
+
+// Execute executes the request
+func (a *DefaultApiService) ThornadoNodeSlotSlotGetExecute(r ApiThornadoNodeSlotSlotGetRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoNodeSlotSlotGet")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/thornado/node/slot/{slot}"
+	localVarPath = strings.Replace(localVarPath, "{"+"slot"+"}", url.PathEscape(parameterToString(r.slot, "")), -1)
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
+
+type ApiThornadoNodesGetRequest struct {
+	ctx context.Context
+	ApiService *DefaultApiService
+}
+
+func (r ApiThornadoNodesGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoNodesGetExecute(r)
+}
+
+/*
+ThornadoNodesGet Nodes
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiThornadoNodesGetRequest
+*/
+func (a *DefaultApiService) ThornadoNodesGet(ctx context.Context) ApiThornadoNodesGetRequest {
+	return ApiThornadoNodesGetRequest{
+		ApiService: a,
+		ctx: ctx,
+	}
+}
+
+// Execute executes the request
+func (a *DefaultApiService) ThornadoNodesGetExecute(r ApiThornadoNodesGetRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoNodesGet")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/thornado/nodes"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -1349,46 +2593,46 @@ func (a *DefaultApiService) ThornadoPingGetExecute(r ApiThornadoPingGetRequest) 
 	return localVarHTTPResponse, nil
 }
 
-type ApiThornadoSessionOwnerGetRequest struct {
+type ApiThornadoShielderNullifierNullifierHashGetRequest struct {
 	ctx context.Context
 	ApiService *DefaultApiService
-	owner string
+	nullifierHash string
 }
 
-func (r ApiThornadoSessionOwnerGetRequest) Execute() (*http.Response, error) {
-	return r.ApiService.ThornadoSessionOwnerGetExecute(r)
+func (r ApiThornadoShielderNullifierNullifierHashGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoShielderNullifierNullifierHashGetExecute(r)
 }
 
 /*
-ThornadoSessionOwnerGet Deposit session
+ThornadoShielderNullifierNullifierHashGet Shielder nullifier
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @param owner
- @return ApiThornadoSessionOwnerGetRequest
+ @param nullifierHash
+ @return ApiThornadoShielderNullifierNullifierHashGetRequest
 */
-func (a *DefaultApiService) ThornadoSessionOwnerGet(ctx context.Context, owner string) ApiThornadoSessionOwnerGetRequest {
-	return ApiThornadoSessionOwnerGetRequest{
+func (a *DefaultApiService) ThornadoShielderNullifierNullifierHashGet(ctx context.Context, nullifierHash string) ApiThornadoShielderNullifierNullifierHashGetRequest {
+	return ApiThornadoShielderNullifierNullifierHashGetRequest{
 		ApiService: a,
 		ctx: ctx,
-		owner: owner,
+		nullifierHash: nullifierHash,
 	}
 }
 
 // Execute executes the request
-func (a *DefaultApiService) ThornadoSessionOwnerGetExecute(r ApiThornadoSessionOwnerGetRequest) (*http.Response, error) {
+func (a *DefaultApiService) ThornadoShielderNullifierNullifierHashGetExecute(r ApiThornadoShielderNullifierNullifierHashGetRequest) (*http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet
 		localVarPostBody     interface{}
 		formFiles            []formFile
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoSessionOwnerGet")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoShielderNullifierNullifierHashGet")
 	if err != nil {
 		return nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thornado/session/{owner}"
-	localVarPath = strings.Replace(localVarPath, "{"+"owner"+"}", url.PathEscape(parameterToString(r.owner, "")), -1)
+	localVarPath := localBasePath + "/thornado/shielder/nullifier/{nullifier_hash}"
+	localVarPath = strings.Replace(localVarPath, "{"+"nullifier_hash"+"}", url.PathEscape(parameterToString(r.nullifierHash, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -1439,42 +2683,46 @@ func (a *DefaultApiService) ThornadoSessionOwnerGetExecute(r ApiThornadoSessionO
 	return localVarHTTPResponse, nil
 }
 
-type ApiThornadoTssKeygenGetRequest struct {
+type ApiThornadoShielderRedeemQuoteAmountSatsGetRequest struct {
 	ctx context.Context
 	ApiService *DefaultApiService
+	amountSats int64
 }
 
-func (r ApiThornadoTssKeygenGetRequest) Execute() (*http.Response, error) {
-	return r.ApiService.ThornadoTssKeygenGetExecute(r)
+func (r ApiThornadoShielderRedeemQuoteAmountSatsGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoShielderRedeemQuoteAmountSatsGetExecute(r)
 }
 
 /*
-ThornadoTssKeygenGet TSS keygen metrics
+ThornadoShielderRedeemQuoteAmountSatsGet Shielder redeem quote
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @return ApiThornadoTssKeygenGetRequest
+ @param amountSats
+ @return ApiThornadoShielderRedeemQuoteAmountSatsGetRequest
 */
-func (a *DefaultApiService) ThornadoTssKeygenGet(ctx context.Context) ApiThornadoTssKeygenGetRequest {
-	return ApiThornadoTssKeygenGetRequest{
+func (a *DefaultApiService) ThornadoShielderRedeemQuoteAmountSatsGet(ctx context.Context, amountSats int64) ApiThornadoShielderRedeemQuoteAmountSatsGetRequest {
+	return ApiThornadoShielderRedeemQuoteAmountSatsGetRequest{
 		ApiService: a,
 		ctx: ctx,
+		amountSats: amountSats,
 	}
 }
 
 // Execute executes the request
-func (a *DefaultApiService) ThornadoTssKeygenGetExecute(r ApiThornadoTssKeygenGetRequest) (*http.Response, error) {
+func (a *DefaultApiService) ThornadoShielderRedeemQuoteAmountSatsGetExecute(r ApiThornadoShielderRedeemQuoteAmountSatsGetRequest) (*http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet
 		localVarPostBody     interface{}
 		formFiles            []formFile
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoTssKeygenGet")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoShielderRedeemQuoteAmountSatsGet")
 	if err != nil {
 		return nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thornado/tss/keygen"
+	localVarPath := localBasePath + "/thornado/shielder/redeem/quote/{amount_sats}"
+	localVarPath = strings.Replace(localVarPath, "{"+"amount_sats"+"}", url.PathEscape(parameterToString(r.amountSats, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
@@ -1525,42 +2773,132 @@ func (a *DefaultApiService) ThornadoTssKeygenGetExecute(r ApiThornadoTssKeygenGe
 	return localVarHTTPResponse, nil
 }
 
-type ApiThornadoTssKeysignGetRequest struct {
+type ApiThornadoShielderRedeemWithdrawalIdGetRequest struct {
 	ctx context.Context
 	ApiService *DefaultApiService
+	withdrawalId string
 }
 
-func (r ApiThornadoTssKeysignGetRequest) Execute() (*http.Response, error) {
-	return r.ApiService.ThornadoTssKeysignGetExecute(r)
+func (r ApiThornadoShielderRedeemWithdrawalIdGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoShielderRedeemWithdrawalIdGetExecute(r)
 }
 
 /*
-ThornadoTssKeysignGet TSS keysign metrics
+ThornadoShielderRedeemWithdrawalIdGet Shielder redeem
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- @return ApiThornadoTssKeysignGetRequest
+ @param withdrawalId
+ @return ApiThornadoShielderRedeemWithdrawalIdGetRequest
 */
-func (a *DefaultApiService) ThornadoTssKeysignGet(ctx context.Context) ApiThornadoTssKeysignGetRequest {
-	return ApiThornadoTssKeysignGetRequest{
+func (a *DefaultApiService) ThornadoShielderRedeemWithdrawalIdGet(ctx context.Context, withdrawalId string) ApiThornadoShielderRedeemWithdrawalIdGetRequest {
+	return ApiThornadoShielderRedeemWithdrawalIdGetRequest{
 		ApiService: a,
 		ctx: ctx,
+		withdrawalId: withdrawalId,
 	}
 }
 
 // Execute executes the request
-func (a *DefaultApiService) ThornadoTssKeysignGetExecute(r ApiThornadoTssKeysignGetRequest) (*http.Response, error) {
+func (a *DefaultApiService) ThornadoShielderRedeemWithdrawalIdGetExecute(r ApiThornadoShielderRedeemWithdrawalIdGetRequest) (*http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet
 		localVarPostBody     interface{}
 		formFiles            []formFile
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoTssKeysignGet")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoShielderRedeemWithdrawalIdGet")
 	if err != nil {
 		return nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thornado/tss/keysign"
+	localVarPath := localBasePath + "/thornado/shielder/redeem/{withdrawal_id}"
+	localVarPath = strings.Replace(localVarPath, "{"+"withdrawal_id"+"}", url.PathEscape(parameterToString(r.withdrawalId, "")), -1)
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+
+	// to determine the Content-Type header
+	localVarHTTPContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHTTPContentType := selectHeaderContentType(localVarHTTPContentTypes)
+	if localVarHTTPContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHTTPContentType
+	}
+
+	// to determine the Accept header
+	localVarHTTPHeaderAccepts := []string{}
+
+	// set Accept header
+	localVarHTTPHeaderAccept := selectHeaderAccept(localVarHTTPHeaderAccepts)
+	if localVarHTTPHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHTTPHeaderAccept
+	}
+	req, err := a.client.prepareRequest(r.ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, formFiles)
+	if err != nil {
+		return nil, err
+	}
+
+	localVarHTTPResponse, err := a.client.callAPI(req)
+	if err != nil || localVarHTTPResponse == nil {
+		return localVarHTTPResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHTTPResponse.Body)
+	localVarHTTPResponse.Body.Close()
+	localVarHTTPResponse.Body = ioutil.NopCloser(bytes.NewBuffer(localVarBody))
+	if err != nil {
+		return localVarHTTPResponse, err
+	}
+
+	if localVarHTTPResponse.StatusCode >= 300 {
+		newErr := &GenericOpenAPIError{
+			body:  localVarBody,
+			error: localVarHTTPResponse.Status,
+		}
+		return localVarHTTPResponse, newErr
+	}
+
+	return localVarHTTPResponse, nil
+}
+
+type ApiThornadoShielderRootsGetRequest struct {
+	ctx context.Context
+	ApiService *DefaultApiService
+}
+
+func (r ApiThornadoShielderRootsGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoShielderRootsGetExecute(r)
+}
+
+/*
+ThornadoShielderRootsGet Shielder roots
+
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiThornadoShielderRootsGetRequest
+*/
+func (a *DefaultApiService) ThornadoShielderRootsGet(ctx context.Context) ApiThornadoShielderRootsGetRequest {
+	return ApiThornadoShielderRootsGetRequest{
+		ApiService: a,
+		ctx: ctx,
+	}
+}
+
+// Execute executes the request
+func (a *DefaultApiService) ThornadoShielderRootsGetExecute(r ApiThornadoShielderRootsGetRequest) (*http.Response, error) {
+	var (
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+	)
+
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoShielderRootsGet")
+	if err != nil {
+		return nil, &GenericOpenAPIError{error: err.Error()}
+	}
+
+	localVarPath := localBasePath + "/thornado/shielder/roots"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

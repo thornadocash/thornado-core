@@ -35,7 +35,7 @@ import (
 func TestPackage(t *testing.T) { TestingT(t) }
 
 func FundModule(c *C, ctx cosmos.Context, k KVStore, name string, amt uint64) {
-	coin := common.NewCoin(common.RuneNative, cosmos.NewUint(amt))
+	coin := common.NewCoin(common.BTCAsset, cosmos.NewUint(amt))
 	err := k.MintToModule(ctx, ModuleName, coin)
 	c.Assert(err, IsNil)
 	err = k.SendFromModuleToModule(ctx, ModuleName, name, common.NewCoins(coin))
@@ -77,7 +77,7 @@ func setupKeeperForTest(c *C) (cosmos.Context, KVStore) {
 		stakingtypes.NotBondedPoolName: {authtypes.Burner, authtypes.Staking},
 		ModuleName:                     {authtypes.Minter, authtypes.Burner},
 		ReserveName:                    {},
-		AsgardName:                     {},
+		BaseName:                       {},
 		TreasuryName:                   {},
 		BondName:                       {authtypes.Staking},
 	}
@@ -111,7 +111,7 @@ func setupKeeperForTest(c *C) (cosmos.Context, KVStore) {
 
 	k := NewKVStore(encodingConfig.Codec, serviceThornado, bk, ak, uk, GetCurrentVersion())
 
-	FundModule(c, ctx, k, AsgardName, 100_000_000*common.One)
+	FundModule(c, ctx, k, BaseName, 100_000_000*common.One)
 
 	return ctx, k
 }
@@ -123,18 +123,18 @@ var _ = Suite(&KeeperTestSuit{})
 func (KeeperTestSuit) TestKeeperVersion(c *C) {
 	ctx, k := setupKeeperForTest(c)
 
-	c.Check(k.GetRuneBalanceOfModule(ctx, AsgardName).Equal(cosmos.NewUint(100000000*common.One)), Equals, true)
-	coinsToSend := common.NewCoins(common.NewCoin(common.RuneNative, cosmos.NewUint(1*common.One)))
-	c.Check(k.SendFromModuleToModule(ctx, AsgardName, BondName, coinsToSend), IsNil)
+	c.Check(k.GetRuneBalanceOfModule(ctx, BaseName).Equal(cosmos.NewUint(100000000*common.One)), Equals, true)
+	coinsToSend := common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(1*common.One)))
+	c.Check(k.SendFromModuleToModule(ctx, BaseName, BondName, coinsToSend), IsNil)
 
 	acct := GetRandomBech32Addr()
-	c.Check(k.SendFromModuleToAccount(ctx, AsgardName, acct, coinsToSend), IsNil)
+	c.Check(k.SendFromModuleToAccount(ctx, BaseName, acct, coinsToSend), IsNil)
 
 	// check get account balance
 	coins := k.GetBalance(ctx, acct)
 	c.Check(coins, HasLen, 1)
 
-	c.Check(k.SendFromAccountToModule(ctx, acct, AsgardName, coinsToSend), IsNil)
+	c.Check(k.SendFromAccountToModule(ctx, acct, BaseName, coinsToSend), IsNil)
 
 	// check no account balance
 	coins = k.GetBalance(ctx, GetRandomBech32Addr())

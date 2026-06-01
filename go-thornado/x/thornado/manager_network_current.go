@@ -38,7 +38,7 @@ func (vm *NetworkMgr) processGenesisSetup(ctx cosmos.Context) error {
 	if ctx.BlockHeight() != genesisBlockHeight {
 		return nil
 	}
-	vaults, err := vm.k.GetAsgardVaults(ctx)
+	vaults, err := vm.k.GetBaseVaults(ctx)
 	if err != nil {
 		return fmt.Errorf("fail to get vaults: %w", err)
 	}
@@ -53,13 +53,18 @@ func (vm *NetworkMgr) processGenesisSetup(ctx cosmos.Context) error {
 	if len(active) == 0 {
 		return errors.New("no active accounts,cannot proceed")
 	}
+	minimumMembers := vm.k.GetConfigInt64(ctx, constants.Vault_BaseMembersMin)
+	if minimumMembers > 0 && len(active) < int(minimumMembers) {
+		ctx.Logger().Info("skip genesis base vault keygen, not enough active nodes", "active", len(active), "minimum", minimumMembers)
+		return nil
+	}
 	if len(active) == 1 {
 		supportChains := common.Chains{
-			common.Thornado,
+			common.BTCChain,
 			common.BTCChain,
 		}
 		pubSet := active[0].PubKeySet
-		vault := NewVaultV2(0, ActiveVault, AsgardVault, pubSet.Secp256k1, supportChains.Strings(), pubSet.Ed25519)
+		vault := NewVaultV2(0, ActiveVault, BaseVault, pubSet.Secp256k1, supportChains.Strings(), pubSet.Ed25519)
 		vault.Membership = common.PubKeys{pubSet.Secp256k1}.Strings()
 		if err := vm.k.SetVault(ctx, vault); err != nil {
 			return fmt.Errorf("fail to save vault: %w", err)
@@ -108,7 +113,7 @@ func (vm *NetworkMgr) calculateWeightedMeanSlip(ctx cosmos.Context, asset common
 	return 0
 }
 
-// EndBlock move funds from retiring asgard vaults
+// EndBlock move funds from retiring base vaults
 func (vm *NetworkMgr) EndBlock(ctx cosmos.Context, mgr Manager) error {
 	if ctx.BlockHeight() == genesisBlockHeight {
 		return vm.processGenesisSetup(ctx)
@@ -125,7 +130,7 @@ func (vm *NetworkMgr) EndBlock(ctx cosmos.Context, mgr Manager) error {
 }
 
 func (vm *NetworkMgr) consolidateActiveBTCVaults(ctx cosmos.Context, mgr Manager) error {
-	vaults, err := vm.k.GetAsgardVaultsByStatus(ctx, ActiveVault)
+	vaults, err := vm.k.GetBaseVaultsByStatus(ctx, ActiveVault)
 	if err != nil {
 		return err
 	}
@@ -150,7 +155,8 @@ func (vm *NetworkMgr) consolidateActiveBTCVaults(ctx cosmos.Context, mgr Manager
 		if err != nil {
 			return fmt.Errorf("fail to get bitcoin consolidate max gas: %w", err)
 		}
-		if coin.Amount.LTE(maxGasCoin.Amount) {
+		consolidateAmount := common.SafeSub(coin.Amount, maxGasCoin.Amount.MulUint64(2))
+		if consolidateAmount.IsZero() {
 			continue
 		}
 		rootAddr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
@@ -166,15 +172,15 @@ func (vm *NetworkMgr) consolidateActiveBTCVaults(ctx cosmos.Context, mgr Manager
 			ToAddress:        rootAddr,
 			VaultPubKey:      vault.PubKey,
 			VaultPubKeyEddsa: vault.PubKeyEddsa,
-			Coin:             common.NewCoin(common.BTCAsset, coin.Amount.Sub(maxGasCoin.Amount)),
+			Coin:             common.NewCoin(common.BTCAsset, consolidateAmount),
 			MaxGas:           common.Gas{maxGasCoin},
 			GasRate:          gasRate,
 			InHash:           common.BlankTxID,
-			ModuleName:       AsgardName,
+			ModuleName:       BaseName,
 			VaultPathIndex:   common.MainVaultPathIndex,
 			TxType:           types.TxOutTypeConsolidate,
 		}
-		if err := mgr.TxOutStore().UnSafeAddTxOutItem(ctx, mgr, item, ctx.BlockHeight()); err != nil {
+		if err := vm.k.AppendTxOut(ctx, ctx.BlockHeight(), item); err != nil {
 			return fmt.Errorf("fail to add bitcoin consolidate txout: %w", err)
 		}
 		vault.InboundTxCount = 0
@@ -186,7 +192,7 @@ func (vm *NetworkMgr) consolidateActiveBTCVaults(ctx cosmos.Context, mgr Manager
 }
 
 func vaultHasPendingTxType(ctx cosmos.Context, k keeper.Keeper, pubkey common.PubKey, txType string) bool {
-	signingPeriod := k.GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)
+	signingPeriod := getConfigDurationBlocks(ctx, k, constants.Keysign_PeriodMinutes)
 	startHeight := ctx.BlockHeight() - signingPeriod
 	if startHeight < 1 {
 		startHeight = 1
@@ -206,30 +212,30 @@ func vaultHasPendingTxType(ctx cosmos.Context, k keeper.Keeper, pubkey common.Pu
 }
 
 func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
-	migrateInterval := vm.k.GetConfigInt64(ctx, constants.Vault_MigrationIntervalBlocks)
+	migrateInterval := getConfigDurationBlocks(ctx, vm.k, constants.Vault_MigrationIntervalMinutes)
 
-	retiring, err := vm.k.GetAsgardVaultsByStatus(ctx, RetiringVault)
+	retiring, err := vm.k.GetBaseVaultsByStatus(ctx, RetiringVault)
 	if err != nil {
 		return err
 	}
 
-	active, err := vm.k.GetAsgardVaultsByStatus(ctx, ActiveVault)
+	active, err := vm.k.GetBaseVaultsByStatus(ctx, ActiveVault)
 	if err != nil {
 		return err
 	}
 
-	// if we have no active asgards to move funds to, don't move funds
+	// if we have no active baseVaults to move funds to, don't move funds
 	if len(active) == 0 {
 		return nil
 	}
-	// if we have no retiring asgards to move funds from, don't do anything further
+	// if we have no retiring baseVaults to move funds from, don't do anything further
 	if len(retiring) == 0 {
 		return nil
 	}
 
 	vaultsAvailableCoins := map[common.PubKey]common.Coins{}
 	for _, vault := range retiring {
-		if vault.LenPendingTxBlockHeights(ctx.BlockHeight(), mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)) > 0 {
+		if vault.LenPendingTxBlockHeights(ctx.BlockHeight(), getConfigDurationBlocks(ctx, mgr.Keeper(), constants.Keysign_PeriodMinutes)) > 0 {
 			ctx.Logger().Info("Skipping the migration of funds while transactions are still pending")
 			// This refers to migrate TxOutItems only.
 			return nil
@@ -241,7 +247,7 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 
 	migrationRounds := vm.k.GetConfigInt64(ctx, constants.Vault_MigrationRounds)
 
-	signingTransactionPeriod := mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)
+	signingTransactionPeriod := getConfigDurationBlocks(ctx, mgr.Keeper(), constants.Keysign_PeriodMinutes)
 	startHeight := ctx.BlockHeight() - signingTransactionPeriod
 	if startHeight < 1 {
 		startHeight = 1
@@ -291,9 +297,9 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 		// move partial funds every 30 minutes
 		if (ctx.BlockHeight()-vault.StatusSince)%migrateInterval == 0 {
 			for _, coin := range availableCoins {
-				// non-native rune assets are no migrated, therefore they are
-				// burned in each churn
-				if coin.IsNative() {
+				// Internal native assets are not migrated. BTC.BTC is an external
+				// L1 asset in Thornado and must migrate between base vaults.
+				if coin.Asset.IsNative() {
 					continue
 				}
 				if coin.Amount.Equal(cosmos.ZeroUint()) {
@@ -328,7 +334,7 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 
 				// GetMostSecure also takes into account migration outbound items.
 				target := vm.k.GetMostSecure(ctx, targetVaults, signingTransactionPeriod)
-				// get address of asgard pubkey
+				// get address of base pubkey
 				var addr common.Address
 				addr, err = target.GetAddress(coin.Asset.GetChain())
 				if err != nil {
@@ -383,6 +389,11 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 				amt = cosmos.RoundToDecimal(amt, coin.Decimals)
 
 				chain := coin.Asset.GetChain()
+				maxGas := common.Gas{}
+				gasRate := vm.k.GetConfigInt64(ctx, constants.BTC_DefaultSatsPerVByte)
+				if nf, err := vm.k.GetNetworkFee(ctx, chain); err == nil && nf.TransactionFeeRate > 0 {
+					gasRate = int64(nf.TransactionFeeRate)
+				}
 
 				// minus gas costs for our transactions
 				gasAsset := chain.GetGasAsset()
@@ -393,6 +404,7 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 						ctx.Logger().Error("fail to get max gas: %w", err)
 						return err
 					}
+					maxGas = common.Gas{gas}
 					// if remainder is less than the gas amount, just send it all now
 					if common.SafeSub(coin.Amount, amt).LTE(gas.Amount) {
 						amt = coin.Amount
@@ -434,12 +446,22 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 						Asset:  coin.Asset,
 						Amount: amt,
 					},
-					Memo:   "",
-					TxType: types.TxOutTypeMigrate,
+					MaxGas:         maxGas,
+					GasRate:        gasRate,
+					VaultPathIndex: common.MainVaultPathIndex,
+					TxType:         types.TxOutTypeMigrate,
 				}
-				ok, err := vm.txOutStore.TryAddTxOutItem(ctx, mgr, toi, cosmos.ZeroUint())
-				if err != nil && !errors.Is(err, ErrNotEnoughToPayFee) {
-					return err
+				ok := false
+				if chain.Equals(common.BTCChain) {
+					if err := vm.k.AppendTxOut(ctx, ctx.BlockHeight(), toi); err != nil {
+						return fmt.Errorf("fail to add bitcoin migration txout: %w", err)
+					}
+					ok = true
+				} else {
+					ok, err = vm.txOutStore.TryAddTxOutItem(ctx, mgr, toi, cosmos.ZeroUint())
+					if err != nil && !errors.Is(err, ErrNotEnoughToPayFee) {
+						return err
+					}
 				}
 				if ok {
 					// Migration scheduling having been successful, add a zero Amount of this Asset to the target ActiveVault
@@ -449,7 +471,7 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 					// since new migrations are skipped when there is a pending outbound (including migrations) from any RetiringVault.
 					active[targetVaultIndex].AddFunds(common.NewCoins(common.NewCoin(coin.Asset, cosmos.ZeroUint())))
 
-					vault.AppendPendingTxBlockHeights(ctx.BlockHeight(), mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_PeriodBlocks))
+					vault.AppendPendingTxBlockHeights(ctx.BlockHeight(), getConfigDurationBlocks(ctx, mgr.Keeper(), constants.Keysign_PeriodMinutes))
 					if err := vm.k.SetVault(ctx, vault); err != nil {
 						return fmt.Errorf("fail to save vault: %w", err)
 					}
@@ -472,11 +494,25 @@ func (vm *NetworkMgr) TriggerKeygen(ctx cosmos.Context, nas NodeAccounts) error 
 		ctx.Logger().Info("churn event skipped due to config has halted churning")
 		return nil
 	}
-	var members []string
-	for i := range nas {
-		members = append(members, nas[i].PubKeySet.Secp256k1.String())
+	minimumMembers := vm.k.GetConfigInt64(ctx, constants.Vault_BaseMembersMin)
+	if minimumMembers > 0 && len(nas) < int(minimumMembers) {
+		ctx.Logger().Info("skip base vault keygen, not enough members", "members", len(nas), "minimum", minimumMembers)
+		return nil
 	}
-	keygen, err := NewKeygen(ctx.BlockHeight(), members, AsgardKeygen)
+	var members []string
+	seenMembers := make(map[string]struct{}, len(nas))
+	for i := range nas {
+		if nas[i].PubKeySet.IsEmpty() {
+			return fmt.Errorf("fail to trigger keygen: node %s has empty pubkey set", nas[i].NodeAddress)
+		}
+		member := nas[i].PubKeySet.Secp256k1.String()
+		if _, ok := seenMembers[member]; ok {
+			return fmt.Errorf("fail to trigger keygen: duplicate secp256k1 pubkey %s", member)
+		}
+		seenMembers[member] = struct{}{}
+		members = append(members, member)
+	}
+	keygen, err := NewKeygen(ctx.BlockHeight(), members, BaseVaultKeygen)
 	if err != nil {
 		return fmt.Errorf("fail to create a new keygen: %w", err)
 	}
@@ -491,7 +527,7 @@ func (vm *NetworkMgr) TriggerKeygen(ctx cosmos.Context, nas NodeAccounts) error 
 
 	// check if we already have a an active vault with the same membership,
 	// skip if we do
-	active, err := vm.k.GetAsgardVaultsByStatus(ctx, ActiveVault)
+	active, err := vm.k.GetBaseVaultsByStatus(ctx, ActiveVault)
 	if err != nil {
 		return fmt.Errorf("fail to get active vaults: %w", err)
 	}
@@ -504,7 +540,7 @@ func (vm *NetworkMgr) TriggerKeygen(ctx cosmos.Context, nas NodeAccounts) error 
 
 	vm.k.SetKeygenBlock(ctx, keygenBlock)
 	// clear the init vault
-	initVaults, err := vm.k.GetAsgardVaultsByStatus(ctx, InitVault)
+	initVaults, err := vm.k.GetBaseVaultsByStatus(ctx, InitVault)
 	if err != nil {
 		ctx.Logger().Error("fail to get init vault", "error", err)
 		return nil
@@ -523,23 +559,23 @@ func (vm *NetworkMgr) TriggerKeygen(ctx cosmos.Context, nas NodeAccounts) error 
 
 // RotateVault update vault to Retiring and new vault to active
 func (vm *NetworkMgr) RotateVault(ctx cosmos.Context, vault Vault) error {
-	active, err := vm.k.GetAsgardVaultsByStatus(ctx, ActiveVault)
+	active, err := vm.k.GetBaseVaultsByStatus(ctx, ActiveVault)
 	if err != nil {
 		return err
 	}
 
 	// find vaults the new vault conflicts with, mark them as inactive
-	for _, asgard := range active {
-		for _, member := range asgard.GetMembership() {
+	for _, base := range active {
+		for _, member := range base.GetMembership() {
 			if vault.Contains(member) {
-				asgard.UpdateStatus(RetiringVault, ctx.BlockHeight())
-				if err := vm.k.SetVault(ctx, asgard); err != nil {
+				base.UpdateStatus(RetiringVault, ctx.BlockHeight())
+				if err := vm.k.SetVault(ctx, base); err != nil {
 					return err
 				}
 
 				ctx.EventManager().EmitEvent(
 					cosmos.NewEvent(EventTypeInactiveVault,
-						cosmos.NewAttribute("set asgard vault to inactive", asgard.PubKey.String())))
+						cosmos.NewAttribute("set base vault to inactive", base.PubKey.String())))
 				break
 			}
 		}
@@ -564,28 +600,28 @@ func (vm *NetworkMgr) RotateVault(ctx cosmos.Context, vault Vault) error {
 
 	ctx.EventManager().EmitEvent(
 		cosmos.NewEvent(EventTypeActiveVault,
-			cosmos.NewAttribute("add new asgard vault", vault.PubKey.String())))
-	if err := vm.cleanupAsgardIndex(ctx); err != nil {
-		ctx.Logger().Error("fail to clean up asgard index", "error", err)
+			cosmos.NewAttribute("add new base vault", vault.PubKey.String())))
+	if err := vm.cleanupBaseIndex(ctx); err != nil {
+		ctx.Logger().Error("fail to clean up base index", "error", err)
 	}
 	return nil
 }
 
-func (vm *NetworkMgr) cleanupAsgardIndex(ctx cosmos.Context) error {
-	asgards, err := vm.k.GetAsgardVaults(ctx)
+func (vm *NetworkMgr) cleanupBaseIndex(ctx cosmos.Context) error {
+	baseVaults, err := vm.k.GetBaseVaults(ctx)
 	if err != nil {
-		return fmt.Errorf("fail to get all asgards,err: %w", err)
+		return fmt.Errorf("fail to get all baseVaults,err: %w", err)
 	}
-	for _, vault := range asgards {
+	for _, vault := range baseVaults {
 		if vault.PubKey.IsEmpty() {
 			continue
 		}
-		if !vault.IsAsgard() {
+		if !vault.IsBase() {
 			continue
 		}
 		if vault.Status == InactiveVault {
-			if err := vm.k.RemoveFromAsgardIndex(ctx, vault.PubKey); err != nil {
-				ctx.Logger().Error("fail to remove inactive asgard from index", "error", err)
+			if err := vm.k.RemoveFromBaseIndex(ctx, vault.PubKey); err != nil {
+				ctx.Logger().Error("fail to remove inactive base from index", "error", err)
 			}
 		}
 	}

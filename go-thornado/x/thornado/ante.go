@@ -18,10 +18,7 @@ import (
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
-const (
-	ContextKeyTxMemo   = "tx_memo"
-	ActiveNodePriority = int64(math.MaxInt64)
-)
+const ActiveNodePriority = int64(math.MaxInt64)
 
 type AnteDecorator struct {
 	keeper keeper.Keeper
@@ -41,10 +38,6 @@ func (ad AnteDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, ne
 	// TODO remove on hard fork, when all signers will be allowed (v47+)
 	if err = ad.rejectInvalidSigners(tx); err != nil {
 		return ctx, err
-	}
-
-	if mTx, ok := tx.(sdk.TxWithMemo); ok {
-		ctx = ctx.WithValue(ContextKeyTxMemo, mTx.GetMemo())
 	}
 
 	// run the message-specific ante for each msg, all must succeed
@@ -164,6 +157,15 @@ func (ad AnteDecorator) anteHandleMessage(ctx sdk.Context, version semver.Versio
 			return ctx, cosmos.ErrUnknownRequest("bank sends are disabled")
 		}
 		return SendAnteHandler(ctx, version, ad.keeper, m)
+	case *types.MsgDepositRequestPow,
+		*types.MsgShielderSplit,
+		*types.MsgShielderRedeem,
+		*types.MsgShielderSplitFees,
+		*types.MsgNodeSlotAuctionCreate,
+		*types.MsgNodeSlotAuctionBidPow,
+		*types.MsgNodeSlotAuctionSelectBid,
+		*types.MsgNodeSlotAuctionSplit:
+		return ctx, nil
 	case *authz.MsgGrant,
 		*authz.MsgRevoke,
 		*authz.MsgExec:

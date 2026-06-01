@@ -39,15 +39,14 @@ func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(&MsgNetworkFee{}, ModuleName+"/MsgNetworkFee", nil)
 	cdc.RegisterConcrete(&MsgNetworkFeeQuorum{}, ModuleName+"/MsgNetworkFeeQuorum", nil)
 	cdc.RegisterConcrete(&MsgMigrate{}, ModuleName+"/MsgMigrate", nil)
-	cdc.RegisterConcrete(&MsgRefundTx{}, ModuleName+"/MsgRefundTx", nil)
 	cdc.RegisterConcrete(&MsgSend{}, ModuleName+"/MsgSend", nil)
 	cdc.RegisterConcrete(&MsgNodePauseChain{}, ModuleName+"/MsgNodePauseChain", nil)
 	cdc.RegisterConcrete(&MsgSolvency{}, ModuleName+"/MsgSolvency", nil)
 	cdc.RegisterConcrete(&MsgSolvencyQuorum{}, ModuleName+"/MsgSolvencyQuorum", nil)
 	cdc.RegisterConcrete(&MsgPriceFeedQuorumBatch{}, ModuleName+"/MsgPriceFeedQuorumBatch", nil)
-	cdc.RegisterConcrete(&MsgShielderRegisterPow{}, ModuleName+"/MsgShielderRegisterPow", nil)
-	cdc.RegisterConcrete(&MsgShielderPostCommitments{}, ModuleName+"/MsgShielderPostCommitments", nil)
-	cdc.RegisterConcrete(&MsgShielderRequestWithdrawal{}, ModuleName+"/MsgShielderRequestWithdrawal", nil)
+	cdc.RegisterConcrete(&MsgDepositRequestPow{}, ModuleName+"/MsgDepositRequestPow", nil)
+	cdc.RegisterConcrete(&MsgShielderSplit{}, ModuleName+"/MsgShielderSplit", nil)
+	cdc.RegisterConcrete(&MsgShielderRedeem{}, ModuleName+"/MsgShielderRedeem", nil)
 	cdc.RegisterConcrete(&MsgShielderSplitFees{}, ModuleName+"/MsgShielderSplitFees", nil)
 	cdc.RegisterConcrete(&MsgNodeSlotAuctionCreate{}, ModuleName+"/MsgNodeSlotAuctionCreate", nil)
 	cdc.RegisterConcrete(&MsgNodeSlotAuctionBidPow{}, ModuleName+"/MsgNodeSlotAuctionBidPow", nil)
@@ -80,15 +79,14 @@ func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		&MsgNetworkFee{},
 		&MsgNetworkFeeQuorum{},
 		&MsgMigrate{},
-		&MsgRefundTx{},
 		&MsgSend{},
 		&MsgNodePauseChain{},
 		&MsgSolvency{},
 		&MsgSolvencyQuorum{},
 		&MsgPriceFeedQuorumBatch{},
-		&MsgShielderRegisterPow{},
-		&MsgShielderPostCommitments{},
-		&MsgShielderRequestWithdrawal{},
+		&MsgDepositRequestPow{},
+		&MsgShielderSplit{},
+		&MsgShielderRedeem{},
 		&MsgShielderSplitFees{},
 		&MsgNodeSlotAuctionCreate{},
 		&MsgNodeSlotAuctionBidPow{},
@@ -123,9 +121,9 @@ func DefineCustomGetSigners(signingOptions *signing.Options) {
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgApproveUpgrade"), MsgApproveUpgradeCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgRejectUpgrade"), MsgRejectUpgradeCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgPriceFeedQuorumBatch"), MsgPriceFeedQuorumBatchCustomGetSigners)
-	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgShielderRegisterPow"), MsgShielderRegisterPowCustomGetSigners)
-	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgShielderPostCommitments"), MsgShielderPostCommitmentsCustomGetSigners)
-	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgShielderRequestWithdrawal"), MsgShielderRequestWithdrawalCustomGetSigners)
+	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgDepositRequestPow"), MsgDepositRequestPowCustomGetSigners)
+	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgShielderSplit"), MsgShielderSplitCustomGetSigners)
+	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgShielderRedeem"), MsgShielderRedeemCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgShielderSplitFees"), MsgShielderSplitFeesCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNodeSlotAuctionCreate"), MsgNodeSlotAuctionCreateCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNodeSlotAuctionBidPow"), MsgNodeSlotAuctionBidPowCustomGetSigners)

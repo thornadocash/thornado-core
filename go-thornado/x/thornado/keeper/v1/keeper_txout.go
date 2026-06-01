@@ -7,6 +7,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/runtime"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
+	"github.com/thornadocash/go-thornado/constants"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 func (k KVStore) setTxOut(ctx cosmos.Context, key []byte, record TxOut) {
@@ -34,13 +36,69 @@ func (k KVStore) getTxOut(ctx cosmos.Context, key []byte, record *TxOut) (bool, 
 
 // AppendTxOut - append the given item to txOut
 func (k KVStore) AppendTxOut(ctx cosmos.Context, height int64, item TxOutItem) error {
+	item.TxType = item.GetTxType()
+	if types.IsBatchableTxOutType(item.TxType) {
+		height, epoch := k.GetTxOutBatch(ctx, height)
+		block, err := k.GetTxOut(ctx, height)
+		if err != nil {
+			return err
+		}
+		block.Epoch = epoch
+		if block.Status == "" {
+			block.Status = TxOutStatusPendingBatch
+		}
+		block.TxArray = append(block.TxArray, item)
+		return k.SetTxOut(ctx, block)
+	}
+
 	block, err := k.GetTxOut(ctx, height)
 	if err != nil {
 		return err
 	}
-	item.TxType = item.GetTxType()
+	if block.Status == "" {
+		block.Status = TxOutStatusPendingSign
+	}
 	block.TxArray = append(block.TxArray, item)
 	return k.SetTxOut(ctx, block)
+}
+
+func (k KVStore) GetTxOutBatch(ctx cosmos.Context, height int64) (int64, uint64) {
+	windowBlocks := constants.MinutesToBlocks(
+		k.GetConfigInt64(ctx, constants.Withdrawal_BatchWindowMinutes),
+		k.GetConfigInt64(ctx, constants.Chain_BlockTimeSeconds),
+	)
+	if windowBlocks <= 0 {
+		return height, 0
+	}
+	origin := k.getTxOutBatchOrigin(ctx, windowBlocks)
+	epoch := uint64((height - origin) / windowBlocks)
+	closeHeight := origin + (int64(epoch)+1)*windowBlocks
+	return closeHeight, epoch
+}
+
+func (k KVStore) getTxOutBatchOrigin(ctx cosmos.Context, windowBlocks int64) int64 {
+	const maxInt64 = int64(^uint64(0) >> 1)
+	origin := maxInt64
+	iterator := k.GetTxOutIterator(ctx)
+	defer iterator.Close()
+
+	for ; iterator.Valid(); iterator.Next() {
+		var txOut TxOut
+		if err := k.cdc.Unmarshal(iterator.Value(), &txOut); err != nil {
+			continue
+		}
+		if txOut.Status == "" {
+			continue
+		}
+		candidate := txOut.Height - (int64(txOut.Epoch)+1)*windowBlocks
+		if candidate < origin {
+			origin = candidate
+		}
+	}
+	if origin == maxInt64 {
+		return ctx.BlockHeight()
+	}
+	return origin
 }
 
 // ClearTxOut - remove the txout of the given height from key value  store
@@ -53,6 +111,9 @@ func (k KVStore) ClearTxOut(ctx cosmos.Context, height int64) error {
 func (k KVStore) SetTxOut(ctx cosmos.Context, blockOut *TxOut) error {
 	if blockOut == nil || blockOut.IsEmpty() {
 		return nil
+	}
+	if blockOut.Status == "" {
+		blockOut.Status = TxOutStatusPendingSign
 	}
 	k.setTxOut(ctx, k.GetKey(prefixTxOut, strconv.FormatInt(blockOut.Height, 10)), *blockOut)
 	return nil

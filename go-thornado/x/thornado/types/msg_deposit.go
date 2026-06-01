@@ -20,10 +20,9 @@ var (
 )
 
 // NewMsgDeposit is a constructor function for NewMsgDeposit
-func NewMsgDeposit(coins common.Coins, memo string, signer cosmos.AccAddress) *MsgDeposit {
+func NewMsgDeposit(coins common.Coins, signer cosmos.AccAddress) *MsgDeposit {
 	return &MsgDeposit{
 		Coins:  coins,
-		Memo:   memo,
 		Signer: signer,
 	}
 }
@@ -40,9 +39,6 @@ func (m *MsgDeposit) ValidateBasic() error {
 		if !coin.IsNative() {
 			return cosmos.ErrUnknownRequest("all coins must be native to Thornado")
 		}
-	}
-	if m.Memo != "" {
-		return cosmos.ErrUnknownRequest("deposit memo is disabled")
 	}
 	if len(m.Salt) > 64 {
 		err := fmt.Errorf("salt must not exceed %d bytes: %d", 64, len(m.Salt))

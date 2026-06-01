@@ -40,22 +40,102 @@ func GetTxCmd() *cobra.Command {
 	cmd.AddCommand(GetCmdNodePauseChain())
 	cmd.AddCommand(GetCmdNodeResumeChain())
 	cmd.AddCommand(GetCmdDeposit())
+	cmd.AddCommand(GetCmdDepositRequestPow())
 	cmd.AddCommand(GetCmdSend())
+	cmd.AddCommand(GetCmdTssPool())
 	cmd.AddCommand(GetCmdShielder())
 	cmd.AddCommand(GetCmdObserveTxIns())
 	cmd.AddCommand(GetCmdObserveTxOuts())
-	for _, subCmd := range cmd.Commands() {
-		flags.AddTxFlagsToCmd(subCmd)
-	}
+	addTxFlagsToCommands(cmd.Commands())
 	return cmd
+}
+
+func GetCmdTssPool() *cobra.Command {
+	return &cobra.Command{
+		Use:   "tss-pool [members-json-or-csv] [pool-pubkey] [pool-pubkey-eddsa] [height] [check-signature]",
+		Short: "submit a successful TSS/FROST keygen result",
+		Args:  cobra.ExactArgs(5),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			members, err := parseStringListArg(args[0])
+			if err != nil {
+				return err
+			}
+			poolPubKey, err := common.NewPubKey(args[1])
+			if err != nil {
+				return fmt.Errorf("invalid pool pubkey: %w", err)
+			}
+			poolPubKeyEddsa, err := common.NewPubKey(args[2])
+			if err != nil {
+				return fmt.Errorf("invalid eddsa pool pubkey: %w", err)
+			}
+			height, err := strconv.ParseInt(args[3], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid keygen height: %w", err)
+			}
+			msg, err := types.NewMsgTssPoolV2(
+				members,
+				poolPubKey,
+				[]byte(args[4]),
+				nil,
+				types.KeygenType_BaseVaultKeygen,
+				height,
+				nil,
+				[]string{"BTC"},
+				clientCtx.GetFromAddress(),
+				1,
+				poolPubKeyEddsa,
+				nil,
+				nil,
+			)
+			if err != nil {
+				return err
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+}
+
+func parseStringListArg(raw string) ([]string, error) {
+	bz, err := readMaybeFile(raw)
+	if err != nil {
+		return nil, err
+	}
+	var values []string
+	if json.Unmarshal(bz, &values) == nil {
+		return values, nil
+	}
+	for _, part := range strings.Split(string(bz), ",") {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			values = append(values, part)
+		}
+	}
+	if len(values) == 0 {
+		return nil, fmt.Errorf("missing values")
+	}
+	return values, nil
+}
+
+func addTxFlagsToCommands(cmds []*cobra.Command) {
+	for _, subCmd := range cmds {
+		flags.AddTxFlagsToCmd(subCmd)
+		addTxFlagsToCommands(subCmd.Commands())
+	}
 }
 
 // GetCmdDeposit command to send a native transaction
 func GetCmdDeposit() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "deposit [amount] [coin] [memo]",
+		Use:   "deposit [amount] [coin]",
 		Short: "sends a deposit transaction",
-		Args:  cobra.ExactArgs(3),
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
@@ -73,7 +153,7 @@ func GetCmdDeposit() *cobra.Command {
 
 			coin := common.NewCoin(asset, cosmos.NewUint(uint64(amt)))
 
-			msg := types.NewMsgDeposit(common.Coins{coin}, args[2], clientCtx.GetFromAddress())
+			msg := types.NewMsgDeposit(common.Coins{coin}, clientCtx.GetFromAddress())
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
@@ -131,7 +211,7 @@ func GetCmdConfig() *cobra.Command {
 				return fmt.Errorf("invalid value (must be an integer): %w", err)
 			}
 
-			msg := types.NewMsgConfig(strings.ToUpper(args[0]), val, clientCtx.GetFromAddress())
+			msg := types.NewMsgConfig(args[0], val, clientCtx.GetFromAddress())
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
@@ -623,8 +703,6 @@ func extractOpenAPIObservedTx(otx openapi.ObservedTx) (*common.ObservedTx, error
 			tx.Tx.Gas[i].Decimals = *coin.Decimals
 		}
 	}
-
-	tx.Tx.Memo = *otx.Tx.Memo
 
 	if otx.Aggregator != nil {
 		tx.Aggregator = *otx.Aggregator

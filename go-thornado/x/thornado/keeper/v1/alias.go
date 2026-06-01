@@ -8,14 +8,14 @@ import (
 const (
 	ModuleName   = types.ModuleName
 	ReserveName  = types.ReserveName
-	AsgardName   = types.AsgardName
+	BaseName     = types.BaseName
 	TreasuryName = types.TreasuryName
 	BondName     = types.BondName
 	LendingName  = types.LendingName
 	StoreKey     = types.StoreKey
 
 	// Vaults
-	AsgardVault   = types.VaultType_AsgardVault
+	BaseVault     = types.VaultType_BaseVault
 	ActiveVault   = types.VaultStatus_ActiveVault
 	InitVault     = types.VaultStatus_InitVault
 	RetiringVault = types.VaultStatus_RetiringVault
@@ -36,8 +36,11 @@ const (
 	BurnSupplyType = types.MintBurnSupplyType_burn
 
 	// Bond type
-	AsgardKeygen = types.KeygenType_AsgardKeygen
-	BondReturned = types.BondType_bond_returned
+	BaseVaultKeygen = types.KeygenType_BaseVaultKeygen
+	BondReturned    = types.BondType_bond_returned
+
+	TxOutStatusPendingBatch = types.TxOutStatusPendingBatch
+	TxOutStatusPendingSign  = types.TxOutStatusPendingSign
 )
 
 var (

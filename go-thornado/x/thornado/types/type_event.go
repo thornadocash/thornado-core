@@ -24,7 +24,6 @@ const (
 	PendingLiquidity                = "pending_liquidity"
 	PoolBalanceChangeEventType      = "pool_balance_change"
 	PoolEventType                   = "pool"
-	RefundEventType                 = "refund"
 	RewardEventType                 = "rewards"
 	ScheduledOutboundEventType      = "scheduled_outbound"
 	SecurityEventType               = "security"
@@ -244,31 +243,6 @@ func (m *EventRewards) Events() (cosmos.Events, error) {
 	return cosmos.Events{evt}, nil
 }
 
-// NewEventRefund create a new EventRefund
-func NewEventRefund(code uint32, reason string, inTx common.Tx, fee common.Fee) *EventRefund {
-	return &EventRefund{
-		Code:   code,
-		Reason: reason,
-		InTx:   inTx,
-		Fee:    fee,
-	}
-}
-
-// Type return reward event type
-func (m *EventRefund) Type() string {
-	return RefundEventType
-}
-
-// Events return events
-func (m *EventRefund) Events() (cosmos.Events, error) {
-	evt := cosmos.NewEvent(m.Type(),
-		cosmos.NewAttribute("code", strconv.FormatUint(uint64(m.Code), 10)),
-		cosmos.NewAttribute("reason", m.Reason),
-	)
-	evt = evt.AppendAttributes(m.InTx.ToAttributes()...)
-	return cosmos.Events{evt}, nil
-}
-
 // NewEventBond create a new Bond Events
 func NewEventBond(amount cosmos.Uint, bondType BondType, txIn common.Tx, nodeAccount *NodeAccount, bondAddress cosmos.AccAddress) *EventBond {
 	return &EventBond{
@@ -387,7 +361,6 @@ func (m *EventScheduledOutbound) Events() (cosmos.Events, error) {
 		cosmos.NewAttribute("coin_asset", m.OutTx.Coin.Asset.String()),
 		cosmos.NewAttribute("coin_amount", m.OutTx.Coin.Amount.String()),
 		cosmos.NewAttribute("coin_decimals", strconv.FormatInt(m.OutTx.Coin.Decimals, 10)),
-		cosmos.NewAttribute("memo", m.OutTx.Memo),
 		cosmos.NewAttribute("gas_rate", strconv.FormatInt(m.OutTx.GasRate, 10)),
 		cosmos.NewAttribute("in_hash", m.OutTx.InHash.String()),
 		cosmos.NewAttribute("out_hash", m.OutTx.OutHash.String()),
@@ -835,13 +808,12 @@ func (m EventOraclePrice) Events() (cosmos.Events, error) {
 }
 
 // NewEventFailedOutboundRecovery create a new EventFailedOutboundRecovery
-func NewEventFailedOutboundRecovery(inTxID common.TxID, coin common.Coin, recoveryType string, destination common.Address, memo string) *EventFailedOutboundRecovery {
+func NewEventFailedOutboundRecovery(inTxID common.TxID, coin common.Coin, recoveryType string, destination common.Address) *EventFailedOutboundRecovery {
 	return &EventFailedOutboundRecovery{
 		InTxID:       inTxID,
 		Coin:         coin,
 		RecoveryType: recoveryType,
 		Destination:  destination,
-		Memo:         memo,
 	}
 }
 
@@ -857,7 +829,6 @@ func (m *EventFailedOutboundRecovery) Events() (cosmos.Events, error) {
 		cosmos.NewAttribute("coin", m.Coin.String()),
 		cosmos.NewAttribute("recovery_type", m.RecoveryType),
 		cosmos.NewAttribute("destination", m.Destination.String()),
-		cosmos.NewAttribute("memo", m.Memo),
 	)
 	return cosmos.Events{evt}, nil
 }

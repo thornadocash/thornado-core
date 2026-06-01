@@ -210,7 +210,7 @@ func (k KVStoreDummy) GetNodeAccountByPubKey(_ cosmos.Context, _ common.PubKey) 
 }
 
 func (k KVStoreDummy) SetNodeAccount(_ cosmos.Context, _ NodeAccount) error { return kaboom }
-func (k KVStoreDummy) EnsureNodeKeysUnique(_ cosmos.Context, _ string, _ common.PubKeySet) error {
+func (k KVStoreDummy) EnsureNodeKeysUnique(_ cosmos.Context, _ cosmos.AccAddress, _ string, _ common.PubKeySet) error {
 	return kaboom
 }
 func (k KVStoreDummy) GetNodeAccountIterator(_ cosmos.Context) cosmos.Iterator { return nil }
@@ -306,16 +306,16 @@ func (k KVStoreDummy) GetShielderNodeBond(_ cosmos.Context, _ string) (types.Shi
 func (k KVStoreDummy) GetShielderNodeBondIterator(_ cosmos.Context) cosmos.Iterator {
 	return NewDummyIterator()
 }
-func (k KVStoreDummy) SetShielderFeePool(_ cosmos.Context, _ types.ShielderFeePool) error {
+func (k KVStoreDummy) SetFeePool(_ cosmos.Context, _ types.FeePool) error {
 	return kaboom
 }
-func (k KVStoreDummy) GetShielderFeePool(_ cosmos.Context) (types.ShielderFeePool, error) {
-	return types.ShielderFeePool{}, kaboom
+func (k KVStoreDummy) GetFeePool(_ cosmos.Context) (types.FeePool, error) {
+	return types.FeePool{}, kaboom
 }
-func (k KVStoreDummy) SetShielderFeeNotePubKey(_ cosmos.Context, _ common.PubKey, _ common.TxID) error {
+func (k KVStoreDummy) SetShielderFeeNotePubKey(_ cosmos.Context, _ string, _ common.TxID) error {
 	return kaboom
 }
-func (k KVStoreDummy) ShielderFeeNotePubKeyUsed(_ cosmos.Context, _ common.PubKey) bool {
+func (k KVStoreDummy) ShielderFeeNotePubKeyUsed(_ cosmos.Context, _ string) bool {
 	return false
 }
 
@@ -352,12 +352,12 @@ func (k KVStoreDummy) SetVault(_ cosmos.Context, _ Vault) error { return kaboom 
 func (k KVStoreDummy) GetVault(_ cosmos.Context, _ common.PubKey) (Vault, error) {
 	return Vault{}, kaboom
 }
-func (k KVStoreDummy) GetAsgardVaults(_ cosmos.Context) (Vaults, error) { return nil, kaboom }
-func (k KVStoreDummy) GetAsgardVaultsByStatus(_ cosmos.Context, _ VaultStatus) (Vaults, error) {
+func (k KVStoreDummy) GetBaseVaults(_ cosmos.Context) (Vaults, error) { return nil, kaboom }
+func (k KVStoreDummy) GetBaseVaultsByStatus(_ cosmos.Context, _ VaultStatus) (Vaults, error) {
 	return nil, kaboom
 }
 
-func (k KVStoreDummy) RemoveFromAsgardIndex(ctx cosmos.Context, pubkey common.PubKey) error {
+func (k KVStoreDummy) RemoveFromBaseIndex(ctx cosmos.Context, pubkey common.PubKey) error {
 	return kaboom
 }
 
@@ -538,18 +538,21 @@ func (k KVStoreDummy) GetPriceIterator(_ cosmos.Context) cosmos.Iterator {
 	return nil
 }
 
-func (k KVStoreDummy) SetShielderSession(_ cosmos.Context, _ types.ShielderSession) error { return nil }
-func (k KVStoreDummy) GetShielderSession(_ cosmos.Context, _ cosmos.AccAddress) (types.ShielderSession, error) {
-	return types.ShielderSession{}, nil
+func (k KVStoreDummy) SetDepositSession(_ cosmos.Context, _ types.DepositSession) error { return nil }
+func (k KVStoreDummy) GetDepositSession(_ cosmos.Context, _ cosmos.AccAddress) (types.DepositSession, error) {
+	return types.DepositSession{}, nil
 }
-func (k KVStoreDummy) GetShielderSessionByPowToken(_ cosmos.Context, _ string) (types.ShielderSession, error) {
-	return types.ShielderSession{}, nil
+func (k KVStoreDummy) GetDepositSessionByPowToken(_ cosmos.Context, _ string) (types.DepositSession, error) {
+	return types.DepositSession{}, nil
 }
-func (k KVStoreDummy) SetShielderDepositAddress(_ cosmos.Context, _ types.ShielderDepositAddress) error {
+func (k KVStoreDummy) SetDepositAddress(_ cosmos.Context, _ types.DepositAddress) error {
 	return nil
 }
-func (k KVStoreDummy) GetShielderDepositAddress(_ cosmos.Context, _ common.Address) (types.ShielderDepositAddress, error) {
-	return types.ShielderDepositAddress{}, nil
+func (k KVStoreDummy) GetDepositAddress(_ cosmos.Context, _ common.Address) (types.DepositAddress, error) {
+	return types.DepositAddress{}, nil
+}
+func (k KVStoreDummy) GetDepositAddressIterator(_ cosmos.Context) cosmos.Iterator {
+	return NewDummyIterator()
 }
 func (k KVStoreDummy) GetNextVaultDepositPathIndex(_ cosmos.Context, _ common.PubKey) (uint64, error) {
 	return common.FirstDepositPathIndex, nil
@@ -560,11 +563,14 @@ func (k KVStoreDummy) SetNextVaultDepositPathIndex(_ cosmos.Context, _ common.Pu
 func (k KVStoreDummy) AllocateVaultDepositPathIndex(_ cosmos.Context, _ common.PubKey) (uint64, error) {
 	return common.FirstDepositPathIndex, nil
 }
-func (k KVStoreDummy) SetShielderDeposit(_ cosmos.Context, _ types.ShielderDeposit) error {
+func (k KVStoreDummy) SetDepositRecord(_ cosmos.Context, _ types.DepositRecord) error {
 	return nil
 }
-func (k KVStoreDummy) GetShielderDeposit(_ cosmos.Context, _ common.TxID) (types.ShielderDeposit, error) {
-	return types.ShielderDeposit{}, nil
+func (k KVStoreDummy) GetDepositRecord(_ cosmos.Context, _ common.TxID) (types.DepositRecord, error) {
+	return types.DepositRecord{}, nil
+}
+func (k KVStoreDummy) GetDepositRecordIterator(_ cosmos.Context) cosmos.Iterator {
+	return NewDummyIterator()
 }
 func (k KVStoreDummy) SetShielderCommitment(_ cosmos.Context, _ string, _ common.TxID) error {
 	return nil
@@ -585,14 +591,14 @@ func (k KVStoreDummy) ShielderMerkleRootExists(_ cosmos.Context, _ uint64, _ str
 func (k KVStoreDummy) GetShielderMerkleRootIterator(_ cosmos.Context) cosmos.Iterator {
 	return NewDummyIterator()
 }
-func (k KVStoreDummy) SetShielderWithdrawal(_ cosmos.Context, _ types.ShielderWithdrawal) error {
+func (k KVStoreDummy) SetShielderRedeem(_ cosmos.Context, _ types.ShielderRedeem) error {
 	return nil
 }
-func (k KVStoreDummy) GetShielderWithdrawal(_ cosmos.Context, _ string) (types.ShielderWithdrawal, error) {
-	return types.ShielderWithdrawal{}, nil
+func (k KVStoreDummy) GetShielderRedeem(_ cosmos.Context, _ string) (types.ShielderRedeem, error) {
+	return types.ShielderRedeem{}, nil
 }
-func (k KVStoreDummy) GetShielderWithdrawalByNullifier(_ cosmos.Context, _ string) (types.ShielderWithdrawal, error) {
-	return types.ShielderWithdrawal{}, nil
+func (k KVStoreDummy) GetShielderRedeemByNullifier(_ cosmos.Context, _ string) (types.ShielderRedeem, error) {
+	return types.ShielderRedeem{}, nil
 }
 func (k KVStoreDummy) SetShielderNullifierSpent(_ cosmos.Context, _, _ string) error {
 	return nil

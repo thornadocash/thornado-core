@@ -49,7 +49,7 @@ func (h OperatorRotateHandler) validate(ctx cosmos.Context, msg MsgOperatorRotat
 func (h OperatorRotateHandler) handle(ctx cosmos.Context, msg MsgOperatorRotate) error {
 	// rotate is only allowed in the first half of churn
 	lastChurnHeight := getLastChurnHeight(ctx, h.mgr.Keeper())
-	churnInterval := h.mgr.Keeper().GetConfigInt64(ctx, constants.Churn_IntervalBlocks)
+	churnInterval := getConfigDurationBlocks(ctx, h.mgr.Keeper(), constants.Churn_IntervalMinutes)
 	halfChurn := churnInterval / 2
 	rotateCutoffHeight := lastChurnHeight + halfChurn
 	if ctx.BlockHeight() > rotateCutoffHeight {

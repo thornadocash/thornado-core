@@ -13,15 +13,30 @@ Method | HTTP request | Description
 [**ThornadoConfigGet**](DefaultApi.md#ThornadoConfigGet) | **Get** /thornado/config | Config values
 [**ThornadoDepositAddressAddressGet**](DefaultApi.md#ThornadoDepositAddressAddressGet) | **Get** /thornado/deposit/address/{address} | Deposit address mapping
 [**ThornadoDepositDepositIdGet**](DefaultApi.md#ThornadoDepositDepositIdGet) | **Get** /thornado/deposit/{deposit_id} | Deposit
+[**ThornadoDepositSessionOwnerGet**](DefaultApi.md#ThornadoDepositSessionOwnerGet) | **Get** /thornado/deposit/session/{owner} | Deposit session
 [**ThornadoFeeEntitlementNodePubKeyGet**](DefaultApi.md#ThornadoFeeEntitlementNodePubKeyGet) | **Get** /thornado/fee/entitlement/{node_pub_key} | Node fee entitlement
+[**ThornadoFeeEntitlementsGet**](DefaultApi.md#ThornadoFeeEntitlementsGet) | **Get** /thornado/fee/entitlements | Node fee entitlements
 [**ThornadoFeesGet**](DefaultApi.md#ThornadoFeesGet) | **Get** /thornado/fees | Fee pool
+[**ThornadoKeygenHeightPubKeyGet**](DefaultApi.md#ThornadoKeygenHeightPubKeyGet) | **Get** /thornado/keygen/{height}/{pub_key} | Keygen block by vault pubkey
+[**ThornadoKeysignHeightGet**](DefaultApi.md#ThornadoKeysignHeightGet) | **Get** /thornado/keysign/{height} | TxOut keysign items
+[**ThornadoKeysignHeightPubKeyGet**](DefaultApi.md#ThornadoKeysignHeightPubKeyGet) | **Get** /thornado/keysign/{height}/{pub_key} | TxOut keysign items by vault pubkey
 [**ThornadoLastblockGet**](DefaultApi.md#ThornadoLastblockGet) | **Get** /thornado/lastblock | Last observed blocks
+[**ThornadoMetricKeygenPubKeyGet**](DefaultApi.md#ThornadoMetricKeygenPubKeyGet) | **Get** /thornado/metric/keygen/{pub_key} | Keygen metric by vault pubkey
+[**ThornadoMetricsGet**](DefaultApi.md#ThornadoMetricsGet) | **Get** /thornado/metrics | Keygen and keysign metrics
+[**ThornadoNetworkFeeGet**](DefaultApi.md#ThornadoNetworkFeeGet) | **Get** /thornado/network_fee | BTC network fee
+[**ThornadoNodeAddressAddressGet**](DefaultApi.md#ThornadoNodeAddressAddressGet) | **Get** /thornado/node/address/{address} | Node by address
+[**ThornadoNodeAuctionAuctionIdBidsGet**](DefaultApi.md#ThornadoNodeAuctionAuctionIdBidsGet) | **Get** /thornado/node/auction/{auction_id}/bids | Node slot auction bids
 [**ThornadoNodeAuctionAuctionIdGet**](DefaultApi.md#ThornadoNodeAuctionAuctionIdGet) | **Get** /thornado/node/auction/{auction_id} | Node slot auction
+[**ThornadoNodeAuctionsGet**](DefaultApi.md#ThornadoNodeAuctionsGet) | **Get** /thornado/node/auctions | Node slot auctions
 [**ThornadoNodeBidBidIdGet**](DefaultApi.md#ThornadoNodeBidBidIdGet) | **Get** /thornado/node/bid/{bid_id} | Node slot bid
+[**ThornadoNodeMetricsGet**](DefaultApi.md#ThornadoNodeMetricsGet) | **Get** /thornado/node/metrics | Node metrics
+[**ThornadoNodeSlotSlotGet**](DefaultApi.md#ThornadoNodeSlotSlotGet) | **Get** /thornado/node/slot/{slot} | Node slot
+[**ThornadoNodesGet**](DefaultApi.md#ThornadoNodesGet) | **Get** /thornado/nodes | Nodes
 [**ThornadoPingGet**](DefaultApi.md#ThornadoPingGet) | **Get** /thornado/ping | Ping
-[**ThornadoSessionOwnerGet**](DefaultApi.md#ThornadoSessionOwnerGet) | **Get** /thornado/session/{owner} | Deposit session
-[**ThornadoTssKeygenGet**](DefaultApi.md#ThornadoTssKeygenGet) | **Get** /thornado/tss/keygen | TSS keygen metrics
-[**ThornadoTssKeysignGet**](DefaultApi.md#ThornadoTssKeysignGet) | **Get** /thornado/tss/keysign | TSS keysign metrics
+[**ThornadoShielderNullifierNullifierHashGet**](DefaultApi.md#ThornadoShielderNullifierNullifierHashGet) | **Get** /thornado/shielder/nullifier/{nullifier_hash} | Shielder nullifier
+[**ThornadoShielderRedeemQuoteAmountSatsGet**](DefaultApi.md#ThornadoShielderRedeemQuoteAmountSatsGet) | **Get** /thornado/shielder/redeem/quote/{amount_sats} | Shielder redeem quote
+[**ThornadoShielderRedeemWithdrawalIdGet**](DefaultApi.md#ThornadoShielderRedeemWithdrawalIdGet) | **Get** /thornado/shielder/redeem/{withdrawal_id} | Shielder redeem
+[**ThornadoShielderRootsGet**](DefaultApi.md#ThornadoShielderRootsGet) | **Get** /thornado/shielder/roots | Shielder roots
 [**ThornadoTxHashGet**](DefaultApi.md#ThornadoTxHashGet) | **Get** /thornado/tx/{hash} | Transaction
 [**ThornadoTxoutGet**](DefaultApi.md#ThornadoTxoutGet) | **Get** /thornado/txout | TxOut queue
 [**ThornadoVaultPubKeyGet**](DefaultApi.md#ThornadoVaultPubKeyGet) | **Get** /thornado/vault/{pub_key} | Vault
@@ -598,6 +613,72 @@ No authorization required
 [[Back to README]](../README.md)
 
 
+## ThornadoDepositSessionOwnerGet
+
+> ThornadoDepositSessionOwnerGet(ctx, owner).Execute()
+
+Deposit session
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+    owner := "owner_example" // string | 
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.DefaultApi.ThornadoDepositSessionOwnerGet(context.Background(), owner).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoDepositSessionOwnerGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+}
+```
+
+### Path Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+**ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
+**owner** | **string** |  | 
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiThornadoDepositSessionOwnerGetRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
 ## ThornadoFeeEntitlementNodePubKeyGet
 
 > ThornadoFeeEntitlementNodePubKeyGet(ctx, nodePubKey).Execute()
@@ -644,6 +725,63 @@ Other parameters are passed through a pointer to a apiThornadoFeeEntitlementNode
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ThornadoFeeEntitlementsGet
+
+> ThornadoFeeEntitlementsGet(ctx).Execute()
+
+Node fee entitlements
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.DefaultApi.ThornadoFeeEntitlementsGet(context.Background()).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoFeeEntitlementsGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+}
+```
+
+### Path Parameters
+
+This endpoint does not need any parameter.
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiThornadoFeeEntitlementsGetRequest struct via the builder pattern
 
 
 ### Return type
@@ -721,6 +859,210 @@ No authorization required
 [[Back to README]](../README.md)
 
 
+## ThornadoKeygenHeightPubKeyGet
+
+> ThornadoKeygenHeightPubKeyGet(ctx, height, pubKey).Execute()
+
+Keygen block by vault pubkey
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+    height := int64(789) // int64 | 
+    pubKey := "pubKey_example" // string | 
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.DefaultApi.ThornadoKeygenHeightPubKeyGet(context.Background(), height, pubKey).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoKeygenHeightPubKeyGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+}
+```
+
+### Path Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+**ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
+**height** | **int64** |  | 
+**pubKey** | **string** |  | 
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiThornadoKeygenHeightPubKeyGetRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ThornadoKeysignHeightGet
+
+> ThornadoKeysignHeightGet(ctx, height).Execute()
+
+TxOut keysign items
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+    height := int64(789) // int64 | 
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.DefaultApi.ThornadoKeysignHeightGet(context.Background(), height).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoKeysignHeightGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+}
+```
+
+### Path Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+**ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
+**height** | **int64** |  | 
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiThornadoKeysignHeightGetRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ThornadoKeysignHeightPubKeyGet
+
+> ThornadoKeysignHeightPubKeyGet(ctx, height, pubKey).Execute()
+
+TxOut keysign items by vault pubkey
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+    height := int64(789) // int64 | 
+    pubKey := "pubKey_example" // string | 
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.DefaultApi.ThornadoKeysignHeightPubKeyGet(context.Background(), height, pubKey).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoKeysignHeightPubKeyGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+}
+```
+
+### Path Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+**ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
+**height** | **int64** |  | 
+**pubKey** | **string** |  | 
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiThornadoKeysignHeightPubKeyGetRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
 ## ThornadoLastblockGet
 
 > ThornadoLastblockGet(ctx).Execute()
@@ -758,6 +1100,318 @@ This endpoint does not need any parameter.
 ### Other Parameters
 
 Other parameters are passed through a pointer to a apiThornadoLastblockGetRequest struct via the builder pattern
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ThornadoMetricKeygenPubKeyGet
+
+> ThornadoMetricKeygenPubKeyGet(ctx, pubKey).Execute()
+
+Keygen metric by vault pubkey
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+    pubKey := "pubKey_example" // string | 
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.DefaultApi.ThornadoMetricKeygenPubKeyGet(context.Background(), pubKey).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoMetricKeygenPubKeyGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+}
+```
+
+### Path Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+**ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
+**pubKey** | **string** |  | 
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiThornadoMetricKeygenPubKeyGetRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ThornadoMetricsGet
+
+> ThornadoMetricsGet(ctx).Execute()
+
+Keygen and keysign metrics
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.DefaultApi.ThornadoMetricsGet(context.Background()).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoMetricsGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+}
+```
+
+### Path Parameters
+
+This endpoint does not need any parameter.
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiThornadoMetricsGetRequest struct via the builder pattern
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ThornadoNetworkFeeGet
+
+> ThornadoNetworkFeeGet(ctx).Execute()
+
+BTC network fee
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.DefaultApi.ThornadoNetworkFeeGet(context.Background()).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoNetworkFeeGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+}
+```
+
+### Path Parameters
+
+This endpoint does not need any parameter.
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiThornadoNetworkFeeGetRequest struct via the builder pattern
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ThornadoNodeAddressAddressGet
+
+> ThornadoNodeAddressAddressGet(ctx, address).Execute()
+
+Node by address
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+    address := "address_example" // string | 
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.DefaultApi.ThornadoNodeAddressAddressGet(context.Background(), address).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoNodeAddressAddressGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+}
+```
+
+### Path Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+**ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
+**address** | **string** |  | 
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiThornadoNodeAddressAddressGetRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ThornadoNodeAuctionAuctionIdBidsGet
+
+> ThornadoNodeAuctionAuctionIdBidsGet(ctx, auctionId).Execute()
+
+Node slot auction bids
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+    auctionId := "auctionId_example" // string | 
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.DefaultApi.ThornadoNodeAuctionAuctionIdBidsGet(context.Background(), auctionId).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoNodeAuctionAuctionIdBidsGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+}
+```
+
+### Path Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+**ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
+**auctionId** | **string** |  | 
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiThornadoNodeAuctionAuctionIdBidsGetRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
 
 
 ### Return type
@@ -844,6 +1498,63 @@ No authorization required
 [[Back to README]](../README.md)
 
 
+## ThornadoNodeAuctionsGet
+
+> ThornadoNodeAuctionsGet(ctx).Execute()
+
+Node slot auctions
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.DefaultApi.ThornadoNodeAuctionsGet(context.Background()).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoNodeAuctionsGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+}
+```
+
+### Path Parameters
+
+This endpoint does not need any parameter.
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiThornadoNodeAuctionsGetRequest struct via the builder pattern
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
 ## ThornadoNodeBidBidIdGet
 
 > ThornadoNodeBidBidIdGet(ctx, bidId).Execute()
@@ -890,6 +1601,186 @@ Other parameters are passed through a pointer to a apiThornadoNodeBidBidIdGetReq
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ThornadoNodeMetricsGet
+
+> ThornadoNodeMetricsGet(ctx).Execute()
+
+Node metrics
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.DefaultApi.ThornadoNodeMetricsGet(context.Background()).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoNodeMetricsGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+}
+```
+
+### Path Parameters
+
+This endpoint does not need any parameter.
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiThornadoNodeMetricsGetRequest struct via the builder pattern
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ThornadoNodeSlotSlotGet
+
+> ThornadoNodeSlotSlotGet(ctx, slot).Execute()
+
+Node slot
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+    slot := int64(789) // int64 | 
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.DefaultApi.ThornadoNodeSlotSlotGet(context.Background(), slot).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoNodeSlotSlotGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+}
+```
+
+### Path Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+**ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
+**slot** | **int64** |  | 
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiThornadoNodeSlotSlotGetRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ThornadoNodesGet
+
+> ThornadoNodesGet(ctx).Execute()
+
+Nodes
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.DefaultApi.ThornadoNodesGet(context.Background()).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoNodesGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+}
+```
+
+### Path Parameters
+
+This endpoint does not need any parameter.
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiThornadoNodesGetRequest struct via the builder pattern
 
 
 ### Return type
@@ -967,11 +1858,11 @@ No authorization required
 [[Back to README]](../README.md)
 
 
-## ThornadoSessionOwnerGet
+## ThornadoShielderNullifierNullifierHashGet
 
-> ThornadoSessionOwnerGet(ctx, owner).Execute()
+> ThornadoShielderNullifierNullifierHashGet(ctx, nullifierHash).Execute()
 
-Deposit session
+Shielder nullifier
 
 ### Example
 
@@ -986,13 +1877,13 @@ import (
 )
 
 func main() {
-    owner := "owner_example" // string | 
+    nullifierHash := "nullifierHash_example" // string | 
 
     configuration := openapiclient.NewConfiguration()
     apiClient := openapiclient.NewAPIClient(configuration)
-    resp, r, err := apiClient.DefaultApi.ThornadoSessionOwnerGet(context.Background(), owner).Execute()
+    resp, r, err := apiClient.DefaultApi.ThornadoShielderNullifierNullifierHashGet(context.Background(), nullifierHash).Execute()
     if err != nil {
-        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoSessionOwnerGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoShielderNullifierNullifierHashGet``: %v\n", err)
         fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
     }
 }
@@ -1004,11 +1895,11 @@ func main() {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
 **ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
-**owner** | **string** |  | 
+**nullifierHash** | **string** |  | 
 
 ### Other Parameters
 
-Other parameters are passed through a pointer to a apiThornadoSessionOwnerGetRequest struct via the builder pattern
+Other parameters are passed through a pointer to a apiThornadoShielderNullifierNullifierHashGetRequest struct via the builder pattern
 
 
 Name | Type | Description  | Notes
@@ -1033,11 +1924,11 @@ No authorization required
 [[Back to README]](../README.md)
 
 
-## ThornadoTssKeygenGet
+## ThornadoShielderRedeemQuoteAmountSatsGet
 
-> ThornadoTssKeygenGet(ctx).Execute()
+> ThornadoShielderRedeemQuoteAmountSatsGet(ctx, amountSats).Execute()
 
-TSS keygen metrics
+Shielder redeem quote
 
 ### Example
 
@@ -1052,12 +1943,13 @@ import (
 )
 
 func main() {
+    amountSats := int64(789) // int64 | 
 
     configuration := openapiclient.NewConfiguration()
     apiClient := openapiclient.NewAPIClient(configuration)
-    resp, r, err := apiClient.DefaultApi.ThornadoTssKeygenGet(context.Background()).Execute()
+    resp, r, err := apiClient.DefaultApi.ThornadoShielderRedeemQuoteAmountSatsGet(context.Background(), amountSats).Execute()
     if err != nil {
-        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoTssKeygenGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoShielderRedeemQuoteAmountSatsGet``: %v\n", err)
         fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
     }
 }
@@ -1065,11 +1957,19 @@ func main() {
 
 ### Path Parameters
 
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+**ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
+**amountSats** | **int64** |  | 
 
 ### Other Parameters
 
-Other parameters are passed through a pointer to a apiThornadoTssKeygenGetRequest struct via the builder pattern
+Other parameters are passed through a pointer to a apiThornadoShielderRedeemQuoteAmountSatsGetRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
 
 
 ### Return type
@@ -1090,11 +1990,77 @@ No authorization required
 [[Back to README]](../README.md)
 
 
-## ThornadoTssKeysignGet
+## ThornadoShielderRedeemWithdrawalIdGet
 
-> ThornadoTssKeysignGet(ctx).Execute()
+> ThornadoShielderRedeemWithdrawalIdGet(ctx, withdrawalId).Execute()
 
-TSS keysign metrics
+Shielder redeem
+
+### Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    openapiclient "./openapi"
+)
+
+func main() {
+    withdrawalId := "withdrawalId_example" // string | 
+
+    configuration := openapiclient.NewConfiguration()
+    apiClient := openapiclient.NewAPIClient(configuration)
+    resp, r, err := apiClient.DefaultApi.ThornadoShielderRedeemWithdrawalIdGet(context.Background(), withdrawalId).Execute()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoShielderRedeemWithdrawalIdGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
+    }
+}
+```
+
+### Path Parameters
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+**ctx** | **context.Context** | context for authentication, logging, cancellation, deadlines, tracing, etc.
+**withdrawalId** | **string** |  | 
+
+### Other Parameters
+
+Other parameters are passed through a pointer to a apiThornadoShielderRedeemWithdrawalIdGetRequest struct via the builder pattern
+
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
+[[Back to Model list]](../README.md#documentation-for-models)
+[[Back to README]](../README.md)
+
+
+## ThornadoShielderRootsGet
+
+> ThornadoShielderRootsGet(ctx).Execute()
+
+Shielder roots
 
 ### Example
 
@@ -1112,9 +2078,9 @@ func main() {
 
     configuration := openapiclient.NewConfiguration()
     apiClient := openapiclient.NewAPIClient(configuration)
-    resp, r, err := apiClient.DefaultApi.ThornadoTssKeysignGet(context.Background()).Execute()
+    resp, r, err := apiClient.DefaultApi.ThornadoShielderRootsGet(context.Background()).Execute()
     if err != nil {
-        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoTssKeysignGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoShielderRootsGet``: %v\n", err)
         fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
     }
 }
@@ -1126,7 +2092,7 @@ This endpoint does not need any parameter.
 
 ### Other Parameters
 
-Other parameters are passed through a pointer to a apiThornadoTssKeysignGetRequest struct via the builder pattern
+Other parameters are passed through a pointer to a apiThornadoShielderRootsGetRequest struct via the builder pattern
 
 
 ### Return type

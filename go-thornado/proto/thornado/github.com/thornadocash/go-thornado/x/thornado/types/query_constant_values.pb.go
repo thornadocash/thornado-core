@@ -128,8 +128,10 @@ func (m *QueryConfigDefaultsResponse) GetStringValues() []*StringConstants {
 }
 
 type Int64Constants struct {
-	Name  string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Value int64  `protobuf:"varint,2,opt,name=value,proto3" json:"value,omitempty"`
+	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Value       int64  `protobuf:"varint,2,opt,name=value,proto3" json:"value,omitempty"`
+	Group       string `protobuf:"bytes,3,opt,name=group,proto3" json:"group,omitempty"`
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
 }
 
 func (m *Int64Constants) Reset()         { *m = Int64Constants{} }
@@ -179,9 +181,25 @@ func (m *Int64Constants) GetValue() int64 {
 	return 0
 }
 
+func (m *Int64Constants) GetGroup() string {
+	if m != nil {
+		return m.Group
+	}
+	return ""
+}
+
+func (m *Int64Constants) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
 type BoolConstants struct {
-	Name  string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Value bool   `protobuf:"varint,2,opt,name=value,proto3" json:"value,omitempty"`
+	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Value       bool   `protobuf:"varint,2,opt,name=value,proto3" json:"value,omitempty"`
+	Group       string `protobuf:"bytes,3,opt,name=group,proto3" json:"group,omitempty"`
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
 }
 
 func (m *BoolConstants) Reset()         { *m = BoolConstants{} }
@@ -231,9 +249,25 @@ func (m *BoolConstants) GetValue() bool {
 	return false
 }
 
+func (m *BoolConstants) GetGroup() string {
+	if m != nil {
+		return m.Group
+	}
+	return ""
+}
+
+func (m *BoolConstants) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
 type StringConstants struct {
-	Name  string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Value       string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Group       string `protobuf:"bytes,3,opt,name=group,proto3" json:"group,omitempty"`
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
 }
 
 func (m *StringConstants) Reset()         { *m = StringConstants{} }
@@ -283,6 +317,20 @@ func (m *StringConstants) GetValue() string {
 	return ""
 }
 
+func (m *StringConstants) GetGroup() string {
+	if m != nil {
+		return m.Group
+	}
+	return ""
+}
+
+func (m *StringConstants) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*QueryConfigDefaultsRequest)(nil), "types.QueryConfigDefaultsRequest")
 	proto.RegisterType((*QueryConfigDefaultsResponse)(nil), "types.QueryConfigDefaultsResponse")
@@ -294,29 +342,31 @@ func init() {
 func init() { proto.RegisterFile("types/query_constant_values.proto", fileDescriptor_09a11eb66540db6e) }
 
 var fileDescriptor_09a11eb66540db6e = []byte{
-	// 347 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0xd2, 0xb1, 0x4e, 0xc2, 0x40,
-	0x18, 0x07, 0x70, 0x0e, 0x84, 0xc8, 0x21, 0x9a, 0x5c, 0x90, 0x10, 0x4c, 0x1a, 0xec, 0xc4, 0x62,
-	0x9b, 0x68, 0x25, 0x41, 0x36, 0x70, 0x71, 0x31, 0xb1, 0x26, 0x0e, 0x2e, 0xa4, 0xe0, 0x71, 0x6d,
-	0x52, 0xee, 0x83, 0xde, 0xd5, 0xc8, 0x5b, 0xf8, 0x58, 0x0e, 0x0e, 0x8c, 0x8e, 0x86, 0xbe, 0x88,
-	0xe9, 0xf5, 0x2a, 0xc1, 0x98, 0xb0, 0xdd, 0xd7, 0xef, 0xff, 0x6b, 0xfe, 0x6d, 0x0e, 0x9f, 0xcb,
-	0xd5, 0x82, 0x0a, 0x7b, 0x19, 0xd3, 0x68, 0x35, 0x9e, 0x02, 0x17, 0xd2, 0xe3, 0x72, 0xfc, 0xea,
-	0x85, 0x31, 0x15, 0xd6, 0x22, 0x02, 0x09, 0xa4, 0xac, 0x22, 0xed, 0x06, 0x03, 0x06, 0xea, 0x89,
-	0x9d, 0x9e, 0xb2, 0xa5, 0xe9, 0xe0, 0xf6, 0x43, 0x6a, 0x47, 0xc0, 0x67, 0x01, 0xbb, 0xa5, 0x33,
-	0x2f, 0x0e, 0xa5, 0x70, 0xe9, 0x32, 0xa6, 0x42, 0x92, 0x26, 0xae, 0xf8, 0x34, 0x60, 0xbe, 0x6c,
-	0xa1, 0x0e, 0xea, 0x56, 0x5d, 0x3d, 0x99, 0x9f, 0x08, 0x9f, 0xfd, 0xcb, 0xc4, 0x02, 0xb8, 0xa0,
-	0xa4, 0x8f, 0xeb, 0x01, 0x97, 0xe3, 0x9e, 0xa3, 0x9b, 0xb4, 0x50, 0xa7, 0xd4, 0xad, 0x5d, 0x9e,
-	0x5a, 0xaa, 0x8a, 0x75, 0xc7, 0x65, 0xcf, 0x19, 0xe9, 0xb2, 0xc2, 0xad, 0x05, 0xe9, 0xfc, 0xa4,
-	0x92, 0xe4, 0x1a, 0xd7, 0x26, 0x00, 0x61, 0x0e, 0x8b, 0x0a, 0x36, 0x34, 0x1c, 0x02, 0x84, 0x5b,
-	0x87, 0xd3, 0xa0, 0x66, 0x03, 0x5c, 0x17, 0x32, 0x0a, 0x38, 0xcb, 0x61, 0x49, 0xc1, 0xa6, 0x86,
-	0x8f, 0x6a, 0xb7, 0xa5, 0x47, 0x59, 0x38, 0xc3, 0xe6, 0x0d, 0x3e, 0xde, 0xad, 0x44, 0x08, 0x3e,
-	0xe0, 0xde, 0x9c, 0xea, 0xcf, 0x56, 0x67, 0xd2, 0xc0, 0x65, 0xf5, 0xee, 0x56, 0xb1, 0x83, 0xba,
-	0x25, 0x37, 0x1b, 0xcc, 0x3e, 0xae, 0xef, 0xb4, 0xda, 0x4f, 0x0f, 0x73, 0x3a, 0xc0, 0x27, 0x7f,
-	0x7a, 0xed, 0xc7, 0x55, 0x8d, 0x87, 0xf7, 0x1f, 0x1b, 0x03, 0xad, 0x37, 0x06, 0xfa, 0xde, 0x18,
-	0xe8, 0x3d, 0x31, 0x0a, 0xeb, 0xc4, 0x28, 0x7c, 0x25, 0x46, 0xe1, 0xd9, 0x61, 0x81, 0xf4, 0xe3,
-	0x89, 0x35, 0x85, 0xb9, 0x2d, 0x7d, 0x88, 0xb8, 0xf7, 0x02, 0x53, 0x4f, 0xf8, 0x36, 0x83, 0x8b,
-	0x7c, 0xb6, 0xdf, 0x7e, 0x57, 0xb6, 0xfa, 0x43, 0x93, 0x8a, 0xba, 0x0f, 0x57, 0x3f, 0x01, 0x00,
-	0x00, 0xff, 0xff, 0x99, 0xd3, 0x04, 0xa1, 0x51, 0x02, 0x00, 0x00,
+	// 381 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x92, 0x41, 0x8b, 0xda, 0x40,
+	0x1c, 0xc5, 0x1d, 0xa3, 0x52, 0x27, 0xb5, 0x85, 0xc1, 0x4a, 0xb0, 0x10, 0xd2, 0x9c, 0xbc, 0x34,
+	0x81, 0x36, 0x15, 0x4a, 0x6f, 0xda, 0x4b, 0x2f, 0x85, 0xa6, 0xd0, 0x43, 0x2f, 0x12, 0xe3, 0x38,
+	0x19, 0x88, 0xf3, 0x8f, 0x99, 0xc9, 0xb2, 0x7e, 0x8b, 0xfd, 0x58, 0x7b, 0xd8, 0x83, 0xc7, 0x3d,
+	0x2e, 0xfa, 0x45, 0x96, 0x4c, 0xe2, 0xba, 0x2e, 0x0b, 0x1e, 0xbc, 0xcd, 0xfb, 0xff, 0xdf, 0x2f,
+	0xef, 0x4d, 0x12, 0xfc, 0x49, 0x6d, 0x32, 0x2a, 0xfd, 0x75, 0x41, 0xf3, 0xcd, 0x2c, 0x06, 0x21,
+	0x55, 0x24, 0xd4, 0xec, 0x2a, 0x4a, 0x0b, 0x2a, 0xbd, 0x2c, 0x07, 0x05, 0xa4, 0xad, 0x2d, 0xc3,
+	0x3e, 0x03, 0x06, 0x7a, 0xe2, 0x97, 0xa7, 0x6a, 0xe9, 0x06, 0x78, 0xf8, 0xa7, 0x64, 0xa7, 0x20,
+	0x96, 0x9c, 0xfd, 0xa4, 0xcb, 0xa8, 0x48, 0x95, 0x0c, 0xe9, 0xba, 0xa0, 0x52, 0x91, 0x01, 0xee,
+	0x24, 0x94, 0xb3, 0x44, 0x59, 0xc8, 0x41, 0xa3, 0x6e, 0x58, 0x2b, 0xf7, 0x0e, 0xe1, 0x8f, 0xaf,
+	0x62, 0x32, 0x03, 0x21, 0x29, 0xf9, 0x8e, 0x7b, 0x5c, 0xa8, 0xd9, 0x38, 0xa8, 0x9b, 0x58, 0xc8,
+	0x31, 0x46, 0xe6, 0x97, 0x0f, 0x9e, 0xae, 0xe2, 0xfd, 0x12, 0x6a, 0x1c, 0x4c, 0xeb, 0xb2, 0x32,
+	0x34, 0x79, 0xa9, 0xff, 0x69, 0x27, 0xf9, 0x86, 0xcd, 0x39, 0x40, 0x7a, 0x00, 0x9b, 0x1a, 0xec,
+	0xd7, 0xe0, 0x04, 0x20, 0x3d, 0x72, 0xb8, 0x34, 0xd6, 0xd8, 0x0f, 0xdc, 0x93, 0x2a, 0xe7, 0x82,
+	0x1d, 0x40, 0x43, 0x83, 0x83, 0x1a, 0xfc, 0xab, 0x77, 0x47, 0xf4, 0x6d, 0x65, 0xae, 0x60, 0x37,
+	0xc7, 0xef, 0x4e, 0x2b, 0x11, 0x82, 0x5b, 0x22, 0x5a, 0xd1, 0xfa, 0xda, 0xfa, 0x4c, 0xfa, 0xb8,
+	0xad, 0x9f, 0x6d, 0x35, 0x1d, 0x34, 0x32, 0xc2, 0x4a, 0x94, 0x53, 0x96, 0x43, 0x91, 0x59, 0x86,
+	0xb6, 0x56, 0x82, 0x38, 0xd8, 0x5c, 0x50, 0x19, 0xe7, 0x3c, 0x53, 0x1c, 0x84, 0xd5, 0xd2, 0xbb,
+	0xe7, 0x23, 0x77, 0x8d, 0x7b, 0x27, 0xb7, 0x39, 0x1f, 0xf9, 0xe6, 0xd2, 0x48, 0x89, 0xdf, 0xbf,
+	0x78, 0x0f, 0xe7, 0x43, 0xbb, 0x17, 0x86, 0x4e, 0x7e, 0xdf, 0xee, 0x6c, 0xb4, 0xdd, 0xd9, 0xe8,
+	0x61, 0x67, 0xa3, 0x9b, 0xbd, 0xdd, 0xd8, 0xee, 0xed, 0xc6, 0xfd, 0xde, 0x6e, 0xfc, 0x0f, 0x18,
+	0x57, 0x49, 0x31, 0xf7, 0x62, 0x58, 0xf9, 0x2a, 0x81, 0x5c, 0x44, 0x0b, 0x88, 0x23, 0x99, 0xf8,
+	0x0c, 0x3e, 0x1f, 0xb4, 0x7f, 0xfd, 0xb4, 0xf2, 0xf5, 0x97, 0x9c, 0x77, 0xf4, 0x7f, 0xfb, 0xf5,
+	0x31, 0x00, 0x00, 0xff, 0xff, 0xaa, 0x06, 0x6a, 0xc7, 0xf9, 0x02, 0x00, 0x00,
 }
 
 func (m *QueryConfigDefaultsRequest) Marshal() (dAtA []byte, err error) {
@@ -434,6 +484,20 @@ func (m *Int64Constants) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintQueryConstantValues(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.Group) > 0 {
+		i -= len(m.Group)
+		copy(dAtA[i:], m.Group)
+		i = encodeVarintQueryConstantValues(dAtA, i, uint64(len(m.Group)))
+		i--
+		dAtA[i] = 0x1a
+	}
 	if m.Value != 0 {
 		i = encodeVarintQueryConstantValues(dAtA, i, uint64(m.Value))
 		i--
@@ -469,6 +533,20 @@ func (m *BoolConstants) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintQueryConstantValues(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.Group) > 0 {
+		i -= len(m.Group)
+		copy(dAtA[i:], m.Group)
+		i = encodeVarintQueryConstantValues(dAtA, i, uint64(len(m.Group)))
+		i--
+		dAtA[i] = 0x1a
+	}
 	if m.Value {
 		i--
 		if m.Value {
@@ -509,6 +587,20 @@ func (m *StringConstants) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintQueryConstantValues(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.Group) > 0 {
+		i -= len(m.Group)
+		copy(dAtA[i:], m.Group)
+		i = encodeVarintQueryConstantValues(dAtA, i, uint64(len(m.Group)))
+		i--
+		dAtA[i] = 0x1a
+	}
 	if len(m.Value) > 0 {
 		i -= len(m.Value)
 		copy(dAtA[i:], m.Value)
@@ -590,6 +682,14 @@ func (m *Int64Constants) Size() (n int) {
 	if m.Value != 0 {
 		n += 1 + sovQueryConstantValues(uint64(m.Value))
 	}
+	l = len(m.Group)
+	if l > 0 {
+		n += 1 + l + sovQueryConstantValues(uint64(l))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovQueryConstantValues(uint64(l))
+	}
 	return n
 }
 
@@ -606,6 +706,14 @@ func (m *BoolConstants) Size() (n int) {
 	if m.Value {
 		n += 2
 	}
+	l = len(m.Group)
+	if l > 0 {
+		n += 1 + l + sovQueryConstantValues(uint64(l))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovQueryConstantValues(uint64(l))
+	}
 	return n
 }
 
@@ -620,6 +728,14 @@ func (m *StringConstants) Size() (n int) {
 		n += 1 + l + sovQueryConstantValues(uint64(l))
 	}
 	l = len(m.Value)
+	if l > 0 {
+		n += 1 + l + sovQueryConstantValues(uint64(l))
+	}
+	l = len(m.Group)
+	if l > 0 {
+		n += 1 + l + sovQueryConstantValues(uint64(l))
+	}
+	l = len(m.Description)
 	if l > 0 {
 		n += 1 + l + sovQueryConstantValues(uint64(l))
 	}
@@ -946,6 +1062,70 @@ func (m *Int64Constants) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Group", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryConstantValues
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryConstantValues
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryConstantValues
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Group = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryConstantValues
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryConstantValues
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryConstantValues
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipQueryConstantValues(dAtA[iNdEx:])
@@ -1048,6 +1228,70 @@ func (m *BoolConstants) Unmarshal(dAtA []byte) error {
 				}
 			}
 			m.Value = bool(v != 0)
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Group", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryConstantValues
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryConstantValues
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryConstantValues
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Group = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryConstantValues
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryConstantValues
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryConstantValues
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipQueryConstantValues(dAtA[iNdEx:])
@@ -1161,6 +1405,70 @@ func (m *StringConstants) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Value = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Group", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryConstantValues
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryConstantValues
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryConstantValues
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Group = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryConstantValues
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryConstantValues
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryConstantValues
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

@@ -19,20 +19,17 @@ type PlannedOutTx struct {
 	Chain     string `json:"chain"`
 	ToAddress string `json:"to_address"`
 	Coin      Coin   `json:"coin"`
-	// returns true if the planned transaction has a refund memo
-	Refund bool `json:"refund"`
 }
 
 // NewPlannedOutTx instantiates a new PlannedOutTx object
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewPlannedOutTx(chain string, toAddress string, coin Coin, refund bool) *PlannedOutTx {
+func NewPlannedOutTx(chain string, toAddress string, coin Coin) *PlannedOutTx {
 	this := PlannedOutTx{}
 	this.Chain = chain
 	this.ToAddress = toAddress
 	this.Coin = coin
-	this.Refund = refund
 	return &this
 }
 
@@ -116,30 +113,6 @@ func (o *PlannedOutTx) SetCoin(v Coin) {
 	o.Coin = v
 }
 
-// GetRefund returns the Refund field value
-func (o *PlannedOutTx) GetRefund() bool {
-	if o == nil {
-		var ret bool
-		return ret
-	}
-
-	return o.Refund
-}
-
-// GetRefundOk returns a tuple with the Refund field value
-// and a boolean to check if the value has been set.
-func (o *PlannedOutTx) GetRefundOk() (*bool, bool) {
-	if o == nil {
-		return nil, false
-	}
-	return &o.Refund, true
-}
-
-// SetRefund sets field value
-func (o *PlannedOutTx) SetRefund(v bool) {
-	o.Refund = v
-}
-
 func (o PlannedOutTx) MarshalJSON_deprecated() ([]byte, error) {
 	toSerialize := map[string]interface{}{}
 	if true {
@@ -150,9 +123,6 @@ func (o PlannedOutTx) MarshalJSON_deprecated() ([]byte, error) {
 	}
 	if true {
 		toSerialize["coin"] = o.Coin
-	}
-	if true {
-		toSerialize["refund"] = o.Refund
 	}
 	return json.Marshal(toSerialize)
 }

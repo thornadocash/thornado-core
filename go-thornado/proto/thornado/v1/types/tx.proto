@@ -52,14 +52,14 @@ service Msg {
   rpc ApproveUpgrade(MsgApproveUpgrade) returns (MsgEmpty);
   rpc RejectUpgrade(MsgRejectUpgrade) returns (MsgEmpty);
   rpc PriceFeedQuorumBatch(MsgPriceFeedQuorumBatch) returns (MsgEmpty);
-  rpc ShielderRegisterPow(MsgShielderRegisterPow) returns (MsgShielderRegisterPowResponse);
-  rpc ShielderPostCommitments(MsgShielderPostCommitments) returns (MsgShielderPostCommitmentsResponse);
-  rpc ShielderRequestWithdrawal(MsgShielderRequestWithdrawal) returns (MsgShielderRequestWithdrawalResponse);
+  rpc DepositRequestPow(MsgDepositRequestPow) returns (MsgDepositRequestPowResponse);
+  rpc ShielderSplit(MsgShielderSplit) returns (MsgShielderSplitResponse);
+  rpc ShielderRedeem(MsgShielderRedeem) returns (MsgShielderRedeemResponse);
   rpc ShielderSplitFees(MsgShielderSplitFees) returns (MsgShielderSplitFeesResponse);
   rpc NodeSlotAuctionCreate(MsgNodeSlotAuctionCreate) returns (MsgNodeSlotAuctionCreateResponse);
-  rpc NodeSlotAuctionBidPow(MsgNodeSlotAuctionBidPow) returns (MsgShielderRegisterPowResponse);
+  rpc NodeSlotAuctionBidPow(MsgNodeSlotAuctionBidPow) returns (MsgDepositRequestPowResponse);
   rpc NodeSlotAuctionSelectBid(MsgNodeSlotAuctionSelectBid) returns (MsgEmpty);
-  rpc NodeSlotAuctionSplit(MsgNodeSlotAuctionSplit) returns (MsgShielderPostCommitmentsResponse);
+  rpc NodeSlotAuctionSplit(MsgNodeSlotAuctionSplit) returns (MsgShielderSplitResponse);
 }
 
 // MsgEmpty is the return type for all current Msg Server messages

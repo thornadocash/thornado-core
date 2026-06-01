@@ -45,7 +45,7 @@ message QueryBaseVaultsResponse {
 message QueryVaultsPubkeysRequest { string height = 1; }
 
 message QueryVaultsPubkeysResponse {
-  repeated VaultInfo asgard = 1 [ (gogoproto.jsontag) = "asgard" ];
+  repeated VaultInfo base = 1 [ (gogoproto.jsontag) = "base" ];
   repeated VaultInfo inactive = 2 [ (gogoproto.jsontag) = "inactive" ];
 }
 

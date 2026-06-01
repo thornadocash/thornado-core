@@ -80,7 +80,6 @@ func GetRandomTxOutItem() TxOutItem {
 		ToAddress:   GetRandomBTCAddress(),
 		VaultPubKey: GetRandomPubKey(),
 		Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(100000)),
-		Memo:        "OUT:xyz",
 		MaxGas:      common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(100))},
 		InHash:      GetRandomTxHash(),
 	}
@@ -107,7 +106,6 @@ func GetRandomTx() common.Tx {
 		common.Gas{
 			{Asset: common.BTCAsset, Amount: cosmos.NewUint(37500)},
 		},
-		"",
 	)
 }
 
@@ -176,7 +174,7 @@ func GetRandomPubKeySet() common.PubKeySet {
 }
 
 func GetRandomVault() Vault {
-	return NewVaultV2(32, VaultStatus_ActiveVault, VaultType_AsgardVault, GetRandomPubKey(), common.Chains{common.BTCChain}.Strings(), GetRandomEd25519PubKey())
+	return NewVaultV2(32, VaultStatus_ActiveVault, VaultType_BaseVault, GetRandomPubKey(), common.Chains{common.BTCChain}.Strings(), GetRandomEd25519PubKey())
 }
 
 func GetRandomPubKey() common.PubKey {

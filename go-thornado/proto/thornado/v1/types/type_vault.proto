@@ -9,7 +9,7 @@ import "gogoproto/gogo.proto";
 
 enum VaultType {
   UnknownVault = 0;
-  AsgardVault = 1;
+  BaseVault = 1;
 }
 
 enum VaultStatus {

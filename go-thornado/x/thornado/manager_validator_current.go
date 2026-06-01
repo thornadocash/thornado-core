@@ -46,8 +46,8 @@ func (vm *NodeMgr) BeginBlock(ctx cosmos.Context, mgr Manager, existingNodes []s
 		}
 	}
 	lastChurnHeight := getLastChurnHeight(ctx, vm.k)
-	churnInterval := vm.k.GetConfigInt64(ctx, constants.Churn_IntervalBlocks)
-	churnRetryInterval := vm.k.GetConfigInt64(ctx, constants.Churn_RetryIntervalBlocks)
+	churnInterval := getConfigDurationBlocks(ctx, vm.k, constants.Churn_IntervalMinutes)
+	churnRetryInterval := getConfigDurationBlocks(ctx, vm.k, constants.Churn_RetryIntervalMinutes)
 	// Only compute retry tick if the interval is valid and past the scheduled churn height
 	onChurnTick := false
 	if churnRetryInterval > 0 && ctx.BlockHeight() > lastChurnHeight+churnInterval {
@@ -65,9 +65,9 @@ func (vm *NodeMgr) BeginBlock(ctx cosmos.Context, mgr Manager, existingNodes []s
 		return nil
 	}
 
-	vaults, err := vm.k.GetAsgardVaultsByStatus(ctx, ActiveVault)
+	vaults, err := vm.k.GetBaseVaultsByStatus(ctx, ActiveVault)
 	if err != nil {
-		ctx.Logger().Error("Failed to get Asgard vaults", "error", err)
+		ctx.Logger().Error("Failed to get Base vaults", "error", err)
 		return err
 	}
 
@@ -105,8 +105,8 @@ func (vm *NodeMgr) BeginBlock(ctx cosmos.Context, mgr Manager, existingNodes []s
 		}
 	}
 
-	// don't churn if we have retiring asgard vaults that still have funds
-	retiringVaults, err := vm.k.GetAsgardVaultsByStatus(ctx, RetiringVault)
+	// don't churn if we have retiring base vaults that still have funds
+	retiringVaults, err := vm.k.GetBaseVaultsByStatus(ctx, RetiringVault)
 	if err != nil {
 		return err
 	}
@@ -187,15 +187,15 @@ func (vm *NodeMgr) churnInner(ctx cosmos.Context) error {
 }
 
 // splits given list of node accounts into separate list of nas, for separate
-// asgard vaults
-func (vm *NodeMgr) splitNext(ctx cosmos.Context, nas NodeAccounts, asgardSize int64) []NodeAccounts {
-	if asgardSize <= 0 { // sanity check
+// base vaults
+func (vm *NodeMgr) splitNext(ctx cosmos.Context, nas NodeAccounts, baseVaultMembersMinimum int64) []NodeAccounts {
+	if baseVaultMembersMinimum <= 0 { // sanity check
 		return nil
 	}
-	// calculate the number of asgard vaults we'll need to support the given
+	// calculate the number of base vaults we'll need to support the given
 	// list of node accounts
-	groupNum := int64(len(nas)) / asgardSize
-	if int64(len(nas))%asgardSize > 0 {
+	groupNum := int64(len(nas)) / baseVaultMembersMinimum
+	if int64(len(nas))%baseVaultMembersMinimum > 0 {
 		groupNum++
 	}
 	if groupNum <= 0 { // sanity check
@@ -203,16 +203,16 @@ func (vm *NodeMgr) splitNext(ctx cosmos.Context, nas NodeAccounts, asgardSize in
 	}
 
 	// we want to ensure that a single node operator (designated by bond
-	// address) doesn't get too many tss shares for a single Asgard vault. So we
+	// address) doesn't get too many tss shares for a single Base vault. So we
 	// first break out our node accounts into two groups. First, duplicate bond
 	// addresses (multi-node operators), and second non-duplicate (single node
 	// operators). Then we sort the duplicate group by bond address, then by
 	// bond size (large to small). Then we sort the non-duplicate group by bond size (large
-	// to small). Then iterate over the first group into asgard vaults first,
+	// to small). Then iterate over the first group into base vaults first,
 	// then the second group. In the end multi-node operators are spread out
-	// against as many asgard vaults as possible. This also makes it more
+	// against as many base vaults as possible. This also makes it more
 	// difficult for a malicious actor to acquire enough spots in a single
-	// asgard to steal as enough are taken by "good actors" that they can't
+	// base to steal as enough are taken by "good actors" that they can't
 	// acquire enough tss shares.
 
 	// Check for duplicates
@@ -257,13 +257,13 @@ func (vm *NodeMgr) splitNext(ctx cosmos.Context, nas NodeAccounts, asgardSize in
 	// sanity checks
 	for i, group := range groups {
 		// ensure no group is more than the max
-		if int64(len(group)) > asgardSize {
-			ctx.Logger().Info("Skipping rotation due to an Asgard group is larger than the max size.")
+		if int64(len(group)) > baseVaultMembersMinimum {
+			ctx.Logger().Info("Skipping rotation due to an Base group is larger than the max size.")
 			return nil
 		}
 		// ensure no group is less than the min
 		if int64(len(group)) < 2 {
-			ctx.Logger().Info("Skipping rotation due to an Asgard group is smaller than the min size.")
+			ctx.Logger().Info("Skipping rotation due to an Base group is smaller than the min size.")
 			return nil
 		}
 		// ensure a single group is significantly larger than another
@@ -273,7 +273,7 @@ func (vm *NodeMgr) splitNext(ctx cosmos.Context, nas NodeAccounts, asgardSize in
 				diff = -diff
 			}
 			if diff > 1 {
-				ctx.Logger().Info("Skipping rotation due to an Asgard groups having dissimilar membership size.")
+				ctx.Logger().Info("Skipping rotation due to an Base groups having dissimilar membership size.")
 				return nil
 			}
 		}
@@ -298,14 +298,14 @@ func (vm *NodeMgr) EndBlock(ctx cosmos.Context, mgr Manager) []abci.ValidatorUpd
 		return nil
 	}
 
-	minimumNodesForBFT := vm.k.GetConfigInt64(ctx, constants.Node_BFTMin)
+	minimumNodesForBFT := vm.k.GetConfigInt64(ctx, constants.Vault_BaseMembersMin)
 	nodesAfterChange := len(activeNodes) + len(newNodes) - len(removedNodes)
 	if len(activeNodes) >= int(minimumNodesForBFT) && nodesAfterChange < int(minimumNodesForBFT) {
 		// Thornado don't have enough nodes for BFT
 
 		// Check we're not migrating funds
 		var retiring Vaults
-		retiring, err = vm.k.GetAsgardVaultsByStatus(ctx, RetiringVault)
+		retiring, err = vm.k.GetBaseVaultsByStatus(ctx, RetiringVault)
 		if err != nil {
 			ctx.Logger().Error("fail to get retiring vaults", "error", err)
 		}
@@ -434,10 +434,10 @@ func (vm *NodeMgr) getChangedNodes(ctx cosmos.Context, activeNodes NodeAccounts)
 	var newActive NodeAccounts    // store the list of new active users
 	var removedNodes NodeAccounts // nodes that had been removed
 
-	activeVaults, err := vm.k.GetAsgardVaultsByStatus(ctx, ActiveVault)
+	activeVaults, err := vm.k.GetBaseVaultsByStatus(ctx, ActiveVault)
 	if err != nil {
-		ctx.Logger().Error("fail to get active asgards", "error", err)
-		return newActive, removedNodes, fmt.Errorf("fail to get active asgards: %w", err)
+		ctx.Logger().Error("fail to get active baseVaults", "error", err)
+		return newActive, removedNodes, fmt.Errorf("fail to get active baseVaults: %w", err)
 	}
 	if len(activeVaults) == 0 {
 		return newActive, removedNodes, errors.New("no active vault")
@@ -545,7 +545,7 @@ func (vm *NodeMgr) payNodeAccountBondAward(ctx cosmos.Context, lastChurnHeight i
 }
 
 func (vm *NodeMgr) getPendingTxOut(ctx cosmos.Context) (int64, error) {
-	signingTransactionPeriod := vm.k.GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)
+	signingTransactionPeriod := getConfigDurationBlocks(ctx, vm.k, constants.Keysign_PeriodMinutes)
 	startHeight := ctx.BlockHeight() - signingTransactionPeriod
 	count := int64(0)
 	for height := startHeight; height <= ctx.BlockHeight(); height++ {
@@ -570,13 +570,6 @@ func (vm *NodeMgr) distributeBondReward(ctx cosmos.Context, mgr Manager) error {
 		return fmt.Errorf("fail to get all active node account: %w", err)
 	}
 
-	// Note that unlike estimated CurrentAward distribution in querier.go ,
-	// this estimate treats lastChurnHeight as the active_block_height of the youngest active node,
-	// rather than the block_height of the first (oldest) Asgard vault.
-	// As an example, note from the below URLs that these 5293733 and 5293728 respectively in block 5336942.
-	// https://gateway.liquify.com/chain/thornado_api/thornado/nodes?height=5336942
-	// (Nodes .cxmy and .uy3a .)
-	// https://gateway.liquify.com/chain/thornado_api/thornado/vaults/asgard?height=5336942
 	lastChurnHeight := int64(0)
 	for _, node := range active {
 		if node.ActiveBlockHeight > lastChurnHeight {
@@ -1130,7 +1123,7 @@ func (vm *NodeMgr) nextVaultNodeAccounts(ctx cosmos.Context, targetCount int) (N
 	}
 	// add selected nodes to become active
 	limit := toRemove + 1
-	minimumNodesForBFT := vm.k.GetConfigInt64(ctx, constants.Node_BFTMin)
+	minimumNodesForBFT := vm.k.GetConfigInt64(ctx, constants.Vault_BaseMembersMin)
 	if len(active)+limit < int(minimumNodesForBFT) {
 		limit = int(minimumNodesForBFT) - len(active)
 	}

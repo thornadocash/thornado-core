@@ -9,6 +9,7 @@ import (
 	"github.com/cosmos/gogoproto/jsonpb"
 
 	"github.com/thornadocash/go-thornado/common"
+	"github.com/thornadocash/go-thornado/constants"
 	openapi "github.com/thornadocash/go-thornado/openapi/gen"
 )
 
@@ -24,11 +25,11 @@ var (
 	_ jsonpb.JSONPBMarshaler = &BanVoter{}
 	_ jsonpb.JSONPBMarshaler = &QueryBlockResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryConfigValuesResponse{}
-	_ jsonpb.JSONPBMarshaler = &QueryInboundAddressesResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryKeygenResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryKeysignResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryLastBlocksResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryConfigNodesAllValuesResponse{}
+	_ jsonpb.JSONPBMarshaler = &QueryConfigNodeValuesResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryConfigNodesValuesResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryConfigValuesResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryNodeResponse{}
@@ -75,37 +76,21 @@ func (m *BanVoter) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
 }
 
 func (m *QueryConfigDefaultsResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
-	c := make(map[string]map[string]any)
+	c := make(map[string]configValueJSON)
 
 	for _, kv := range m.BoolValues {
-		group, name := configGroup(kv.Name)
-		if c[group] == nil {
-			c[group] = make(map[string]any)
-		}
-		c[group][name] = kv.Value
+		c[kv.Name] = newConfigValueJSON(kv.Name, kv.Value, kv.Group, kv.Description)
 	}
 
 	for _, kv := range m.Int_64Values {
-		group, name := configGroup(kv.Name)
-		if c[group] == nil {
-			c[group] = make(map[string]any)
-		}
-		c[group][name] = kv.Value
+		c[kv.Name] = newConfigValueJSON(kv.Name, kv.Value, kv.Group, kv.Description)
 	}
 
 	for _, kv := range m.StringValues {
-		group, name := configGroup(kv.Name)
-		if c[group] == nil {
-			c[group] = make(map[string]any)
-		}
-		c[group][name] = kv.Value
+		c[kv.Name] = newConfigValueJSON(kv.Name, kv.Value, kv.Group, kv.Description)
 	}
 
 	return jsonify(c)
-}
-
-func (m *QueryInboundAddressesResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
-	return jsonify(m.InboundAddresses)
 }
 
 // QueryInvariantResponse
@@ -140,39 +125,53 @@ func (m *QueryConfigNodesAllValuesResponse) MarshalJSONPB(_ *jsonpb.Marshaler) (
 }
 
 func (m *QueryConfigNodesValuesResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
-	v := make(map[string]int64)
+	v := make(map[string]configValueJSON)
 
 	for _, kv := range m.Configs {
-		v[kv.Key] = kv.Value
+		v[kv.Key] = newConfigValueJSON(kv.Key, kv.Value, kv.Group, kv.Description)
 	}
 
 	return jsonify(v)
 }
 
 func (m *QueryConfigValuesResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
-	v := make(map[string]map[string]int64)
+	v := make(map[string]configValueJSON)
 
 	for _, kv := range m.Configs {
-		group, name := configGroup(kv.Key)
-		if v[group] == nil {
-			v[group] = make(map[string]int64)
-		}
-		v[group][name] = kv.Value
+		v[kv.Key] = newConfigValueJSON(kv.Key, kv.Value, kv.Group, kv.Description)
 	}
 
 	return jsonify(v)
 }
 
-func configGroup(key string) (string, string) {
-	for i, r := range key {
-		if r == '_' {
-			if i == 0 || i == len(key)-1 {
-				return "Other", key
-			}
-			return key[:i], key[i+1:]
-		}
+func (m *QueryConfigNodeValuesResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
+	v := make(map[string]configValueJSON)
+
+	for _, kv := range m.NodeConfigs {
+		v[kv.Key] = newConfigValueJSON(kv.Key, kv.Value, kv.Group, kv.Description)
 	}
-	return "Other", key
+
+	return jsonify(v)
+}
+
+type configValueJSON struct {
+	Value       any    `json:"value"`
+	Group       string `json:"group"`
+	Description string `json:"description"`
+}
+
+func newConfigValueJSON(key string, value any, group, description string) configValueJSON {
+	if group == "" {
+		group = constants.ConfigGroup(key)
+	}
+	if description == "" {
+		description = constants.ConfigDescription(key)
+	}
+	return configValueJSON{
+		Value:       value,
+		Group:       group,
+		Description: description,
+	}
 }
 
 // QueryNodeResponse
@@ -225,7 +224,6 @@ func (m *QueryTxStatusResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, erro
 				Chain:     p.Chain,
 				ToAddress: p.ToAddress,
 				Coin:      castCoin(*p.Coin),
-				Refund:    p.Refund,
 			}
 		}
 	}
@@ -436,7 +434,6 @@ func castTx(tx common.Tx) openapi.Tx {
 		ToAddress:   wrapString(tx.ToAddress.String()),
 		Coins:       castCoins(tx.Coins...),
 		Gas:         castCoins(tx.Gas...),
-		Memo:        wrapString(tx.Memo),
 	}
 }
 

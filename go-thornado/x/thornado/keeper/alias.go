@@ -7,7 +7,7 @@ import (
 const (
 	ModuleName   = types.ModuleName
 	ReserveName  = types.ReserveName
-	AsgardName   = types.AsgardName
+	BaseName     = types.BaseName
 	TreasuryName = types.TreasuryName
 	BondName     = types.BondName
 	StoreKey     = types.StoreKey

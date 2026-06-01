@@ -50,9 +50,9 @@ func (h SolvencyHandler) validate(ctx cosmos.Context, msg MsgSolvency) error {
 }
 
 // handleCurrent is the logic to process MsgSolvency, the feature works like this
-//  1. Bifrost report MsgSolvency to thornado , which is the balance of asgard wallet on each individual chain
+//  1. Bifrost report MsgSolvency to thornado , which is the balance of base wallet on each individual chain
 //  2. once MsgSolvency reach consensus , then the network compare the wallet balance against wallet
-//     if wallet has less fund than asgard vault , and the gap is more than 1% , then the chain
+//     if wallet has less fund than base vault , and the gap is more than 1% , then the chain
 //     that is insolvent will be halt
 //  3. When chain is halt , bifrost will not observe inbound , and will not sign outbound txs until the issue has been investigated , and enabled it again using config
 func (h SolvencyHandler) handle(ctx cosmos.Context, msg MsgSolvency) (*cosmos.Result, error) {

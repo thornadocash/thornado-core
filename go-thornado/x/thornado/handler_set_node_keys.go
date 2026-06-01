@@ -48,7 +48,7 @@ func (h SetNodeKeysHandler) validate(ctx cosmos.Context, msg MsgSetNodeKeys) err
 	if err := validateNodeKeysAuth(ctx, h.mgr.Keeper(), msg.Signer); err != nil {
 		return err
 	}
-	if err := h.mgr.Keeper().EnsureNodeKeysUnique(ctx, msg.NodeConsPubKey, msg.PubKeySetSet); err != nil {
+	if err := h.mgr.Keeper().EnsureNodeKeysUnique(ctx, msg.Signer, msg.NodeConsPubKey, msg.PubKeySetSet); err != nil {
 		return err
 	}
 

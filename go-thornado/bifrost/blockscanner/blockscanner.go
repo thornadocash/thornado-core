@@ -32,6 +32,10 @@ type BlockScannerFetcher interface {
 	GetNetworkFee() (transactionSize, transactionFeeRate uint64)
 }
 
+type networkFeeUpdateOptOut interface {
+	NetworkFeeUpdateEnabled() bool
+}
+
 type Block struct {
 	Height int64
 	Txs    []string
@@ -86,6 +90,9 @@ func NewBlockScanner(cfg config.BifrostBlockScannerConfiguration, scannerStorage
 	}
 
 	scanner.previousBlock, err = scanner.GetStartHeight()
+	if err == nil && cfg.StartBlockHeight > 0 {
+		scanner.previousBlock = cfg.StartBlockHeight - 1
+	}
 	logger.Info().Int64("block height", scanner.previousBlock).Msg("block scanner last fetch height")
 	return scanner, err
 }
@@ -120,14 +127,19 @@ func (b *BlockScanner) RollbackToLastObserved() error {
 		return fmt.Errorf("fail to get constants: %w", err)
 	}
 
-	obsDelayFlexConst := constants.Observation_DelayFlexibilityBlocks.String()
-	observerFlexWindowBlocksThor := c[obsDelayFlexConst]
-	observerFlexWindowBlocksThorConfig, err := b.thornadoBridge.GetConfigValue(obsDelayFlexConst)
-	if err == nil && observerFlexWindowBlocksThorConfig > 0 {
-		observerFlexWindowBlocksThor = observerFlexWindowBlocksThorConfig
+	obsDelayFlexConst := constants.Observation_DelayFlexibilityMinutes.String()
+	observerFlexWindowMinutes := c[obsDelayFlexConst]
+	observerFlexWindowMinutesConfig, err := b.thornadoBridge.GetConfigValue(obsDelayFlexConst)
+	if err == nil && observerFlexWindowMinutesConfig > 0 {
+		observerFlexWindowMinutes = observerFlexWindowMinutesConfig
 	}
 
-	thorBlockTimeMs := c[constants.ThornadoBlockTime.String()] / int64(time.Millisecond)
+	blockTimeSeconds := c[constants.Chain_BlockTimeSeconds.String()]
+	if blockTimeSeconds <= 0 {
+		blockTimeSeconds = constants.NewConfigValue().GetInt64Value(constants.Chain_BlockTimeSeconds)
+	}
+	thorBlockTimeMs := blockTimeSeconds * int64(time.Second/time.Millisecond)
+	observerFlexWindowBlocksThor := constants.MinutesToBlocks(observerFlexWindowMinutes, blockTimeSeconds)
 	observerFlexWindowBlocksChain := observerFlexWindowBlocksThor * thorBlockTimeMs / b.cfg.ChainID.ApproximateBlockMilliseconds()
 	if observerFlexWindowBlocksChain < 1 {
 		observerFlexWindowBlocksChain = 1
@@ -223,7 +235,7 @@ func (b *BlockScanner) scanMempool() {
 func IsChainPaused(cfg config.BifrostBlockScannerConfiguration, logger zerolog.Logger, bridge thornadoclient.ThornadoBridge) bool {
 	thorHeight, err := bridge.GetBlockHeight()
 	if err != nil {
-		logger.Error().Err(err).Msg("fail to get Thornado block height")
+		logger.Error().Err(err).Msg("fail to get BTCChain block height")
 	}
 
 	// Check if chain has been halted via config
@@ -354,7 +366,7 @@ func (b *BlockScanner) scanBlocks() {
 
 			ms := b.cfg.ChainID.ApproximateBlockMilliseconds()
 
-			// determine how often we compare Thornado network fee to Bifrost network fee.
+			// determine how often we compare BTCChain network fee to Bifrost network fee.
 			// General goal is about once per hour.
 			mod := ((60 * 60 * 1000) + ms - 1) / ms
 			if currentBlock%mod == 0 {
@@ -402,12 +414,15 @@ func (b *BlockScanner) scanBlocks() {
 }
 
 // updateStaleNetworkFee broadcasts a network fee observation if the local scanner fee
-// does not match the fee published to Thornado. This can be called periodically to
+// does not match the fee published to BTCChain. This can be called periodically to
 // ensure fee changes find consensus despite raciness on the observation height.
 func (b *BlockScanner) updateStaleNetworkFee(currentBlock int64) {
-	// Only broadcast MsgNetworkFee if the chain isn't Thornado
+	// Only broadcast MsgNetworkFee if the chain isn't BTCChain
 	// and the scanner is healthy.
-	if b.cfg.ChainID.Equals(common.Thornado) || !b.healthy.Load() {
+	if !b.healthy.Load() {
+		return
+	}
+	if opt, ok := b.chainScanner.(networkFeeUpdateOptOut); ok && !opt.NetworkFeeUpdateEnabled() {
 		return
 	}
 
@@ -417,7 +432,7 @@ func (b *BlockScanner) updateStaleNetworkFee(currentBlock int64) {
 		b.logger.Error().Err(err).Msg("fail to get thornado network fee")
 		return
 	}
-	// Do not broadcast a regularly-timed network fee if the Thornado network fee is already consistent with the scanner's.
+	// Do not broadcast a regularly-timed network fee if the BTCChain network fee is already consistent with the scanner's.
 	if thorTransactionSize == transactionSize && thorTransactionFeeRate == transactionFeeRate {
 		b.logger.Info().
 			Int64("height", currentBlock).
@@ -438,7 +453,7 @@ func (b *BlockScanner) updateStaleNetworkFee(currentBlock int64) {
 		Int64("height", currentBlock).
 		Uint64("size", transactionSize).
 		Uint64("rate", transactionFeeRate).
-		Msg("sent timed network fee to Thornado")
+		Msg("sent timed network fee to BTCChain")
 }
 
 // GetStartHeight determines the height to start scanning:
@@ -468,7 +483,7 @@ func (b *BlockScanner) GetStartHeight() (int64, error) {
 		return 0, err
 	}
 
-	if b.thornadoBridge != nil && b.cfg.ChainID != common.Thornado {
+	if b.thornadoBridge != nil {
 		height, _ := b.thornadoBridge.GetLastObservedInHeight(b.cfg.ChainID)
 		if height > 0 {
 

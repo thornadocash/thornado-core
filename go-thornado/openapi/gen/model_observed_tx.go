@@ -19,9 +19,9 @@ type ObservedTx struct {
 	Tx                  Tx      `json:"tx"`
 	ObservedPubKey      *string `json:"observed_pub_key,omitempty"`
 	ObservedPubKeyEddsa *string `json:"observed_pub_key_eddsa,omitempty"`
-	// the block height on the external source chain when the transaction was observed, not provided if chain is THOR
+	// the block height on the external source chain when the transaction was observed, not provided if chain is BTC
 	ExternalObservedHeight *int64 `json:"external_observed_height,omitempty"`
-	// the block height on the external source chain when confirmation counting will be complete, not provided if chain is THOR
+	// the block height on the external source chain when confirmation counting will be complete, not provided if chain is BTC
 	ExternalConfirmationDelayHeight *int64 `json:"external_confirmation_delay_height,omitempty"`
 	// the outbound aggregator to use, will also match a suffix
 	Aggregator *string `json:"aggregator,omitempty"`

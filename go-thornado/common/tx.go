@@ -99,7 +99,7 @@ func (tx TxID) String() string {
 type Txs []Tx
 
 // NewTx create a new instance of Tx based on the input information
-func NewTx(txID TxID, from, to Address, coins Coins, gas Gas, memo string) Tx {
+func NewTx(txID TxID, from, to Address, coins Coins, gas Gas) Tx {
 	var chain Chain
 	for _, coin := range coins {
 		chain = coin.Asset.GetChain()
@@ -112,7 +112,6 @@ func NewTx(txID TxID, from, to Address, coins Coins, gas Gas, memo string) Tx {
 		ToAddress:   to,
 		Coins:       coins,
 		Gas:         gas,
-		Memo:        memo,
 	}
 }
 
@@ -124,7 +123,7 @@ func (tx Tx) Hash(blockHeight int64) string {
 
 // String implement fmt.Stringer return a string representation of the tx
 func (tx Tx) String() string {
-	return fmt.Sprintf("%s: %s ==> %s (Memo: %s) %s (gas: %s)", tx.ID, tx.FromAddress, tx.ToAddress, tx.Memo, tx.Coins, tx.Gas)
+	return fmt.Sprintf("%s: %s ==> %s %s (gas: %s)", tx.ID, tx.FromAddress, tx.ToAddress, tx.Coins, tx.Gas)
 }
 
 // IsEmpty check whether the ID field is empty or not
@@ -153,9 +152,6 @@ func (tx Tx) EqualsEx(tx2 Tx) bool {
 	if !tx.Gas.Equals(tx2.Gas) {
 		return false
 	}
-	if !strings.EqualFold(tx.Memo, tx2.Memo) {
-		return false
-	}
 	return true
 }
 
@@ -176,9 +172,6 @@ func (tx Tx) EqualsExIgnoreGas(tx2 Tx) bool {
 		return false
 	}
 	if !tx.Coins.EqualsEx(tx2.Coins) {
-		return false
-	}
-	if !strings.EqualFold(tx.Memo, tx2.Memo) {
 		return false
 	}
 	return true
@@ -205,14 +198,11 @@ func (tx Tx) Valid() error {
 	if err := tx.Coins.Valid(); err != nil {
 		return err
 	}
-	if !tx.Chain.Equals(Thornado) && len(tx.Gas) == 0 {
+	if !tx.Chain.Equals(BTCChain) && len(tx.Gas) == 0 {
 		return errors.New("must have at least 1 gas coin")
 	}
 	if err := tx.Gas.Valid(); err != nil {
 		return err
-	}
-	if tx.Memo != "" {
-		return fmt.Errorf("transaction memo is disabled")
 	}
 	return nil
 }
@@ -225,6 +215,5 @@ func (tx Tx) ToAttributes() []cosmos.Attribute {
 		cosmos.NewAttribute("from", tx.FromAddress.String()),
 		cosmos.NewAttribute("to", tx.ToAddress.String()),
 		cosmos.NewAttribute("coin", tx.Coins.String()),
-		cosmos.NewAttribute("memo", tx.Memo),
 	}
 }

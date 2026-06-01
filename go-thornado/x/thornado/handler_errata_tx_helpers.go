@@ -27,7 +27,7 @@ func processErrataTxAttestation(
 
 	observeSlashPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
 	lackOfObservationPenalty := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_MissPenaltyPoints)
-	observeFlex := k.GetConfigInt64(ctx, constants.Observation_DelayFlexibilityBlocks)
+	observeFlex := getConfigDurationBlocks(ctx, k, constants.Observation_DelayFlexibilityMinutes)
 
 	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{ // nolint
 		telemetry.NewLabel("reason", "failed_observe_errata"),
@@ -54,7 +54,7 @@ func processErrataTxAttestation(
 	}
 
 	if voter.BlockHeight > 0 {
-		// After consensus, only decrement slash points if within the Observation_DelayFlexibilityBlocks period.
+		// After consensus, only decrement slash points if within the Observation_DelayFlexibilityMinutes window.
 		if (voter.BlockHeight + observeFlex) >= ctx.BlockHeight() {
 			slasher.DecSlashPoints(slashCtx, lackOfObservationPenalty, attester)
 		}
@@ -97,11 +97,11 @@ func processErrataTxAttestation(
 	if observedVoter.UpdatedVault {
 		vaultPubKey := observedVoter.Tx.ObservedPubKey
 		if !vaultPubKey.IsEmpty() {
-			// try to deduct the asset from asgard
+			// try to deduct the asset from base
 			var vault Vault
 			vault, err = k.GetVault(ctx, vaultPubKey)
 			if err != nil {
-				return fmt.Errorf("fail to get active asgard vaults: %w", err)
+				return fmt.Errorf("fail to get active base vaults: %w", err)
 			}
 			vault.SubFunds(tx.Coins)
 			if err = k.SetVault(ctx, vault); err != nil {

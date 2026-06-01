@@ -83,8 +83,14 @@ func (h TssHandler) validate(ctx cosmos.Context, msg *MsgTssPool) error {
 		return err
 	}
 
-	if msg.KeygenType != AsgardKeygen {
-		return fmt.Errorf("only asgard vaults allowed for tss")
+	if msg.KeygenType != BaseVaultKeygen {
+		return fmt.Errorf("only base vaults allowed for tss")
+	}
+	if msg.IsSuccess() {
+		minimumMembers := h.mgr.Keeper().GetConfigInt64(ctx, constants.Vault_BaseMembersMin)
+		if minimumMembers > 0 && len(msg.PubKeys) < int(minimumMembers) {
+			return cosmos.ErrUnknownRequest("not enough members for base vault keygen")
+		}
 	}
 
 	if !msg.PoolPubKeyEddsa.IsEmpty() {
@@ -101,7 +107,7 @@ func (h TssHandler) validate(ctx cosmos.Context, msg *MsgTssPool) error {
 		return cosmos.ErrUnknownRequest("invalid tss message")
 	}
 
-	churnRetryBlocks := h.mgr.Keeper().GetConfigInt64(ctx, constants.Churn_RetryIntervalBlocks)
+	churnRetryBlocks := getConfigDurationBlocks(ctx, h.mgr.Keeper(), constants.Churn_RetryIntervalMinutes)
 	if msg.Height <= ctx.BlockHeight()-churnRetryBlocks {
 		return cosmos.ErrUnknownRequest("invalid keygen block")
 	}
@@ -229,7 +235,7 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 	}
 	observeSlashPoints := h.mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
 	lackOfObservationPenalty := h.mgr.Keeper().GetConfigInt64(ctx, constants.Observation_MissPenaltyPoints)
-	observeFlex := h.mgr.Keeper().GetConfigInt64(ctx, constants.Observation_DelayFlexibilityBlocks)
+	observeFlex := getConfigDurationBlocks(ctx, h.mgr.Keeper(), constants.Observation_DelayFlexibilityMinutes)
 
 	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
 		telemetry.NewLabel("reason", "failed_observe_tss_pool"),
@@ -251,7 +257,7 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 	}
 
 	if voter.BlockHeight > 0 && (voter.BlockHeight+observeFlex) >= ctx.BlockHeight() {
-		// After 2/3rds consensus, only decrement slash points if within the Observation_DelayFlexibilityBlocks period.
+		// After 2/3rds consensus, only decrement slash points if within the Observation_DelayFlexibilityMinutes period.
 		// (This is expected to only apply for a failed keygen.)
 		h.mgr.Slasher().DecSlashPoints(slashCtx, lackOfObservationPenalty, msg.Signer)
 	}
@@ -345,7 +351,7 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 						}
 					} else {
 						// go to jail
-						jailTime := h.mgr.Keeper().GetConfigInt64(ctx, constants.Keygen_FailJailBlocks)
+						jailTime := getConfigDurationBlocks(ctx, h.mgr.Keeper(), constants.Keygen_FailJailMinutes)
 						releaseHeight := ctx.BlockHeight() + jailTime
 						reason := "failed to perform keygen"
 						if err := h.mgr.Keeper().SetNodeAccountJail(ctx, na.NodeAddress, releaseHeight, reason); err != nil {
@@ -365,7 +371,7 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 						// take out bond from the node account and add it to the Reserve
 						// thus good behaviour nodes and liquidity providers will get reward
 						na.Bond = common.SafeSub(na.Bond, slashBond)
-						coin := common.NewCoin(common.RuneNative, slashBond)
+						coin := common.NewCoin(common.BTCAsset, slashBond)
 						if !coin.Amount.IsZero() {
 							if err := h.mgr.Keeper().SendFromModuleToModule(ctx, BondName, ReserveName, common.NewCoins(coin)); err != nil {
 								return fmt.Errorf("fail to transfer funds from bond to reserve: %w", err)
@@ -413,21 +419,23 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 				"pubkey", msg.PoolPubKey,
 			)
 
-			// we must also have quorum on the check signature
-			consensusSig, ok := voter.ConsensusCheckSignature()
-			if !ok {
-				ctx.Logger().Error("keygen rejected due to lacking check signature quorum")
-				return nil
-			}
+			if len(voter.Secp256K1Signatures) > 0 {
+				// we must also have quorum on the check signature when it is provided
+				consensusSig, ok := voter.ConsensusCheckSignature()
+				if !ok {
+					ctx.Logger().Error("keygen rejected due to lacking check signature quorum")
+					return nil
+				}
 
-			// log an error if any bad nodes submitted a mismatched check signature
-			for _, sig := range voter.Secp256K1Signatures {
-				if sig != consensusSig {
-					ctx.Logger().Error(
-						"mismatched check signature detected",
-						"expected", base64.StdEncoding.EncodeToString([]byte(consensusSig)),
-						"found", base64.StdEncoding.EncodeToString([]byte(sig)),
-					)
+				// log an error if any bad nodes submitted a mismatched check signature
+				for _, sig := range voter.Secp256K1Signatures {
+					if sig != consensusSig {
+						ctx.Logger().Error(
+							"mismatched check signature detected",
+							"expected", base64.StdEncoding.EncodeToString([]byte(consensusSig)),
+							"found", base64.StdEncoding.EncodeToString([]byte(sig)),
+						)
+					}
 				}
 			}
 
@@ -435,7 +443,7 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 			voter.BlockHeight = ctx.BlockHeight()
 			h.mgr.Keeper().SetTssVoter(ctx, voter)
 
-			vaultType := AsgardVault
+			vaultType := BaseVault
 			chains := voter.ConsensusChains()
 			vault := NewVaultV2(ctx.BlockHeight(), InitVault, vaultType, voter.PoolPubKey, chains.Strings(), voter.PoolPubKeyEddsa)
 			vault.Membership = voter.PubKeys
@@ -447,7 +455,7 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 			if err != nil {
 				return fmt.Errorf("fail to get keygen block, err: %w, height: %d", err, msg.Height)
 			}
-			initVaults, err := h.mgr.Keeper().GetAsgardVaultsByStatus(ctx, InitVault)
+			initVaults, err := h.mgr.Keeper().GetBaseVaultsByStatus(ctx, InitVault)
 			if err != nil {
 				return fmt.Errorf("fail to get init vaults: %w", err)
 			}
@@ -468,7 +476,7 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 			}
 
 			if len(initVaults) == len(keygenBlock.Keygens) {
-				ctx.Logger().Info("tss keygen results churn", "asgards", len(initVaults))
+				ctx.Logger().Info("tss keygen results churn", "baseVaults", len(initVaults))
 				for _, v := range initVaults {
 					if err = h.mgr.NetworkMgr().RotateVault(ctx, v); err != nil {
 						return fmt.Errorf("fail to rotate vault: %w", err)
@@ -532,7 +540,7 @@ func judgeLateSigner(ctx cosmos.Context, mgr Manager, msg *MsgTssPool, voter Tss
 		if !voter.HasSigned(thorAddr) {
 			mgr.Slasher().IncSlashPoints(slashCtx, slashPoints, thorAddr)
 			// go to jail
-			jailTime := mgr.Keeper().GetConfigInt64(ctx, constants.Keygen_FailJailBlocks)
+			jailTime := getConfigDurationBlocks(ctx, mgr.Keeper(), constants.Keygen_FailJailMinutes)
 			releaseHeight := ctx.BlockHeight() + jailTime
 			reason := "failed to vote keygen in time"
 			if err := mgr.Keeper().SetNodeAccountJail(ctx, thorAddr, releaseHeight, reason); err != nil {

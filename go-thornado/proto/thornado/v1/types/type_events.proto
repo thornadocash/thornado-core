@@ -160,13 +160,6 @@ message EventRewards {
   ];
 }
 
-message EventRefund {
-  uint32 code = 1;
-  string reason = 2;
-  common.Tx in_tx = 3 [ (gogoproto.nullable) = false ];
-  common.Fee fee = 4 [ (gogoproto.nullable) = false ];
-}
-
 enum BondType {
   bond_paid = 0;
   bond_returned = 1;
@@ -392,5 +385,4 @@ message EventFailedOutboundRecovery {
   string destination = 4
       [ (gogoproto.casttype) =
             "github.com/thornadocash/go-thornado/common.Address" ];
-  string memo = 5;
 }

@@ -12,26 +12,26 @@ import (
 	"github.com/thornadocash/go-thornado/common"
 )
 
-type AsgardCacheTestSuite struct{}
+type BaseCacheTestSuite struct{}
 
-var _ = Suite(&AsgardCacheTestSuite{})
+var _ = Suite(&BaseCacheTestSuite{})
 
-type mockAsgardBridge struct {
+type mockBaseBridge struct {
 	thornadoclient.ThornadoBridge
-	asgardPubKeys []thornadoclient.PubKeyAddressPair
-	err           error
-	calls         int
+	basePubKeys []thornadoclient.PubKeyAddressPair
+	err         error
+	calls       int
 }
 
-func (m *mockAsgardBridge) GetAsgardPubKeys() ([]thornadoclient.PubKeyAddressPair, error) {
+func (m *mockBaseBridge) GetBasePubKeys() ([]thornadoclient.PubKeyAddressPair, error) {
 	m.calls++
 	if m.err != nil {
 		return nil, m.err
 	}
-	return m.asgardPubKeys, nil
+	return m.basePubKeys, nil
 }
 
-func makeAsgardPubKeyPair(c *C) thornadoclient.PubKeyAddressPair {
+func makeBasePubKeyPair(c *C) thornadoclient.PubKeyAddressPair {
 	pubKey, err := common.NewPubKeyFromCrypto(secp256k1.GenPrivKey().PubKey())
 	c.Assert(err, IsNil)
 
@@ -48,19 +48,19 @@ func expectedAddress(c *C, pubKey common.PubKey, chain common.Chain) common.Addr
 }
 
 // Fresh cache entries should be returned without calling the bridge.
-func (s *AsgardCacheTestSuite) TestGetAsgardAddressCachedFreshHit(c *C) {
+func (s *BaseCacheTestSuite) TestGetBaseAddressCachedFreshHit(c *C) {
 	chain := common.BTCChain
-	pair := makeAsgardPubKeyPair(c)
+	pair := makeBasePubKeyPair(c)
 	cachedAddresses := []common.Address{expectedAddress(c, pair.PubKey, chain)}
 
-	var cache atomic.Pointer[AsgardCache]
-	cache.Store(&AsgardCache{
+	var cache atomic.Pointer[BaseCache]
+	cache.Store(&BaseCache{
 		Addresses: cachedAddresses,
 		FetchedAt: time.Now(),
 	})
 
-	bridge := &mockAsgardBridge{}
-	addresses, err := GetAsgardAddressCached(&cache, chain, bridge, time.Second)
+	bridge := &mockBaseBridge{}
+	addresses, err := GetBaseAddressCached(&cache, chain, bridge, time.Second)
 
 	c.Assert(err, IsNil)
 	c.Assert(addresses, DeepEquals, cachedAddresses)
@@ -68,40 +68,44 @@ func (s *AsgardCacheTestSuite) TestGetAsgardAddressCachedFreshHit(c *C) {
 }
 
 // A cache miss should refresh addresses from the bridge and store them.
-func (s *AsgardCacheTestSuite) TestGetAsgardAddressCachedRefreshSuccess(c *C) {
+func (s *BaseCacheTestSuite) TestGetBaseAddressCachedRefreshSuccess(c *C) {
 	chain := common.BTCChain
-	pair := makeAsgardPubKeyPair(c)
+	pair := makeBasePubKeyPair(c)
 	refreshedAddresses := []common.Address{expectedAddress(c, pair.PubKey, chain)}
+	firstDepositAddress, err := common.DeriveBTCTaprootAddress(pair.PubKey, common.FirstDepositPathIndex)
+	c.Assert(err, IsNil)
 
-	var cache atomic.Pointer[AsgardCache]
-	bridge := &mockAsgardBridge{
-		asgardPubKeys: []thornadoclient.PubKeyAddressPair{pair},
+	var cache atomic.Pointer[BaseCache]
+	bridge := &mockBaseBridge{
+		basePubKeys: []thornadoclient.PubKeyAddressPair{pair},
 	}
 
-	addresses, err := GetAsgardAddressCached(&cache, chain, bridge, time.Second)
+	addresses, err := GetBaseAddressCached(&cache, chain, bridge, time.Second)
 
 	c.Assert(err, IsNil)
-	c.Assert(addresses, DeepEquals, refreshedAddresses)
+	c.Assert(addresses[0], Equals, refreshedAddresses[0])
+	c.Assert(addresses[1], Equals, firstDepositAddress)
+	c.Assert(addresses, HasLen, int(common.DepositAddressLookahead)+1)
 	c.Assert(bridge.calls, Equals, 1)
 	c.Assert(cache.Load(), NotNil)
-	c.Assert(cache.Load().Addresses, DeepEquals, refreshedAddresses)
+	c.Assert(cache.Load().Addresses, DeepEquals, addresses)
 }
 
 // When refresh fails, stale cached addresses should still be returned.
-func (s *AsgardCacheTestSuite) TestGetAsgardAddressCachedRefreshErrorWithStaleCache(c *C) {
+func (s *BaseCacheTestSuite) TestGetBaseAddressCachedRefreshErrorWithStaleCache(c *C) {
 	chain := common.BTCChain
-	pair := makeAsgardPubKeyPair(c)
+	pair := makeBasePubKeyPair(c)
 	staleAddresses := []common.Address{expectedAddress(c, pair.PubKey, chain)}
 	expectedErr := errors.New("bridge unavailable")
 
-	var cache atomic.Pointer[AsgardCache]
-	cache.Store(&AsgardCache{
+	var cache atomic.Pointer[BaseCache]
+	cache.Store(&BaseCache{
 		Addresses: staleAddresses,
 		FetchedAt: time.Now().Add(-2 * time.Second),
 	})
 
-	bridge := &mockAsgardBridge{err: expectedErr}
-	addresses, err := GetAsgardAddressCached(&cache, chain, bridge, time.Second)
+	bridge := &mockBaseBridge{err: expectedErr}
+	addresses, err := GetBaseAddressCached(&cache, chain, bridge, time.Second)
 
 	c.Assert(errors.Is(err, expectedErr), Equals, true)
 	c.Assert(addresses, DeepEquals, staleAddresses)
@@ -109,12 +113,12 @@ func (s *AsgardCacheTestSuite) TestGetAsgardAddressCachedRefreshErrorWithStaleCa
 }
 
 // A refresh failure without cached data should be returned to the caller.
-func (s *AsgardCacheTestSuite) TestGetAsgardAddressCachedRefreshErrorWithoutCache(c *C) {
+func (s *BaseCacheTestSuite) TestGetBaseAddressCachedRefreshErrorWithoutCache(c *C) {
 	expectedErr := errors.New("bridge unavailable")
 
-	var cache atomic.Pointer[AsgardCache]
-	bridge := &mockAsgardBridge{err: expectedErr}
-	addresses, err := GetAsgardAddressCached(&cache, common.BTCChain, bridge, time.Second)
+	var cache atomic.Pointer[BaseCache]
+	bridge := &mockBaseBridge{err: expectedErr}
+	addresses, err := GetBaseAddressCached(&cache, common.BTCChain, bridge, time.Second)
 
 	c.Assert(errors.Is(err, expectedErr), Equals, true)
 	c.Assert(addresses, IsNil)
@@ -122,19 +126,19 @@ func (s *AsgardCacheTestSuite) TestGetAsgardAddressCachedRefreshErrorWithoutCach
 }
 
 // An empty refresh result should keep returning stale cached addresses.
-func (s *AsgardCacheTestSuite) TestGetAsgardAddressCachedEmptyRefreshWithStaleCache(c *C) {
+func (s *BaseCacheTestSuite) TestGetBaseAddressCachedEmptyRefreshWithStaleCache(c *C) {
 	chain := common.BTCChain
-	pair := makeAsgardPubKeyPair(c)
+	pair := makeBasePubKeyPair(c)
 	staleAddresses := []common.Address{expectedAddress(c, pair.PubKey, chain)}
 
-	var cache atomic.Pointer[AsgardCache]
-	cache.Store(&AsgardCache{
+	var cache atomic.Pointer[BaseCache]
+	cache.Store(&BaseCache{
 		Addresses: staleAddresses,
 		FetchedAt: time.Now().Add(-2 * time.Second),
 	})
 
-	bridge := &mockAsgardBridge{}
-	addresses, err := GetAsgardAddressCached(&cache, chain, bridge, time.Second)
+	bridge := &mockBaseBridge{}
+	addresses, err := GetBaseAddressCached(&cache, chain, bridge, time.Second)
 
 	c.Assert(err, IsNil)
 	c.Assert(addresses, DeepEquals, staleAddresses)
@@ -142,11 +146,11 @@ func (s *AsgardCacheTestSuite) TestGetAsgardAddressCachedEmptyRefreshWithStaleCa
 }
 
 // An empty refresh without cached data should return an empty slice.
-func (s *AsgardCacheTestSuite) TestGetAsgardAddressCachedEmptyRefreshWithoutCache(c *C) {
-	var cache atomic.Pointer[AsgardCache]
-	bridge := &mockAsgardBridge{}
+func (s *BaseCacheTestSuite) TestGetBaseAddressCachedEmptyRefreshWithoutCache(c *C) {
+	var cache atomic.Pointer[BaseCache]
+	bridge := &mockBaseBridge{}
 
-	addresses, err := GetAsgardAddressCached(&cache, common.BTCChain, bridge, time.Second)
+	addresses, err := GetBaseAddressCached(&cache, common.BTCChain, bridge, time.Second)
 
 	c.Assert(err, IsNil)
 	c.Assert(addresses, HasLen, 0)

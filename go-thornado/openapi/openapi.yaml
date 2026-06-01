@@ -163,6 +163,12 @@ paths:
       responses:
         "200":
           description: Last block response
+  /thornado/network_fee:
+    get:
+      summary: BTC network fee
+      responses:
+        "200":
+          description: Network fee response
   /thornado/deposit/{deposit_id}:
     get:
       summary: Deposit
@@ -193,9 +199,9 @@ paths:
       responses:
         "200":
           description: Session response
-  /thornado/shielder/withdrawal/{withdrawal_id}:
+  /thornado/shielder/redeem/{withdrawal_id}:
     get:
-      summary: Shielder withdrawal
+      summary: Shielder redeem
       parameters:
         - name: withdrawal_id
           in: path
@@ -204,7 +210,7 @@ paths:
             type: string
       responses:
         "200":
-          description: Withdrawal response
+          description: Redeem response
   /thornado/shielder/nullifier/{nullifier_hash}:
     get:
       summary: Shielder nullifier
@@ -223,9 +229,9 @@ paths:
       responses:
         "200":
           description: Shielder roots response
-  /thornado/shielder/withdrawal/quote/{amount_sats}:
+  /thornado/shielder/redeem/quote/{amount_sats}:
     get:
-      summary: Shielder withdrawal quote
+      summary: Shielder redeem quote
       parameters:
         - name: amount_sats
           in: path
@@ -235,7 +241,7 @@ paths:
             format: int64
       responses:
         "200":
-          description: Withdrawal quote response
+          description: Redeem quote response
   /thornado/bond/{node_pub_key}:
     get:
       summary: Node bond
@@ -320,15 +326,70 @@ paths:
       responses:
         "200":
           description: Fee entitlements response
-  /thornado/tss/keygen:
+  /thornado/metric/keygen/{pub_key}:
     get:
-      summary: TSS keygen metrics
+      summary: Keygen metric by vault pubkey
+      parameters:
+        - name: pub_key
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         "200":
-          description: TSS keygen response
-  /thornado/tss/keysign:
+          description: Keygen metric response
+  /thornado/metrics:
     get:
-      summary: TSS keysign metrics
+      summary: Keygen and keysign metrics
       responses:
         "200":
-          description: TSS keysign response
+          description: Metrics response
+  /thornado/keysign/{height}:
+    get:
+      summary: TxOut keysign items
+      parameters:
+        - name: height
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Keysign response
+  /thornado/keysign/{height}/{pub_key}:
+    get:
+      summary: TxOut keysign items by vault pubkey
+      parameters:
+        - name: height
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: pub_key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Keysign response
+  /thornado/keygen/{height}/{pub_key}:
+    get:
+      summary: Keygen block by vault pubkey
+      parameters:
+        - name: height
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: pub_key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Keygen response

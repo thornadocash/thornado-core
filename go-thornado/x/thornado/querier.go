@@ -17,7 +17,6 @@ import (
 	"github.com/blang/semver"
 	tmhttp "github.com/cometbft/cometbft/rpc/client/http"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"github.com/rs/zerolog/log"
 	"github.com/thornadocash/go-thornado/bifrost/p2p/conversion"
 	"github.com/thornadocash/go-thornado/common"
@@ -63,7 +62,7 @@ func getPeerIDFromPubKey(pubkey common.PubKey) string {
 func (qs queryServer) queryBalanceModule(ctx cosmos.Context, req *types.QueryBalanceModuleRequest) (*types.QueryBalanceModuleResponse, error) {
 	moduleName := req.Name
 	if len(moduleName) == 0 {
-		moduleName = AsgardName
+		moduleName = BaseName
 	}
 
 	modAddr := qs.mgr.Keeper().GetModuleAccAddress(moduleName)
@@ -112,7 +111,7 @@ func (qs queryServer) queryVault(ctx cosmos.Context, req *types.QueryVaultReques
 }
 
 func (qs queryServer) queryBaseVaults(ctx cosmos.Context, _ *types.QueryBaseVaultsRequest) (*types.QueryBaseVaultsResponse, error) {
-	vaults, err := qs.mgr.Keeper().GetAsgardVaults(ctx)
+	vaults, err := qs.mgr.Keeper().GetBaseVaults(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get base vaults: %w", err)
 	}
@@ -122,7 +121,7 @@ func (qs queryServer) queryBaseVaults(ctx cosmos.Context, _ *types.QueryBaseVaul
 		if vault.Status == InactiveVault {
 			continue
 		}
-		if !vault.IsAsgard() {
+		if !vault.IsBase() {
 			continue
 		}
 		// Being in a RetiringVault blocks a node from unbonding, so display them even if having no funds.
@@ -151,7 +150,7 @@ func (qs queryServer) queryBaseVaults(ctx cosmos.Context, _ *types.QueryBaseVaul
 
 func getVaultChainAddresses(ctx cosmos.Context, vault Vault) []*types.VaultAddress {
 	var result []*types.VaultAddress
-	allChains := append(vault.GetChains(), common.Thornado)
+	allChains := append(vault.GetChains(), common.BTCChain)
 	for _, c := range allChains.Distinct() {
 		if vault.PubKeyEddsa.IsEmpty() && c.GetSigningAlgo() != common.SigningAlgoEd25519 {
 			// this is an eddsa chain, but the vault doesn't have an eddsa pubkey, skip.
@@ -182,7 +181,7 @@ var whitelistPubkeys = map[string]bool{
 
 func (qs queryServer) queryVaultsPubkeys(ctx cosmos.Context, _ *types.QueryVaultsPubkeysRequest) (*types.QueryVaultsPubkeysResponse, error) {
 	var resp types.QueryVaultsPubkeysResponse
-	resp.Asgard = make([]*types.VaultInfo, 0)
+	resp.Base = make([]*types.VaultInfo, 0)
 	resp.Inactive = make([]*types.VaultInfo, 0)
 	iter := qs.mgr.Keeper().GetVaultIterator(ctx)
 
@@ -198,10 +197,10 @@ func (qs queryServer) queryVaultsPubkeys(ctx cosmos.Context, _ *types.QueryVault
 			ctx.Logger().Error("fail to unmarshal vault", "error", err)
 			return nil, fmt.Errorf("fail to unmarshal vault: %w", err)
 		}
-		if vault.IsAsgard() {
+		if vault.IsBase() {
 			switch vault.Status {
 			case ActiveVault, RetiringVault:
-				resp.Asgard = append(resp.Asgard, &types.VaultInfo{
+				resp.Base = append(resp.Base, &types.VaultInfo{
 					PubKey:      vault.PubKey.String(),
 					PubKeyEddsa: vault.PubKeyEddsa.String(),
 					Membership:  vault.Membership,
@@ -236,6 +235,14 @@ func (qs queryServer) queryVaultsPubkeys(ctx cosmos.Context, _ *types.QueryVault
 	return &resp, nil
 }
 
+func (qs queryServer) queryNetworkFee(ctx cosmos.Context, _ *types.QueryNetworkFeeRequest) (*types.NetworkFee, error) {
+	fee, err := qs.mgr.Keeper().GetNetworkFee(ctx, common.BTCChain)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get BTC network fee: %w", err)
+	}
+	return &fee, nil
+}
+
 func (qs queryServer) queryVaultSolvency(ctx cosmos.Context, _ *types.QueryVaultSolvencyRequest) (*types.QueryVaultSolvencyResponse, error) {
 	// Get the network manager to calculate solvency
 	networkMgr, ok := qs.mgr.NetworkMgr().(*NetworkMgr)
@@ -263,89 +270,6 @@ func (qs queryServer) queryVaultSolvency(ctx cosmos.Context, _ *types.QueryVault
 	}
 
 	return resp, nil
-}
-
-// queryRUNEProvider
-// queryRUNEProviders
-func (qs queryServer) queryInboundAddresses(ctx cosmos.Context, _ *types.QueryInboundAddressesRequest) (*types.QueryInboundAddressesResponse, error) {
-	active, err := qs.mgr.Keeper().GetAsgardVaultsByStatus(ctx, ActiveVault)
-	if err != nil {
-		ctx.Logger().Error("fail to get active vaults", "error", err)
-		return nil, fmt.Errorf("fail to get active vaults: %w", err)
-	}
-
-	var resp []*types.QueryInboundAddressResponse
-
-	k := qs.mgr.Keeper()
-	if k == nil {
-		ctx.Logger().Error("keeper is nil, can't fulfill query")
-		return nil, errors.New("keeper is nil, can't fulfill query")
-	}
-	signingTransactionPeriod := k.GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)
-	// select vault that is most secure
-	vault := k.GetMostSecure(ctx, active, signingTransactionPeriod)
-
-	chains := vault.GetChains()
-
-	if len(chains) == 0 {
-		chains = common.Chains{common.RuneAsset().Chain}
-	}
-
-	isGlobalTradingPaused := k.IsGlobalTradingHalted(ctx)
-
-	for _, chain := range chains {
-		// tx send to thornado doesn't need an address , thus here skip it
-		if chain == common.Thornado {
-			continue
-		}
-
-		isChainTradingPaused := k.IsChainTradingHalted(ctx, chain)
-		isChainLpPaused := false
-
-		vaultAddress, err := vault.GetAddress(chain)
-		if err != nil {
-			ctx.Logger().Error("fail to get address for chain", "error", err)
-			return nil, fmt.Errorf("fail to get address for chain: %w", err)
-		}
-		gasRate := qs.mgr.GasMgr().GetGasRate(ctx, chain)
-		networkFeeInfo, err := qs.mgr.GasMgr().GetNetworkFee(ctx, chain)
-		if err != nil {
-			ctx.Logger().Error("fail to get network fee info", "error", err)
-			return nil, fmt.Errorf("fail to get network fee info: %w", err)
-		}
-
-		// Retrieve the outbound fee for the chain's gas asset - fee will be zero if no network fee has been posted/the pool doesn't exist
-		outboundFee, _ := qs.mgr.GasMgr().GetAssetOutboundFee(ctx, chain.GetGasAsset(), false)
-
-		gasUnits, _ := chain.GetGasUnits()
-		pubKey, err := vault.AlgoPubKey(chain)
-		if err != nil {
-			ctx.Logger().Error("fail to get pubkey for chain", "error", err)
-			return nil, fmt.Errorf("fail to get pubkey for chain: %w", err)
-		}
-
-		addr := types.QueryInboundAddressResponse{
-			Chain:                chain.String(),
-			PubKey:               pubKey.String(),
-			Address:              vaultAddress.String(),
-			Halted:               isGlobalTradingPaused || isChainTradingPaused,
-			GlobalTradingPaused:  isGlobalTradingPaused,
-			ChainTradingPaused:   isChainTradingPaused,
-			ChainLpActionsPaused: isChainLpPaused,
-			ObservedFeeRate:      cosmos.NewUint(networkFeeInfo.TransactionFeeRate).String(),
-			GasRate:              gasRate.String(),
-			GasRateUnits:         gasUnits,
-			OutboundTxSize:       cosmos.NewUint(networkFeeInfo.TransactionSize).String(),
-			OutboundFee:          outboundFee.String(),
-			DustThreshold:        chain.DustThreshold().String(),
-		}
-
-		resp = append(resp, &addr)
-	}
-
-	return &types.QueryInboundAddressesResponse{
-		InboundAddresses: resp,
-	}, nil
 }
 
 // queryNode return the Node information related to the request node address
@@ -419,7 +343,7 @@ func (qs queryServer) queryNode(ctx cosmos.Context, req *types.QueryNodeRequest)
 			return nil, fmt.Errorf("fail to get network: %w", err)
 		}
 		var vaults []Vault
-		vaults, err = qs.mgr.Keeper().GetAsgardVaultsByStatus(ctx, ActiveVault)
+		vaults, err = qs.mgr.Keeper().GetBaseVaultsByStatus(ctx, ActiveVault)
 		if err != nil {
 			return nil, fmt.Errorf("fail to get active vaults: %w", err)
 		}
@@ -532,23 +456,28 @@ func (qs queryServer) queryNodes(ctx cosmos.Context, _ *types.QueryNodesRequest)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get all active node account: %w", err)
 	}
+	for _, activeNode := range active {
+		if !nodeAccounts.Contains(activeNode) {
+			nodeAccounts = append(nodeAccounts, activeNode)
+		}
+	}
 
 	network, err := qs.mgr.Keeper().GetNetwork(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get network: %w", err)
 	}
 
-	vaults, err := qs.mgr.Keeper().GetAsgardVaultsByStatus(ctx, ActiveVault)
+	vaults, err := qs.mgr.Keeper().GetBaseVaultsByStatus(ctx, ActiveVault)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get active vaults: %w", err)
-	}
-	if len(vaults) == 0 {
-		return nil, fmt.Errorf("no active vaults")
 	}
 
 	totalEffectiveBond, bondHardCap := getTotalEffectiveBond(active)
 
-	lastChurnHeight := vaults[0].StatusSince
+	lastChurnHeight := int64(0)
+	if len(vaults) > 0 {
+		lastChurnHeight = vaults[0].StatusSince
+	}
 	result := make([]*types.QueryNodeResponse, len(nodeAccounts))
 	for i, na := range nodeAccounts {
 		if na.RequestedToLeave && na.Bond.LTE(cosmos.NewUint(common.One)) {
@@ -593,7 +522,7 @@ func (qs queryServer) queryNodes(ctx cosmos.Context, _ *types.QueryNodesRequest)
 		}
 		result[i].PeerId = getPeerIDFromPubKey(na.PubKeySet.Secp256k1)
 		result[i].SlashPoints = slashPts
-		if na.Status == NodeActive {
+		if na.Status == NodeActive && !na.Bond.IsZero() && len(vaults) > 0 {
 			var reward cosmos.Uint
 			reward, err = getNodeCurrentRewards(ctx, qs.mgr, na, lastChurnHeight, network.BondRewardRune, totalEffectiveBond, bondHardCap)
 			if err != nil {
@@ -650,7 +579,7 @@ func (qs queryServer) queryNodeMetrics(ctx cosmos.Context, _ *types.QueryNodeMet
 	increment := uint64(k.GetConfigInt64(ctx, constants.Node_BondSlotIncrementSats))
 	resp := &types.QueryNodeMetricsResponse{
 		NextSlot:                 nextSlot,
-		NextSlotBondRequiredSats: start + nextSlot*increment,
+		NextSlotBondRequiredSats: shielderBondRequiredSats(ctx, k, nextSlot),
 		BondStartAmountSats:      start,
 		BondSlotIncrementSats:    increment,
 	}
@@ -826,7 +755,7 @@ func newTxStagesResponse(ctx cosmos.Context, voter ObservedTxVoter) (result type
 
 			estConfMs := voter.Tx.Tx.Chain.ApproximateBlockMilliseconds() * (extConfDelayHeight - extObsHeight)
 			if currentHeight > countStartHeight {
-				estConfMs -= (currentHeight - countStartHeight) * common.Thornado.ApproximateBlockMilliseconds()
+				estConfMs -= (currentHeight - countStartHeight) * common.BTCChain.ApproximateBlockMilliseconds()
 			}
 			estConfSec := estConfMs / 1000
 			// Floor at 0.
@@ -861,7 +790,7 @@ func newTxStagesResponse(ctx cosmos.Context, voter ObservedTxVoter) (result type
 			remainBlocks := voter.OutboundHeight - currentHeight
 			outDelay.RemainingDelayBlocks = remainBlocks
 
-			remainSec := remainBlocks * common.Thornado.ApproximateBlockMilliseconds() / 1000
+			remainSec := remainBlocks * common.BTCChain.ApproximateBlockMilliseconds() / 1000
 			outDelay.RemainingDelaySeconds = remainSec
 		}
 
@@ -896,7 +825,7 @@ func (qs queryServer) queryTxStages(ctx cosmos.Context, req *types.QueryTxStages
 	if err != nil {
 		return nil, err
 	}
-	// when no TxIn voter don't check TxOut voter, as TxOut Thornado observation or not matters little to the user once signed and broadcast
+	// when no TxIn voter don't check TxOut voter, as TxOut BTCChain observation or not matters little to the user once signed and broadcast
 	// Rather than a "tx: %s doesn't exist" result, allow a response to an existing-but-unobserved hash with Observation.Started 'false'.
 
 	result := newTxStagesResponse(ctx, voter)
@@ -910,7 +839,7 @@ func (qs queryServer) queryTxStatus(ctx cosmos.Context, req *types.QueryTxStatus
 	if err != nil {
 		return nil, err
 	}
-	// when no TxIn voter don't check TxOut voter, as TxOut Thornado observation or not matters little to the user once signed and broadcast
+	// when no TxIn voter don't check TxOut voter, as TxOut BTCChain observation or not matters little to the user once signed and broadcast
 	// Rather than a "tx: %s doesn't exist" result, allow a response to an existing-but-unobserved hash with Stages.Observation.Started 'false'.
 
 	var result types.QueryTxStatusResponse
@@ -932,7 +861,6 @@ func (qs queryServer) queryTxStatus(ctx cosmos.Context, req *types.QueryTxStatus
 				Chain:     voter.Actions[i].Chain.String(),
 				ToAddress: voter.Actions[i].ToAddress.String(),
 				Coin:      &voter.Actions[i].Coin,
-				Refund:    strings.HasPrefix(voter.Actions[i].GetMemo(), "REFUND"),
 			}
 		}
 	}
@@ -989,7 +917,6 @@ func (qs queryServer) queryTx(ctx cosmos.Context, req *types.QueryTxRequest) (*t
 				Chain:     voter.Actions[i].Chain.String(),
 				ToAddress: voter.Actions[i].ToAddress.String(),
 				Coin:      &voter.Actions[i].Coin,
-				Refund:    strings.HasPrefix(voter.Actions[i].GetMemo(), "REFUND"),
 			}
 		}
 	}
@@ -997,7 +924,15 @@ func (qs queryServer) queryTx(ctx cosmos.Context, req *types.QueryTxRequest) (*t
 	return &result, nil
 }
 
-func (qs queryServer) queryTxOut(ctx cosmos.Context, req *types.QueryTxOutRequest) (*types.QueryTxOutResponse, error) {
+type txOutView string
+
+const (
+	txOutViewOut      txOutView = "out"
+	txOutViewInternal txOutView = "internal"
+	txOutViewAll      txOutView = "all"
+)
+
+func (qs queryServer) queryTxOut(ctx cosmos.Context, req *types.QueryTxOutRequest, view txOutView) (*types.QueryTxOutResponse, error) {
 	height := ctx.BlockHeight()
 	if req.Height != "" {
 		parsed, err := strconv.ParseInt(req.Height, 10, 64)
@@ -1005,27 +940,83 @@ func (qs queryServer) queryTxOut(ctx cosmos.Context, req *types.QueryTxOutReques
 			return nil, err
 		}
 		height = parsed
+		txOut, err := qs.mgr.Keeper().GetTxOut(ctx, height)
+		if err != nil {
+			return nil, err
+		}
+		txOut = filterTxOutView(txOut, view)
+		return &types.QueryTxOutResponse{Txout: *txOut, Txouts: []TxOut{*txOut}}, nil
 	}
+
+	txOuts := make([]TxOut, 0)
+	iterator := qs.mgr.Keeper().GetTxOutIterator(ctx)
+	defer iterator.Close()
+	for ; iterator.Valid(); iterator.Next() {
+		var txOut TxOut
+		if err := qs.mgr.Keeper().Cdc().Unmarshal(iterator.Value(), &txOut); err != nil {
+			return nil, err
+		}
+		if txOut.Status == TxOutStatusPendingBatch || txOut.Status == TxOutStatusPendingSign || view == txOutViewAll {
+			txOut = *filterTxOutView(&txOut, view)
+			if txOut.IsEmpty() {
+				continue
+			}
+			txOuts = append(txOuts, txOut)
+		}
+	}
+	sort.SliceStable(txOuts, func(i, j int) bool {
+		if txOuts[i].Epoch == txOuts[j].Epoch {
+			return txOuts[i].Height < txOuts[j].Height
+		}
+		return txOuts[i].Epoch < txOuts[j].Epoch
+	})
+
 	txOut, err := qs.mgr.Keeper().GetTxOut(ctx, height)
 	if err != nil {
 		return nil, err
 	}
-	return &types.QueryTxOutResponse{Txout: *txOut}, nil
+	txOut = filterTxOutView(txOut, view)
+	return &types.QueryTxOutResponse{Txout: *txOut, Txouts: txOuts}, nil
 }
 
-func (qs queryServer) queryShielderDeposit(ctx cosmos.Context, req *types.QueryShielderDepositRequest) (*types.QueryShielderDepositResponse, error) {
+func filterTxOutView(txOut *TxOut, view txOutView) *TxOut {
+	if txOut == nil || view == txOutViewAll {
+		return txOut
+	}
+	filtered := &TxOut{
+		Height:        txOut.Height,
+		Epoch:         txOut.Epoch,
+		Status:        txOut.Status,
+		SigningLeader: txOut.SigningLeader,
+	}
+	for _, item := range txOut.TxArray {
+		switch view {
+		case txOutViewOut:
+			if types.IsBatchableTxOutType(item.TxType) {
+				filtered.TxArray = append(filtered.TxArray, item)
+			}
+		case txOutViewInternal:
+			if types.IsInternalTxOutType(item.TxType) {
+				filtered.TxArray = append(filtered.TxArray, item)
+			}
+		}
+	}
+	return filtered
+}
+
+func (qs queryServer) queryDeposit(ctx cosmos.Context, req *types.QueryDepositRequest) (*types.QueryDepositResponse, error) {
 	depositID, err := common.NewTxID(req.DepositId)
 	if err != nil {
 		return nil, err
 	}
-	deposit, err := qs.mgr.Keeper().GetShielderDeposit(ctx, depositID)
+	deposit, err := qs.mgr.Keeper().GetDepositRecord(ctx, depositID)
 	if err != nil {
 		return nil, err
 	}
 	if deposit.DepositID.IsEmpty() {
-		return nil, errors.New("shielder deposit not found")
+		return nil, errors.New("deposit not found")
 	}
-	return &types.QueryShielderDepositResponse{
+	return &types.QueryDepositResponse{
 		DepositId:        deposit.DepositID.String(),
 		Owner:            deposit.Owner.String(),
 		AmountSats:       deposit.AmountSats,
@@ -1042,20 +1033,20 @@ func (qs queryServer) queryShielderDeposit(ctx cosmos.Context, req *types.QueryS
 	}, nil
 }
 
-func (qs queryServer) queryShielderWithdrawal(ctx cosmos.Context, req *types.QueryShielderWithdrawalRequest) (*types.QueryShielderWithdrawalResponse, error) {
-	withdrawal, err := qs.mgr.Keeper().GetShielderWithdrawal(ctx, strings.TrimSpace(req.WithdrawalId))
+func (qs queryServer) queryShielderRedeem(ctx cosmos.Context, req *types.QueryShielderRedeemRequest) (*types.QueryShielderRedeemResponse, error) {
+	withdrawal, err := qs.mgr.Keeper().GetShielderRedeem(ctx, strings.TrimSpace(req.WithdrawalId))
 	if err != nil {
 		return nil, err
 	}
 	if strings.TrimSpace(withdrawal.WithdrawalID) == "" {
-		return nil, errors.New("shielder withdrawal not found")
+		return nil, errors.New("shielder redeem not found")
 	}
-	return shielderWithdrawalResponse(withdrawal), nil
+	return shielderRedeemResponse(withdrawal), nil
 }
 
 func (qs queryServer) queryShielderNullifier(ctx cosmos.Context, req *types.QueryShielderNullifierRequest) (*types.QueryShielderNullifierResponse, error) {
 	nullifier := strings.TrimSpace(req.NullifierHash)
-	withdrawal, err := qs.mgr.Keeper().GetShielderWithdrawalByNullifier(ctx, nullifier)
+	withdrawal, err := qs.mgr.Keeper().GetShielderRedeemByNullifier(ctx, nullifier)
 	if err != nil {
 		return nil, err
 	}
@@ -1097,29 +1088,29 @@ func (qs queryServer) queryShielderRoots(ctx cosmos.Context, _ *types.QueryShiel
 	return &types.QueryShielderRootsResponse{Roots: roots}, nil
 }
 
-func (qs queryServer) queryShielderWithdrawalQuote(ctx cosmos.Context, req *types.QueryShielderWithdrawalQuoteRequest) (*types.QueryShielderWithdrawalQuoteResponse, error) {
+func (qs queryServer) queryShielderRedeemQuote(ctx cosmos.Context, req *types.QueryShielderRedeemQuoteRequest) (*types.QueryShielderRedeemQuoteResponse, error) {
 	if req.AmountSats == 0 {
 		return nil, fmt.Errorf("missing withdrawal amount")
 	}
-	fee := shielderWithdrawalFeeSats(ctx, qs.mgr.Keeper(), req.AmountSats)
+	fee := withdrawalFeeSats(ctx, qs.mgr.Keeper(), req.AmountSats)
 	if fee >= req.AmountSats {
 		return nil, fmt.Errorf("withdrawal fee exceeds amount")
 	}
-	return &types.QueryShielderWithdrawalQuoteResponse{
+	return &types.QueryShielderRedeemQuoteResponse{
 		AmountSats:     req.AmountSats,
 		FeeSats:        fee,
 		NetSats:        req.AmountSats - fee,
-		FeeBasisPoints: shielderWithdrawalFeeBp(ctx, qs.mgr.Keeper()),
+		FeeBasisPoints: withdrawalFeeBp(ctx, qs.mgr.Keeper()),
 		FeeMinSats:     uint64(qs.mgr.Keeper().GetConfigInt64(ctx, constants.Withdrawal_FeeMinSats)),
 	}, nil
 }
 
-func (qs queryServer) queryShielderFeePool(ctx cosmos.Context, _ *types.QueryShielderFeePoolRequest) (*types.QueryShielderFeePoolResponse, error) {
-	pool, err := qs.mgr.Keeper().GetShielderFeePool(ctx)
+func (qs queryServer) queryFeePool(ctx cosmos.Context, _ *types.QueryFeePoolRequest) (*types.QueryFeePoolResponse, error) {
+	pool, err := qs.mgr.Keeper().GetFeePool(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &types.QueryShielderFeePoolResponse{
+	return &types.QueryFeePoolResponse{
 		PendingSats:        pool.PendingSats,
 		TotalSlots:         pool.TotalSlots,
 		FeePerSlotShare:    pool.FeePerSlotShare,
@@ -1128,19 +1119,19 @@ func (qs queryServer) queryShielderFeePool(ctx cosmos.Context, _ *types.QueryShi
 	}, nil
 }
 
-func (qs queryServer) queryShielderSession(ctx cosmos.Context, req *types.QueryShielderSessionRequest) (*types.QueryShielderSessionResponse, error) {
+func (qs queryServer) queryDepositSession(ctx cosmos.Context, req *types.QueryDepositSessionRequest) (*types.QueryDepositSessionResponse, error) {
 	owner, err := cosmos.AccAddressFromBech32(req.Owner)
 	if err != nil {
 		return nil, err
 	}
-	session, err := qs.mgr.Keeper().GetShielderSession(ctx, owner)
+	session, err := qs.mgr.Keeper().GetDepositSession(ctx, owner)
 	if err != nil {
 		return nil, err
 	}
 	if session.Owner.Empty() {
-		return nil, errors.New("shielder session not found")
+		return nil, errors.New("deposit session not found")
 	}
-	return &types.QueryShielderSessionResponse{
+	return &types.QueryDepositSessionResponse{
 		Owner:            session.Owner.String(),
 		DepositAddress:   session.DepositAddress.String(),
 		VaultPubKey:      session.VaultPubKey.String(),
@@ -1154,7 +1145,7 @@ func (qs queryServer) queryShielderSession(ctx cosmos.Context, req *types.QueryS
 	}, nil
 }
 
-func (qs queryServer) queryShielderBond(ctx cosmos.Context, req *types.QueryShielderBondRequest) (*types.QueryShielderBondResponse, error) {
+func (qs queryServer) queryNodeBond(ctx cosmos.Context, req *types.QueryNodeBondRequest) (*types.QueryNodeBondResponse, error) {
 	bond, err := qs.mgr.Keeper().GetShielderNodeBond(ctx, req.NodePubKey)
 	if err != nil {
 		return nil, err
@@ -1165,7 +1156,7 @@ func (qs queryServer) queryShielderBond(ctx cosmos.Context, req *types.QueryShie
 	return qs.shielderBondResponse(ctx, bond)
 }
 
-func (qs queryServer) shielderBondResponse(ctx cosmos.Context, bond types.ShielderNodeBond) (*types.QueryShielderBondResponse, error) {
+func (qs queryServer) shielderBondResponse(ctx cosmos.Context, bond types.ShielderNodeBond) (*types.QueryNodeBondResponse, error) {
 	node, err := qs.mgr.Keeper().GetNodeAccount(ctx, bond.NodeAddress)
 	if err != nil {
 		return nil, err
@@ -1174,7 +1165,7 @@ func (qs queryServer) shielderBondResponse(ctx cosmos.Context, bond types.Shield
 	if err != nil {
 		return nil, err
 	}
-	return &types.QueryShielderBondResponse{
+	return &types.QueryNodeBondResponse{
 		NodePubKey:          bond.NodePubKey,
 		OperatorPubKey:      bond.OperatorPubKey.String(),
 		NodeAddress:         bond.NodeAddress.String(),
@@ -1292,7 +1283,7 @@ func (qs queryServer) queryVaultDepositAddress(ctx cosmos.Context, req *types.Qu
 	if err != nil {
 		return nil, err
 	}
-	record, err := qs.mgr.Keeper().GetShielderDepositAddress(ctx, address)
+	record, err := qs.mgr.Keeper().GetDepositAddress(ctx, address)
 	if err != nil {
 		return nil, err
 	}
@@ -1311,7 +1302,7 @@ func (qs queryServer) queryVaultDepositAddress(ctx cosmos.Context, req *types.Qu
 	}, nil
 }
 
-func (qs queryServer) queryShielderFeeEntitlement(ctx cosmos.Context, req *types.QueryShielderFeeEntitlementRequest) (*types.QueryShielderFeeEntitlementResponse, error) {
+func (qs queryServer) queryNodeFeeEntitlement(ctx cosmos.Context, req *types.QueryNodeFeeEntitlementRequest) (*types.QueryNodeFeeEntitlementResponse, error) {
 	bond, err := qs.mgr.Keeper().GetShielderNodeBond(ctx, req.NodePubKey)
 	if err != nil {
 		return nil, err
@@ -1322,8 +1313,8 @@ func (qs queryServer) queryShielderFeeEntitlement(ctx cosmos.Context, req *types
 	return qs.shielderFeeEntitlementResponse(ctx, bond)
 }
 
-func (qs queryServer) shielderFeeEntitlementResponse(ctx cosmos.Context, bond types.ShielderNodeBond) (*types.QueryShielderFeeEntitlementResponse, error) {
-	pool, err := qs.mgr.Keeper().GetShielderFeePool(ctx)
+func (qs queryServer) shielderFeeEntitlementResponse(ctx cosmos.Context, bond types.ShielderNodeBond) (*types.QueryNodeFeeEntitlementResponse, error) {
+	pool, err := qs.mgr.Keeper().GetFeePool(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1332,7 +1323,7 @@ func (qs queryServer) shielderFeeEntitlementResponse(ctx cosmos.Context, bond ty
 	if bond.FeeShareActive && accrued > bond.FeeDebtSats && bond.PendingFeeDepositID.IsEmpty() {
 		claimable = accrued - bond.FeeDebtSats
 	}
-	return &types.QueryShielderFeeEntitlementResponse{
+	return &types.QueryNodeFeeEntitlementResponse{
 		NodePubKey:          bond.NodePubKey,
 		ClaimableSats:       claimable,
 		AccruedSats:         accrued,
@@ -1343,10 +1334,10 @@ func (qs queryServer) shielderFeeEntitlementResponse(ctx cosmos.Context, bond ty
 	}, nil
 }
 
-func (qs queryServer) queryShielderFeeEntitlements(ctx cosmos.Context, _ *types.QueryShielderFeeEntitlementsRequest) (*types.QueryShielderFeeEntitlementsResponse, error) {
+func (qs queryServer) queryNodeFeeEntitlements(ctx cosmos.Context, _ *types.QueryNodeFeeEntitlementsRequest) (*types.QueryNodeFeeEntitlementsResponse, error) {
 	iter := qs.mgr.Keeper().GetShielderNodeBondIterator(ctx)
 	defer iter.Close()
-	entitlements := make([]*types.QueryShielderFeeEntitlementResponse, 0)
+	entitlements := make([]*types.QueryNodeFeeEntitlementResponse, 0)
 	for ; iter.Valid(); iter.Next() {
 		var bond types.ShielderNodeBond
 		if err := json.Unmarshal(iter.Value(), &bond); err != nil {
@@ -1361,7 +1352,7 @@ func (qs queryServer) queryShielderFeeEntitlements(ctx cosmos.Context, _ *types.
 	sort.Slice(entitlements, func(i, j int) bool {
 		return entitlements[i].NodePubKey < entitlements[j].NodePubKey
 	})
-	return &types.QueryShielderFeeEntitlementsResponse{Entitlements: entitlements}, nil
+	return &types.QueryNodeFeeEntitlementsResponse{Entitlements: entitlements}, nil
 }
 
 func extractBlockHeight(ctx cosmos.Context, heightStr string) (int64, error) {
@@ -1413,11 +1404,7 @@ func (qs queryServer) queryKeygen(ctx cosmos.Context, req *types.QueryKeygenRequ
 		ctx.Logger().Error("fail to marshal keygen block to json", "error", err)
 		return nil, fmt.Errorf("fail to marshal keygen block to json: %w", err)
 	}
-	// TODO: confirm this signing mode which is only for ledger devices.
-	// Not applicable if ledger devices will never be used.
-	// SIGN_MODE_LEGACY_AMINO_JSON will be removed in the future for SIGN_MODE_TEXTUAL
-	signingMode := signing.SignMode_SIGN_MODE_LEGACY_AMINO_JSON
-	sig, _, err := qs.kbs.Keybase.Sign("thornado", buf, signingMode)
+	sig, err := qs.kbs.Sign(buf)
 	if err != nil {
 		ctx.Logger().Error("fail to sign keygen", "error", err)
 		return nil, fmt.Errorf("fail to sign keygen: %w", err)
@@ -1449,6 +1436,9 @@ func (qs queryServer) queryKeysign(ctx cosmos.Context, heightStr, pubKey string)
 		ctx.Logger().Error("fail to get tx out array from key value store", "error", err)
 		return nil, fmt.Errorf("fail to get tx out array from key value store: %w", err)
 	}
+	if txs.Status != "" && txs.Status != TxOutStatusPendingSign {
+		txs = &TxOut{Height: height, Epoch: txs.Epoch, Status: txs.Status, SigningLeader: txs.SigningLeader}
+	}
 
 	if !pk.IsEmpty() {
 		newTxs := &TxOut{
@@ -1471,11 +1461,7 @@ func (qs queryServer) queryKeysign(ctx cosmos.Context, heightStr, pubKey string)
 		ctx.Logger().Error("fail to marshal keysign block to json", "error", err)
 		return nil, fmt.Errorf("fail to marshal keysign block to json: %w", err)
 	}
-	// TODO: confirm this signing mode which is only for ledger devices.
-	// Not applicable if ledger devices will never be used.
-	// SIGN_MODE_LEGACY_AMINO_JSON will be removed in the future for SIGN_MODE_TEXTUAL
-	signingMode := signing.SignMode_SIGN_MODE_LEGACY_AMINO_JSON
-	sig, _, err := qs.kbs.Keybase.Sign("thornado", buf, signingMode)
+	sig, err := qs.kbs.Sign(buf)
 	if err != nil {
 		ctx.Logger().Error("fail to sign keysign", "error", err)
 		return nil, fmt.Errorf("fail to sign keysign: %w", err)
@@ -1499,18 +1485,27 @@ func (qs queryServer) queryLastBlockHeights(ctx cosmos.Context, chain string) (*
 		}
 		chains = append(chains, chain)
 	} else {
-		asgards, err := qs.mgr.Keeper().GetAsgardVaultsByStatus(ctx, ActiveVault)
+		baseVaults, err := qs.mgr.Keeper().GetBaseVaultsByStatus(ctx, ActiveVault)
 		if err != nil {
-			return nil, fmt.Errorf("fail to get active asgard: %w", err)
+			return nil, fmt.Errorf("fail to get active base: %w", err)
 		}
-		for _, vault := range asgards {
+		for _, vault := range baseVaults {
 			chains = vault.GetChains().Distinct()
 			break
+		}
+		if len(chains) == 0 {
+			lastChainHeights, err := qs.mgr.Keeper().GetLastChainHeights(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("fail to get last chain heights: %w", err)
+			}
+			for chain := range lastChainHeights {
+				chains = append(chains, chain)
+			}
 		}
 	}
 	var result []*types.ChainsLastBlock
 	for _, c := range chains {
-		if c == common.Thornado {
+		if c == common.BTCChain {
 			continue
 		}
 		chainHeight, err := qs.mgr.Keeper().GetLastChainHeight(ctx, c)
@@ -1541,22 +1536,28 @@ func (qs queryServer) queryConfigDefaults(_ cosmos.Context, _ *types.QueryConfig
 	// analyze-ignore(map-iteration)
 	for k, v := range cv.Int64Values {
 		proto.Int_64Values = append(proto.Int_64Values, &types.Int64Constants{
-			Name:  k,
-			Value: v,
+			Name:        k,
+			Value:       v,
+			Group:       constants.ConfigGroup(k),
+			Description: constants.ConfigDescription(k),
 		})
 	}
 	// analyze-ignore(map-iteration)
 	for k, v := range cv.BoolValues {
 		proto.BoolValues = append(proto.BoolValues, &types.BoolConstants{
-			Name:  k,
-			Value: v,
+			Name:        k,
+			Value:       v,
+			Group:       constants.ConfigGroup(k),
+			Description: constants.ConfigDescription(k),
 		})
 	}
 	// analyze-ignore(map-iteration)
 	for k, v := range cv.StringValues {
 		proto.StringValues = append(proto.StringValues, &types.StringConstants{
-			Name:  k,
-			Value: v,
+			Name:        k,
+			Value:       v,
+			Group:       constants.ConfigGroup(k),
+			Description: constants.ConfigDescription(k),
 		})
 	}
 
@@ -1760,8 +1761,10 @@ func (qs queryServer) queryConfigValues(ctx cosmos.Context, _ *types.QueryConfig
 			continue
 		}
 		resp.Configs = append(resp.Configs, &types.Config{
-			Key:   key,
-			Value: value,
+			Key:         key,
+			Value:       value,
+			Group:       constants.ConfigGroup(key),
+			Description: constants.ConfigDescription(key),
 		})
 	}
 
@@ -1810,8 +1813,10 @@ func (qs queryServer) queryConfigNodesValues(ctx cosmos.Context, _ *types.QueryC
 		k := strings.TrimPrefix(string(iter.Key()), "nodeconfig//")
 		if v, ok := configs.HasSuperMajority(k, active); ok {
 			resp.Configs = append(resp.Configs, &types.Config{
-				Key:   k,
-				Value: v,
+				Key:         k,
+				Value:       v,
+				Group:       constants.ConfigGroup(k),
+				Description: constants.ConfigDescription(k),
 			})
 		}
 	}
@@ -1842,8 +1847,10 @@ func (qs queryServer) queryConfigNodeValues(ctx cosmos.Context, req *types.Query
 		k := strings.TrimPrefix(string(iter.Key()), "nodeconfig//")
 		if v, ok := configs.Get(k, acc); ok {
 			resp.NodeConfigs = append(resp.NodeConfigs, &types.Config{
-				Key:   k,
-				Value: v,
+				Key:         k,
+				Value:       v,
+				Group:       constants.ConfigGroup(k),
+				Description: constants.ConfigDescription(k),
 			})
 		}
 	}
@@ -1891,10 +1898,10 @@ func (qs queryServer) queryTssKeygenMetric(ctx cosmos.Context, req *types.QueryT
 
 func (qs queryServer) queryTssMetric(ctx cosmos.Context, _ *types.QueryTssMetricRequest) (*types.QueryTssMetricResponse, error) {
 	var pubKeys common.PubKeys
-	// get all active asgard
-	vaults, err := qs.mgr.Keeper().GetAsgardVaultsByStatus(ctx, ActiveVault)
+	// get all active base
+	vaults, err := qs.mgr.Keeper().GetBaseVaultsByStatus(ctx, ActiveVault)
 	if err != nil {
-		return nil, fmt.Errorf("fail to get active asgards:%w", err)
+		return nil, fmt.Errorf("fail to get active baseVaults:%w", err)
 	}
 	for _, v := range vaults {
 		pubKeys = append(pubKeys, v.PubKey)
@@ -2099,8 +2106,8 @@ func castObservedTxs(observedTxs ObservedTxs) []types.QueryObservedTx {
 	return result
 }
 
-func shielderWithdrawalResponse(withdrawal types.ShielderWithdrawal) *types.QueryShielderWithdrawalResponse {
-	return &types.QueryShielderWithdrawalResponse{
+func shielderRedeemResponse(withdrawal types.ShielderRedeem) *types.QueryShielderRedeemResponse {
+	return &types.QueryShielderRedeemResponse{
 		WithdrawalId:    withdrawal.WithdrawalID,
 		Owner:           withdrawal.Owner.String(),
 		NullifierHash:   withdrawal.NullifierHash,
@@ -2158,5 +2165,5 @@ func eventMap(e sdk.Event) map[string]string {
 }
 
 func simulate(ctx cosmos.Context, mgr Manager, msg sdk.Msg) (sdk.Events, error) {
-	return nil, errors.New("swap simulation is not part of the Thornado custody fork")
+	return nil, errors.New("swap simulation is not part of the BTCChain custody fork")
 }

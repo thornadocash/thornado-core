@@ -22,7 +22,6 @@ type Tx struct {
 	ToAddress   *string `json:"to_address,omitempty"`
 	Coins       []Coin  `json:"coins"`
 	Gas         []Coin  `json:"gas"`
-	Memo        *string `json:"memo,omitempty"`
 }
 
 // NewTx instantiates a new Tx object
@@ -220,38 +219,6 @@ func (o *Tx) SetGas(v []Coin) {
 	o.Gas = v
 }
 
-// GetMemo returns the Memo field value if set, zero value otherwise.
-func (o *Tx) GetMemo() string {
-	if o == nil || o.Memo == nil {
-		var ret string
-		return ret
-	}
-	return *o.Memo
-}
-
-// GetMemoOk returns a tuple with the Memo field value if set, nil otherwise
-// and a boolean to check if the value has been set.
-func (o *Tx) GetMemoOk() (*string, bool) {
-	if o == nil || o.Memo == nil {
-		return nil, false
-	}
-	return o.Memo, true
-}
-
-// HasMemo returns a boolean if a field has been set.
-func (o *Tx) HasMemo() bool {
-	if o != nil && o.Memo != nil {
-		return true
-	}
-
-	return false
-}
-
-// SetMemo gets a reference to the given string and assigns it to the Memo field.
-func (o *Tx) SetMemo(v string) {
-	o.Memo = &v
-}
-
 func (o Tx) MarshalJSON_deprecated() ([]byte, error) {
 	toSerialize := map[string]interface{}{}
 	if o.Id != nil {
@@ -271,9 +238,6 @@ func (o Tx) MarshalJSON_deprecated() ([]byte, error) {
 	}
 	if true {
 		toSerialize["gas"] = o.Gas
-	}
-	if o.Memo != nil {
-		toSerialize["memo"] = o.Memo
 	}
 	return json.Marshal(toSerialize)
 }

@@ -2,19 +2,20 @@ package cosmos
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"math/big"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	sdkmath "cosmossdk.io/math"
 	storetypes "cosmossdk.io/store/types"
 	"github.com/cosmos/cosmos-sdk/client/input"
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	"github.com/cosmos/cosmos-sdk/crypto"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/hd"
 	ckeys "github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -83,6 +84,8 @@ var (
 	CodeInsufficientFunds   = uint32(5)
 )
 
+var stdinMu sync.Mutex
+
 type (
 	Context    = sdk.Context
 	Uint       = sdkmath.Uint
@@ -143,6 +146,67 @@ type KeybaseStore struct {
 	SignerPasswd string
 }
 
+type passwordReader struct {
+	mu     sync.Mutex
+	data   []byte
+	offset int
+}
+
+func newPasswordReader(password string) *passwordReader {
+	return &passwordReader{data: []byte(password + "\n")}
+}
+
+func (r *passwordReader) Read(p []byte) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for i := range p {
+		p[i] = r.data[r.offset]
+		r.offset = (r.offset + 1) % len(r.data)
+	}
+	return len(p), nil
+}
+
+func withNonInteractiveStdin(fn func() error) error {
+	stdinMu.Lock()
+	defer stdinMu.Unlock()
+	devNull, err := os.Open(os.DevNull)
+	if err != nil {
+		return err
+	}
+	defer devNull.Close()
+	oldStdin := os.Stdin
+	os.Stdin = devNull
+	defer func() {
+		os.Stdin = oldStdin
+	}()
+	return fn()
+}
+
+func (kbs KeybaseStore) Sign(buf []byte) ([]byte, error) {
+	if kbs.Keybase == nil {
+		return nil, fmt.Errorf("keybase is not configured")
+	}
+	if kbs.SignerName == "" {
+		return nil, fmt.Errorf("signer name is empty")
+	}
+	if kbs.SignerPasswd == "" {
+		return nil, fmt.Errorf("signer password is empty")
+	}
+	var privKeyArmor string
+	if err := withNonInteractiveStdin(func() error {
+		var err error
+		privKeyArmor, err = kbs.Keybase.ExportPrivKeyArmor(kbs.SignerName, kbs.SignerPasswd)
+		return err
+	}); err != nil {
+		return nil, err
+	}
+	privKey, _, err := crypto.UnarmorDecryptPrivKey(privKeyArmor, kbs.SignerPasswd)
+	if err != nil {
+		return nil, err
+	}
+	return privKey.Sign(buf)
+}
+
 func SignerCreds() (string, string) {
 	var username, password string
 	reader := bufio.NewReader(os.Stdin)
@@ -165,9 +229,7 @@ func SignerCreds() (string, string) {
 // GetKeybase will create an instance of Keybase
 func GetKeybase(thornadoHome string) (KeybaseStore, error) {
 	username, password := SignerCreds()
-	buf := bytes.NewBufferString(password)
-	// the library used by keyring is using ReadLine , which expect a new line
-	buf.WriteByte('\n')
+	buf := newPasswordReader(password)
 
 	cliDir := thornadoHome
 	if len(thornadoHome) == 0 {

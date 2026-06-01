@@ -1204,9 +1204,11 @@ func (x *fastReflection_QueryConfigDefaultsResponse) ProtoMethods() *protoiface.
 }
 
 var (
-	md_Int64Constants       protoreflect.MessageDescriptor
-	fd_Int64Constants_name  protoreflect.FieldDescriptor
-	fd_Int64Constants_value protoreflect.FieldDescriptor
+	md_Int64Constants             protoreflect.MessageDescriptor
+	fd_Int64Constants_name        protoreflect.FieldDescriptor
+	fd_Int64Constants_value       protoreflect.FieldDescriptor
+	fd_Int64Constants_group       protoreflect.FieldDescriptor
+	fd_Int64Constants_description protoreflect.FieldDescriptor
 )
 
 func init() {
@@ -1214,6 +1216,8 @@ func init() {
 	md_Int64Constants = File_types_query_constant_values_proto.Messages().ByName("Int64Constants")
 	fd_Int64Constants_name = md_Int64Constants.Fields().ByName("name")
 	fd_Int64Constants_value = md_Int64Constants.Fields().ByName("value")
+	fd_Int64Constants_group = md_Int64Constants.Fields().ByName("group")
+	fd_Int64Constants_description = md_Int64Constants.Fields().ByName("description")
 }
 
 var _ protoreflect.Message = (*fastReflection_Int64Constants)(nil)
@@ -1293,6 +1297,18 @@ func (x *fastReflection_Int64Constants) Range(f func(protoreflect.FieldDescripto
 			return
 		}
 	}
+	if x.Group != "" {
+		value := protoreflect.ValueOfString(x.Group)
+		if !f(fd_Int64Constants_group, value) {
+			return
+		}
+	}
+	if x.Description != "" {
+		value := protoreflect.ValueOfString(x.Description)
+		if !f(fd_Int64Constants_description, value) {
+			return
+		}
+	}
 }
 
 // Has reports whether a field is populated.
@@ -1312,6 +1328,10 @@ func (x *fastReflection_Int64Constants) Has(fd protoreflect.FieldDescriptor) boo
 		return x.Name != ""
 	case "types.Int64Constants.value":
 		return x.Value != int64(0)
+	case "types.Int64Constants.group":
+		return x.Group != ""
+	case "types.Int64Constants.description":
+		return x.Description != ""
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.Int64Constants"))
@@ -1332,6 +1352,10 @@ func (x *fastReflection_Int64Constants) Clear(fd protoreflect.FieldDescriptor) {
 		x.Name = ""
 	case "types.Int64Constants.value":
 		x.Value = int64(0)
+	case "types.Int64Constants.group":
+		x.Group = ""
+	case "types.Int64Constants.description":
+		x.Description = ""
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.Int64Constants"))
@@ -1354,6 +1378,12 @@ func (x *fastReflection_Int64Constants) Get(descriptor protoreflect.FieldDescrip
 	case "types.Int64Constants.value":
 		value := x.Value
 		return protoreflect.ValueOfInt64(value)
+	case "types.Int64Constants.group":
+		value := x.Group
+		return protoreflect.ValueOfString(value)
+	case "types.Int64Constants.description":
+		value := x.Description
+		return protoreflect.ValueOfString(value)
 	default:
 		if descriptor.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.Int64Constants"))
@@ -1378,6 +1408,10 @@ func (x *fastReflection_Int64Constants) Set(fd protoreflect.FieldDescriptor, val
 		x.Name = value.Interface().(string)
 	case "types.Int64Constants.value":
 		x.Value = value.Int()
+	case "types.Int64Constants.group":
+		x.Group = value.Interface().(string)
+	case "types.Int64Constants.description":
+		x.Description = value.Interface().(string)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.Int64Constants"))
@@ -1402,6 +1436,10 @@ func (x *fastReflection_Int64Constants) Mutable(fd protoreflect.FieldDescriptor)
 		panic(fmt.Errorf("field name of message types.Int64Constants is not mutable"))
 	case "types.Int64Constants.value":
 		panic(fmt.Errorf("field value of message types.Int64Constants is not mutable"))
+	case "types.Int64Constants.group":
+		panic(fmt.Errorf("field group of message types.Int64Constants is not mutable"))
+	case "types.Int64Constants.description":
+		panic(fmt.Errorf("field description of message types.Int64Constants is not mutable"))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.Int64Constants"))
@@ -1419,6 +1457,10 @@ func (x *fastReflection_Int64Constants) NewField(fd protoreflect.FieldDescriptor
 		return protoreflect.ValueOfString("")
 	case "types.Int64Constants.value":
 		return protoreflect.ValueOfInt64(int64(0))
+	case "types.Int64Constants.group":
+		return protoreflect.ValueOfString("")
+	case "types.Int64Constants.description":
+		return protoreflect.ValueOfString("")
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.Int64Constants"))
@@ -1495,6 +1537,14 @@ func (x *fastReflection_Int64Constants) ProtoMethods() *protoiface.Methods {
 		if x.Value != 0 {
 			n += 1 + runtime.Sov(uint64(x.Value))
 		}
+		l = len(x.Group)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		l = len(x.Description)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
 		if x.unknownFields != nil {
 			n += len(x.unknownFields)
 		}
@@ -1523,6 +1573,20 @@ func (x *fastReflection_Int64Constants) ProtoMethods() *protoiface.Methods {
 		if x.unknownFields != nil {
 			i -= len(x.unknownFields)
 			copy(dAtA[i:], x.unknownFields)
+		}
+		if len(x.Description) > 0 {
+			i -= len(x.Description)
+			copy(dAtA[i:], x.Description)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.Description)))
+			i--
+			dAtA[i] = 0x22
+		}
+		if len(x.Group) > 0 {
+			i -= len(x.Group)
+			copy(dAtA[i:], x.Group)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.Group)))
+			i--
+			dAtA[i] = 0x1a
 		}
 		if x.Value != 0 {
 			i = runtime.EncodeVarint(dAtA, i, uint64(x.Value))
@@ -1636,6 +1700,70 @@ func (x *fastReflection_Int64Constants) ProtoMethods() *protoiface.Methods {
 						break
 					}
 				}
+			case 3:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Group", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.Group = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 4:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.Description = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
 			default:
 				iNdEx = preIndex
 				skippy, err := runtime.Skip(dAtA[iNdEx:])
@@ -1672,9 +1800,11 @@ func (x *fastReflection_Int64Constants) ProtoMethods() *protoiface.Methods {
 }
 
 var (
-	md_BoolConstants       protoreflect.MessageDescriptor
-	fd_BoolConstants_name  protoreflect.FieldDescriptor
-	fd_BoolConstants_value protoreflect.FieldDescriptor
+	md_BoolConstants             protoreflect.MessageDescriptor
+	fd_BoolConstants_name        protoreflect.FieldDescriptor
+	fd_BoolConstants_value       protoreflect.FieldDescriptor
+	fd_BoolConstants_group       protoreflect.FieldDescriptor
+	fd_BoolConstants_description protoreflect.FieldDescriptor
 )
 
 func init() {
@@ -1682,6 +1812,8 @@ func init() {
 	md_BoolConstants = File_types_query_constant_values_proto.Messages().ByName("BoolConstants")
 	fd_BoolConstants_name = md_BoolConstants.Fields().ByName("name")
 	fd_BoolConstants_value = md_BoolConstants.Fields().ByName("value")
+	fd_BoolConstants_group = md_BoolConstants.Fields().ByName("group")
+	fd_BoolConstants_description = md_BoolConstants.Fields().ByName("description")
 }
 
 var _ protoreflect.Message = (*fastReflection_BoolConstants)(nil)
@@ -1761,6 +1893,18 @@ func (x *fastReflection_BoolConstants) Range(f func(protoreflect.FieldDescriptor
 			return
 		}
 	}
+	if x.Group != "" {
+		value := protoreflect.ValueOfString(x.Group)
+		if !f(fd_BoolConstants_group, value) {
+			return
+		}
+	}
+	if x.Description != "" {
+		value := protoreflect.ValueOfString(x.Description)
+		if !f(fd_BoolConstants_description, value) {
+			return
+		}
+	}
 }
 
 // Has reports whether a field is populated.
@@ -1780,6 +1924,10 @@ func (x *fastReflection_BoolConstants) Has(fd protoreflect.FieldDescriptor) bool
 		return x.Name != ""
 	case "types.BoolConstants.value":
 		return x.Value != false
+	case "types.BoolConstants.group":
+		return x.Group != ""
+	case "types.BoolConstants.description":
+		return x.Description != ""
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.BoolConstants"))
@@ -1800,6 +1948,10 @@ func (x *fastReflection_BoolConstants) Clear(fd protoreflect.FieldDescriptor) {
 		x.Name = ""
 	case "types.BoolConstants.value":
 		x.Value = false
+	case "types.BoolConstants.group":
+		x.Group = ""
+	case "types.BoolConstants.description":
+		x.Description = ""
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.BoolConstants"))
@@ -1822,6 +1974,12 @@ func (x *fastReflection_BoolConstants) Get(descriptor protoreflect.FieldDescript
 	case "types.BoolConstants.value":
 		value := x.Value
 		return protoreflect.ValueOfBool(value)
+	case "types.BoolConstants.group":
+		value := x.Group
+		return protoreflect.ValueOfString(value)
+	case "types.BoolConstants.description":
+		value := x.Description
+		return protoreflect.ValueOfString(value)
 	default:
 		if descriptor.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.BoolConstants"))
@@ -1846,6 +2004,10 @@ func (x *fastReflection_BoolConstants) Set(fd protoreflect.FieldDescriptor, valu
 		x.Name = value.Interface().(string)
 	case "types.BoolConstants.value":
 		x.Value = value.Bool()
+	case "types.BoolConstants.group":
+		x.Group = value.Interface().(string)
+	case "types.BoolConstants.description":
+		x.Description = value.Interface().(string)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.BoolConstants"))
@@ -1870,6 +2032,10 @@ func (x *fastReflection_BoolConstants) Mutable(fd protoreflect.FieldDescriptor) 
 		panic(fmt.Errorf("field name of message types.BoolConstants is not mutable"))
 	case "types.BoolConstants.value":
 		panic(fmt.Errorf("field value of message types.BoolConstants is not mutable"))
+	case "types.BoolConstants.group":
+		panic(fmt.Errorf("field group of message types.BoolConstants is not mutable"))
+	case "types.BoolConstants.description":
+		panic(fmt.Errorf("field description of message types.BoolConstants is not mutable"))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.BoolConstants"))
@@ -1887,6 +2053,10 @@ func (x *fastReflection_BoolConstants) NewField(fd protoreflect.FieldDescriptor)
 		return protoreflect.ValueOfString("")
 	case "types.BoolConstants.value":
 		return protoreflect.ValueOfBool(false)
+	case "types.BoolConstants.group":
+		return protoreflect.ValueOfString("")
+	case "types.BoolConstants.description":
+		return protoreflect.ValueOfString("")
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.BoolConstants"))
@@ -1963,6 +2133,14 @@ func (x *fastReflection_BoolConstants) ProtoMethods() *protoiface.Methods {
 		if x.Value {
 			n += 2
 		}
+		l = len(x.Group)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		l = len(x.Description)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
 		if x.unknownFields != nil {
 			n += len(x.unknownFields)
 		}
@@ -1991,6 +2169,20 @@ func (x *fastReflection_BoolConstants) ProtoMethods() *protoiface.Methods {
 		if x.unknownFields != nil {
 			i -= len(x.unknownFields)
 			copy(dAtA[i:], x.unknownFields)
+		}
+		if len(x.Description) > 0 {
+			i -= len(x.Description)
+			copy(dAtA[i:], x.Description)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.Description)))
+			i--
+			dAtA[i] = 0x22
+		}
+		if len(x.Group) > 0 {
+			i -= len(x.Group)
+			copy(dAtA[i:], x.Group)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.Group)))
+			i--
+			dAtA[i] = 0x1a
 		}
 		if x.Value {
 			i--
@@ -2110,6 +2302,70 @@ func (x *fastReflection_BoolConstants) ProtoMethods() *protoiface.Methods {
 					}
 				}
 				x.Value = bool(v != 0)
+			case 3:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Group", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.Group = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 4:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.Description = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
 			default:
 				iNdEx = preIndex
 				skippy, err := runtime.Skip(dAtA[iNdEx:])
@@ -2146,9 +2402,11 @@ func (x *fastReflection_BoolConstants) ProtoMethods() *protoiface.Methods {
 }
 
 var (
-	md_StringConstants       protoreflect.MessageDescriptor
-	fd_StringConstants_name  protoreflect.FieldDescriptor
-	fd_StringConstants_value protoreflect.FieldDescriptor
+	md_StringConstants             protoreflect.MessageDescriptor
+	fd_StringConstants_name        protoreflect.FieldDescriptor
+	fd_StringConstants_value       protoreflect.FieldDescriptor
+	fd_StringConstants_group       protoreflect.FieldDescriptor
+	fd_StringConstants_description protoreflect.FieldDescriptor
 )
 
 func init() {
@@ -2156,6 +2414,8 @@ func init() {
 	md_StringConstants = File_types_query_constant_values_proto.Messages().ByName("StringConstants")
 	fd_StringConstants_name = md_StringConstants.Fields().ByName("name")
 	fd_StringConstants_value = md_StringConstants.Fields().ByName("value")
+	fd_StringConstants_group = md_StringConstants.Fields().ByName("group")
+	fd_StringConstants_description = md_StringConstants.Fields().ByName("description")
 }
 
 var _ protoreflect.Message = (*fastReflection_StringConstants)(nil)
@@ -2235,6 +2495,18 @@ func (x *fastReflection_StringConstants) Range(f func(protoreflect.FieldDescript
 			return
 		}
 	}
+	if x.Group != "" {
+		value := protoreflect.ValueOfString(x.Group)
+		if !f(fd_StringConstants_group, value) {
+			return
+		}
+	}
+	if x.Description != "" {
+		value := protoreflect.ValueOfString(x.Description)
+		if !f(fd_StringConstants_description, value) {
+			return
+		}
+	}
 }
 
 // Has reports whether a field is populated.
@@ -2254,6 +2526,10 @@ func (x *fastReflection_StringConstants) Has(fd protoreflect.FieldDescriptor) bo
 		return x.Name != ""
 	case "types.StringConstants.value":
 		return x.Value != ""
+	case "types.StringConstants.group":
+		return x.Group != ""
+	case "types.StringConstants.description":
+		return x.Description != ""
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.StringConstants"))
@@ -2274,6 +2550,10 @@ func (x *fastReflection_StringConstants) Clear(fd protoreflect.FieldDescriptor) 
 		x.Name = ""
 	case "types.StringConstants.value":
 		x.Value = ""
+	case "types.StringConstants.group":
+		x.Group = ""
+	case "types.StringConstants.description":
+		x.Description = ""
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.StringConstants"))
@@ -2295,6 +2575,12 @@ func (x *fastReflection_StringConstants) Get(descriptor protoreflect.FieldDescri
 		return protoreflect.ValueOfString(value)
 	case "types.StringConstants.value":
 		value := x.Value
+		return protoreflect.ValueOfString(value)
+	case "types.StringConstants.group":
+		value := x.Group
+		return protoreflect.ValueOfString(value)
+	case "types.StringConstants.description":
+		value := x.Description
 		return protoreflect.ValueOfString(value)
 	default:
 		if descriptor.IsExtension() {
@@ -2320,6 +2606,10 @@ func (x *fastReflection_StringConstants) Set(fd protoreflect.FieldDescriptor, va
 		x.Name = value.Interface().(string)
 	case "types.StringConstants.value":
 		x.Value = value.Interface().(string)
+	case "types.StringConstants.group":
+		x.Group = value.Interface().(string)
+	case "types.StringConstants.description":
+		x.Description = value.Interface().(string)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.StringConstants"))
@@ -2344,6 +2634,10 @@ func (x *fastReflection_StringConstants) Mutable(fd protoreflect.FieldDescriptor
 		panic(fmt.Errorf("field name of message types.StringConstants is not mutable"))
 	case "types.StringConstants.value":
 		panic(fmt.Errorf("field value of message types.StringConstants is not mutable"))
+	case "types.StringConstants.group":
+		panic(fmt.Errorf("field group of message types.StringConstants is not mutable"))
+	case "types.StringConstants.description":
+		panic(fmt.Errorf("field description of message types.StringConstants is not mutable"))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.StringConstants"))
@@ -2360,6 +2654,10 @@ func (x *fastReflection_StringConstants) NewField(fd protoreflect.FieldDescripto
 	case "types.StringConstants.name":
 		return protoreflect.ValueOfString("")
 	case "types.StringConstants.value":
+		return protoreflect.ValueOfString("")
+	case "types.StringConstants.group":
+		return protoreflect.ValueOfString("")
+	case "types.StringConstants.description":
 		return protoreflect.ValueOfString("")
 	default:
 		if fd.IsExtension() {
@@ -2438,6 +2736,14 @@ func (x *fastReflection_StringConstants) ProtoMethods() *protoiface.Methods {
 		if l > 0 {
 			n += 1 + l + runtime.Sov(uint64(l))
 		}
+		l = len(x.Group)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		l = len(x.Description)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
 		if x.unknownFields != nil {
 			n += len(x.unknownFields)
 		}
@@ -2466,6 +2772,20 @@ func (x *fastReflection_StringConstants) ProtoMethods() *protoiface.Methods {
 		if x.unknownFields != nil {
 			i -= len(x.unknownFields)
 			copy(dAtA[i:], x.unknownFields)
+		}
+		if len(x.Description) > 0 {
+			i -= len(x.Description)
+			copy(dAtA[i:], x.Description)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.Description)))
+			i--
+			dAtA[i] = 0x22
+		}
+		if len(x.Group) > 0 {
+			i -= len(x.Group)
+			copy(dAtA[i:], x.Group)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.Group)))
+			i--
+			dAtA[i] = 0x1a
 		}
 		if len(x.Value) > 0 {
 			i -= len(x.Value)
@@ -2593,6 +2913,70 @@ func (x *fastReflection_StringConstants) ProtoMethods() *protoiface.Methods {
 					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
 				}
 				x.Value = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 3:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Group", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.Group = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 4:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.Description = string(dAtA[iNdEx:postIndex])
 				iNdEx = postIndex
 			default:
 				iNdEx = preIndex
@@ -2733,8 +3117,10 @@ type Int64Constants struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name  string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Value int64  `protobuf:"varint,2,opt,name=value,proto3" json:"value,omitempty"`
+	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Value       int64  `protobuf:"varint,2,opt,name=value,proto3" json:"value,omitempty"`
+	Group       string `protobuf:"bytes,3,opt,name=group,proto3" json:"group,omitempty"`
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
 }
 
 func (x *Int64Constants) Reset() {
@@ -2771,13 +3157,29 @@ func (x *Int64Constants) GetValue() int64 {
 	return 0
 }
 
+func (x *Int64Constants) GetGroup() string {
+	if x != nil {
+		return x.Group
+	}
+	return ""
+}
+
+func (x *Int64Constants) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
 type BoolConstants struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name  string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Value bool   `protobuf:"varint,2,opt,name=value,proto3" json:"value,omitempty"`
+	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Value       bool   `protobuf:"varint,2,opt,name=value,proto3" json:"value,omitempty"`
+	Group       string `protobuf:"bytes,3,opt,name=group,proto3" json:"group,omitempty"`
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
 }
 
 func (x *BoolConstants) Reset() {
@@ -2814,13 +3216,29 @@ func (x *BoolConstants) GetValue() bool {
 	return false
 }
 
+func (x *BoolConstants) GetGroup() string {
+	if x != nil {
+		return x.Group
+	}
+	return ""
+}
+
+func (x *BoolConstants) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
 type StringConstants struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name  string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Value       string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Group       string `protobuf:"bytes,3,opt,name=group,proto3" json:"group,omitempty"`
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
 }
 
 func (x *StringConstants) Reset() {
@@ -2857,6 +3275,20 @@ func (x *StringConstants) GetValue() string {
 	return ""
 }
 
+func (x *StringConstants) GetGroup() string {
+	if x != nil {
+		return x.Group
+	}
+	return ""
+}
+
+func (x *StringConstants) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
 var File_types_query_constant_values_proto protoreflect.FileDescriptor
 
 var file_types_query_constant_values_proto_rawDesc = []byte{
@@ -2880,27 +3312,38 @@ var file_types_query_constant_values_proto_rawDesc = []byte{
 	0x6e, 0x67, 0x5f, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x0b, 0x32,
 	0x16, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x53, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x43, 0x6f,
 	0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x73, 0x52, 0x0c, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x56,
-	0x61, 0x6c, 0x75, 0x65, 0x73, 0x22, 0x3a, 0x0a, 0x0e, 0x49, 0x6e, 0x74, 0x36, 0x34, 0x43, 0x6f,
+	0x61, 0x6c, 0x75, 0x65, 0x73, 0x22, 0x72, 0x0a, 0x0e, 0x49, 0x6e, 0x74, 0x36, 0x34, 0x43, 0x6f,
 	0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x73, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18,
 	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x76,
 	0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75,
-	0x65, 0x22, 0x39, 0x0a, 0x0d, 0x42, 0x6f, 0x6f, 0x6c, 0x43, 0x6f, 0x6e, 0x73, 0x74, 0x61, 0x6e,
-	0x74, 0x73, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18,
-	0x02, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x3b, 0x0a, 0x0f,
+	0x65, 0x12, 0x14, 0x0a, 0x05, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x05, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x12, 0x20, 0x0a, 0x0b, 0x64, 0x65, 0x73, 0x63, 0x72,
+	0x69, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x64, 0x65,
+	0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x71, 0x0a, 0x0d, 0x42, 0x6f, 0x6f,
+	0x6c, 0x43, 0x6f, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x73, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61,
+	0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x14,
+	0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05, 0x76,
+	0x61, 0x6c, 0x75, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x05, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x12, 0x20, 0x0a, 0x0b, 0x64, 0x65,
+	0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x0b, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x73, 0x0a, 0x0f,
 	0x53, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x43, 0x6f, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x73, 0x12,
 	0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e,
 	0x61, 0x6d, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x42, 0x8c, 0x01, 0x0a, 0x09, 0x63, 0x6f,
-	0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x42, 0x18, 0x51, 0x75, 0x65, 0x72, 0x79, 0x43, 0x6f,
-	0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x50, 0x72, 0x6f, 0x74,
-	0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f,
-	0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d,
-	0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70,
-	0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73,
-	0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2, 0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73,
-	0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54,
-	0x79, 0x70, 0x65, 0x73, 0xc8, 0xe2, 0x1e, 0x01, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x67, 0x72, 0x6f,
+	0x75, 0x70, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x12,
+	0x20, 0x0a, 0x0b, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x04,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69, 0x6f,
+	0x6e, 0x42, 0x8c, 0x01, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x42,
+	0x18, 0x51, 0x75, 0x65, 0x72, 0x79, 0x43, 0x6f, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x56, 0x61,
+	0x6c, 0x75, 0x65, 0x73, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74,
+	0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f,
+	0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f,
+	0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58,
+	0xaa, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73,
+	0xe2, 0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61,
+	0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xc8, 0xe2, 0x1e, 0x01,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (

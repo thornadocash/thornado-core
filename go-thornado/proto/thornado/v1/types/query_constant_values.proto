@@ -18,14 +18,20 @@ message QueryConfigDefaultsResponse {
 message Int64Constants {
   string name = 1;
   int64 value = 2;
+  string group = 3;
+  string description = 4;
 }
 
 message BoolConstants {
   string name = 1;
   bool value = 2;
+  string group = 3;
+  string description = 4;
 }
 
 message StringConstants {
   string name = 1;
   string value = 2;
+  string group = 3;
+  string description = 4;
 }

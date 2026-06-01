@@ -11,9 +11,9 @@ import (
 )
 
 var (
-	GitCommit       = "null"  // sha1 revision used to build the program
-	BuildTime       = "null"  // when the executable was built
-	Version         = "0.1.0" // software version
+	GitCommit       = "null"   // sha1 revision used to build the program
+	BuildTime       = "null"   // when the executable was built
+	Version         = "3.17.0" // software version
 	int64Overrides  = map[ConfigName]int64{}
 	boolOverrides   = map[ConfigName]bool{}
 	stringOverrides = map[ConfigName]string{}
@@ -24,22 +24,16 @@ var SWVersion, _ = semver.Make(Version)
 // max basis points
 const MaxBasisPts = uint64(10_000)
 
-// MaxDepositSaltSize limits MsgDeposit salt length in bytes.
-const MaxDepositSaltSize = 64
-
-// used to preserve precision when determining dollar-denominated config values.
-const DollarMulti = 1e9
-
-// Per-chain maximum gas for a single transaction on EVM chains.
-const (
-	MaxETHGas  = 50000000
-	MaxAVAXGas = 100e8
-	MaxBSCGas  = 50000000
-	MaxBASEGas = 50000000
-
-	// DefaultMaxEVMGas is a conservative default for EVM chains not explicitly listed above.
-	DefaultMaxEVMGas = 50000000
-)
+func MinutesToBlocks(minutes, blockTimeSeconds int64) int64 {
+	if minutes <= 0 {
+		return 0
+	}
+	if blockTimeSeconds <= 0 {
+		blockTimeSeconds = NewConfigValue().GetInt64Value(Chain_BlockTimeSeconds)
+	}
+	seconds := minutes * 60
+	return (seconds + blockTimeSeconds - 1) / blockTimeSeconds
+}
 
 // The provided key must be comparable and should not be of type string or any other built-in type to avoid collisions between packages using context. Users of WithValue should define their own types for keys. To avoid allocating when assigning to an interface{}, context keys often have concrete type struct{}. Alternatively, exported context key variables' static type should be a pointer or interface.
 type contextKey string
@@ -48,11 +42,10 @@ const (
 	CtxMetricLabels   contextKey = "metricLabels"
 	CtxObservedTx     contextKey = "observed-tx"
 	CtxSimulationMode contextKey = "simulation-mode"
-	CtxWASMQuery      contextKey = "wasm-query"
 )
 
 // Permitted characters in Configs
-const ConfigKeyRegex = `^[a-zA-Z0-9-]+$`
+const ConfigKeyRegex = `^[a-zA-Z0-9_-]+$`
 
 // Maximum length of a config (in bytes)
 // If increasing this value, be sure to adjust test/regression/suites/config/config.yaml

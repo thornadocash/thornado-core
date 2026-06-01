@@ -14,8 +14,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 pub const DOMAIN: &str = "thornado-shielder-v1";
 pub const HARDENED_CHILD_OFFSET: u64 = 1 << 31;
-pub const DEFAULT_DENOMINATIONS_SATS: [u64; 4] =
-    [1_000_000_000, 100_000_000, 10_000_000, 1_000_000];
+pub const DEFAULT_DENOMINATIONS_SATS: [u64; 5] =
+    [1_000_000_000, 100_000_000, 10_000_000, 1_000_000, 100_000];
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum Error {

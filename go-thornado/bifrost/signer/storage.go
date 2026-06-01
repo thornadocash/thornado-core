@@ -15,6 +15,7 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/blockscanner"
 	"github.com/thornadocash/go-thornado/bifrost/db"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
+	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
 )
 
@@ -33,15 +34,19 @@ const (
 )
 
 type TxOutStoreItem struct {
-	TxOutItem    types.TxOutItem
-	Status       TxStatus
-	Height       int64
-	Index        int64
-	Round7Retry  bool
-	Checkpoint   []byte
-	SignedTx     []byte
-	Observation  *types.TxInItem
-	RetrievalKey string `json:"-"`
+	TxOutItem           types.TxOutItem
+	Status              TxStatus
+	Height              int64
+	Index               int64
+	Epoch               uint64
+	BatchStatus         string
+	SigningLeader       common.PubKey
+	Round7Retry         bool
+	DeferredUntilHeight int64
+	Checkpoint          []byte
+	SignedTx            []byte
+	Observation         *types.TxInItem
+	RetrievalKey        string `json:"-"`
 	// RetrievalKey is to ensure consistent KV overwrite/deletion after iterator retrieval;
 	// the json "-" tag is to not store it in the KVStore.
 }

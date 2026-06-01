@@ -4,8 +4,6 @@
 package thornado
 
 import (
-	"fmt"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/thornadocash/go-thornado/common"
@@ -36,31 +34,6 @@ func (m Migrator) Migrate1to2(ctx sdk.Context) error {
 
 // Migrate2to3 migrates from version 2 to 3.
 func (m Migrator) Migrate2to3(ctx sdk.Context) error {
-	// Loads the manager for this migration (we are in the x/upgrade's preblock)
-	// Note, we do not require the manager loaded for this migration, but it is okay
-	// to load it earlier and this is the pattern for migrations to follow.
-	if err := m.mgr.LoadManagerIfNecessary(ctx); err != nil {
-		return err
-	}
-
-	// refund stagenet funding wallet for user refund
-	// original user tx: https://runescan.io/tx/A9AF3ED203079BB246CEE0ACD837FBA024BC846784DE488D5BE70044D8877C52
-	// refund to user from stagenet funding wallet: https://bscscan.com/tx/0xba67f3a88f8c998f29e774ffa8328e5625521e37c2db282b29a04ab3d2593f48
-	stagenetWallet := "0x3021C479f7F8C9f1D5c7d8523BA5e22C0Bcb5430"
-	inTxId := "A9AF3ED203079BB246CEE0ACD837FBA024BC846784DE488D5BE70044D8877C52" // original user tx
-
-	bscUsdt, err := common.NewAsset("BSC.USDT-0X55D398326F99059FF775485246999027B3197955")
-	if err != nil {
-		return err
-	}
-	usdtCoin := common.NewCoin(bscUsdt, cosmos.NewUint(4860737515919))
-	blockHeight := ctx.BlockHeight()
-
-	// schedule refund
-	if err := unsafeAddRefundOutbound(ctx, m.mgr, inTxId, stagenetWallet, usdtCoin, blockHeight); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -70,49 +43,6 @@ func (m Migrator) Migrate4to5(ctx sdk.Context) error {
 }
 
 func (m Migrator) Migrate5to6(ctx sdk.Context) error {
-	// Loads the manager for this migration (we are in the x/upgrade's preblock)
-	// Note, we do not require the manager loaded for this migration, but it is okay
-	// to load it earlier and this is the pattern for migrations to follow.
-	if err := m.mgr.LoadManagerIfNecessary(ctx); err != nil {
-		return err
-	}
-
-	// ------------------------------ Bond Slash Refund ------------------------------
-
-	// Validate Reserve module has sufficient funds before starting refunds
-	totalRefundAmount := cosmos.NewUint(14856919212689) // Total amount to be refunded
-	reserveBalance := m.mgr.Keeper().GetRuneBalanceOfModule(ctx, ReserveName)
-	if reserveBalance.LT(totalRefundAmount) {
-		return fmt.Errorf("insufficient reserve balance for migration: have %s, need %s",
-			reserveBalance.String(), totalRefundAmount.String())
-	}
-	ctx.Logger().Info("Reserve balance validation passed",
-		"reserve_balance", reserveBalance.String(),
-		"required_amount", totalRefundAmount.String())
-
-	for _, slashRefund := range mainnetSlashRefunds5to6 {
-		recipient, err := cosmos.AccAddressFromBech32(slashRefund.address)
-		if err != nil {
-			ctx.Logger().Error("error parsing address in store migration",
-				"error", err,
-				"address", slashRefund.address)
-			continue
-		}
-		amount := cosmos.NewUint(slashRefund.amount)
-		refundCoins := common.NewCoins(common.NewCoin(common.RuneAsset(), amount))
-		if err := m.mgr.Keeper().SendFromModuleToAccount(ctx, ReserveName, recipient, refundCoins); err != nil {
-			ctx.Logger().Error("fail to store migration transfer RUNE from Reserve to recipient",
-				"error", err,
-				"recipient", recipient.String(),
-				"address", slashRefund.address,
-				"amount", amount.String())
-		} else {
-			ctx.Logger().Debug("successfully transferred bond slash refund",
-				"recipient", recipient.String(),
-				"amount", amount.String())
-		}
-	}
-
 	return nil
 }
 
@@ -195,11 +125,11 @@ func (m Migrator) Migrate9to10(ctx sdk.Context) error {
 
 	// move excess thor.nami to treasury
 	coins := common.Coins{{
-		Asset:  common.NAMI,
+		Asset:  common.BTCAsset,
 		Amount: cosmos.NewUint(524245),
 	}}
 	err := m.mgr.Keeper().SendFromModuleToModule(
-		ctx, AsgardName, TreasuryName, coins,
+		ctx, BaseName, TreasuryName, coins,
 	)
 	if err != nil {
 		ctx.Logger().Error("failed to move excess nami to treasury", "error", err)
@@ -236,49 +166,6 @@ func (m Migrator) Migrate11to12(ctx sdk.Context) error {
 }
 
 func (m Migrator) Migrate12to13(ctx sdk.Context) error {
-	// Loads the manager for this migration (we are in the x/upgrade's preblock)
-	// Note, we do not require the manager loaded for this migration, but it is okay
-	// to load it earlier and this is the pattern for migrations to follow.
-	if err := m.mgr.LoadManagerIfNecessary(ctx); err != nil {
-		return err
-	}
-
-	// ------------------------------ Bond Slash Refund ------------------------------
-
-	// Validate Reserve module has sufficient funds before starting refunds
-	totalRefundAmount := cosmos.NewUint(mainnetSlashRefunds12to13Total) // Total amount to be refunded
-	reserveBalance := m.mgr.Keeper().GetRuneBalanceOfModule(ctx, ReserveName)
-	if reserveBalance.LT(totalRefundAmount) {
-		return fmt.Errorf("insufficient reserve balance for migration: have %s, need %s",
-			reserveBalance.String(), totalRefundAmount.String())
-	}
-	ctx.Logger().Info("Reserve balance validation passed",
-		"reserve_balance", reserveBalance.String(),
-		"required_amount", totalRefundAmount.String())
-
-	for _, slashRefund := range mainnetSlashRefunds12to13 {
-		recipient, err := cosmos.AccAddressFromBech32(slashRefund.address)
-		if err != nil {
-			ctx.Logger().Error("error parsing address in store migration",
-				"error", err,
-				"address", slashRefund.address)
-			continue
-		}
-		amount := cosmos.NewUint(slashRefund.amount)
-		refundCoins := common.NewCoins(common.NewCoin(common.RuneAsset(), amount))
-		if err := m.mgr.Keeper().SendFromModuleToAccount(ctx, ReserveName, recipient, refundCoins); err != nil {
-			ctx.Logger().Error("fail to store migration transfer RUNE from Reserve to recipient",
-				"error", err,
-				"recipient", recipient.String(),
-				"address", slashRefund.address,
-				"amount", amount.String())
-		} else {
-			ctx.Logger().Debug("successfully transferred bond slash refund",
-				"recipient", recipient.String(),
-				"amount", amount.String())
-		}
-	}
-
 	return nil
 }
 

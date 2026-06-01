@@ -62,7 +62,7 @@ bifrost:
     party_timeout: 45s
     pre_param_timeout: 5m
   tss:
-    rendezvous: asgard
+    rendezvous: base
     p2p_port: 5040
     info_address: :6040
     bootstrap_peers: ""

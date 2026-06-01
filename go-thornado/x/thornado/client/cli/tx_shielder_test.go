@@ -10,7 +10,7 @@ func TestShielderTxCommandSurfaceHasAtomicSettlementOnly(t *testing.T) {
 			t.Fatalf("standalone settlement command still exposed: %s", subcmd.Name())
 		}
 	}
-	if _, _, err := cmd.Find([]string{"post-commitments"}); err != nil {
+	if _, _, err := cmd.Find([]string{"split"}); err != nil {
 		t.Fatal("missing atomic deposit split command")
 	}
 	if _, _, err := cmd.Find([]string{"auction-split"}); err != nil {

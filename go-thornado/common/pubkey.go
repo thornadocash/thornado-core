@@ -99,19 +99,8 @@ func (p PubKey) GetAddress(chain Chain) (Address, error) {
 	}
 	pubkeyToAddressCacheMu.RUnlock()
 
-	chainNetwork := CurrentChainNetwork
 	var addressString string
 	switch chain {
-	case Thornado:
-		pk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, string(p))
-		if err != nil {
-			return NoAddress, err
-		}
-		str, err := ConvertAndEncode(chain.AddressPrefix(chainNetwork), pk.Address().Bytes())
-		if err != nil {
-			return NoAddress, fmt.Errorf("fail to bech32 encode the address, err: %w", err)
-		}
-		addressString = str
 	case BTCChain:
 		addr, err := DeriveBTCTaprootAddress(p, MainVaultPathIndex)
 		if err != nil {
@@ -133,11 +122,11 @@ func (p PubKey) GetAddress(chain Chain) (Address, error) {
 }
 
 func (p PubKey) GetThorAddress() (cosmos.AccAddress, error) {
-	addr, err := p.GetAddress(Thornado)
+	pk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, string(p))
 	if err != nil {
 		return nil, err
 	}
-	return cosmos.AccAddressFromBech32(addr.String())
+	return pk.Address().Bytes(), nil
 }
 
 // MarshalJSON to Marshals to JSON using Bech32

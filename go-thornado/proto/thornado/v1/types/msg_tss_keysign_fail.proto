@@ -15,7 +15,6 @@ message MsgTssKeysignFail {
   string id = 1 [ (gogoproto.customname) = "ID" ];
   int64 height = 2;
   Blame blame = 3 [ (gogoproto.nullable) = false ];
-  string memo = 4;
   repeated common.Coin coins = 5 [
     (gogoproto.castrepeated) = "github.com/thornadocash/go-thornado/common.Coins",
     (gogoproto.nullable) = false

@@ -1,12 +1,12 @@
 package thornadoclient
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"os/user"
 	"path/filepath"
+	"sync"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -24,6 +24,8 @@ const (
 	thornadoCliFolderName = `.thornado`
 )
 
+var stdinMu sync.Mutex
+
 type Keyring interface {
 	ckeys.Keyring
 }
@@ -33,6 +35,42 @@ type Keys struct {
 	signerName string
 	password   string // TODO this is a bad way , need to fix it
 	kb         Keyring
+}
+
+type passwordReader struct {
+	mu     sync.Mutex
+	data   []byte
+	offset int
+}
+
+func newPasswordReader(password string) *passwordReader {
+	return &passwordReader{data: []byte(password + "\n")}
+}
+
+func (r *passwordReader) Read(p []byte) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for i := range p {
+		p[i] = r.data[r.offset]
+		r.offset = (r.offset + 1) % len(r.data)
+	}
+	return len(p), nil
+}
+
+func withNonInteractiveStdin(fn func() error) error {
+	stdinMu.Lock()
+	defer stdinMu.Unlock()
+	devNull, err := os.Open(os.DevNull)
+	if err != nil {
+		return err
+	}
+	defer devNull.Close()
+	oldStdIn := os.Stdin
+	os.Stdin = devNull
+	defer func() {
+		os.Stdin = oldStdIn
+	}()
+	return fn()
 }
 
 // NewKeysWithKeybase create a new instance of Keys
@@ -53,22 +91,17 @@ func GetKeyringKeybase(chainHomeFolder, signerName, password string) (ckeys.Keyr
 		return nil, nil, fmt.Errorf("password is empty")
 	}
 
-	buf := bytes.NewBufferString(password)
-	// the library used by keyring is using ReadLine , which expect a new line
-	buf.WriteByte('\n')
+	buf := newPasswordReader(password)
 	kb, err := getKeybase(chainHomeFolder, buf)
 	if err != nil {
 		return nil, nil, fmt.Errorf("fail to get keybase,err:%w", err)
 	}
-	// the keyring library which used by cosmos sdk , will use interactive terminal if it detect it has one
-	// this will temporary trick it think there is no interactive terminal, thus will read the password from the buffer provided
-	oldStdIn := os.Stdin
-	defer func() {
-		os.Stdin = oldStdIn
-	}()
-	os.Stdin = nil
-	si, err := kb.Key(signerName)
-	if err != nil {
+	var si *ckeys.Record
+	if err := withNonInteractiveStdin(func() error {
+		var err error
+		si, err = kb.Key(signerName)
+		return err
+	}); err != nil {
 		return nil, nil, fmt.Errorf("fail to get signer info(%s): %w", signerName, err)
 	}
 	return kb, si, nil
@@ -103,8 +136,12 @@ func (k *Keys) GetSignerInfo() *ckeys.Record {
 // GetPrivateKey return the ecdsa private key
 func (k *Keys) GetPrivateKey() (*cryptokeyssecp256k1.PrivKey, error) {
 	// return k.kb.ExportPrivateKeyObject(k.signerName)
-	privKeyArmor, err := k.kb.ExportPrivKeyArmor(k.signerName, k.password)
-	if err != nil {
+	var privKeyArmor string
+	if err := withNonInteractiveStdin(func() error {
+		var err error
+		privKeyArmor, err = k.kb.ExportPrivKeyArmor(k.signerName, k.password)
+		return err
+	}); err != nil {
 		return nil, err
 	}
 	priKey, _, err := crypto.UnarmorDecryptPrivKey(privKeyArmor, k.password)
@@ -122,8 +159,12 @@ func (k *Keys) GetPrivateKey() (*cryptokeyssecp256k1.PrivKey, error) {
 func (k *Keys) GetPrivateKeyEDDSA() (*cryptokeysed25519.PrivKey, error) {
 	signerNameEDDSA := ed25519.SignerNameEDDSA(k.signerName)
 	// return k.kb.ExportPrivateKeyObject(k.signerName)
-	privKeyArmor, err := k.kb.ExportPrivKeyArmor(signerNameEDDSA, k.password)
-	if err != nil {
+	var privKeyArmor string
+	if err := withNonInteractiveStdin(func() error {
+		var err error
+		privKeyArmor, err = k.kb.ExportPrivKeyArmor(signerNameEDDSA, k.password)
+		return err
+	}); err != nil {
 		return nil, err
 	}
 	priKey, _, err := crypto.UnarmorDecryptPrivKey(privKeyArmor, k.password)

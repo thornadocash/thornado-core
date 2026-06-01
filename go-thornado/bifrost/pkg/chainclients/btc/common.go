@@ -9,16 +9,16 @@ import (
 	"github.com/thornadocash/go-thornado/common"
 )
 
-// AsgardCache holds cached asgard addresses and the timestamp they were fetched.
-type AsgardCache struct {
+// BaseCache holds cached base addresses and the timestamp they were fetched.
+type BaseCache struct {
 	Addresses []common.Address
 	FetchedAt time.Time
 }
 
-func GetAsgardAddress(chain common.Chain, bridge thornadoclient.ThornadoBridge) ([]common.Address, error) {
-	vaults, err := bridge.GetAsgardPubKeys()
+func GetBaseAddress(chain common.Chain, bridge thornadoclient.ThornadoBridge) ([]common.Address, error) {
+	vaults, err := bridge.GetBasePubKeys()
 	if err != nil {
-		return nil, fmt.Errorf("fail to get asgards : %w", err)
+		return nil, fmt.Errorf("fail to get baseVaults : %w", err)
 	}
 
 	newAddresses := make([]common.Address, 0)
@@ -34,23 +34,32 @@ func GetAsgardAddress(chain common.Chain, bridge thornadoclient.ThornadoBridge) 
 			continue
 		}
 		newAddresses = append(newAddresses, addr)
+		if chain.Equals(common.BTCChain) {
+			for pathIndex := uint64(common.FirstDepositPathIndex); pathIndex <= common.DepositAddressLookahead; pathIndex++ {
+				derived, err := common.DeriveBTCTaprootAddress(v.PubKey, pathIndex)
+				if err != nil {
+					continue
+				}
+				newAddresses = append(newAddresses, derived)
+			}
+		}
 	}
 	return newAddresses, nil
 }
 
-// GetAsgardAddressCached returns asgard addresses from a per-client cache when fresh,
+// GetBaseAddressCached returns base addresses from a per-client cache when fresh,
 // otherwise refreshes the cache from Thornado and preserves last-known addresses when
 // refresh fails or returns an empty set.
 //
 // When refresh fails and stale cache exists, cached addresses are returned together with
 // the refresh error so callers can decide whether/how to surface it.
-func GetAsgardAddressCached(cache *atomic.Pointer[AsgardCache], chain common.Chain, bridge thornadoclient.ThornadoBridge, ttl time.Duration) ([]common.Address, error) {
+func GetBaseAddressCached(cache *atomic.Pointer[BaseCache], chain common.Chain, bridge thornadoclient.ThornadoBridge, ttl time.Duration) ([]common.Address, error) {
 	cached := cache.Load()
 	if cached != nil && time.Since(cached.FetchedAt) < ttl {
 		return cached.Addresses, nil
 	}
 
-	newAddresses, err := GetAsgardAddress(chain, bridge)
+	newAddresses, err := GetBaseAddress(chain, bridge)
 	if err != nil {
 		if cached != nil {
 			return cached.Addresses, err
@@ -59,7 +68,7 @@ func GetAsgardAddressCached(cache *atomic.Pointer[AsgardCache], chain common.Cha
 	}
 
 	if len(newAddresses) > 0 {
-		cache.Store(&AsgardCache{
+		cache.Store(&BaseCache{
 			Addresses: newAddresses,
 			FetchedAt: time.Now(),
 		})

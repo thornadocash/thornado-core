@@ -1,9 +1,12 @@
 package thornado
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/blang/semver"
@@ -14,6 +17,7 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 // TxOutStorage is going to manage all the outgoing tx
@@ -35,10 +39,13 @@ func newTxOutStorage(keeper keeper.Keeper, constAccessor constants.ConfigValues,
 }
 
 func (tos *TxOutStorage) EndBlock(ctx cosmos.Context, mgr Manager) error {
+	if err := tos.updateBatchStates(ctx); err != nil {
+		return err
+	}
 	// update the max gas for all outbounds in this block. This can be useful
 	// if an outbound transaction was scheduled into the future, and the gas
 	// for that blockchain changes in that time span. This avoids the need to
-	// reschedule the transaction to Asgard.
+	// reschedule the transaction to Base.
 	txOut, err := tos.GetBlockOut(ctx)
 	if err != nil {
 		return err
@@ -105,6 +112,81 @@ func (tos *TxOutStorage) EndBlock(ctx cosmos.Context, mgr Manager) error {
 		return fmt.Errorf("fail to save tx out : %w", err)
 	}
 	return nil
+}
+
+func (tos *TxOutStorage) updateBatchStates(ctx cosmos.Context) error {
+	signingPeriod := getConfigDurationBlocks(ctx, tos.keeper, constants.Keysign_PeriodMinutes)
+	iterator := tos.keeper.GetTxOutIterator(ctx)
+	defer iterator.Close()
+
+	for ; iterator.Valid(); iterator.Next() {
+		var txOut TxOut
+		if err := tos.keeper.Cdc().Unmarshal(iterator.Value(), &txOut); err != nil {
+			return err
+		}
+		if txOut.IsEmpty() {
+			continue
+		}
+		if txOut.Status == TxOutStatusPendingBatch && txOut.Height <= ctx.BlockHeight() {
+			txOut.Status = TxOutStatusPendingSign
+		}
+		if txOut.Status == TxOutStatusPendingSign && txOutUsesBatching(txOut) {
+			txOut.SigningLeader = tos.selectSigningLeader(ctx, txOut, signingPeriod)
+		}
+		if err := tos.keeper.SetTxOut(ctx, &txOut); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func txOutUsesBatching(txOut TxOut) bool {
+	if len(txOut.TxArray) == 0 {
+		return false
+	}
+	for _, item := range txOut.TxArray {
+		if !types.IsBatchableTxOutType(item.TxType) {
+			return false
+		}
+	}
+	return true
+}
+
+func (tos *TxOutStorage) selectSigningLeader(ctx cosmos.Context, txOut TxOut, signingPeriod int64) common.PubKey {
+	if len(txOut.TxArray) == 0 {
+		return common.EmptyPubKey
+	}
+	vaultPubKey := txOut.TxArray[0].VaultPubKey
+	active, err := tos.keeper.ListActiveNodes(ctx)
+	if err != nil {
+		ctx.Logger().Error("fail to list active nodes for txout signing leader", "error", err)
+		return common.EmptyPubKey
+	}
+	members := make([]string, 0, len(active))
+	for _, node := range active {
+		for _, membership := range node.SignerMembership {
+			if strings.EqualFold(membership, vaultPubKey.String()) && !node.PubKeySet.Secp256k1.IsEmpty() {
+				members = append(members, node.PubKeySet.Secp256k1.String())
+				break
+			}
+		}
+	}
+	if len(members) == 0 {
+		return common.EmptyPubKey
+	}
+	sort.Strings(members)
+	digest := sha256.Sum256([]byte(fmt.Sprintf("txout:%d:%d", txOut.Epoch, txOut.Height)))
+	offset := binary.BigEndian.Uint64(digest[:8])
+	var attempt uint64
+	if signingPeriod > 0 && ctx.BlockHeight() > txOut.Height {
+		attempt = uint64((ctx.BlockHeight() - txOut.Height) / signingPeriod)
+	}
+	leader, err := common.NewPubKey(members[(offset+attempt)%uint64(len(members))])
+	if err != nil {
+		ctx.Logger().Error("fail to parse txout signing leader", "error", err)
+		return common.EmptyPubKey
+	}
+	return leader
 }
 
 // GetBlockOut read the TxOut from kv store
@@ -179,7 +261,7 @@ func (tos *TxOutStorage) cachedTryAddTxOutItem(ctx cosmos.Context, mgr Manager, 
 	// using the summed amount
 	outboundHeight := ctx.BlockHeight()
 	cloutApplied := cosmos.ZeroUint()
-	if !toi.Chain.IsThornado() && !toi.InHash.IsEmpty() && !toi.InHash.Equals(common.BlankTxID) {
+	if !toi.Chain.Equals(common.BTCChain) && !toi.InHash.IsEmpty() && !toi.InHash.Equals(common.BlankTxID) {
 		voter, err := tos.keeper.GetObservedTxInVoter(ctx, toi.InHash)
 		if err != nil {
 			ctx.Logger().Error("fail to get observe tx in voter", "error", err)
@@ -384,7 +466,7 @@ func (tos *TxOutStorage) DiscoverOutbounds(ctx cosmos.Context, transactionFeeAmo
 	}
 
 	for _, vault := range vaults {
-		// Ensure Thornado are not sending from and to the same address
+		// Ensure BTCChain are not sending from and to the same address
 		fromAddr, err := vault.GetAddress(toi.Chain)
 		if err != nil || fromAddr.IsEmpty() || toi.ToAddress.Equals(fromAddr) {
 			continue
@@ -470,9 +552,8 @@ func (tos *TxOutStorage) DiscoverOutbounds(ctx cosmos.Context, transactionFeeAmo
 }
 
 // prepareTxOutItem will do some data validation which include the following
-// 1. Make sure it has a legitimate memo
-// 2. choose an appropriate vault(s) to send from (active asgard, then retiring asgard)
-// 3. deduct transaction fee, keep in mind, only take transaction fee when active nodes are  more then minimumBFT
+// 1. choose an appropriate vault(s) to send from (active base, then retiring base)
+// 2. deduct transaction fee, keep in mind, only take transaction fee when active nodes are  more then minimumBFT
 // return list of outbound transactions
 func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]TxOutItem, sdkmath.Uint, error) {
 	var outputs []TxOutItem
@@ -482,9 +563,6 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 	if toi.InHash.IsEmpty() {
 		toi.InHash = common.BlankTxID
 	}
-
-	toi.OriginalMemo = toi.Memo
-	toi.Memo = ""
 
 	if toi.ToAddress.IsEmpty() {
 		return outputs, cosmos.ZeroUint(), fmt.Errorf("empty to address, can't send out")
@@ -502,62 +580,58 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 		return nil, cosmos.ZeroUint(), fmt.Errorf("fail to get max gas details: %w", err)
 	}
 
-	// Here is the VaultPubKey selection, if not a Thornado-native outbound.
-	if toi.Chain.IsThornado() {
+	// Here is the VaultPubKey selection.
+	if !toi.VaultPubKey.IsEmpty() {
+		// a vault is already manually selected, blindly go forth with that
 		outputs = append(outputs, toi)
 	} else {
-		if !toi.VaultPubKey.IsEmpty() {
-			// a vault is already manually selected, blindly go forth with that
-			outputs = append(outputs, toi)
-		} else {
-			// Thornado don't have a vault already selected to send from, discover one.
-			// List all pending outbounds for the asset, this will be used
-			// to deduct balances of vaults that have outstanding txs assigned
-			pendingOutbounds := tos.keeper.GetPendingOutbounds(ctx, toi.Coin.Asset)
+		// No vault is already selected, discover one.
+		// List all pending outbounds for the asset, this will be used
+		// to deduct balances of vaults that have outstanding txs assigned
+		pendingOutbounds := tos.keeper.GetPendingOutbounds(ctx, toi.Coin.Asset)
 
-			signingTransactionPeriod := tos.keeper.GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)
+		signingTransactionPeriod := getConfigDurationBlocks(ctx, tos.keeper, constants.Keysign_PeriodMinutes)
 
-			// ///////////// COLLECT ACTIVE ASGARD VAULTS ///////////////////
-			var activeAsgards Vaults
-			activeAsgards, err = tos.keeper.GetAsgardVaultsByStatus(ctx, ActiveVault)
-			if err != nil {
-				return nil, cosmos.ZeroUint(), fmt.Errorf("fail to get active vaults: %w", err)
-			}
+		// ///////////// COLLECT ACTIVE BASE VAULTS ///////////////////
+		var activeBaseVaults Vaults
+		activeBaseVaults, err = tos.keeper.GetBaseVaultsByStatus(ctx, ActiveVault)
+		if err != nil {
+			return nil, cosmos.ZeroUint(), fmt.Errorf("fail to get active vaults: %w", err)
+		}
 
-			// All else being equal, prefer lower-security vaults for outbounds.
-			activeAsgards = tos.keeper.SortBySecurity(ctx, activeAsgards, signingTransactionPeriod)
+		// All else being equal, prefer lower-security vaults for outbounds.
+		activeBaseVaults = tos.keeper.SortBySecurity(ctx, activeBaseVaults, signingTransactionPeriod)
 
-			for i := range activeAsgards {
-				// having sorted by security, deduct the value of any assigned pending outbounds
-				activeAsgards[i].DeductVaultPendingOutbounds(pendingOutbounds)
-			}
-			// //////////////////////////////////////////////////////////////
+		for i := range activeBaseVaults {
+			// having sorted by security, deduct the value of any assigned pending outbounds
+			activeBaseVaults[i].DeductVaultPendingOutbounds(pendingOutbounds)
+		}
+		// //////////////////////////////////////////////////////////////
 
-			// ///////////// COLLECT RETIRING ASGARD VAULTS /////////////////
-			var retiringAsgards Vaults
-			retiringAsgards, err = tos.keeper.GetAsgardVaultsByStatus(ctx, RetiringVault)
-			if err != nil {
-				return nil, cosmos.ZeroUint(), fmt.Errorf("fail to get retiring vaults: %w", err)
-			}
+		// ///////////// COLLECT RETIRING BASE VAULTS /////////////////
+		var retiringBaseVaults Vaults
+		retiringBaseVaults, err = tos.keeper.GetBaseVaultsByStatus(ctx, RetiringVault)
+		if err != nil {
+			return nil, cosmos.ZeroUint(), fmt.Errorf("fail to get retiring vaults: %w", err)
+		}
 
-			// All else being equal, prefer lower-security vaults for outbounds.
-			retiringAsgards = tos.keeper.SortBySecurity(ctx, retiringAsgards, signingTransactionPeriod)
+		// All else being equal, prefer lower-security vaults for outbounds.
+		retiringBaseVaults = tos.keeper.SortBySecurity(ctx, retiringBaseVaults, signingTransactionPeriod)
 
-			for i := range retiringAsgards {
-				// having sorted by security, deduct the value of any assigned pending outbounds
-				retiringAsgards[i].DeductVaultPendingOutbounds(pendingOutbounds)
-			}
-			// //////////////////////////////////////////////////////////////
+		for i := range retiringBaseVaults {
+			// having sorted by security, deduct the value of any assigned pending outbounds
+			retiringBaseVaults[i].DeductVaultPendingOutbounds(pendingOutbounds)
+		}
+		// //////////////////////////////////////////////////////////////
 
-			// iterate over discovered vaults and find vaults to send funds from
+		// iterate over discovered vaults and find vaults to send funds from
 
-			// All else being equal, choose active Asgards over retiring Asgards.
-			outputs, remaining = tos.DiscoverOutbounds(ctx, transactionFeeAmount, maxGasCoin, toi, append(activeAsgards, retiringAsgards...))
+		// All else being equal, choose active BaseVaults over retiring BaseVaults.
+		outputs, remaining = tos.DiscoverOutbounds(ctx, transactionFeeAmount, maxGasCoin, toi, append(activeBaseVaults, retiringBaseVaults...))
 
-			// Check we found enough funds to satisfy the request, error if we didn't
-			if !remaining.IsZero() {
-				return nil, cosmos.ZeroUint(), fmt.Errorf("insufficient funds for outbound request: %s %s remaining", toi.ToAddress.String(), remaining.String())
-			}
+		// Check we found enough funds to satisfy the request, error if we didn't
+		if !remaining.IsZero() {
+			return nil, cosmos.ZeroUint(), fmt.Errorf("insufficient funds for outbound request: %s %s remaining", toi.ToAddress.String(), remaining.String())
 		}
 	}
 
@@ -575,8 +649,8 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 			outputs[i].MaxGas = common.Gas{
 				maxGasCoin,
 			}
-			// THOR Chain doesn't need to have max gas
-			if outputs[i].MaxGas.IsEmpty() && !outputs[i].Chain.Equals(common.Thornado) {
+			// BTC-only Thornado doesn't need to have max gas
+			if outputs[i].MaxGas.IsEmpty() && !outputs[i].Chain.Equals(common.BTCChain) {
 				return nil, cosmos.ZeroUint(), fmt.Errorf("max gas cannot be empty: %s", outputs[i].MaxGas)
 			}
 
@@ -585,12 +659,12 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 
 		feeDeduction := true
 
-		// Thornado txouts by nature allow fee deduction, but InactiveVault outbounds
+		// BTCChain txouts by nature allow fee deduction, but InactiveVault outbounds
 		// require either no deduction or gas cost deduction instead.
-		if !outputs[i].Chain.IsThornado() {
+		if !outputs[i].Chain.Equals(common.BTCChain) {
 			vault, err := tos.keeper.GetVault(ctx, outputs[i].VaultPubKey)
 			if err != nil {
-				// An error is assumed for an empty VaultPubKey (Thornado outbound),
+				// An error is assumed for an empty VaultPubKey (BTCChain outbound),
 				// but here avoided by the earlier conditional.
 				ctx.Logger().Error("fail to get vault", "error", err)
 			}
@@ -648,16 +722,16 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 				outputs[i].Coin.Amount = coinAmountAfterFee
 
 				if outputs[i].Coin.Asset.IsSyntheticAsset() || outputs[i].Coin.Asset.IsDerivedAsset() {
-					// burn the native asset which used to pay for fee, that's only required when sending Synthetic/Derived assets from asgard
+					// burn the native asset which used to pay for fee, that's only required when sending Synthetic/Derived assets from base
 					// (not for instance applicable for Trade/Secured Assets which are not (1-to-1) Cosmos-SDK coins transferred from the Pool Module)
 					// Only burn if assetFee > 0 (synths have zero fee, so skip for them)
-					if outputs[i].GetModuleName() == AsgardName && !assetFee.IsZero() {
+					if outputs[i].GetModuleName() == BaseName && !assetFee.IsZero() {
 						// Finding 4: Return errors from synth/derived fee burning to prevent supply accounting errors
 						if err := tos.keeper.SendFromModuleToModule(ctx,
-							AsgardName,
+							BaseName,
 							ModuleName,
 							common.NewCoins(common.NewCoin(outputs[i].Coin.Asset, assetFee))); err != nil {
-							return nil, cosmos.ZeroUint(), fmt.Errorf("fail to move native asset fee from asgard to Module: %w", err)
+							return nil, cosmos.ZeroUint(), fmt.Errorf("fail to move native asset fee from base to Module: %w", err)
 						}
 						if err := tos.keeper.BurnFromModule(ctx, ModuleName, common.NewCoin(outputs[i].Coin.Asset, assetFee)); err != nil {
 							return nil, cosmos.ZeroUint(), fmt.Errorf("fail to burn native asset: %w", err)
@@ -684,7 +758,7 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 		// If the outbound coin is synthetic, respecting decimals is unnecessary
 		// and leaves unburnt synths in the Pool Module
 		if !outputs[i].Coin.Asset.IsSyntheticAsset() {
-			outputs[i].Coin.Amount = cosmos.RoundToDecimal(outputs[i].Coin.Amount, int64(common.ThornadoDecimals))
+			outputs[i].Coin.Amount = cosmos.RoundToDecimal(outputs[i].Coin.Amount, int64(common.CoinDecimals))
 		}
 
 		if !outputs[i].InHash.Equals(common.BlankTxID) {
@@ -711,7 +785,7 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 			// If the source module is the Reserve, leave the fee in the Reserve without a transfer.
 			if toi.ModuleName != ReserveName {
 				sourceModule := toi.GetModuleName() // Ensure that non-"".
-				coin := common.NewCoin(common.RuneAsset(), finalRuneFee)
+				coin := common.NewCoin(common.BTCAsset, finalRuneFee)
 				// Finding 3: Return error instead of just logging to prevent fund accounting mismatch
 				// If this transfer fails, the fee has been deducted from the outbound but Reserve never receives it
 				if err := tos.keeper.SendFromModuleToModule(ctx, sourceModule, ReserveName, common.NewCoins(coin)); err != nil {
@@ -719,7 +793,7 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 				}
 			}
 		} else {
-			// GetModuleName() to ensure that non-"" (AsgardName).
+			// GetModuleName() to ensure that non-"" (BaseName).
 			sourceModule := toi.GetModuleName()
 
 			// Layer 1 or Synth Asset is implicitly swapped in a pool
@@ -733,7 +807,7 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 			//
 			// If the source module is the Reserve, leave the fee in the Reserve without a transfer.
 			if !toi.Coin.Asset.IsDerivedAsset() && sourceModule != ReserveName {
-				coin := common.NewCoin(common.RuneAsset(), finalRuneFee)
+				coin := common.NewCoin(common.BTCAsset, finalRuneFee)
 				// Finding 3: Return error instead of just logging to prevent fund accounting mismatch
 				// If this transfer fails, the fee has been deducted from pool balances but Reserve never receives it
 				if err := tos.keeper.SendFromModuleToModule(ctx, sourceModule, ReserveName, common.NewCoins(coin)); err != nil {
@@ -748,7 +822,7 @@ func (tos *TxOutStorage) prepareTxOutItem(ctx cosmos.Context, toi TxOutItem) ([]
 
 func (tos *TxOutStorage) addToBlockOut(ctx cosmos.Context, mgr Manager, item TxOutItem, outboundHeight int64) error {
 	// if we're sending native assets, transfer them now and return
-	if item.Chain.IsThornado() {
+	if item.Chain.Equals(common.BTCChain) {
 		return tos.nativeTxOut(ctx, mgr, item)
 	}
 
@@ -793,7 +867,7 @@ func (tos *TxOutStorage) nativeTxOut(ctx cosmos.Context, mgr Manager, toi TxOutI
 
 	toi.ModuleName = toi.GetModuleName() // Ensure that non-"".
 
-	// mint if we're sending from Thornado module
+	// mint if we're sending from BTCChain module
 	if toi.ModuleName == ModuleName {
 		if err = tos.keeper.MintToModule(ctx, toi.ModuleName, toi.Coin); err != nil {
 			return fmt.Errorf("fail to mint coins during txout: %w", err)
@@ -835,11 +909,10 @@ func (tos *TxOutStorage) nativeTxOut(ctx cosmos.Context, mgr Manager, toi TxOutI
 		from,
 		toi.ToAddress,
 		common.Coins{toi.Coin},
-		common.Gas{common.NewCoin(common.RuneAsset(), outboundTxFee)},
-		toi.GetMemo(),
+		common.Gas{common.NewCoin(common.BTCAsset, outboundTxFee)},
 	)
 
-	active, err := tos.keeper.GetAsgardVaultsByStatus(ctx, ActiveVault)
+	active, err := tos.keeper.GetBaseVaultsByStatus(ctx, ActiveVault)
 	if err != nil {
 		ctx.Logger().Error("fail to get active vaults", "err", err)
 		return err
@@ -855,7 +928,7 @@ func (tos *TxOutStorage) nativeTxOut(ctx cosmos.Context, mgr Manager, toi TxOutI
 		Tx:             tx,
 		FinaliseHeight: ctx.BlockHeight(),
 	}
-	m, err := processOneTxIn(ctx, tos.keeper, observedTx, tos.keeper.GetModuleAccAddress(AsgardName))
+	m, err := processOneTxIn(ctx, tos.keeper, observedTx, tos.keeper.GetModuleAccAddress(BaseName))
 	if err != nil {
 		ctx.Logger().Error("fail to process txOut", "error", err, "tx", tx.String())
 		return err

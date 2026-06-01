@@ -45,7 +45,7 @@ func (m *MsgObservedTxOut) ValidateBasic() error {
 		if err != nil {
 			return cosmos.ErrUnknownRequest(err.Error())
 		}
-		if !tx.Tx.FromAddress.Equals(obAddr) {
+		if !observedVaultAddressMatches(tx.ObservedPubKey, tx.Tx.Coins[0].Asset.GetChain(), tx.Tx.FromAddress, obAddr) {
 			return cosmos.ErrUnknownRequest("Request is not an outbound observed transaction")
 		}
 		if len(tx.Signers) > 0 {

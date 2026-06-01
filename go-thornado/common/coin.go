@@ -9,8 +9,8 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 )
 
-// ThornadoDecimals indicate the number of decimal points used in Thornado
-const ThornadoDecimals = 8
+// CoinDecimals indicates the number of decimal points used for BTC-denominated accounting
+const CoinDecimals = 8
 
 // NoCoin is empty Coin
 var NoCoin = Coin{
@@ -82,9 +82,9 @@ func (c Coin) Valid() error {
 	return nil
 }
 
-// IsNative check whether the coin is native on Thornado
+// IsNative check whether the coin is native on BTCChain
 func (c Coin) IsNative() bool {
-	return c.Asset.GetChain().Equals(Thornado)
+	return c.Asset.GetChain().Equals(BTCChain)
 }
 
 // IsRune checks whether the coin's Asset is RUNE.

@@ -56,7 +56,6 @@ message Tx {
     (gogoproto.castrepeated) = "Gas",
     (gogoproto.nullable) = false
   ];
-  string memo = 7;
 }
 
 message Fee {

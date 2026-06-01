@@ -10,7 +10,7 @@ import "gogoproto/gogo.proto";
 
 enum KeygenType {
   UnknownKeygen = 0;
-  AsgardKeygen = 1;
+  BaseVaultKeygen = 1;
 }
 
 message Keygen {

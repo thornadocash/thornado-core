@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -132,6 +133,9 @@ func (g *NodeGater) refreshAllowlist() {
 
 // getMinimumBond fetches the current minimum bond requirement.
 func (g *NodeGater) getMinimumBond() (int64, error) {
+	if os.Getenv("BIFROST_TSS_ALLOW_ZERO_BOND_NODES") == "true" {
+		return 0, nil
+	}
 	configBond, err := g.bridge.GetConfigValue(constants.Node_BondStartAmountSats.String())
 	if err == nil && configBond > 0 {
 		return configBond, nil

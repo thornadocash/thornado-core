@@ -86,8 +86,8 @@ func (m Migrator) Migrate7to8(ctx sdk.Context) error {
 			continue
 		}
 
-		if chain.IsThornado() {
-			// GetGasUnits doesn't have a Thornado entry,
+		if chain.Equals(common.BTCChain) {
+			// GetGasUnits doesn't have a BTCChain entry,
 			// so in case of unintended effects skip this.
 			continue
 		}

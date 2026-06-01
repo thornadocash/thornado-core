@@ -278,7 +278,7 @@ type Thornode struct {
 		Quote struct {
 			// RecommendedMinAmountFeeMultiplier sets the multiplier on the outbound fee for
 			// the source and destination chains, used to determine the min recommended swap
-			// amount that should be respected by clients to avoid outbounds and refunds being
+			// amount that should be respected by clients to avoid outbounds being
 			// swallowed.
 			RecommendedMinAmountFeeMultiplier uint64 `mapstructure:"recommended_min_amount_fee_multiplier"`
 
@@ -597,7 +597,7 @@ type BifrostChainConfiguration struct {
 		MaxMempoolBatches int `mapstructure:"max_mempool_batches"`
 
 		// NOTE: The following fields must be consistent across all validators. Otherwise,
-		// nodes can fail to sign outbounds from asgard since they may build different
+		// nodes can fail to sign outbounds from base since they may build different
 		// transactions. They may also be slashed for reporting different fee and solvency.
 
 		// EstimatedAverageTxSize is the estimated average transaction size in bytes.
@@ -620,7 +620,7 @@ type BifrostChainConfiguration struct {
 		MinSatsPerVByte int64 `mapstructure:"min_sats_per_vbyte"`
 
 		// MinUTXOConfirmations is the minimum number of confirmations required for a UTXO to
-		// be considered for spending from an asgard vault.
+		// be considered for spending from an base vault.
 		MinUTXOConfirmations int64 `mapstructure:"min_utxo_confirmations"`
 
 		// MaxUTXOsToSpend is the maximum number of UTXOs to spend in a single transaction.
@@ -785,8 +785,8 @@ func (c BifrostTSSConfiguration) GetExternalIP() string {
 }
 
 type WhitelistCosmosAsset struct {
-	Denom           string `mapstructure:"denom"`
-	Decimals        int    `mapstructure:"decimals"`
+	Denom          string `mapstructure:"denom"`
+	Decimals       int    `mapstructure:"decimals"`
 	ThornadoSymbol string `mapstructure:"symbol"`
 }
 
@@ -794,7 +794,25 @@ type WhitelistCosmosAsset struct {
 func (c BifrostTSSConfiguration) GetBootstrapPeers() ([]maddr.Multiaddr, error) {
 	var addrs []maddr.Multiaddr
 
-	for _, ip := range resolveAddrs(c.BootstrapPeers) {
+	for _, bootstrapPeer := range c.BootstrapPeers {
+		if strings.HasPrefix(bootstrapPeer, "/") {
+			addr, err := maddr.NewMultiaddr(bootstrapPeer)
+			if err != nil {
+				log.Warn().Err(err).Str("addr", bootstrapPeer).Msg("failed to parse bootstrap multiaddr")
+				continue
+			}
+			addrs = append(addrs, addr)
+			continue
+		}
+	}
+
+	var seedHosts []string
+	for _, bootstrapPeer := range c.BootstrapPeers {
+		if !strings.HasPrefix(bootstrapPeer, "/") {
+			seedHosts = append(seedHosts, bootstrapPeer)
+		}
+	}
+	for _, ip := range resolveAddrs(seedHosts) {
 		if len(ip) == 0 {
 			continue
 		}

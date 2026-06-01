@@ -37,7 +37,6 @@ func (s *BitcoinSuite) TestConfirmationCountReady(c *C) {
 				Coins: common.Coins{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(123456)),
 				},
-				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 		},
@@ -56,7 +55,6 @@ func (s *BitcoinSuite) TestConfirmationCountReady(c *C) {
 				Coins: common.Coins{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(123456)),
 				},
-				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 		},
@@ -79,7 +77,6 @@ func (s *BitcoinSuite) TestConfirmationCountReady(c *C) {
 				Gas: common.Gas{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(40000)),
 				},
-				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 		},
@@ -108,7 +105,6 @@ func (s *BitcoinSuite) TestGetConfirmationCount(c *C) {
 				Coins: common.Coins{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(123456)),
 				},
-				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 		},
@@ -128,7 +124,6 @@ func (s *BitcoinSuite) TestGetConfirmationCount(c *C) {
 				Coins: common.Coins{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(123456)),
 				},
-				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 		},
@@ -148,7 +143,6 @@ func (s *BitcoinSuite) TestGetConfirmationCount(c *C) {
 				Coins: common.Coins{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(12345600)),
 				},
-				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 		},
@@ -168,7 +162,6 @@ func (s *BitcoinSuite) TestGetConfirmationCount(c *C) {
 				Coins: common.Coins{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(22345600)),
 				},
-				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 		},
@@ -188,7 +181,6 @@ func (s *BitcoinSuite) TestGetConfirmationCount(c *C) {
 				Coins: common.Coins{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(123456000)),
 				},
-				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 		},

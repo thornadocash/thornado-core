@@ -53,7 +53,7 @@ func (h TssKeysignHandler) validate(ctx cosmos.Context, msg MsgTssKeysignFail) e
 		return err
 	}
 
-	m, err := NewMsgTssKeysignFail(msg.Height, msg.Blame, msg.Memo, msg.Coins, msg.Signer, msg.PubKey)
+	m, err := NewMsgTssKeysignFail(msg.Height, msg.Blame, msg.Coins, msg.Signer, msg.PubKey)
 	if err != nil {
 		ctx.Logger().Error("fail to reconstruct keysign fail msg", "error", err)
 		return err
@@ -217,7 +217,7 @@ func (h TssKeysignHandler) handle(ctx cosmos.Context, msg MsgTssKeysignFail) (*c
 		}
 		// go to jail
 		ctx.Logger().Info("jailing node", "pubkey", na.PubKeySet.Secp256k1)
-		jailTime := h.mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_FailJailBlocks)
+		jailTime := getConfigDurationBlocks(ctx, h.mgr.Keeper(), constants.Keysign_FailJailMinutes)
 		releaseHeight := ctx.BlockHeight() + jailTime
 		reason := "failed to perform keysign"
 		if err := h.mgr.Keeper().SetNodeAccountJail(ctx, na.NodeAddress, releaseHeight, reason); err != nil {
@@ -233,7 +233,7 @@ func validateKeysignAuth(ctx cosmos.Context, k keeper.Keeper, signers []cosmos.A
 		return ctx.WithPriority(ActiveNodePriority), nil
 	}
 	shouldAccept := false
-	vaults, err := k.GetAsgardVaultsByStatus(ctx, RetiringVault)
+	vaults, err := k.GetBaseVaultsByStatus(ctx, RetiringVault)
 	if err != nil {
 		return ctx, ErrInternal(err, "fail to get retiring vaults")
 	}

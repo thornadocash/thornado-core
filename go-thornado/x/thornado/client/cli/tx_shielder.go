@@ -18,12 +18,11 @@ import (
 func GetCmdShielder() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "shielder",
-		Short: "Shielder private custody transaction subcommands",
+		Short: "Shielder split and redeem transaction subcommands",
 	}
 
-	cmd.AddCommand(GetCmdShielderRegisterPow())
-	cmd.AddCommand(GetCmdShielderPostCommitments())
-	cmd.AddCommand(GetCmdShielderWithdraw())
+	cmd.AddCommand(GetCmdShielderSplit())
+	cmd.AddCommand(GetCmdShielderRedeem())
 	cmd.AddCommand(GetCmdShielderSplitFees())
 	cmd.AddCommand(GetCmdNodeSlotAuctionCreate())
 	cmd.AddCommand(GetCmdNodeSlotAuctionBidPow())
@@ -32,9 +31,9 @@ func GetCmdShielder() *cobra.Command {
 	return cmd
 }
 
-func GetCmdShielderRegisterPow() *cobra.Command {
+func GetCmdDepositRequestPow() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "register-pow [pow-token]",
+		Use:   "request-deposit [pow-token]",
 		Short: "register POW token and request a Bitcoin deposit address",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -51,7 +50,7 @@ func GetCmdShielderRegisterPow() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			msg := types.NewMsgShielderRegisterPow(args[0], clientCtx.GetFromAddress(), operatorPubKey, nodePubKey)
+			msg := types.NewMsgDepositRequestPow(args[0], clientCtx.GetFromAddress(), operatorPubKey, nodePubKey)
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
@@ -63,10 +62,10 @@ func GetCmdShielderRegisterPow() *cobra.Command {
 	return cmd
 }
 
-func GetCmdShielderPostCommitments() *cobra.Command {
+func GetCmdShielderSplit() *cobra.Command {
 	return &cobra.Command{
-		Use:   "post-commitments [deposit-id] [commitments-json-or-csv]",
-		Short: "settle and split a matched Bitcoin deposit into private notes",
+		Use:   "split [deposit-id] [commitments-json-or-csv]",
+		Short: "insert Shielder commitments for a settled Bitcoin deposit",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
@@ -83,7 +82,7 @@ func GetCmdShielderPostCommitments() *cobra.Command {
 				return err
 			}
 
-			msg := types.NewMsgShielderPostCommitments(depositID, commitments, clientCtx.GetFromAddress())
+			msg := types.NewMsgShielderSplit(depositID, commitments, clientCtx.GetFromAddress())
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
@@ -92,10 +91,10 @@ func GetCmdShielderPostCommitments() *cobra.Command {
 	}
 }
 
-func GetCmdShielderWithdraw() *cobra.Command {
+func GetCmdShielderRedeem() *cobra.Command {
 	return &cobra.Command{
-		Use:   "withdraw [proof-json-or-file] [public-json-or-file]",
-		Short: "verify a Shielder withdrawal proof and queue Bitcoin keysign",
+		Use:   "redeem [proof-json-or-file] [public-json-or-file]",
+		Short: "spend a Shielder note and request a Bitcoin withdrawal",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
@@ -112,7 +111,7 @@ func GetCmdShielderWithdraw() *cobra.Command {
 				return fmt.Errorf("invalid public inputs: %w", err)
 			}
 
-			msg := types.NewMsgShielderRequestWithdrawal(proof, public, clientCtx.GetFromAddress())
+			msg := types.NewMsgShielderRedeem(proof, public, clientCtx.GetFromAddress())
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}

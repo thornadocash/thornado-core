@@ -10,6 +10,8 @@ ENV_EXAMPLE="${OPS_DIR}/env.localnet.example"
 ENV_FILE="${OPS_DIR}/env.localnet"
 
 load_localnet_env() {
+  local requested_profiles="${COMPOSE_PROFILES:-}"
+
   if [[ -f "${ENV_EXAMPLE}" ]]; then
     set -a
     # shellcheck disable=SC1090
@@ -24,9 +26,22 @@ load_localnet_env() {
     set +a
   fi
 
+  if [[ -n "${requested_profiles}" ]]; then
+    COMPOSE_PROFILES="${requested_profiles}"
+  fi
+
   COMPOSE_PROFILES="${COMPOSE_PROFILES:-mock}"
   BITCOIN_RPC_USER="${BITCOIN_RPC_USER:-thornado}"
   BITCOIN_RPC_PASSWORD="${BITCOIN_RPC_PASSWORD:-thornado}"
+
+  if profile_enabled mock; then
+    THORNADO_BOOTSTRAP_CMD="${THORNADO_BOOTSTRAP_CMD:-${OPS_DIR}/scripts/mock-e2e-hooks.sh bootstrap-thornado}"
+    FROST_DKG_CMD="${FROST_DKG_CMD:-${OPS_DIR}/scripts/mock-e2e-hooks.sh frost-dkg}"
+    FROST_DKG_STATUS_CMD="${FROST_DKG_STATUS_CMD:-${OPS_DIR}/scripts/mock-e2e-hooks.sh frost-status}"
+    SEND_DEPOSIT_CMD="${SEND_DEPOSIT_CMD:-${OPS_DIR}/scripts/mock-e2e-hooks.sh send-deposit}"
+    RUN_WITHDRAWAL_CMD="${RUN_WITHDRAWAL_CMD:-${OPS_DIR}/scripts/mock-e2e-hooks.sh run-withdrawal}"
+    export THORNADO_BOOTSTRAP_CMD FROST_DKG_CMD FROST_DKG_STATUS_CMD SEND_DEPOSIT_CMD RUN_WITHDRAWAL_CMD
+  fi
 }
 
 compose_cmd() {

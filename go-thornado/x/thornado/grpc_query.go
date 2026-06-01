@@ -166,6 +166,14 @@ func (s *queryServer) LastBlocks(c context.Context, req *types.QueryLastBlocksRe
 	return s.queryLastBlockHeights(ctx, "")
 }
 
+func (s *queryServer) NetworkFeeCurrent(c context.Context, req *types.QueryNetworkFeeRequest) (*types.NetworkFee, error) {
+	if err := checkHeightParam(req.Height); err != nil {
+		return nil, err
+	}
+	ctx := s.unwrapSdkContext(c)
+	return s.queryNetworkFee(ctx, req)
+}
+
 func (s *queryServer) Vault(c context.Context, req *types.QueryVaultRequest) (*types.QueryVaultResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
@@ -211,23 +219,47 @@ func (s *queryServer) TxOut(c context.Context, req *types.QueryTxOutRequest) (*t
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryTxOut(ctx, req)
+	return s.queryTxOut(ctx, req, txOutViewAll)
 }
 
-func (s *queryServer) ShielderDeposit(c context.Context, req *types.QueryShielderDepositRequest) (*types.QueryShielderDepositResponse, error) {
+func (s *queryServer) TxOutOut(c context.Context, req *types.QueryTxOutRequest) (*types.QueryTxOutResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryShielderDeposit(ctx, req)
+	return s.queryTxOut(ctx, req, txOutViewOut)
 }
 
-func (s *queryServer) ShielderWithdrawal(c context.Context, req *types.QueryShielderWithdrawalRequest) (*types.QueryShielderWithdrawalResponse, error) {
+func (s *queryServer) TxOutInternal(c context.Context, req *types.QueryTxOutRequest) (*types.QueryTxOutResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryShielderWithdrawal(ctx, req)
+	return s.queryTxOut(ctx, req, txOutViewInternal)
+}
+
+func (s *queryServer) TxOutAll(c context.Context, req *types.QueryTxOutRequest) (*types.QueryTxOutResponse, error) {
+	if err := checkHeightParam(req.Height); err != nil {
+		return nil, err
+	}
+	ctx := s.unwrapSdkContext(c)
+	return s.queryTxOut(ctx, req, txOutViewAll)
+}
+
+func (s *queryServer) Deposit(c context.Context, req *types.QueryDepositRequest) (*types.QueryDepositResponse, error) {
+	if err := checkHeightParam(req.Height); err != nil {
+		return nil, err
+	}
+	ctx := s.unwrapSdkContext(c)
+	return s.queryDeposit(ctx, req)
+}
+
+func (s *queryServer) ShielderRedeem(c context.Context, req *types.QueryShielderRedeemRequest) (*types.QueryShielderRedeemResponse, error) {
+	if err := checkHeightParam(req.Height); err != nil {
+		return nil, err
+	}
+	ctx := s.unwrapSdkContext(c)
+	return s.queryShielderRedeem(ctx, req)
 }
 
 func (s *queryServer) ShielderNullifier(c context.Context, req *types.QueryShielderNullifierRequest) (*types.QueryShielderNullifierResponse, error) {
@@ -246,36 +278,36 @@ func (s *queryServer) ShielderRoots(c context.Context, req *types.QueryShielderR
 	return s.queryShielderRoots(ctx, req)
 }
 
-func (s *queryServer) ShielderWithdrawalQuote(c context.Context, req *types.QueryShielderWithdrawalQuoteRequest) (*types.QueryShielderWithdrawalQuoteResponse, error) {
+func (s *queryServer) ShielderRedeemQuote(c context.Context, req *types.QueryShielderRedeemQuoteRequest) (*types.QueryShielderRedeemQuoteResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryShielderWithdrawalQuote(ctx, req)
+	return s.queryShielderRedeemQuote(ctx, req)
 }
 
-func (s *queryServer) ShielderFeePool(c context.Context, req *types.QueryShielderFeePoolRequest) (*types.QueryShielderFeePoolResponse, error) {
+func (s *queryServer) FeePool(c context.Context, req *types.QueryFeePoolRequest) (*types.QueryFeePoolResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryShielderFeePool(ctx, req)
+	return s.queryFeePool(ctx, req)
 }
 
-func (s *queryServer) ShielderSession(c context.Context, req *types.QueryShielderSessionRequest) (*types.QueryShielderSessionResponse, error) {
+func (s *queryServer) DepositSession(c context.Context, req *types.QueryDepositSessionRequest) (*types.QueryDepositSessionResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryShielderSession(ctx, req)
+	return s.queryDepositSession(ctx, req)
 }
 
-func (s *queryServer) ShielderBond(c context.Context, req *types.QueryShielderBondRequest) (*types.QueryShielderBondResponse, error) {
+func (s *queryServer) NodeBond(c context.Context, req *types.QueryNodeBondRequest) (*types.QueryNodeBondResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryShielderBond(ctx, req)
+	return s.queryNodeBond(ctx, req)
 }
 
 func (s *queryServer) NodeSlotAuction(c context.Context, req *types.QueryNodeSlotAuctionRequest) (*types.QueryNodeSlotAuctionResponse, error) {
@@ -318,20 +350,20 @@ func (s *queryServer) VaultDepositAddress(c context.Context, req *types.QueryVau
 	return s.queryVaultDepositAddress(ctx, req)
 }
 
-func (s *queryServer) ShielderFeeEntitlement(c context.Context, req *types.QueryShielderFeeEntitlementRequest) (*types.QueryShielderFeeEntitlementResponse, error) {
+func (s *queryServer) NodeFeeEntitlement(c context.Context, req *types.QueryNodeFeeEntitlementRequest) (*types.QueryNodeFeeEntitlementResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryShielderFeeEntitlement(ctx, req)
+	return s.queryNodeFeeEntitlement(ctx, req)
 }
 
-func (s *queryServer) ShielderFeeEntitlements(c context.Context, req *types.QueryShielderFeeEntitlementsRequest) (*types.QueryShielderFeeEntitlementsResponse, error) {
+func (s *queryServer) NodeFeeEntitlements(c context.Context, req *types.QueryNodeFeeEntitlementsRequest) (*types.QueryNodeFeeEntitlementsResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryShielderFeeEntitlements(ctx, req)
+	return s.queryNodeFeeEntitlements(ctx, req)
 }
 
 func (s *queryServer) Block(c context.Context, req *types.QueryBlockRequest) (*types.QueryBlockResponse, error) {

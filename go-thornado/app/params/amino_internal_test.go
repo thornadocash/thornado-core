@@ -45,7 +45,7 @@ func TestKeygenTypeEncoder_UnsupportedType(t *testing.T) {
 
 func TestKeygenTypeEncoder_ValidEnum(t *testing.T) {
 	var buf bytes.Buffer
-	// Pass a valid keygen type enum (0 = AsgardKeygen)
+	// Pass a valid keygen type enum (0 = BaseKeygen)
 	v := protoreflect.ValueOfEnum(0)
 	err := keygenTypeEncoder(nil, v, &buf)
 	require.NoError(t, err)

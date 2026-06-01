@@ -48,8 +48,8 @@ func (m *KeygenBlock) Contains(keygen Keygen) bool {
 // getKeygenTypeFromString parse the given string as KeygenType
 func getKeygenTypeFromString(t string) KeygenType {
 	switch {
-	case strings.EqualFold(t, "asgardKeygen"):
-		return KeygenType_AsgardKeygen
+	case strings.EqualFold(t, "baseVaultKeygen"):
+		return KeygenType_BaseVaultKeygen
 	default:
 		return KeygenType_UnknownKeygen
 	}

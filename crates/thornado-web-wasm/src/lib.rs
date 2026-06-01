@@ -15,7 +15,8 @@ type Result<T> = std::result::Result<T, Error>;
 
 const DOMAIN: &str = "thornado-mvp-v1";
 const HARDENED_CHILD_OFFSET: u64 = 1 << 31;
-const DEFAULT_DENOMINATIONS_SATS: [u64; 4] = [1_000_000_000, 100_000_000, 10_000_000, 1_000_000];
+const DEFAULT_DENOMINATIONS_SATS: [u64; 5] =
+    [1_000_000_000, 100_000_000, 10_000_000, 1_000_000, 100_000];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {

@@ -90,6 +90,18 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 	} else {
 		redeemTx, checkpoint.IndividualAmounts, err = c.buildTx(tx, sourceScript)
 		if err != nil {
+			if tx.TxType == "sweep" &&
+				thornadoHeight > tx.Height+10 &&
+				strings.Contains(err.Error(), "insufficient available UTXOs") {
+				c.log.Warn().
+					Stringer("in_hash", tx.InHash).
+					Uint64("vault_path_index", tx.VaultPathIndex).
+					Int64("tx_height", tx.Height).
+					Int64("thornado_height", thornadoHeight).
+					Err(err).
+					Msg("skipping stale BTC sweep with no spendable source UTXO")
+				return nil, nil, nil, nil
+			}
 			return nil, nil, nil, err
 		}
 		buf := bytes.NewBuffer([]byte{})
@@ -179,7 +191,6 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 		txIn = stypes.NewTxInItem(
 			chainHeight,
 			txHash,
-			"",
 			sender.String(),
 			tx.ToAddress.String(),
 			common.NewCoins(
@@ -243,7 +254,7 @@ func (c *Client) BroadcastTx(txOut stypes.TxOutItem, payload []byte) (string, er
 		return "", fmt.Errorf("fail to deserialize payload: %w", err)
 	}
 
-	txid, err := c.rpc.SendRawTransaction(redeemTx, 10_000_000)
+	txid, err := c.rpc.SendRawTransaction(redeemTx, 0.10)
 
 	if txid != "" {
 		bm.AddSelfTransaction(txid)

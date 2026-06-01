@@ -168,7 +168,6 @@ func (b *EnshrinedBifrost) startPruneTimer() {
 						"finalise_height", tx.ObsTx.FinaliseHeight,
 						"from", tx.ObsTx.Tx.FromAddress,
 						"to", tx.ObsTx.Tx.ToAddress,
-						"memo", tx.ObsTx.Tx.Memo,
 						"coins", tx.ObsTx.Tx.Coins.String(),
 						"gas", tx.ObsTx.Tx.Gas.ToCoins().String(),
 						"inbound", tx.Inbound,
@@ -670,7 +669,6 @@ func (b *EnshrinedBifrost) ProposalInjectTxs(ctx sdk.Context, maxTxBytes int64) 
 				"finalized", obsTx.IsFinal(),
 				"inbound", tx.Inbound,
 				"attestations", len(tx.Attestations),
-				"memo", obsTx.Tx.Memo,
 				"coins", obsTx.Tx.Coins)
 		},
 		b.logger,

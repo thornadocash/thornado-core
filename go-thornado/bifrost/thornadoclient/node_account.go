@@ -29,6 +29,10 @@ func (b *thornadoBridge) GetNodeAccounts() ([]*types.QueryNodeResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node accounts: %w", err)
 	}
+	var resp types.QueryNodesResponse
+	if err = json.Unmarshal(body, &resp); err == nil && resp.Nodes != nil {
+		return resp.Nodes, nil
+	}
 	var nodes []*types.QueryNodeResponse
 	if err = json.Unmarshal(body, &nodes); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal node accounts: %w", err)

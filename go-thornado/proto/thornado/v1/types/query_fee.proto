@@ -1,0 +1,37 @@
+syntax = "proto3";
+package types;
+
+option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
+
+message QueryFeePoolRequest {
+  string height = 1;
+}
+
+message QueryFeePoolResponse {
+  uint64 pending_sats = 1;
+  uint64 total_slots = 2;
+  uint64 fee_per_slot_share = 3;
+  uint64 total_collected_sats = 4;
+  uint64 total_claimed_sats = 5;
+}
+
+message QueryNodeFeeEntitlementRequest {
+  string node_pub_key = 1;
+  string height = 2;
+}
+
+message QueryNodeFeeEntitlementResponse {
+  string node_pub_key = 1;
+  uint64 claimable_sats = 2;
+  uint64 accrued_sats = 3;
+  uint64 fee_debt_sats = 4;
+  uint64 fee_per_slot_share = 5;
+  bool fee_share_active = 6;
+  string pending_fee_deposit_id = 7;
+}
+
+message QueryNodeFeeEntitlementsRequest { string height = 1; }
+
+message QueryNodeFeeEntitlementsResponse {
+  repeated QueryNodeFeeEntitlementResponse entitlements = 1;
+}

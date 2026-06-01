@@ -59,7 +59,7 @@ func (h NodePauseChainHandler) validate(ctx cosmos.Context, msg MsgNodePauseChai
 func (h NodePauseChainHandler) handle(ctx cosmos.Context, msg MsgNodePauseChain) error {
 	ctx.Logger().Info("handleMsgNodePauseChain request", "node", msg.Signer, "value", msg.Value)
 	// get block height of last churn
-	active, err := h.mgr.Keeper().GetAsgardVaultsByStatus(ctx, ActiveVault)
+	active, err := h.mgr.Keeper().GetBaseVaultsByStatus(ctx, ActiveVault)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (h NodePauseChainHandler) handle(ctx cosmos.Context, msg MsgNodePauseChain)
 		return err
 	}
 
-	blocks := h.mgr.Keeper().GetConfigInt64(ctx, constants.Chain_PauseNodeBlocks)
+	blocks := getConfigDurationBlocks(ctx, h.mgr.Keeper(), constants.Chain_PauseNodeMinutes)
 
 	if msg.Value > 0 { // node intends to pause chain
 		if pauseHeight > ctx.BlockHeight() { // chain is paused

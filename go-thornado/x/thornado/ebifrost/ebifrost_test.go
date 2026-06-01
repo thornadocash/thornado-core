@@ -37,7 +37,6 @@ func createTestTx(chain common.Chain, id string) common.ObservedTx {
 		Tx: common.Tx{
 			ID:          common.TxID(id),
 			Chain:       chain,
-			Memo:        "test",
 			Coins:       common.Coins{},
 			Gas:         common.Gas{},
 			FromAddress: common.Address("from"),

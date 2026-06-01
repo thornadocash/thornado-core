@@ -26,8 +26,6 @@ type TxOutItem struct {
 	Coin             Coin    `json:"coin"`
 	MaxGas           []Coin  `json:"max_gas"`
 	GasRate          *int64  `json:"gas_rate,omitempty"`
-	Memo             *string `json:"memo,omitempty"`
-	OriginalMemo     *string `json:"original_memo,omitempty"`
 	// whitelisted DEX Aggregator contract address
 	Aggregator *string `json:"aggregator,omitempty"`
 	// target asset for the aggregator contract to attempt a swap to
@@ -347,70 +345,6 @@ func (o *TxOutItem) SetGasRate(v int64) {
 	o.GasRate = &v
 }
 
-// GetMemo returns the Memo field value if set, zero value otherwise.
-func (o *TxOutItem) GetMemo() string {
-	if o == nil || o.Memo == nil {
-		var ret string
-		return ret
-	}
-	return *o.Memo
-}
-
-// GetMemoOk returns a tuple with the Memo field value if set, nil otherwise
-// and a boolean to check if the value has been set.
-func (o *TxOutItem) GetMemoOk() (*string, bool) {
-	if o == nil || o.Memo == nil {
-		return nil, false
-	}
-	return o.Memo, true
-}
-
-// HasMemo returns a boolean if a field has been set.
-func (o *TxOutItem) HasMemo() bool {
-	if o != nil && o.Memo != nil {
-		return true
-	}
-
-	return false
-}
-
-// SetMemo gets a reference to the given string and assigns it to the Memo field.
-func (o *TxOutItem) SetMemo(v string) {
-	o.Memo = &v
-}
-
-// GetOriginalMemo returns the OriginalMemo field value if set, zero value otherwise.
-func (o *TxOutItem) GetOriginalMemo() string {
-	if o == nil || o.OriginalMemo == nil {
-		var ret string
-		return ret
-	}
-	return *o.OriginalMemo
-}
-
-// GetOriginalMemoOk returns a tuple with the OriginalMemo field value if set, nil otherwise
-// and a boolean to check if the value has been set.
-func (o *TxOutItem) GetOriginalMemoOk() (*string, bool) {
-	if o == nil || o.OriginalMemo == nil {
-		return nil, false
-	}
-	return o.OriginalMemo, true
-}
-
-// HasOriginalMemo returns a boolean if a field has been set.
-func (o *TxOutItem) HasOriginalMemo() bool {
-	if o != nil && o.OriginalMemo != nil {
-		return true
-	}
-
-	return false
-}
-
-// SetOriginalMemo gets a reference to the given string and assigns it to the OriginalMemo field.
-func (o *TxOutItem) SetOriginalMemo(v string) {
-	o.OriginalMemo = &v
-}
-
 // GetAggregator returns the Aggregator field value if set, zero value otherwise.
 func (o *TxOutItem) GetAggregator() string {
 	if o == nil || o.Aggregator == nil {
@@ -570,12 +504,6 @@ func (o TxOutItem) MarshalJSON_deprecated() ([]byte, error) {
 	}
 	if o.GasRate != nil {
 		toSerialize["gas_rate"] = o.GasRate
-	}
-	if o.Memo != nil {
-		toSerialize["memo"] = o.Memo
-	}
-	if o.OriginalMemo != nil {
-		toSerialize["original_memo"] = o.OriginalMemo
 	}
 	if o.Aggregator != nil {
 		toSerialize["aggregator"] = o.Aggregator

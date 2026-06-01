@@ -6,8 +6,8 @@ option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
 import "amino/amino.proto";
 import "gogoproto/gogo.proto";
 
-message MsgShielderRegisterPow {
-  option (amino.name) = "thornado/MsgShielderRegisterPow";
+message MsgDepositRequestPow {
+  option (amino.name) = "thornado/MsgDepositRequestPow";
 
   string pow_token = 1;
   bytes signer = 2 [
@@ -18,15 +18,15 @@ message MsgShielderRegisterPow {
   string node_pub_key = 4;
 }
 
-message MsgShielderRegisterPowResponse {
+message MsgDepositRequestPowResponse {
   string deposit_address = 1;
   string vault_pub_key = 2;
   uint64 deposit_path_index = 3;
   string bid_id = 4;
 }
 
-message MsgShielderPostCommitments {
-  option (amino.name) = "thornado/MsgShielderPostCommitments";
+message MsgShielderSplit {
+  option (amino.name) = "thornado/MsgShielderSplit";
 
   string deposit_id = 1;
   repeated string commitments = 2;
@@ -36,13 +36,13 @@ message MsgShielderPostCommitments {
   ];
 }
 
-message MsgShielderPostCommitmentsResponse {
+message MsgShielderSplitResponse {
   string deposit_id = 1;
   string status = 2;
 }
 
-message MsgShielderRequestWithdrawal {
-  option (amino.name) = "thornado/MsgShielderRequestWithdrawal";
+message MsgShielderRedeem {
+  option (amino.name) = "thornado/MsgShielderRedeem";
 
   bytes proof = 1;
   bytes public = 2;
@@ -52,7 +52,7 @@ message MsgShielderRequestWithdrawal {
   ];
 }
 
-message MsgShielderRequestWithdrawalResponse {
+message MsgShielderRedeemResponse {
   string withdrawal_id = 1;
   string status = 2;
 }

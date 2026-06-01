@@ -40,6 +40,47 @@ paths:
         "200":
           description: Balances response
       summary: Balances
+  /thornado/node/address/{address}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: address
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Node response
+      summary: Node by address
+  /thornado/nodes:
+    get:
+      responses:
+        "200":
+          description: Nodes response
+      summary: Nodes
+  /thornado/node/metrics:
+    get:
+      responses:
+        "200":
+          description: Node metrics response
+      summary: Node metrics
+  /thornado/node/slot/{slot}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: slot
+        required: true
+        schema:
+          format: int64
+          type: integer
+        style: simple
+      responses:
+        "200":
+          description: Node slot response
+      summary: Node slot
   /thornado/vaults/base:
     get:
       responses:
@@ -140,6 +181,12 @@ paths:
         "200":
           description: Last block response
       summary: Last observed blocks
+  /thornado/network_fee:
+    get:
+      responses:
+        "200":
+          description: Network fee response
+      summary: BTC network fee
   /thornado/deposit/{deposit_id}:
     get:
       parameters:
@@ -160,7 +207,7 @@ paths:
         "200":
           description: Fee pool response
       summary: Fee pool
-  /thornado/session/{owner}:
+  /thornado/deposit/session/{owner}:
     get:
       parameters:
       - explode: false
@@ -174,6 +221,55 @@ paths:
         "200":
           description: Session response
       summary: Deposit session
+  /thornado/shielder/redeem/{withdrawal_id}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: withdrawal_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Redeem response
+      summary: Shielder redeem
+  /thornado/shielder/nullifier/{nullifier_hash}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: nullifier_hash
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Nullifier response
+      summary: Shielder nullifier
+  /thornado/shielder/roots:
+    get:
+      responses:
+        "200":
+          description: Shielder roots response
+      summary: Shielder roots
+  /thornado/shielder/redeem/quote/{amount_sats}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: amount_sats
+        required: true
+        schema:
+          format: int64
+          type: integer
+        style: simple
+      responses:
+        "200":
+          description: Redeem quote response
+      summary: Shielder redeem quote
   /thornado/bond/{node_pub_key}:
     get:
       parameters:
@@ -202,6 +298,12 @@ paths:
         "200":
           description: Auction response
       summary: Node slot auction
+  /thornado/node/auctions:
+    get:
+      responses:
+        "200":
+          description: Auctions response
+      summary: Node slot auctions
   /thornado/node/bid/{bid_id}:
     get:
       parameters:
@@ -216,6 +318,20 @@ paths:
         "200":
           description: Bid response
       summary: Node slot bid
+  /thornado/node/auction/{auction_id}/bids:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: auction_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Auction bids response
+      summary: Node slot auction bids
   /thornado/deposit/address/{address}:
     get:
       parameters:
@@ -244,17 +360,90 @@ paths:
         "200":
           description: Fee entitlement response
       summary: Node fee entitlement
-  /thornado/tss/keygen:
+  /thornado/fee/entitlements:
     get:
       responses:
         "200":
-          description: TSS keygen response
-      summary: TSS keygen metrics
-  /thornado/tss/keysign:
+          description: Fee entitlements response
+      summary: Node fee entitlements
+  /thornado/metric/keygen/{pub_key}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: pub_key
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Keygen metric response
+      summary: Keygen metric by vault pubkey
+  /thornado/metrics:
     get:
       responses:
         "200":
-          description: TSS keysign response
-      summary: TSS keysign metrics
+          description: Metrics response
+      summary: Keygen and keysign metrics
+  /thornado/keysign/{height}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: height
+        required: true
+        schema:
+          format: int64
+          type: integer
+        style: simple
+      responses:
+        "200":
+          description: Keysign response
+      summary: TxOut keysign items
+  /thornado/keysign/{height}/{pub_key}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: height
+        required: true
+        schema:
+          format: int64
+          type: integer
+        style: simple
+      - explode: false
+        in: path
+        name: pub_key
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Keysign response
+      summary: TxOut keysign items by vault pubkey
+  /thornado/keygen/{height}/{pub_key}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: height
+        required: true
+        schema:
+          format: int64
+          type: integer
+        style: simple
+      - explode: false
+        in: path
+        name: pub_key
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Keygen response
+      summary: Keygen block by vault pubkey
 components:
   schemas: {}

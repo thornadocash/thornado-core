@@ -15,7 +15,7 @@ import (
 var ThornadoBlockTime = time.Second
 
 // CamelToSnakeUpper converts a camelCase string to SNAKE_CASE.
-// Examples: "Chain_BlocksPerYear" -> "BLOCKS_PER_YEAR"
+// Examples: "Chain_BlockTimeSeconds" -> "BLOCK_TIME_SECONDS"
 func CamelToSnakeUpper(s string) string {
 	re := regexp.MustCompile(`([a-z0-9])([A-Z])|([A-Z]+)([A-Z][a-z])`)
 	snake := re.ReplaceAllString(s, `${1}${3}_${2}${4}`)
@@ -24,11 +24,12 @@ func CamelToSnakeUpper(s string) string {
 
 func init() {
 	int64Overrides = map[ConfigName]int64{
+		Chain_BlockTimeSeconds:        1,
 		Node_SetDesired:               12,
-		Churn_IntervalBlocks:          60,
-		Churn_RetryIntervalBlocks:     30,
-		Keygen_FailJailBlocks:         10,
-		Keysign_FailJailBlocks:        10,
+		Churn_IntervalMinutes:         1,
+		Churn_RetryIntervalMinutes:    1,
+		Keygen_FailJailMinutes:        1,
+		Keysign_FailJailMinutes:       1,
 		Node_MissingBlocksChurnOut:    100,
 		Node_MissingBlocksChurnOutMax: 5,
 		Config_OperationalVotesMin:    1, // For regtest single-signer Config changes without Admin

@@ -98,7 +98,7 @@ func (m *MockThornadoBridge) FetchNodeStatus() (types.NodeStatus, error) {
 	return types.NodeStatus_Unknown, nil
 }
 func (m *MockThornadoBridge) FetchActiveNodes() ([]common.PubKey, error)  { return nil, nil }
-func (m *MockThornadoBridge) GetAsgards() (types.Vaults, error)           { return nil, nil }
+func (m *MockThornadoBridge) GetBaseVaults() (types.Vaults, error)        { return nil, nil }
 func (m *MockThornadoBridge) GetVault(pubkey string) (types.Vault, error) { return types.Vault{}, nil }
 func (m *MockThornadoBridge) GetConfig() config.BifrostClientConfiguration {
 	return config.BifrostClientConfiguration{}
@@ -137,7 +137,7 @@ func (m *MockThornadoBridge) GetPubKeys() ([]thornadoclient.PubKeyAddressPair, e
 	return nil, nil
 }
 
-func (m *MockThornadoBridge) GetAsgardPubKeys() ([]thornadoclient.PubKeyAddressPair, error) {
+func (m *MockThornadoBridge) GetBasePubKeys() ([]thornadoclient.PubKeyAddressPair, error) {
 	return nil, nil
 }
 
@@ -154,7 +154,7 @@ func (m *MockThornadoBridge) GetNetworkFee(chain common.Chain) (transactionSize,
 	return 0, 0, nil
 }
 
-func (m *MockThornadoBridge) PostKeysignFailure(blame types.Blame, height int64, memo string, coins common.Coins, pubkey common.PubKey) (common.TxID, error) {
+func (m *MockThornadoBridge) PostKeysignFailure(blame types.Blame, height int64, coins common.Coins, pubkey common.PubKey) (common.TxID, error) {
 	return "", nil
 }
 

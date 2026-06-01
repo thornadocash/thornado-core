@@ -28,7 +28,7 @@ func processSolvencyAttestation(
 
 	observeSlashPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
 	lackOfObservationPenalty := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_MissPenaltyPoints)
-	observeFlex := k.GetConfigInt64(ctx, constants.Observation_DelayFlexibilityBlocks)
+	observeFlex := getConfigDurationBlocks(ctx, k, constants.Observation_DelayFlexibilityMinutes)
 
 	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
 		telemetry.NewLabel("reason", "failed_observe_solvency"),
@@ -54,7 +54,7 @@ func processSolvencyAttestation(
 
 	// from this point , solvency reach consensus
 	if voter.ConsensusBlockHeight > 0 {
-		// After consensus, only decrement slash points if within the Observation_DelayFlexibilityBlocks period.
+		// After consensus, only decrement slash points if within the Observation_DelayFlexibilityMinutes window.
 		if (voter.ConsensusBlockHeight + observeFlex) >= ctx.BlockHeight() {
 			slasher.DecSlashPoints(slashCtx, lackOfObservationPenalty, attester)
 		}
@@ -212,9 +212,9 @@ func excludePendingOutboundFromVault(ctx cosmos.Context, mgr Manager, vault Vaul
 	}
 	vault.Coins = coinsCopy
 
-	// go back Keysign_PeriodBlocks blocks to see whether there are outstanding tx, the vault need to send out
+	// go back Keysign_PeriodMinutes window to see whether there are outstanding tx, the vault need to send out
 	// if there is , deduct it from their balance
-	signingPeriod := mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)
+	signingPeriod := getConfigDurationBlocks(ctx, mgr.Keeper(), constants.Keysign_PeriodMinutes)
 	startHeight := ctx.BlockHeight() - signingPeriod
 	if startHeight < 1 {
 		startHeight = 1

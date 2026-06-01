@@ -29,7 +29,6 @@ import (
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/config"
-	"github.com/thornadocash/go-thornado/constants"
 	ttypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
@@ -186,10 +185,13 @@ func (s *BitcoinSuite) SetUpTest(c *C) {
 		} else if req.RequestURI == "/txs" {
 			_, err := rw.Write([]byte(`{"height": "1", "txhash": "AAAA000000000000000000000000000000000000000000000000000000000000", "logs": [{"success": "true", "log": ""}]}`))
 			c.Assert(err, IsNil)
-		} else if strings.HasPrefix(req.RequestURI, thornadoclient.AsgardVault) {
-			httpTestHandler(c, rw, "../../../../test/fixtures/endpoints/vaults/asgard.json")
-		} else if req.RequestURI == "/thornado/config/key/"+constants.UTXO_MaxSpendCount.String() {
-			_, err := rw.Write([]byte(`-1`))
+		} else if strings.HasPrefix(req.RequestURI, thornadoclient.BaseVaultEndpoint) {
+			httpTestHandler(c, rw, "../../../../test/fixtures/endpoints/vaults/base.json")
+		} else if req.RequestURI == "/thornado/config" {
+			_, err := rw.Write([]byte(`{}`))
+			c.Assert(err, IsNil)
+		} else if req.RequestURI == "/thornado/config/defaults" {
+			_, err := rw.Write([]byte(`{"UTXO":{"MaxSpendCount":-1}}`))
 			c.Assert(err, IsNil)
 		} else if req.RequestURI == "/thornado/vaults/pubkeys" {
 			if common.CurrentChainNetwork == common.MainNet {
@@ -759,7 +761,6 @@ func (s *BitcoinSuite) TestOnObservedTxIn(c *C) {
 				Coins: common.Coins{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(123456789)),
 				},
-				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 		},
@@ -782,7 +783,6 @@ func (s *BitcoinSuite) TestOnObservedTxIn(c *C) {
 				Coins: common.Coins{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(123456)),
 				},
-				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 		},
@@ -805,7 +805,6 @@ func (s *BitcoinSuite) TestOnObservedTxIn(c *C) {
 				Coins: common.Coins{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(12345678)),
 				},
-				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 			{
@@ -816,7 +815,6 @@ func (s *BitcoinSuite) TestOnObservedTxIn(c *C) {
 				Coins: common.Coins{
 					common.NewCoin(common.BTCAsset, cosmos.NewUint(123456)),
 				},
-				Memo:                "",
 				ObservedVaultPubKey: pkey,
 			},
 		},
@@ -871,9 +869,9 @@ func (s *BitcoinSuite) TestProcessReOrg(c *C) {
 func (s *BitcoinSuite) TestGetMemPool(c *C) {
 	txIns, err := s.client.FetchMemPool(1024)
 	c.Assert(err, IsNil)
-	c.Assert(txIns.TxArray, HasLen, 1)
+	c.Assert(txIns.TxArray, HasLen, 0)
 
-	// process it again , the tx will be ignored
+	// Non-internal inbound mempool txs are ignored until they appear in a block.
 	txIns, err = s.client.FetchMemPool(1024)
 	c.Assert(err, IsNil)
 	c.Assert(txIns.TxArray, HasLen, 0)

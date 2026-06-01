@@ -33,4 +33,6 @@ message QueryConfigNodeValuesResponse { repeated Config node_configs = 1; }
 message Config {
   string key = 1;
   int64 value = 2;
+  string group = 3;
+  string description = 4;
 }

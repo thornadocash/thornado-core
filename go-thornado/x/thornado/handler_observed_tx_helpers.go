@@ -12,6 +12,7 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 // processTxInAttestation processes a single attestation for an observed tx.
@@ -30,7 +31,7 @@ func processTxInAttestation(
 
 	observeSlashPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
 	lackOfObservationPenalty := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_MissPenaltyPoints)
-	observeFlex := k.GetConfigInt64(ctx, constants.Observation_DelayFlexibilityBlocks)
+	observeFlex := getConfigDurationBlocks(ctx, k, constants.Observation_DelayFlexibilityMinutes)
 
 	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
 		telemetry.NewLabel("reason", "failed_observe_txin"),
@@ -45,7 +46,7 @@ func processTxInAttestation(
 
 	// As an observation requires processing by all nodes no matter what,
 	// any observation should increment Observation_SubmitPenaltyPoints,
-	// to be decremented only if contributing to or within Observation_DelayFlexibilityBlocks of consensus.
+	// to be decremented only if contributing to or within Observation_DelayFlexibilityMinutes of consensus.
 	slasher.IncSlashPoints(slashCtx, observeSlashPoints, signer)
 
 	if !voter.Add(tx, signer) {
@@ -171,12 +172,10 @@ func handleObservedTxInQuorum(
 		return nil
 	}
 
-	voter.Tx.Tx.Memo = tx.Tx.Memo
-
 	hasFinalised := voter.HasFinalised(activeNodeAccounts)
 
 	if hasFinalised {
-		if vault.IsAsgard() && !voter.UpdatedVault {
+		if vault.IsBase() && !voter.UpdatedVault {
 			if !tx.Tx.FromAddress.Equals(tx.Tx.ToAddress) {
 				vault.AddFunds(tx.Tx.Coins)
 				vault.InboundTxCount++
@@ -195,8 +194,8 @@ func handleObservedTxInQuorum(
 		return nil
 	}
 
-	if !vault.IsAsgard() {
-		ctx.Logger().Info("Vault is not an Asgard vault, transaction ignored.")
+	if !vault.IsBase() {
+		ctx.Logger().Info("Vault is not an Base vault, transaction ignored.")
 		return nil
 	}
 
@@ -213,16 +212,15 @@ func handleObservedTxInQuorum(
 		"height", tx.BlockHeight,
 		"from", tx.Tx.FromAddress.String(),
 		"to", tx.Tx.ToAddress.String(),
-		"memo", tx.Tx.Memo,
 		"coins", tx.Tx.Coins.String(),
 		"gas", common.Coins(tx.Tx.Gas).String(),
 		"observed_vault_pubkey", tx.ObservedPubKey.String(),
 	)
 
-	if deposit, matchErr := MatchShielderDeposit(ctx, mgr, voter.Tx); matchErr == nil {
+	if deposit, matchErr := MatchCoreDeposit(ctx, mgr, voter.Tx); matchErr == nil {
 		voter.SetDone()
 		k.SetObservedTxInVoter(ctx, voter)
-		ctx.Logger().Info("shielder deposit matched",
+		ctx.Logger().Info("deposit matched",
 			"tx_id", deposit.DepositID.String(),
 			"owner", deposit.Owner.String(),
 			"amount_sats", deposit.AmountSats,
@@ -247,13 +245,18 @@ func handleObservedTxInQuorum(
 
 	if vault.Status == InactiveVault {
 		ctx.Logger().Error("observed tx on inactive vault", "tx", tx.String())
-		if newErr := refundTx(ctx, tx, mgr, CodeInvalidVault, "observed inbound tx to an inactive vault", ""); newErr != nil {
-			ctx.Logger().Error("fail to refund", "error", newErr)
+		if tx.Tx.Chain.Equals(common.BTCChain) {
+			if err := queueVaultPathSweep(ctx, mgr, voter.Tx, tx.ObservedPubKey, common.MainVaultPathIndex); err != nil {
+				ctx.Logger().Error("fail to queue inactive vault sweep", "error", err, "tx", tx.String())
+			} else {
+				voter.SetDone()
+				k.SetObservedTxInVoter(ctx, voter)
+			}
 		}
 		return nil
 	}
 
-	ctx.Logger().Info("observed inbound did not match a shielder deposit", "chain", tx.Tx.Chain, "id", tx.Tx.ID)
+	ctx.Logger().Info("observed inbound did not match a registered deposit", "chain", tx.Tx.Chain, "id", tx.Tx.ID)
 
 	voter.SetDone()
 	k.SetObservedTxInVoter(ctx, voter)
@@ -277,7 +280,7 @@ func processTxOutAttestation(
 
 	observeSlashPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
 	lackOfObservationPenalty := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_MissPenaltyPoints)
-	observeFlex := k.GetConfigInt64(ctx, constants.Observation_DelayFlexibilityBlocks)
+	observeFlex := getConfigDurationBlocks(ctx, k, constants.Observation_DelayFlexibilityMinutes)
 	ok := false
 
 	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
@@ -292,7 +295,7 @@ func processTxOutAttestation(
 
 	// As an observation requires processing by all nodes no matter what,
 	// any observation should increment Observation_SubmitPenaltyPoints,
-	// to be decremented only if contributing to or within Observation_DelayFlexibilityBlocks of consensus.
+	// to be decremented only if contributing to or within Observation_DelayFlexibilityMinutes of consensus.
 	slasher.IncSlashPoints(slashCtx, observeSlashPoints, signer)
 
 	if !voter.Add(tx, signer) {
@@ -322,7 +325,6 @@ func processTxOutAttestation(
 				"height", tx.BlockHeight,
 				"from", tx.Tx.FromAddress.String(),
 				"to", tx.Tx.ToAddress.String(),
-				"memo", tx.Tx.Memo,
 				"coins", tx.Tx.Coins.String(),
 				"gas", common.Coins(tx.Tx.Gas).String(),
 				"observed_vault_pubkey", tx.ObservedPubKey.String(),
@@ -532,13 +534,18 @@ func handleObservedTxOutQuorum(
 			// update the observing addresses
 			mgr.ObMgr().AppendObserver(tx.Tx.Chain, observers)
 		}
+		if voter.FinalisedHeight > 0 {
+			markObservedOutboundTxOut(ctx, mgr, voter.Tx)
+		} else if tx.IsFinal() {
+			markObservedOutboundTxOut(ctx, mgr, tx)
+		}
 		return nil
 	}
 
 	k := mgr.Keeper()
 
 	if isCancelOrApprovalTx(tx) {
-		ctx.Logger().Info("skipping slash for cancel tx with empty memo", "txid", tx.Tx.ID)
+		ctx.Logger().Info("skipping slash for cancel tx", "txid", tx.Tx.ID)
 		// Credit gas to gas manager and deduct from vault (legit operational spend, no penalty)
 		// This also adds to fee_spent_rune for dynamic outbound fee calculation
 		if err := addGasFees(ctx, mgr, tx); err != nil {
@@ -580,6 +587,7 @@ func handleObservedTxOutQuorum(
 			ctx.Logger().Error("fail to add gas fee", "error", err)
 		}
 	}
+	markObservedOutboundTxOut(ctx, mgr, tx)
 
 	// If sending from one of our vaults, decrement coins
 	vault, err := k.GetVault(ctx, tx.ObservedPubKey)
@@ -630,6 +638,93 @@ func handleObservedTxOutQuorum(
 	ctx.Logger().Info("tx out processed", "chain", tx.Tx.Chain, "id", tx.Tx.ID, "finalized", tx.IsFinal())
 
 	return nil
+}
+
+func markObservedOutboundTxOut(ctx cosmos.Context, mgr Manager, tx ObservedTx) {
+	signingPeriod := getConfigDurationBlocks(ctx, mgr.Keeper(), constants.Keysign_PeriodMinutes)
+	earliestHeight := ctx.BlockHeight() - signingPeriod
+	if earliestHeight < 1 {
+		earliestHeight = 1
+	}
+	for height := ctx.BlockHeight(); height >= earliestHeight; height-- {
+		txOut, err := mgr.Keeper().GetTxOut(ctx, height)
+		if err != nil {
+			ctx.Logger().Debug("unable to get txOut record", "error", err, "height", height)
+			continue
+		}
+		for i, item := range txOut.TxArray {
+			if !observedOutboundMatchesTxOut(tx, item) {
+				ctx.Logger().Debug("observed outbound did not match txout item",
+					"height", height,
+					"tx_id", tx.Tx.ID.String(),
+					"tx_chain", tx.Tx.Chain.String(),
+					"tx_to", tx.Tx.ToAddress.String(),
+					"tx_pubkey", tx.ObservedPubKey.String(),
+					"tx_coins", tx.Tx.Coins.String(),
+					"tx_gas", common.Coins(tx.Tx.Gas).String(),
+					"item_chain", item.Chain.String(),
+					"item_to", item.ToAddress.String(),
+					"item_pubkey", item.VaultPubKey.String(),
+					"item_coin", item.Coin.String(),
+					"item_max_gas", common.Coins(item.MaxGas).String(),
+					"item_out_hash", item.OutHash.String(),
+				)
+				continue
+			}
+			ctx.Logger().Info("matched observed outbound to txout item", "height", height, "tx_id", tx.Tx.ID.String(), "in_hash", item.InHash.String())
+			txOut.TxArray[i].OutHash = tx.Tx.ID
+			if err := mgr.Keeper().SetTxOut(ctx, txOut); err != nil {
+				ctx.Logger().Error("fail to save tx out", "error", err)
+			}
+			return
+		}
+	}
+}
+
+func observedOutboundMatchesTxOut(tx ObservedTx, item TxOutItem) bool {
+	if !item.OutHash.IsEmpty() ||
+		!tx.Tx.Chain.Equals(item.Chain) ||
+		!tx.Tx.ToAddress.Equals(item.ToAddress) ||
+		!tx.ObservedPubKey.Equals(item.VaultPubKey) {
+		return false
+	}
+	if tx.Tx.Chain.Equals(common.BTCChain) &&
+		(item.TxType == types.TxOutTypeSweep || item.TxType == types.TxOutTypeMigrate || item.VaultPathIndex != 0) {
+		sourceAddr, err := common.DeriveBTCTaprootAddress(item.VaultPubKey, item.VaultPathIndex)
+		if err != nil || !tx.Tx.FromAddress.Equals(sourceAddr) {
+			return false
+		}
+		if item.Coin.Asset.Equals(common.BTCAsset) {
+			maxGas := item.MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount
+			observedAmount := tx.Tx.Coins.GetCoin(common.BTCAsset).Amount
+			observedGas := tx.Tx.Gas.ToCoins().GetCoin(common.BTCAsset).Amount
+			intended := item.Coin.Amount.Add(maxGas)
+			actual := observedAmount.Add(observedGas)
+			return actual.Equal(intended) &&
+				observedGas.LTE(maxGas) &&
+				observedAmount.GTE(item.Coin.Amount) &&
+				observedAmount.LTE(intended)
+		}
+	}
+	if tx.Tx.Coins.EqualsEx(common.Coins{item.Coin}) {
+		return true
+	}
+	if !item.Coin.Asset.Equals(item.Chain.GetGasAsset()) {
+		return false
+	}
+	asset := item.Chain.GetGasAsset()
+	intended := item.Coin.Amount.Add(item.MaxGas.ToCoins().GetCoin(asset).Amount)
+	actual := tx.Tx.Coins.GetCoin(asset).Amount.Add(tx.Tx.Gas.ToCoins().GetCoin(asset).Amount)
+	if actual.Equal(intended) {
+		return true
+	}
+	observedAmount := tx.Tx.Coins.GetCoin(asset).Amount
+	if tx.Tx.Chain.Equals(common.BTCChain) &&
+		observedAmount.GTE(item.Coin.Amount) &&
+		observedAmount.LTE(intended) {
+		return true
+	}
+	return false
 }
 
 func isBTCChildSweepToRoot(tx ObservedTx, pubkey common.PubKey) bool {

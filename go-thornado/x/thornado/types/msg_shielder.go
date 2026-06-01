@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -14,17 +15,17 @@ import (
 )
 
 var (
-	_ sdk.Msg              = &MsgShielderRegisterPow{}
-	_ sdk.HasValidateBasic = &MsgShielderRegisterPow{}
-	_ sdk.LegacyMsg        = &MsgShielderRegisterPow{}
+	_ sdk.Msg              = &MsgDepositRequestPow{}
+	_ sdk.HasValidateBasic = &MsgDepositRequestPow{}
+	_ sdk.LegacyMsg        = &MsgDepositRequestPow{}
 
-	_ sdk.Msg              = &MsgShielderPostCommitments{}
-	_ sdk.HasValidateBasic = &MsgShielderPostCommitments{}
-	_ sdk.LegacyMsg        = &MsgShielderPostCommitments{}
+	_ sdk.Msg              = &MsgShielderSplit{}
+	_ sdk.HasValidateBasic = &MsgShielderSplit{}
+	_ sdk.LegacyMsg        = &MsgShielderSplit{}
 
-	_ sdk.Msg              = &MsgShielderRequestWithdrawal{}
-	_ sdk.HasValidateBasic = &MsgShielderRequestWithdrawal{}
-	_ sdk.LegacyMsg        = &MsgShielderRequestWithdrawal{}
+	_ sdk.Msg              = &MsgShielderRedeem{}
+	_ sdk.HasValidateBasic = &MsgShielderRedeem{}
+	_ sdk.LegacyMsg        = &MsgShielderRedeem{}
 
 	_ sdk.Msg              = &MsgShielderSplitFees{}
 	_ sdk.HasValidateBasic = &MsgShielderSplitFees{}
@@ -47,7 +48,7 @@ var (
 	_ sdk.LegacyMsg        = &MsgNodeSlotAuctionSplit{}
 )
 
-func NewMsgShielderRegisterPow(powToken string, signer cosmos.AccAddress, extra ...string) *MsgShielderRegisterPow {
+func NewMsgDepositRequestPow(powToken string, signer cosmos.AccAddress, extra ...string) *MsgDepositRequestPow {
 	operatorPubKey := ""
 	nodePubKey := ""
 	if len(extra) > 0 {
@@ -56,7 +57,7 @@ func NewMsgShielderRegisterPow(powToken string, signer cosmos.AccAddress, extra 
 	if len(extra) > 1 {
 		nodePubKey = strings.TrimSpace(extra[1])
 	}
-	return &MsgShielderRegisterPow{
+	return &MsgDepositRequestPow{
 		PowToken:       strings.TrimSpace(powToken),
 		Signer:         signer,
 		OperatorPubKey: operatorPubKey,
@@ -64,53 +65,53 @@ func NewMsgShielderRegisterPow(powToken string, signer cosmos.AccAddress, extra 
 	}
 }
 
-func (m *MsgShielderRegisterPow) ValidateBasic() error {
+func (m *MsgDepositRequestPow) ValidateBasic() error {
 	if m.Signer.Empty() {
 		return cosmos.ErrInvalidAddress(m.Signer.String())
 	}
 	if strings.TrimSpace(m.PowToken) == "" {
-		return fmt.Errorf("missing shielder pow token")
+		return fmt.Errorf("missing deposit pow token")
 	}
 	if strings.TrimSpace(m.NodePubKey) != "" {
 		if strings.TrimSpace(m.OperatorPubKey) == "" {
 			return fmt.Errorf("bond deposits require operator pubkey")
 		}
 		if _, err := common.NewPubKey(m.OperatorPubKey); err != nil {
-			return fmt.Errorf("invalid shielder operator pubkey: %w", err)
+			return fmt.Errorf("invalid operator pubkey: %w", err)
 		}
 		if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, m.NodePubKey); err != nil {
-			return fmt.Errorf("invalid shielder node pubkey: %w", err)
+			return fmt.Errorf("invalid node pubkey: %w", err)
 		}
 	}
 	return nil
 }
 
-func (m *MsgShielderRegisterPow) GetSigners() []cosmos.AccAddress {
+func (m *MsgDepositRequestPow) GetSigners() []cosmos.AccAddress {
 	return []cosmos.AccAddress{m.Signer}
 }
 
-func MsgShielderRegisterPowCustomGetSigners(m proto.Message) ([][]byte, error) {
-	msg, ok := m.(*apitypes.MsgShielderRegisterPow)
+func MsgDepositRequestPowCustomGetSigners(m proto.Message) ([][]byte, error) {
+	msg, ok := m.(*apitypes.MsgDepositRequestPow)
 	if !ok {
-		return nil, fmt.Errorf("can't cast as MsgShielderRegisterPow: %T", m)
+		return nil, fmt.Errorf("can't cast as MsgDepositRequestPow: %T", m)
 	}
 	return [][]byte{msg.Signer}, nil
 }
 
-func NewMsgShielderPostCommitments(depositID common.TxID, commitments []string, signer cosmos.AccAddress) *MsgShielderPostCommitments {
-	return &MsgShielderPostCommitments{
+func NewMsgShielderSplit(depositID common.TxID, commitments []string, signer cosmos.AccAddress) *MsgShielderSplit {
+	return &MsgShielderSplit{
 		DepositId:   depositID.String(),
 		Commitments: commitments,
 		Signer:      signer,
 	}
 }
 
-func (m *MsgShielderPostCommitments) ValidateBasic() error {
+func (m *MsgShielderSplit) ValidateBasic() error {
 	if m.Signer.Empty() {
 		return cosmos.ErrInvalidAddress(m.Signer.String())
 	}
 	if _, err := common.NewTxID(m.DepositId); err != nil {
-		return fmt.Errorf("invalid shielder deposit id: %w", err)
+		return fmt.Errorf("invalid deposit id: %w", err)
 	}
 	if len(m.Commitments) == 0 {
 		return fmt.Errorf("missing shielder commitments")
@@ -129,27 +130,27 @@ func (m *MsgShielderPostCommitments) ValidateBasic() error {
 	return nil
 }
 
-func (m *MsgShielderPostCommitments) GetSigners() []cosmos.AccAddress {
+func (m *MsgShielderSplit) GetSigners() []cosmos.AccAddress {
 	return []cosmos.AccAddress{m.Signer}
 }
 
-func MsgShielderPostCommitmentsCustomGetSigners(m proto.Message) ([][]byte, error) {
-	msg, ok := m.(*apitypes.MsgShielderPostCommitments)
+func MsgShielderSplitCustomGetSigners(m proto.Message) ([][]byte, error) {
+	msg, ok := m.(*apitypes.MsgShielderSplit)
 	if !ok {
-		return nil, fmt.Errorf("can't cast as MsgShielderPostCommitments: %T", m)
+		return nil, fmt.Errorf("can't cast as MsgShielderSplit: %T", m)
 	}
 	return [][]byte{msg.Signer}, nil
 }
 
-func NewMsgShielderRequestWithdrawal(proof, public []byte, signer cosmos.AccAddress) *MsgShielderRequestWithdrawal {
-	return &MsgShielderRequestWithdrawal{
+func NewMsgShielderRedeem(proof, public []byte, signer cosmos.AccAddress) *MsgShielderRedeem {
+	return &MsgShielderRedeem{
 		Proof:  proof,
 		Public: public,
 		Signer: signer,
 	}
 }
 
-func (m *MsgShielderRequestWithdrawal) ValidateBasic() error {
+func (m *MsgShielderRedeem) ValidateBasic() error {
 	if m.Signer.Empty() {
 		return cosmos.ErrInvalidAddress(m.Signer.String())
 	}
@@ -162,14 +163,14 @@ func (m *MsgShielderRequestWithdrawal) ValidateBasic() error {
 	return nil
 }
 
-func (m *MsgShielderRequestWithdrawal) GetSigners() []cosmos.AccAddress {
+func (m *MsgShielderRedeem) GetSigners() []cosmos.AccAddress {
 	return []cosmos.AccAddress{m.Signer}
 }
 
-func MsgShielderRequestWithdrawalCustomGetSigners(m proto.Message) ([][]byte, error) {
-	msg, ok := m.(*apitypes.MsgShielderRequestWithdrawal)
+func MsgShielderRedeemCustomGetSigners(m proto.Message) ([][]byte, error) {
+	msg, ok := m.(*apitypes.MsgShielderRedeem)
 	if !ok {
-		return nil, fmt.Errorf("can't cast as MsgShielderRequestWithdrawal: %T", m)
+		return nil, fmt.Errorf("can't cast as MsgShielderRedeem: %T", m)
 	}
 	return [][]byte{msg.Signer}, nil
 }
@@ -189,7 +190,7 @@ func (m *MsgShielderSplitFees) ValidateBasic() error {
 		return cosmos.ErrInvalidAddress(m.Signer.String())
 	}
 	if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, m.NodePubKey); err != nil {
-		return fmt.Errorf("invalid shielder node pubkey: %w", err)
+		return fmt.Errorf("invalid node pubkey: %w", err)
 	}
 	if len(m.OperatorSignature) == 0 {
 		return fmt.Errorf("missing shielder fee operator signature")
@@ -214,17 +215,16 @@ func (m *MsgShielderSplitFees) ValidateBasic() error {
 	seenPubKeys := make(map[string]struct{}, len(m.FeeNotePubKeys))
 	for _, feeNotePubKey := range m.FeeNotePubKeys {
 		feeNotePubKey = strings.TrimSpace(feeNotePubKey)
-		pubKey, err := common.NewPubKey(feeNotePubKey)
-		if err != nil {
-			return fmt.Errorf("invalid shielder fee note pubkey: %w", err)
-		}
-		if pubKey.IsEmpty() {
+		if feeNotePubKey == "" {
 			return fmt.Errorf("missing shielder fee note pubkey")
 		}
-		if _, ok := seenPubKeys[pubKey.String()]; ok {
+		if _, err := hex.DecodeString(feeNotePubKey); err != nil || len(feeNotePubKey) != 66 {
+			return fmt.Errorf("invalid shielder fee note pubkey")
+		}
+		if _, ok := seenPubKeys[feeNotePubKey]; ok {
 			return fmt.Errorf("duplicate shielder fee note pubkey")
 		}
-		seenPubKeys[pubKey.String()] = struct{}{}
+		seenPubKeys[feeNotePubKey] = struct{}{}
 	}
 	return nil
 }
@@ -293,7 +293,7 @@ func (m *MsgNodeSlotAuctionBidPow) ValidateBasic() error {
 		return fmt.Errorf("missing node slot auction id")
 	}
 	if strings.TrimSpace(m.PowToken) == "" {
-		return fmt.Errorf("missing shielder pow token")
+		return fmt.Errorf("missing deposit pow token")
 	}
 	if _, err := common.NewPubKey(m.OperatorPubKey); err != nil {
 		return fmt.Errorf("invalid bidder operator pubkey: %w", err)

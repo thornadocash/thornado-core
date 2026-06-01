@@ -2,12 +2,16 @@ package signer
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,6 +37,12 @@ import (
 	"github.com/thornadocash/go-thornado/constants"
 	ttypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
+
+var errNotDesignatedFrostSigner = errors.New("not designated FROST signer")
+
+type frostVaultChecker interface {
+	IsFrostVault(common.PubKey) bool
+}
 
 // Signer will pull the tx out from thornado and then forward it to chain
 type Signer struct {
@@ -103,7 +113,7 @@ func NewSigner(cfg config.Bifrost,
 		pubkeyMgr.AddNodePubKey(na.PubKeySet.Ed25519, common.SigningAlgoEd25519)
 	}
 
-	cfg.Signer.BlockScanner.ChainID = common.Thornado // hard code to thornado
+	cfg.Signer.BlockScanner.ChainID = common.BTCChain // hard code to thornado
 
 	// Create pubkey manager and add our private key
 	thornadoBlockScanner, err := NewThornadoBlockScan(cfg.Signer.BlockScanner, storage, thornadoBridge, m, pubkeyMgr)
@@ -171,6 +181,123 @@ func (s *Signer) shouldSign(tx types.TxOutItem) bool {
 	return s.pubkeyMgr.HasPubKey(tx.VaultPubKey) || s.pubkeyMgr.HasPubKey(tx.VaultPubKeyEddsa)
 }
 
+func nodeHasSignerMembership(node *ttypes.QueryNodeResponse, vaultPubKey common.PubKey) bool {
+	for _, membership := range node.SignerMembership {
+		if strings.EqualFold(membership, vaultPubKey.String()) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Signer) isDesignatedFrostSigner(item TxOutStoreItem, chain chainclients.ChainClient, blockHeight, signingPeriod int64) (bool, error) {
+	tx := item.TxOutItem
+	if !item.SigningLeader.IsEmpty() {
+		if item.SigningLeader.Equals(s.localPubKeyECDSA) {
+			return true, nil
+		}
+		s.logger.Debug().
+			Stringer("in_hash", tx.InHash).
+			Stringer("signing_leader", item.SigningLeader).
+			Stringer("local_pub_key", s.localPubKeyECDSA).
+			Uint64("epoch", item.Epoch).
+			Msg("skipping FROST txout on non-leader signer")
+		return false, nil
+	}
+	checker, ok := chain.(frostVaultChecker)
+	if !ok || !checker.IsFrostVault(tx.VaultPubKey) {
+		return true, nil
+	}
+
+	nodes, err := s.thornadoBridge.GetNodeAccounts()
+	if err != nil {
+		return false, fmt.Errorf("fail to get node accounts for FROST signer selection: %w", err)
+	}
+
+	members := make([]string, 0, len(nodes))
+	for _, node := range nodes {
+		if node == nil || !strings.EqualFold(node.Status, "active") || !nodeHasSignerMembership(node, tx.VaultPubKey) {
+			continue
+		}
+		pubKey := node.PubKeySet.Secp256k1.String()
+		if pubKey != "" {
+			members = append(members, pubKey)
+		}
+	}
+	if len(members) == 0 {
+		return false, fmt.Errorf("no active FROST signer members found for vault %s", tx.VaultPubKey)
+	}
+
+	sort.Strings(members)
+	digest := sha256.Sum256([]byte(tx.Hash()))
+	offset := binary.BigEndian.Uint64(digest[:8])
+	var attempt uint64
+	if signingPeriod > 0 && blockHeight > tx.Height {
+		attempt = uint64((blockHeight - tx.Height) / signingPeriod)
+	}
+	designated := members[(offset+attempt)%uint64(len(members))]
+	if strings.EqualFold(designated, s.localPubKeyECDSA.String()) {
+		return true, nil
+	}
+	s.logger.Debug().
+		Stringer("in_hash", tx.InHash).
+		Str("designated_pub_key", designated).
+		Stringer("local_pub_key", s.localPubKeyECDSA).
+		Msg("skipping FROST txout on non-designated signer")
+	return false, nil
+}
+
+func nextFrostSignerAttemptHeight(tx types.TxOutItem, blockHeight, signingPeriod int64) int64 {
+	if signingPeriod <= 0 {
+		return blockHeight + 1
+	}
+	if blockHeight <= tx.Height {
+		return tx.Height + signingPeriod
+	}
+	attempt := (blockHeight - tx.Height) / signingPeriod
+	return tx.Height + ((attempt + 1) * signingPeriod)
+}
+
+func (s *Signer) txOutItemCompleted(item TxOutStoreItem) (bool, common.TxID, error) {
+	txOut, err := s.thornadoBridge.GetKeysign(item.Height, item.TxOutItem.VaultPubKey.String())
+	if err != nil {
+		return false, common.TxID(""), err
+	}
+
+	for _, tx := range txOut.TxArray {
+		txItem := tx.TxOutItem(txOut.Height)
+		// EdDSA is filled from vault state after storage retrieval, while queried
+		// txouts may omit it. It is not part of BTC FROST txout identity.
+		txItem.VaultPubKeyEddsa = item.TxOutItem.VaultPubKeyEddsa
+		if item.TxOutItem.Equals(txItem) && !txItem.OutHash.IsEmpty() {
+			return true, txItem.OutHash, nil
+		}
+	}
+	return false, common.TxID(""), nil
+}
+
+func (s *Signer) refreshTxOutBatchMetadata(item TxOutStoreItem) TxOutStoreItem {
+	txOut, err := s.thornadoBridge.GetKeysign(item.Height, item.TxOutItem.VaultPubKey.String())
+	if err != nil {
+		s.logger.Debug().Err(err).Interface("tx", item.TxOutItem).Msg("fail to refresh txout batch metadata")
+		return item
+	}
+	for _, tx := range txOut.TxArray {
+		txItem := tx.TxOutItem(txOut.Height)
+		txItem.VaultPubKeyEddsa = item.TxOutItem.VaultPubKeyEddsa
+		if item.TxOutItem.Equals(txItem) {
+			item.Epoch = txOut.Epoch
+			item.BatchStatus = txOut.Status
+			item.SigningLeader = txOut.SigningLeader
+			if err := s.storage.Set(item); err != nil {
+				s.logger.Error().Err(err).Msg("fail to update txout batch metadata")
+			}
+			return item
+		}
+	}
+	return item
+}
+
 // signTransactions - looks for work to do by getting a list of all unsigned
 // transactions stored in the storage
 func (s *Signer) signTransactions() {
@@ -182,7 +309,7 @@ func (s *Signer) signTransactions() {
 		case <-s.stopChan:
 			return
 		default:
-			// When Thornado is catching up , bifrost might get stale data from thornado , thus it shall pause signing
+			// When BTCChain is catching up , bifrost might get stale data from thornado , thus it shall pause signing
 			catchingUp, err := s.thornadoBridge.IsCatchingUp()
 			if err != nil {
 				s.logger.Error().Err(err).Msg("fail to get thornado sync status")
@@ -253,11 +380,15 @@ func (s *Signer) processTxnOut(ch <-chan types.TxOut, idx int) {
 			if !more {
 				return
 			}
-			s.logger.Info().Msgf("Received a TxOut Array of %v from the Thornado", txOut)
+			s.logger.Info().Msgf("Received a TxOut Array of %v from the BTCChain", txOut)
 			items := make([]TxOutStoreItem, 0, len(txOut.TxArray))
 
 			for i, tx := range txOut.TxArray {
-				items = append(items, NewTxOutStoreItem(txOut.Height, tx.TxOutItem(txOut.Height), int64(i)))
+				item := NewTxOutStoreItem(txOut.Height, tx.TxOutItem(txOut.Height), int64(i))
+				item.Epoch = txOut.Epoch
+				item.BatchStatus = txOut.Status
+				item.SigningLeader = txOut.SigningLeader
+				items = append(items, item)
 			}
 			if err := s.storage.Batch(items); err != nil {
 				s.logger.Error().Err(err).Msg("fail to save tx out items to storage")
@@ -285,25 +416,25 @@ func (s *Signer) processKeygen(ch <-chan ttypes.KeygenBlock) {
 }
 
 func (s *Signer) scheduleKeygenRetry(keygenBlock ttypes.KeygenBlock) bool {
-	churnRetryInterval, err := s.thornadoBridge.GetConfigValue(constants.Churn_RetryIntervalBlocks.String())
+	churnRetryIntervalMinutes, err := s.thornadoBridge.GetConfigValue(constants.Churn_RetryIntervalMinutes.String())
 	if err != nil {
 		s.logger.Error().Err(err).Msg("fail to get churn retry config")
 		return false
 	}
-	if churnRetryInterval <= 0 {
-		churnRetryInterval = constants.NewConfigValue().GetInt64Value(constants.Churn_RetryIntervalBlocks)
+	if churnRetryIntervalMinutes <= 0 {
+		churnRetryIntervalMinutes = constants.NewConfigValue().GetInt64Value(constants.Churn_RetryIntervalMinutes)
 	}
-	keygenRetryInterval, err := s.thornadoBridge.GetConfigValue(constants.Keygen_RetryIntervalBlocks.String())
+	keygenRetryIntervalMinutes, err := s.thornadoBridge.GetConfigValue(constants.Keygen_RetryIntervalMinutes.String())
 	if err != nil {
 		s.logger.Error().Err(err).Msg("fail to get keygen retries config")
 		return false
 	}
-	if keygenRetryInterval <= 0 {
+	if keygenRetryIntervalMinutes <= 0 {
 		return false
 	}
 
 	// sanity check the retry interval is at least 1.5x the timeout
-	retryIntervalDuration := time.Duration(keygenRetryInterval) * constants.ThornadoBlockTime
+	retryIntervalDuration := time.Duration(keygenRetryIntervalMinutes) * time.Minute
 	if retryIntervalDuration <= s.cfg.Signer.KeygenTimeout*3/2 {
 		s.logger.Error().
 			Stringer("retryInterval", retryIntervalDuration).
@@ -317,6 +448,12 @@ func (s *Signer) scheduleKeygenRetry(keygenBlock ttypes.KeygenBlock) bool {
 		s.logger.Error().Err(err).Msg("fail to get last chain height")
 		return false
 	}
+	blockTimeSeconds, err := s.thornadoBridge.GetConfigValue(constants.Chain_BlockTimeSeconds.String())
+	if err != nil || blockTimeSeconds <= 0 {
+		blockTimeSeconds = constants.NewConfigValue().GetInt64Value(constants.Chain_BlockTimeSeconds)
+	}
+	churnRetryInterval := constants.MinutesToBlocks(churnRetryIntervalMinutes, blockTimeSeconds)
+	keygenRetryInterval := constants.MinutesToBlocks(keygenRetryIntervalMinutes, blockTimeSeconds)
 
 	// target retry height is the next keygen retry interval over the keygen block height
 	targetRetryHeight := (keygenRetryInterval - ((height - keygenBlock.Height) % keygenRetryInterval)) + height
@@ -411,10 +548,10 @@ func (s *Signer) secp256k1VerificationSignature(pk common.PubKey) []byte {
 func (s *Signer) sendKeygenToThornado(height int64, poolPk common.PubKey, secp256k1Signature []byte, blame []ttypes.Blame, input common.PubKeys, keygenType ttypes.KeygenType, keygenTime int64, poolPubKeyEddsa common.PubKey) error {
 	// collect supported chains in the configuration
 	chains := common.Chains{
-		common.Thornado,
+		common.BTCChain,
 	}
 	for chain, chainCfg := range s.cfg.GetChains() {
-		if !chainCfg.OptToRetire && !chainCfg.Disabled {
+		if !chainCfg.OptToRetire && !chainCfg.Disabled && !chains.Has(chain) {
 			chains = append(chains, chain)
 		}
 	}
@@ -507,7 +644,7 @@ func frostKeyshareRawFromLocalStatePath(path string) ([]byte, bool, error) {
 // SignTx error for the chain client, if we receive checkpoint bytes we also return them
 // with the error so they can be set on the TxOutStoreItem and re-used on a subsequent
 // retry to avoid double spend. The second returned value is an optional observation
-// that should be submitted to Thornado.
+// that should be submitted to BTCChain.
 func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem, error) {
 	height := item.Height
 	tx := item.TxOutItem
@@ -522,12 +659,17 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 		s.logger.Error().Err(err).Msgf("fail to get block height")
 		return nil, nil, err
 	}
-	signingTransactionPeriod, err := s.constantsProvider.GetInt64Value(blockHeight, constants.Keysign_PeriodBlocks)
-	s.logger.Debug().Msgf("signing transaction period:%d", signingTransactionPeriod)
+	signingTransactionPeriodMinutes, err := s.constantsProvider.GetInt64Value(blockHeight, constants.Keysign_PeriodMinutes)
 	if err != nil {
-		s.logger.Error().Err(err).Msgf("fail to get constant value for(%s)", constants.Keysign_PeriodBlocks)
+		s.logger.Error().Err(err).Msgf("fail to get constant value for(%s)", constants.Keysign_PeriodMinutes)
 		return nil, nil, err
 	}
+	blockTimeSeconds, err := s.constantsProvider.GetInt64Value(blockHeight, constants.Chain_BlockTimeSeconds)
+	if err != nil || blockTimeSeconds <= 0 {
+		blockTimeSeconds = constants.NewConfigValue().GetInt64Value(constants.Chain_BlockTimeSeconds)
+	}
+	signingTransactionPeriod := constants.MinutesToBlocks(signingTransactionPeriodMinutes, blockTimeSeconds)
+	s.logger.Debug().Msgf("signing transaction period:%d", signingTransactionPeriod)
 
 	// if in round 7 retry, discard outbound if over the max outbound attempts
 	inactiveVaultRound7Retry := false
@@ -599,9 +741,26 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 		s.logger.Info().Str("signer_address", chain.GetAddress(tx.VaultPubKey)).Msg("different pool address, ignore")
 		return nil, nil, nil
 	}
+	designated, err := s.isDesignatedFrostSigner(item, chain, blockHeight, signingTransactionPeriod)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !designated {
+		item.DeferredUntilHeight = nextFrostSignerAttemptHeight(tx, blockHeight, signingTransactionPeriod)
+		if storeErr := s.storage.Set(item); storeErr != nil {
+			s.logger.Error().Err(storeErr).Msg("fail to defer non-designated FROST tx out store item")
+		} else {
+			s.logger.Debug().
+				Int64("current_height", blockHeight).
+				Int64("deferred_until_height", item.DeferredUntilHeight).
+				Stringer("in_hash", tx.InHash).
+				Msg("deferred non-designated FROST txout")
+		}
+		return nil, nil, errNotDesignatedFrostSigner
+	}
 
 	if len(tx.ToAddress) == 0 {
-		s.logger.Info().Msg("To address is empty, Thornado don't know where to send the fund , ignore")
+		s.logger.Info().Msg("To address is empty, BTCChain don't know where to send the fund , ignore")
 		return nil, nil, nil // return nil and discard item
 	}
 
@@ -656,12 +815,12 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 	var elapse time.Duration
 	var observation *types.TxInItem
 	if len(item.SignedTx) > 0 {
-		s.logger.Info().Str("memo", tx.Memo).Msg("retrying broadcast of already signed tx")
+		s.logger.Info().Msg("retrying broadcast of already signed tx")
 		signedTx = item.SignedTx
 		observation = item.Observation
 	} else {
 		startKeySign := time.Now()
-		signedTx, checkpoint, observation, err = chain.SignTx(tx, height)
+		signedTx, checkpoint, observation, err = chain.SignTx(tx, blockHeight)
 		if err != nil {
 			s.logger.Error().Err(err).Msg("fail to sign tx")
 			return checkpoint, nil, err
@@ -684,7 +843,7 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 	// broadcast the transaction
 	hash, err := chain.BroadcastTx(tx, signedTx)
 	if err != nil {
-		s.logger.Error().Err(err).Str("memo", tx.Memo).Msg("fail to broadcast tx to chain")
+		s.logger.Error().Err(err).Msg("fail to broadcast tx to chain")
 
 		// store the signed tx for the next retry
 		item.SignedTx = signedTx
@@ -698,7 +857,6 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 	s.logger.Info().
 		Str("chain", chain.GetChain().String()).
 		Str("txid", hash).
-		Str("memo", tx.Memo).
 		Msg("broadcasted tx to chain")
 
 	if s.isTssKeysign(tx.VaultPubKey) || s.isTssKeysign(tx.VaultPubKeyEddsa) {
@@ -743,6 +901,29 @@ func (s *Signer) storageList() []TxOutStoreItem {
 }
 
 func (s *Signer) processTransaction(item TxOutStoreItem) {
+	item = s.refreshTxOutBatchMetadata(item)
+	if item.BatchStatus != "" && item.BatchStatus != "pending_sign" {
+		s.logger.Debug().
+			Int64("height", item.Height).
+			Uint64("epoch", item.Epoch).
+			Str("status", item.BatchStatus).
+			Msg("skipping txout batch until it is pending_sign")
+		return
+	}
+	if completed, outHash, err := s.txOutItemCompleted(item); err != nil {
+		s.logger.Debug().Err(err).Interface("tx", item.TxOutItem).Msg("fail to check txout completion before signing")
+	} else if completed {
+		s.logger.Info().
+			Str("chain", item.TxOutItem.Chain.String()).
+			Stringer("in_hash", item.TxOutItem.InHash).
+			Stringer("out_hash", outHash).
+			Msg("removing completed txout from signer storage")
+		if err := s.storage.Remove(item); err != nil {
+			s.logger.Error().Err(err).Msg("fail to remove completed tx out store item")
+		}
+		return
+	}
+
 	s.logger.Info().
 		Str("chain", item.TxOutItem.Chain.String()).
 		Int64("height", item.Height).
@@ -756,6 +937,11 @@ func (s *Signer) processTransaction(item TxOutStoreItem) {
 		return s.signAndBroadcast(item)
 	})
 	if err != nil {
+		if errors.Is(err, errNotDesignatedFrostSigner) {
+			cancel()
+			return
+		}
+
 		// Always store the checkpoint of the built tx if we have one. This ensures the same
 		// vault will never attempt multiple txs for an outbound, as further protection
 		// against cases like https://gitlab.com/thornado/thornado/-/merge_requests/4344.

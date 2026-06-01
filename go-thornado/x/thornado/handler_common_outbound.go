@@ -16,10 +16,7 @@ import (
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
 )
 
-// CommonOutboundTxHandler is the place where those common logic can be shared
-// between multiple different kind of outbound tx handler
-// at the moment, handler_refund, and handler_outbound_tx are largely the same
-// , only some small difference
+// CommonOutboundTxHandler handles observed outbound transactions.
 type CommonOutboundTxHandler struct {
 	mgr Manager
 }
@@ -48,8 +45,7 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 	// Validate that the observed pubkey corresponds to an existing vault.
 	// This prevents fake outbound transactions from arbitrary public keys.
 	// Note: Vault existence is also checked upstream in ensureVaultAndGetTxOutVoter,
-	// but we add this check here as defense-in-depth since this handler can be
-	// called from multiple paths (refund, outbound).
+	// but we add this check here as defense-in-depth.
 	vault, err := h.mgr.Keeper().GetVault(ctx, tx.ObservedPubKey)
 	if err != nil {
 		ctx.Logger().Error("fail to get vault for outbound validation", "error", err, "pubkey", tx.ObservedPubKey)
@@ -74,15 +70,11 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 	}
 	h.mgr.Keeper().SetObservedTxInVoter(ctx, voter)
 
-	if tx.Tx.Chain.Equals(common.Thornado) {
-		return &cosmos.Result{}, nil
-	}
-
 	shouldSlash := true
-	signingTransPeriod := h.mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_PeriodBlocks)
-	// every Signing Transaction Period , Thornado will check whether a
+	signingTransPeriod := getConfigDurationBlocks(ctx, h.mgr.Keeper(), constants.Keysign_PeriodMinutes)
+	// every Signing Transaction Period , BTCChain will check whether a
 	// TxOutItem had been sent by signer or not
-	// if a txout item that is older than Keysign_PeriodBlocks, but has not
+	// if a txout item that is older than the Keysign_PeriodMinutes window, but has not
 	// been sent out by signer , LackSigning will create a new TxOutItem
 	// and mark the previous TxOutItem as complete.
 	//
@@ -109,11 +101,11 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 		// Save TxOut back with the TxID only when the TxOut on the block height is
 		// not empty
 		for i, txOutItem := range txOut.TxArray {
-			// withdraw , refund etc, one inbound tx might result two outbound
-			// txes, Thornado have to correlate outbound tx back to the
-			// inbound, and also txitem , thus Thornado could record both
+			// One inbound tx might result in multiple outbounds
+			// txes, BTCChain have to correlate outbound tx back to the
+			// inbound, and also txitem , thus BTCChain could record both
 			// outbound tx hash correctly given every tx item will only have
-			// one coin in it , Thornado could use that to identify which tx it
+			// one coin in it , BTCChain could use that to identify which tx it
 			// is
 
 			// Use deterministic case-insensitive comparison for aggregator fields.
@@ -152,7 +144,7 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 								}, false)
 							}
 						} else if maxGasAmt.LT(realGasAmt) {
-							// signer spend more than the maximum gas prescribed by Thornado , slash it
+							// signer spend more than the maximum gas prescribed by BTCChain , slash it
 							ctx.Logger().Info("slash node", "max gas", maxGasAmt, "real gas spend", realGasAmt, "gap", common.SafeSub(realGasAmt, maxGasAmt).String())
 							matchCoin = false
 						}
@@ -198,11 +190,7 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 
 	slashed := false
 	// Slash the vault if no matching TxOutItem was found, unless this is an
-	// authorized operational transaction (fake gas tx or cancel tx).
-	// - isOutboundFakeGasTx: Fake gas transactions used for EVM chain operations
-	//   (amount=1, gas asset, self-referential OUT: memo)
-	// - isCancelOrApprovalTx: Cancel transactions sent by bifrost to unstuck pending transactions
-	//   on EVM chains (vault-to-vault, dust threshold amount, empty memo)
+	// authorized operational transaction.
 	if shouldSlash && !isOutboundFakeGasTx(tx) && !isCancelOrApprovalTx(tx) {
 		ctx.Logger().Info("slash node account, no matched tx out item", "inbound txid", inTxID, "outbound tx", tx.Tx)
 
@@ -256,5 +244,5 @@ func calcReclaim(reclaimable1, reclaimable2, spent cosmos.Uint) (reclaim1, recla
 }
 
 func maxEVMGasForChain(ctx cosmos.Context, k keeper.Keeper, chain common.Chain) (cosmos.Uint, bool) {
-	return cosmos.NewUint(constants.DefaultMaxEVMGas), false
+	return cosmos.ZeroUint(), false
 }

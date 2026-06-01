@@ -23,7 +23,7 @@ var (
 )
 
 // NewMsgTssKeysignFail create a new instance of MsgTssKeysignFail message
-func NewMsgTssKeysignFail(height int64, blame Blame, memo string, coins common.Coins, signer cosmos.AccAddress, pubKey common.PubKey) (*MsgTssKeysignFail, error) {
+func NewMsgTssKeysignFail(height int64, blame Blame, coins common.Coins, signer cosmos.AccAddress, pubKey common.PubKey) (*MsgTssKeysignFail, error) {
 	// Normalize the round before hashing so outgoing messages always use the
 	// canonical wire format and stable consensus ID.
 	round, err := NormalizeTssKeysignRound(blame.Round)
@@ -31,7 +31,7 @@ func NewMsgTssKeysignFail(height int64, blame Blame, memo string, coins common.C
 		return nil, fmt.Errorf("fail to normalize keysign fail round: %w", err)
 	}
 	blame.Round = round
-	id, err := getMsgTssKeysignFailID(blame.BlameNodes, height, memo, coins, pubKey, blame.Round)
+	id, err := getMsgTssKeysignFailID(blame.BlameNodes, height, coins, pubKey, blame.Round)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get keysign fail id:%w", err)
 	}
@@ -39,7 +39,6 @@ func NewMsgTssKeysignFail(height int64, blame Blame, memo string, coins common.C
 		ID:     id,
 		Height: height,
 		Blame:  blame,
-		Memo:   memo,
 		Coins:  coins,
 		Signer: signer,
 		PubKey: pubKey,
@@ -50,7 +49,7 @@ func NewMsgTssKeysignFail(height int64, blame Blame, memo string, coins common.C
 // keysign failure , as well as the block height of the txout item to generate
 // a hash, given that , if the same party keep failing the same txout item ,
 // then we will only slash it once.
-func getMsgTssKeysignFailID(members []Node, height int64, memo string, coins common.Coins, pubKey common.PubKey, round string) (string, error) {
+func getMsgTssKeysignFailID(members []Node, height int64, coins common.Coins, pubKey common.PubKey, round string) (string, error) {
 	// ensure input pubkeys list is deterministically sorted
 	sort.SliceStable(members, func(i, j int) bool {
 		return members[i].Pubkey < members[j].Pubkey
@@ -60,7 +59,6 @@ func getMsgTssKeysignFailID(members []Node, height int64, memo string, coins com
 		sb.WriteString(item.Pubkey)
 	}
 	sb.WriteString(fmt.Sprintf("%d", height))
-	sb.WriteString(memo)
 	sb.WriteString(pubKey.String())
 	for _, c := range coins {
 		sb.WriteString(c.String())
@@ -101,9 +99,6 @@ func (m *MsgTssKeysignFail) ValidateBasic() error {
 	}
 	if m.Height <= 0 {
 		return cosmos.ErrUnknownRequest("block height cannot be equal to less than zero")
-	}
-	if m.Memo != "" {
-		return cosmos.ErrUnknownRequest("keysign failure memo is disabled")
 	}
 	if m.PubKey.IsEmpty() {
 		return cosmos.ErrUnknownRequest("vault pubkey cannot be empty")

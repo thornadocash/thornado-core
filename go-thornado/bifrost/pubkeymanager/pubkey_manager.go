@@ -120,7 +120,7 @@ func (pkm *PubKeyManager) GetSignPubKeys() common.PubKeys {
 	defer pkm.rwMutex.RUnlock()
 	pubkeys := make(common.PubKeys, 0)
 	for _, pk := range pkm.pubkeys {
-		if pk.Signer {
+		if pk.Signer && !pk.NodeAccount && pk.Algo == common.SigningAlgoSecp256k1 {
 			pubkeys = append(pubkeys, pk.PubKey)
 		}
 	}
@@ -163,9 +163,9 @@ func (pkm *PubKeyManager) AddPubKey(pk common.PubKey, signer bool, algo common.S
 
 // addPubKeyInternal add the given public key to internal storage with inactive flag
 func (pkm *PubKeyManager) addPubKeyInternal(pk common.PubKey, signer bool, algo common.SigningAlgo, inactive bool) {
-	pkm.rwMutex.Lock()
-	defer pkm.rwMutex.Unlock()
+	var newSecpKey bool
 
+	pkm.rwMutex.Lock()
 	if pkm.hasPubKeyNoLock(pk) {
 		// pubkey already exists, update the signer and inactive status
 		for i, pubkey := range pkm.pubkeys {
@@ -186,37 +186,63 @@ func (pkm *PubKeyManager) addPubKeyInternal(pk common.PubKey, signer bool, algo 
 			Inactive:    inactive,
 		})
 		if algo == common.SigningAlgoSecp256k1 {
-			pkm.addDepositAddressLookaheadNoLock(pk)
+			newSecpKey = true
 		}
+	}
+	pkm.rwMutex.Unlock()
+
+	if newSecpKey {
 		pkm.fireCallback(pk)
+		pkm.addDepositAddressLookahead(pk)
 	}
 }
 
-func (pkm *PubKeyManager) addDepositAddressLookaheadNoLock(pk common.PubKey) {
+func (pkm *PubKeyManager) addDepositAddressLookahead(pk common.PubKey) {
+	type depositAddress struct {
+		pathIndex uint64
+		address   string
+		info      common.ChainPoolInfo
+	}
+
+	addrs := make([]depositAddress, 0, common.DepositAddressLookahead-common.FirstDepositPathIndex+1)
 	for pathIndex := uint64(common.FirstDepositPathIndex); pathIndex <= common.DepositAddressLookahead; pathIndex++ {
 		addr, err := common.DeriveBTCTaprootAddress(pk, pathIndex)
 		if err != nil {
 			pkm.logger.Error().Err(err).Str("pubkey", pk.String()).Uint64("path_index", pathIndex).Msg("fail to derive shielder deposit address")
 			continue
 		}
-		pkm.depositAddresses[strings.ToLower(addr.String())] = common.ChainPoolInfo{
-			Chain:       common.BTCChain,
-			PubKey:      pk,
-			PoolAddress: addr,
-		}
-		pkm.firePathCallback(pk, pathIndex)
+		addrs = append(addrs, depositAddress{
+			pathIndex: pathIndex,
+			address:   strings.ToLower(addr.String()),
+			info: common.ChainPoolInfo{
+				Chain:       common.BTCChain,
+				PubKey:      pk,
+				PoolAddress: addr,
+			},
+		})
+	}
+
+	pkm.rwMutex.Lock()
+	for _, item := range addrs {
+		pkm.depositAddresses[item.address] = item.info
+	}
+	pkm.rwMutex.Unlock()
+
+	for _, item := range addrs {
+		pkm.firePathCallback(pk, item.pathIndex)
 	}
 }
 
 // AddNodePubKey add the given public key as a node public key to internal storage
 func (pkm *PubKeyManager) AddNodePubKey(pk common.PubKey, algo common.SigningAlgo) {
-	pkm.rwMutex.Lock()
-	defer pkm.rwMutex.Unlock()
+	var newKey bool
 
+	pkm.rwMutex.Lock()
 	for i, pubkey := range pkm.pubkeys {
 		if pubkey.PubKey.Equals(pk) {
 			pkm.pubkeys[i].Signer = true
 			pkm.pubkeys[i].NodeAccount = true
+			pkm.rwMutex.Unlock()
 			return
 		}
 	}
@@ -228,7 +254,11 @@ func (pkm *PubKeyManager) AddNodePubKey(pk common.PubKey, algo common.SigningAlg
 			Signer:      true,
 			NodeAccount: true,
 		})
-		// a new pubkey get added , fire callback
+		newKey = true
+	}
+	pkm.rwMutex.Unlock()
+
+	if newKey {
 		pkm.fireCallback(pk)
 	}
 }

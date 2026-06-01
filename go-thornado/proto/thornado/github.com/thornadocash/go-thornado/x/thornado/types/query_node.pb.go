@@ -594,7 +594,7 @@ func (m *QueryNodeSlotRequest) GetHeight() string {
 }
 
 type QueryNodeSlotResponse struct {
-	Bond *QueryShielderBondResponse `protobuf:"bytes,1,opt,name=bond,proto3" json:"bond,omitempty"`
+	Bond *QueryNodeBondResponse `protobuf:"bytes,1,opt,name=bond,proto3" json:"bond,omitempty"`
 }
 
 func (m *QueryNodeSlotResponse) Reset()         { *m = QueryNodeSlotResponse{} }
@@ -630,9 +630,761 @@ func (m *QueryNodeSlotResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_QueryNodeSlotResponse proto.InternalMessageInfo
 
-func (m *QueryNodeSlotResponse) GetBond() *QueryShielderBondResponse {
+func (m *QueryNodeSlotResponse) GetBond() *QueryNodeBondResponse {
 	if m != nil {
 		return m.Bond
+	}
+	return nil
+}
+
+type QueryNodeBondRequest struct {
+	NodePubKey string `protobuf:"bytes,1,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
+	Height     string `protobuf:"bytes,2,opt,name=height,proto3" json:"height,omitempty"`
+}
+
+func (m *QueryNodeBondRequest) Reset()         { *m = QueryNodeBondRequest{} }
+func (m *QueryNodeBondRequest) String() string { return proto.CompactTextString(m) }
+func (*QueryNodeBondRequest) ProtoMessage()    {}
+func (*QueryNodeBondRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_aa5f5713cfe920f4, []int{8}
+}
+func (m *QueryNodeBondRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryNodeBondRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryNodeBondRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryNodeBondRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryNodeBondRequest.Merge(m, src)
+}
+func (m *QueryNodeBondRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryNodeBondRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryNodeBondRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryNodeBondRequest proto.InternalMessageInfo
+
+func (m *QueryNodeBondRequest) GetNodePubKey() string {
+	if m != nil {
+		return m.NodePubKey
+	}
+	return ""
+}
+
+func (m *QueryNodeBondRequest) GetHeight() string {
+	if m != nil {
+		return m.Height
+	}
+	return ""
+}
+
+type QueryNodeBondResponse struct {
+	NodePubKey          string `protobuf:"bytes,1,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
+	OperatorPubKey      string `protobuf:"bytes,2,opt,name=operator_pub_key,json=operatorPubKey,proto3" json:"operator_pub_key,omitempty"`
+	NodeAddress         string `protobuf:"bytes,3,opt,name=node_address,json=nodeAddress,proto3" json:"node_address,omitempty"`
+	Slot                uint64 `protobuf:"varint,4,opt,name=slot,proto3" json:"slot,omitempty"`
+	PendingSats         uint64 `protobuf:"varint,5,opt,name=pending_sats,json=pendingSats,proto3" json:"pending_sats,omitempty"`
+	BondSats            uint64 `protobuf:"varint,6,opt,name=bond_sats,json=bondSats,proto3" json:"bond_sats,omitempty"`
+	FeeDebtSats         uint64 `protobuf:"varint,7,opt,name=fee_debt_sats,json=feeDebtSats,proto3" json:"fee_debt_sats,omitempty"`
+	FeeShareActive      bool   `protobuf:"varint,8,opt,name=fee_share_active,json=feeShareActive,proto3" json:"fee_share_active,omitempty"`
+	PendingFeeDepositId string `protobuf:"bytes,9,opt,name=pending_fee_deposit_id,json=pendingFeeDepositId,proto3" json:"pending_fee_deposit_id,omitempty"`
+	Sold                bool   `protobuf:"varint,10,opt,name=sold,proto3" json:"sold,omitempty"`
+	SoldAuctionId       string `protobuf:"bytes,11,opt,name=sold_auction_id,json=soldAuctionId,proto3" json:"sold_auction_id,omitempty"`
+	CreatedHeight       int64  `protobuf:"varint,12,opt,name=created_height,json=createdHeight,proto3" json:"created_height,omitempty"`
+	UpdatedHeight       int64  `protobuf:"varint,13,opt,name=updated_height,json=updatedHeight,proto3" json:"updated_height,omitempty"`
+	NodeStatus          string `protobuf:"bytes,14,opt,name=node_status,json=nodeStatus,proto3" json:"node_status,omitempty"`
+	SlashPoints         int64  `protobuf:"varint,15,opt,name=slash_points,json=slashPoints,proto3" json:"slash_points,omitempty"`
+}
+
+func (m *QueryNodeBondResponse) Reset()         { *m = QueryNodeBondResponse{} }
+func (m *QueryNodeBondResponse) String() string { return proto.CompactTextString(m) }
+func (*QueryNodeBondResponse) ProtoMessage()    {}
+func (*QueryNodeBondResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_aa5f5713cfe920f4, []int{9}
+}
+func (m *QueryNodeBondResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryNodeBondResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryNodeBondResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryNodeBondResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryNodeBondResponse.Merge(m, src)
+}
+func (m *QueryNodeBondResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryNodeBondResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryNodeBondResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryNodeBondResponse proto.InternalMessageInfo
+
+func (m *QueryNodeBondResponse) GetNodePubKey() string {
+	if m != nil {
+		return m.NodePubKey
+	}
+	return ""
+}
+
+func (m *QueryNodeBondResponse) GetOperatorPubKey() string {
+	if m != nil {
+		return m.OperatorPubKey
+	}
+	return ""
+}
+
+func (m *QueryNodeBondResponse) GetNodeAddress() string {
+	if m != nil {
+		return m.NodeAddress
+	}
+	return ""
+}
+
+func (m *QueryNodeBondResponse) GetSlot() uint64 {
+	if m != nil {
+		return m.Slot
+	}
+	return 0
+}
+
+func (m *QueryNodeBondResponse) GetPendingSats() uint64 {
+	if m != nil {
+		return m.PendingSats
+	}
+	return 0
+}
+
+func (m *QueryNodeBondResponse) GetBondSats() uint64 {
+	if m != nil {
+		return m.BondSats
+	}
+	return 0
+}
+
+func (m *QueryNodeBondResponse) GetFeeDebtSats() uint64 {
+	if m != nil {
+		return m.FeeDebtSats
+	}
+	return 0
+}
+
+func (m *QueryNodeBondResponse) GetFeeShareActive() bool {
+	if m != nil {
+		return m.FeeShareActive
+	}
+	return false
+}
+
+func (m *QueryNodeBondResponse) GetPendingFeeDepositId() string {
+	if m != nil {
+		return m.PendingFeeDepositId
+	}
+	return ""
+}
+
+func (m *QueryNodeBondResponse) GetSold() bool {
+	if m != nil {
+		return m.Sold
+	}
+	return false
+}
+
+func (m *QueryNodeBondResponse) GetSoldAuctionId() string {
+	if m != nil {
+		return m.SoldAuctionId
+	}
+	return ""
+}
+
+func (m *QueryNodeBondResponse) GetCreatedHeight() int64 {
+	if m != nil {
+		return m.CreatedHeight
+	}
+	return 0
+}
+
+func (m *QueryNodeBondResponse) GetUpdatedHeight() int64 {
+	if m != nil {
+		return m.UpdatedHeight
+	}
+	return 0
+}
+
+func (m *QueryNodeBondResponse) GetNodeStatus() string {
+	if m != nil {
+		return m.NodeStatus
+	}
+	return ""
+}
+
+func (m *QueryNodeBondResponse) GetSlashPoints() int64 {
+	if m != nil {
+		return m.SlashPoints
+	}
+	return 0
+}
+
+type QueryNodeSlotAuctionRequest struct {
+	AuctionId string `protobuf:"bytes,1,opt,name=auction_id,json=auctionId,proto3" json:"auction_id,omitempty"`
+	Height    string `protobuf:"bytes,2,opt,name=height,proto3" json:"height,omitempty"`
+}
+
+func (m *QueryNodeSlotAuctionRequest) Reset()         { *m = QueryNodeSlotAuctionRequest{} }
+func (m *QueryNodeSlotAuctionRequest) String() string { return proto.CompactTextString(m) }
+func (*QueryNodeSlotAuctionRequest) ProtoMessage()    {}
+func (*QueryNodeSlotAuctionRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_aa5f5713cfe920f4, []int{10}
+}
+func (m *QueryNodeSlotAuctionRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryNodeSlotAuctionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryNodeSlotAuctionRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryNodeSlotAuctionRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryNodeSlotAuctionRequest.Merge(m, src)
+}
+func (m *QueryNodeSlotAuctionRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryNodeSlotAuctionRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryNodeSlotAuctionRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryNodeSlotAuctionRequest proto.InternalMessageInfo
+
+func (m *QueryNodeSlotAuctionRequest) GetAuctionId() string {
+	if m != nil {
+		return m.AuctionId
+	}
+	return ""
+}
+
+func (m *QueryNodeSlotAuctionRequest) GetHeight() string {
+	if m != nil {
+		return m.Height
+	}
+	return ""
+}
+
+type QueryNodeSlotAuctionResponse struct {
+	AuctionId            string `protobuf:"bytes,1,opt,name=auction_id,json=auctionId,proto3" json:"auction_id,omitempty"`
+	Seller               string `protobuf:"bytes,2,opt,name=seller,proto3" json:"seller,omitempty"`
+	SellerOperatorPubKey string `protobuf:"bytes,3,opt,name=seller_operator_pub_key,json=sellerOperatorPubKey,proto3" json:"seller_operator_pub_key,omitempty"`
+	SellerNodePubKey     string `protobuf:"bytes,4,opt,name=seller_node_pub_key,json=sellerNodePubKey,proto3" json:"seller_node_pub_key,omitempty"`
+	Slot                 uint64 `protobuf:"varint,5,opt,name=slot,proto3" json:"slot,omitempty"`
+	OriginalBondSats     uint64 `protobuf:"varint,6,opt,name=original_bond_sats,json=originalBondSats,proto3" json:"original_bond_sats,omitempty"`
+	ReserveSats          uint64 `protobuf:"varint,7,opt,name=reserve_sats,json=reserveSats,proto3" json:"reserve_sats,omitempty"`
+	ExpiryHeight         int64  `protobuf:"varint,8,opt,name=expiry_height,json=expiryHeight,proto3" json:"expiry_height,omitempty"`
+	SelectedBidId        string `protobuf:"bytes,9,opt,name=selected_bid_id,json=selectedBidId,proto3" json:"selected_bid_id,omitempty"`
+	Status               string `protobuf:"bytes,10,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedHeight        int64  `protobuf:"varint,11,opt,name=created_height,json=createdHeight,proto3" json:"created_height,omitempty"`
+	UpdatedHeight        int64  `protobuf:"varint,12,opt,name=updated_height,json=updatedHeight,proto3" json:"updated_height,omitempty"`
+}
+
+func (m *QueryNodeSlotAuctionResponse) Reset()         { *m = QueryNodeSlotAuctionResponse{} }
+func (m *QueryNodeSlotAuctionResponse) String() string { return proto.CompactTextString(m) }
+func (*QueryNodeSlotAuctionResponse) ProtoMessage()    {}
+func (*QueryNodeSlotAuctionResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_aa5f5713cfe920f4, []int{11}
+}
+func (m *QueryNodeSlotAuctionResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryNodeSlotAuctionResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryNodeSlotAuctionResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryNodeSlotAuctionResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryNodeSlotAuctionResponse.Merge(m, src)
+}
+func (m *QueryNodeSlotAuctionResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryNodeSlotAuctionResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryNodeSlotAuctionResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryNodeSlotAuctionResponse proto.InternalMessageInfo
+
+func (m *QueryNodeSlotAuctionResponse) GetAuctionId() string {
+	if m != nil {
+		return m.AuctionId
+	}
+	return ""
+}
+
+func (m *QueryNodeSlotAuctionResponse) GetSeller() string {
+	if m != nil {
+		return m.Seller
+	}
+	return ""
+}
+
+func (m *QueryNodeSlotAuctionResponse) GetSellerOperatorPubKey() string {
+	if m != nil {
+		return m.SellerOperatorPubKey
+	}
+	return ""
+}
+
+func (m *QueryNodeSlotAuctionResponse) GetSellerNodePubKey() string {
+	if m != nil {
+		return m.SellerNodePubKey
+	}
+	return ""
+}
+
+func (m *QueryNodeSlotAuctionResponse) GetSlot() uint64 {
+	if m != nil {
+		return m.Slot
+	}
+	return 0
+}
+
+func (m *QueryNodeSlotAuctionResponse) GetOriginalBondSats() uint64 {
+	if m != nil {
+		return m.OriginalBondSats
+	}
+	return 0
+}
+
+func (m *QueryNodeSlotAuctionResponse) GetReserveSats() uint64 {
+	if m != nil {
+		return m.ReserveSats
+	}
+	return 0
+}
+
+func (m *QueryNodeSlotAuctionResponse) GetExpiryHeight() int64 {
+	if m != nil {
+		return m.ExpiryHeight
+	}
+	return 0
+}
+
+func (m *QueryNodeSlotAuctionResponse) GetSelectedBidId() string {
+	if m != nil {
+		return m.SelectedBidId
+	}
+	return ""
+}
+
+func (m *QueryNodeSlotAuctionResponse) GetStatus() string {
+	if m != nil {
+		return m.Status
+	}
+	return ""
+}
+
+func (m *QueryNodeSlotAuctionResponse) GetCreatedHeight() int64 {
+	if m != nil {
+		return m.CreatedHeight
+	}
+	return 0
+}
+
+func (m *QueryNodeSlotAuctionResponse) GetUpdatedHeight() int64 {
+	if m != nil {
+		return m.UpdatedHeight
+	}
+	return 0
+}
+
+type QueryNodeSlotAuctionsRequest struct {
+	Height string `protobuf:"bytes,1,opt,name=height,proto3" json:"height,omitempty"`
+}
+
+func (m *QueryNodeSlotAuctionsRequest) Reset()         { *m = QueryNodeSlotAuctionsRequest{} }
+func (m *QueryNodeSlotAuctionsRequest) String() string { return proto.CompactTextString(m) }
+func (*QueryNodeSlotAuctionsRequest) ProtoMessage()    {}
+func (*QueryNodeSlotAuctionsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_aa5f5713cfe920f4, []int{12}
+}
+func (m *QueryNodeSlotAuctionsRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryNodeSlotAuctionsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryNodeSlotAuctionsRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryNodeSlotAuctionsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryNodeSlotAuctionsRequest.Merge(m, src)
+}
+func (m *QueryNodeSlotAuctionsRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryNodeSlotAuctionsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryNodeSlotAuctionsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryNodeSlotAuctionsRequest proto.InternalMessageInfo
+
+func (m *QueryNodeSlotAuctionsRequest) GetHeight() string {
+	if m != nil {
+		return m.Height
+	}
+	return ""
+}
+
+type QueryNodeSlotAuctionsResponse struct {
+	Auctions []*QueryNodeSlotAuctionResponse `protobuf:"bytes,1,rep,name=auctions,proto3" json:"auctions,omitempty"`
+}
+
+func (m *QueryNodeSlotAuctionsResponse) Reset()         { *m = QueryNodeSlotAuctionsResponse{} }
+func (m *QueryNodeSlotAuctionsResponse) String() string { return proto.CompactTextString(m) }
+func (*QueryNodeSlotAuctionsResponse) ProtoMessage()    {}
+func (*QueryNodeSlotAuctionsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_aa5f5713cfe920f4, []int{13}
+}
+func (m *QueryNodeSlotAuctionsResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryNodeSlotAuctionsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryNodeSlotAuctionsResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryNodeSlotAuctionsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryNodeSlotAuctionsResponse.Merge(m, src)
+}
+func (m *QueryNodeSlotAuctionsResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryNodeSlotAuctionsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryNodeSlotAuctionsResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryNodeSlotAuctionsResponse proto.InternalMessageInfo
+
+func (m *QueryNodeSlotAuctionsResponse) GetAuctions() []*QueryNodeSlotAuctionResponse {
+	if m != nil {
+		return m.Auctions
+	}
+	return nil
+}
+
+type QueryNodeSlotBidRequest struct {
+	BidId  string `protobuf:"bytes,1,opt,name=bid_id,json=bidId,proto3" json:"bid_id,omitempty"`
+	Height string `protobuf:"bytes,2,opt,name=height,proto3" json:"height,omitempty"`
+}
+
+func (m *QueryNodeSlotBidRequest) Reset()         { *m = QueryNodeSlotBidRequest{} }
+func (m *QueryNodeSlotBidRequest) String() string { return proto.CompactTextString(m) }
+func (*QueryNodeSlotBidRequest) ProtoMessage()    {}
+func (*QueryNodeSlotBidRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_aa5f5713cfe920f4, []int{14}
+}
+func (m *QueryNodeSlotBidRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryNodeSlotBidRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryNodeSlotBidRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryNodeSlotBidRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryNodeSlotBidRequest.Merge(m, src)
+}
+func (m *QueryNodeSlotBidRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryNodeSlotBidRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryNodeSlotBidRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryNodeSlotBidRequest proto.InternalMessageInfo
+
+func (m *QueryNodeSlotBidRequest) GetBidId() string {
+	if m != nil {
+		return m.BidId
+	}
+	return ""
+}
+
+func (m *QueryNodeSlotBidRequest) GetHeight() string {
+	if m != nil {
+		return m.Height
+	}
+	return ""
+}
+
+type QueryNodeSlotBidResponse struct {
+	BidId          string `protobuf:"bytes,1,opt,name=bid_id,json=bidId,proto3" json:"bid_id,omitempty"`
+	AuctionId      string `protobuf:"bytes,2,opt,name=auction_id,json=auctionId,proto3" json:"auction_id,omitempty"`
+	Bidder         string `protobuf:"bytes,3,opt,name=bidder,proto3" json:"bidder,omitempty"`
+	OperatorPubKey string `protobuf:"bytes,4,opt,name=operator_pub_key,json=operatorPubKey,proto3" json:"operator_pub_key,omitempty"`
+	NodePubKey     string `protobuf:"bytes,5,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
+	DepositId      string `protobuf:"bytes,6,opt,name=deposit_id,json=depositId,proto3" json:"deposit_id,omitempty"`
+	AmountSats     uint64 `protobuf:"varint,7,opt,name=amount_sats,json=amountSats,proto3" json:"amount_sats,omitempty"`
+	Selected       bool   `protobuf:"varint,8,opt,name=selected,proto3" json:"selected,omitempty"`
+	Settled        bool   `protobuf:"varint,9,opt,name=settled,proto3" json:"settled,omitempty"`
+	CreatedHeight  int64  `protobuf:"varint,10,opt,name=created_height,json=createdHeight,proto3" json:"created_height,omitempty"`
+	UpdatedHeight  int64  `protobuf:"varint,11,opt,name=updated_height,json=updatedHeight,proto3" json:"updated_height,omitempty"`
+}
+
+func (m *QueryNodeSlotBidResponse) Reset()         { *m = QueryNodeSlotBidResponse{} }
+func (m *QueryNodeSlotBidResponse) String() string { return proto.CompactTextString(m) }
+func (*QueryNodeSlotBidResponse) ProtoMessage()    {}
+func (*QueryNodeSlotBidResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_aa5f5713cfe920f4, []int{15}
+}
+func (m *QueryNodeSlotBidResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryNodeSlotBidResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryNodeSlotBidResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryNodeSlotBidResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryNodeSlotBidResponse.Merge(m, src)
+}
+func (m *QueryNodeSlotBidResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryNodeSlotBidResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryNodeSlotBidResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryNodeSlotBidResponse proto.InternalMessageInfo
+
+func (m *QueryNodeSlotBidResponse) GetBidId() string {
+	if m != nil {
+		return m.BidId
+	}
+	return ""
+}
+
+func (m *QueryNodeSlotBidResponse) GetAuctionId() string {
+	if m != nil {
+		return m.AuctionId
+	}
+	return ""
+}
+
+func (m *QueryNodeSlotBidResponse) GetBidder() string {
+	if m != nil {
+		return m.Bidder
+	}
+	return ""
+}
+
+func (m *QueryNodeSlotBidResponse) GetOperatorPubKey() string {
+	if m != nil {
+		return m.OperatorPubKey
+	}
+	return ""
+}
+
+func (m *QueryNodeSlotBidResponse) GetNodePubKey() string {
+	if m != nil {
+		return m.NodePubKey
+	}
+	return ""
+}
+
+func (m *QueryNodeSlotBidResponse) GetDepositId() string {
+	if m != nil {
+		return m.DepositId
+	}
+	return ""
+}
+
+func (m *QueryNodeSlotBidResponse) GetAmountSats() uint64 {
+	if m != nil {
+		return m.AmountSats
+	}
+	return 0
+}
+
+func (m *QueryNodeSlotBidResponse) GetSelected() bool {
+	if m != nil {
+		return m.Selected
+	}
+	return false
+}
+
+func (m *QueryNodeSlotBidResponse) GetSettled() bool {
+	if m != nil {
+		return m.Settled
+	}
+	return false
+}
+
+func (m *QueryNodeSlotBidResponse) GetCreatedHeight() int64 {
+	if m != nil {
+		return m.CreatedHeight
+	}
+	return 0
+}
+
+func (m *QueryNodeSlotBidResponse) GetUpdatedHeight() int64 {
+	if m != nil {
+		return m.UpdatedHeight
+	}
+	return 0
+}
+
+type QueryNodeSlotAuctionBidsRequest struct {
+	AuctionId string `protobuf:"bytes,1,opt,name=auction_id,json=auctionId,proto3" json:"auction_id,omitempty"`
+	Height    string `protobuf:"bytes,2,opt,name=height,proto3" json:"height,omitempty"`
+}
+
+func (m *QueryNodeSlotAuctionBidsRequest) Reset()         { *m = QueryNodeSlotAuctionBidsRequest{} }
+func (m *QueryNodeSlotAuctionBidsRequest) String() string { return proto.CompactTextString(m) }
+func (*QueryNodeSlotAuctionBidsRequest) ProtoMessage()    {}
+func (*QueryNodeSlotAuctionBidsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_aa5f5713cfe920f4, []int{16}
+}
+func (m *QueryNodeSlotAuctionBidsRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryNodeSlotAuctionBidsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryNodeSlotAuctionBidsRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryNodeSlotAuctionBidsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryNodeSlotAuctionBidsRequest.Merge(m, src)
+}
+func (m *QueryNodeSlotAuctionBidsRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryNodeSlotAuctionBidsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryNodeSlotAuctionBidsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryNodeSlotAuctionBidsRequest proto.InternalMessageInfo
+
+func (m *QueryNodeSlotAuctionBidsRequest) GetAuctionId() string {
+	if m != nil {
+		return m.AuctionId
+	}
+	return ""
+}
+
+func (m *QueryNodeSlotAuctionBidsRequest) GetHeight() string {
+	if m != nil {
+		return m.Height
+	}
+	return ""
+}
+
+type QueryNodeSlotAuctionBidsResponse struct {
+	Bids []*QueryNodeSlotBidResponse `protobuf:"bytes,1,rep,name=bids,proto3" json:"bids,omitempty"`
+}
+
+func (m *QueryNodeSlotAuctionBidsResponse) Reset()         { *m = QueryNodeSlotAuctionBidsResponse{} }
+func (m *QueryNodeSlotAuctionBidsResponse) String() string { return proto.CompactTextString(m) }
+func (*QueryNodeSlotAuctionBidsResponse) ProtoMessage()    {}
+func (*QueryNodeSlotAuctionBidsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_aa5f5713cfe920f4, []int{17}
+}
+func (m *QueryNodeSlotAuctionBidsResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryNodeSlotAuctionBidsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryNodeSlotAuctionBidsResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryNodeSlotAuctionBidsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryNodeSlotAuctionBidsResponse.Merge(m, src)
+}
+func (m *QueryNodeSlotAuctionBidsResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryNodeSlotAuctionBidsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryNodeSlotAuctionBidsResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryNodeSlotAuctionBidsResponse proto.InternalMessageInfo
+
+func (m *QueryNodeSlotAuctionBidsResponse) GetBids() []*QueryNodeSlotBidResponse {
+	if m != nil {
+		return m.Bids
 	}
 	return nil
 }
@@ -646,7 +1398,7 @@ func (m *NodeJail) Reset()         { *m = NodeJail{} }
 func (m *NodeJail) String() string { return proto.CompactTextString(m) }
 func (*NodeJail) ProtoMessage()    {}
 func (*NodeJail) Descriptor() ([]byte, []int) {
-	return fileDescriptor_aa5f5713cfe920f4, []int{8}
+	return fileDescriptor_aa5f5713cfe920f4, []int{18}
 }
 func (m *NodeJail) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -698,7 +1450,7 @@ func (m *ChainHeight) Reset()         { *m = ChainHeight{} }
 func (m *ChainHeight) String() string { return proto.CompactTextString(m) }
 func (*ChainHeight) ProtoMessage()    {}
 func (*ChainHeight) Descriptor() ([]byte, []int) {
-	return fileDescriptor_aa5f5713cfe920f4, []int{9}
+	return fileDescriptor_aa5f5713cfe920f4, []int{19}
 }
 func (m *ChainHeight) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -753,7 +1505,7 @@ func (m *NodePreflightStatus) Reset()         { *m = NodePreflightStatus{} }
 func (m *NodePreflightStatus) String() string { return proto.CompactTextString(m) }
 func (*NodePreflightStatus) ProtoMessage()    {}
 func (*NodePreflightStatus) Descriptor() ([]byte, []int) {
-	return fileDescriptor_aa5f5713cfe920f4, []int{10}
+	return fileDescriptor_aa5f5713cfe920f4, []int{20}
 }
 func (m *NodePreflightStatus) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -812,6 +1564,16 @@ func init() {
 	proto.RegisterType((*QueryNodeMetricsResponse)(nil), "types.QueryNodeMetricsResponse")
 	proto.RegisterType((*QueryNodeSlotRequest)(nil), "types.QueryNodeSlotRequest")
 	proto.RegisterType((*QueryNodeSlotResponse)(nil), "types.QueryNodeSlotResponse")
+	proto.RegisterType((*QueryNodeBondRequest)(nil), "types.QueryNodeBondRequest")
+	proto.RegisterType((*QueryNodeBondResponse)(nil), "types.QueryNodeBondResponse")
+	proto.RegisterType((*QueryNodeSlotAuctionRequest)(nil), "types.QueryNodeSlotAuctionRequest")
+	proto.RegisterType((*QueryNodeSlotAuctionResponse)(nil), "types.QueryNodeSlotAuctionResponse")
+	proto.RegisterType((*QueryNodeSlotAuctionsRequest)(nil), "types.QueryNodeSlotAuctionsRequest")
+	proto.RegisterType((*QueryNodeSlotAuctionsResponse)(nil), "types.QueryNodeSlotAuctionsResponse")
+	proto.RegisterType((*QueryNodeSlotBidRequest)(nil), "types.QueryNodeSlotBidRequest")
+	proto.RegisterType((*QueryNodeSlotBidResponse)(nil), "types.QueryNodeSlotBidResponse")
+	proto.RegisterType((*QueryNodeSlotAuctionBidsRequest)(nil), "types.QueryNodeSlotAuctionBidsRequest")
+	proto.RegisterType((*QueryNodeSlotAuctionBidsResponse)(nil), "types.QueryNodeSlotAuctionBidsResponse")
 	proto.RegisterType((*NodeJail)(nil), "types.NodeJail")
 	proto.RegisterType((*ChainHeight)(nil), "types.ChainHeight")
 	proto.RegisterType((*NodePreflightStatus)(nil), "types.NodePreflightStatus")
@@ -820,83 +1582,118 @@ func init() {
 func init() { proto.RegisterFile("types/query_node.proto", fileDescriptor_aa5f5713cfe920f4) }
 
 var fileDescriptor_aa5f5713cfe920f4 = []byte{
-	// 1212 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x56, 0xdf, 0x6e, 0x1b, 0xc5,
-	0x17, 0x8e, 0x7f, 0x76, 0x1c, 0xfb, 0x6c, 0x9c, 0xd8, 0xe3, 0x24, 0xdd, 0x5f, 0x28, 0x59, 0x63,
-	0xa8, 0x14, 0x81, 0x62, 0xab, 0x4d, 0x05, 0x42, 0x48, 0x88, 0x6e, 0x2b, 0xa0, 0x85, 0x94, 0x32,
-	0xe6, 0x0a, 0x2e, 0x56, 0xeb, 0xdd, 0xa9, 0xbd, 0x74, 0xbd, 0xb3, 0xdd, 0x19, 0x87, 0x46, 0xbc,
-	0x04, 0x4f, 0x81, 0x78, 0x94, 0x5e, 0xf6, 0x92, 0xab, 0x15, 0x6a, 0xef, 0xf6, 0x29, 0xd0, 0x9c,
-	0x99, 0x75, 0xd6, 0x4d, 0x2a, 0x6e, 0xbc, 0x73, 0xbe, 0xef, 0x3b, 0xf3, 0xe7, 0xcc, 0xcc, 0xe7,
-	0x81, 0x03, 0x79, 0x91, 0x32, 0x31, 0x7e, 0xbe, 0x64, 0xd9, 0x85, 0x97, 0xf0, 0x90, 0x8d, 0xd2,
-	0x8c, 0x4b, 0x4e, 0x36, 0x11, 0x3f, 0xdc, 0x9b, 0xf1, 0x19, 0x47, 0x64, 0xac, 0x5a, 0x9a, 0x3c,
-	0xec, 0x07, 0x7c, 0xb1, 0xe0, 0xc9, 0x58, 0x7f, 0x0c, 0x78, 0x58, 0xed, 0x49, 0xcc, 0x23, 0x16,
-	0x87, 0x2c, 0xd3, 0xdc, 0xf0, 0x01, 0x74, 0x7f, 0x54, 0xf8, 0x63, 0x1e, 0x32, 0xca, 0x9e, 0x2f,
-	0x99, 0x90, 0xc4, 0x86, 0x2d, 0x3f, 0x0c, 0x33, 0x26, 0x84, 0x5d, 0x1b, 0xd4, 0x8e, 0xdb, 0xb4,
-	0x0c, 0xc9, 0x01, 0x34, 0xe7, 0x2c, 0x9a, 0xcd, 0xa5, 0xfd, 0x3f, 0x24, 0x4c, 0x34, 0xfc, 0x13,
-	0xa0, 0x57, 0xe9, 0x46, 0xa4, 0x3c, 0x11, 0x8c, 0x9c, 0xc2, 0xb6, 0x9a, 0xb7, 0xb7, 0xd6, 0x99,
-	0xdb, 0x2d, 0x72, 0x67, 0x0d, 0xa7, 0x96, 0x8a, 0xee, 0x99, 0x21, 0x86, 0xd0, 0x14, 0xd2, 0x97,
-	0x4b, 0xa1, 0x87, 0x70, 0xa1, 0xc8, 0x1d, 0x83, 0x50, 0xf3, 0x25, 0x5f, 0x83, 0x95, 0x2e, 0xa7,
-	0xde, 0x33, 0x76, 0xe1, 0x09, 0x26, 0xed, 0xfa, 0xa0, 0x76, 0x6c, 0xdd, 0xe9, 0x8d, 0xcc, 0xa2,
-	0x9f, 0x2c, 0xa7, 0xdf, 0xb1, 0x8b, 0x09, 0x93, 0x6e, 0xff, 0x65, 0xee, 0x6c, 0x14, 0xb9, 0x53,
-	0x55, 0xd3, 0x76, 0x5a, 0xf2, 0xe4, 0x2b, 0xe8, 0xe1, 0x44, 0x02, 0x9e, 0x08, 0xcf, 0x68, 0xec,
-	0x06, 0x0e, 0xbb, 0x5f, 0xe4, 0xce, 0x55, 0x92, 0xee, 0x28, 0xe8, 0x3e, 0x4f, 0x84, 0x1e, 0x84,
-	0x7c, 0x04, 0x5b, 0x29, 0x63, 0x99, 0x17, 0x85, 0xf6, 0x26, 0xe6, 0x59, 0x45, 0xee, 0x94, 0x10,
-	0x6d, 0xaa, 0xc6, 0xc3, 0x90, 0x7c, 0x03, 0x7d, 0x3f, 0x90, 0xd1, 0x39, 0xf3, 0xa6, 0x31, 0x0f,
-	0x9e, 0x79, 0xa6, 0x86, 0xcd, 0x41, 0xed, 0xb8, 0xee, 0xde, 0x28, 0x72, 0xe7, 0x3a, 0x9a, 0xf6,
-	0x34, 0xe8, 0x2a, 0xec, 0x5b, 0x84, 0x54, 0x45, 0x75, 0x09, 0x3c, 0x11, 0x25, 0x01, 0xb3, 0xb7,
-	0xb0, 0x07, 0xac, 0x68, 0x15, 0xa7, 0x96, 0x8e, 0x26, 0x2a, 0x20, 0x67, 0xb0, 0x8f, 0x0b, 0xe1,
-	0x29, 0xcb, 0x7c, 0xc9, 0xb3, 0xd5, 0x7e, 0xb4, 0x70, 0xc6, 0xff, 0x2f, 0x72, 0xe7, 0x7a, 0x01,
-	0xed, 0x2b, 0xf8, 0x07, 0x83, 0x96, 0x1b, 0x74, 0x02, 0x20, 0xb9, 0xf4, 0x63, 0x6f, 0xca, 0x93,
-	0xd0, 0x6e, 0x63, 0x1f, 0x3b, 0x45, 0xee, 0x54, 0x50, 0xda, 0xc6, 0xb6, 0xcb, 0x93, 0x90, 0xb8,
-	0xd0, 0x13, 0xd1, 0x2c, 0x61, 0x99, 0xb7, 0x60, 0x8b, 0x29, 0xcb, 0xc4, 0x3c, 0x4a, 0x6d, 0x6b,
-	0x50, 0x2f, 0x6b, 0x7c, 0x85, 0xa4, 0x5d, 0x0d, 0x9d, 0xad, 0x10, 0xf2, 0x00, 0x48, 0xa6, 0xcf,
-	0x26, 0x0b, 0x3d, 0xc9, 0xbd, 0x98, 0xf9, 0xe7, 0xcc, 0xde, 0x1e, 0xd4, 0x8e, 0x5b, 0xee, 0x41,
-	0x91, 0x3b, 0xd7, 0xb0, 0xb4, 0xbb, 0xc2, 0x7e, 0xe2, 0xdf, 0x2b, 0x84, 0x7c, 0x01, 0xbb, 0x4f,
-	0x79, 0x16, 0x54, 0xbb, 0xe8, 0x60, 0x17, 0xfd, 0x22, 0x77, 0xde, 0xa6, 0x68, 0x47, 0x03, 0x65,
-	0xf2, 0x29, 0x6c, 0x23, 0x5e, 0xee, 0xdd, 0xce, 0x65, 0xe5, 0xab, 0x38, 0xb5, 0x30, 0x32, 0xdb,
-	0x75, 0x02, 0x10, 0xa5, 0xab, 0x72, 0xef, 0x5e, 0x96, 0xea, 0x12, 0xa5, 0xed, 0x28, 0x2d, 0x2b,
-	0x7b, 0x0b, 0xb6, 0xce, 0x59, 0x26, 0x22, 0x9e, 0xd8, 0xdd, 0xcb, 0xc3, 0x64, 0x20, 0x5a, 0x36,
-	0xf0, 0x10, 0xc4, 0xbe, 0x98, 0x7b, 0x29, 0x8f, 0x12, 0x29, 0xec, 0x5e, 0xe5, 0x10, 0x54, 0x70,
-	0x6a, 0x61, 0xf4, 0x04, 0x03, 0x72, 0x02, 0x8d, 0x5f, 0xfd, 0x28, 0xb6, 0x09, 0xde, 0x95, 0xdd,
-	0x11, 0x5a, 0xc2, 0x48, 0x5d, 0xd7, 0x47, 0x7e, 0x14, 0xbb, 0xad, 0x22, 0x77, 0x50, 0x40, 0xf1,
-	0x97, 0x7c, 0x0a, 0x9d, 0x60, 0x99, 0x65, 0x2c, 0x91, 0x9e, 0xff, 0x9b, 0x9f, 0x85, 0x76, 0x1f,
-	0x27, 0xd4, 0x2b, 0x72, 0x67, 0x9d, 0xa0, 0xdb, 0x26, 0xbc, 0xa7, 0x22, 0x72, 0x06, 0x3b, 0x7c,
-	0x2a, 0x58, 0x76, 0xce, 0xbc, 0x60, 0xee, 0x47, 0x89, 0xb0, 0xf7, 0x06, 0xf5, 0x63, 0xeb, 0x0e,
-	0x31, 0x03, 0xde, 0x57, 0xa0, 0xae, 0x8e, 0x4b, 0x8a, 0xdc, 0x79, 0x4b, 0x4d, 0x3b, 0x26, 0x46,
-	0x9d, 0x20, 0xbf, 0x40, 0x37, 0xcd, 0xd8, 0xd3, 0x58, 0xe9, 0x3d, 0x63, 0x0b, 0xfb, 0xb8, 0x82,
-	0xc3, 0xca, 0x0a, 0x9e, 0x94, 0x92, 0x09, 0x2a, 0xdc, 0xbd, 0x22, 0x77, 0xae, 0xe4, 0xd1, 0xdd,
-	0x74, 0x5d, 0x46, 0x6e, 0x83, 0xb5, 0xf0, 0xa3, 0x44, 0xb2, 0xc4, 0x57, 0x77, 0xe9, 0x00, 0xcf,
-	0xc2, 0xae, 0xb2, 0x8b, 0x0a, 0x4c, 0xab, 0x01, 0xf9, 0x1c, 0x76, 0x16, 0x91, 0x10, 0x51, 0x32,
-	0xd3, 0x57, 0x55, 0xd8, 0x37, 0xb0, 0xf8, 0xb8, 0x94, 0x75, 0x86, 0x76, 0x4c, 0x8c, 0xf7, 0x57,
-	0x3c, 0x6a, 0xb4, 0xa0, 0x6b, 0x0d, 0x3f, 0xa9, 0xf8, 0xa4, 0x28, 0xfd, 0xf6, 0xd2, 0x55, 0x6b,
-	0x6b, 0xae, 0xfa, 0x00, 0x48, 0x55, 0x6c, 0x5c, 0x75, 0x04, 0x9b, 0xea, 0x5a, 0x2a, 0x3b, 0x55,
-	0x95, 0xb5, 0x4d, 0x21, 0xae, 0xd8, 0x2f, 0xd5, 0xb2, 0xe1, 0x6d, 0xb8, 0xb1, 0xe2, 0xce, 0x98,
-	0xcc, 0xa2, 0xe0, 0x3f, 0x07, 0xfe, 0xab, 0x0e, 0xf6, 0xd5, 0x1c, 0x33, 0xfe, 0x7b, 0xd0, 0x4e,
-	0xd8, 0x0b, 0xe9, 0x89, 0x98, 0xeb, 0xbc, 0x06, 0x6d, 0x29, 0x60, 0x12, 0x73, 0x49, 0xbe, 0x84,
-	0x9b, 0x2b, 0x12, 0xad, 0xc0, 0x53, 0xd7, 0x30, 0xca, 0x58, 0xe8, 0x09, 0x5f, 0x6a, 0x4f, 0x6f,
-	0x50, 0xbb, 0xd4, 0x2b, 0x87, 0xa0, 0x46, 0x30, 0xf1, 0xa5, 0x20, 0xa7, 0x70, 0x80, 0x59, 0x42,
-	0xfa, 0x99, 0xf4, 0xfc, 0x05, 0x5f, 0x26, 0x52, 0x67, 0xd6, 0x31, 0xb3, 0xaf, 0xd8, 0x89, 0x22,
-	0xef, 0x21, 0x87, 0x49, 0x9f, 0x81, 0xad, 0x93, 0xd4, 0xa0, 0x51, 0x12, 0x64, 0x6c, 0xc1, 0xca,
-	0xb4, 0x06, 0xa6, 0xed, 0x63, 0x5a, 0xcc, 0xe5, 0xc3, 0x92, 0xc5, 0xc4, 0x0f, 0x60, 0xdb, 0x18,
-	0xaf, 0x4a, 0x15, 0x68, 0xe1, 0x0d, 0x6a, 0x69, 0x4c, 0xc9, 0x05, 0xf9, 0x10, 0x3a, 0x42, 0xfa,
-	0x49, 0x38, 0xbd, 0x30, 0x9a, 0x26, 0x6a, 0xb6, 0x0d, 0xa8, 0x45, 0xef, 0x03, 0x08, 0x1e, 0x87,
-	0x46, 0xb1, 0x85, 0x8a, 0xb6, 0x42, 0x34, 0xfd, 0x31, 0xf4, 0x52, 0x96, 0x84, 0x78, 0x36, 0x70,
-	0x9e, 0x6a, 0x62, 0x2d, 0x54, 0xed, 0x1a, 0x42, 0x15, 0x02, 0xa7, 0x34, 0x82, 0x7e, 0xc0, 0x93,
-	0xa7, 0x51, 0xb6, 0x60, 0x61, 0x45, 0xdd, 0x46, 0x75, 0x6f, 0x45, 0x95, 0xfa, 0xa1, 0x0b, 0x7b,
-	0xab, 0x9d, 0x52, 0xa3, 0x95, 0x5b, 0x4b, 0xa0, 0x51, 0xd9, 0x20, 0x6c, 0xbf, 0xf3, 0xdf, 0xfb,
-	0x0c, 0xf6, 0xdf, 0xea, 0xc3, 0x6c, 0xf5, 0x5d, 0x68, 0xa0, 0xc9, 0xd7, 0xf0, 0xca, 0x0d, 0xaa,
-	0x27, 0x6d, 0x62, 0x9e, 0x11, 0x7a, 0x07, 0xcd, 0x89, 0x43, 0xf5, 0xf0, 0x21, 0xb4, 0x4a, 0x5f,
-	0x21, 0xb7, 0x60, 0x27, 0x63, 0x31, 0xf3, 0xc5, 0xca, 0x38, 0x55, 0x5f, 0x75, 0xda, 0x31, 0xa8,
-	0x31, 0xca, 0x03, 0x68, 0x66, 0xcc, 0x17, 0x3c, 0x29, 0x67, 0xa6, 0xa3, 0x21, 0x05, 0xab, 0xe2,
-	0x18, 0xc4, 0x81, 0x4d, 0xf4, 0x09, 0xf3, 0x92, 0x68, 0x17, 0xb9, 0xa3, 0x01, 0xaa, 0x3f, 0xea,
-	0xf1, 0x50, 0x59, 0x61, 0x5d, 0x3f, 0x1e, 0x8c, 0x33, 0x97, 0xab, 0xfd, 0x1d, 0xfa, 0xd7, 0x98,
-	0x46, 0xe5, 0xdd, 0x51, 0x7b, 0xe7, 0xbb, 0x63, 0xb8, 0x3e, 0x4d, 0xad, 0xd1, 0x48, 0x39, 0x65,
-	0x72, 0x13, 0x1a, 0x01, 0x0f, 0x19, 0x9e, 0xd7, 0xba, 0xf6, 0x55, 0x15, 0x53, 0xfc, 0x75, 0x1f,
-	0xbf, 0x7c, 0x7d, 0x54, 0x7b, 0xf5, 0xfa, 0xa8, 0xf6, 0xcf, 0xeb, 0xa3, 0xda, 0x1f, 0x6f, 0x8e,
-	0x36, 0x5e, 0xbd, 0x39, 0xda, 0xf8, 0xfb, 0xcd, 0xd1, 0xc6, 0xcf, 0x77, 0x67, 0x91, 0x9c, 0x2f,
-	0xa7, 0xea, 0x11, 0x33, 0x96, 0x73, 0x9e, 0x25, 0x7e, 0xc8, 0x03, 0x5f, 0xcc, 0xc7, 0x33, 0x7e,
-	0x52, 0xc6, 0xe3, 0x17, 0x2b, 0x6a, 0x8c, 0x7b, 0x31, 0x6d, 0xe2, 0x2b, 0xee, 0xf4, 0xdf, 0x00,
-	0x00, 0x00, 0xff, 0xff, 0x0b, 0xfc, 0xf1, 0xe4, 0x2d, 0x0a, 0x00, 0x00,
+	// 1776 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x58, 0x5f, 0x6f, 0x23, 0x49,
+	0x11, 0x5f, 0xaf, 0x1d, 0xc7, 0xae, 0xb1, 0x1d, 0xbb, 0x9d, 0x64, 0x87, 0xfd, 0x93, 0x49, 0xbc,
+	0x2c, 0x8a, 0x80, 0x24, 0xdc, 0x2d, 0x1c, 0x42, 0x48, 0x40, 0x7c, 0xab, 0xe3, 0x72, 0xb0, 0x7b,
+	0x4b, 0xe7, 0x24, 0x10, 0x3c, 0x0c, 0xe3, 0x99, 0x4e, 0x3c, 0xdc, 0x78, 0x7a, 0x6e, 0x7a, 0xbc,
+	0x6c, 0xc4, 0x97, 0xe0, 0x53, 0x20, 0x24, 0xbe, 0xc8, 0x3d, 0x9e, 0xc4, 0x0b, 0x4f, 0x16, 0xda,
+	0x7d, 0xf3, 0x27, 0xe0, 0x11, 0x75, 0x75, 0xf7, 0xb8, 0x9d, 0x4c, 0xb4, 0x2b, 0xdd, 0x8b, 0x3d,
+	0xf5, 0xab, 0xea, 0xea, 0xea, 0xaa, 0x5f, 0x57, 0xf7, 0x0c, 0xec, 0x16, 0x57, 0x19, 0x13, 0x27,
+	0x5f, 0xcd, 0x59, 0x7e, 0xe5, 0xa7, 0x3c, 0x62, 0xc7, 0x59, 0xce, 0x0b, 0x4e, 0x36, 0x10, 0xbf,
+	0xbf, 0x7d, 0xc9, 0x2f, 0x39, 0x22, 0x27, 0xf2, 0x49, 0x29, 0xef, 0x0f, 0x43, 0x3e, 0x9b, 0xf1,
+	0xf4, 0x44, 0xfd, 0x29, 0x70, 0xf4, 0x0c, 0xfa, 0xbf, 0x93, 0x5e, 0x5e, 0xf0, 0x88, 0x51, 0xf6,
+	0xd5, 0x9c, 0x89, 0x82, 0xb8, 0xb0, 0x19, 0x44, 0x51, 0xce, 0x84, 0x70, 0x6b, 0xfb, 0xb5, 0xc3,
+	0x36, 0x35, 0x22, 0xd9, 0x85, 0xe6, 0x94, 0xc5, 0x97, 0xd3, 0xc2, 0xbd, 0x8b, 0x0a, 0x2d, 0x8d,
+	0xfe, 0x01, 0x30, 0xb0, 0xdc, 0x88, 0x8c, 0xa7, 0x82, 0x91, 0xa7, 0xd0, 0x91, 0xb1, 0xf9, 0x6b,
+	0xce, 0xc6, 0xfd, 0xe5, 0xc2, 0x5b, 0xc3, 0xa9, 0x23, 0xa5, 0x53, 0x3d, 0xc5, 0x08, 0x9a, 0xa2,
+	0x08, 0x8a, 0xb9, 0x50, 0x53, 0x8c, 0x61, 0xb9, 0xf0, 0x34, 0x42, 0xf5, 0x3f, 0xf9, 0x04, 0x9c,
+	0x6c, 0x3e, 0xf1, 0xbf, 0x64, 0x57, 0xbe, 0x60, 0x85, 0x5b, 0xdf, 0xaf, 0x1d, 0x3a, 0x1f, 0x0e,
+	0x8e, 0xf5, 0xc2, 0x5e, 0xce, 0x27, 0xbf, 0x61, 0x57, 0xe7, 0xac, 0x18, 0x0f, 0xbf, 0x5e, 0x78,
+	0x77, 0x96, 0x0b, 0xcf, 0xb6, 0xa6, 0xed, 0xcc, 0xe8, 0xc9, 0xaf, 0x60, 0x80, 0x81, 0x84, 0x3c,
+	0x15, 0xbe, 0xb6, 0x71, 0x1b, 0x38, 0xed, 0xce, 0x72, 0xe1, 0xdd, 0x54, 0xd2, 0x9e, 0x84, 0x3e,
+	0xe6, 0xa9, 0x50, 0x93, 0x90, 0xef, 0xc2, 0x66, 0xc6, 0x58, 0xee, 0xc7, 0x91, 0xbb, 0x81, 0xe3,
+	0x9c, 0xe5, 0xc2, 0x33, 0x10, 0x6d, 0xca, 0x87, 0xb3, 0x88, 0xfc, 0x1a, 0x86, 0x41, 0x58, 0xc4,
+	0xaf, 0x98, 0x3f, 0x49, 0x78, 0xf8, 0xa5, 0xaf, 0x73, 0xd8, 0xdc, 0xaf, 0x1d, 0xd6, 0xc7, 0xf7,
+	0x96, 0x0b, 0xaf, 0x4a, 0x4d, 0x07, 0x0a, 0x1c, 0x4b, 0xec, 0x53, 0x84, 0x64, 0x46, 0x55, 0x0a,
+	0x7c, 0x11, 0xa7, 0x21, 0x73, 0x37, 0xd1, 0x03, 0x66, 0xd4, 0xc6, 0xa9, 0xa3, 0xa4, 0x73, 0x29,
+	0x90, 0xe7, 0xb0, 0x83, 0x0b, 0xe1, 0x19, 0xcb, 0x83, 0x82, 0xe7, 0x65, 0x3d, 0x5a, 0x18, 0xf1,
+	0x77, 0x96, 0x0b, 0xaf, 0xda, 0x80, 0x0e, 0x25, 0xfc, 0xb9, 0x46, 0x4d, 0x81, 0x8e, 0x00, 0x0a,
+	0x5e, 0x04, 0x89, 0x3f, 0xe1, 0x69, 0xe4, 0xb6, 0xd1, 0x47, 0x6f, 0xb9, 0xf0, 0x2c, 0x94, 0xb6,
+	0xf1, 0x79, 0xcc, 0xd3, 0x88, 0x8c, 0x61, 0x20, 0xe2, 0xcb, 0x94, 0xe5, 0xfe, 0x8c, 0xcd, 0x26,
+	0x2c, 0x17, 0xd3, 0x38, 0x73, 0x9d, 0xfd, 0xba, 0xc9, 0xf1, 0x0d, 0x25, 0xed, 0x2b, 0xe8, 0x79,
+	0x89, 0x90, 0x67, 0x40, 0x72, 0xc5, 0x4d, 0x16, 0xf9, 0x05, 0xf7, 0x13, 0x16, 0xbc, 0x62, 0x6e,
+	0x67, 0xbf, 0x76, 0xd8, 0x1a, 0xef, 0x2e, 0x17, 0x5e, 0x85, 0x96, 0xf6, 0x4b, 0xec, 0x0b, 0xfe,
+	0x5b, 0x89, 0x90, 0x9f, 0xc3, 0xd6, 0x05, 0xcf, 0x43, 0xdb, 0x45, 0x17, 0x5d, 0x0c, 0x97, 0x0b,
+	0xef, 0xba, 0x8a, 0x76, 0x15, 0x60, 0x06, 0x3f, 0x85, 0x0e, 0xe2, 0xa6, 0x76, 0xbd, 0x55, 0xe6,
+	0x6d, 0x9c, 0x3a, 0x28, 0xe9, 0x72, 0x1d, 0x01, 0xc4, 0x59, 0x99, 0xee, 0xad, 0x55, 0xaa, 0x56,
+	0x28, 0x6d, 0xc7, 0x99, 0xc9, 0xec, 0x13, 0xd8, 0x7c, 0xc5, 0x72, 0x11, 0xf3, 0xd4, 0xed, 0xaf,
+	0xc8, 0xa4, 0x21, 0x6a, 0x1e, 0x90, 0x04, 0x49, 0x20, 0xa6, 0x7e, 0xc6, 0xe3, 0xb4, 0x10, 0xee,
+	0xc0, 0x22, 0x81, 0x85, 0x53, 0x07, 0xa5, 0x97, 0x28, 0x90, 0x23, 0x68, 0xfc, 0x25, 0x88, 0x13,
+	0x97, 0xe0, 0x5e, 0xd9, 0x3a, 0xc6, 0x46, 0x71, 0x2c, 0xb7, 0xeb, 0x67, 0x41, 0x9c, 0x8c, 0x5b,
+	0xcb, 0x85, 0x87, 0x06, 0x14, 0x7f, 0xc9, 0x47, 0xd0, 0x0d, 0xe7, 0x79, 0xce, 0xd2, 0xc2, 0x0f,
+	0xfe, 0x1a, 0xe4, 0x91, 0x3b, 0xc4, 0x80, 0x06, 0xcb, 0x85, 0xb7, 0xae, 0xa0, 0x1d, 0x2d, 0x9e,
+	0x4a, 0x89, 0x3c, 0x87, 0x1e, 0x9f, 0x08, 0x96, 0xbf, 0x62, 0x7e, 0x38, 0x0d, 0xe2, 0x54, 0xb8,
+	0xdb, 0xfb, 0xf5, 0x43, 0xe7, 0x43, 0xa2, 0x27, 0xfc, 0x58, 0x82, 0x2a, 0x3b, 0x63, 0xb2, 0x5c,
+	0x78, 0xd7, 0xac, 0x69, 0x57, 0xcb, 0x68, 0x27, 0xc8, 0x9f, 0xa0, 0x9f, 0xe5, 0xec, 0x22, 0x91,
+	0xf6, 0xbe, 0x6e, 0x0b, 0x3b, 0xb8, 0x82, 0xfb, 0xd6, 0x0a, 0x5e, 0x1a, 0x93, 0x73, 0xb4, 0x18,
+	0x6f, 0x2f, 0x17, 0xde, 0x8d, 0x71, 0x74, 0x2b, 0x5b, 0x37, 0x23, 0x1f, 0x80, 0x33, 0x0b, 0xe2,
+	0xb4, 0x60, 0x69, 0x20, 0xf7, 0xd2, 0x2e, 0x72, 0x61, 0x4b, 0xb6, 0x0b, 0x0b, 0xa6, 0xb6, 0x40,
+	0x7e, 0x06, 0xbd, 0x59, 0x2c, 0x44, 0x9c, 0x5e, 0xaa, 0xad, 0x2a, 0xdc, 0x7b, 0x98, 0x7c, 0x5c,
+	0xca, 0xba, 0x86, 0x76, 0xb5, 0x8c, 0xfb, 0x57, 0x7c, 0xd6, 0x68, 0x41, 0xdf, 0x19, 0xfd, 0xc0,
+	0xea, 0x93, 0xc2, 0xf4, 0xdb, 0x55, 0x57, 0xad, 0xad, 0x75, 0xd5, 0x67, 0x40, 0x6c, 0x63, 0xdd,
+	0x55, 0x8f, 0x61, 0x43, 0x6e, 0x4b, 0xd9, 0x4e, 0x65, 0x66, 0x5d, 0x9d, 0x88, 0x1b, 0xed, 0x97,
+	0x2a, 0xb3, 0xd1, 0x07, 0x70, 0xaf, 0xd4, 0x3d, 0x67, 0x45, 0x1e, 0x87, 0xef, 0x9c, 0xf8, 0x9f,
+	0x75, 0x70, 0x6f, 0x8e, 0xd1, 0xf3, 0x3f, 0x80, 0x76, 0xca, 0x5e, 0x17, 0xbe, 0x48, 0xb8, 0x1a,
+	0xd7, 0xa0, 0x2d, 0x09, 0x9c, 0x27, 0xbc, 0x20, 0xbf, 0x80, 0x87, 0xa5, 0x12, 0x5b, 0x81, 0x2f,
+	0xb7, 0x61, 0x9c, 0xb3, 0xc8, 0x17, 0x41, 0xa1, 0x7a, 0x7a, 0x83, 0xba, 0xc6, 0x5e, 0x76, 0x08,
+	0xaa, 0x0d, 0xce, 0x83, 0x42, 0x90, 0xa7, 0xb0, 0x8b, 0xa3, 0x44, 0x11, 0xe4, 0x85, 0x1f, 0xcc,
+	0xf8, 0x3c, 0x2d, 0xd4, 0xc8, 0x3a, 0x8e, 0x1c, 0x4a, 0xed, 0xb9, 0x54, 0x9e, 0xa2, 0x0e, 0x07,
+	0xfd, 0x14, 0x5c, 0x35, 0x48, 0x4e, 0x1a, 0xa7, 0x61, 0xce, 0x66, 0xcc, 0x0c, 0x6b, 0xe0, 0xb0,
+	0x1d, 0x1c, 0x96, 0xf0, 0xe2, 0xcc, 0x68, 0x71, 0xe0, 0x01, 0x74, 0x74, 0xe3, 0x95, 0x43, 0x05,
+	0xb6, 0xf0, 0x06, 0x75, 0x14, 0x26, 0xcd, 0x05, 0x79, 0x0c, 0x5d, 0x51, 0x04, 0x69, 0x34, 0xb9,
+	0xd2, 0x36, 0x4d, 0xb4, 0xe9, 0x68, 0x50, 0x19, 0x3d, 0x02, 0x10, 0x3c, 0x89, 0xb4, 0xc5, 0x26,
+	0x5a, 0xb4, 0x25, 0xa2, 0xd4, 0xdf, 0x87, 0x41, 0xc6, 0xd2, 0x08, 0xb9, 0x81, 0x71, 0xca, 0xc0,
+	0x5a, 0x68, 0xb5, 0xa5, 0x15, 0x32, 0x11, 0x18, 0xd2, 0x31, 0x0c, 0x43, 0x9e, 0x5e, 0xc4, 0xf9,
+	0x8c, 0x45, 0x96, 0x75, 0x1b, 0xad, 0x07, 0xa5, 0xca, 0xd8, 0x8f, 0xc6, 0xb0, 0x5d, 0x56, 0x4a,
+	0xce, 0x66, 0x4a, 0x4b, 0xa0, 0x61, 0x15, 0x08, 0x9f, 0x6f, 0x3d, 0xbd, 0xcf, 0x60, 0xe7, 0x9a,
+	0x0f, 0x5d, 0xea, 0x1f, 0x41, 0x03, 0x9b, 0x7c, 0x0d, 0xb7, 0xdc, 0xc3, 0xeb, 0x4c, 0x53, 0xd5,
+	0xd3, 0x6c, 0x43, 0xcb, 0xd1, 0x4b, 0x2b, 0x1c, 0x53, 0x5c, 0x19, 0xce, 0xbe, 0xbe, 0x0a, 0x98,
+	0x43, 0x56, 0xf1, 0x0d, 0x24, 0xa6, 0x4f, 0xd2, 0xdb, 0x82, 0xfb, 0x57, 0xc3, 0x8a, 0xce, 0x9e,
+	0xf1, 0x3d, 0x7c, 0x1e, 0x42, 0xbf, 0x3c, 0xd3, 0x8c, 0x95, 0xf2, 0xde, 0x33, 0xb8, 0xb6, 0x3c,
+	0xb8, 0x76, 0x55, 0xa9, 0xa3, 0xd5, 0xda, 0xc5, 0xc4, 0x64, 0xb4, 0x61, 0x65, 0xf4, 0x00, 0x3a,
+	0xa6, 0xb2, 0x58, 0x26, 0x4d, 0x20, 0x8d, 0x61, 0x41, 0x1f, 0x40, 0x7b, 0x55, 0x46, 0x45, 0x9e,
+	0xd6, 0xc4, 0x54, 0x7b, 0x04, 0xdd, 0x0b, 0xc6, 0xfc, 0x88, 0x4d, 0x34, 0x5d, 0x15, 0x77, 0x9c,
+	0x0b, 0xc6, 0x9e, 0xb1, 0x89, 0x22, 0xe9, 0x21, 0xf4, 0xa5, 0x8d, 0x98, 0x06, 0x39, 0xf3, 0x15,
+	0x35, 0x91, 0x3c, 0x2d, 0xda, 0xbb, 0x60, 0xec, 0x5c, 0xc2, 0xa7, 0x88, 0xca, 0xcd, 0x63, 0xa2,
+	0x51, 0x5e, 0x33, 0x2e, 0xe2, 0x42, 0xde, 0x4d, 0xf0, 0x94, 0xa6, 0x43, 0xad, 0xfd, 0x44, 0x7a,
+	0x47, 0xdd, 0x59, 0x84, 0xcb, 0xe2, 0x49, 0xe4, 0x02, 0xba, 0xc4, 0x67, 0xf2, 0x3d, 0xd8, 0x42,
+	0x3e, 0x07, 0xf3, 0xb0, 0x88, 0x79, 0x2a, 0x3d, 0x38, 0xe8, 0xa1, 0x2b, 0xe1, 0x53, 0x85, 0x9e,
+	0x45, 0xe4, 0x09, 0xf4, 0xc2, 0x9c, 0x05, 0xf2, 0xdc, 0xd5, 0xb5, 0x93, 0x67, 0x72, 0x9d, 0x76,
+	0x35, 0xaa, 0x8f, 0xc1, 0x27, 0xd0, 0x9b, 0x67, 0x91, 0x6d, 0xd6, 0x55, 0x66, 0x1a, 0xd5, 0x66,
+	0x1e, 0x60, 0xbe, 0x4d, 0x9f, 0xef, 0xad, 0xca, 0xa9, 0x1b, 0xf6, 0xc1, 0xb5, 0x83, 0x6f, 0x0b,
+	0xbd, 0xd8, 0xc7, 0xdc, 0xe8, 0x0b, 0x78, 0xb0, 0x46, 0x65, 0x1d, 0xab, 0xa1, 0xe1, 0x23, 0x00,
+	0x6b, 0x4d, 0x8a, 0x30, 0xed, 0xa0, 0x5c, 0xcf, 0x6d, 0x1c, 0xfc, 0x77, 0x1d, 0x1e, 0x56, 0xbb,
+	0xd5, 0x54, 0x7c, 0xb7, 0x5f, 0xc1, 0x92, 0x84, 0xe5, 0xc6, 0xaf, 0x92, 0xc8, 0x4f, 0xe0, 0x9e,
+	0x7a, 0xf2, 0x6f, 0xd0, 0x54, 0x11, 0x70, 0x5b, 0xa9, 0x3f, 0x5f, 0x27, 0xeb, 0x11, 0x0c, 0xf5,
+	0xb0, 0x35, 0xfe, 0xe3, 0xc5, 0x95, 0xf6, 0x95, 0xea, 0xc5, 0x6a, 0x17, 0x18, 0xe2, 0x6e, 0x58,
+	0xc4, 0xfd, 0x21, 0x10, 0x9e, 0xc7, 0x97, 0x71, 0xaa, 0x6f, 0x6c, 0x36, 0x3d, 0xfb, 0x46, 0x53,
+	0x36, 0xa5, 0x03, 0xe8, 0xe4, 0x4c, 0x9d, 0xd3, 0x36, 0x4b, 0x35, 0x86, 0x26, 0x8f, 0xa1, 0xcb,
+	0x5e, 0x67, 0x71, 0x7e, 0x65, 0x4a, 0xdc, 0xc2, 0xe2, 0x74, 0x14, 0xa8, 0x2b, 0x2c, 0x79, 0xc5,
+	0x12, 0x16, 0x4a, 0x26, 0x4c, 0xe2, 0x68, 0xc5, 0xcc, 0xae, 0x81, 0xc7, 0x71, 0xa4, 0xf3, 0xa5,
+	0x48, 0x00, 0x3a, 0x5f, 0x8a, 0x00, 0x37, 0xf9, 0xe6, 0xbc, 0x1f, 0xdf, 0x3a, 0x15, 0x7c, 0x1b,
+	0x7d, 0x54, 0x5d, 0xd4, 0x77, 0x9e, 0x8e, 0x7f, 0x86, 0x47, 0xb7, 0x8c, 0xd3, 0x6c, 0xf8, 0x25,
+	0xb4, 0x74, 0xed, 0xcd, 0x21, 0xfd, 0xf8, 0x7a, 0xeb, 0xac, 0x20, 0x11, 0x2d, 0x07, 0x8d, 0x3e,
+	0xb5, 0x8e, 0x6c, 0x3c, 0x26, 0xe3, 0xb2, 0x91, 0xee, 0x40, 0x53, 0x67, 0x4e, 0x05, 0xb5, 0x31,
+	0x31, 0x19, 0xab, 0x64, 0xee, 0xff, 0xee, 0x5a, 0x27, 0x79, 0xe9, 0x4a, 0xc7, 0x79, 0x8b, 0xaf,
+	0x75, 0x32, 0xdf, 0xad, 0x20, 0xf3, 0x24, 0x8e, 0x22, 0x96, 0x6b, 0x8e, 0x6a, 0xa9, 0xb2, 0xd9,
+	0x36, 0x2a, 0x9b, 0xed, 0xf5, 0xc6, 0xbd, 0x71, 0xa3, 0x71, 0x3f, 0x02, 0xb0, 0xba, 0x57, 0x53,
+	0x85, 0x10, 0x95, 0x3d, 0xcb, 0x03, 0xc7, 0xbe, 0x1a, 0x28, 0x3a, 0x42, 0xb0, 0xba, 0x11, 0xdc,
+	0x87, 0x96, 0x61, 0x94, 0xee, 0x95, 0xa5, 0x2c, 0xdf, 0x6e, 0x05, 0x2b, 0x8a, 0x84, 0x29, 0xf2,
+	0xb5, 0xa8, 0x11, 0x2b, 0xe8, 0x05, 0xef, 0x47, 0x2f, 0xa7, 0x8a, 0x5e, 0x7f, 0x00, 0xaf, 0xaa,
+	0xdc, 0xe3, 0x38, 0x12, 0xdf, 0xb2, 0x1d, 0xfd, 0x1e, 0xf6, 0x6f, 0xf7, 0x5c, 0xbe, 0x7b, 0x37,
+	0x26, 0x71, 0x64, 0xf8, 0xe7, 0x55, 0xf1, 0xcf, 0xa2, 0x02, 0x45, 0xe3, 0xd1, 0x19, 0xb4, 0xcc,
+	0x1b, 0x81, 0x5c, 0x65, 0xce, 0x12, 0x16, 0x88, 0xf2, 0x95, 0xa7, 0xa6, 0x56, 0xa9, 0x51, 0x9d,
+	0x8c, 0x5d, 0x68, 0xe6, 0x2c, 0x10, 0x3c, 0x35, 0x31, 0x2a, 0x69, 0x44, 0xc1, 0xb1, 0xee, 0xfa,
+	0xc4, 0x83, 0x0d, 0xbc, 0xe1, 0xeb, 0x6f, 0x00, 0xed, 0xe5, 0xc2, 0x53, 0x00, 0x55, 0x7f, 0xf2,
+	0xb5, 0xdf, 0x5a, 0x6b, 0x5d, 0xbd, 0xf6, 0xeb, 0x77, 0x2a, 0xb3, 0xee, 0xbf, 0xc1, 0xb0, 0xe2,
+	0xba, 0x6f, 0x7d, 0x31, 0xa8, 0xdd, 0xfa, 0xc5, 0x60, 0xb4, 0x1e, 0xa6, 0xb2, 0x51, 0x88, 0x09,
+	0x99, 0x3c, 0x84, 0x46, 0xc8, 0x23, 0x86, 0xb4, 0xae, 0xab, 0x37, 0x22, 0x29, 0x53, 0xfc, 0x1d,
+	0xbf, 0xf8, 0xfa, 0xcd, 0x5e, 0xed, 0x9b, 0x37, 0x7b, 0xb5, 0xff, 0xbe, 0xd9, 0xab, 0xfd, 0xfd,
+	0xed, 0xde, 0x9d, 0x6f, 0xde, 0xee, 0xdd, 0xf9, 0xcf, 0xdb, 0xbd, 0x3b, 0x7f, 0xfc, 0xf1, 0x65,
+	0x5c, 0x4c, 0xe7, 0x93, 0xe3, 0x90, 0xcf, 0x4e, 0x8a, 0x29, 0xcf, 0xd3, 0x20, 0xe2, 0x61, 0x20,
+	0xa6, 0x27, 0x97, 0xfc, 0xc8, 0xc8, 0x27, 0xaf, 0x4b, 0xd5, 0x09, 0x96, 0x62, 0xd2, 0xc4, 0xef,
+	0x2f, 0x4f, 0xff, 0x1f, 0x00, 0x00, 0xff, 0xff, 0x9f, 0x6e, 0x63, 0x8d, 0xcb, 0x11, 0x00, 0x00,
 }
 
 func (m *QueryNodeRequest) Marshal() (dAtA []byte, err error) {
@@ -1385,6 +2182,573 @@ func (m *QueryNodeSlotResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *QueryNodeBondRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryNodeBondRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryNodeBondRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Height) > 0 {
+		i -= len(m.Height)
+		copy(dAtA[i:], m.Height)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.Height)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.NodePubKey) > 0 {
+		i -= len(m.NodePubKey)
+		copy(dAtA[i:], m.NodePubKey)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.NodePubKey)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryNodeBondResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryNodeBondResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryNodeBondResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.SlashPoints != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.SlashPoints))
+		i--
+		dAtA[i] = 0x78
+	}
+	if len(m.NodeStatus) > 0 {
+		i -= len(m.NodeStatus)
+		copy(dAtA[i:], m.NodeStatus)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.NodeStatus)))
+		i--
+		dAtA[i] = 0x72
+	}
+	if m.UpdatedHeight != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.UpdatedHeight))
+		i--
+		dAtA[i] = 0x68
+	}
+	if m.CreatedHeight != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.CreatedHeight))
+		i--
+		dAtA[i] = 0x60
+	}
+	if len(m.SoldAuctionId) > 0 {
+		i -= len(m.SoldAuctionId)
+		copy(dAtA[i:], m.SoldAuctionId)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.SoldAuctionId)))
+		i--
+		dAtA[i] = 0x5a
+	}
+	if m.Sold {
+		i--
+		if m.Sold {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x50
+	}
+	if len(m.PendingFeeDepositId) > 0 {
+		i -= len(m.PendingFeeDepositId)
+		copy(dAtA[i:], m.PendingFeeDepositId)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.PendingFeeDepositId)))
+		i--
+		dAtA[i] = 0x4a
+	}
+	if m.FeeShareActive {
+		i--
+		if m.FeeShareActive {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x40
+	}
+	if m.FeeDebtSats != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.FeeDebtSats))
+		i--
+		dAtA[i] = 0x38
+	}
+	if m.BondSats != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.BondSats))
+		i--
+		dAtA[i] = 0x30
+	}
+	if m.PendingSats != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.PendingSats))
+		i--
+		dAtA[i] = 0x28
+	}
+	if m.Slot != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.Slot))
+		i--
+		dAtA[i] = 0x20
+	}
+	if len(m.NodeAddress) > 0 {
+		i -= len(m.NodeAddress)
+		copy(dAtA[i:], m.NodeAddress)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.NodeAddress)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.OperatorPubKey) > 0 {
+		i -= len(m.OperatorPubKey)
+		copy(dAtA[i:], m.OperatorPubKey)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.OperatorPubKey)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.NodePubKey) > 0 {
+		i -= len(m.NodePubKey)
+		copy(dAtA[i:], m.NodePubKey)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.NodePubKey)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryNodeSlotAuctionRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryNodeSlotAuctionRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryNodeSlotAuctionRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Height) > 0 {
+		i -= len(m.Height)
+		copy(dAtA[i:], m.Height)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.Height)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.AuctionId) > 0 {
+		i -= len(m.AuctionId)
+		copy(dAtA[i:], m.AuctionId)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.AuctionId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryNodeSlotAuctionResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryNodeSlotAuctionResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryNodeSlotAuctionResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.UpdatedHeight != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.UpdatedHeight))
+		i--
+		dAtA[i] = 0x60
+	}
+	if m.CreatedHeight != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.CreatedHeight))
+		i--
+		dAtA[i] = 0x58
+	}
+	if len(m.Status) > 0 {
+		i -= len(m.Status)
+		copy(dAtA[i:], m.Status)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.Status)))
+		i--
+		dAtA[i] = 0x52
+	}
+	if len(m.SelectedBidId) > 0 {
+		i -= len(m.SelectedBidId)
+		copy(dAtA[i:], m.SelectedBidId)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.SelectedBidId)))
+		i--
+		dAtA[i] = 0x4a
+	}
+	if m.ExpiryHeight != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.ExpiryHeight))
+		i--
+		dAtA[i] = 0x40
+	}
+	if m.ReserveSats != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.ReserveSats))
+		i--
+		dAtA[i] = 0x38
+	}
+	if m.OriginalBondSats != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.OriginalBondSats))
+		i--
+		dAtA[i] = 0x30
+	}
+	if m.Slot != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.Slot))
+		i--
+		dAtA[i] = 0x28
+	}
+	if len(m.SellerNodePubKey) > 0 {
+		i -= len(m.SellerNodePubKey)
+		copy(dAtA[i:], m.SellerNodePubKey)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.SellerNodePubKey)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.SellerOperatorPubKey) > 0 {
+		i -= len(m.SellerOperatorPubKey)
+		copy(dAtA[i:], m.SellerOperatorPubKey)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.SellerOperatorPubKey)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.Seller) > 0 {
+		i -= len(m.Seller)
+		copy(dAtA[i:], m.Seller)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.Seller)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.AuctionId) > 0 {
+		i -= len(m.AuctionId)
+		copy(dAtA[i:], m.AuctionId)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.AuctionId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryNodeSlotAuctionsRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryNodeSlotAuctionsRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryNodeSlotAuctionsRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Height) > 0 {
+		i -= len(m.Height)
+		copy(dAtA[i:], m.Height)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.Height)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryNodeSlotAuctionsResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryNodeSlotAuctionsResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryNodeSlotAuctionsResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Auctions) > 0 {
+		for iNdEx := len(m.Auctions) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Auctions[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintQueryNode(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryNodeSlotBidRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryNodeSlotBidRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryNodeSlotBidRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Height) > 0 {
+		i -= len(m.Height)
+		copy(dAtA[i:], m.Height)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.Height)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.BidId) > 0 {
+		i -= len(m.BidId)
+		copy(dAtA[i:], m.BidId)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.BidId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryNodeSlotBidResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryNodeSlotBidResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryNodeSlotBidResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.UpdatedHeight != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.UpdatedHeight))
+		i--
+		dAtA[i] = 0x58
+	}
+	if m.CreatedHeight != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.CreatedHeight))
+		i--
+		dAtA[i] = 0x50
+	}
+	if m.Settled {
+		i--
+		if m.Settled {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x48
+	}
+	if m.Selected {
+		i--
+		if m.Selected {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x40
+	}
+	if m.AmountSats != 0 {
+		i = encodeVarintQueryNode(dAtA, i, uint64(m.AmountSats))
+		i--
+		dAtA[i] = 0x38
+	}
+	if len(m.DepositId) > 0 {
+		i -= len(m.DepositId)
+		copy(dAtA[i:], m.DepositId)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.DepositId)))
+		i--
+		dAtA[i] = 0x32
+	}
+	if len(m.NodePubKey) > 0 {
+		i -= len(m.NodePubKey)
+		copy(dAtA[i:], m.NodePubKey)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.NodePubKey)))
+		i--
+		dAtA[i] = 0x2a
+	}
+	if len(m.OperatorPubKey) > 0 {
+		i -= len(m.OperatorPubKey)
+		copy(dAtA[i:], m.OperatorPubKey)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.OperatorPubKey)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.Bidder) > 0 {
+		i -= len(m.Bidder)
+		copy(dAtA[i:], m.Bidder)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.Bidder)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.AuctionId) > 0 {
+		i -= len(m.AuctionId)
+		copy(dAtA[i:], m.AuctionId)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.AuctionId)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.BidId) > 0 {
+		i -= len(m.BidId)
+		copy(dAtA[i:], m.BidId)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.BidId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryNodeSlotAuctionBidsRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryNodeSlotAuctionBidsRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryNodeSlotAuctionBidsRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Height) > 0 {
+		i -= len(m.Height)
+		copy(dAtA[i:], m.Height)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.Height)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.AuctionId) > 0 {
+		i -= len(m.AuctionId)
+		copy(dAtA[i:], m.AuctionId)
+		i = encodeVarintQueryNode(dAtA, i, uint64(len(m.AuctionId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryNodeSlotAuctionBidsResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryNodeSlotAuctionBidsResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryNodeSlotAuctionBidsResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Bids) > 0 {
+		for iNdEx := len(m.Bids) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Bids[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintQueryNode(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *NodeJail) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -1718,6 +3082,276 @@ func (m *QueryNodeSlotResponse) Size() (n int) {
 	if m.Bond != nil {
 		l = m.Bond.Size()
 		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	return n
+}
+
+func (m *QueryNodeBondRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.NodePubKey)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	l = len(m.Height)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	return n
+}
+
+func (m *QueryNodeBondResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.NodePubKey)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	l = len(m.OperatorPubKey)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	l = len(m.NodeAddress)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	if m.Slot != 0 {
+		n += 1 + sovQueryNode(uint64(m.Slot))
+	}
+	if m.PendingSats != 0 {
+		n += 1 + sovQueryNode(uint64(m.PendingSats))
+	}
+	if m.BondSats != 0 {
+		n += 1 + sovQueryNode(uint64(m.BondSats))
+	}
+	if m.FeeDebtSats != 0 {
+		n += 1 + sovQueryNode(uint64(m.FeeDebtSats))
+	}
+	if m.FeeShareActive {
+		n += 2
+	}
+	l = len(m.PendingFeeDepositId)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	if m.Sold {
+		n += 2
+	}
+	l = len(m.SoldAuctionId)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	if m.CreatedHeight != 0 {
+		n += 1 + sovQueryNode(uint64(m.CreatedHeight))
+	}
+	if m.UpdatedHeight != 0 {
+		n += 1 + sovQueryNode(uint64(m.UpdatedHeight))
+	}
+	l = len(m.NodeStatus)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	if m.SlashPoints != 0 {
+		n += 1 + sovQueryNode(uint64(m.SlashPoints))
+	}
+	return n
+}
+
+func (m *QueryNodeSlotAuctionRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.AuctionId)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	l = len(m.Height)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	return n
+}
+
+func (m *QueryNodeSlotAuctionResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.AuctionId)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	l = len(m.Seller)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	l = len(m.SellerOperatorPubKey)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	l = len(m.SellerNodePubKey)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	if m.Slot != 0 {
+		n += 1 + sovQueryNode(uint64(m.Slot))
+	}
+	if m.OriginalBondSats != 0 {
+		n += 1 + sovQueryNode(uint64(m.OriginalBondSats))
+	}
+	if m.ReserveSats != 0 {
+		n += 1 + sovQueryNode(uint64(m.ReserveSats))
+	}
+	if m.ExpiryHeight != 0 {
+		n += 1 + sovQueryNode(uint64(m.ExpiryHeight))
+	}
+	l = len(m.SelectedBidId)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	l = len(m.Status)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	if m.CreatedHeight != 0 {
+		n += 1 + sovQueryNode(uint64(m.CreatedHeight))
+	}
+	if m.UpdatedHeight != 0 {
+		n += 1 + sovQueryNode(uint64(m.UpdatedHeight))
+	}
+	return n
+}
+
+func (m *QueryNodeSlotAuctionsRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Height)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	return n
+}
+
+func (m *QueryNodeSlotAuctionsResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Auctions) > 0 {
+		for _, e := range m.Auctions {
+			l = e.Size()
+			n += 1 + l + sovQueryNode(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *QueryNodeSlotBidRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.BidId)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	l = len(m.Height)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	return n
+}
+
+func (m *QueryNodeSlotBidResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.BidId)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	l = len(m.AuctionId)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	l = len(m.Bidder)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	l = len(m.OperatorPubKey)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	l = len(m.NodePubKey)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	l = len(m.DepositId)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	if m.AmountSats != 0 {
+		n += 1 + sovQueryNode(uint64(m.AmountSats))
+	}
+	if m.Selected {
+		n += 2
+	}
+	if m.Settled {
+		n += 2
+	}
+	if m.CreatedHeight != 0 {
+		n += 1 + sovQueryNode(uint64(m.CreatedHeight))
+	}
+	if m.UpdatedHeight != 0 {
+		n += 1 + sovQueryNode(uint64(m.UpdatedHeight))
+	}
+	return n
+}
+
+func (m *QueryNodeSlotAuctionBidsRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.AuctionId)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	l = len(m.Height)
+	if l > 0 {
+		n += 1 + l + sovQueryNode(uint64(l))
+	}
+	return n
+}
+
+func (m *QueryNodeSlotAuctionBidsResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Bids) > 0 {
+		for _, e := range m.Bids {
+			l = e.Size()
+			n += 1 + l + sovQueryNode(uint64(l))
+		}
 	}
 	return n
 }
@@ -3187,9 +4821,1825 @@ func (m *QueryNodeSlotResponse) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Bond == nil {
-				m.Bond = &QueryShielderBondResponse{}
+				m.Bond = &QueryNodeBondResponse{}
 			}
 			if err := m.Bond.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQueryNode(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryNodeBondRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQueryNode
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryNodeBondRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryNodeBondRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NodePubKey", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NodePubKey = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Height = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQueryNode(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryNodeBondResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQueryNode
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryNodeBondResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryNodeBondResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NodePubKey", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NodePubKey = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OperatorPubKey", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.OperatorPubKey = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeAddress", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NodeAddress = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Slot", wireType)
+			}
+			m.Slot = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Slot |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PendingSats", wireType)
+			}
+			m.PendingSats = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.PendingSats |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BondSats", wireType)
+			}
+			m.BondSats = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BondSats |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FeeDebtSats", wireType)
+			}
+			m.FeeDebtSats = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.FeeDebtSats |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FeeShareActive", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.FeeShareActive = bool(v != 0)
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PendingFeeDepositId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.PendingFeeDepositId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 10:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sold", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Sold = bool(v != 0)
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SoldAuctionId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SoldAuctionId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 12:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CreatedHeight", wireType)
+			}
+			m.CreatedHeight = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.CreatedHeight |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 13:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UpdatedHeight", wireType)
+			}
+			m.UpdatedHeight = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.UpdatedHeight |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 14:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NodeStatus", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NodeStatus = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 15:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SlashPoints", wireType)
+			}
+			m.SlashPoints = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.SlashPoints |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQueryNode(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryNodeSlotAuctionRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQueryNode
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryNodeSlotAuctionRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryNodeSlotAuctionRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AuctionId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.AuctionId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Height = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQueryNode(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryNodeSlotAuctionResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQueryNode
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryNodeSlotAuctionResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryNodeSlotAuctionResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AuctionId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.AuctionId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Seller", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Seller = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SellerOperatorPubKey", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SellerOperatorPubKey = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SellerNodePubKey", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SellerNodePubKey = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Slot", wireType)
+			}
+			m.Slot = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Slot |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OriginalBondSats", wireType)
+			}
+			m.OriginalBondSats = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.OriginalBondSats |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ReserveSats", wireType)
+			}
+			m.ReserveSats = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ReserveSats |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExpiryHeight", wireType)
+			}
+			m.ExpiryHeight = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ExpiryHeight |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SelectedBidId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SelectedBidId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Status = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 11:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CreatedHeight", wireType)
+			}
+			m.CreatedHeight = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.CreatedHeight |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 12:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UpdatedHeight", wireType)
+			}
+			m.UpdatedHeight = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.UpdatedHeight |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQueryNode(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryNodeSlotAuctionsRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQueryNode
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryNodeSlotAuctionsRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryNodeSlotAuctionsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Height = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQueryNode(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryNodeSlotAuctionsResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQueryNode
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryNodeSlotAuctionsResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryNodeSlotAuctionsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Auctions", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Auctions = append(m.Auctions, &QueryNodeSlotAuctionResponse{})
+			if err := m.Auctions[len(m.Auctions)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQueryNode(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryNodeSlotBidRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQueryNode
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryNodeSlotBidRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryNodeSlotBidRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BidId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BidId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Height = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQueryNode(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryNodeSlotBidResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQueryNode
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryNodeSlotBidResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryNodeSlotBidResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BidId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BidId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AuctionId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.AuctionId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Bidder", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Bidder = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OperatorPubKey", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.OperatorPubKey = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NodePubKey", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NodePubKey = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DepositId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DepositId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AmountSats", wireType)
+			}
+			m.AmountSats = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.AmountSats |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Selected", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Selected = bool(v != 0)
+		case 9:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Settled", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Settled = bool(v != 0)
+		case 10:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CreatedHeight", wireType)
+			}
+			m.CreatedHeight = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.CreatedHeight |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 11:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UpdatedHeight", wireType)
+			}
+			m.UpdatedHeight = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.UpdatedHeight |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQueryNode(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryNodeSlotAuctionBidsRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQueryNode
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryNodeSlotAuctionBidsRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryNodeSlotAuctionBidsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AuctionId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.AuctionId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Height = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQueryNode(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryNodeSlotAuctionBidsResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQueryNode
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryNodeSlotAuctionBidsResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryNodeSlotAuctionBidsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Bids", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryNode
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryNode
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Bids = append(m.Bids, &QueryNodeSlotBidResponse{})
+			if err := m.Bids[len(m.Bids)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

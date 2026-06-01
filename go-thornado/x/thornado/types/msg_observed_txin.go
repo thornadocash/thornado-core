@@ -45,7 +45,7 @@ func (m *MsgObservedTxIn) ValidateBasic() error {
 		if err != nil {
 			return cosmos.ErrUnknownRequest(err.Error())
 		}
-		if !tx.Tx.ToAddress.Equals(obAddr) {
+		if !observedInboundAddressMatches(tx.ObservedPubKey, tx.Tx.Coins[0].Asset.GetChain(), tx.Tx.ToAddress, obAddr) {
 			return cosmos.ErrUnknownRequest("request is not an inbound observed transaction")
 		}
 		if len(tx.Signers) > 0 {
@@ -60,6 +60,29 @@ func (m *MsgObservedTxIn) ValidateBasic() error {
 	}
 
 	return nil
+}
+
+func observedInboundAddressMatches(pubKey common.PubKey, chain common.Chain, txAddress, rootAddress common.Address) bool {
+	return observedVaultAddressMatches(pubKey, chain, txAddress, rootAddress)
+}
+
+func observedVaultAddressMatches(pubKey common.PubKey, chain common.Chain, txAddress, rootAddress common.Address) bool {
+	if txAddress.Equals(rootAddress) {
+		return true
+	}
+	if !chain.Equals(common.BTCChain) {
+		return false
+	}
+	for pathIndex := common.FirstDepositPathIndex; pathIndex <= common.DepositAddressLookahead; pathIndex++ {
+		childAddress, err := common.DeriveBTCTaprootAddress(pubKey, pathIndex)
+		if err != nil {
+			return false
+		}
+		if txAddress.Equals(childAddress) {
+			return true
+		}
+	}
+	return false
 }
 
 // GetSigners defines whose signature is required

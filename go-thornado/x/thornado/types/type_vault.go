@@ -55,9 +55,9 @@ func (m Vault) IsType(vtype VaultType) bool {
 	return m.Type == vtype
 }
 
-// IsAsgard check whether the vault is Asgard vault, it returns true when it is an asgard vault
-func (m Vault) IsAsgard() bool {
-	return m.IsType(VaultType_AsgardVault)
+// IsBase check whether the vault is Base vault, it returns true when it is an base vault
+func (m Vault) IsBase() bool {
+	return m.IsType(VaultType_BaseVault)
 }
 
 // IsActive return true when the vault is in active status
@@ -103,6 +103,9 @@ func (m *Vault) UpdateStatus(s VaultStatus, height int64) {
 func (m Vault) Valid() error {
 	if m.PubKey.IsEmpty() {
 		return errors.New("pubkey cannot be empty")
+	}
+	if _, err := common.NewPubKey(m.PubKey.String()); err != nil {
+		return fmt.Errorf("invalid vault pubkey: %w", err)
 	}
 	return nil
 }
@@ -271,7 +274,7 @@ func (m *Vault) RemovePendingTxBlockHeights(blockHeight int64) {
 }
 
 // LenPendingTxBlockHeights count how many outstanding block heights in the vault
-// if the a block height is older than Keysign_PeriodBlocks , it will ignore
+// if the a block height is older than the Keysign_PeriodMinutes window , it will ignore
 func (m *Vault) LenPendingTxBlockHeights(currentBlockHeight, maxBlocks int64) int {
 	total := 0
 	for _, item := range m.PendingTxBlockHeights {

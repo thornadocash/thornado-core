@@ -233,6 +233,10 @@ func (am AppModule) EndBlock(goCtx context.Context) ([]abci.ValidatorUpdate, err
 
 	nodes := am.mgr.NodeMgr().EndBlock(ctx, am.mgr)
 
+	if err := ProcessForgottenDepositReturns(ctx, am.mgr); err != nil {
+		ctx.Logger().Error("fail to process forgotten deposit returns", "error", err)
+	}
+
 	if err := am.mgr.TxOutStore().EndBlock(ctx, am.mgr); err != nil {
 		ctx.Logger().Error("fail to process txout endblock", "error", err)
 	}
@@ -256,7 +260,7 @@ func (am AppModule) EndBlock(goCtx context.Context) ([]abci.ValidatorUpdate, err
 // InitGenesis initialise genesis
 func (am AppModule) InitGenesis(ctx sdk.Context, cdc codec.JSONCodec, data json.RawMessage) []abci.ValidatorUpdate {
 	var genState GenesisState
-	ModuleCdc.MustUnmarshalJSON(data, &genState)
+	cdc.MustUnmarshalJSON(data, &genState)
 	return InitGenesis(ctx, am.mgr.Keeper(), genState)
 }
 

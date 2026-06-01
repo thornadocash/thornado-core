@@ -25,25 +25,25 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-type MsgShielderRegisterPow struct {
+type MsgDepositRequestPow struct {
 	PowToken       string                                        `protobuf:"bytes,1,opt,name=pow_token,json=powToken,proto3" json:"pow_token,omitempty"`
 	Signer         github_com_cosmos_cosmos_sdk_types.AccAddress `protobuf:"bytes,2,opt,name=signer,proto3,casttype=github.com/cosmos/cosmos-sdk/types.AccAddress" json:"signer,omitempty"`
 	OperatorPubKey string                                        `protobuf:"bytes,3,opt,name=operator_pub_key,json=operatorPubKey,proto3" json:"operator_pub_key,omitempty"`
 	NodePubKey     string                                        `protobuf:"bytes,4,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
 }
 
-func (m *MsgShielderRegisterPow) Reset()         { *m = MsgShielderRegisterPow{} }
-func (m *MsgShielderRegisterPow) String() string { return proto.CompactTextString(m) }
-func (*MsgShielderRegisterPow) ProtoMessage()    {}
-func (*MsgShielderRegisterPow) Descriptor() ([]byte, []int) {
+func (m *MsgDepositRequestPow) Reset()         { *m = MsgDepositRequestPow{} }
+func (m *MsgDepositRequestPow) String() string { return proto.CompactTextString(m) }
+func (*MsgDepositRequestPow) ProtoMessage()    {}
+func (*MsgDepositRequestPow) Descriptor() ([]byte, []int) {
 	return fileDescriptor_75588396e42c8ea6, []int{0}
 }
-func (m *MsgShielderRegisterPow) XXX_Unmarshal(b []byte) error {
+func (m *MsgDepositRequestPow) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *MsgShielderRegisterPow) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *MsgDepositRequestPow) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_MsgShielderRegisterPow.Marshal(b, m, deterministic)
+		return xxx_messageInfo_MsgDepositRequestPow.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -53,65 +53,65 @@ func (m *MsgShielderRegisterPow) XXX_Marshal(b []byte, deterministic bool) ([]by
 		return b[:n], nil
 	}
 }
-func (m *MsgShielderRegisterPow) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgShielderRegisterPow.Merge(m, src)
+func (m *MsgDepositRequestPow) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgDepositRequestPow.Merge(m, src)
 }
-func (m *MsgShielderRegisterPow) XXX_Size() int {
+func (m *MsgDepositRequestPow) XXX_Size() int {
 	return m.Size()
 }
-func (m *MsgShielderRegisterPow) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgShielderRegisterPow.DiscardUnknown(m)
+func (m *MsgDepositRequestPow) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgDepositRequestPow.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MsgShielderRegisterPow proto.InternalMessageInfo
+var xxx_messageInfo_MsgDepositRequestPow proto.InternalMessageInfo
 
-func (m *MsgShielderRegisterPow) GetPowToken() string {
+func (m *MsgDepositRequestPow) GetPowToken() string {
 	if m != nil {
 		return m.PowToken
 	}
 	return ""
 }
 
-func (m *MsgShielderRegisterPow) GetSigner() github_com_cosmos_cosmos_sdk_types.AccAddress {
+func (m *MsgDepositRequestPow) GetSigner() github_com_cosmos_cosmos_sdk_types.AccAddress {
 	if m != nil {
 		return m.Signer
 	}
 	return nil
 }
 
-func (m *MsgShielderRegisterPow) GetOperatorPubKey() string {
+func (m *MsgDepositRequestPow) GetOperatorPubKey() string {
 	if m != nil {
 		return m.OperatorPubKey
 	}
 	return ""
 }
 
-func (m *MsgShielderRegisterPow) GetNodePubKey() string {
+func (m *MsgDepositRequestPow) GetNodePubKey() string {
 	if m != nil {
 		return m.NodePubKey
 	}
 	return ""
 }
 
-type MsgShielderRegisterPowResponse struct {
+type MsgDepositRequestPowResponse struct {
 	DepositAddress   string `protobuf:"bytes,1,opt,name=deposit_address,json=depositAddress,proto3" json:"deposit_address,omitempty"`
 	VaultPubKey      string `protobuf:"bytes,2,opt,name=vault_pub_key,json=vaultPubKey,proto3" json:"vault_pub_key,omitempty"`
 	DepositPathIndex uint64 `protobuf:"varint,3,opt,name=deposit_path_index,json=depositPathIndex,proto3" json:"deposit_path_index,omitempty"`
 	BidId            string `protobuf:"bytes,4,opt,name=bid_id,json=bidId,proto3" json:"bid_id,omitempty"`
 }
 
-func (m *MsgShielderRegisterPowResponse) Reset()         { *m = MsgShielderRegisterPowResponse{} }
-func (m *MsgShielderRegisterPowResponse) String() string { return proto.CompactTextString(m) }
-func (*MsgShielderRegisterPowResponse) ProtoMessage()    {}
-func (*MsgShielderRegisterPowResponse) Descriptor() ([]byte, []int) {
+func (m *MsgDepositRequestPowResponse) Reset()         { *m = MsgDepositRequestPowResponse{} }
+func (m *MsgDepositRequestPowResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgDepositRequestPowResponse) ProtoMessage()    {}
+func (*MsgDepositRequestPowResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_75588396e42c8ea6, []int{1}
 }
-func (m *MsgShielderRegisterPowResponse) XXX_Unmarshal(b []byte) error {
+func (m *MsgDepositRequestPowResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *MsgShielderRegisterPowResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *MsgDepositRequestPowResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_MsgShielderRegisterPowResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_MsgDepositRequestPowResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -121,64 +121,64 @@ func (m *MsgShielderRegisterPowResponse) XXX_Marshal(b []byte, deterministic boo
 		return b[:n], nil
 	}
 }
-func (m *MsgShielderRegisterPowResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgShielderRegisterPowResponse.Merge(m, src)
+func (m *MsgDepositRequestPowResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgDepositRequestPowResponse.Merge(m, src)
 }
-func (m *MsgShielderRegisterPowResponse) XXX_Size() int {
+func (m *MsgDepositRequestPowResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *MsgShielderRegisterPowResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgShielderRegisterPowResponse.DiscardUnknown(m)
+func (m *MsgDepositRequestPowResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgDepositRequestPowResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MsgShielderRegisterPowResponse proto.InternalMessageInfo
+var xxx_messageInfo_MsgDepositRequestPowResponse proto.InternalMessageInfo
 
-func (m *MsgShielderRegisterPowResponse) GetDepositAddress() string {
+func (m *MsgDepositRequestPowResponse) GetDepositAddress() string {
 	if m != nil {
 		return m.DepositAddress
 	}
 	return ""
 }
 
-func (m *MsgShielderRegisterPowResponse) GetVaultPubKey() string {
+func (m *MsgDepositRequestPowResponse) GetVaultPubKey() string {
 	if m != nil {
 		return m.VaultPubKey
 	}
 	return ""
 }
 
-func (m *MsgShielderRegisterPowResponse) GetDepositPathIndex() uint64 {
+func (m *MsgDepositRequestPowResponse) GetDepositPathIndex() uint64 {
 	if m != nil {
 		return m.DepositPathIndex
 	}
 	return 0
 }
 
-func (m *MsgShielderRegisterPowResponse) GetBidId() string {
+func (m *MsgDepositRequestPowResponse) GetBidId() string {
 	if m != nil {
 		return m.BidId
 	}
 	return ""
 }
 
-type MsgShielderPostCommitments struct {
+type MsgShielderSplit struct {
 	DepositId   string                                        `protobuf:"bytes,1,opt,name=deposit_id,json=depositId,proto3" json:"deposit_id,omitempty"`
 	Commitments []string                                      `protobuf:"bytes,2,rep,name=commitments,proto3" json:"commitments,omitempty"`
 	Signer      github_com_cosmos_cosmos_sdk_types.AccAddress `protobuf:"bytes,3,opt,name=signer,proto3,casttype=github.com/cosmos/cosmos-sdk/types.AccAddress" json:"signer,omitempty"`
 }
 
-func (m *MsgShielderPostCommitments) Reset()         { *m = MsgShielderPostCommitments{} }
-func (m *MsgShielderPostCommitments) String() string { return proto.CompactTextString(m) }
-func (*MsgShielderPostCommitments) ProtoMessage()    {}
-func (*MsgShielderPostCommitments) Descriptor() ([]byte, []int) {
+func (m *MsgShielderSplit) Reset()         { *m = MsgShielderSplit{} }
+func (m *MsgShielderSplit) String() string { return proto.CompactTextString(m) }
+func (*MsgShielderSplit) ProtoMessage()    {}
+func (*MsgShielderSplit) Descriptor() ([]byte, []int) {
 	return fileDescriptor_75588396e42c8ea6, []int{2}
 }
-func (m *MsgShielderPostCommitments) XXX_Unmarshal(b []byte) error {
+func (m *MsgShielderSplit) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *MsgShielderPostCommitments) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *MsgShielderSplit) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_MsgShielderPostCommitments.Marshal(b, m, deterministic)
+		return xxx_messageInfo_MsgShielderSplit.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -188,56 +188,56 @@ func (m *MsgShielderPostCommitments) XXX_Marshal(b []byte, deterministic bool) (
 		return b[:n], nil
 	}
 }
-func (m *MsgShielderPostCommitments) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgShielderPostCommitments.Merge(m, src)
+func (m *MsgShielderSplit) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgShielderSplit.Merge(m, src)
 }
-func (m *MsgShielderPostCommitments) XXX_Size() int {
+func (m *MsgShielderSplit) XXX_Size() int {
 	return m.Size()
 }
-func (m *MsgShielderPostCommitments) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgShielderPostCommitments.DiscardUnknown(m)
+func (m *MsgShielderSplit) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgShielderSplit.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MsgShielderPostCommitments proto.InternalMessageInfo
+var xxx_messageInfo_MsgShielderSplit proto.InternalMessageInfo
 
-func (m *MsgShielderPostCommitments) GetDepositId() string {
+func (m *MsgShielderSplit) GetDepositId() string {
 	if m != nil {
 		return m.DepositId
 	}
 	return ""
 }
 
-func (m *MsgShielderPostCommitments) GetCommitments() []string {
+func (m *MsgShielderSplit) GetCommitments() []string {
 	if m != nil {
 		return m.Commitments
 	}
 	return nil
 }
 
-func (m *MsgShielderPostCommitments) GetSigner() github_com_cosmos_cosmos_sdk_types.AccAddress {
+func (m *MsgShielderSplit) GetSigner() github_com_cosmos_cosmos_sdk_types.AccAddress {
 	if m != nil {
 		return m.Signer
 	}
 	return nil
 }
 
-type MsgShielderPostCommitmentsResponse struct {
+type MsgShielderSplitResponse struct {
 	DepositId string `protobuf:"bytes,1,opt,name=deposit_id,json=depositId,proto3" json:"deposit_id,omitempty"`
 	Status    string `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
 }
 
-func (m *MsgShielderPostCommitmentsResponse) Reset()         { *m = MsgShielderPostCommitmentsResponse{} }
-func (m *MsgShielderPostCommitmentsResponse) String() string { return proto.CompactTextString(m) }
-func (*MsgShielderPostCommitmentsResponse) ProtoMessage()    {}
-func (*MsgShielderPostCommitmentsResponse) Descriptor() ([]byte, []int) {
+func (m *MsgShielderSplitResponse) Reset()         { *m = MsgShielderSplitResponse{} }
+func (m *MsgShielderSplitResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgShielderSplitResponse) ProtoMessage()    {}
+func (*MsgShielderSplitResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_75588396e42c8ea6, []int{3}
 }
-func (m *MsgShielderPostCommitmentsResponse) XXX_Unmarshal(b []byte) error {
+func (m *MsgShielderSplitResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *MsgShielderPostCommitmentsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *MsgShielderSplitResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_MsgShielderPostCommitmentsResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_MsgShielderSplitResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -247,50 +247,50 @@ func (m *MsgShielderPostCommitmentsResponse) XXX_Marshal(b []byte, deterministic
 		return b[:n], nil
 	}
 }
-func (m *MsgShielderPostCommitmentsResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgShielderPostCommitmentsResponse.Merge(m, src)
+func (m *MsgShielderSplitResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgShielderSplitResponse.Merge(m, src)
 }
-func (m *MsgShielderPostCommitmentsResponse) XXX_Size() int {
+func (m *MsgShielderSplitResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *MsgShielderPostCommitmentsResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgShielderPostCommitmentsResponse.DiscardUnknown(m)
+func (m *MsgShielderSplitResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgShielderSplitResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MsgShielderPostCommitmentsResponse proto.InternalMessageInfo
+var xxx_messageInfo_MsgShielderSplitResponse proto.InternalMessageInfo
 
-func (m *MsgShielderPostCommitmentsResponse) GetDepositId() string {
+func (m *MsgShielderSplitResponse) GetDepositId() string {
 	if m != nil {
 		return m.DepositId
 	}
 	return ""
 }
 
-func (m *MsgShielderPostCommitmentsResponse) GetStatus() string {
+func (m *MsgShielderSplitResponse) GetStatus() string {
 	if m != nil {
 		return m.Status
 	}
 	return ""
 }
 
-type MsgShielderRequestWithdrawal struct {
+type MsgShielderRedeem struct {
 	Proof  []byte                                        `protobuf:"bytes,1,opt,name=proof,proto3" json:"proof,omitempty"`
 	Public []byte                                        `protobuf:"bytes,2,opt,name=public,proto3" json:"public,omitempty"`
 	Signer github_com_cosmos_cosmos_sdk_types.AccAddress `protobuf:"bytes,3,opt,name=signer,proto3,casttype=github.com/cosmos/cosmos-sdk/types.AccAddress" json:"signer,omitempty"`
 }
 
-func (m *MsgShielderRequestWithdrawal) Reset()         { *m = MsgShielderRequestWithdrawal{} }
-func (m *MsgShielderRequestWithdrawal) String() string { return proto.CompactTextString(m) }
-func (*MsgShielderRequestWithdrawal) ProtoMessage()    {}
-func (*MsgShielderRequestWithdrawal) Descriptor() ([]byte, []int) {
+func (m *MsgShielderRedeem) Reset()         { *m = MsgShielderRedeem{} }
+func (m *MsgShielderRedeem) String() string { return proto.CompactTextString(m) }
+func (*MsgShielderRedeem) ProtoMessage()    {}
+func (*MsgShielderRedeem) Descriptor() ([]byte, []int) {
 	return fileDescriptor_75588396e42c8ea6, []int{4}
 }
-func (m *MsgShielderRequestWithdrawal) XXX_Unmarshal(b []byte) error {
+func (m *MsgShielderRedeem) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *MsgShielderRequestWithdrawal) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *MsgShielderRedeem) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_MsgShielderRequestWithdrawal.Marshal(b, m, deterministic)
+		return xxx_messageInfo_MsgShielderRedeem.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -300,56 +300,56 @@ func (m *MsgShielderRequestWithdrawal) XXX_Marshal(b []byte, deterministic bool)
 		return b[:n], nil
 	}
 }
-func (m *MsgShielderRequestWithdrawal) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgShielderRequestWithdrawal.Merge(m, src)
+func (m *MsgShielderRedeem) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgShielderRedeem.Merge(m, src)
 }
-func (m *MsgShielderRequestWithdrawal) XXX_Size() int {
+func (m *MsgShielderRedeem) XXX_Size() int {
 	return m.Size()
 }
-func (m *MsgShielderRequestWithdrawal) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgShielderRequestWithdrawal.DiscardUnknown(m)
+func (m *MsgShielderRedeem) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgShielderRedeem.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MsgShielderRequestWithdrawal proto.InternalMessageInfo
+var xxx_messageInfo_MsgShielderRedeem proto.InternalMessageInfo
 
-func (m *MsgShielderRequestWithdrawal) GetProof() []byte {
+func (m *MsgShielderRedeem) GetProof() []byte {
 	if m != nil {
 		return m.Proof
 	}
 	return nil
 }
 
-func (m *MsgShielderRequestWithdrawal) GetPublic() []byte {
+func (m *MsgShielderRedeem) GetPublic() []byte {
 	if m != nil {
 		return m.Public
 	}
 	return nil
 }
 
-func (m *MsgShielderRequestWithdrawal) GetSigner() github_com_cosmos_cosmos_sdk_types.AccAddress {
+func (m *MsgShielderRedeem) GetSigner() github_com_cosmos_cosmos_sdk_types.AccAddress {
 	if m != nil {
 		return m.Signer
 	}
 	return nil
 }
 
-type MsgShielderRequestWithdrawalResponse struct {
+type MsgShielderRedeemResponse struct {
 	WithdrawalId string `protobuf:"bytes,1,opt,name=withdrawal_id,json=withdrawalId,proto3" json:"withdrawal_id,omitempty"`
 	Status       string `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
 }
 
-func (m *MsgShielderRequestWithdrawalResponse) Reset()         { *m = MsgShielderRequestWithdrawalResponse{} }
-func (m *MsgShielderRequestWithdrawalResponse) String() string { return proto.CompactTextString(m) }
-func (*MsgShielderRequestWithdrawalResponse) ProtoMessage()    {}
-func (*MsgShielderRequestWithdrawalResponse) Descriptor() ([]byte, []int) {
+func (m *MsgShielderRedeemResponse) Reset()         { *m = MsgShielderRedeemResponse{} }
+func (m *MsgShielderRedeemResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgShielderRedeemResponse) ProtoMessage()    {}
+func (*MsgShielderRedeemResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_75588396e42c8ea6, []int{5}
 }
-func (m *MsgShielderRequestWithdrawalResponse) XXX_Unmarshal(b []byte) error {
+func (m *MsgShielderRedeemResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *MsgShielderRequestWithdrawalResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *MsgShielderRedeemResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_MsgShielderRequestWithdrawalResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_MsgShielderRedeemResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -359,26 +359,26 @@ func (m *MsgShielderRequestWithdrawalResponse) XXX_Marshal(b []byte, determinist
 		return b[:n], nil
 	}
 }
-func (m *MsgShielderRequestWithdrawalResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgShielderRequestWithdrawalResponse.Merge(m, src)
+func (m *MsgShielderRedeemResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgShielderRedeemResponse.Merge(m, src)
 }
-func (m *MsgShielderRequestWithdrawalResponse) XXX_Size() int {
+func (m *MsgShielderRedeemResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *MsgShielderRequestWithdrawalResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgShielderRequestWithdrawalResponse.DiscardUnknown(m)
+func (m *MsgShielderRedeemResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgShielderRedeemResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MsgShielderRequestWithdrawalResponse proto.InternalMessageInfo
+var xxx_messageInfo_MsgShielderRedeemResponse proto.InternalMessageInfo
 
-func (m *MsgShielderRequestWithdrawalResponse) GetWithdrawalId() string {
+func (m *MsgShielderRedeemResponse) GetWithdrawalId() string {
 	if m != nil {
 		return m.WithdrawalId
 	}
 	return ""
 }
 
-func (m *MsgShielderRequestWithdrawalResponse) GetStatus() string {
+func (m *MsgShielderRedeemResponse) GetStatus() string {
 	if m != nil {
 		return m.Status
 	}
@@ -838,12 +838,12 @@ func (m *MsgNodeSlotAuctionSplit) GetSigner() github_com_cosmos_cosmos_sdk_types
 }
 
 func init() {
-	proto.RegisterType((*MsgShielderRegisterPow)(nil), "types.MsgShielderRegisterPow")
-	proto.RegisterType((*MsgShielderRegisterPowResponse)(nil), "types.MsgShielderRegisterPowResponse")
-	proto.RegisterType((*MsgShielderPostCommitments)(nil), "types.MsgShielderPostCommitments")
-	proto.RegisterType((*MsgShielderPostCommitmentsResponse)(nil), "types.MsgShielderPostCommitmentsResponse")
-	proto.RegisterType((*MsgShielderRequestWithdrawal)(nil), "types.MsgShielderRequestWithdrawal")
-	proto.RegisterType((*MsgShielderRequestWithdrawalResponse)(nil), "types.MsgShielderRequestWithdrawalResponse")
+	proto.RegisterType((*MsgDepositRequestPow)(nil), "types.MsgDepositRequestPow")
+	proto.RegisterType((*MsgDepositRequestPowResponse)(nil), "types.MsgDepositRequestPowResponse")
+	proto.RegisterType((*MsgShielderSplit)(nil), "types.MsgShielderSplit")
+	proto.RegisterType((*MsgShielderSplitResponse)(nil), "types.MsgShielderSplitResponse")
+	proto.RegisterType((*MsgShielderRedeem)(nil), "types.MsgShielderRedeem")
+	proto.RegisterType((*MsgShielderRedeemResponse)(nil), "types.MsgShielderRedeemResponse")
 	proto.RegisterType((*MsgShielderSplitFees)(nil), "types.MsgShielderSplitFees")
 	proto.RegisterType((*MsgShielderSplitFeesResponse)(nil), "types.MsgShielderSplitFeesResponse")
 	proto.RegisterType((*MsgNodeSlotAuctionCreate)(nil), "types.MsgNodeSlotAuctionCreate")
@@ -856,65 +856,65 @@ func init() {
 func init() { proto.RegisterFile("types/msg_shielder.proto", fileDescriptor_75588396e42c8ea6) }
 
 var fileDescriptor_75588396e42c8ea6 = []byte{
-	// 880 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x56, 0x41, 0x6f, 0xe3, 0x44,
-	0x14, 0xae, 0x93, 0x34, 0xa2, 0xaf, 0x69, 0xd9, 0x5a, 0x65, 0x89, 0xba, 0x6c, 0x9a, 0x75, 0xbb,
-	0xd0, 0xad, 0x68, 0x23, 0xb1, 0x9c, 0x56, 0x5c, 0xda, 0x95, 0x10, 0x15, 0xda, 0xaa, 0x72, 0x56,
-	0x42, 0x82, 0x83, 0x35, 0xf6, 0xbc, 0xda, 0xa3, 0xc6, 0x1e, 0xe3, 0x19, 0x37, 0xed, 0x95, 0x23,
-	0x27, 0xce, 0x9c, 0xf8, 0x05, 0x68, 0xc5, 0xaf, 0xe0, 0x84, 0xf6, 0xc0, 0x81, 0x0b, 0x08, 0xb5,
-	0x87, 0xbd, 0xf1, 0x03, 0x90, 0x90, 0xd0, 0xd8, 0x13, 0xd7, 0x4d, 0xbd, 0xe9, 0x6a, 0x95, 0x5c,
-	0x12, 0xcf, 0xf7, 0x26, 0xef, 0xbd, 0xef, 0xfb, 0xde, 0x78, 0x02, 0x6d, 0x79, 0x1e, 0xa3, 0xe8,
-	0x85, 0xc2, 0x77, 0x44, 0xc0, 0x70, 0x40, 0x31, 0xd9, 0x8d, 0x13, 0x2e, 0xb9, 0x39, 0x9f, 0x45,
-	0xd6, 0x56, 0x48, 0xc8, 0x22, 0xde, 0xcb, 0x3e, 0xf3, 0xc8, 0xda, 0xaa, 0xcf, 0x7d, 0x9e, 0x3d,
-	0xf6, 0xd4, 0x53, 0x8e, 0x5a, 0xff, 0x19, 0x70, 0xf7, 0x99, 0xf0, 0xfb, 0x3a, 0x8b, 0x8d, 0x3e,
-	0x13, 0x12, 0x93, 0x23, 0x3e, 0x34, 0xef, 0xc1, 0x42, 0xcc, 0x87, 0x8e, 0xe4, 0x27, 0x18, 0xb5,
-	0x8d, 0xae, 0xb1, 0xb5, 0x60, 0xbf, 0x13, 0xf3, 0xe1, 0x73, 0xb5, 0x36, 0x9f, 0x43, 0x53, 0x30,
-	0x3f, 0xc2, 0xa4, 0x5d, 0xeb, 0x1a, 0x5b, 0xad, 0xfd, 0xcf, 0xfe, 0xfd, 0x6b, 0x7d, 0xc7, 0x67,
-	0x32, 0x48, 0xdd, 0x5d, 0x8f, 0x87, 0x3d, 0x8f, 0x8b, 0x90, 0x0b, 0xfd, 0xb5, 0x23, 0xe8, 0x49,
-	0x2f, 0x6b, 0x6c, 0x77, 0xcf, 0xf3, 0xf6, 0x28, 0x4d, 0x50, 0x88, 0x1f, 0x5f, 0xbd, 0xd8, 0x6e,
-	0xba, 0xe8, 0x05, 0x8f, 0x3f, 0xb1, 0x75, 0x2e, 0x73, 0x0b, 0xee, 0xf0, 0x18, 0x13, 0x22, 0x79,
-	0xe2, 0xc4, 0xa9, 0xeb, 0x9c, 0xe0, 0x79, 0xbb, 0x9e, 0x55, 0x5e, 0x1e, 0xe1, 0x47, 0xa9, 0xfb,
-	0x25, 0x9e, 0x9b, 0x5d, 0x68, 0x45, 0x9c, 0x62, 0xb1, 0xab, 0x91, 0xed, 0x02, 0x85, 0xe5, 0x3b,
-	0x9e, 0x6c, 0x7e, 0xff, 0xea, 0xc5, 0xf6, 0xba, 0x0c, 0x78, 0x12, 0x11, 0xca, 0x7b, 0xd5, 0x24,
-	0xad, 0x5f, 0x0c, 0xe8, 0x54, 0x87, 0x6c, 0x14, 0x31, 0x8f, 0x04, 0x9a, 0x1f, 0xc1, 0xbb, 0x14,
-	0x63, 0x2e, 0x98, 0x74, 0x48, 0xde, 0xba, 0x56, 0x63, 0x59, 0xc3, 0x9a, 0x90, 0x69, 0xc1, 0xd2,
-	0x29, 0x49, 0x07, 0xb2, 0x68, 0xaa, 0x96, 0x6d, 0x5b, 0xcc, 0x40, 0xdd, 0xf7, 0xc7, 0x60, 0x8e,
-	0x92, 0xc5, 0x44, 0x06, 0x0e, 0x8b, 0x28, 0x9e, 0x65, 0x1c, 0x1b, 0xf6, 0x1d, 0x1d, 0x39, 0x22,
-	0x32, 0x38, 0x50, 0xb8, 0xf9, 0x1e, 0x34, 0x5d, 0x46, 0x1d, 0x46, 0x35, 0xbf, 0x79, 0x97, 0xd1,
-	0x03, 0x6a, 0xfd, 0x69, 0xc0, 0x5a, 0xa9, 0xe9, 0x23, 0x2e, 0xe4, 0x53, 0x1e, 0x86, 0x4c, 0x86,
-	0x18, 0x49, 0x61, 0xde, 0x07, 0x18, 0xd5, 0x60, 0x54, 0xf7, 0xba, 0xa0, 0x91, 0x03, 0x6a, 0x76,
-	0x61, 0xd1, 0xbb, 0xda, 0xdd, 0xae, 0x75, 0xeb, 0xaa, 0xc9, 0x12, 0x54, 0x32, 0xb7, 0x3e, 0x3d,
-	0x73, 0x9f, 0x6c, 0x29, 0x43, 0x36, 0xaa, 0x0c, 0x19, 0x23, 0x60, 0x7d, 0x03, 0xd6, 0xeb, 0xa3,
-	0x85, 0x2f, 0xb7, 0xd0, 0xbc, 0x0b, 0x4d, 0x21, 0x89, 0x4c, 0x85, 0xb6, 0x41, 0xaf, 0xac, 0xdf,
-	0x0c, 0xf8, 0xe0, 0x9a, 0xe3, 0xdf, 0xa6, 0x28, 0xe4, 0x57, 0x4c, 0x06, 0x34, 0x21, 0x43, 0x32,
-	0x30, 0x57, 0x61, 0x3e, 0x4e, 0x38, 0x3f, 0xce, 0x52, 0xb6, 0xec, 0x7c, 0xa1, 0xd2, 0xc5, 0xa9,
-	0x3b, 0x60, 0x5e, 0x3e, 0xf0, 0xb6, 0x5e, 0xcd, 0x48, 0xab, 0x6d, 0xa5, 0xd5, 0xc3, 0xea, 0xe1,
-	0x1d, 0xeb, 0xd7, 0xf2, 0x60, 0x73, 0x52, 0xbc, 0xd0, 0x6b, 0x03, 0x96, 0x86, 0x05, 0x7a, 0x25,
-	0x59, 0xeb, 0x0a, 0x9c, 0xa0, 0xda, 0xcf, 0x35, 0x58, 0x2d, 0x55, 0xe9, 0xc7, 0x03, 0x26, 0x3f,
-	0x47, 0x14, 0x37, 0x0e, 0xa2, 0x31, 0x7e, 0x10, 0xcd, 0x1d, 0x30, 0x8b, 0x43, 0xad, 0xe8, 0x11,
-	0x99, 0x26, 0xa8, 0x55, 0x5c, 0x19, 0x45, 0xfa, 0xa3, 0xc0, 0xf8, 0x78, 0xd6, 0x6f, 0x8e, 0xe7,
-	0x23, 0x58, 0x39, 0x46, 0x74, 0x22, 0x2e, 0x8b, 0xb2, 0xa2, 0xdd, 0xc8, 0xf6, 0x2d, 0x1f, 0x23,
-	0x1e, 0x72, 0xa9, 0x4b, 0x97, 0x27, 0x79, 0x7e, 0x8a, 0xee, 0x58, 0xca, 0x9d, 0xfb, 0x55, 0xee,
-	0x14, 0xba, 0x58, 0xa7, 0xd7, 0xa6, 0xac, 0xc0, 0xdf, 0x74, 0x7a, 0xd7, 0x61, 0x91, 0x84, 0x3c,
-	0x8d, 0xa4, 0x23, 0x88, 0xcc, 0xcd, 0x68, 0xd8, 0x90, 0x43, 0x7d, 0x22, 0x45, 0xc9, 0xa8, 0xfa,
-	0x35, 0xa3, 0xbe, 0xab, 0x41, 0xfb, 0x99, 0xf0, 0x0f, 0x39, 0xc5, 0xfe, 0x80, 0xcb, 0xbd, 0xd4,
-	0x93, 0x8c, 0x47, 0x4f, 0x13, 0x24, 0x12, 0xdf, 0xc0, 0xac, 0x07, 0xd0, 0x4a, 0x50, 0x60, 0x72,
-	0x8a, 0xe5, 0xc2, 0x8b, 0x1a, 0xcb, 0x2a, 0x6f, 0xc0, 0x12, 0x9e, 0xc5, 0x2c, 0x39, 0x77, 0x02,
-	0x64, 0x7e, 0x20, 0xb3, 0x06, 0xea, 0x76, 0x2b, 0x07, 0xbf, 0xc8, 0xb0, 0x92, 0xf0, 0x8d, 0x29,
-	0x0a, 0xff, 0xa1, 0x12, 0xfe, 0x41, 0x59, 0xf8, 0x4a, 0x9e, 0xd6, 0x1e, 0x74, 0x5f, 0x17, 0x2b,
-	0x1b, 0x40, 0xf2, 0x40, 0xc9, 0x00, 0x8d, 0x1c, 0x50, 0xeb, 0xa7, 0x4a, 0x1d, 0xf7, 0x19, 0x55,
-	0x57, 0xe3, 0xe4, 0xdf, 0x5e, 0xbf, 0x39, 0x6b, 0x63, 0x37, 0xe7, 0x14, 0xef, 0xb8, 0x19, 0x8d,
-	0xf7, 0xad, 0x2a, 0xe7, 0x2a, 0x58, 0xbf, 0x1b, 0x70, 0xef, 0x66, 0xb0, 0x8f, 0x03, 0xf4, 0xe4,
-	0x3e, 0xa3, 0xb7, 0xa9, 0x74, 0x75, 0xb9, 0xd5, 0x4a, 0x97, 0xdb, 0x8c, 0x5e, 0xa8, 0x8f, 0x14,
-	0xa7, 0xcd, 0x09, 0x9c, 0x8a, 0xb6, 0xad, 0x7f, 0x0c, 0x78, 0xbf, 0x22, 0xae, 0x4e, 0xf0, 0x5b,
-	0x52, 0xba, 0xfd, 0x95, 0x36, 0x9b, 0xe3, 0xf2, 0x50, 0x91, 0xee, 0x4e, 0x22, 0xad, 0x48, 0xed,
-	0x1f, 0xfe, 0x7a, 0xd1, 0x31, 0x5e, 0x5e, 0x74, 0x8c, 0xbf, 0x2f, 0x3a, 0xc6, 0x0f, 0x97, 0x9d,
-	0xb9, 0x97, 0x97, 0x9d, 0xb9, 0x3f, 0x2e, 0x3b, 0x73, 0x5f, 0x7f, 0x5a, 0x6a, 0x61, 0x94, 0xc6,
-	0x23, 0x22, 0xe8, 0xf9, 0x7c, 0xa7, 0x48, 0x7b, 0x56, 0x84, 0xf2, 0xa6, 0xdc, 0x66, 0xf6, 0xd7,
-	0xf2, 0xf1, 0xff, 0x01, 0x00, 0x00, 0xff, 0xff, 0x87, 0x4f, 0x35, 0xc9, 0xa6, 0x0a, 0x00, 0x00,
+	// 866 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x56, 0xbf, 0x6f, 0x23, 0x45,
+	0x14, 0xce, 0xfa, 0x97, 0xc8, 0xd8, 0x09, 0xf1, 0x2a, 0x80, 0x2f, 0xc7, 0x39, 0xbe, 0x3d, 0x7e,
+	0xe4, 0x4e, 0x38, 0x96, 0x38, 0xaa, 0x13, 0x8d, 0x0d, 0x42, 0x58, 0xe8, 0xa2, 0xb0, 0xbe, 0x02,
+	0xd1, 0xac, 0x66, 0x77, 0x5e, 0x76, 0x47, 0xf1, 0xee, 0x2c, 0x3b, 0xb3, 0x71, 0xdc, 0x52, 0x52,
+	0x51, 0x53, 0xf1, 0x17, 0xa0, 0x94, 0xfc, 0x09, 0xd0, 0x5d, 0x41, 0x41, 0x85, 0x50, 0x52, 0x5c,
+	0x47, 0x0f, 0x15, 0xda, 0xd9, 0xf1, 0x66, 0xfd, 0x03, 0x3b, 0x42, 0x76, 0x93, 0xec, 0x7c, 0x6f,
+	0xf2, 0xe6, 0x7d, 0xdf, 0x37, 0x6f, 0x5e, 0x50, 0x43, 0x8c, 0x43, 0xe0, 0x1d, 0x9f, 0xbb, 0x16,
+	0xf7, 0x28, 0x0c, 0x09, 0x44, 0xc7, 0x61, 0xc4, 0x04, 0xd3, 0xcb, 0x32, 0x72, 0x50, 0xc7, 0x3e,
+	0x0d, 0x58, 0x47, 0xfe, 0x4c, 0x23, 0x07, 0xfb, 0x2e, 0x73, 0x99, 0xfc, 0xec, 0x24, 0x5f, 0x29,
+	0x6a, 0xfc, 0xad, 0xa1, 0xfd, 0xe7, 0xdc, 0xfd, 0x14, 0x42, 0xc6, 0xa9, 0x30, 0xe1, 0x9b, 0x18,
+	0xb8, 0x38, 0x65, 0x23, 0xfd, 0x3e, 0xda, 0x0e, 0xd9, 0xc8, 0x12, 0xec, 0x1c, 0x82, 0x86, 0xd6,
+	0xd2, 0x8e, 0xb6, 0xcd, 0xd7, 0x42, 0x36, 0x7a, 0x91, 0xac, 0xf5, 0x17, 0xa8, 0xc2, 0xa9, 0x1b,
+	0x40, 0xd4, 0x28, 0xb4, 0xb4, 0xa3, 0x5a, 0xef, 0xe3, 0x7f, 0xfe, 0x38, 0x6c, 0xbb, 0x54, 0x78,
+	0xb1, 0x7d, 0xec, 0x30, 0xbf, 0xe3, 0x30, 0xee, 0x33, 0xae, 0x7e, 0xb5, 0x39, 0x39, 0xef, 0xc8,
+	0xb2, 0x8e, 0xbb, 0x8e, 0xd3, 0x25, 0x24, 0x02, 0xce, 0x7f, 0x78, 0x75, 0xf5, 0xa4, 0x62, 0x83,
+	0xe3, 0x3d, 0xfd, 0xd0, 0x54, 0xb9, 0xf4, 0x23, 0xb4, 0xc7, 0x42, 0x88, 0xb0, 0x60, 0x91, 0x15,
+	0xc6, 0xb6, 0x75, 0x0e, 0xe3, 0x46, 0x51, 0x9e, 0xbc, 0x3b, 0xc1, 0x4f, 0x63, 0xfb, 0x0b, 0x18,
+	0xeb, 0x2d, 0x54, 0x0b, 0x18, 0x81, 0x6c, 0x57, 0x49, 0xee, 0x42, 0x09, 0x96, 0xee, 0x78, 0x66,
+	0x7c, 0xf7, 0xea, 0xea, 0xc9, 0x03, 0xe1, 0xb1, 0x28, 0xc0, 0x84, 0x75, 0x16, 0x51, 0x34, 0xae,
+	0x34, 0xf4, 0xf6, 0xa2, 0x80, 0x09, 0x3c, 0x64, 0x01, 0x07, 0xfd, 0x7d, 0xf4, 0x3a, 0x49, 0x83,
+	0x16, 0x4e, 0xcb, 0x56, 0x4a, 0xec, 0x2a, 0x58, 0x91, 0xd1, 0x0d, 0xb4, 0x73, 0x81, 0xe3, 0xa1,
+	0xc8, 0x0a, 0x2a, 0xc8, 0x6d, 0x55, 0x09, 0xaa, 0x9a, 0x3f, 0x40, 0xfa, 0x24, 0x59, 0x88, 0x85,
+	0x67, 0xd1, 0x80, 0xc0, 0xa5, 0xe4, 0x57, 0x32, 0xf7, 0x54, 0xe4, 0x14, 0x0b, 0xaf, 0x9f, 0xe0,
+	0xfa, 0x1b, 0xa8, 0x62, 0x53, 0x62, 0x51, 0xa2, 0xb8, 0x95, 0x6d, 0x4a, 0xfa, 0xc4, 0xf8, 0x55,
+	0x43, 0x7b, 0xcf, 0xb9, 0x3b, 0x50, 0xa6, 0x0f, 0xc2, 0x21, 0x15, 0xfa, 0x03, 0x84, 0x26, 0x99,
+	0x29, 0x51, 0x15, 0x6e, 0x2b, 0xa4, 0x4f, 0xf4, 0x16, 0xaa, 0x3a, 0xcc, 0xf7, 0xa9, 0xf0, 0x21,
+	0x10, 0xbc, 0x51, 0x68, 0x15, 0x93, 0xd2, 0x72, 0x50, 0xce, 0xce, 0xe2, 0xfa, 0xec, 0x7c, 0xd6,
+	0x4c, 0x2c, 0xb8, 0x97, 0xb7, 0x60, 0xaa, 0x6c, 0xe3, 0x4b, 0xd4, 0x98, 0xc5, 0x32, 0xe5, 0x57,
+	0x50, 0x7a, 0x13, 0x55, 0xb8, 0xc0, 0x22, 0xe6, 0x4a, 0x68, 0xb5, 0x32, 0x7e, 0xd6, 0x50, 0x3d,
+	0x97, 0xd3, 0x04, 0x02, 0xe0, 0xeb, 0xfb, 0xa8, 0x1c, 0x46, 0x8c, 0x9d, 0xc9, 0x3c, 0x35, 0x33,
+	0x5d, 0x24, 0x39, 0xc2, 0xd8, 0x1e, 0x52, 0x27, 0xbd, 0xc3, 0xa6, 0x5a, 0x6d, 0x48, 0x8c, 0xc3,
+	0x44, 0x8c, 0x83, 0x45, 0x62, 0xa4, 0x45, 0x1a, 0x5f, 0xa1, 0x7b, 0x73, 0x60, 0x26, 0xc7, 0x23,
+	0xb4, 0x33, 0xa2, 0xc2, 0x23, 0x11, 0x1e, 0xe1, 0xe1, 0xad, 0x22, 0xb5, 0x5b, 0x70, 0x89, 0x28,
+	0x3f, 0x15, 0x64, 0x8b, 0x4f, 0x09, 0xfd, 0x19, 0x00, 0x9f, 0xeb, 0x22, 0x6d, 0xb6, 0x8b, 0xf4,
+	0x36, 0xd2, 0xb3, 0x8e, 0x4c, 0x88, 0x60, 0x11, 0x47, 0xa0, 0xf4, 0xaa, 0x4f, 0x22, 0x83, 0x49,
+	0x60, 0xf6, 0xa6, 0x15, 0xe7, 0x6f, 0xda, 0x63, 0x54, 0x3f, 0x03, 0xb0, 0x02, 0x26, 0xb2, 0x63,
+	0x79, 0xa3, 0x24, 0xf7, 0xed, 0x9e, 0x01, 0x9c, 0x30, 0xa1, 0x8e, 0xce, 0x5f, 0xca, 0xf2, 0x1a,
+	0x7d, 0x98, 0x7f, 0x17, 0xe6, 0x74, 0x31, 0x2e, 0xe4, 0xb3, 0x30, 0x87, 0xdf, 0xf5, 0x72, 0x1e,
+	0xa2, 0x2a, 0xf6, 0x59, 0x1c, 0x08, 0x8b, 0x63, 0x91, 0x9a, 0x51, 0x32, 0x51, 0x0a, 0x0d, 0xb0,
+	0xe0, 0x39, 0xa3, 0x8a, 0x53, 0x46, 0x7d, 0x5b, 0x90, 0x1d, 0x71, 0xc2, 0x08, 0x0c, 0x86, 0x4c,
+	0x74, 0x63, 0x47, 0x50, 0x16, 0x7c, 0x12, 0x01, 0x16, 0x70, 0x07, 0xb3, 0x1e, 0xa2, 0x5a, 0x04,
+	0x1c, 0xa2, 0x0b, 0xc8, 0x1f, 0x5c, 0x55, 0x98, 0x3c, 0xf9, 0x11, 0xda, 0x81, 0xcb, 0x90, 0x46,
+	0x63, 0xcb, 0x03, 0xea, 0x7a, 0x42, 0x16, 0x50, 0x34, 0x6b, 0x29, 0xf8, 0xb9, 0xc4, 0x72, 0xc2,
+	0x97, 0xd6, 0x28, 0xfc, 0x7b, 0x89, 0xf0, 0x0f, 0xf3, 0xc2, 0x2f, 0xe4, 0x69, 0x74, 0x51, 0xeb,
+	0xbf, 0x62, 0x79, 0x03, 0x70, 0x1a, 0xc8, 0x19, 0xa0, 0x90, 0x3e, 0x31, 0x7e, 0x5c, 0xa8, 0x63,
+	0x8f, 0x92, 0x64, 0xae, 0x2d, 0xff, 0xdb, 0xe9, 0xb1, 0x57, 0x98, 0x19, 0x7b, 0x6b, 0x1c, 0x50,
+	0x1b, 0xba, 0xde, 0x2b, 0x55, 0x4e, 0x55, 0x30, 0x7e, 0xd3, 0xd0, 0xfd, 0xf9, 0xe0, 0x00, 0x86,
+	0xe0, 0x88, 0x1e, 0x25, 0xab, 0x54, 0xba, 0x9d, 0x4e, 0x85, 0xdc, 0x74, 0xda, 0xd0, 0xd3, 0xf9,
+	0x38, 0xe1, 0xf4, 0xce, 0x12, 0x4e, 0x59, 0xd9, 0xc6, 0x5f, 0x1a, 0x7a, 0x6b, 0x41, 0x7c, 0x32,
+	0x25, 0xff, 0x07, 0xa5, 0xd5, 0x4f, 0xda, 0x66, 0xda, 0xe5, 0xdd, 0x84, 0x74, 0x6b, 0x19, 0xe9,
+	0x84, 0x54, 0xef, 0xe4, 0x97, 0xeb, 0xa6, 0xf6, 0xf2, 0xba, 0xa9, 0xfd, 0x79, 0xdd, 0xd4, 0xbe,
+	0xbf, 0x69, 0x6e, 0xbd, 0xbc, 0x69, 0x6e, 0xfd, 0x7e, 0xd3, 0xdc, 0xfa, 0xfa, 0xa3, 0x5c, 0x09,
+	0x93, 0x34, 0x0e, 0xe6, 0x5e, 0xc7, 0x65, 0xed, 0x2c, 0xed, 0x65, 0x16, 0x4a, 0x8b, 0xb2, 0x2b,
+	0xf2, 0xbf, 0xc2, 0xa7, 0xff, 0x06, 0x00, 0x00, 0xff, 0xff, 0x17, 0xd2, 0x47, 0xcf, 0x61, 0x0a,
+	0x00, 0x00,
 }
 
-func (m *MsgShielderRegisterPow) Marshal() (dAtA []byte, err error) {
+func (m *MsgDepositRequestPow) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -924,12 +924,12 @@ func (m *MsgShielderRegisterPow) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *MsgShielderRegisterPow) MarshalTo(dAtA []byte) (int, error) {
+func (m *MsgDepositRequestPow) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *MsgShielderRegisterPow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *MsgDepositRequestPow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -965,7 +965,7 @@ func (m *MsgShielderRegisterPow) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	return len(dAtA) - i, nil
 }
 
-func (m *MsgShielderRegisterPowResponse) Marshal() (dAtA []byte, err error) {
+func (m *MsgDepositRequestPowResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -975,12 +975,12 @@ func (m *MsgShielderRegisterPowResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *MsgShielderRegisterPowResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *MsgDepositRequestPowResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *MsgShielderRegisterPowResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *MsgDepositRequestPowResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1014,7 +1014,7 @@ func (m *MsgShielderRegisterPowResponse) MarshalToSizedBuffer(dAtA []byte) (int,
 	return len(dAtA) - i, nil
 }
 
-func (m *MsgShielderPostCommitments) Marshal() (dAtA []byte, err error) {
+func (m *MsgShielderSplit) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1024,12 +1024,12 @@ func (m *MsgShielderPostCommitments) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *MsgShielderPostCommitments) MarshalTo(dAtA []byte) (int, error) {
+func (m *MsgShielderSplit) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *MsgShielderPostCommitments) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *MsgShielderSplit) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1060,7 +1060,7 @@ func (m *MsgShielderPostCommitments) MarshalToSizedBuffer(dAtA []byte) (int, err
 	return len(dAtA) - i, nil
 }
 
-func (m *MsgShielderPostCommitmentsResponse) Marshal() (dAtA []byte, err error) {
+func (m *MsgShielderSplitResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1070,12 +1070,12 @@ func (m *MsgShielderPostCommitmentsResponse) Marshal() (dAtA []byte, err error) 
 	return dAtA[:n], nil
 }
 
-func (m *MsgShielderPostCommitmentsResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *MsgShielderSplitResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *MsgShielderPostCommitmentsResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *MsgShielderSplitResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1097,7 +1097,7 @@ func (m *MsgShielderPostCommitmentsResponse) MarshalToSizedBuffer(dAtA []byte) (
 	return len(dAtA) - i, nil
 }
 
-func (m *MsgShielderRequestWithdrawal) Marshal() (dAtA []byte, err error) {
+func (m *MsgShielderRedeem) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1107,12 +1107,12 @@ func (m *MsgShielderRequestWithdrawal) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *MsgShielderRequestWithdrawal) MarshalTo(dAtA []byte) (int, error) {
+func (m *MsgShielderRedeem) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *MsgShielderRequestWithdrawal) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *MsgShielderRedeem) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1141,7 +1141,7 @@ func (m *MsgShielderRequestWithdrawal) MarshalToSizedBuffer(dAtA []byte) (int, e
 	return len(dAtA) - i, nil
 }
 
-func (m *MsgShielderRequestWithdrawalResponse) Marshal() (dAtA []byte, err error) {
+func (m *MsgShielderRedeemResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1151,12 +1151,12 @@ func (m *MsgShielderRequestWithdrawalResponse) Marshal() (dAtA []byte, err error
 	return dAtA[:n], nil
 }
 
-func (m *MsgShielderRequestWithdrawalResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *MsgShielderRedeemResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *MsgShielderRequestWithdrawalResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *MsgShielderRedeemResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1525,7 +1525,7 @@ func encodeVarintMsgShielder(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func (m *MsgShielderRegisterPow) Size() (n int) {
+func (m *MsgDepositRequestPow) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1550,7 +1550,7 @@ func (m *MsgShielderRegisterPow) Size() (n int) {
 	return n
 }
 
-func (m *MsgShielderRegisterPowResponse) Size() (n int) {
+func (m *MsgDepositRequestPowResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1574,7 +1574,7 @@ func (m *MsgShielderRegisterPowResponse) Size() (n int) {
 	return n
 }
 
-func (m *MsgShielderPostCommitments) Size() (n int) {
+func (m *MsgShielderSplit) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1597,7 +1597,7 @@ func (m *MsgShielderPostCommitments) Size() (n int) {
 	return n
 }
 
-func (m *MsgShielderPostCommitmentsResponse) Size() (n int) {
+func (m *MsgShielderSplitResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1614,7 +1614,7 @@ func (m *MsgShielderPostCommitmentsResponse) Size() (n int) {
 	return n
 }
 
-func (m *MsgShielderRequestWithdrawal) Size() (n int) {
+func (m *MsgShielderRedeem) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1635,7 +1635,7 @@ func (m *MsgShielderRequestWithdrawal) Size() (n int) {
 	return n
 }
 
-func (m *MsgShielderRequestWithdrawalResponse) Size() (n int) {
+func (m *MsgShielderRedeemResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1824,7 +1824,7 @@ func sovMsgShielder(x uint64) (n int) {
 func sozMsgShielder(x uint64) (n int) {
 	return sovMsgShielder(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (m *MsgShielderRegisterPow) Unmarshal(dAtA []byte) error {
+func (m *MsgDepositRequestPow) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1847,10 +1847,10 @@ func (m *MsgShielderRegisterPow) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MsgShielderRegisterPow: wiretype end group for non-group")
+			return fmt.Errorf("proto: MsgDepositRequestPow: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgShielderRegisterPow: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MsgDepositRequestPow: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2004,7 +2004,7 @@ func (m *MsgShielderRegisterPow) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *MsgShielderRegisterPowResponse) Unmarshal(dAtA []byte) error {
+func (m *MsgDepositRequestPowResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2027,10 +2027,10 @@ func (m *MsgShielderRegisterPowResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MsgShielderRegisterPowResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: MsgDepositRequestPowResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgShielderRegisterPowResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MsgDepositRequestPowResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2169,7 +2169,7 @@ func (m *MsgShielderRegisterPowResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *MsgShielderPostCommitments) Unmarshal(dAtA []byte) error {
+func (m *MsgShielderSplit) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2192,10 +2192,10 @@ func (m *MsgShielderPostCommitments) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MsgShielderPostCommitments: wiretype end group for non-group")
+			return fmt.Errorf("proto: MsgShielderSplit: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgShielderPostCommitments: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MsgShielderSplit: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2317,7 +2317,7 @@ func (m *MsgShielderPostCommitments) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *MsgShielderPostCommitmentsResponse) Unmarshal(dAtA []byte) error {
+func (m *MsgShielderSplitResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2340,10 +2340,10 @@ func (m *MsgShielderPostCommitmentsResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MsgShielderPostCommitmentsResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: MsgShielderSplitResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgShielderPostCommitmentsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MsgShielderSplitResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2431,7 +2431,7 @@ func (m *MsgShielderPostCommitmentsResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *MsgShielderRequestWithdrawal) Unmarshal(dAtA []byte) error {
+func (m *MsgShielderRedeem) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2454,10 +2454,10 @@ func (m *MsgShielderRequestWithdrawal) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MsgShielderRequestWithdrawal: wiretype end group for non-group")
+			return fmt.Errorf("proto: MsgShielderRedeem: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgShielderRequestWithdrawal: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MsgShielderRedeem: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2583,7 +2583,7 @@ func (m *MsgShielderRequestWithdrawal) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *MsgShielderRequestWithdrawalResponse) Unmarshal(dAtA []byte) error {
+func (m *MsgShielderRedeemResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2606,10 +2606,10 @@ func (m *MsgShielderRequestWithdrawalResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MsgShielderRequestWithdrawalResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: MsgShielderRedeemResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgShielderRequestWithdrawalResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MsgShielderRedeemResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
