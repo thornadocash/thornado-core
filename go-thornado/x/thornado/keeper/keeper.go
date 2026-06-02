@@ -176,6 +176,8 @@ type KeeperShielder interface {
 	GetDepositRecordIterator(ctx cosmos.Context) cosmos.Iterator
 	SetShielderCommitment(ctx cosmos.Context, commitment string, depositID common.TxID) error
 	ShielderCommitmentExists(ctx cosmos.Context, commitment string) bool
+	SetShielderNoteRecord(ctx cosmos.Context, record types.StoredShielderNoteRecord) error
+	GetShielderNoteRecordIterator(ctx cosmos.Context) cosmos.Iterator
 	SetShielderDenominationCommitment(ctx cosmos.Context, denominationSats uint64, commitment string, depositID common.TxID) error
 	GetShielderDenominationCommitments(ctx cosmos.Context, denominationSats uint64) ([]string, error)
 	SetShielderMerkleRoot(ctx cosmos.Context, denominationSats uint64, root string) error
@@ -186,6 +188,7 @@ type KeeperShielder interface {
 	GetShielderRedeemByNullifier(ctx cosmos.Context, nullifierHash string) (types.ShielderRedeem, error)
 	SetShielderNullifierSpent(ctx cosmos.Context, nullifierHash string, withdrawalID string) error
 	ShielderNullifierSpent(ctx cosmos.Context, nullifierHash string) bool
+	GetShielderNullifierIterator(ctx cosmos.Context) cosmos.Iterator
 	GetNextShielderNodeBondSlot(ctx cosmos.Context) (uint64, error)
 	SetNextShielderNodeBondSlot(ctx cosmos.Context, slot uint64) error
 	AllocateShielderNodeBondSlot(ctx cosmos.Context) (uint64, error)

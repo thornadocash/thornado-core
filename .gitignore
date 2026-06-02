@@ -3,4 +3,5 @@
 *.tmp
 .DS_Store
 /build/
+/go-thornado/build/
 /go-thornado/shielder-e2e-helper

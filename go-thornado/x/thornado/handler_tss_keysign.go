@@ -195,6 +195,7 @@ func (h TssKeysignHandler) handle(ctx cosmos.Context, msg MsgTssKeysignFail) (*c
 	voter.Signers = nil
 	voter.LastRoundCount = 0
 	h.mgr.Keeper().SetTssKeysignFailVoter(ctx, voter)
+	h.markTxOutPendingRetry(ctx, msg)
 
 	slashPoints := h.mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_FailPenaltyPoints)
 	// fail to generate a new tss key let's slash the node account
@@ -226,6 +227,33 @@ func (h TssKeysignHandler) handle(ctx cosmos.Context, msg MsgTssKeysignFail) (*c
 	}
 
 	return &cosmos.Result{}, nil
+}
+
+func (h TssKeysignHandler) markTxOutPendingRetry(ctx cosmos.Context, msg MsgTssKeysignFail) {
+	txOut, err := h.mgr.Keeper().GetTxOut(ctx, msg.Height)
+	if err != nil {
+		ctx.Logger().Error("fail to get txout for keysign retry", "height", msg.Height, "error", err)
+		return
+	}
+	if !txOutUsesBatching(*txOut) || txOut.Status != TxOutStatusPendingSign {
+		return
+	}
+	hasPendingForVault := false
+	for _, item := range txOut.TxArray {
+		if item.OutHash.IsEmpty() && item.VaultPubKey.Equals(msg.PubKey) {
+			hasPendingForVault = true
+			break
+		}
+	}
+	if !hasPendingForVault {
+		return
+	}
+	txOut.Status = TxOutStatusPendingRetry
+	txOut.RetryUntilHeight = ctx.BlockHeight() + getConfigDurationBlocks(ctx, h.mgr.Keeper(), constants.Withdrawal_BatchWindowMinutes)
+	txOut.SigningLeader = common.EmptyPubKey
+	if err := h.mgr.Keeper().SetTxOut(ctx, txOut); err != nil {
+		ctx.Logger().Error("fail to set txout pending retry", "height", msg.Height, "error", err)
+	}
 }
 
 func validateKeysignAuth(ctx cosmos.Context, k keeper.Keeper, signers []cosmos.AccAddress) (cosmos.Context, error) {

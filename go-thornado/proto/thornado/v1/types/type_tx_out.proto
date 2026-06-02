@@ -61,4 +61,6 @@ message TxOut {
   string signing_leader = 5 [
     (gogoproto.casttype) = "github.com/thornadocash/go-thornado/common.PubKey"
   ];
+  uint64 signing_attempt = 6;
+  int64 retry_until_height = 7;
 }

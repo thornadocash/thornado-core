@@ -2,6 +2,7 @@ package thornado
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
+	sdksecp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
@@ -33,6 +35,8 @@ type shielderRedeemPublicInputs struct {
 
 type shielderNoteCommitment struct {
 	DenominationSats uint64 `json:"denomination_sats"`
+	OwnerPubkey      string `json:"owner_pubkey"`
+	Signature        string `json:"signature,omitempty"`
 	Commitment       string `json:"commitment"`
 }
 
@@ -179,7 +183,7 @@ func SplitNodeSlotSale(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAdd
 	if err != nil {
 		return types.DepositRecord{}, err
 	}
-	sellerNotes, floorRemainder, err := applyShielderNoteFloor(ctx, k, sellerNotes, deposit.SellerPayoutSats)
+	sellerNotes, floorRemainder, err := applyShielderNoteFloor(ctx, k, sellerNotes, deposit.SellerPayoutSats, false)
 	if err != nil {
 		return types.DepositRecord{}, err
 	}
@@ -348,9 +352,6 @@ func PostShielderSplit(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 	if !deposit.Owner.Equals(owner) {
 		return types.DepositRecord{}, fmt.Errorf("deposit owner mismatch")
 	}
-	if len(deposit.Commitments) > 0 {
-		return types.DepositRecord{}, fmt.Errorf("deposit already split")
-	}
 	if deposit.AuctionID != "" {
 		return types.DepositRecord{}, fmt.Errorf("node sale bid deposits split through auction-split")
 	}
@@ -375,20 +376,31 @@ func PostShielderSplit(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 		if deposit.Settlement == "" {
 			return types.DepositRecord{}, fmt.Errorf("deposit missing settlement")
 		}
+	case types.DepositStatusCommitted:
+		if deposit.Settlement == "" {
+			return types.DepositRecord{}, fmt.Errorf("deposit missing settlement")
+		}
 	default:
 		return types.DepositRecord{}, fmt.Errorf("deposit is not matched")
 	}
+	if deposit.SplitSats > deposit.AmountSats {
+		return types.DepositRecord{}, fmt.Errorf("deposit split amount exceeds deposit amount")
+	}
+	availableSats := deposit.AmountSats - deposit.SplitSats
+	if availableSats == 0 {
+		return types.DepositRecord{}, fmt.Errorf("deposit already fully split")
+	}
 
-	noteCommitments, err := parseShielderNoteCommitments(commitments, deposit.AmountSats, deposit.Settlement == types.DepositSettlementOperatorBond)
+	noteCommitments, err := parseShielderNoteCommitments(commitments, availableSats, deposit.Settlement == types.DepositSettlementOperatorBond)
 	if err != nil {
 		return types.DepositRecord{}, err
 	}
-	noteCommitments, floorRemainder, err := applyShielderNoteFloor(ctx, k, noteCommitments, deposit.AmountSats)
+	noteCommitments, floorRemainder, err := applyShielderNoteFloor(ctx, k, noteCommitments, availableSats, true)
 	if err != nil {
 		return types.DepositRecord{}, err
 	}
 	if floorRemainder > 0 {
-		deposit.AmountSats -= floorRemainder
+		availableSats -= floorRemainder
 		if err := addWithdrawalFee(ctx, k, floorRemainder); err != nil {
 			return types.DepositRecord{}, err
 		}
@@ -415,14 +427,17 @@ func PostShielderSplit(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 		total += note.DenominationSats
 		seen[note.Commitment] = struct{}{}
 	}
-	if total != deposit.AmountSats {
-		return types.DepositRecord{}, fmt.Errorf("shielder commitment denominations do not match deposit amount")
+	if total == 0 {
+		return types.DepositRecord{}, fmt.Errorf("missing shielder commitment amount")
+	}
+	if total > availableSats {
+		return types.DepositRecord{}, fmt.Errorf("shielder commitment denominations exceed deposit amount")
 	}
 
-	deposit.Commitments = make([]string, 0, len(noteCommitments))
 	for _, note := range noteCommitments {
 		deposit.Commitments = append(deposit.Commitments, note.Commitment)
 	}
+	deposit.SplitSats += total + floorRemainder
 	if deposit.Settlement == types.DepositSettlementOperatorBond {
 		if err := confirmShielderNodeBond(ctx, k, deposit); err != nil {
 			return types.DepositRecord{}, err
@@ -441,6 +456,16 @@ func PostShielderSplit(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 		if err := k.SetShielderDenominationCommitment(ctx, note.DenominationSats, note.Commitment, depositID); err != nil {
 			return types.DepositRecord{}, err
 		}
+		if strings.TrimSpace(note.OwnerPubkey) != "" {
+			if err := k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+				OwnerPubkey:      strings.TrimSpace(note.OwnerPubkey),
+				Commitment:       note.Commitment,
+				DenominationSats: note.DenominationSats,
+				DepositID:        depositID,
+			}); err != nil {
+				return types.DepositRecord{}, err
+			}
+		}
 		byDenomination[note.DenominationSats] = append(byDenomination[note.DenominationSats], note.Commitment)
 	}
 	for denomination := range byDenomination {
@@ -457,6 +482,96 @@ func PostShielderSplit(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 		}
 	}
 	return deposit, nil
+}
+
+func AccAddressFromCompressedSecp256k1(pubkeyHex string) (cosmos.AccAddress, error) {
+	raw, err := hex.DecodeString(strings.TrimSpace(pubkeyHex))
+	if err != nil {
+		return nil, fmt.Errorf("invalid secp256k1 pubkey")
+	}
+	if len(raw) == 32 {
+		raw = append([]byte{0x02}, raw...)
+	}
+	if len(raw) != 33 {
+		return nil, fmt.Errorf("invalid secp256k1 pubkey length")
+	}
+	if raw[0] != 0x02 && raw[0] != 0x03 {
+		return nil, fmt.Errorf("invalid compressed secp256k1 pubkey prefix")
+	}
+	pubkey := &sdksecp256k1.PubKey{Key: raw}
+	return cosmos.AccAddress(pubkey.Address()), nil
+}
+
+func VerifyGaslessSplitAuthorization(depositPubkey string, signatureHex string, depositID string, amountSats uint64, commitments []string) error {
+	notes := make([]shielderNoteCommitment, 0, len(commitments))
+	for _, raw := range commitments {
+		var note shielderNoteCommitment
+		if err := json.Unmarshal([]byte(strings.TrimSpace(raw)), &note); err != nil {
+			return fmt.Errorf("invalid shielder commitment: %w", err)
+		}
+		note.Commitment = strings.TrimSpace(note.Commitment)
+		notes = append(notes, note)
+	}
+	commitmentsJSON, err := json.Marshal(notes)
+	if err != nil {
+		return err
+	}
+	digest := hashLengthPrefixedParts([]string{
+		"thornado-shielder-v1",
+		"split-authorization",
+		strings.TrimSpace(depositPubkey),
+		strings.TrimSpace(depositID),
+		fmt.Sprintf("%d", amountSats),
+		string(commitmentsJSON),
+	})
+	rawPubkey, err := secpPubkeyCandidates(strings.TrimSpace(depositPubkey))
+	if err != nil {
+		return fmt.Errorf("invalid deposit pubkey")
+	}
+	rawSig, err := hex.DecodeString(strings.TrimSpace(signatureHex))
+	if err != nil {
+		return fmt.Errorf("invalid split authorization signature")
+	}
+	signature, err := btcec.ParseDERSignature(rawSig, btcec.S256())
+	if err != nil {
+		return fmt.Errorf("invalid split authorization signature: %w", err)
+	}
+	halfOrder := new(big.Int).Rsh(btcec.S256().N, 1)
+	if signature.S.Cmp(halfOrder) == 1 {
+		return fmt.Errorf("high-S signature rejected")
+	}
+	for _, candidate := range rawPubkey {
+		pubkey, err := btcec.ParsePubKey(candidate, btcec.S256())
+		if err == nil && signature.Verify(digest, pubkey) {
+			return nil
+		}
+	}
+	return fmt.Errorf("split authorization signature verification failed")
+}
+
+func hashLengthPrefixedParts(parts []string) []byte {
+	hasher := sha256.New()
+	var length [8]byte
+	for _, part := range parts {
+		binary.BigEndian.PutUint64(length[:], uint64(len(part)))
+		hasher.Write(length[:])
+		hasher.Write([]byte(part))
+	}
+	return hasher.Sum(nil)
+}
+
+func secpPubkeyCandidates(pubkeyHex string) ([][]byte, error) {
+	raw, err := hex.DecodeString(strings.TrimSpace(pubkeyHex))
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) == 33 {
+		return [][]byte{raw}, nil
+	}
+	if len(raw) == 32 {
+		return [][]byte{append([]byte{0x02}, raw...), append([]byte{0x03}, raw...)}, nil
+	}
+	return nil, fmt.Errorf("invalid secp256k1 pubkey length")
 }
 
 func parseShielderNoteCommitments(raw []string, depositAmountSats uint64, allowProtocolCommitments bool) ([]shielderNoteCommitment, error) {
@@ -478,6 +593,9 @@ func parseShielderNoteCommitments(raw []string, depositAmountSats uint64, allowP
 			if note.Commitment == "" && !allowProtocolCommitments {
 				return nil, fmt.Errorf("missing shielder commitment")
 			}
+			if err := validateShielderNoteAuthorization(note); err != nil {
+				return nil, err
+			}
 			result = append(result, note)
 			continue
 		}
@@ -489,7 +607,48 @@ func parseShielderNoteCommitments(raw []string, depositAmountSats uint64, allowP
 	return result, nil
 }
 
-func applyShielderNoteFloor(ctx cosmos.Context, k keeper.Keeper, notes []shielderNoteCommitment, amountSats uint64) ([]shielderNoteCommitment, uint64, error) {
+func validateShielderNoteAuthorization(note shielderNoteCommitment) error {
+	note.OwnerPubkey = strings.TrimSpace(note.OwnerPubkey)
+	note.Signature = strings.TrimSpace(note.Signature)
+	if note.OwnerPubkey == "" && note.Signature == "" {
+		return nil
+	}
+	if note.OwnerPubkey == "" || note.Signature == "" {
+		return fmt.Errorf("shielder note owner pubkey and signature must be provided together")
+	}
+	rawPubkey, err := secpPubkeyCandidates(note.OwnerPubkey)
+	if err != nil {
+		return fmt.Errorf("invalid shielder note owner pubkey")
+	}
+	rawSig, err := hex.DecodeString(note.Signature)
+	if err != nil {
+		return fmt.Errorf("invalid shielder note signature")
+	}
+	signature, err := btcec.ParseDERSignature(rawSig, btcec.S256())
+	if err != nil {
+		return fmt.Errorf("invalid shielder note signature: %w", err)
+	}
+	halfOrder := new(big.Int).Rsh(btcec.S256().N, 1)
+	if signature.S.Cmp(halfOrder) == 1 {
+		return fmt.Errorf("high-S shielder note signature rejected")
+	}
+	digest := hashLengthPrefixedParts([]string{
+		"thornado-shielder-v1",
+		"note-authorization",
+		note.OwnerPubkey,
+		fmt.Sprintf("%d", note.DenominationSats),
+		strings.TrimSpace(note.Commitment),
+	})
+	for _, candidate := range rawPubkey {
+		pubkey, err := btcec.ParsePubKey(candidate, btcec.S256())
+		if err == nil && signature.Verify(digest, pubkey) {
+			return nil
+		}
+	}
+	return fmt.Errorf("shielder note signature verification failed")
+}
+
+func applyShielderNoteFloor(ctx cosmos.Context, k keeper.Keeper, notes []shielderNoteCommitment, amountSats uint64, allowSpendableRemainder bool) ([]shielderNoteCommitment, uint64, error) {
 	minNote := uint64(k.GetConfigInt64(ctx, constants.Shielder_NoteAmountMinSats))
 	if minNote == 0 {
 		return notes, 0, nil
@@ -512,6 +671,9 @@ func applyShielderNoteFloor(ctx cosmos.Context, k keeper.Keeper, notes []shielde
 	}
 	if noteTotal+feeRemainder > amountSats {
 		return nil, 0, fmt.Errorf("shielder commitment denominations exceed amount")
+	}
+	if allowSpendableRemainder {
+		return filtered, feeRemainder, nil
 	}
 	unallocated := amountSats - noteTotal - feeRemainder
 	if unallocated >= minNote {
@@ -559,6 +721,16 @@ func insertShielderCommitments(ctx cosmos.Context, k keeper.Keeper, depositID co
 		if err := k.SetShielderDenominationCommitment(ctx, note.DenominationSats, note.Commitment, depositID); err != nil {
 			return err
 		}
+		if strings.TrimSpace(note.OwnerPubkey) != "" {
+			if err := k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+				OwnerPubkey:      strings.TrimSpace(note.OwnerPubkey),
+				Commitment:       note.Commitment,
+				DenominationSats: note.DenominationSats,
+				DepositID:        depositID,
+			}); err != nil {
+				return err
+			}
+		}
 		byDenomination[note.DenominationSats] = append(byDenomination[note.DenominationSats], note.Commitment)
 	}
 	for denomination := range byDenomination {
@@ -583,6 +755,14 @@ func shielderCommitmentStrings(notes []shielderNoteCommitment) []string {
 		result = append(result, note.Commitment)
 	}
 	return result
+}
+
+func shielderNoteCommitmentTotal(notes []shielderNoteCommitment) uint64 {
+	var total uint64
+	for _, note := range notes {
+		total += note.DenominationSats
+	}
+	return total
 }
 
 func nodeSlotAuctionID(nodePubKey string, slot uint64, height int64) string {
@@ -866,7 +1046,7 @@ func SplitShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 	if err != nil {
 		return types.DepositRecord{}, err
 	}
-	noteCommitments, floorRemainder, err := applyShielderNoteFloor(ctx, k, noteCommitments, deposit.AmountSats)
+	noteCommitments, floorRemainder, err := applyShielderNoteFloor(ctx, k, noteCommitments, deposit.AmountSats, false)
 	if err != nil {
 		return types.DepositRecord{}, err
 	}

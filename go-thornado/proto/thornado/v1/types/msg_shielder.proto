@@ -57,6 +57,32 @@ message MsgShielderRedeemResponse {
   string status = 2;
 }
 
+message MsgGaslessDepositRequestPow {
+  option (amino.name) = "thornado/MsgGaslessDepositRequestPow";
+
+  string pow_token = 1;
+  string deposit_pubkey = 2;
+  string operator_pub_key = 3;
+  string node_pub_key = 4;
+}
+
+message MsgGaslessShielderSplit {
+  option (amino.name) = "thornado/MsgGaslessShielderSplit";
+
+  string deposit_id = 1;
+  repeated string commitments = 2;
+  string deposit_pubkey = 3;
+  string signature = 4;
+}
+
+message MsgGaslessShielderRedeem {
+  option (amino.name) = "thornado/MsgGaslessShielderRedeem";
+
+  bytes proof = 1;
+  bytes public = 2;
+  string owner_pubkey = 3;
+}
+
 message MsgShielderSplitFees {
   option (amino.name) = "thornado/MsgShielderSplitFees";
 

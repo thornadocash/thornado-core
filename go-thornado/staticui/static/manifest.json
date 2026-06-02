@@ -1,0 +1,1 @@
+{"assets":[{"path":"index.html","sha256":"aaa10da6282abb5f957cec835b0d2576b90e2c5142f71cc8bd82bfa164b1938b"},{"path":"wasm/thornado_web_wasm.js","sha256":"199cf24ab55d1106cd8dab379890e70b45f57858a6c375715630baadeafe1024"},{"path":"wasm/thornado_web_wasm_bg.wasm","sha256":"abca658ee239b80267f87a3a6f24a81f796eeb8f9ebcbe972af699923609987e"}]} 

@@ -956,7 +956,7 @@ func (qs queryServer) queryTxOut(ctx cosmos.Context, req *types.QueryTxOutReques
 		if err := qs.mgr.Keeper().Cdc().Unmarshal(iterator.Value(), &txOut); err != nil {
 			return nil, err
 		}
-		if txOut.Status == TxOutStatusPendingBatch || txOut.Status == TxOutStatusPendingSign || view == txOutViewAll {
+		if txOut.Status == TxOutStatusPendingBatch || txOut.Status == TxOutStatusPendingSign || txOut.Status == TxOutStatusPendingRetry || view == txOutViewAll {
 			txOut = *filterTxOutView(&txOut, view)
 			if txOut.IsEmpty() {
 				continue
@@ -984,10 +984,12 @@ func filterTxOutView(txOut *TxOut, view txOutView) *TxOut {
 		return txOut
 	}
 	filtered := &TxOut{
-		Height:        txOut.Height,
-		Epoch:         txOut.Epoch,
-		Status:        txOut.Status,
-		SigningLeader: txOut.SigningLeader,
+		Height:           txOut.Height,
+		Epoch:            txOut.Epoch,
+		Status:           txOut.Status,
+		SigningLeader:    txOut.SigningLeader,
+		SigningAttempt:   txOut.SigningAttempt,
+		RetryUntilHeight: txOut.RetryUntilHeight,
 	}
 	for _, item := range txOut.TxArray {
 		switch view {
@@ -1058,6 +1060,54 @@ func (qs queryServer) queryShielderNullifier(ctx cosmos.Context, req *types.Quer
 	return resp, nil
 }
 
+func (qs queryServer) queryShielderSync(ctx cosmos.Context, _ *types.QueryShielderSyncRequest) (*types.QueryShielderSyncResponse, error) {
+	k := qs.mgr.Keeper()
+
+	noteIter := k.GetShielderNoteRecordIterator(ctx)
+	defer noteIter.Close()
+
+	notes := make([]*types.ShielderNoteRecord, 0)
+	for ; noteIter.Valid(); noteIter.Next() {
+		var record types.StoredShielderNoteRecord
+		if err := json.Unmarshal(noteIter.Value(), &record); err != nil {
+			return nil, err
+		}
+		notes = append(notes, &types.ShielderNoteRecord{
+			OwnerPubkey:      strings.TrimSpace(record.OwnerPubkey),
+			Commitment:       strings.TrimSpace(record.Commitment),
+			DenominationSats: record.DenominationSats,
+			DepositId:        record.DepositID.String(),
+		})
+	}
+	sort.Slice(notes, func(i, j int) bool {
+		return notes[i].OwnerPubkey < notes[j].OwnerPubkey
+	})
+
+	nullifierIter := k.GetShielderNullifierIterator(ctx)
+	defer nullifierIter.Close()
+
+	nullifiers := make([]*types.ShielderSpentNullifier, 0)
+	for ; nullifierIter.Valid(); nullifierIter.Next() {
+		nullifier := strings.TrimLeft(strings.TrimPrefix(string(nullifierIter.Key()), "shielder_nullifier/"), "/")
+		var withdrawalID string
+		if err := json.Unmarshal(nullifierIter.Value(), &withdrawalID); err != nil {
+			return nil, err
+		}
+		nullifiers = append(nullifiers, &types.ShielderSpentNullifier{
+			NullifierHash: strings.TrimSpace(nullifier),
+			WithdrawalId:  strings.TrimSpace(withdrawalID),
+		})
+	}
+	sort.Slice(nullifiers, func(i, j int) bool {
+		return nullifiers[i].NullifierHash < nullifiers[j].NullifierHash
+	})
+
+	return &types.QueryShielderSyncResponse{
+		Notes:      notes,
+		Nullifiers: nullifiers,
+	}, nil
+}
+
 func (qs queryServer) queryShielderRoots(ctx cosmos.Context, _ *types.QueryShielderRootsRequest) (*types.QueryShielderRootsResponse, error) {
 	k := qs.mgr.Keeper()
 	iter := k.GetShielderMerkleRootIterator(ctx)
@@ -1086,6 +1136,21 @@ func (qs queryServer) queryShielderRoots(ctx cosmos.Context, _ *types.QueryShiel
 		return roots[i].DenominationSats < roots[j].DenominationSats
 	})
 	return &types.QueryShielderRootsResponse{Roots: roots}, nil
+}
+
+func (qs queryServer) queryShielderLeaves(ctx cosmos.Context, req *types.QueryShielderLeavesRequest) (*types.QueryShielderLeavesResponse, error) {
+	if req.DenominationSats == 0 {
+		return nil, fmt.Errorf("missing shielder denomination")
+	}
+	leaves, err := qs.mgr.Keeper().GetShielderDenominationCommitments(ctx, req.DenominationSats)
+	if err != nil {
+		return nil, err
+	}
+	return &types.QueryShielderLeavesResponse{
+		DenominationSats: req.DenominationSats,
+		LeafCount:        uint64(len(leaves)),
+		Leaves:           leaves,
+	}, nil
 }
 
 func (qs queryServer) queryShielderRedeemQuote(ctx cosmos.Context, req *types.QueryShielderRedeemQuoteRequest) (*types.QueryShielderRedeemQuoteResponse, error) {
@@ -1437,12 +1502,24 @@ func (qs queryServer) queryKeysign(ctx cosmos.Context, heightStr, pubKey string)
 		return nil, fmt.Errorf("fail to get tx out array from key value store: %w", err)
 	}
 	if txs.Status != "" && txs.Status != TxOutStatusPendingSign {
-		txs = &TxOut{Height: height, Epoch: txs.Epoch, Status: txs.Status, SigningLeader: txs.SigningLeader}
+		txs = &TxOut{
+			Height:           height,
+			Epoch:            txs.Epoch,
+			Status:           txs.Status,
+			SigningLeader:    txs.SigningLeader,
+			SigningAttempt:   txs.SigningAttempt,
+			RetryUntilHeight: txs.RetryUntilHeight,
+		}
 	}
 
 	if !pk.IsEmpty() {
 		newTxs := &TxOut{
-			Height: txs.Height,
+			Height:           txs.Height,
+			Epoch:            txs.Epoch,
+			Status:           txs.Status,
+			SigningLeader:    txs.SigningLeader,
+			SigningAttempt:   txs.SigningAttempt,
+			RetryUntilHeight: txs.RetryUntilHeight,
 		}
 		for _, tx := range txs.TxArray {
 			if pk.Equals(tx.VaultPubKey) {

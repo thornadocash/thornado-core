@@ -33,6 +33,25 @@ message QueryShielderNullifierResponse {
   string withdrawal_id = 3;
 }
 
+message ShielderNoteRecord {
+  string owner_pubkey = 1;
+  string commitment = 2;
+  uint64 denomination_sats = 3;
+  string deposit_id = 4;
+}
+
+message ShielderSpentNullifier {
+  string nullifier_hash = 1;
+  string withdrawal_id = 2;
+}
+
+message QueryShielderSyncRequest { string height = 1; }
+
+message QueryShielderSyncResponse {
+  repeated ShielderNoteRecord notes = 1;
+  repeated ShielderSpentNullifier nullifiers = 2;
+}
+
 message ShielderRoot {
   uint64 denomination_sats = 1;
   string root = 2;
@@ -42,6 +61,17 @@ message ShielderRoot {
 message QueryShielderRootsRequest { string height = 1; }
 
 message QueryShielderRootsResponse { repeated ShielderRoot roots = 1; }
+
+message QueryShielderLeavesRequest {
+  uint64 denomination_sats = 1;
+  string height = 2;
+}
+
+message QueryShielderLeavesResponse {
+  uint64 denomination_sats = 1;
+  uint64 leaf_count = 2;
+  repeated string leaves = 3;
+}
 
 message QueryShielderRedeemQuoteRequest {
   uint64 amount_sats = 1;

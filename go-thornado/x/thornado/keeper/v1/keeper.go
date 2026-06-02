@@ -67,6 +67,7 @@ const (
 	prefixVaultDepositPathIndex   types.DbPrefix = "vault_deposit_path_index/"
 	prefixDepositRecord           types.DbPrefix = "deposit_record/"
 	prefixShielderCommitment      types.DbPrefix = "shielder_commitment/"
+	prefixShielderNotePubKey      types.DbPrefix = "shielder_note_pubkey/"
 	prefixShielderDenomCommitment types.DbPrefix = "shielder_denom_commitment/"
 	prefixShielderMerkleRoot      types.DbPrefix = "shielder_merkle_root/"
 	prefixShielderRedeem          types.DbPrefix = "shielder_withdrawal/"

@@ -82,6 +82,13 @@ func TestRegisterSwaggerAPIDisabled(t *testing.T) {
 	require.Equal(t, http.StatusOK, rr.Code)
 	require.Contains(t, rr.Body.String(), "pong")
 
+	for _, path := range []string{"/thornado", "/thornado/", "/thornado/ui/manifest.json"} {
+		req = httptest.NewRequest(http.MethodGet, path, nil)
+		rr = httptest.NewRecorder()
+		rtr.ServeHTTP(rr, req)
+		require.Equal(t, http.StatusOK, rr.Code, "expected UI route %s when swagger disabled", path)
+	}
+
 	// swagger doc routes should NOT be registered when disabled
 	for _, path := range []string{"/thornado/doc", "/thornado/doc/openapi.yaml", "/thornado/doc/openapi.json"} {
 		req = httptest.NewRequest(http.MethodGet, path, nil)
@@ -101,6 +108,13 @@ func TestRegisterSwaggerAPIEnabled(t *testing.T) {
 	rr := httptest.NewRecorder()
 	rtr.ServeHTTP(rr, req)
 	require.Equal(t, http.StatusOK, rr.Code)
+
+	for _, path := range []string{"/thornado", "/thornado/", "/thornado/ui/manifest.json"} {
+		req = httptest.NewRequest(http.MethodGet, path, nil)
+		rr = httptest.NewRecorder()
+		rtr.ServeHTTP(rr, req)
+		require.Equal(t, http.StatusOK, rr.Code, "expected UI route %s when swagger enabled", path)
+	}
 
 	// swagger doc routes should be registered when enabled
 	for _, path := range []string{"/thornado/doc", "/thornado/doc/openapi.yaml", "/thornado/doc/openapi.json"} {

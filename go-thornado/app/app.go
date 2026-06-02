@@ -76,6 +76,7 @@ import (
 
 	appparams "github.com/thornadocash/go-thornado/app/params"
 	"github.com/thornadocash/go-thornado/openapi"
+	"github.com/thornadocash/go-thornado/staticui"
 	"github.com/thornadocash/go-thornado/x/thornado"
 	"github.com/thornadocash/go-thornado/x/thornado/ebifrost"
 	thornadokeeper "github.com/thornadocash/go-thornado/x/thornado/keeper"
@@ -719,7 +720,7 @@ func (app *ThornadoApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.A
 	app.BasicModuleManager.RegisterGRPCGatewayRoutes(clientCtx, apiSvr.GRPCGatewayRouter)
 
 	// register thornado-specific swagger API from root so that other applications can override easily
-	if err := RegisterSwaggerAPI(apiSvr.Router, apiConfig.Swagger); err != nil {
+	if err := RegisterSwaggerAPI(apiSvr.Router, apiConfig.Swagger, clientCtx); err != nil {
 		panic(err)
 	}
 
@@ -730,7 +731,10 @@ func (app *ThornadoApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.A
 }
 
 // RegisterSwaggerAPI provides a common function which registers swagger route with API Server
-func RegisterSwaggerAPI(rtr *mux.Router, swaggerEnabled bool) error {
+func RegisterSwaggerAPI(rtr *mux.Router, swaggerEnabled bool, clientCtx ...client.Context) error {
+	uiPath := fmt.Sprintf("/%s", thornado.ModuleName)
+	uiAssetsPath := fmt.Sprintf("/%s/ui/", thornado.ModuleName)
+
 	// Health Check Endpoint
 	rtr.HandleFunc(
 		fmt.Sprintf("/%s/ping", thornado.ModuleName),
@@ -738,6 +742,14 @@ func RegisterSwaggerAPI(rtr *mux.Router, swaggerEnabled bool) error {
 			fmt.Fprintf(w, `{"ping":"pong"}`)
 		},
 	).Methods(http.MethodGet, http.MethodOptions)
+
+	// Browser client
+	if len(clientCtx) > 0 {
+		staticui.RegisterGaslessAPI(rtr, thornado.ModuleName, clientCtx[0])
+	}
+	rtr.HandleFunc(uiPath, staticui.HandleIndex).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
+	rtr.HandleFunc(uiPath+"/", staticui.HandleIndex).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
+	rtr.PathPrefix(uiAssetsPath).Handler(http.StripPrefix(uiAssetsPath, staticui.Static())).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
 
 	if !swaggerEnabled {
 		return nil

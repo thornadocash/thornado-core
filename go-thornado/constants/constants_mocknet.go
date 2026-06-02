@@ -30,6 +30,7 @@ func init() {
 		Churn_RetryIntervalMinutes:    1,
 		Keygen_FailJailMinutes:        1,
 		Keysign_FailJailMinutes:       1,
+		Withdrawal_BatchWindowMinutes: 1,
 		Node_MissingBlocksChurnOut:    100,
 		Node_MissingBlocksChurnOutMax: 5,
 		Config_OperationalVotesMin:    1, // For regtest single-signer Config changes without Admin

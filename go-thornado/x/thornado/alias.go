@@ -46,6 +46,7 @@ const (
 
 	TxOutStatusPendingBatch = types.TxOutStatusPendingBatch
 	TxOutStatusPendingSign  = types.TxOutStatusPendingSign
+	TxOutStatusPendingRetry = types.TxOutStatusPendingRetry
 
 	// Mint/Burn type
 	MintSupplyType = types.MintBurnSupplyType_mint

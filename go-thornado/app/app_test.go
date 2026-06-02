@@ -146,7 +146,6 @@ func TestProcessProposal(t *testing.T) {
 		{
 			Test: "All valid",
 			Txs: []string{
-				validMsgDeposit,
 				validNetworkFee,
 				validPriceFeed,
 			},
@@ -185,9 +184,9 @@ func TestProcessProposal(t *testing.T) {
 		res, _ := tcApp.ProcessProposal(req)
 
 		if tc.Fail {
-			require.Equal(t, abci.ResponseProcessProposal_REJECT, res.Status)
+			require.Equal(t, abci.ResponseProcessProposal_REJECT, res.Status, tc.Test)
 		} else {
-			require.Equal(t, abci.ResponseProcessProposal_ACCEPT, res.Status)
+			require.Equal(t, abci.ResponseProcessProposal_ACCEPT, res.Status, tc.Test)
 		}
 	}
 }

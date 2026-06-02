@@ -141,11 +141,13 @@ func (tx TxArrayItem) TxOutItem(height int64) TxOutItem {
 
 // TxOut represent the tx out information , bifrost need to sign and process
 type TxOut struct {
-	Height        int64         `json:"height"`
-	TxArray       []TxArrayItem `json:"tx_array"`
-	Epoch         uint64        `json:"epoch,omitempty"`
-	Status        string        `json:"status,omitempty"`
-	SigningLeader common.PubKey `json:"signing_leader,omitempty"`
+	Height           int64         `json:"height"`
+	TxArray          []TxArrayItem `json:"tx_array"`
+	Epoch            uint64        `json:"epoch,omitempty"`
+	Status           string        `json:"status,omitempty"`
+	SigningLeader    common.PubKey `json:"signing_leader,omitempty"`
+	SigningAttempt   uint64        `json:"signing_attempt,omitempty"`
+	RetryUntilHeight int64         `json:"retry_until_height,omitempty"`
 }
 
 func BroadcastCacheKey(vault, chain string) string {

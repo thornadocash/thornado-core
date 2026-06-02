@@ -27,6 +27,18 @@ var (
 	_ sdk.HasValidateBasic = &MsgShielderRedeem{}
 	_ sdk.LegacyMsg        = &MsgShielderRedeem{}
 
+	_ sdk.Msg              = &MsgGaslessDepositRequestPow{}
+	_ sdk.HasValidateBasic = &MsgGaslessDepositRequestPow{}
+	_ sdk.LegacyMsg        = &MsgGaslessDepositRequestPow{}
+
+	_ sdk.Msg              = &MsgGaslessShielderSplit{}
+	_ sdk.HasValidateBasic = &MsgGaslessShielderSplit{}
+	_ sdk.LegacyMsg        = &MsgGaslessShielderSplit{}
+
+	_ sdk.Msg              = &MsgGaslessShielderRedeem{}
+	_ sdk.HasValidateBasic = &MsgGaslessShielderRedeem{}
+	_ sdk.LegacyMsg        = &MsgGaslessShielderRedeem{}
+
 	_ sdk.Msg              = &MsgShielderSplitFees{}
 	_ sdk.HasValidateBasic = &MsgShielderSplitFees{}
 	_ sdk.LegacyMsg        = &MsgShielderSplitFees{}
@@ -173,6 +185,145 @@ func MsgShielderRedeemCustomGetSigners(m proto.Message) ([][]byte, error) {
 		return nil, fmt.Errorf("can't cast as MsgShielderRedeem: %T", m)
 	}
 	return [][]byte{msg.Signer}, nil
+}
+
+func NewMsgGaslessDepositRequestPow(powToken, depositPubkey string, extra ...string) *MsgGaslessDepositRequestPow {
+	operatorPubKey := ""
+	nodePubKey := ""
+	if len(extra) > 0 {
+		operatorPubKey = strings.TrimSpace(extra[0])
+	}
+	if len(extra) > 1 {
+		nodePubKey = strings.TrimSpace(extra[1])
+	}
+	return &MsgGaslessDepositRequestPow{
+		PowToken:       strings.TrimSpace(powToken),
+		DepositPubkey:  strings.TrimSpace(depositPubkey),
+		OperatorPubKey: operatorPubKey,
+		NodePubKey:     nodePubKey,
+	}
+}
+
+func (m *MsgGaslessDepositRequestPow) ValidateBasic() error {
+	if strings.TrimSpace(m.PowToken) == "" {
+		return fmt.Errorf("missing deposit pow token")
+	}
+	if err := validateCompressedSecpPubkey(m.DepositPubkey); err != nil {
+		return fmt.Errorf("invalid deposit pubkey: %w", err)
+	}
+	if strings.TrimSpace(m.NodePubKey) != "" {
+		if strings.TrimSpace(m.OperatorPubKey) == "" {
+			return fmt.Errorf("bond deposits require operator pubkey")
+		}
+		if _, err := common.NewPubKey(m.OperatorPubKey); err != nil {
+			return fmt.Errorf("invalid operator pubkey: %w", err)
+		}
+		if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, m.NodePubKey); err != nil {
+			return fmt.Errorf("invalid node pubkey: %w", err)
+		}
+	}
+	return nil
+}
+
+func (m *MsgGaslessDepositRequestPow) GetSigners() []cosmos.AccAddress { return nil }
+
+func MsgGaslessDepositRequestPowCustomGetSigners(m proto.Message) ([][]byte, error) {
+	if _, ok := m.(*apitypes.MsgGaslessDepositRequestPow); !ok {
+		return nil, fmt.Errorf("can't cast as MsgGaslessDepositRequestPow: %T", m)
+	}
+	return nil, nil
+}
+
+func NewMsgGaslessShielderSplit(depositID common.TxID, commitments []string, depositPubkey, signature string) *MsgGaslessShielderSplit {
+	return &MsgGaslessShielderSplit{
+		DepositId:     depositID.String(),
+		Commitments:   commitments,
+		DepositPubkey: strings.TrimSpace(depositPubkey),
+		Signature:     strings.TrimSpace(signature),
+	}
+}
+
+func (m *MsgGaslessShielderSplit) ValidateBasic() error {
+	if _, err := common.NewTxID(m.DepositId); err != nil {
+		return fmt.Errorf("invalid deposit id: %w", err)
+	}
+	if len(m.Commitments) == 0 {
+		return fmt.Errorf("missing shielder commitments")
+	}
+	if err := validateCompressedSecpPubkey(m.DepositPubkey); err != nil {
+		return fmt.Errorf("invalid deposit pubkey: %w", err)
+	}
+	if _, err := hex.DecodeString(strings.TrimSpace(m.Signature)); err != nil {
+		return fmt.Errorf("invalid split authorization signature")
+	}
+	seen := make(map[string]struct{}, len(m.Commitments))
+	for _, commitment := range m.Commitments {
+		commitment = strings.TrimSpace(commitment)
+		if commitment == "" {
+			return fmt.Errorf("empty shielder commitment")
+		}
+		if _, ok := seen[commitment]; ok {
+			return fmt.Errorf("duplicate shielder commitment")
+		}
+		seen[commitment] = struct{}{}
+	}
+	return nil
+}
+
+func (m *MsgGaslessShielderSplit) GetSigners() []cosmos.AccAddress { return nil }
+
+func MsgGaslessShielderSplitCustomGetSigners(m proto.Message) ([][]byte, error) {
+	if _, ok := m.(*apitypes.MsgGaslessShielderSplit); !ok {
+		return nil, fmt.Errorf("can't cast as MsgGaslessShielderSplit: %T", m)
+	}
+	return nil, nil
+}
+
+func NewMsgGaslessShielderRedeem(proof, public []byte, ownerPubkey string) *MsgGaslessShielderRedeem {
+	return &MsgGaslessShielderRedeem{
+		Proof:       proof,
+		Public:      public,
+		OwnerPubkey: strings.TrimSpace(ownerPubkey),
+	}
+}
+
+func (m *MsgGaslessShielderRedeem) ValidateBasic() error {
+	if !json.Valid(m.Proof) {
+		return fmt.Errorf("invalid shielder proof json")
+	}
+	if !json.Valid(m.Public) {
+		return fmt.Errorf("invalid shielder public json")
+	}
+	if err := validateCompressedSecpPubkey(m.OwnerPubkey); err != nil {
+		return fmt.Errorf("invalid owner pubkey: %w", err)
+	}
+	return nil
+}
+
+func (m *MsgGaslessShielderRedeem) GetSigners() []cosmos.AccAddress { return nil }
+
+func MsgGaslessShielderRedeemCustomGetSigners(m proto.Message) ([][]byte, error) {
+	if _, ok := m.(*apitypes.MsgGaslessShielderRedeem); !ok {
+		return nil, fmt.Errorf("can't cast as MsgGaslessShielderRedeem: %T", m)
+	}
+	return nil, nil
+}
+
+func validateCompressedSecpPubkey(value string) error {
+	raw, err := hex.DecodeString(strings.TrimSpace(value))
+	if err != nil {
+		return fmt.Errorf("expected hex pubkey")
+	}
+	if len(raw) == 32 {
+		return nil
+	}
+	if len(raw) == 33 && (raw[0] == 0x02 || raw[0] == 0x03) {
+		return nil
+	}
+	if len(raw) == 33 {
+		return fmt.Errorf("expected compressed secp256k1 prefix")
+	}
+	return fmt.Errorf("expected 32-byte x-only or 33-byte compressed pubkey")
 }
 
 func NewMsgShielderSplitFees(nodePubKey string, operatorSignature []byte, commitments, feeNotePubKeys []string, signer cosmos.AccAddress) *MsgShielderSplitFees {

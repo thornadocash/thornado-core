@@ -48,8 +48,27 @@ func (ad AnteDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, ne
 			return ctx, err
 		}
 	}
+	if ad.isGaslessNativeTx(tx.GetMsgs()) {
+		return newCtx, nil
+	}
 
 	return next(newCtx, tx, simulate)
+}
+
+func (ad AnteDecorator) isGaslessNativeTx(msgs []cosmos.Msg) bool {
+	if len(msgs) == 0 {
+		return false
+	}
+	for _, msg := range msgs {
+		switch msg.(type) {
+		case *types.MsgGaslessDepositRequestPow,
+			*types.MsgGaslessShielderSplit,
+			*types.MsgGaslessShielderRedeem:
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // rejectInvalidSigners reject txs if they are signed with secp256r1 keys
@@ -160,6 +179,9 @@ func (ad AnteDecorator) anteHandleMessage(ctx sdk.Context, version semver.Versio
 	case *types.MsgDepositRequestPow,
 		*types.MsgShielderSplit,
 		*types.MsgShielderRedeem,
+		*types.MsgGaslessDepositRequestPow,
+		*types.MsgGaslessShielderSplit,
+		*types.MsgGaslessShielderRedeem,
 		*types.MsgShielderSplitFees,
 		*types.MsgNodeSlotAuctionCreate,
 		*types.MsgNodeSlotAuctionBidPow,

@@ -51,6 +51,10 @@ func DepositRecordInvariant(k KVStore) common.Invariant {
 				msg = append(msg, fmt.Sprintf("%s: invalid deposit: %v", deposit.DepositID, err))
 				broken = true
 			}
+			if deposit.SplitSats > deposit.AmountSats {
+				msg = append(msg, fmt.Sprintf("%s: split amount exceeds deposit amount", deposit.DepositID))
+				broken = true
+			}
 			switch deposit.Status {
 			case types.DepositStatusDepositMatched:
 				if deposit.Settlement != "" {

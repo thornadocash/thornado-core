@@ -50,7 +50,9 @@ const (
 	Query_Deposit_FullMethodName              = "/types.Query/Deposit"
 	Query_ShielderRedeem_FullMethodName       = "/types.Query/ShielderRedeem"
 	Query_ShielderNullifier_FullMethodName    = "/types.Query/ShielderNullifier"
+	Query_ShielderSync_FullMethodName         = "/types.Query/ShielderSync"
 	Query_ShielderRoots_FullMethodName        = "/types.Query/ShielderRoots"
+	Query_ShielderLeaves_FullMethodName       = "/types.Query/ShielderLeaves"
 	Query_ShielderRedeemQuote_FullMethodName  = "/types.Query/ShielderRedeemQuote"
 	Query_FeePool_FullMethodName              = "/types.Query/FeePool"
 	Query_DepositSession_FullMethodName       = "/types.Query/DepositSession"
@@ -108,7 +110,9 @@ type QueryClient interface {
 	Deposit(ctx context.Context, in *QueryDepositRequest, opts ...grpc.CallOption) (*QueryDepositResponse, error)
 	ShielderRedeem(ctx context.Context, in *QueryShielderRedeemRequest, opts ...grpc.CallOption) (*QueryShielderRedeemResponse, error)
 	ShielderNullifier(ctx context.Context, in *QueryShielderNullifierRequest, opts ...grpc.CallOption) (*QueryShielderNullifierResponse, error)
+	ShielderSync(ctx context.Context, in *QueryShielderSyncRequest, opts ...grpc.CallOption) (*QueryShielderSyncResponse, error)
 	ShielderRoots(ctx context.Context, in *QueryShielderRootsRequest, opts ...grpc.CallOption) (*QueryShielderRootsResponse, error)
+	ShielderLeaves(ctx context.Context, in *QueryShielderLeavesRequest, opts ...grpc.CallOption) (*QueryShielderLeavesResponse, error)
 	ShielderRedeemQuote(ctx context.Context, in *QueryShielderRedeemQuoteRequest, opts ...grpc.CallOption) (*QueryShielderRedeemQuoteResponse, error)
 	FeePool(ctx context.Context, in *QueryFeePoolRequest, opts ...grpc.CallOption) (*QueryFeePoolResponse, error)
 	DepositSession(ctx context.Context, in *QueryDepositSessionRequest, opts ...grpc.CallOption) (*QueryDepositSessionResponse, error)
@@ -418,9 +422,27 @@ func (c *queryClient) ShielderNullifier(ctx context.Context, in *QueryShielderNu
 	return out, nil
 }
 
+func (c *queryClient) ShielderSync(ctx context.Context, in *QueryShielderSyncRequest, opts ...grpc.CallOption) (*QueryShielderSyncResponse, error) {
+	out := new(QueryShielderSyncResponse)
+	err := c.cc.Invoke(ctx, Query_ShielderSync_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *queryClient) ShielderRoots(ctx context.Context, in *QueryShielderRootsRequest, opts ...grpc.CallOption) (*QueryShielderRootsResponse, error) {
 	out := new(QueryShielderRootsResponse)
 	err := c.cc.Invoke(ctx, Query_ShielderRoots_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) ShielderLeaves(ctx context.Context, in *QueryShielderLeavesRequest, opts ...grpc.CallOption) (*QueryShielderLeavesResponse, error) {
+	out := new(QueryShielderLeavesResponse)
+	err := c.cc.Invoke(ctx, Query_ShielderLeaves_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -642,7 +664,9 @@ type QueryServer interface {
 	Deposit(context.Context, *QueryDepositRequest) (*QueryDepositResponse, error)
 	ShielderRedeem(context.Context, *QueryShielderRedeemRequest) (*QueryShielderRedeemResponse, error)
 	ShielderNullifier(context.Context, *QueryShielderNullifierRequest) (*QueryShielderNullifierResponse, error)
+	ShielderSync(context.Context, *QueryShielderSyncRequest) (*QueryShielderSyncResponse, error)
 	ShielderRoots(context.Context, *QueryShielderRootsRequest) (*QueryShielderRootsResponse, error)
+	ShielderLeaves(context.Context, *QueryShielderLeavesRequest) (*QueryShielderLeavesResponse, error)
 	ShielderRedeemQuote(context.Context, *QueryShielderRedeemQuoteRequest) (*QueryShielderRedeemQuoteResponse, error)
 	FeePool(context.Context, *QueryFeePoolRequest) (*QueryFeePoolResponse, error)
 	DepositSession(context.Context, *QueryDepositSessionRequest) (*QueryDepositSessionResponse, error)
@@ -763,8 +787,14 @@ func (UnimplementedQueryServer) ShielderRedeem(context.Context, *QueryShielderRe
 func (UnimplementedQueryServer) ShielderNullifier(context.Context, *QueryShielderNullifierRequest) (*QueryShielderNullifierResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderNullifier not implemented")
 }
+func (UnimplementedQueryServer) ShielderSync(context.Context, *QueryShielderSyncRequest) (*QueryShielderSyncResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShielderSync not implemented")
+}
 func (UnimplementedQueryServer) ShielderRoots(context.Context, *QueryShielderRootsRequest) (*QueryShielderRootsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderRoots not implemented")
+}
+func (UnimplementedQueryServer) ShielderLeaves(context.Context, *QueryShielderLeavesRequest) (*QueryShielderLeavesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShielderLeaves not implemented")
 }
 func (UnimplementedQueryServer) ShielderRedeemQuote(context.Context, *QueryShielderRedeemQuoteRequest) (*QueryShielderRedeemQuoteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderRedeemQuote not implemented")
@@ -1397,6 +1427,24 @@ func _Query_ShielderNullifier_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_ShielderSync_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryShielderSyncRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).ShielderSync(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_ShielderSync_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).ShielderSync(ctx, req.(*QueryShielderSyncRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Query_ShielderRoots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(QueryShielderRootsRequest)
 	if err := dec(in); err != nil {
@@ -1411,6 +1459,24 @@ func _Query_ShielderRoots_Handler(srv interface{}, ctx context.Context, dec func
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(QueryServer).ShielderRoots(ctx, req.(*QueryShielderRootsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_ShielderLeaves_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryShielderLeavesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).ShielderLeaves(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_ShielderLeaves_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).ShielderLeaves(ctx, req.(*QueryShielderLeavesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1907,8 +1973,16 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Query_ShielderNullifier_Handler,
 		},
 		{
+			MethodName: "ShielderSync",
+			Handler:    _Query_ShielderSync_Handler,
+		},
+		{
 			MethodName: "ShielderRoots",
 			Handler:    _Query_ShielderRoots_Handler,
+		},
+		{
+			MethodName: "ShielderLeaves",
+			Handler:    _Query_ShielderLeaves_Handler,
 		},
 		{
 			MethodName: "ShielderRedeemQuote",

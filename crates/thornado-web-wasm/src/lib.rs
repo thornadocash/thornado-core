@@ -13,7 +13,7 @@ mod orchard;
 
 type Result<T> = std::result::Result<T, Error>;
 
-const DOMAIN: &str = "thornado-mvp-v1";
+const DOMAIN: &str = "thornado-shielder-v1";
 const HARDENED_CHILD_OFFSET: u64 = 1 << 31;
 const DEFAULT_DENOMINATIONS_SATS: [u64; 5] =
     [1_000_000_000, 100_000_000, 10_000_000, 1_000_000, 100_000];
@@ -44,6 +44,8 @@ pub struct NoteCommitment {
     pub denomination_sats: u64,
     #[serde(default)]
     pub owner_pubkey: String,
+    #[serde(default)]
+    pub signature: String,
     pub commitment: String,
 }
 
@@ -62,11 +64,20 @@ pub struct NoteReceipt {
     pub index: u64,
     #[serde(default)]
     pub owner_pubkey: String,
+    #[serde(default)]
+    pub signature: String,
     pub nullifier: String,
     pub secret: String,
     pub commitment: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub orchard: Option<orchard::OrchardNoteReceipt>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct NoteRecoveryCandidate {
+    pub deposit_index: u64,
+    pub index: u64,
+    pub owner_pubkey: String,
 }
 
 fn default_deposit_index() -> u64 {
@@ -207,6 +218,78 @@ pub fn verify_withdrawal_json(
     verify_withdrawal(&proof, &public).map_err(js_error)
 }
 
+#[wasm_bindgen]
+pub fn note_recovery_candidates_json(
+    client_seed: &str,
+    deposit_limit: u64,
+    note_limit: u64,
+) -> std::result::Result<String, JsValue> {
+    let mut candidates = Vec::new();
+    for deposit_index in 0..deposit_limit {
+        for index in 1..=note_limit {
+            let child_secret = note_child_secret_for_deposit(client_seed, deposit_index, "", index);
+            candidates.push(NoteRecoveryCandidate {
+                deposit_index,
+                index: index - 1,
+                owner_pubkey: deposit_owner_pubkey(&child_secret),
+            });
+        }
+    }
+    serde_json::to_string(&candidates).map_err(|error| JsValue::from_str(&error.to_string()))
+}
+
+#[wasm_bindgen]
+pub fn recover_note_receipt_json(
+    client_seed: &str,
+    deposit_index: u64,
+    note_index: u64,
+    deposit_id: &str,
+    denomination_sats: u64,
+    commitment: &str,
+) -> std::result::Result<String, JsValue> {
+    let child_secret =
+        note_child_secret_for_deposit(client_seed, deposit_index, deposit_id, note_index + 1);
+    let owner_pubkey = deposit_owner_pubkey(&child_secret);
+    let nullifier = hash_parts(&[
+        DOMAIN,
+        "receipt-nullifier",
+        &child_secret,
+        &denomination_sats.to_string(),
+    ]);
+    let secret = hash_parts(&[
+        DOMAIN,
+        "receipt-secret",
+        &child_secret,
+        &denomination_sats.to_string(),
+    ]);
+    let signature =
+        note_authorization_for_secret(&child_secret, &owner_pubkey, denomination_sats, commitment);
+    let (expected_commitment, orchard_note) =
+        orchard::create_orchard_note(&child_secret, deposit_id, note_index, denomination_sats)
+            .map_err(js_error)?;
+    if expected_commitment != commitment {
+        return Err(JsValue::from_str("recovered note commitment mismatch"));
+    }
+    let note = NoteReceipt {
+        deposit_id: deposit_id.to_string(),
+        deposit_index,
+        denomination_sats,
+        index: note_index,
+        owner_pubkey,
+        signature,
+        nullifier,
+        secret,
+        commitment: commitment.to_string(),
+        orchard: Some(orchard_note),
+    };
+    serde_json::to_string(&note).map_err(|error| JsValue::from_str(&error.to_string()))
+}
+
+#[wasm_bindgen]
+pub fn nullifier_hash_json(nullifier: &str) -> std::result::Result<String, JsValue> {
+    Ok(hash_parts(&[DOMAIN, "nullifier-hash", nullifier]))
+}
+
 fn derive_split_receipt_for_deposit(
     deposit_id: &str,
     deposit_index: u64,
@@ -219,6 +302,7 @@ fn derive_split_receipt_for_deposit(
         let index = index as u64;
         let child_secret =
             note_child_secret_for_deposit(client_seed, deposit_index, deposit_id, index + 1);
+        let owner_pubkey = deposit_owner_pubkey(&child_secret);
         let nullifier = hash_parts(&[
             DOMAIN,
             "receipt-nullifier",
@@ -233,12 +317,15 @@ fn derive_split_receipt_for_deposit(
         ]);
         let (commitment, orchard_note) =
             orchard::create_orchard_note(&child_secret, deposit_id, index, denomination)?;
+        let signature =
+            note_authorization_for_secret(&child_secret, &owner_pubkey, denomination, &commitment);
         notes.push(NoteReceipt {
             deposit_id: deposit_id.to_string(),
             deposit_index,
             denomination_sats: denomination,
             index,
-            owner_pubkey: String::new(),
+            owner_pubkey,
+            signature,
             nullifier,
             secret,
             commitment,
@@ -353,7 +440,7 @@ fn hash_parts(parts: &[&str]) -> String {
 fn note_child_secret_for_deposit(
     client_seed: &str,
     deposit_index: u64,
-    deposit_id: &str,
+    _deposit_id: &str,
     index: u64,
 ) -> String {
     let hardened_index = hardened_child_index(index);
@@ -363,7 +450,6 @@ fn note_child_secret_for_deposit(
         "m/tc84'/btc'/deposit'/note'",
         client_seed,
         &hardened_child_index(deposit_index).to_string(),
-        deposit_id,
         &hardened_index.to_string(),
     ])
 }
@@ -386,6 +472,25 @@ fn deposit_owner_pubkey(owner_secret: &str) -> String {
     };
     let secp = Secp256k1::new();
     SecpPublicKey::from_secret_key(&secp, &secret_key).to_string()
+}
+
+fn secret_key_from_hex_material(secret_hex: &str) -> SecretKey {
+    let secret_bytes = hex::decode(secret_hex).unwrap_or_default();
+    if let Ok(secret_key) = SecretKey::from_slice(&secret_bytes) {
+        return secret_key;
+    }
+    for counter in 0_u32..u32::MAX {
+        let digest = hash_parts_bytes(&[
+            DOMAIN,
+            "secp-secret-retry",
+            secret_hex,
+            &counter.to_string(),
+        ]);
+        if let Ok(secret_key) = SecretKey::from_slice(&digest) {
+            return secret_key;
+        }
+    }
+    unreachable!("sha256 should produce a valid secp256k1 secret key")
 }
 
 fn split_authorization_for_deposit(
@@ -424,6 +529,26 @@ fn split_authorization_message(
         &commitments_json,
     ]);
     SecpMessage::from_digest_slice(&digest).expect("sha256 digest has secp256k1 message length")
+}
+
+fn note_authorization_for_secret(
+    child_secret: &str,
+    owner_pubkey: &str,
+    denomination_sats: u64,
+    commitment: &str,
+) -> String {
+    let secp = Secp256k1::new();
+    let secret_key = secret_key_from_hex_material(child_secret);
+    let digest = hash_parts_bytes(&[
+        DOMAIN,
+        "note-authorization",
+        owner_pubkey,
+        &denomination_sats.to_string(),
+        commitment,
+    ]);
+    let message = SecpMessage::from_digest_slice(&digest)
+        .expect("sha256 digest has secp256k1 message length");
+    hex::encode(secp.sign_ecdsa(&message, &secret_key).serialize_der())
 }
 
 fn deposit_secret_key(client_seed: &str, deposit_index: u64) -> SecretKey {

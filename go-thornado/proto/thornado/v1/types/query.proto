@@ -157,8 +157,16 @@ service Query {
     option (google.api.http).get = "/thornado/shielder/nullifier/{nullifier_hash}";
   }
 
+  rpc ShielderSync(QueryShielderSyncRequest) returns (QueryShielderSyncResponse) {
+    option (google.api.http).get = "/thornado/shielder/sync";
+  }
+
   rpc ShielderRoots(QueryShielderRootsRequest) returns (QueryShielderRootsResponse) {
     option (google.api.http).get = "/thornado/shielder/roots";
+  }
+
+  rpc ShielderLeaves(QueryShielderLeavesRequest) returns (QueryShielderLeavesResponse) {
+    option (google.api.http).get = "/thornado/shielder/leaves/{denomination_sats}";
   }
 
   rpc ShielderRedeemQuote(QueryShielderRedeemQuoteRequest) returns (QueryShielderRedeemQuoteResponse) {

@@ -116,6 +116,7 @@ func (tos *TxOutStorage) EndBlock(ctx cosmos.Context, mgr Manager) error {
 
 func (tos *TxOutStorage) updateBatchStates(ctx cosmos.Context) error {
 	signingPeriod := getConfigDurationBlocks(ctx, tos.keeper, constants.Keysign_PeriodMinutes)
+	retryPeriod := getConfigDurationBlocks(ctx, tos.keeper, constants.Withdrawal_BatchWindowMinutes)
 	iterator := tos.keeper.GetTxOutIterator(ctx)
 	defer iterator.Close()
 
@@ -127,11 +128,29 @@ func (tos *TxOutStorage) updateBatchStates(ctx cosmos.Context) error {
 		if txOut.IsEmpty() {
 			continue
 		}
+		if !txOutUsesBatching(txOut) {
+			if err := tos.keeper.SetTxOut(ctx, &txOut); err != nil {
+				return err
+			}
+			continue
+		}
 		if txOut.Status == TxOutStatusPendingBatch && txOut.Height <= ctx.BlockHeight() {
 			txOut.Status = TxOutStatusPendingSign
+			txOut.SigningAttempt = 0
+			txOut.RetryUntilHeight = 0
 		}
-		if txOut.Status == TxOutStatusPendingSign && txOutUsesBatching(txOut) {
-			txOut.SigningLeader = tos.selectSigningLeader(ctx, txOut, signingPeriod)
+		if txOut.Status == TxOutStatusPendingSign && txOutHasPendingItems(txOut) && signingPeriod > 0 && ctx.BlockHeight() >= txOut.Height+int64(txOut.SigningAttempt+1)*signingPeriod {
+			txOut.Status = TxOutStatusPendingRetry
+			txOut.RetryUntilHeight = ctx.BlockHeight() + retryPeriod
+			txOut.SigningLeader = common.EmptyPubKey
+		}
+		if txOut.Status == TxOutStatusPendingRetry && txOut.RetryUntilHeight <= ctx.BlockHeight() {
+			txOut.Status = TxOutStatusPendingSign
+			txOut.SigningAttempt++
+			txOut.RetryUntilHeight = 0
+		}
+		if txOut.Status == TxOutStatusPendingSign && txOutHasPendingItems(txOut) {
+			txOut.SigningLeader = tos.selectSigningLeader(ctx, txOut, txOut.SigningAttempt)
 		}
 		if err := tos.keeper.SetTxOut(ctx, &txOut); err != nil {
 			return err
@@ -152,7 +171,16 @@ func txOutUsesBatching(txOut TxOut) bool {
 	return true
 }
 
-func (tos *TxOutStorage) selectSigningLeader(ctx cosmos.Context, txOut TxOut, signingPeriod int64) common.PubKey {
+func txOutHasPendingItems(txOut TxOut) bool {
+	for _, item := range txOut.TxArray {
+		if item.OutHash.IsEmpty() {
+			return true
+		}
+	}
+	return false
+}
+
+func (tos *TxOutStorage) selectSigningLeader(ctx cosmos.Context, txOut TxOut, attempt uint64) common.PubKey {
 	if len(txOut.TxArray) == 0 {
 		return common.EmptyPubKey
 	}
@@ -177,10 +205,6 @@ func (tos *TxOutStorage) selectSigningLeader(ctx cosmos.Context, txOut TxOut, si
 	sort.Strings(members)
 	digest := sha256.Sum256([]byte(fmt.Sprintf("txout:%d:%d", txOut.Epoch, txOut.Height)))
 	offset := binary.BigEndian.Uint64(digest[:8])
-	var attempt uint64
-	if signingPeriod > 0 && ctx.BlockHeight() > txOut.Height {
-		attempt = uint64((ctx.BlockHeight() - txOut.Height) / signingPeriod)
-	}
 	leader, err := common.NewPubKey(members[(offset+attempt)%uint64(len(members))])
 	if err != nil {
 		ctx.Logger().Error("fail to parse txout signing leader", "error", err)

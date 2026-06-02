@@ -1289,6 +1289,9 @@ validate_flow3() {
   printf '%s\n' "$committed" >"$RUN_ROOT/meta/flow3-deposit.json"
   jq -e '.settlement == "user" and ((.commitment_count | tonumber) > 0)' <<<"$committed" >/dev/null || die "flow3 user split not committed"
   record_shielder_notes "$receipt"
+  curl -fsS "http://127.0.0.1:1317/thornado/shielder/sync" >"$RUN_ROOT/meta/flow3-shielder-sync-after-split.json"
+  jq -e '(.notes | length) >= 2 and ([.notes[] | select((.owner_pubkey // "") != "" and (.commitment // "") != "" and (.deposit_id // "") != "")] | length) >= 2' \
+    "$RUN_ROOT/meta/flow3-shielder-sync-after-split.json" >/dev/null || die "flow3 shielder sync did not expose public note records"
 
   local root root_key root_value denom commitment commitment_key commitment_value denom_key denom_value
   curl -fsS "http://127.0.0.1:1317/thornado/shielder/roots" >"$RUN_ROOT/meta/flow3-shielder-roots.json"
@@ -1362,7 +1365,7 @@ validate_flow3() {
   jq -e --argjson fee "$fee" '([.entitlements[]? | (.claimable_sats | tonumber)] | add // 0) >= $fee' "$RUN_ROOT/meta/flow3-fee-entitlements-after.json" >/dev/null \
     || die "flow3 fee entitlement did not increase enough to explain withdrawal fee"
 
-  assert_tx_or_cli_rejected "flow3 duplicate split" "deposit already split" thornado_tx "$RUN_ROOT/node1" "user" shielder split "$deposit_id" "$commitments"
+  assert_tx_or_cli_rejected "flow3 fully split root" "deposit already fully split" thornado_tx "$RUN_ROOT/node1" "user" shielder split "$deposit_id" "$commitments"
   assert_tx_or_cli_rejected "flow3 duplicate redeem" "shielder nullifier already spent" thornado_tx "$RUN_ROOT/node1" "user" shielder redeem "${prefix}.proof.json" "${prefix}.public.json"
 
   local second_note second_withdrawal bad_prefix bad_recipient low_fee fake_receipt fake_note fake_leaves fake_withdrawal neg_session neg_addr neg_txid neg_id neg_match malformed_commitments short_receipt short_commitments alt_receipt alt_commitments alt_committed
@@ -1407,28 +1410,31 @@ validate_flow3() {
   short_receipt="$("$SHIELDER_HELPER" receipt-simple "10000000" "flow3-short-split-seed")"
   short_commitments="$("$SHIELDER_HELPER" commitment-objects "$short_receipt")"
   short_commitments="$(jq -c 'map(tostring)' <<<"$short_commitments")"
-  assert_tx_or_cli_rejected "flow3 split amount mismatch" "spendable remainder" thornado_tx "$RUN_ROOT/node1" "user" shielder split "$neg_id" "$short_commitments"
-  curl -fsS "http://127.0.0.1:1317/thornado/deposit/${neg_id}" >"$RUN_ROOT/meta/flow3-neg-deposit-after-rejections.json"
-  jq -e '.status == "deposit_matched" and ((.commitment_count // "0" | tonumber) == 0)' "$RUN_ROOT/meta/flow3-neg-deposit-after-rejections.json" >/dev/null \
-    || die "flow3 rejected split mutated deposit"
-  alt_receipt="$("$SHIELDER_HELPER" receipt-simple "20000000" "flow3-alt-owner-seed")"
+  out="$(thornado_tx "$RUN_ROOT/node1" "user" shielder split "$neg_id" "$short_commitments")"
+  printf '%s\n' "$out" >"$RUN_ROOT/meta/flow3-partial-split-a.json"
+  assert_tx_success "$out" "flow3 partial split A"
+  curl -fsS "http://127.0.0.1:1317/thornado/deposit/${neg_id}" >"$RUN_ROOT/meta/flow3-neg-deposit-after-partial-a.json"
+  jq -e '.status == "committed" and ((.commitment_count // "0" | tonumber) == 1)' "$RUN_ROOT/meta/flow3-neg-deposit-after-partial-a.json" >/dev/null \
+    || die "flow3 partial split A did not store exactly one commitment"
+  alt_receipt="$("$SHIELDER_HELPER" receipt-simple "10000000" "flow3-alt-owner-seed")"
   printf '%s\n' "$alt_receipt" >"$RUN_ROOT/meta/flow3-alt-owner-receipt.json"
   alt_commitments="$("$SHIELDER_HELPER" commitment-objects "$alt_receipt")"
   alt_commitments="$(jq -c 'map(tostring)' <<<"$alt_commitments")"
   printf '%s\n' "$alt_commitments" >"$RUN_ROOT/meta/flow3-alt-owner-commitments.json"
   out="$(thornado_tx "$RUN_ROOT/node1" "user" shielder split "$neg_id" "$alt_commitments")"
   printf '%s\n' "$out" >"$RUN_ROOT/meta/flow3-alt-owner-split.json"
-  assert_tx_success "$out" "flow3 alternate owner split"
+  assert_tx_success "$out" "flow3 partial split B"
   alt_committed="$(wait_deposit_committed "$neg_id")"
   printf '%s\n' "$alt_committed" >"$RUN_ROOT/meta/flow3-alt-owner-deposit.json"
-  jq -e '.settlement == "user" and (.commitment_count | tonumber) > 0' <<<"$alt_committed" >/dev/null || die "flow3 owner alternate split did not commit"
+  jq -e '.settlement == "user" and (.commitment_count | tonumber) == 2' <<<"$alt_committed" >/dev/null || die "flow3 partial split B did not append the second commitment"
 
   cat >"$RUN_ROOT/meta/flow3-negative-results.md" <<EOF
 # Flow 3 Negative Results
 
 - Request-deposit rejects amount-like extra arguments.
-- Duplicate split and duplicate redeem reject.
-- Malformed commitment JSON, wrong owner split, and amount-mismatched split reject without mutating the deposit.
+- Fully split root and duplicate redeem reject.
+- Malformed commitment JSON and wrong owner split reject without mutating the deposit.
+- Two partial splits against one deposit root are accepted and append commitments.
 - Invalid proof, wrong recipient binding, larger public amount, low fee, and unknown root redeem attempts reject.
 - Low-fee rejection does not consume the note nullifier.
 - Owner-signed alternate commitments with the correct denominations are accepted for a user deposit.

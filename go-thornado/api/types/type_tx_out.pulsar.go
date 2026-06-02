@@ -1507,12 +1507,14 @@ func (x *_TxOut_2_list) IsValid() bool {
 }
 
 var (
-	md_TxOut                protoreflect.MessageDescriptor
-	fd_TxOut_height         protoreflect.FieldDescriptor
-	fd_TxOut_tx_array       protoreflect.FieldDescriptor
-	fd_TxOut_epoch          protoreflect.FieldDescriptor
-	fd_TxOut_status         protoreflect.FieldDescriptor
-	fd_TxOut_signing_leader protoreflect.FieldDescriptor
+	md_TxOut                    protoreflect.MessageDescriptor
+	fd_TxOut_height             protoreflect.FieldDescriptor
+	fd_TxOut_tx_array           protoreflect.FieldDescriptor
+	fd_TxOut_epoch              protoreflect.FieldDescriptor
+	fd_TxOut_status             protoreflect.FieldDescriptor
+	fd_TxOut_signing_leader     protoreflect.FieldDescriptor
+	fd_TxOut_signing_attempt    protoreflect.FieldDescriptor
+	fd_TxOut_retry_until_height protoreflect.FieldDescriptor
 )
 
 func init() {
@@ -1523,6 +1525,8 @@ func init() {
 	fd_TxOut_epoch = md_TxOut.Fields().ByName("epoch")
 	fd_TxOut_status = md_TxOut.Fields().ByName("status")
 	fd_TxOut_signing_leader = md_TxOut.Fields().ByName("signing_leader")
+	fd_TxOut_signing_attempt = md_TxOut.Fields().ByName("signing_attempt")
+	fd_TxOut_retry_until_height = md_TxOut.Fields().ByName("retry_until_height")
 }
 
 var _ protoreflect.Message = (*fastReflection_TxOut)(nil)
@@ -1620,6 +1624,18 @@ func (x *fastReflection_TxOut) Range(f func(protoreflect.FieldDescriptor, protor
 			return
 		}
 	}
+	if x.SigningAttempt != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.SigningAttempt)
+		if !f(fd_TxOut_signing_attempt, value) {
+			return
+		}
+	}
+	if x.RetryUntilHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.RetryUntilHeight)
+		if !f(fd_TxOut_retry_until_height, value) {
+			return
+		}
+	}
 }
 
 // Has reports whether a field is populated.
@@ -1645,6 +1661,10 @@ func (x *fastReflection_TxOut) Has(fd protoreflect.FieldDescriptor) bool {
 		return x.Status != ""
 	case "types.TxOut.signing_leader":
 		return x.SigningLeader != ""
+	case "types.TxOut.signing_attempt":
+		return x.SigningAttempt != uint64(0)
+	case "types.TxOut.retry_until_height":
+		return x.RetryUntilHeight != int64(0)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.TxOut"))
@@ -1671,6 +1691,10 @@ func (x *fastReflection_TxOut) Clear(fd protoreflect.FieldDescriptor) {
 		x.Status = ""
 	case "types.TxOut.signing_leader":
 		x.SigningLeader = ""
+	case "types.TxOut.signing_attempt":
+		x.SigningAttempt = uint64(0)
+	case "types.TxOut.retry_until_height":
+		x.RetryUntilHeight = int64(0)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.TxOut"))
@@ -1705,6 +1729,12 @@ func (x *fastReflection_TxOut) Get(descriptor protoreflect.FieldDescriptor) prot
 	case "types.TxOut.signing_leader":
 		value := x.SigningLeader
 		return protoreflect.ValueOfString(value)
+	case "types.TxOut.signing_attempt":
+		value := x.SigningAttempt
+		return protoreflect.ValueOfUint64(value)
+	case "types.TxOut.retry_until_height":
+		value := x.RetryUntilHeight
+		return protoreflect.ValueOfInt64(value)
 	default:
 		if descriptor.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.TxOut"))
@@ -1737,6 +1767,10 @@ func (x *fastReflection_TxOut) Set(fd protoreflect.FieldDescriptor, value protor
 		x.Status = value.Interface().(string)
 	case "types.TxOut.signing_leader":
 		x.SigningLeader = value.Interface().(string)
+	case "types.TxOut.signing_attempt":
+		x.SigningAttempt = value.Uint()
+	case "types.TxOut.retry_until_height":
+		x.RetryUntilHeight = value.Int()
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.TxOut"))
@@ -1771,6 +1805,10 @@ func (x *fastReflection_TxOut) Mutable(fd protoreflect.FieldDescriptor) protoref
 		panic(fmt.Errorf("field status of message types.TxOut is not mutable"))
 	case "types.TxOut.signing_leader":
 		panic(fmt.Errorf("field signing_leader of message types.TxOut is not mutable"))
+	case "types.TxOut.signing_attempt":
+		panic(fmt.Errorf("field signing_attempt of message types.TxOut is not mutable"))
+	case "types.TxOut.retry_until_height":
+		panic(fmt.Errorf("field retry_until_height of message types.TxOut is not mutable"))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.TxOut"))
@@ -1795,6 +1833,10 @@ func (x *fastReflection_TxOut) NewField(fd protoreflect.FieldDescriptor) protore
 		return protoreflect.ValueOfString("")
 	case "types.TxOut.signing_leader":
 		return protoreflect.ValueOfString("")
+	case "types.TxOut.signing_attempt":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.TxOut.retry_until_height":
+		return protoreflect.ValueOfInt64(int64(0))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.TxOut"))
@@ -1884,6 +1926,12 @@ func (x *fastReflection_TxOut) ProtoMethods() *protoiface.Methods {
 		if l > 0 {
 			n += 1 + l + runtime.Sov(uint64(l))
 		}
+		if x.SigningAttempt != 0 {
+			n += 1 + runtime.Sov(uint64(x.SigningAttempt))
+		}
+		if x.RetryUntilHeight != 0 {
+			n += 1 + runtime.Sov(uint64(x.RetryUntilHeight))
+		}
 		if x.unknownFields != nil {
 			n += len(x.unknownFields)
 		}
@@ -1912,6 +1960,16 @@ func (x *fastReflection_TxOut) ProtoMethods() *protoiface.Methods {
 		if x.unknownFields != nil {
 			i -= len(x.unknownFields)
 			copy(dAtA[i:], x.unknownFields)
+		}
+		if x.RetryUntilHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.RetryUntilHeight))
+			i--
+			dAtA[i] = 0x38
+		}
+		if x.SigningAttempt != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.SigningAttempt))
+			i--
+			dAtA[i] = 0x30
 		}
 		if len(x.SigningLeader) > 0 {
 			i -= len(x.SigningLeader)
@@ -2138,6 +2196,44 @@ func (x *fastReflection_TxOut) ProtoMethods() *protoiface.Methods {
 				}
 				x.SigningLeader = string(dAtA[iNdEx:postIndex])
 				iNdEx = postIndex
+			case 6:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field SigningAttempt", wireType)
+				}
+				x.SigningAttempt = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.SigningAttempt |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 7:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field RetryUntilHeight", wireType)
+				}
+				x.RetryUntilHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.RetryUntilHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
 			default:
 				iNdEx = preIndex
 				skippy, err := runtime.Skip(dAtA[iNdEx:])
@@ -2346,11 +2442,13 @@ type TxOut struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Height        int64        `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
-	TxArray       []*TxOutItem `protobuf:"bytes,2,rep,name=tx_array,json=txArray,proto3" json:"tx_array,omitempty"`
-	Epoch         uint64       `protobuf:"varint,3,opt,name=epoch,proto3" json:"epoch,omitempty"`
-	Status        string       `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
-	SigningLeader string       `protobuf:"bytes,5,opt,name=signing_leader,json=signingLeader,proto3" json:"signing_leader,omitempty"`
+	Height           int64        `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
+	TxArray          []*TxOutItem `protobuf:"bytes,2,rep,name=tx_array,json=txArray,proto3" json:"tx_array,omitempty"`
+	Epoch            uint64       `protobuf:"varint,3,opt,name=epoch,proto3" json:"epoch,omitempty"`
+	Status           string       `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	SigningLeader    string       `protobuf:"bytes,5,opt,name=signing_leader,json=signingLeader,proto3" json:"signing_leader,omitempty"`
+	SigningAttempt   uint64       `protobuf:"varint,6,opt,name=signing_attempt,json=signingAttempt,proto3" json:"signing_attempt,omitempty"`
+	RetryUntilHeight int64        `protobuf:"varint,7,opt,name=retry_until_height,json=retryUntilHeight,proto3" json:"retry_until_height,omitempty"`
 }
 
 func (x *TxOut) Reset() {
@@ -2406,6 +2504,20 @@ func (x *TxOut) GetSigningLeader() string {
 		return x.SigningLeader
 	}
 	return ""
+}
+
+func (x *TxOut) GetSigningAttempt() uint64 {
+	if x != nil {
+		return x.SigningAttempt
+	}
+	return 0
+}
+
+func (x *TxOut) GetRetryUntilHeight() int64 {
+	if x != nil {
+		return x.RetryUntilHeight
+	}
+	return 0
 }
 
 var File_types_type_tx_out_proto protoreflect.FileDescriptor
@@ -2482,8 +2594,8 @@ var file_types_type_tx_out_proto_rawDesc = []byte{
 	0x61, 0x75, 0x6c, 0x74, 0x5f, 0x70, 0x61, 0x74, 0x68, 0x5f, 0x69, 0x6e, 0x64, 0x65, 0x78, 0x18,
 	0x11, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0e, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x50, 0x61, 0x74, 0x68,
 	0x49, 0x6e, 0x64, 0x65, 0x78, 0x12, 0x17, 0x0a, 0x07, 0x74, 0x78, 0x5f, 0x74, 0x79, 0x70, 0x65,
-	0x18, 0x12, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x74, 0x78, 0x54, 0x79, 0x70, 0x65, 0x22, 0xe4,
-	0x01, 0x0a, 0x05, 0x54, 0x78, 0x4f, 0x75, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67,
+	0x18, 0x12, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x74, 0x78, 0x54, 0x79, 0x70, 0x65, 0x22, 0xbb,
+	0x02, 0x0a, 0x05, 0x54, 0x78, 0x4f, 0x75, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67,
 	0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74,
 	0x12, 0x31, 0x0a, 0x08, 0x74, 0x78, 0x5f, 0x61, 0x72, 0x72, 0x61, 0x79, 0x18, 0x02, 0x20, 0x03,
 	0x28, 0x0b, 0x32, 0x10, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x54, 0x78, 0x4f, 0x75, 0x74,
@@ -2496,17 +2608,23 @@ var file_types_type_tx_out_proto_rawDesc = []byte{
 	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61,
 	0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61,
 	0x64, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79,
-	0x52, 0x0d, 0x73, 0x69, 0x67, 0x6e, 0x69, 0x6e, 0x67, 0x4c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x3a,
-	0x04, 0x80, 0xdc, 0x20, 0x01, 0x42, 0x8a, 0x01, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79,
-	0x70, 0x65, 0x73, 0x42, 0x0e, 0x54, 0x79, 0x70, 0x65, 0x54, 0x78, 0x4f, 0x75, 0x74, 0x50, 0x72,
-	0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
-	0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67,
-	0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74,
-	0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x05, 0x54, 0x79, 0x70,
-	0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2, 0x02, 0x11, 0x54, 0x79, 0x70,
-	0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02,
-	0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xc8, 0xe1, 0x1e, 0x00, 0xd8, 0xe1, 0x1e, 0x00, 0x80, 0xe2,
-	0x1e, 0x00, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x52, 0x0d, 0x73, 0x69, 0x67, 0x6e, 0x69, 0x6e, 0x67, 0x4c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x12,
+	0x27, 0x0a, 0x0f, 0x73, 0x69, 0x67, 0x6e, 0x69, 0x6e, 0x67, 0x5f, 0x61, 0x74, 0x74, 0x65, 0x6d,
+	0x70, 0x74, 0x18, 0x06, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0e, 0x73, 0x69, 0x67, 0x6e, 0x69, 0x6e,
+	0x67, 0x41, 0x74, 0x74, 0x65, 0x6d, 0x70, 0x74, 0x12, 0x2c, 0x0a, 0x12, 0x72, 0x65, 0x74, 0x72,
+	0x79, 0x5f, 0x75, 0x6e, 0x74, 0x69, 0x6c, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x07,
+	0x20, 0x01, 0x28, 0x03, 0x52, 0x10, 0x72, 0x65, 0x74, 0x72, 0x79, 0x55, 0x6e, 0x74, 0x69, 0x6c,
+	0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x3a, 0x04, 0x80, 0xdc, 0x20, 0x01, 0x42, 0x8a, 0x01, 0x0a,
+	0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x42, 0x0e, 0x54, 0x79, 0x70, 0x65,
+	0x54, 0x78, 0x4f, 0x75, 0x74, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69,
+	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64,
+	0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64,
+	0x6f, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58,
+	0x58, 0xaa, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65,
+	0x73, 0xe2, 0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74,
+	0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xc8, 0xe1, 0x1e,
+	0x00, 0xd8, 0xe1, 0x1e, 0x00, 0x80, 0xe2, 0x1e, 0x00, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x33,
 }
 
 var (

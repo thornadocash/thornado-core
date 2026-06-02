@@ -155,6 +155,17 @@ func (k KVStore) ShielderCommitmentExists(ctx cosmos.Context, commitment string)
 	return k.has(ctx, k.GetKey(prefixShielderCommitment, strings.TrimSpace(commitment)))
 }
 
+func (k KVStore) SetShielderNoteRecord(ctx cosmos.Context, record types.StoredShielderNoteRecord) error {
+	if err := record.Valid(); err != nil {
+		return err
+	}
+	return k.setShielderJSON(ctx, k.GetKey(prefixShielderNotePubKey, record.Key()), record)
+}
+
+func (k KVStore) GetShielderNoteRecordIterator(ctx cosmos.Context) cosmos.Iterator {
+	return k.getIterator(ctx, prefixShielderNotePubKey)
+}
+
 func (k KVStore) SetShielderDenominationCommitment(ctx cosmos.Context, denominationSats uint64, commitment string, depositID common.TxID) error {
 	commitment = strings.TrimSpace(commitment)
 	if denominationSats == 0 {
@@ -265,6 +276,10 @@ func (k KVStore) SetShielderNullifierSpent(ctx cosmos.Context, nullifierHash str
 
 func (k KVStore) ShielderNullifierSpent(ctx cosmos.Context, nullifierHash string) bool {
 	return k.has(ctx, k.GetKey(prefixShielderNullifier, strings.TrimSpace(nullifierHash)))
+}
+
+func (k KVStore) GetShielderNullifierIterator(ctx cosmos.Context) cosmos.Iterator {
+	return k.getIterator(ctx, prefixShielderNullifier)
 }
 
 func (k KVStore) GetNextShielderNodeBondSlot(ctx cosmos.Context) (uint64, error) {

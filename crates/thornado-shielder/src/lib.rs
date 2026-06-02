@@ -55,6 +55,8 @@ pub struct NoteCommitment {
     pub denomination_sats: u64,
     #[serde(default)]
     pub owner_pubkey: String,
+    #[serde(default)]
+    pub signature: String,
     pub commitment: String,
 }
 
@@ -73,6 +75,8 @@ pub struct NoteReceipt {
     pub index: u64,
     #[serde(default)]
     pub owner_pubkey: String,
+    #[serde(default)]
+    pub signature: String,
     pub nullifier: String,
     pub secret: String,
     pub commitment: String,
@@ -97,7 +101,8 @@ impl SplitReceipt {
             .iter()
             .map(|note| NoteCommitment {
                 denomination_sats: note.denomination_sats,
-                owner_pubkey: String::new(),
+                owner_pubkey: note.owner_pubkey.clone(),
+                signature: note.signature.clone(),
                 commitment: note.commitment.clone(),
             })
             .collect()
@@ -165,6 +170,7 @@ pub fn derive_split_receipt_for_deposit(
         let index = index as u64;
         let child_secret =
             note_child_secret_for_deposit(client_seed, deposit_index, deposit_id, index + 1);
+        let owner_pubkey = deposit_owner_pubkey(&child_secret);
         let nullifier = hash_parts(&[
             DOMAIN,
             "receipt-nullifier",
@@ -192,12 +198,15 @@ pub fn derive_split_receipt_for_deposit(
                 )
             }
         };
+        let signature =
+            note_authorization_for_secret(&child_secret, &owner_pubkey, denomination, &commitment);
         notes.push(NoteReceipt {
             deposit_id: deposit_id.to_string(),
             deposit_index,
             denomination_sats: denomination,
             index,
-            owner_pubkey: String::new(),
+            owner_pubkey,
+            signature,
             nullifier,
             secret,
             commitment,
@@ -214,6 +223,26 @@ pub fn derive_split_receipt_for_deposit(
         notes,
         remainder_sats: remaining,
     })
+}
+
+fn note_authorization_for_secret(
+    child_secret: &str,
+    owner_pubkey: &str,
+    denomination_sats: u64,
+    commitment: &str,
+) -> String {
+    let secp = Secp256k1::new();
+    let secret_key = secret_key_from_hex_material(child_secret);
+    let digest = hash_parts_bytes(&[
+        DOMAIN,
+        "note-authorization",
+        owner_pubkey,
+        &denomination_sats.to_string(),
+        commitment,
+    ]);
+    let message = SecpMessage::from_digest_slice(&digest)
+        .expect("sha256 digest has secp256k1 message length");
+    hex::encode(secp.sign_ecdsa(&message, &secret_key).serialize_der())
 }
 
 pub fn client_pubkey_from_secret(client_seed: &str) -> String {
@@ -402,7 +431,7 @@ pub fn note_child_secret(client_seed: &str, deposit_id: &str, index: u64) -> Str
 pub fn note_child_secret_for_deposit(
     client_seed: &str,
     deposit_index: u64,
-    deposit_id: &str,
+    _deposit_id: &str,
     index: u64,
 ) -> String {
     let hardened_index = hardened_child_index(index);
@@ -412,7 +441,6 @@ pub fn note_child_secret_for_deposit(
         "m/tc84'/btc'/deposit'/note'",
         client_seed,
         &hardened_child_index(deposit_index).to_string(),
-        deposit_id,
         &hardened_index.to_string(),
     ])
 }
@@ -469,6 +497,25 @@ fn deposit_owner_pubkey(owner_secret: &str) -> String {
     };
     let secp = Secp256k1::new();
     SecpPublicKey::from_secret_key(&secp, &secret_key).to_string()
+}
+
+fn secret_key_from_hex_material(secret_hex: &str) -> SecretKey {
+    let secret_bytes = hex::decode(secret_hex).unwrap_or_default();
+    if let Ok(secret_key) = SecretKey::from_slice(&secret_bytes) {
+        return secret_key;
+    }
+    for counter in 0_u32..u32::MAX {
+        let digest = hash_parts_bytes(&[
+            DOMAIN,
+            "secp-secret-retry",
+            secret_hex,
+            &counter.to_string(),
+        ]);
+        if let Ok(secret_key) = SecretKey::from_slice(&digest) {
+            return secret_key;
+        }
+    }
+    unreachable!("sha256 should produce a valid secp256k1 secret key")
 }
 
 fn deposit_secret_key(client_seed: &str, deposit_index: u64) -> SecretKey {

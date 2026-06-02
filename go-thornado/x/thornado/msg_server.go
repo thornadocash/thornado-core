@@ -141,6 +141,94 @@ func (ms msgServer) ShielderRedeem(goCtx context.Context, msg *types.MsgShielder
 	}, nil
 }
 
+func (ms msgServer) GaslessDepositRequestPow(goCtx context.Context, msg *types.MsgGaslessDepositRequestPow) (*types.MsgDepositRequestPowResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	owner, err := AccAddressFromCompressedSecp256k1(msg.DepositPubkey)
+	if err != nil {
+		return nil, err
+	}
+	session, err := RegisterDepositPowToken(ctx, ms.mgr.Keeper(), owner, msg.PowToken, msg.OperatorPubKey, msg.NodePubKey)
+	if err != nil {
+		return nil, err
+	}
+	return &types.MsgDepositRequestPowResponse{
+		DepositAddress:   session.DepositAddress.String(),
+		VaultPubKey:      session.VaultPubKey.String(),
+		DepositPathIndex: session.DepositPathIndex,
+	}, nil
+}
+
+func (ms msgServer) GaslessShielderSplit(goCtx context.Context, msg *types.MsgGaslessShielderSplit) (*types.MsgShielderSplitResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	depositID, err := common.NewTxID(msg.DepositId)
+	if err != nil {
+		return nil, err
+	}
+	owner, err := AccAddressFromCompressedSecp256k1(msg.DepositPubkey)
+	if err != nil {
+		return nil, err
+	}
+	deposit, err := ms.mgr.Keeper().GetDepositRecord(ctx, depositID)
+	if err != nil {
+		return nil, err
+	}
+	if deposit.DepositID.IsEmpty() {
+		return nil, fmt.Errorf("deposit not found")
+	}
+	noteCommitments, err := parseShielderNoteCommitments(msg.Commitments, deposit.AmountSats, deposit.IsNodeBond())
+	if err != nil {
+		return nil, err
+	}
+	amountSats := shielderNoteCommitmentTotal(noteCommitments)
+	if amountSats == 0 {
+		return nil, fmt.Errorf("missing shielder commitment amount")
+	}
+	if err := VerifyGaslessSplitAuthorization(msg.DepositPubkey, msg.Signature, msg.DepositId, amountSats, msg.Commitments); err != nil {
+		return nil, err
+	}
+	deposit, err = PostShielderSplit(ctx, ms.mgr.Keeper(), owner, depositID, msg.Commitments)
+	if err != nil {
+		return nil, err
+	}
+	return &types.MsgShielderSplitResponse{
+		DepositId: deposit.DepositID.String(),
+		Status:    deposit.Status,
+	}, nil
+}
+
+func (ms msgServer) GaslessShielderRedeem(goCtx context.Context, msg *types.MsgGaslessShielderRedeem) (*types.MsgShielderRedeemResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	owner, err := AccAddressFromCompressedSecp256k1(msg.OwnerPubkey)
+	if err != nil {
+		return nil, err
+	}
+	authorization, err := AuthorizeShielderRedeem(ctx, ms.mgr.Keeper(), ShielderRedeemRequest{
+		Owner:  owner,
+		Proof:  msg.Proof,
+		Public: msg.Public,
+	})
+	if err != nil {
+		return nil, err
+	}
+	withdrawal, err := QueueAuthorizedWithdrawalTxOut(ctx, ms.mgr.Keeper(), authorization)
+	if err != nil {
+		return nil, err
+	}
+	return &types.MsgShielderRedeemResponse{
+		WithdrawalId: withdrawal.WithdrawalID,
+		Status:       withdrawal.Status,
+	}, nil
+}
+
 func (ms msgServer) ShielderSplitFees(goCtx context.Context, msg *types.MsgShielderSplitFees) (*types.MsgShielderSplitFeesResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 	if err := msg.ValidateBasic(); err != nil {

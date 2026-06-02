@@ -576,6 +576,12 @@ func (k KVStoreDummy) SetShielderCommitment(_ cosmos.Context, _ string, _ common
 	return nil
 }
 func (k KVStoreDummy) ShielderCommitmentExists(_ cosmos.Context, _ string) bool { return false }
+func (k KVStoreDummy) SetShielderNoteRecord(_ cosmos.Context, _ types.StoredShielderNoteRecord) error {
+	return nil
+}
+func (k KVStoreDummy) GetShielderNoteRecordIterator(_ cosmos.Context) cosmos.Iterator {
+	return NewDummyIterator()
+}
 func (k KVStoreDummy) SetShielderDenominationCommitment(_ cosmos.Context, _ uint64, _ string, _ common.TxID) error {
 	return nil
 }
@@ -604,6 +610,9 @@ func (k KVStoreDummy) SetShielderNullifierSpent(_ cosmos.Context, _, _ string) e
 	return nil
 }
 func (k KVStoreDummy) ShielderNullifierSpent(_ cosmos.Context, _ string) bool { return false }
+func (k KVStoreDummy) GetShielderNullifierIterator(_ cosmos.Context) cosmos.Iterator {
+	return NewDummyIterator()
+}
 
 // a mock cosmos.Iterator implementation for testing purposes
 type DummyIterator struct {

@@ -55,6 +55,9 @@ service Msg {
   rpc DepositRequestPow(MsgDepositRequestPow) returns (MsgDepositRequestPowResponse);
   rpc ShielderSplit(MsgShielderSplit) returns (MsgShielderSplitResponse);
   rpc ShielderRedeem(MsgShielderRedeem) returns (MsgShielderRedeemResponse);
+  rpc GaslessDepositRequestPow(MsgGaslessDepositRequestPow) returns (MsgDepositRequestPowResponse);
+  rpc GaslessShielderSplit(MsgGaslessShielderSplit) returns (MsgShielderSplitResponse);
+  rpc GaslessShielderRedeem(MsgGaslessShielderRedeem) returns (MsgShielderRedeemResponse);
   rpc ShielderSplitFees(MsgShielderSplitFees) returns (MsgShielderSplitFeesResponse);
   rpc NodeSlotAuctionCreate(MsgNodeSlotAuctionCreate) returns (MsgNodeSlotAuctionCreateResponse);
   rpc NodeSlotAuctionBidPow(MsgNodeSlotAuctionBidPow) returns (MsgDepositRequestPowResponse);

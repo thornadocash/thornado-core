@@ -87,6 +87,9 @@ func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		&MsgDepositRequestPow{},
 		&MsgShielderSplit{},
 		&MsgShielderRedeem{},
+		&MsgGaslessDepositRequestPow{},
+		&MsgGaslessShielderSplit{},
+		&MsgGaslessShielderRedeem{},
 		&MsgShielderSplitFees{},
 		&MsgNodeSlotAuctionCreate{},
 		&MsgNodeSlotAuctionBidPow{},
@@ -124,6 +127,9 @@ func DefineCustomGetSigners(signingOptions *signing.Options) {
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgDepositRequestPow"), MsgDepositRequestPowCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgShielderSplit"), MsgShielderSplitCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgShielderRedeem"), MsgShielderRedeemCustomGetSigners)
+	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgGaslessDepositRequestPow"), MsgGaslessDepositRequestPowCustomGetSigners)
+	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgGaslessShielderSplit"), MsgGaslessShielderSplitCustomGetSigners)
+	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgGaslessShielderRedeem"), MsgGaslessShielderRedeemCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgShielderSplitFees"), MsgShielderSplitFeesCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNodeSlotAuctionCreate"), MsgNodeSlotAuctionCreateCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNodeSlotAuctionBidPow"), MsgNodeSlotAuctionBidPowCustomGetSigners)

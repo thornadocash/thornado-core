@@ -74,6 +74,7 @@ type DepositRecord struct {
 	DepositID        common.TxID       `json:"deposit_id"`
 	Owner            cosmos.AccAddress `json:"owner"`
 	AmountSats       uint64            `json:"amount_sats"`
+	SplitSats        uint64            `json:"split_sats,omitempty"`
 	DepositAddress   common.Address    `json:"deposit_address"`
 	ReturnAddress    common.Address    `json:"return_address,omitempty"`
 	VaultPubKey      common.PubKey     `json:"vault_pub_key"`
@@ -108,6 +109,9 @@ func (m DepositRecord) Valid() error {
 	}
 	if m.AmountSats == 0 {
 		return fmt.Errorf("missing deposit amount")
+	}
+	if m.SplitSats > m.AmountSats {
+		return fmt.Errorf("split amount exceeds deposit amount")
 	}
 	if m.DepositAddress.IsEmpty() {
 		return fmt.Errorf("missing deposit address")
@@ -271,6 +275,33 @@ func (m DepositAddress) Valid() error {
 	}
 	if strings.TrimSpace(m.PowToken) == "" {
 		return fmt.Errorf("missing deposit address pow token")
+	}
+	return nil
+}
+
+type StoredShielderNoteRecord struct {
+	OwnerPubkey      string      `json:"owner_pubkey"`
+	Commitment       string      `json:"commitment"`
+	DenominationSats uint64      `json:"denomination_sats"`
+	DepositID        common.TxID `json:"deposit_id"`
+}
+
+func (m StoredShielderNoteRecord) Key() string {
+	return strings.TrimSpace(m.OwnerPubkey)
+}
+
+func (m StoredShielderNoteRecord) Valid() error {
+	if strings.TrimSpace(m.OwnerPubkey) == "" {
+		return fmt.Errorf("missing shielder note owner pubkey")
+	}
+	if strings.TrimSpace(m.Commitment) == "" {
+		return fmt.Errorf("missing shielder note commitment")
+	}
+	if m.DenominationSats == 0 {
+		return fmt.Errorf("missing shielder note denomination")
+	}
+	if m.DepositID.IsEmpty() {
+		return fmt.Errorf("missing shielder note deposit id")
 	}
 	return nil
 }

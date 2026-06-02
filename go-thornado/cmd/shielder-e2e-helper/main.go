@@ -189,6 +189,8 @@ func main() {
 		var receipt struct {
 			Notes []struct {
 				DenominationSats uint64 `json:"denomination_sats"`
+				OwnerPubkey      string `json:"owner_pubkey"`
+				Signature        string `json:"signature"`
 				Commitment       string `json:"commitment"`
 			} `json:"notes"`
 		}

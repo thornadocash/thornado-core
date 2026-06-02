@@ -45,6 +45,9 @@ const (
 	Msg_DepositRequestPow_FullMethodName        = "/types.Msg/DepositRequestPow"
 	Msg_ShielderSplit_FullMethodName            = "/types.Msg/ShielderSplit"
 	Msg_ShielderRedeem_FullMethodName           = "/types.Msg/ShielderRedeem"
+	Msg_GaslessDepositRequestPow_FullMethodName = "/types.Msg/GaslessDepositRequestPow"
+	Msg_GaslessShielderSplit_FullMethodName     = "/types.Msg/GaslessShielderSplit"
+	Msg_GaslessShielderRedeem_FullMethodName    = "/types.Msg/GaslessShielderRedeem"
 	Msg_ShielderSplitFees_FullMethodName        = "/types.Msg/ShielderSplitFees"
 	Msg_NodeSlotAuctionCreate_FullMethodName    = "/types.Msg/NodeSlotAuctionCreate"
 	Msg_NodeSlotAuctionBidPow_FullMethodName    = "/types.Msg/NodeSlotAuctionBidPow"
@@ -82,6 +85,9 @@ type MsgClient interface {
 	DepositRequestPow(ctx context.Context, in *MsgDepositRequestPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error)
 	ShielderSplit(ctx context.Context, in *MsgShielderSplit, opts ...grpc.CallOption) (*MsgShielderSplitResponse, error)
 	ShielderRedeem(ctx context.Context, in *MsgShielderRedeem, opts ...grpc.CallOption) (*MsgShielderRedeemResponse, error)
+	GaslessDepositRequestPow(ctx context.Context, in *MsgGaslessDepositRequestPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error)
+	GaslessShielderSplit(ctx context.Context, in *MsgGaslessShielderSplit, opts ...grpc.CallOption) (*MsgShielderSplitResponse, error)
+	GaslessShielderRedeem(ctx context.Context, in *MsgGaslessShielderRedeem, opts ...grpc.CallOption) (*MsgShielderRedeemResponse, error)
 	ShielderSplitFees(ctx context.Context, in *MsgShielderSplitFees, opts ...grpc.CallOption) (*MsgShielderSplitFeesResponse, error)
 	NodeSlotAuctionCreate(ctx context.Context, in *MsgNodeSlotAuctionCreate, opts ...grpc.CallOption) (*MsgNodeSlotAuctionCreateResponse, error)
 	NodeSlotAuctionBidPow(ctx context.Context, in *MsgNodeSlotAuctionBidPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error)
@@ -331,6 +337,33 @@ func (c *msgClient) ShielderRedeem(ctx context.Context, in *MsgShielderRedeem, o
 	return out, nil
 }
 
+func (c *msgClient) GaslessDepositRequestPow(ctx context.Context, in *MsgGaslessDepositRequestPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error) {
+	out := new(MsgDepositRequestPowResponse)
+	err := c.cc.Invoke(ctx, Msg_GaslessDepositRequestPow_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) GaslessShielderSplit(ctx context.Context, in *MsgGaslessShielderSplit, opts ...grpc.CallOption) (*MsgShielderSplitResponse, error) {
+	out := new(MsgShielderSplitResponse)
+	err := c.cc.Invoke(ctx, Msg_GaslessShielderSplit_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) GaslessShielderRedeem(ctx context.Context, in *MsgGaslessShielderRedeem, opts ...grpc.CallOption) (*MsgShielderRedeemResponse, error) {
+	out := new(MsgShielderRedeemResponse)
+	err := c.cc.Invoke(ctx, Msg_GaslessShielderRedeem_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *msgClient) ShielderSplitFees(ctx context.Context, in *MsgShielderSplitFees, opts ...grpc.CallOption) (*MsgShielderSplitFeesResponse, error) {
 	out := new(MsgShielderSplitFeesResponse)
 	err := c.cc.Invoke(ctx, Msg_ShielderSplitFees_FullMethodName, in, out, opts...)
@@ -406,6 +439,9 @@ type MsgServer interface {
 	DepositRequestPow(context.Context, *MsgDepositRequestPow) (*MsgDepositRequestPowResponse, error)
 	ShielderSplit(context.Context, *MsgShielderSplit) (*MsgShielderSplitResponse, error)
 	ShielderRedeem(context.Context, *MsgShielderRedeem) (*MsgShielderRedeemResponse, error)
+	GaslessDepositRequestPow(context.Context, *MsgGaslessDepositRequestPow) (*MsgDepositRequestPowResponse, error)
+	GaslessShielderSplit(context.Context, *MsgGaslessShielderSplit) (*MsgShielderSplitResponse, error)
+	GaslessShielderRedeem(context.Context, *MsgGaslessShielderRedeem) (*MsgShielderRedeemResponse, error)
 	ShielderSplitFees(context.Context, *MsgShielderSplitFees) (*MsgShielderSplitFeesResponse, error)
 	NodeSlotAuctionCreate(context.Context, *MsgNodeSlotAuctionCreate) (*MsgNodeSlotAuctionCreateResponse, error)
 	NodeSlotAuctionBidPow(context.Context, *MsgNodeSlotAuctionBidPow) (*MsgDepositRequestPowResponse, error)
@@ -495,6 +531,15 @@ func (UnimplementedMsgServer) ShielderSplit(context.Context, *MsgShielderSplit) 
 }
 func (UnimplementedMsgServer) ShielderRedeem(context.Context, *MsgShielderRedeem) (*MsgShielderRedeemResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderRedeem not implemented")
+}
+func (UnimplementedMsgServer) GaslessDepositRequestPow(context.Context, *MsgGaslessDepositRequestPow) (*MsgDepositRequestPowResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GaslessDepositRequestPow not implemented")
+}
+func (UnimplementedMsgServer) GaslessShielderSplit(context.Context, *MsgGaslessShielderSplit) (*MsgShielderSplitResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GaslessShielderSplit not implemented")
+}
+func (UnimplementedMsgServer) GaslessShielderRedeem(context.Context, *MsgGaslessShielderRedeem) (*MsgShielderRedeemResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GaslessShielderRedeem not implemented")
 }
 func (UnimplementedMsgServer) ShielderSplitFees(context.Context, *MsgShielderSplitFees) (*MsgShielderSplitFeesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderSplitFees not implemented")
@@ -992,6 +1037,60 @@ func _Msg_ShielderRedeem_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_GaslessDepositRequestPow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgGaslessDepositRequestPow)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).GaslessDepositRequestPow(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_GaslessDepositRequestPow_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).GaslessDepositRequestPow(ctx, req.(*MsgGaslessDepositRequestPow))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_GaslessShielderSplit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgGaslessShielderSplit)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).GaslessShielderSplit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_GaslessShielderSplit_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).GaslessShielderSplit(ctx, req.(*MsgGaslessShielderSplit))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_GaslessShielderRedeem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgGaslessShielderRedeem)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).GaslessShielderRedeem(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_GaslessShielderRedeem_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).GaslessShielderRedeem(ctx, req.(*MsgGaslessShielderRedeem))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Msg_ShielderSplitFees_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MsgShielderSplitFees)
 	if err := dec(in); err != nil {
@@ -1192,6 +1291,18 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ShielderRedeem",
 			Handler:    _Msg_ShielderRedeem_Handler,
+		},
+		{
+			MethodName: "GaslessDepositRequestPow",
+			Handler:    _Msg_GaslessDepositRequestPow_Handler,
+		},
+		{
+			MethodName: "GaslessShielderSplit",
+			Handler:    _Msg_GaslessShielderSplit_Handler,
+		},
+		{
+			MethodName: "GaslessShielderRedeem",
+			Handler:    _Msg_GaslessShielderRedeem_Handler,
 		},
 		{
 			MethodName: "ShielderSplitFees",
