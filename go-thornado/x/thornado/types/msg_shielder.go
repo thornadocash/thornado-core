@@ -27,18 +27,6 @@ var (
 	_ sdk.HasValidateBasic = &MsgShielderRedeem{}
 	_ sdk.LegacyMsg        = &MsgShielderRedeem{}
 
-	_ sdk.Msg              = &MsgGaslessDepositRequestPow{}
-	_ sdk.HasValidateBasic = &MsgGaslessDepositRequestPow{}
-	_ sdk.LegacyMsg        = &MsgGaslessDepositRequestPow{}
-
-	_ sdk.Msg              = &MsgGaslessShielderSplit{}
-	_ sdk.HasValidateBasic = &MsgGaslessShielderSplit{}
-	_ sdk.LegacyMsg        = &MsgGaslessShielderSplit{}
-
-	_ sdk.Msg              = &MsgGaslessShielderRedeem{}
-	_ sdk.HasValidateBasic = &MsgGaslessShielderRedeem{}
-	_ sdk.LegacyMsg        = &MsgGaslessShielderRedeem{}
-
 	_ sdk.Msg              = &MsgShielderSplitFees{}
 	_ sdk.HasValidateBasic = &MsgShielderSplitFees{}
 	_ sdk.LegacyMsg        = &MsgShielderSplitFees{}
@@ -60,7 +48,19 @@ var (
 	_ sdk.LegacyMsg        = &MsgNodeSlotAuctionSplit{}
 )
 
-func NewMsgDepositRequestPow(powToken string, signer cosmos.AccAddress, extra ...string) *MsgDepositRequestPow {
+const (
+	MaxPowTokenLength                 = 128
+	MaxShielderCommitments            = 128
+	MaxShielderCommitmentLength       = 512
+	MaxShielderProofJSONLength        = 64 * 1024
+	MaxShielderPublicJSONLength       = 4 * 1024
+	MaxSplitSignatureHexLength        = 160
+	MaxShielderOperatorSignatureBytes = 64
+	MaxShielderIDLength               = 128
+	MaxPowDurationMs                  = 24 * 60 * 60 * 1000
+)
+
+func NewMsgDepositRequestPow(powToken, depositPubkey string, extra ...string) *MsgDepositRequestPow {
 	operatorPubKey := ""
 	nodePubKey := ""
 	if len(extra) > 0 {
@@ -71,142 +71,21 @@ func NewMsgDepositRequestPow(powToken string, signer cosmos.AccAddress, extra ..
 	}
 	return &MsgDepositRequestPow{
 		PowToken:       strings.TrimSpace(powToken),
-		Signer:         signer,
-		OperatorPubKey: operatorPubKey,
-		NodePubKey:     nodePubKey,
-	}
-}
-
-func (m *MsgDepositRequestPow) ValidateBasic() error {
-	if m.Signer.Empty() {
-		return cosmos.ErrInvalidAddress(m.Signer.String())
-	}
-	if strings.TrimSpace(m.PowToken) == "" {
-		return fmt.Errorf("missing deposit pow token")
-	}
-	if strings.TrimSpace(m.NodePubKey) != "" {
-		if strings.TrimSpace(m.OperatorPubKey) == "" {
-			return fmt.Errorf("bond deposits require operator pubkey")
-		}
-		if _, err := common.NewPubKey(m.OperatorPubKey); err != nil {
-			return fmt.Errorf("invalid operator pubkey: %w", err)
-		}
-		if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, m.NodePubKey); err != nil {
-			return fmt.Errorf("invalid node pubkey: %w", err)
-		}
-	}
-	return nil
-}
-
-func (m *MsgDepositRequestPow) GetSigners() []cosmos.AccAddress {
-	return []cosmos.AccAddress{m.Signer}
-}
-
-func MsgDepositRequestPowCustomGetSigners(m proto.Message) ([][]byte, error) {
-	msg, ok := m.(*apitypes.MsgDepositRequestPow)
-	if !ok {
-		return nil, fmt.Errorf("can't cast as MsgDepositRequestPow: %T", m)
-	}
-	return [][]byte{msg.Signer}, nil
-}
-
-func NewMsgShielderSplit(depositID common.TxID, commitments []string, signer cosmos.AccAddress) *MsgShielderSplit {
-	return &MsgShielderSplit{
-		DepositId:   depositID.String(),
-		Commitments: commitments,
-		Signer:      signer,
-	}
-}
-
-func (m *MsgShielderSplit) ValidateBasic() error {
-	if m.Signer.Empty() {
-		return cosmos.ErrInvalidAddress(m.Signer.String())
-	}
-	if _, err := common.NewTxID(m.DepositId); err != nil {
-		return fmt.Errorf("invalid deposit id: %w", err)
-	}
-	if len(m.Commitments) == 0 {
-		return fmt.Errorf("missing shielder commitments")
-	}
-	seen := make(map[string]struct{}, len(m.Commitments))
-	for _, commitment := range m.Commitments {
-		commitment = strings.TrimSpace(commitment)
-		if commitment == "" {
-			return fmt.Errorf("empty shielder commitment")
-		}
-		if _, ok := seen[commitment]; ok {
-			return fmt.Errorf("duplicate shielder commitment")
-		}
-		seen[commitment] = struct{}{}
-	}
-	return nil
-}
-
-func (m *MsgShielderSplit) GetSigners() []cosmos.AccAddress {
-	return []cosmos.AccAddress{m.Signer}
-}
-
-func MsgShielderSplitCustomGetSigners(m proto.Message) ([][]byte, error) {
-	msg, ok := m.(*apitypes.MsgShielderSplit)
-	if !ok {
-		return nil, fmt.Errorf("can't cast as MsgShielderSplit: %T", m)
-	}
-	return [][]byte{msg.Signer}, nil
-}
-
-func NewMsgShielderRedeem(proof, public []byte, signer cosmos.AccAddress) *MsgShielderRedeem {
-	return &MsgShielderRedeem{
-		Proof:  proof,
-		Public: public,
-		Signer: signer,
-	}
-}
-
-func (m *MsgShielderRedeem) ValidateBasic() error {
-	if m.Signer.Empty() {
-		return cosmos.ErrInvalidAddress(m.Signer.String())
-	}
-	if !json.Valid(m.Proof) {
-		return fmt.Errorf("invalid shielder proof json")
-	}
-	if !json.Valid(m.Public) {
-		return fmt.Errorf("invalid shielder public json")
-	}
-	return nil
-}
-
-func (m *MsgShielderRedeem) GetSigners() []cosmos.AccAddress {
-	return []cosmos.AccAddress{m.Signer}
-}
-
-func MsgShielderRedeemCustomGetSigners(m proto.Message) ([][]byte, error) {
-	msg, ok := m.(*apitypes.MsgShielderRedeem)
-	if !ok {
-		return nil, fmt.Errorf("can't cast as MsgShielderRedeem: %T", m)
-	}
-	return [][]byte{msg.Signer}, nil
-}
-
-func NewMsgGaslessDepositRequestPow(powToken, depositPubkey string, extra ...string) *MsgGaslessDepositRequestPow {
-	operatorPubKey := ""
-	nodePubKey := ""
-	if len(extra) > 0 {
-		operatorPubKey = strings.TrimSpace(extra[0])
-	}
-	if len(extra) > 1 {
-		nodePubKey = strings.TrimSpace(extra[1])
-	}
-	return &MsgGaslessDepositRequestPow{
-		PowToken:       strings.TrimSpace(powToken),
 		DepositPubkey:  strings.TrimSpace(depositPubkey),
 		OperatorPubKey: operatorPubKey,
 		NodePubKey:     nodePubKey,
 	}
 }
 
-func (m *MsgGaslessDepositRequestPow) ValidateBasic() error {
+func (m *MsgDepositRequestPow) ValidateBasic() error {
 	if strings.TrimSpace(m.PowToken) == "" {
 		return fmt.Errorf("missing deposit pow token")
+	}
+	if len(strings.TrimSpace(m.PowToken)) > MaxPowTokenLength {
+		return fmt.Errorf("deposit pow token too long")
+	}
+	if m.PowDurationMs > MaxPowDurationMs {
+		return fmt.Errorf("deposit pow duration too long")
 	}
 	if err := validateCompressedSecpPubkey(m.DepositPubkey); err != nil {
 		return fmt.Errorf("invalid deposit pubkey: %w", err)
@@ -225,86 +104,79 @@ func (m *MsgGaslessDepositRequestPow) ValidateBasic() error {
 	return nil
 }
 
-func (m *MsgGaslessDepositRequestPow) GetSigners() []cosmos.AccAddress { return nil }
+func (m *MsgDepositRequestPow) GetSigners() []cosmos.AccAddress { return nil }
 
-func MsgGaslessDepositRequestPowCustomGetSigners(m proto.Message) ([][]byte, error) {
-	if _, ok := m.(*apitypes.MsgGaslessDepositRequestPow); !ok {
-		return nil, fmt.Errorf("can't cast as MsgGaslessDepositRequestPow: %T", m)
+func MsgDepositRequestPowCustomGetSigners(m proto.Message) ([][]byte, error) {
+	if _, ok := m.(*apitypes.MsgDepositRequestPow); !ok {
+		return nil, fmt.Errorf("can't cast as MsgDepositRequestPow: %T", m)
 	}
 	return nil, nil
 }
 
-func NewMsgGaslessShielderSplit(depositID common.TxID, commitments []string, depositPubkey, signature string) *MsgGaslessShielderSplit {
-	return &MsgGaslessShielderSplit{
-		DepositId:     depositID.String(),
+func NewMsgShielderSplit(commitments []string, depositPubkey, signature string) *MsgShielderSplit {
+	return &MsgShielderSplit{
 		Commitments:   commitments,
 		DepositPubkey: strings.TrimSpace(depositPubkey),
 		Signature:     strings.TrimSpace(signature),
 	}
 }
 
-func (m *MsgGaslessShielderSplit) ValidateBasic() error {
-	if _, err := common.NewTxID(m.DepositId); err != nil {
-		return fmt.Errorf("invalid deposit id: %w", err)
+func (m *MsgShielderSplit) ValidateBasic() error {
+	if strings.TrimSpace(m.DepositPubkey) == "" {
+		return fmt.Errorf("missing deposit pubkey")
 	}
 	if len(m.Commitments) == 0 {
 		return fmt.Errorf("missing shielder commitments")
 	}
+	if err := validateShielderCommitmentList(m.Commitments, "shielder commitment"); err != nil {
+		return err
+	}
 	if err := validateCompressedSecpPubkey(m.DepositPubkey); err != nil {
 		return fmt.Errorf("invalid deposit pubkey: %w", err)
+	}
+	if len(strings.TrimSpace(m.Signature)) > MaxSplitSignatureHexLength {
+		return fmt.Errorf("split authorization signature too long")
 	}
 	if _, err := hex.DecodeString(strings.TrimSpace(m.Signature)); err != nil {
 		return fmt.Errorf("invalid split authorization signature")
 	}
-	seen := make(map[string]struct{}, len(m.Commitments))
-	for _, commitment := range m.Commitments {
-		commitment = strings.TrimSpace(commitment)
-		if commitment == "" {
-			return fmt.Errorf("empty shielder commitment")
-		}
-		if _, ok := seen[commitment]; ok {
-			return fmt.Errorf("duplicate shielder commitment")
-		}
-		seen[commitment] = struct{}{}
-	}
 	return nil
 }
 
-func (m *MsgGaslessShielderSplit) GetSigners() []cosmos.AccAddress { return nil }
+func (m *MsgShielderSplit) GetSigners() []cosmos.AccAddress { return nil }
 
-func MsgGaslessShielderSplitCustomGetSigners(m proto.Message) ([][]byte, error) {
-	if _, ok := m.(*apitypes.MsgGaslessShielderSplit); !ok {
-		return nil, fmt.Errorf("can't cast as MsgGaslessShielderSplit: %T", m)
+func MsgShielderSplitCustomGetSigners(m proto.Message) ([][]byte, error) {
+	if _, ok := m.(*apitypes.MsgShielderSplit); !ok {
+		return nil, fmt.Errorf("can't cast as MsgShielderSplit: %T", m)
 	}
 	return nil, nil
 }
 
-func NewMsgGaslessShielderRedeem(proof, public []byte, ownerPubkey string) *MsgGaslessShielderRedeem {
-	return &MsgGaslessShielderRedeem{
-		Proof:       proof,
-		Public:      public,
-		OwnerPubkey: strings.TrimSpace(ownerPubkey),
+func NewMsgShielderRedeem(proof, public []byte) *MsgShielderRedeem {
+	return &MsgShielderRedeem{
+		Proof:  proof,
+		Public: public,
 	}
 }
 
-func (m *MsgGaslessShielderRedeem) ValidateBasic() error {
+func (m *MsgShielderRedeem) ValidateBasic() error {
+	if err := validateShielderRedeemJSON(m.Proof, m.Public); err != nil {
+		return err
+	}
 	if !json.Valid(m.Proof) {
 		return fmt.Errorf("invalid shielder proof json")
 	}
 	if !json.Valid(m.Public) {
 		return fmt.Errorf("invalid shielder public json")
 	}
-	if err := validateCompressedSecpPubkey(m.OwnerPubkey); err != nil {
-		return fmt.Errorf("invalid owner pubkey: %w", err)
-	}
 	return nil
 }
 
-func (m *MsgGaslessShielderRedeem) GetSigners() []cosmos.AccAddress { return nil }
+func (m *MsgShielderRedeem) GetSigners() []cosmos.AccAddress { return nil }
 
-func MsgGaslessShielderRedeemCustomGetSigners(m proto.Message) ([][]byte, error) {
-	if _, ok := m.(*apitypes.MsgGaslessShielderRedeem); !ok {
-		return nil, fmt.Errorf("can't cast as MsgGaslessShielderRedeem: %T", m)
+func MsgShielderRedeemCustomGetSigners(m proto.Message) ([][]byte, error) {
+	if _, ok := m.(*apitypes.MsgShielderRedeem); !ok {
+		return nil, fmt.Errorf("can't cast as MsgShielderRedeem: %T", m)
 	}
 	return nil, nil
 }
@@ -346,22 +218,17 @@ func (m *MsgShielderSplitFees) ValidateBasic() error {
 	if len(m.OperatorSignature) == 0 {
 		return fmt.Errorf("missing shielder fee operator signature")
 	}
+	if len(m.OperatorSignature) > MaxShielderOperatorSignatureBytes {
+		return fmt.Errorf("shielder fee operator signature too long")
+	}
 	if len(m.Commitments) == 0 {
 		return fmt.Errorf("missing shielder fee commitments")
 	}
 	if len(m.FeeNotePubKeys) != len(m.Commitments) {
 		return fmt.Errorf("shielder fee note pubkey count mismatch")
 	}
-	seen := make(map[string]struct{}, len(m.Commitments))
-	for _, commitment := range m.Commitments {
-		commitment = strings.TrimSpace(commitment)
-		if commitment == "" {
-			return fmt.Errorf("empty shielder fee commitment")
-		}
-		if _, ok := seen[commitment]; ok {
-			return fmt.Errorf("duplicate shielder fee commitment")
-		}
-		seen[commitment] = struct{}{}
+	if err := validateShielderCommitmentList(m.Commitments, "shielder fee commitment"); err != nil {
+		return err
 	}
 	seenPubKeys := make(map[string]struct{}, len(m.FeeNotePubKeys))
 	for _, feeNotePubKey := range m.FeeNotePubKeys {
@@ -443,8 +310,17 @@ func (m *MsgNodeSlotAuctionBidPow) ValidateBasic() error {
 	if strings.TrimSpace(m.AuctionId) == "" {
 		return fmt.Errorf("missing node slot auction id")
 	}
+	if len(strings.TrimSpace(m.AuctionId)) > MaxShielderIDLength {
+		return fmt.Errorf("node slot auction id too long")
+	}
 	if strings.TrimSpace(m.PowToken) == "" {
 		return fmt.Errorf("missing deposit pow token")
+	}
+	if len(strings.TrimSpace(m.PowToken)) > MaxPowTokenLength {
+		return fmt.Errorf("deposit pow token too long")
+	}
+	if m.PowDurationMs > MaxPowDurationMs {
+		return fmt.Errorf("deposit pow duration too long")
 	}
 	if _, err := common.NewPubKey(m.OperatorPubKey); err != nil {
 		return fmt.Errorf("invalid bidder operator pubkey: %w", err)
@@ -482,8 +358,14 @@ func (m *MsgNodeSlotAuctionSelectBid) ValidateBasic() error {
 	if strings.TrimSpace(m.AuctionId) == "" {
 		return fmt.Errorf("missing node slot auction id")
 	}
+	if len(strings.TrimSpace(m.AuctionId)) > MaxShielderIDLength {
+		return fmt.Errorf("node slot auction id too long")
+	}
 	if strings.TrimSpace(m.BidId) == "" {
 		return fmt.Errorf("missing node slot bid id")
+	}
+	if len(strings.TrimSpace(m.BidId)) > MaxShielderIDLength {
+		return fmt.Errorf("node slot bid id too long")
 	}
 	return nil
 }
@@ -516,11 +398,20 @@ func (m *MsgNodeSlotAuctionSplit) ValidateBasic() error {
 	if strings.TrimSpace(m.AuctionId) == "" {
 		return fmt.Errorf("missing node slot auction id")
 	}
+	if len(strings.TrimSpace(m.AuctionId)) > MaxShielderIDLength {
+		return fmt.Errorf("node slot auction id too long")
+	}
 	if strings.TrimSpace(m.BidId) == "" {
 		return fmt.Errorf("missing node slot bid id")
 	}
+	if len(strings.TrimSpace(m.BidId)) > MaxShielderIDLength {
+		return fmt.Errorf("node slot bid id too long")
+	}
 	if len(m.Commitments) == 0 {
 		return fmt.Errorf("missing node slot seller commitments")
+	}
+	if err := validateShielderCommitmentList(m.Commitments, "node slot seller commitment"); err != nil {
+		return err
 	}
 	return nil
 }
@@ -535,4 +426,41 @@ func MsgNodeSlotAuctionSplitCustomGetSigners(m proto.Message) ([][]byte, error) 
 		return nil, fmt.Errorf("can't cast as MsgNodeSlotAuctionSplit: %T", m)
 	}
 	return [][]byte{msg.Signer}, nil
+}
+
+func validateShielderCommitmentList(commitments []string, label string) error {
+	if len(commitments) > MaxShielderCommitments {
+		return fmt.Errorf("too many %ss: %d, max %d", label, len(commitments), MaxShielderCommitments)
+	}
+	seen := make(map[string]struct{}, len(commitments))
+	for _, commitment := range commitments {
+		commitment = strings.TrimSpace(commitment)
+		if commitment == "" {
+			return fmt.Errorf("empty %s", label)
+		}
+		if len(commitment) > MaxShielderCommitmentLength {
+			return fmt.Errorf("%s too long", label)
+		}
+		if _, ok := seen[commitment]; ok {
+			return fmt.Errorf("duplicate %s", label)
+		}
+		seen[commitment] = struct{}{}
+	}
+	return nil
+}
+
+func validateShielderRedeemJSON(proof, public []byte) error {
+	if len(proof) == 0 {
+		return fmt.Errorf("missing shielder proof json")
+	}
+	if len(public) == 0 {
+		return fmt.Errorf("missing shielder public json")
+	}
+	if len(proof) > MaxShielderProofJSONLength {
+		return fmt.Errorf("shielder proof json too large")
+	}
+	if len(public) > MaxShielderPublicJSONLength {
+		return fmt.Errorf("shielder public json too large")
+	}
+	return nil
 }

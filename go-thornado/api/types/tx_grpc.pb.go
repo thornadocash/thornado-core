@@ -19,7 +19,6 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Msg_Ban_FullMethodName                      = "/types.Msg/Ban"
 	Msg_Deposit_FullMethodName                  = "/types.Msg/Deposit"
 	Msg_ErrataTx_FullMethodName                 = "/types.Msg/ErrataTx"
 	Msg_ErrataTxQuorum_FullMethodName           = "/types.Msg/ErrataTxQuorum"
@@ -30,7 +29,7 @@ const (
 	Msg_ObservedTxIn_FullMethodName             = "/types.Msg/ObservedTxIn"
 	Msg_ObservedTxOut_FullMethodName            = "/types.Msg/ObservedTxOut"
 	Msg_ObservedTxQuorum_FullMethodName         = "/types.Msg/ObservedTxQuorum"
-	Msg_ThorSend_FullMethodName                 = "/types.Msg/ThorSend"
+	Msg_Send_FullMethodName                     = "/types.Msg/Send"
 	Msg_SetIPAddress_FullMethodName             = "/types.Msg/SetIPAddress"
 	Msg_SetNodeKeys_FullMethodName              = "/types.Msg/SetNodeKeys"
 	Msg_Solvency_FullMethodName                 = "/types.Msg/Solvency"
@@ -45,9 +44,6 @@ const (
 	Msg_DepositRequestPow_FullMethodName        = "/types.Msg/DepositRequestPow"
 	Msg_ShielderSplit_FullMethodName            = "/types.Msg/ShielderSplit"
 	Msg_ShielderRedeem_FullMethodName           = "/types.Msg/ShielderRedeem"
-	Msg_GaslessDepositRequestPow_FullMethodName = "/types.Msg/GaslessDepositRequestPow"
-	Msg_GaslessShielderSplit_FullMethodName     = "/types.Msg/GaslessShielderSplit"
-	Msg_GaslessShielderRedeem_FullMethodName    = "/types.Msg/GaslessShielderRedeem"
 	Msg_ShielderSplitFees_FullMethodName        = "/types.Msg/ShielderSplitFees"
 	Msg_NodeSlotAuctionCreate_FullMethodName    = "/types.Msg/NodeSlotAuctionCreate"
 	Msg_NodeSlotAuctionBidPow_FullMethodName    = "/types.Msg/NodeSlotAuctionBidPow"
@@ -59,7 +55,6 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MsgClient interface {
-	Ban(ctx context.Context, in *MsgBan, opts ...grpc.CallOption) (*MsgEmpty, error)
 	Deposit(ctx context.Context, in *MsgDeposit, opts ...grpc.CallOption) (*MsgEmpty, error)
 	ErrataTx(ctx context.Context, in *MsgErrataTx, opts ...grpc.CallOption) (*MsgEmpty, error)
 	ErrataTxQuorum(ctx context.Context, in *MsgErrataTxQuorum, opts ...grpc.CallOption) (*MsgEmpty, error)
@@ -70,7 +65,7 @@ type MsgClient interface {
 	ObservedTxIn(ctx context.Context, in *MsgObservedTxIn, opts ...grpc.CallOption) (*MsgEmpty, error)
 	ObservedTxOut(ctx context.Context, in *MsgObservedTxOut, opts ...grpc.CallOption) (*MsgEmpty, error)
 	ObservedTxQuorum(ctx context.Context, in *MsgObservedTxQuorum, opts ...grpc.CallOption) (*MsgEmpty, error)
-	ThorSend(ctx context.Context, in *MsgSend, opts ...grpc.CallOption) (*MsgEmpty, error)
+	Send(ctx context.Context, in *MsgSend, opts ...grpc.CallOption) (*MsgEmpty, error)
 	SetIPAddress(ctx context.Context, in *MsgSetIPAddress, opts ...grpc.CallOption) (*MsgEmpty, error)
 	SetNodeKeys(ctx context.Context, in *MsgSetNodeKeys, opts ...grpc.CallOption) (*MsgEmpty, error)
 	Solvency(ctx context.Context, in *MsgSolvency, opts ...grpc.CallOption) (*MsgEmpty, error)
@@ -85,9 +80,6 @@ type MsgClient interface {
 	DepositRequestPow(ctx context.Context, in *MsgDepositRequestPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error)
 	ShielderSplit(ctx context.Context, in *MsgShielderSplit, opts ...grpc.CallOption) (*MsgShielderSplitResponse, error)
 	ShielderRedeem(ctx context.Context, in *MsgShielderRedeem, opts ...grpc.CallOption) (*MsgShielderRedeemResponse, error)
-	GaslessDepositRequestPow(ctx context.Context, in *MsgGaslessDepositRequestPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error)
-	GaslessShielderSplit(ctx context.Context, in *MsgGaslessShielderSplit, opts ...grpc.CallOption) (*MsgShielderSplitResponse, error)
-	GaslessShielderRedeem(ctx context.Context, in *MsgGaslessShielderRedeem, opts ...grpc.CallOption) (*MsgShielderRedeemResponse, error)
 	ShielderSplitFees(ctx context.Context, in *MsgShielderSplitFees, opts ...grpc.CallOption) (*MsgShielderSplitFeesResponse, error)
 	NodeSlotAuctionCreate(ctx context.Context, in *MsgNodeSlotAuctionCreate, opts ...grpc.CallOption) (*MsgNodeSlotAuctionCreateResponse, error)
 	NodeSlotAuctionBidPow(ctx context.Context, in *MsgNodeSlotAuctionBidPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error)
@@ -101,15 +93,6 @@ type msgClient struct {
 
 func NewMsgClient(cc grpc.ClientConnInterface) MsgClient {
 	return &msgClient{cc}
-}
-
-func (c *msgClient) Ban(ctx context.Context, in *MsgBan, opts ...grpc.CallOption) (*MsgEmpty, error) {
-	out := new(MsgEmpty)
-	err := c.cc.Invoke(ctx, Msg_Ban_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *msgClient) Deposit(ctx context.Context, in *MsgDeposit, opts ...grpc.CallOption) (*MsgEmpty, error) {
@@ -202,9 +185,9 @@ func (c *msgClient) ObservedTxQuorum(ctx context.Context, in *MsgObservedTxQuoru
 	return out, nil
 }
 
-func (c *msgClient) ThorSend(ctx context.Context, in *MsgSend, opts ...grpc.CallOption) (*MsgEmpty, error) {
+func (c *msgClient) Send(ctx context.Context, in *MsgSend, opts ...grpc.CallOption) (*MsgEmpty, error) {
 	out := new(MsgEmpty)
-	err := c.cc.Invoke(ctx, Msg_ThorSend_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Msg_Send_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -337,33 +320,6 @@ func (c *msgClient) ShielderRedeem(ctx context.Context, in *MsgShielderRedeem, o
 	return out, nil
 }
 
-func (c *msgClient) GaslessDepositRequestPow(ctx context.Context, in *MsgGaslessDepositRequestPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error) {
-	out := new(MsgDepositRequestPowResponse)
-	err := c.cc.Invoke(ctx, Msg_GaslessDepositRequestPow_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *msgClient) GaslessShielderSplit(ctx context.Context, in *MsgGaslessShielderSplit, opts ...grpc.CallOption) (*MsgShielderSplitResponse, error) {
-	out := new(MsgShielderSplitResponse)
-	err := c.cc.Invoke(ctx, Msg_GaslessShielderSplit_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *msgClient) GaslessShielderRedeem(ctx context.Context, in *MsgGaslessShielderRedeem, opts ...grpc.CallOption) (*MsgShielderRedeemResponse, error) {
-	out := new(MsgShielderRedeemResponse)
-	err := c.cc.Invoke(ctx, Msg_GaslessShielderRedeem_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *msgClient) ShielderSplitFees(ctx context.Context, in *MsgShielderSplitFees, opts ...grpc.CallOption) (*MsgShielderSplitFeesResponse, error) {
 	out := new(MsgShielderSplitFeesResponse)
 	err := c.cc.Invoke(ctx, Msg_ShielderSplitFees_FullMethodName, in, out, opts...)
@@ -413,7 +369,6 @@ func (c *msgClient) NodeSlotAuctionSplit(ctx context.Context, in *MsgNodeSlotAuc
 // All implementations must embed UnimplementedMsgServer
 // for forward compatibility
 type MsgServer interface {
-	Ban(context.Context, *MsgBan) (*MsgEmpty, error)
 	Deposit(context.Context, *MsgDeposit) (*MsgEmpty, error)
 	ErrataTx(context.Context, *MsgErrataTx) (*MsgEmpty, error)
 	ErrataTxQuorum(context.Context, *MsgErrataTxQuorum) (*MsgEmpty, error)
@@ -424,7 +379,7 @@ type MsgServer interface {
 	ObservedTxIn(context.Context, *MsgObservedTxIn) (*MsgEmpty, error)
 	ObservedTxOut(context.Context, *MsgObservedTxOut) (*MsgEmpty, error)
 	ObservedTxQuorum(context.Context, *MsgObservedTxQuorum) (*MsgEmpty, error)
-	ThorSend(context.Context, *MsgSend) (*MsgEmpty, error)
+	Send(context.Context, *MsgSend) (*MsgEmpty, error)
 	SetIPAddress(context.Context, *MsgSetIPAddress) (*MsgEmpty, error)
 	SetNodeKeys(context.Context, *MsgSetNodeKeys) (*MsgEmpty, error)
 	Solvency(context.Context, *MsgSolvency) (*MsgEmpty, error)
@@ -439,9 +394,6 @@ type MsgServer interface {
 	DepositRequestPow(context.Context, *MsgDepositRequestPow) (*MsgDepositRequestPowResponse, error)
 	ShielderSplit(context.Context, *MsgShielderSplit) (*MsgShielderSplitResponse, error)
 	ShielderRedeem(context.Context, *MsgShielderRedeem) (*MsgShielderRedeemResponse, error)
-	GaslessDepositRequestPow(context.Context, *MsgGaslessDepositRequestPow) (*MsgDepositRequestPowResponse, error)
-	GaslessShielderSplit(context.Context, *MsgGaslessShielderSplit) (*MsgShielderSplitResponse, error)
-	GaslessShielderRedeem(context.Context, *MsgGaslessShielderRedeem) (*MsgShielderRedeemResponse, error)
 	ShielderSplitFees(context.Context, *MsgShielderSplitFees) (*MsgShielderSplitFeesResponse, error)
 	NodeSlotAuctionCreate(context.Context, *MsgNodeSlotAuctionCreate) (*MsgNodeSlotAuctionCreateResponse, error)
 	NodeSlotAuctionBidPow(context.Context, *MsgNodeSlotAuctionBidPow) (*MsgDepositRequestPowResponse, error)
@@ -454,9 +406,6 @@ type MsgServer interface {
 type UnimplementedMsgServer struct {
 }
 
-func (UnimplementedMsgServer) Ban(context.Context, *MsgBan) (*MsgEmpty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Ban not implemented")
-}
 func (UnimplementedMsgServer) Deposit(context.Context, *MsgDeposit) (*MsgEmpty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Deposit not implemented")
 }
@@ -487,8 +436,8 @@ func (UnimplementedMsgServer) ObservedTxOut(context.Context, *MsgObservedTxOut) 
 func (UnimplementedMsgServer) ObservedTxQuorum(context.Context, *MsgObservedTxQuorum) (*MsgEmpty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ObservedTxQuorum not implemented")
 }
-func (UnimplementedMsgServer) ThorSend(context.Context, *MsgSend) (*MsgEmpty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ThorSend not implemented")
+func (UnimplementedMsgServer) Send(context.Context, *MsgSend) (*MsgEmpty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Send not implemented")
 }
 func (UnimplementedMsgServer) SetIPAddress(context.Context, *MsgSetIPAddress) (*MsgEmpty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetIPAddress not implemented")
@@ -532,15 +481,6 @@ func (UnimplementedMsgServer) ShielderSplit(context.Context, *MsgShielderSplit) 
 func (UnimplementedMsgServer) ShielderRedeem(context.Context, *MsgShielderRedeem) (*MsgShielderRedeemResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderRedeem not implemented")
 }
-func (UnimplementedMsgServer) GaslessDepositRequestPow(context.Context, *MsgGaslessDepositRequestPow) (*MsgDepositRequestPowResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GaslessDepositRequestPow not implemented")
-}
-func (UnimplementedMsgServer) GaslessShielderSplit(context.Context, *MsgGaslessShielderSplit) (*MsgShielderSplitResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GaslessShielderSplit not implemented")
-}
-func (UnimplementedMsgServer) GaslessShielderRedeem(context.Context, *MsgGaslessShielderRedeem) (*MsgShielderRedeemResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GaslessShielderRedeem not implemented")
-}
 func (UnimplementedMsgServer) ShielderSplitFees(context.Context, *MsgShielderSplitFees) (*MsgShielderSplitFeesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderSplitFees not implemented")
 }
@@ -567,24 +507,6 @@ type UnsafeMsgServer interface {
 
 func RegisterMsgServer(s grpc.ServiceRegistrar, srv MsgServer) {
 	s.RegisterService(&Msg_ServiceDesc, srv)
-}
-
-func _Msg_Ban_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgBan)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MsgServer).Ban(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Msg_Ban_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).Ban(ctx, req.(*MsgBan))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _Msg_Deposit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -767,20 +689,20 @@ func _Msg_ObservedTxQuorum_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Msg_ThorSend_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Msg_Send_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MsgSend)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MsgServer).ThorSend(ctx, in)
+		return srv.(MsgServer).Send(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Msg_ThorSend_FullMethodName,
+		FullMethod: Msg_Send_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).ThorSend(ctx, req.(*MsgSend))
+		return srv.(MsgServer).Send(ctx, req.(*MsgSend))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1037,60 +959,6 @@ func _Msg_ShielderRedeem_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Msg_GaslessDepositRequestPow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgGaslessDepositRequestPow)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MsgServer).GaslessDepositRequestPow(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Msg_GaslessDepositRequestPow_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).GaslessDepositRequestPow(ctx, req.(*MsgGaslessDepositRequestPow))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Msg_GaslessShielderSplit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgGaslessShielderSplit)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MsgServer).GaslessShielderSplit(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Msg_GaslessShielderSplit_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).GaslessShielderSplit(ctx, req.(*MsgGaslessShielderSplit))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Msg_GaslessShielderRedeem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgGaslessShielderRedeem)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MsgServer).GaslessShielderRedeem(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Msg_GaslessShielderRedeem_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).GaslessShielderRedeem(ctx, req.(*MsgGaslessShielderRedeem))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Msg_ShielderSplitFees_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MsgShielderSplitFees)
 	if err := dec(in); err != nil {
@@ -1189,10 +1057,6 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*MsgServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Ban",
-			Handler:    _Msg_Ban_Handler,
-		},
-		{
 			MethodName: "Deposit",
 			Handler:    _Msg_Deposit_Handler,
 		},
@@ -1233,8 +1097,8 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Msg_ObservedTxQuorum_Handler,
 		},
 		{
-			MethodName: "ThorSend",
-			Handler:    _Msg_ThorSend_Handler,
+			MethodName: "Send",
+			Handler:    _Msg_Send_Handler,
 		},
 		{
 			MethodName: "SetIPAddress",
@@ -1291,18 +1155,6 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ShielderRedeem",
 			Handler:    _Msg_ShielderRedeem_Handler,
-		},
-		{
-			MethodName: "GaslessDepositRequestPow",
-			Handler:    _Msg_GaslessDepositRequestPow_Handler,
-		},
-		{
-			MethodName: "GaslessShielderSplit",
-			Handler:    _Msg_GaslessShielderSplit_Handler,
-		},
-		{
-			MethodName: "GaslessShielderRedeem",
-			Handler:    _Msg_GaslessShielderRedeem_Handler,
 		},
 		{
 			MethodName: "ShielderSplitFees",

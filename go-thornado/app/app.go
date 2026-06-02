@@ -76,7 +76,7 @@ import (
 
 	appparams "github.com/thornadocash/go-thornado/app/params"
 	"github.com/thornadocash/go-thornado/openapi"
-	"github.com/thornadocash/go-thornado/staticui"
+	"github.com/thornadocash/go-thornado/ui"
 	"github.com/thornadocash/go-thornado/x/thornado"
 	"github.com/thornadocash/go-thornado/x/thornado/ebifrost"
 	thornadokeeper "github.com/thornadocash/go-thornado/x/thornado/keeper"
@@ -111,7 +111,6 @@ var maccPerms = map[string][]string{
 	thornado.BaseName:              {},
 	thornado.BondName:              {},
 	thornado.ReserveName:           {},
-	thornado.TreasuryName:          {},
 }
 
 var (
@@ -745,11 +744,11 @@ func RegisterSwaggerAPI(rtr *mux.Router, swaggerEnabled bool, clientCtx ...clien
 
 	// Browser client
 	if len(clientCtx) > 0 {
-		staticui.RegisterGaslessAPI(rtr, thornado.ModuleName, clientCtx[0])
+		ui.RegisterBrowserAPI(rtr, thornado.ModuleName, clientCtx[0])
 	}
-	rtr.HandleFunc(uiPath, staticui.HandleIndex).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
-	rtr.HandleFunc(uiPath+"/", staticui.HandleIndex).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
-	rtr.PathPrefix(uiAssetsPath).Handler(http.StripPrefix(uiAssetsPath, staticui.Static())).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
+	rtr.HandleFunc(uiPath, ui.HandleIndex).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
+	rtr.HandleFunc(uiPath+"/", ui.HandleIndex).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
+	rtr.PathPrefix(uiAssetsPath).Handler(http.StripPrefix(uiAssetsPath, ui.Static())).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
 
 	if !swaggerEnabled {
 		return nil
@@ -812,10 +811,6 @@ func BlockedAddresses() map[string]bool {
 	for acc := range GetMaccPerms() {
 		modAccAddrs[authtypes.NewModuleAddress(acc).String()] = true
 	}
-
-	// Allow lending and treasury to receive funds
-	delete(modAccAddrs, authtypes.NewModuleAddress(thornadotypes.LendingName).String())
-	delete(modAccAddrs, authtypes.NewModuleAddress(thornadotypes.TreasuryName).String())
 
 	return modAccAddrs
 }

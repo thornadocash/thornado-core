@@ -20,13 +20,13 @@ const (
 )
 
 func getSeedAddrs() (addrs []string) {
-	if config.Thornode.SeedNodesEndpoint == "" {
+	if config.Thornado.SeedNodesEndpoint == "" {
 		log.Warn().Msg("no seed nodes endpoint provided")
 		return
 	}
 
 	// get nodes
-	res, err := http.Get(config.Thornode.SeedNodesEndpoint)
+	res, err := http.Get(config.Thornado.SeedNodesEndpoint)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to get thornado nodes")
 	}
@@ -61,7 +61,7 @@ func getSeedAddrs() (addrs []string) {
 }
 
 func assertBifrostHasSeeds() {
-	if config.Thornode.SeedNodesEndpoint == "" {
+	if config.Thornado.SeedNodesEndpoint == "" {
 		log.Warn().Msg("no seed nodes endpoint provided, skipping seed file check")
 		return
 	}

@@ -3,7 +3,7 @@
 This is the working checklist for validating the protocol in layers. Do not mark a flow complete because a script exits zero; mark it complete only when the expected state, artifacts, and negative cases are observed.
 
 Source references:
-- FROST local behavior: `go-thornado/frost/go-wrappers/go-frost/sessions/sessions_test.go`, `go-thornado/bifrost/pkg/chainclients/utxo/vault_signer.go`
+- FROST local behavior: `go-thornado/go-wrappers/frost/go-frost/sessions/sessions_test.go`, `go-thornado/bifrost/pkg/chainclients/btc/vault_signer.go`
 - FROST service contract: `proto/frost/v1/signer.proto`
 - Shielder protocol behavior: `go-thornado/x/thornado/shielder.go`, `go-thornado/x/thornado/shielder_flow.go`
 - Shielder messages and queries: `go-thornado/proto/thornado/v1/types/msg_shielder.proto`, `go-thornado/proto/thornado/v1/types/query_shielder.proto`

@@ -14,11 +14,57 @@ import (
 
 const (
 	MainVaultPathIndex      uint64 = 0
-	FirstDepositPathIndex   uint64 = 1
 	DepositAddressLookahead uint64 = 4096
 )
 
+type VaultDepositPathType string
+
+const (
+	VaultDepositPathUser VaultDepositPathType = "user"
+	VaultDepositPathNode VaultDepositPathType = "node"
+
+	DepositPathCommitmentRoot uint64 = 0
+	depositPathKindShift      uint   = 48
+	depositPathNonceShift     uint   = 16
+	depositPathSegmentMask    uint64 = 0xffff
+)
+
 var vaultPathDomain = []byte("thornado:vault-path:v1")
+
+func VaultDepositPathIndex(pathType VaultDepositPathType, depositIndex, commitmentIndex uint64) (uint64, error) {
+	if depositIndex > depositPathSegmentMask {
+		return 0, fmt.Errorf("deposit path index out of range")
+	}
+	if commitmentIndex > depositPathSegmentMask {
+		return 0, fmt.Errorf("commitment path index out of range")
+	}
+	var kind uint64
+	switch pathType {
+	case VaultDepositPathUser:
+		kind = 1
+	case VaultDepositPathNode:
+		kind = 2
+	default:
+		return 0, fmt.Errorf("unknown vault deposit path type: %s", pathType)
+	}
+	return kind<<depositPathKindShift | depositIndex<<depositPathNonceShift | commitmentIndex, nil
+}
+
+func VaultDepositPath(pathType VaultDepositPathType, depositIndex, commitmentIndex uint64) string {
+	return fmt.Sprintf("tc84/btc/%s/%d/%d", pathType, depositIndex, commitmentIndex)
+}
+
+func VaultDepositLookaheadPathIndexes(pathType VaultDepositPathType) ([]uint64, error) {
+	indexes := make([]uint64, 0, DepositAddressLookahead)
+	for n := uint64(0); n < DepositAddressLookahead; n++ {
+		pathIndex, err := VaultDepositPathIndex(pathType, n, DepositPathCommitmentRoot)
+		if err != nil {
+			return nil, err
+		}
+		indexes = append(indexes, pathIndex)
+	}
+	return indexes, nil
+}
 
 func VaultPathTweakRoot(pubkey PubKey, pathIndex uint64) ([]byte, error) {
 	if pathIndex == MainVaultPathIndex {

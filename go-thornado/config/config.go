@@ -59,13 +59,13 @@ var (
 )
 
 type Config struct {
-	Thornode Thornode `mapstructure:"thor"`
+	Thornado Thornado `mapstructure:"thornado"`
 	Bifrost  Bifrost  `mapstructure:"bifrost"`
 }
 
 // GetThornado returns the global thornado configuration.
-func GetThornado() Thornode {
-	return config.Thornode
+func GetThornado() Thornado {
+	return config.Thornado
 }
 
 // GetBifrost returns the global thornado configuration.
@@ -98,11 +98,11 @@ func Init() {
 	))
 	assert(viper.BindEnv(
 		"bifrost.signer.block_scanner.block_height_discover_back_off",
-		"THOR_BLOCK_TIME",
+		"THORNADO_BLOCK_TIME",
 	))
 	assert(viper.BindEnv(
-		"thor.tendermint.consensus.timeout_commit",
-		"THOR_BLOCK_TIME",
+		"thornado.tendermint.consensus.timeout_commit",
+		"THORNADO_BLOCK_TIME",
 	))
 	assert(viper.BindEnv("bifrost.tss.bootstrap_peers", "PEER"))
 	assert(viper.BindEnv("bifrost.tss.external_ip", "EXTERNAL_IP"))
@@ -140,14 +140,14 @@ func Init() {
 	viper.SetConfigType("toml")
 
 	// dynamically set rpc listen address
-	if config.Thornode.Tendermint.RPC.ListenAddress == "" {
-		config.Thornode.Tendermint.RPC.ListenAddress = fmt.Sprintf("tcp://0.0.0.0:%d", rpcPort)
+	if config.Thornado.Tendermint.RPC.ListenAddress == "" {
+		config.Thornado.Tendermint.RPC.ListenAddress = fmt.Sprintf("tcp://0.0.0.0:%d", rpcPort)
 	}
-	if config.Thornode.Tendermint.P2P.ListenAddress == "" {
-		config.Thornode.Tendermint.P2P.ListenAddress = fmt.Sprintf("tcp://0.0.0.0:%d", p2pPort)
+	if config.Thornado.Tendermint.P2P.ListenAddress == "" {
+		config.Thornado.Tendermint.P2P.ListenAddress = fmt.Sprintf("tcp://0.0.0.0:%d", p2pPort)
 	}
-	if config.Thornode.Cosmos.EBifrost.Address == "" {
-		config.Thornode.Cosmos.EBifrost.Address = fmt.Sprintf("0.0.0.0:%d", ebifrostPort)
+	if config.Thornado.Cosmos.EBifrost.Address == "" {
+		config.Thornado.Cosmos.EBifrost.Address = fmt.Sprintf("0.0.0.0:%d", ebifrostPort)
 	}
 }
 
@@ -191,7 +191,7 @@ func InitBifrost() {
 	}
 }
 
-func InitThornode(ctx context.Context) {
+func InitThornado(ctx context.Context) {
 	// Environment variables prefixed with `THORNADO` will be read by viper in cosmos-sdk
 	// initialization and overwrite configuration we apply in this package.
 	for _, env := range os.Environ() {
@@ -202,17 +202,17 @@ func InitThornode(ctx context.Context) {
 	}
 
 	// if auto statesync enable, find latest snapshot height and hash that should exist
-	if config.Thornode.AutoStateSync.Enabled {
+	if config.Thornado.AutoStateSync.Enabled {
 		thornadoAutoStateSync(ctx)
 	}
 
 	// dynamically set seeds
 	seedAddrs, tmSeeds := thornadoSeeds()
-	config.Thornode.Tendermint.P2P.Seeds = strings.Join(tmSeeds, ",")
+	config.Thornado.Tendermint.P2P.Seeds = strings.Join(tmSeeds, ",")
 
 	// set the Tendermint external address
 	if os.Getenv("EXTERNAL_IP") != "" {
-		config.Thornode.Tendermint.P2P.ExternalAddress = fmt.Sprintf("%s:%d", os.Getenv("EXTERNAL_IP"), p2pPort)
+		config.Thornado.Tendermint.P2P.ExternalAddress = fmt.Sprintf("%s:%d", os.Getenv("EXTERNAL_IP"), p2pPort)
 	}
 
 	// set paths
@@ -226,7 +226,7 @@ func InitThornode(ctx context.Context) {
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to open config.toml")
 	}
-	err = t.ExecuteTemplate(tendermintFile, "config.toml.tmpl", config.Thornode.Tendermint)
+	err = t.ExecuteTemplate(tendermintFile, "config.toml.tmpl", config.Thornado.Tendermint)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to render config.toml")
 	}
@@ -236,7 +236,7 @@ func InitThornode(ctx context.Context) {
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to open app.toml")
 	}
-	err = t.ExecuteTemplate(cosmosFile, "app.toml.tmpl", config.Thornode.Cosmos)
+	err = t.ExecuteTemplate(cosmosFile, "app.toml.tmpl", config.Thornado.Cosmos)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to render app.toml")
 	}
@@ -250,10 +250,10 @@ func InitThornode(ctx context.Context) {
 }
 
 // -------------------------------------------------------------------------------------
-// Thornode
+// Thornado
 // -------------------------------------------------------------------------------------
 
-type Thornode struct {
+type Thornado struct {
 	// NodeRelayURL is the URL of the node relay service.
 	NodeRelayURL string `mapstructure:"node_relay_url"`
 
@@ -277,7 +277,7 @@ type Thornode struct {
 		// Quote contains configuration for the quote endpoints.
 		Quote struct {
 			// RecommendedMinAmountFeeMultiplier sets the multiplier on the outbound fee for
-			// the source and destination chains, used to determine the min recommended swap
+			// the source and destination chains, used to determine outbound fee guidance
 			// amount that should be respected by clients to avoid outbounds being
 			// swallowed.
 			RecommendedMinAmountFeeMultiplier uint64 `mapstructure:"recommended_min_amount_fee_multiplier"`
@@ -299,10 +299,10 @@ type Thornode struct {
 
 	// Telemetry contains Thornado-specific telemetry configuration.
 	Telemetry struct {
-		// SlashPoints enables slash point telemetry. This creates a file in the node home
-		// directory with JSON events for all slash increments and decrements. This feature
+		// PenaltyPoints enables penalty point telemetry. This creates a file in the node home
+		// directory with JSON events for all penalty increments and decrements. This feature
 		// should not be enabled on production nodes.
-		SlashPoints bool `mapstructure:"slash_points"`
+		PenaltyPoints bool `mapstructure:"penalty_points"`
 		// PricePerNode enables oracle price telemetry. This tracks the reported
 		// price per asset and per node, updated every block.
 		PricePerNode bool `mapstructure:"price_per_node"`
@@ -506,7 +506,7 @@ type BifrostAttestationGossipConfig struct {
 	// should be less than lateObserveTimeout and minTimeBetweenAttestations by at least a factor of 2.
 	ObserveReconcileInterval time.Duration `mapstructure:"observe_reconcile_interval"`
 
-	// validators can get credit for observing a tx for up to this amount of time after it is committed, after which it count against a slash penalty.
+	// validators can get credit for observing a tx for up to this amount of time after it is committed, after which it count against a penalty.
 	LateObserveTimeout time.Duration `mapstructure:"late_observe_timeout"`
 
 	// Prune observed tx attestations after this amount of time, even if they are not yet committed.
@@ -598,7 +598,7 @@ type BifrostChainConfiguration struct {
 
 		// NOTE: The following fields must be consistent across all validators. Otherwise,
 		// nodes can fail to sign outbounds from base since they may build different
-		// transactions. They may also be slashed for reporting different fee and solvency.
+		// transactions. They may also be penalized for reporting different fee and solvency.
 
 		// EstimatedAverageTxSize is the estimated average transaction size in bytes.
 		EstimatedAverageTxSize uint64 `mapstructure:"estimated_average_tx_size"`
@@ -970,7 +970,7 @@ func thornadoAutoStateSync(ctx context.Context) {
 		return
 	}
 
-	for _, host := range strings.Split(config.Thornode.Tendermint.StateSync.RPCServers, ",") {
+	for _, host := range strings.Split(config.Thornado.Tendermint.StateSync.RPCServers, ",") {
 		log.Info().Msgf("auto statesync enabled, determining trust height via %s", host)
 
 		client, err := tmhttp.New(host, "")
@@ -985,7 +985,7 @@ func thornadoAutoStateSync(ctx context.Context) {
 			log.Err(err).Str("host", host).Msg("failed to get status")
 			continue
 		}
-		height := status.SyncInfo.LatestBlockHeight - config.Thornode.AutoStateSync.BlockBuffer
+		height := status.SyncInfo.LatestBlockHeight - config.Thornado.AutoStateSync.BlockBuffer
 
 		// get the hash of the trust block
 		block, err := client.Block(ctx, &height)
@@ -997,12 +997,12 @@ func thornadoAutoStateSync(ctx context.Context) {
 
 		// set the trusted hash and height in tendermint
 		log.Info().Int64("height", height).Str("hash", hash).Msg("setting automatic statesync trust")
-		config.Thornode.Tendermint.StateSync.Enable = true
-		config.Thornode.Tendermint.StateSync.TrustHeight = height
-		config.Thornode.Tendermint.StateSync.TrustHash = hash
+		config.Thornado.Tendermint.StateSync.Enable = true
+		config.Thornado.Tendermint.StateSync.TrustHeight = height
+		config.Thornado.Tendermint.StateSync.TrustHash = hash
 
 		// set the persistent peers in tendermint to the known auto statesync peers
-		config.Thornode.Tendermint.P2P.PersistentPeers = strings.Join(config.Thornode.AutoStateSync.Peers, ",")
+		config.Thornado.Tendermint.P2P.PersistentPeers = strings.Join(config.Thornado.AutoStateSync.Peers, ",")
 
 		// success
 		return

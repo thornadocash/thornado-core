@@ -22,26 +22,42 @@ func TestDeriveBTCTaprootAddress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path1, err := DeriveBTCTaprootAddress(pk, FirstDepositPathIndex)
+	path1Index, err := VaultDepositPathIndex(VaultDepositPathUser, 0, DepositPathCommitmentRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
-	path1Again, err := DeriveBTCTaprootAddress(pk, FirstDepositPathIndex)
+	path2Index, err := VaultDepositPathIndex(VaultDepositPathUser, 1, DepositPathCommitmentRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
-	path2, err := DeriveBTCTaprootAddress(pk, FirstDepositPathIndex+1)
+	nodePathIndex, err := VaultDepositPathIndex(VaultDepositPathNode, 0, DepositPathCommitmentRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path1, err := DeriveBTCTaprootAddress(pk, path1Index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path1Again, err := DeriveBTCTaprootAddress(pk, path1Index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path2, err := DeriveBTCTaprootAddress(pk, path2Index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodePath, err := DeriveBTCTaprootAddress(pk, nodePathIndex)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if mainAddr.IsEmpty() || path1.IsEmpty() || path2.IsEmpty() {
+	if mainAddr.IsEmpty() || path1.IsEmpty() || path2.IsEmpty() || nodePath.IsEmpty() {
 		t.Fatal("derived address is empty")
 	}
 	if !path1.Equals(path1Again) {
 		t.Fatalf("path derivation is not stable: %s != %s", path1, path1Again)
 	}
-	if mainAddr.Equals(path1) || path1.Equals(path2) {
-		t.Fatalf("derived paths must be distinct: main=%s path1=%s path2=%s", mainAddr, path1, path2)
+	if mainAddr.Equals(path1) || path1.Equals(path2) || path1.Equals(nodePath) {
+		t.Fatalf("derived paths must be distinct: main=%s path1=%s path2=%s node=%s", mainAddr, path1, path2, nodePath)
 	}
 }

@@ -15,7 +15,7 @@ import (
 var ThornadoBlockTime = time.Second
 
 // CamelToSnakeUpper converts a camelCase string to SNAKE_CASE.
-// Examples: "Chain_BlockTimeSeconds" -> "BLOCK_TIME_SECONDS"
+// Examples: "Chain_BlockTimeSeconds" -> "CHAIN_BLOCK_TIME_SECONDS"
 func CamelToSnakeUpper(s string) string {
 	re := regexp.MustCompile(`([a-z0-9])([A-Z])|([A-Z]+)([A-Z][a-z])`)
 	snake := re.ReplaceAllString(s, `${1}${3}_${2}${4}`)

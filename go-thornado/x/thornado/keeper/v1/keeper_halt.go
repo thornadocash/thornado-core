@@ -6,18 +6,6 @@ import (
 	"github.com/thornadocash/go-thornado/constants"
 )
 
-func (k KVStore) IsTradingHalt(ctx cosmos.Context, msg cosmos.Msg) bool {
-	return false
-}
-
-func (k KVStore) IsGlobalTradingHalted(ctx cosmos.Context) bool {
-	return false
-}
-
-func (k KVStore) IsChainTradingHalted(ctx cosmos.Context, chain common.Chain) bool {
-	return k.IsChainHalted(ctx, chain)
-}
-
 func (k KVStore) IsChainHalted(ctx cosmos.Context, chain common.Chain) bool {
 	haltChain := k.GetConfigInt64(ctx, constants.Halt_ChainGlobal)
 	if haltChain > 0 && haltChain <= ctx.BlockHeight() {

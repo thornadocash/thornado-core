@@ -1,7 +1,7 @@
 /*
-Thornode API
+Thornado API
 
-Thornode REST API.
+Thornado REST API.
 
 Contact: devs@thornado.org
 */
@@ -40,10 +40,9 @@ type Node struct {
 	IpAddress     string `json:"ip_address"`
 	// the currently set version of the node
 	Version string `json:"version"`
-	// the accumulated slash points, reset at churn but excessive slash points may carry over
-	SlashPoints  int64    `json:"slash_points"`
-	Jail         NodeJail `json:"jail"`
-	CurrentAward string   `json:"current_award"`
+	// the accumulated penalty points, reset at churn but excessive penalty points may carry over
+	PenaltyPoints int64    `json:"penalty_points"`
+	Jail          NodeJail `json:"jail"`
 	// the last observed heights for all chain by the node
 	ObserveChains []ChainHeight `json:"observe_chains"`
 	// indicates whether the node is in maintenance mode
@@ -57,7 +56,7 @@ type Node struct {
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewNode(nodeAddress string, status string, pubKeySet NodePubKeySet, validatorConsPubKey string, peerId string, activeBlockHeight int64, statusSince int64, nodeOperatorAddress string, totalBond string, bondProviders NodeBondProviders, signerMembership []string, requestedToLeave bool, forcedToLeave bool, leaveHeight int64, ipAddress string, version string, slashPoints int64, jail NodeJail, currentAward string, observeChains []ChainHeight, maintenance bool, missingBlocks int64, preflightStatus NodePreflightStatus) *Node {
+func NewNode(nodeAddress string, status string, pubKeySet NodePubKeySet, validatorConsPubKey string, peerId string, activeBlockHeight int64, statusSince int64, nodeOperatorAddress string, totalBond string, bondProviders NodeBondProviders, signerMembership []string, requestedToLeave bool, forcedToLeave bool, leaveHeight int64, ipAddress string, version string, penaltyPoints int64, jail NodeJail, observeChains []ChainHeight, maintenance bool, missingBlocks int64, preflightStatus NodePreflightStatus) *Node {
 	this := Node{}
 	this.NodeAddress = nodeAddress
 	this.Status = status
@@ -75,9 +74,8 @@ func NewNode(nodeAddress string, status string, pubKeySet NodePubKeySet, validat
 	this.LeaveHeight = leaveHeight
 	this.IpAddress = ipAddress
 	this.Version = version
-	this.SlashPoints = slashPoints
+	this.PenaltyPoints = penaltyPoints
 	this.Jail = jail
-	this.CurrentAward = currentAward
 	this.ObserveChains = observeChains
 	this.Maintenance = maintenance
 	this.MissingBlocks = missingBlocks
@@ -477,28 +475,28 @@ func (o *Node) SetVersion(v string) {
 	o.Version = v
 }
 
-// GetSlashPoints returns the SlashPoints field value
-func (o *Node) GetSlashPoints() int64 {
+// GetPenaltyPoints returns the PenaltyPoints field value
+func (o *Node) GetPenaltyPoints() int64 {
 	if o == nil {
 		var ret int64
 		return ret
 	}
 
-	return o.SlashPoints
+	return o.PenaltyPoints
 }
 
-// GetSlashPointsOk returns a tuple with the SlashPoints field value
+// GetPenaltyPointsOk returns a tuple with the PenaltyPoints field value
 // and a boolean to check if the value has been set.
-func (o *Node) GetSlashPointsOk() (*int64, bool) {
+func (o *Node) GetPenaltyPointsOk() (*int64, bool) {
 	if o == nil {
 		return nil, false
 	}
-	return &o.SlashPoints, true
+	return &o.PenaltyPoints, true
 }
 
-// SetSlashPoints sets field value
-func (o *Node) SetSlashPoints(v int64) {
-	o.SlashPoints = v
+// SetPenaltyPoints sets field value
+func (o *Node) SetPenaltyPoints(v int64) {
+	o.PenaltyPoints = v
 }
 
 // GetJail returns the Jail field value
@@ -523,30 +521,6 @@ func (o *Node) GetJailOk() (*NodeJail, bool) {
 // SetJail sets field value
 func (o *Node) SetJail(v NodeJail) {
 	o.Jail = v
-}
-
-// GetCurrentAward returns the CurrentAward field value
-func (o *Node) GetCurrentAward() string {
-	if o == nil {
-		var ret string
-		return ret
-	}
-
-	return o.CurrentAward
-}
-
-// GetCurrentAwardOk returns a tuple with the CurrentAward field value
-// and a boolean to check if the value has been set.
-func (o *Node) GetCurrentAwardOk() (*string, bool) {
-	if o == nil {
-		return nil, false
-	}
-	return &o.CurrentAward, true
-}
-
-// SetCurrentAward sets field value
-func (o *Node) SetCurrentAward(v string) {
-	o.CurrentAward = v
 }
 
 // GetObserveChains returns the ObserveChains field value
@@ -696,13 +670,10 @@ func (o Node) MarshalJSON_deprecated() ([]byte, error) {
 		toSerialize["version"] = o.Version
 	}
 	if true {
-		toSerialize["slash_points"] = o.SlashPoints
+		toSerialize["penalty_points"] = o.PenaltyPoints
 	}
 	if true {
 		toSerialize["jail"] = o.Jail
-	}
-	if true {
-		toSerialize["current_award"] = o.CurrentAward
 	}
 	if true {
 		toSerialize["observe_chains"] = o.ObserveChains

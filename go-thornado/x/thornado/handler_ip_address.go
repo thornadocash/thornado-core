@@ -67,7 +67,7 @@ func (h IPAddressHandler) handle(ctx cosmos.Context, msg MsgSetIPAddress) error 
 
 	ctx.EventManager().EmitEvent(
 		cosmos.NewEvent("set_ip_address",
-			cosmos.NewAttribute("thor_address", msg.Signer.String()),
+			cosmos.NewAttribute("node_address", msg.Signer.String()),
 			cosmos.NewAttribute("address", msg.IPAddress)))
 
 	return nil
@@ -99,5 +99,5 @@ func IPAddressAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper,
 		return ctx, err
 	}
 
-	return ctx, k.DeductNativeTxFeeFromBond(ctx, msg.Signer)
+	return ctx, nil
 }

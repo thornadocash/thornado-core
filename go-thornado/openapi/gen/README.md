@@ -98,7 +98,7 @@ Class | Method | HTTP request | Description
 *DefaultApi* | [**ThornadoMetricKeygenPubKeyGet**](docs/DefaultApi.md#thornadometrickeygenpubkeyget) | **Get** /thornado/metric/keygen/{pub_key} | Keygen metric by vault pubkey
 *DefaultApi* | [**ThornadoMetricsGet**](docs/DefaultApi.md#thornadometricsget) | **Get** /thornado/metrics | Keygen and keysign metrics
 *DefaultApi* | [**ThornadoNetworkFeeGet**](docs/DefaultApi.md#thornadonetworkfeeget) | **Get** /thornado/network_fee | BTC network fee
-*DefaultApi* | [**ThornadoNodeAddressAddressGet**](docs/DefaultApi.md#thornadonodeaddressaddressget) | **Get** /thornado/node/address/{address} | Node by address
+*DefaultApi* | [**ThornadoNodeAddressGet**](docs/DefaultApi.md#thornadonodeaddressget) | **Get** /thornado/node/{address} | Node by address
 *DefaultApi* | [**ThornadoNodeAuctionAuctionIdBidsGet**](docs/DefaultApi.md#thornadonodeauctionauctionidbidsget) | **Get** /thornado/node/auction/{auction_id}/bids | Node slot auction bids
 *DefaultApi* | [**ThornadoNodeAuctionAuctionIdGet**](docs/DefaultApi.md#thornadonodeauctionauctionidget) | **Get** /thornado/node/auction/{auction_id} | Node slot auction
 *DefaultApi* | [**ThornadoNodeAuctionsGet**](docs/DefaultApi.md#thornadonodeauctionsget) | **Get** /thornado/node/auctions | Node slot auctions

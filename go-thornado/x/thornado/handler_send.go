@@ -74,7 +74,7 @@ func NewSendHandler(mgr Manager) BaseHandler[sdk.Msg] {
 }
 
 func MsgSendLogger(ctx cosmos.Context, m sdk.Msg) {
-	msg, err := getThorSend(m)
+	msg, err := getModuleSend(m)
 	if err != nil {
 		return
 	}
@@ -82,8 +82,8 @@ func MsgSendLogger(ctx cosmos.Context, m sdk.Msg) {
 	ctx.Logger().Info("receive MsgSend", "from", msg.FromAddress, "to", msg.ToAddress, "coins", msg.Amount)
 }
 
-// getThorSend returns a thor MsgSend from either a thor MsgSend or a x/bank MsgSend
-func getThorSend(msg sdk.Msg) (*MsgSend, error) {
+// getModuleSend returns a module MsgSend from either a Thornado MsgSend or an x/bank MsgSend.
+func getModuleSend(msg sdk.Msg) (*MsgSend, error) {
 	switch msg := msg.(type) {
 	case *MsgSend:
 		return msg, nil
@@ -132,7 +132,7 @@ func getDeposit(ctx cosmos.Context, fromAddress sdk.AccAddress, sdkCoins sdk.Coi
 // and also during deliver. Store changes will persist if this function
 // succeeds, regardless of the success of the transaction.
 func SendAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, m sdk.Msg) (cosmos.Context, error) {
-	msg, err := getThorSend(m)
+	msg, err := getModuleSend(m)
 	if err != nil {
 		return ctx, err
 	}
@@ -140,7 +140,7 @@ func SendAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, m sd
 }
 
 func MsgSendValidate(ctx cosmos.Context, mgr Manager, m sdk.Msg) error {
-	msg, err := getThorSend(m)
+	msg, err := getModuleSend(m)
 	if err != nil {
 		return err
 	}
@@ -150,9 +150,9 @@ func MsgSendValidate(ctx cosmos.Context, mgr Manager, m sdk.Msg) error {
 	}
 
 	k := mgr.Keeper()
-	isThorModAddr := msg.ToAddress.Equals(k.GetModuleAccAddress(ModuleName))
+	isThornadoModuleAddr := msg.ToAddress.Equals(k.GetModuleAccAddress(ModuleName))
 
-	if isThorModAddr {
+	if isThornadoModuleAddr {
 		msgDeposit, err := getDeposit(ctx, msg.GetSigners()[0], msg.Amount)
 		if err != nil {
 			return err
@@ -172,7 +172,7 @@ func MsgSendValidate(ctx cosmos.Context, mgr Manager, m sdk.Msg) error {
 }
 
 func MsgSendHandle(ctx cosmos.Context, mgr Manager, m sdk.Msg) (*cosmos.Result, error) {
-	msg, err := getThorSend(m)
+	msg, err := getModuleSend(m)
 	if err != nil {
 		return nil, err
 	}

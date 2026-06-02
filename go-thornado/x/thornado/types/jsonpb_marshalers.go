@@ -22,7 +22,6 @@ import (
 var (
 	_ jsonpb.JSONPBMarshaler = &QueryBaseVaultsResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryBalanceModuleResponse{}
-	_ jsonpb.JSONPBMarshaler = &BanVoter{}
 	_ jsonpb.JSONPBMarshaler = &QueryBlockResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryConfigValuesResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryKeygenResponse{}
@@ -67,11 +66,6 @@ func (m *QueryBaseVaultsResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, er
 
 // QueryBalanceModuleResponse
 func (m *QueryBalanceModuleResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
-	return jsonify(m)
-}
-
-// BanVoter
-func (m *BanVoter) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
 	return jsonify(m)
 }
 

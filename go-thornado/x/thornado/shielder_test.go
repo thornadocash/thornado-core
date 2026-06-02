@@ -76,6 +76,16 @@ func TestUserSplitRequiresCommitments(t *testing.T) {
 	}
 }
 
+func TestStoredShielderNoteRecordIsPublicOnly(t *testing.T) {
+	record := types.StoredShielderNoteRecord{
+		Commitment:       "COMMITMENT",
+		DenominationSats: 100000,
+	}
+	if err := record.Valid(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestWithdrawalFeeIsProtocolOnePercent(t *testing.T) {
 	if got := withdrawalFeeSatsForBp(100_000_000, uint64(constants.NewConfigValue().GetInt64Value(constants.Withdrawal_FeeBasisPoints))); got != 1_000_000 {
 		t.Fatalf("unexpected fee: %d", got)

@@ -20,26 +20,26 @@ func processErrataTxAttestation(
 	attester cosmos.AccAddress,
 	active NodeAccounts,
 	er *common.ErrataTx,
-	shouldSlashForDuplicate bool,
+	shouldPenalizeForDuplicate bool,
 ) error {
 	k := mgr.Keeper()
 	eventMgr := mgr.EventMgr()
 
-	observeSlashPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
+	observePenaltyPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
 	lackOfObservationPenalty := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_MissPenaltyPoints)
 	observeFlex := getConfigDurationBlocks(ctx, k, constants.Observation_DelayFlexibilityMinutes)
 
-	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{ // nolint
+	penaltyCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{ // nolint
 		telemetry.NewLabel("reason", "failed_observe_errata"),
 		telemetry.NewLabel("chain", string(er.Chain)),
 	}))
 
-	slasher := mgr.Slasher()
+	penaltyManager := mgr.PenaltyManager()
 
 	if !voter.Sign(attester) {
-		// Slash for the network having to handle the extra message/s.
-		if shouldSlashForDuplicate {
-			slasher.IncSlashPoints(slashCtx, observeSlashPoints, attester)
+		// Penalty for the network having to handle the extra message/s.
+		if shouldPenalizeForDuplicate {
+			penaltyManager.IncPenaltyPoints(penaltyCtx, observePenaltyPoints, attester)
 		}
 		ctx.Logger().Info("signer already signed MsgErrataTx", "signer", attester.String(), "txid", er.Id)
 		return nil
@@ -47,16 +47,16 @@ func processErrataTxAttestation(
 
 	// doesn't have consensus yet
 	if !voter.HasConsensus(active) {
-		// Before consensus, slash until consensus.
-		slasher.IncSlashPoints(slashCtx, observeSlashPoints, attester)
+		// Before consensus, penalty until consensus.
+		penaltyManager.IncPenaltyPoints(penaltyCtx, observePenaltyPoints, attester)
 		ctx.Logger().Info("not having consensus yet, return")
 		return nil
 	}
 
 	if voter.BlockHeight > 0 {
-		// After consensus, only decrement slash points if within the Observation_DelayFlexibilityMinutes window.
+		// After consensus, only decrement penalty points if within the Observation_DelayFlexibilityMinutes window.
 		if (voter.BlockHeight + observeFlex) >= ctx.BlockHeight() {
-			slasher.DecSlashPoints(slashCtx, lackOfObservationPenalty, attester)
+			penaltyManager.DecPenaltyPoints(penaltyCtx, lackOfObservationPenalty, attester)
 		}
 		// errata tx already processed
 		return nil
@@ -64,13 +64,13 @@ func processErrataTxAttestation(
 
 	voter.BlockHeight = ctx.BlockHeight()
 
-	// This signer brings the voter to consensus; increment the signer's slash points like the before-consensus signers,
-	// then decrement all the signers' slash points and increment the non-signers' slash points.
-	slasher.IncSlashPoints(slashCtx, observeSlashPoints, attester)
+	// This signer brings the voter to consensus; increment the signer's penalty points like the before-consensus signers,
+	// then decrement all the signers' penalty points and increment the non-signers' penalty points.
+	penaltyManager.IncPenaltyPoints(penaltyCtx, observePenaltyPoints, attester)
 	signers := voter.GetSigners()
 	nonSigners := getNonSigners(active, signers)
-	slasher.DecSlashPoints(slashCtx, observeSlashPoints, signers...)
-	slasher.IncSlashPoints(slashCtx, lackOfObservationPenalty, nonSigners...)
+	penaltyManager.DecPenaltyPoints(penaltyCtx, observePenaltyPoints, signers...)
+	penaltyManager.IncPenaltyPoints(penaltyCtx, lackOfObservationPenalty, nonSigners...)
 
 	observedVoter, err := k.GetObservedTxInVoter(ctx, er.Id)
 	if err != nil {

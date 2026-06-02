@@ -13,7 +13,7 @@ message MsgTssPool {
   option (amino.name) = "thornado/TssPool";
 
   string id = 1 [ (gogoproto.customname) = "ID" ];
-  string pool_pub_key = 2
+  string vault_pub_key = 2
       [ (gogoproto.casttype) =
             "github.com/thornadocash/go-thornado/common.PubKey" ];
   KeygenType keygen_type = 3
@@ -29,13 +29,13 @@ message MsgTssPool {
   int64 keygen_time = 9;
   bytes keyshares_backup = 10;
   bytes secp256k1_signature = 11;
-  string pool_pub_key_eddsa = 12 [
+  string vault_pub_key_eddsa = 12 [
     (gogoproto.casttype) = "github.com/thornadocash/go-thornado/common.PubKey",
     (gogoproto.nullable) = true
   ];
   bytes keyshares_backup_eddsa = 13 [ (gogoproto.nullable) = true ];
   bytes keyshares_backup_frost = 14 [ (gogoproto.nullable) = true ];
-  string pool_pub_key_frost = 15 [
+  string vault_pub_key_frost = 15 [
     (gogoproto.casttype) = "github.com/thornadocash/go-thornado/common.PubKey",
     (gogoproto.nullable) = true
   ];

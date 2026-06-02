@@ -10,16 +10,15 @@ message QueryShielderRedeemRequest {
 
 message QueryShielderRedeemResponse {
   string withdrawal_id = 1;
-  string owner = 2;
-  string nullifier_hash = 3;
-  string merkle_root = 4;
-  string recipient = 5;
-  uint64 amount_sats = 6;
-  uint64 fee_sats = 7;
-  string in_hash = 8;
-  string vault_pub_key = 9;
-  int64 requested_height = 10;
-  string status = 11;
+  string nullifier_hash = 2;
+  string merkle_root = 3;
+  string recipient = 4;
+  uint64 amount_sats = 5;
+  uint64 fee_sats = 6;
+  string in_hash = 7;
+  string vault_pub_key = 8;
+  int64 requested_height = 9;
+  string status = 10;
 }
 
 message QueryShielderNullifierRequest {
@@ -34,10 +33,8 @@ message QueryShielderNullifierResponse {
 }
 
 message ShielderNoteRecord {
-  string owner_pubkey = 1;
-  string commitment = 2;
-  uint64 denomination_sats = 3;
-  string deposit_id = 4;
+  string commitment = 1;
+  uint64 denomination_sats = 2;
 }
 
 message ShielderSpentNullifier {

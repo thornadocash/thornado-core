@@ -51,11 +51,10 @@ func NewAnteHandler(options HandlerOptions) (sdk.AnteHandler, error) {
 
 		ante.NewExtensionOptionsDecorator(options.ExtensionOptionChecker),
 		// run thornado-specific msg antes before SDK tx signature checks so
-		// intrinsic-auth gasless shielder txs can bypass account signatures.
+		// intrinsic-auth shielder txs can bypass account signatures.
 		thornado.NewAnteDecorator(options.ThornadoKeeper),
 		ante.NewValidateBasicDecorator(),
 		ante.NewTxTimeoutHeightDecorator(),
-		ante.NewValidateMemoDecorator(options.AccountKeeper),
 		ante.NewConsumeGasForTxSizeDecorator(options.AccountKeeper),
 
 		ante.NewSetPubKeyDecorator(options.AccountKeeper), // SetPubKeyDecorator must be called before all signature verification decorators

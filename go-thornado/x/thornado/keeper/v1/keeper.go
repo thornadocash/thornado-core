@@ -19,10 +19,10 @@ import (
 	"github.com/thornadocash/go-thornado/x/thornado/keeper/types"
 )
 
-// NOTE: Always end a dbPrefix with a slash ("/"). This is to ensure that there
+// NOTE: Always end a dbPrefix with a penalty ("/"). This is to ensure that there
 // are no prefixes that contain another prefix. In the scenario where this is
 // true, an iterator for a specific type, will get more than intended, and may
-// include a different type. The slash is used to protect us from this
+// include a different type. The penalty is used to protect us from this
 // scenario.
 // Also, use underscores between words and use lowercase characters only
 
@@ -44,8 +44,7 @@ const (
 	prefixTssKeysignFailure       types.DbPrefix = "tssKeysignFailure/"
 	prefixKeygen                  types.DbPrefix = "keygen/"
 	prefixErrataTx                types.DbPrefix = "errata/"
-	prefixBanVoter                types.DbPrefix = "ban/"
-	prefixNodeSlashPoints         types.DbPrefix = "slash/"
+	prefixNodePenaltyPoints       types.DbPrefix = "penalty/"
 	prefixNodeJail                types.DbPrefix = "jail/"
 	prefixConfig                  types.DbPrefix = "config/"
 	prefixMinJoinLast             types.DbPrefix = "minjoinlast/"
@@ -63,6 +62,8 @@ const (
 	prefixOraclePrice             types.DbPrefix = "oracle_price/"
 	prefixDepositSession          types.DbPrefix = "deposit_session/"
 	prefixShielderPowToken        types.DbPrefix = "deposit_pow/"
+	prefixDepositPowTiming        types.DbPrefix = "deposit_pow_timing/"
+	prefixDepositPowDifficulty    types.DbPrefix = "deposit_pow_difficulty/"
 	prefixDepositAddress          types.DbPrefix = "deposit_address/"
 	prefixVaultDepositPathIndex   types.DbPrefix = "vault_deposit_path_index/"
 	prefixDepositRecord           types.DbPrefix = "deposit_record/"
@@ -135,7 +136,7 @@ func (k *KVStore) SetVersion(ver semver.Version) {
 func (k KVStore) GetKey(prefix types.DbPrefix, key string, other ...string) []byte {
 	newKey := fmt.Sprintf("%s/%s", prefix, strings.ToUpper(key))
 
-	// TODO: should this handle the slashes automatically?
+	// TODO: should this handle the penaltyes automatically?
 	// ref: x/thornado/keeper/v1/keeper_last_height.go#GetLastObserveHeight
 	for _, item := range other {
 		newKey += strings.ToUpper(item)
@@ -322,11 +323,6 @@ func (k KVStore) getUint(ctx cosmos.Context, key []byte, record *cosmos.Uint) (b
 	}
 	*record = value.Value
 	return true, nil
-}
-
-// GetRuneBalanceOfModule get the RUNE balance
-func (k KVStore) GetRuneBalanceOfModule(ctx cosmos.Context, moduleName string) cosmos.Uint {
-	return k.GetBalanceOfModule(ctx, moduleName, common.BTCAsset.Native())
 }
 
 func (k KVStore) GetBalanceOfModule(ctx cosmos.Context, moduleName, denom string) cosmos.Uint {

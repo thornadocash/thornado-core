@@ -289,18 +289,13 @@ func (qs queryServer) queryNode(ctx cosmos.Context, req *types.QueryNodeRequest)
 		return nil, fmt.Errorf("fail to get node accounts: %w", err)
 	}
 
-	slashPts, err := qs.mgr.Keeper().GetNodeAccountSlashPoints(ctx, addr)
+	penaltyPts, err := qs.mgr.Keeper().GetNodeAccountPenaltyPoints(ctx, addr)
 	if err != nil {
-		return nil, fmt.Errorf("fail to get node slash points: %w", err)
+		return nil, fmt.Errorf("fail to get node penalty points: %w", err)
 	}
 	jail, err := qs.mgr.Keeper().GetNodeAccountJail(ctx, nodeAcc.NodeAddress)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get node jail: %w", err)
-	}
-
-	active, err := qs.mgr.Keeper().ListActiveNodes(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get all active node account: %w", err)
 	}
 
 	result := types.QueryNodeResponse{
@@ -323,45 +318,14 @@ func (qs queryServer) queryNode(ctx cosmos.Context, req *types.QueryNodeRequest)
 		MissingBlocks:       int64(nodeAcc.MissingBlocks),
 		IpAddress:           nodeAcc.IPAddress,
 		Version:             nodeAcc.GetVersion().String(),
-		CurrentAward:        cosmos.ZeroUint().String(), // Default display for if not overwritten.
 	}
 	result.PeerId = getPeerIDFromPubKey(nodeAcc.PubKeySet.Secp256k1)
-	result.SlashPoints = slashPts
+	result.PenaltyPoints = penaltyPts
 
 	result.Jail = &types.NodeJail{
 		// Since redundant, leave out the node address
 		ReleaseHeight: jail.ReleaseHeight,
 		Reason:        jail.Reason,
-	}
-
-	// CurrentAward is an estimation of reward for node in active status
-	// Node in other status should not have current reward
-	if nodeAcc.Status == NodeActive && !nodeAcc.Bond.IsZero() {
-		var network Network
-		network, err = qs.mgr.Keeper().GetNetwork(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("fail to get network: %w", err)
-		}
-		var vaults []Vault
-		vaults, err = qs.mgr.Keeper().GetBaseVaultsByStatus(ctx, ActiveVault)
-		if err != nil {
-			return nil, fmt.Errorf("fail to get active vaults: %w", err)
-		}
-		if len(vaults) == 0 {
-			return nil, fmt.Errorf("no active vaults")
-		}
-
-		totalEffectiveBond, bondHardCap := getTotalEffectiveBond(active)
-
-		lastChurnHeight := vaults[0].StatusSince
-
-		var reward cosmos.Uint
-		reward, err = getNodeCurrentRewards(ctx, qs.mgr, nodeAcc, lastChurnHeight, network.BondRewardRune, totalEffectiveBond, bondHardCap)
-		if err != nil {
-			return nil, fmt.Errorf("fail to get current node rewards: %w", err)
-		}
-
-		result.CurrentAward = reward.String()
 	}
 
 	// TODO: Represent this map as the field directly, instead of making an array?
@@ -417,33 +381,6 @@ func getNodePreflightResult(ctx cosmos.Context, mgr *Mgrs, nodeAcc NodeAccount) 
 	return preflightResult, nil
 }
 
-// Estimates current rewards for the NodeAccount taking into account bond-weighted rewards and slash points
-func getNodeCurrentRewards(ctx cosmos.Context, mgr *Mgrs, nodeAcc NodeAccount, lastChurnHeight int64, totalBondReward, totalEffectiveBond, bondHardCap cosmos.Uint) (cosmos.Uint, error) {
-	slashPts, err := mgr.Keeper().GetNodeAccountSlashPoints(ctx, nodeAcc.NodeAddress)
-	if err != nil {
-		return cosmos.ZeroUint(), fmt.Errorf("fail to get node slash points: %w", err)
-	}
-
-	// Find number of blocks since the last churn (the last bond reward payout)
-	totalActiveBlocks := ctx.BlockHeight() - lastChurnHeight
-
-	// find number of blocks they were well behaved (ie active - slash points)
-	earnedBlocks := totalActiveBlocks - slashPts
-	if earnedBlocks < 0 {
-		earnedBlocks = 0
-	}
-
-	naEffectiveBond := nodeAcc.Bond
-	if naEffectiveBond.GT(bondHardCap) {
-		naEffectiveBond = bondHardCap
-	}
-
-	// reward = totalBondReward * (naEffectiveBond / totalEffectiveBond) * (unslashed blocks since last churn / blocks since last churn)
-	reward := common.GetUncappedShare(naEffectiveBond, totalEffectiveBond, totalBondReward)
-	reward = common.GetUncappedShare(cosmos.NewUint(uint64(earnedBlocks)), cosmos.NewUint(uint64(totalActiveBlocks)), reward)
-	return reward, nil
-}
-
 // queryNodes return all the nodes that has bond
 // /thornado/nodes
 func (qs queryServer) queryNodes(ctx cosmos.Context, _ *types.QueryNodesRequest) (*types.QueryNodesResponse, error) {
@@ -462,22 +399,6 @@ func (qs queryServer) queryNodes(ctx cosmos.Context, _ *types.QueryNodesRequest)
 		}
 	}
 
-	network, err := qs.mgr.Keeper().GetNetwork(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get network: %w", err)
-	}
-
-	vaults, err := qs.mgr.Keeper().GetBaseVaultsByStatus(ctx, ActiveVault)
-	if err != nil {
-		return nil, fmt.Errorf("fail to get active vaults: %w", err)
-	}
-
-	totalEffectiveBond, bondHardCap := getTotalEffectiveBond(active)
-
-	lastChurnHeight := int64(0)
-	if len(vaults) > 0 {
-		lastChurnHeight = vaults[0].StatusSince
-	}
 	result := make([]*types.QueryNodeResponse, len(nodeAccounts))
 	for i, na := range nodeAccounts {
 		if na.RequestedToLeave && na.Bond.LTE(cosmos.NewUint(common.One)) {
@@ -487,15 +408,14 @@ func (qs queryServer) queryNodes(ctx cosmos.Context, _ *types.QueryNodesRequest)
 				Status:          types.NodeStatus_Unknown.String(),
 				TotalBond:       cosmos.ZeroUint().String(),
 				Version:         semver.MustParse("0.0.0").String(),
-				CurrentAward:    cosmos.ZeroUint().String(),
 				PreflightStatus: &types.NodePreflightStatus{Status: types.NodeStatus_Unknown.String()},
 			}
 			continue
 		}
 
-		slashPts, err := qs.mgr.Keeper().GetNodeAccountSlashPoints(ctx, na.NodeAddress)
+		penaltyPts, err := qs.mgr.Keeper().GetNodeAccountPenaltyPoints(ctx, na.NodeAddress)
 		if err != nil {
-			return nil, fmt.Errorf("fail to get node slash points: %w", err)
+			return nil, fmt.Errorf("fail to get node penalty points: %w", err)
 		}
 
 		result[i] = &types.QueryNodeResponse{
@@ -518,19 +438,9 @@ func (qs queryServer) queryNodes(ctx cosmos.Context, _ *types.QueryNodesRequest)
 			MissingBlocks:       int64(na.MissingBlocks),
 			IpAddress:           na.IPAddress,
 			Version:             na.GetVersion().String(),
-			CurrentAward:        cosmos.ZeroUint().String(), // Default display for if not overwritten.
 		}
 		result[i].PeerId = getPeerIDFromPubKey(na.PubKeySet.Secp256k1)
-		result[i].SlashPoints = slashPts
-		if na.Status == NodeActive && !na.Bond.IsZero() && len(vaults) > 0 {
-			var reward cosmos.Uint
-			reward, err = getNodeCurrentRewards(ctx, qs.mgr, na, lastChurnHeight, network.BondRewardRune, totalEffectiveBond, bondHardCap)
-			if err != nil {
-				return nil, fmt.Errorf("fail to get current node rewards: %w", err)
-			}
-
-			result[i].CurrentAward = reward.String()
-		}
+		result[i].PenaltyPoints = penaltyPts
 
 		var jail Jail
 		jail, err = qs.mgr.Keeper().GetNodeAccountJail(ctx, na.NodeAddress)
@@ -1073,14 +983,15 @@ func (qs queryServer) queryShielderSync(ctx cosmos.Context, _ *types.QueryShield
 			return nil, err
 		}
 		notes = append(notes, &types.ShielderNoteRecord{
-			OwnerPubkey:      strings.TrimSpace(record.OwnerPubkey),
 			Commitment:       strings.TrimSpace(record.Commitment),
 			DenominationSats: record.DenominationSats,
-			DepositId:        record.DepositID.String(),
 		})
 	}
 	sort.Slice(notes, func(i, j int) bool {
-		return notes[i].OwnerPubkey < notes[j].OwnerPubkey
+		if notes[i].DenominationSats == notes[j].DenominationSats {
+			return notes[i].Commitment < notes[j].Commitment
+		}
+		return notes[i].DenominationSats < notes[j].DenominationSats
 	})
 
 	nullifierIter := k.GetShielderNullifierIterator(ctx)
@@ -1226,7 +1137,7 @@ func (qs queryServer) shielderBondResponse(ctx cosmos.Context, bond types.Shield
 	if err != nil {
 		return nil, err
 	}
-	slashPoints, err := qs.mgr.Keeper().GetNodeAccountSlashPoints(ctx, bond.NodeAddress)
+	penaltyPoints, err := qs.mgr.Keeper().GetNodeAccountPenaltyPoints(ctx, bond.NodeAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -1245,7 +1156,7 @@ func (qs queryServer) shielderBondResponse(ctx cosmos.Context, bond types.Shield
 		CreatedHeight:       bond.CreatedHeight,
 		UpdatedHeight:       bond.UpdatedHeight,
 		NodeStatus:          node.Status.String(),
-		SlashPoints:         slashPoints,
+		PenaltyPoints:       penaltyPoints,
 	}, nil
 }
 
@@ -1523,10 +1434,6 @@ func (qs queryServer) queryKeysign(ctx cosmos.Context, heightStr, pubKey string)
 		}
 		for _, tx := range txs.TxArray {
 			if pk.Equals(tx.VaultPubKey) {
-				zero := cosmos.ZeroUint()
-				if tx.CloutSpent == nil {
-					tx.CloutSpent = &zero
-				}
 				newTxs.TxArray = append(newTxs.TxArray, tx)
 			}
 		}
@@ -1844,6 +1751,13 @@ func (qs queryServer) queryConfigValues(ctx cosmos.Context, _ *types.QueryConfig
 			Description: constants.ConfigDescription(key),
 		})
 	}
+	key := "Deposit_PowDifficultyCurrent"
+	resp.Configs = append(resp.Configs, &types.Config{
+		Key:         key,
+		Value:       currentDepositPowDifficulty(ctx, keeper),
+		Group:       constants.ConfigGroup(key),
+		Description: constants.ConfigDescription(key),
+	})
 
 	return &resp, nil
 }
@@ -1933,25 +1847,6 @@ func (qs queryServer) queryConfigNodeValues(ctx cosmos.Context, req *types.Query
 	}
 
 	return &resp, nil
-}
-
-func (qs queryServer) queryBan(ctx cosmos.Context, req *types.QueryBanRequest) (*types.BanVoter, error) {
-	if len(req.Address) == 0 {
-		return nil, errors.New("node address not available")
-	}
-	addr, err := cosmos.AccAddressFromBech32(req.Address)
-	if err != nil {
-		ctx.Logger().Error("invalid node address", "error", err)
-		return nil, fmt.Errorf("invalid node address: %w", err)
-	}
-
-	ban, err := qs.mgr.Keeper().GetBanVoter(ctx, addr)
-	if err != nil {
-		ctx.Logger().Error("fail to get ban voter", "error", err)
-		return nil, fmt.Errorf("fail to get ban voter: %w", err)
-	}
-
-	return &ban, nil
 }
 
 func (qs queryServer) queryTssKeygenMetric(ctx cosmos.Context, req *types.QueryTssKeygenMetricRequest) (*types.QueryTssKeygenMetricResponse, error) {
@@ -2186,7 +2081,6 @@ func castObservedTxs(observedTxs ObservedTxs) []types.QueryObservedTx {
 func shielderRedeemResponse(withdrawal types.ShielderRedeem) *types.QueryShielderRedeemResponse {
 	return &types.QueryShielderRedeemResponse{
 		WithdrawalId:    withdrawal.WithdrawalID,
-		Owner:           withdrawal.Owner.String(),
 		NullifierHash:   withdrawal.NullifierHash,
 		MerkleRoot:      withdrawal.MerkleRoot,
 		Recipient:       withdrawal.Recipient.String(),
@@ -2239,8 +2133,4 @@ func eventMap(e sdk.Event) map[string]string {
 		m[a.Key] = a.Value
 	}
 	return m
-}
-
-func simulate(ctx cosmos.Context, mgr Manager, msg sdk.Msg) (sdk.Events, error) {
-	return nil, errors.New("swap simulation is not part of the BTCChain custody fork")
 }

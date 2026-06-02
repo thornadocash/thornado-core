@@ -32,7 +32,7 @@ func (m *ObservedTx) Valid() error {
 		return errors.New("block height can't be zero")
 	}
 	if m.ObservedPubKey.IsEmpty() {
-		return errors.New("observed pool pubkey is empty")
+		return errors.New("observed vault pubkey is empty")
 	}
 	if m.FinaliseHeight <= 0 {
 		return errors.New("finalise block height can't be zero")

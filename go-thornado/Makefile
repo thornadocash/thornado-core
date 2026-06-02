@@ -12,7 +12,7 @@ endif
 COMMIT ?= $(shell git log -1 --format='%H' 2>/dev/null)
 VERSION := $(shell cat version)
 TAG ?= mocknet
-BINARIES ?= ./cmd/thornado ./cmd/bifrost
+BINARIES ?= ./cmd/thornado ./cmd/bifrost ./cmd/thornado-ui
 ROOT_DIR := $(abspath ..)
 PARALLELISM ?= 1
 TEST_PATHS := ./...
@@ -63,8 +63,9 @@ openapi:
 		openapitools/openapi-generator-cli:v6.0.0@sha256:310bd0353c11863c0e51e5cb46035c9e0778d4b9c6fe6a7fc8307b3b41997a35 \
 		generate -i /mnt/openapi.yaml -g go -o /mnt/gen
 	@rm -f openapi/gen/go.mod openapi/gen/go.sum
-	@find ./openapi/gen -type f | xargs sed -i '/^[- ]*API version.*$(shell cat version)/d;/APIClient.*$(shell cat version)/d'
-	@find ./openapi/gen -type f | grep model | xargs sed -i 's/MarshalJSON(/MarshalJSON_deprecated(/'
+	@find ./openapi/gen -type f | xargs perl -pi -e '/^[- ]*API version.*$(shell cat version)/d; /APIClient.*$(shell cat version)/d'
+	@find ./openapi/gen -type f | xargs perl -pi -e 's/Thornode/Thornado/g'
+	@find ./openapi/gen -type f | grep model | xargs perl -pi -e 's/MarshalJSON\(/MarshalJSON_deprecated(/'
 
 protoVer = 0.13.2
 protoImageName = ghcr.io/cosmos/proto-builder:$(protoVer)
@@ -101,8 +102,8 @@ test-all:
 test-network-specific:
 	@go test -tags stagenet ${RUN_FLAG} ./common
 	@go test -tags chainnet ${RUN_FLAG} ./common
-	@go test -tags mainnet ${RUN_FLAG} ./common ./bifrost/pkg/chainclients/utxo/...
-	@go test -tags mocknet ${RUN_FLAG} ./common ./bifrost/pkg/chainclients/utxo/...
+	@go test -tags mainnet ${RUN_FLAG} ./common ./bifrost/pkg/chainclients/btc/...
+	@go test -tags mocknet ${RUN_FLAG} ./common ./bifrost/pkg/chainclients/btc/...
 
 ########################################################################################
 # Housekeeping
@@ -121,3 +122,7 @@ lint-ci:
 
 shielder-ffi:
 	@cd $(ROOT_DIR) && cargo build -p thornado-ffi --release
+
+frost-ffi:
+	@cd $(ROOT_DIR) && cargo build -p thornado-frost-ffi --release
+	@$(ROOT_DIR)/go-thornado/go-wrappers/frost/build-libgofrost.sh

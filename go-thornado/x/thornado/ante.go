@@ -2,6 +2,7 @@ package thornado
 
 import (
 	math "math"
+	"strings"
 
 	"github.com/blang/semver"
 
@@ -10,10 +11,11 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/types/multisig"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
-	"github.com/cosmos/cosmos-sdk/x/authz"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
+	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
+	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
@@ -48,22 +50,22 @@ func (ad AnteDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, ne
 			return ctx, err
 		}
 	}
-	if ad.isGaslessNativeTx(tx.GetMsgs()) {
+	if ad.isIntrinsicAuthNativeTx(tx.GetMsgs()) {
 		return newCtx, nil
 	}
 
 	return next(newCtx, tx, simulate)
 }
 
-func (ad AnteDecorator) isGaslessNativeTx(msgs []cosmos.Msg) bool {
+func (ad AnteDecorator) isIntrinsicAuthNativeTx(msgs []cosmos.Msg) bool {
 	if len(msgs) == 0 {
 		return false
 	}
 	for _, msg := range msgs {
 		switch msg.(type) {
-		case *types.MsgGaslessDepositRequestPow,
-			*types.MsgGaslessShielderSplit,
-			*types.MsgGaslessShielderRedeem:
+		case *types.MsgDepositRequestPow,
+			*types.MsgShielderSplit,
+			*types.MsgShielderRedeem:
 		default:
 			return false
 		}
@@ -132,18 +134,24 @@ func (ad AnteDecorator) anteHandleMessage(ctx sdk.Context, version semver.Versio
 	switch m := msg.(type) {
 
 	// consensus handlers
-	case *types.MsgBan:
-		return BanAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgErrataTx:
 		return ErrataTxAnteHandler(ctx, version, ad.keeper, *m)
+	case *types.MsgErrataTxQuorum:
+		return ErrataTxQuorumAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgNetworkFee:
 		return NetworkFeeAnteHandler(ctx, version, ad.keeper, *m)
+	case *types.MsgNetworkFeeQuorum:
+		return NetworkFeeQuorumAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgObservedTxIn:
 		return ObservedTxInAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgObservedTxOut:
 		return ObservedTxOutAnteHandler(ctx, version, ad.keeper, *m)
+	case *types.MsgObservedTxQuorum:
+		return ObservedTxQuorumAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgSolvency:
 		return SolvencyAnteHandler(ctx, version, ad.keeper, *m)
+	case *types.MsgSolvencyQuorum:
+		return SolvencyQuorumAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgTssPool:
 		return TssAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgTssKeysignFail:
@@ -168,33 +176,455 @@ func (ad AnteDecorator) anteHandleMessage(ctx sdk.Context, version semver.Versio
 		return ActiveNodeAnteHandler(ctx, version, ad.keeper, legacyMsg.GetSigners()[0])
 
 	// native handlers (non-consensus)
-	case *types.MsgDeposit:
-		return DepositAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgSend, *banktypes.MsgSend:
-		_, ok := m.(*banktypes.MsgSend)
-		if ok {
-			return ctx, cosmos.ErrUnknownRequest("bank sends are disabled")
-		}
-		return SendAnteHandler(ctx, version, ad.keeper, m)
-	case *types.MsgDepositRequestPow,
-		*types.MsgShielderSplit,
-		*types.MsgShielderRedeem,
-		*types.MsgGaslessDepositRequestPow,
-		*types.MsgGaslessShielderSplit,
-		*types.MsgGaslessShielderRedeem,
-		*types.MsgShielderSplitFees,
-		*types.MsgNodeSlotAuctionCreate,
-		*types.MsgNodeSlotAuctionBidPow,
-		*types.MsgNodeSlotAuctionSelectBid,
-		*types.MsgNodeSlotAuctionSplit:
-		return ctx, nil
-	case *authz.MsgGrant,
-		*authz.MsgRevoke,
-		*authz.MsgExec:
-		return ctx, nil
+		return ctx, cosmos.ErrUnknownRequest("native sends are disabled")
+	case *types.MsgDeposit:
+		return ctx, cosmos.ErrUnknownRequest("native deposits are disabled")
+	case *types.MsgDepositRequestPow:
+		return DepositRequestPowAnteHandler(ctx, ad.keeper, *m)
+	case *types.MsgShielderSplit:
+		return ShielderSplitAnteHandler(ctx, ad.keeper, *m)
+	case *types.MsgShielderRedeem:
+		return ShielderRedeemAnteHandler(ctx, ad.keeper, *m)
+	case *types.MsgShielderSplitFees:
+		return ShielderSplitFeesAnteHandler(ctx, ad.keeper, *m)
+	case *types.MsgNodeSlotAuctionCreate:
+		return NodeSlotAuctionCreateAnteHandler(ctx, ad.keeper, *m)
+	case *types.MsgNodeSlotAuctionBidPow:
+		return NodeSlotAuctionBidPowAnteHandler(ctx, ad.keeper, *m)
+	case *types.MsgNodeSlotAuctionSelectBid:
+		return NodeSlotAuctionSelectBidAnteHandler(ctx, ad.keeper, *m)
+	case *types.MsgNodeSlotAuctionSplit:
+		return NodeSlotAuctionSplitAnteHandler(ctx, ad.keeper, *m)
 	default:
 		return ctx, cosmos.ErrUnknownRequest("invalid message type")
 	}
+}
+
+func ObservedTxQuorumAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg types.MsgObservedTxQuorum) (cosmos.Context, error) {
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	newCtx, err := activeNodeAccountsSignerPriority(ctx, k, msg.GetSigners())
+	if err != nil {
+		return ctx, err
+	}
+	tx := msg.QuoTx.ObsTx
+	var voter types.ObservedTxVoter
+	if msg.QuoTx.Inbound {
+		voter, err = ensureVaultAndGetTxInVoter(ctx, tx.ObservedPubKey, tx.Tx.ID, k)
+	} else {
+		voter, err = ensureVaultAndGetTxOutVoter(ctx, k, tx.ObservedPubKey, tx.Tx.ID, msg.GetSigners(), tx.KeysignMs)
+	}
+	if err != nil {
+		return ctx, err
+	}
+	if err := reserveObservedTxAttestations(ctx, k, voter, tx, msg.GetSigners(), msg.QuoTx.Inbound); err != nil {
+		return ctx, err
+	}
+	return newCtx, nil
+}
+
+func NetworkFeeQuorumAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg types.MsgNetworkFeeQuorum) (cosmos.Context, error) {
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	newCtx, err := activeNodeAccountsSignerPriority(ctx, k, msg.GetSigners())
+	if err != nil {
+		return ctx, err
+	}
+	nf := msg.QuoNetFee.NetworkFee
+	if nf.TransactionRate > uint64(math.MaxInt64) || nf.TransactionSize > uint64(math.MaxInt64) {
+		return ctx, cosmos.ErrUnknownRequest("transaction rate or size exceeds int64 max")
+	}
+	voter, err := k.GetObservedNetworkFeeVoter(ctx, nf.Height, nf.Chain, int64(nf.TransactionRate), int64(nf.TransactionSize))
+	if err != nil {
+		return ctx, err
+	}
+	if err := reserveNetworkFeeAttestations(ctx, k, voter, msg.GetSigners()); err != nil {
+		return ctx, err
+	}
+	return newCtx, nil
+}
+
+func SolvencyQuorumAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg types.MsgSolvencyQuorum) (cosmos.Context, error) {
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	newCtx, err := activeNodeAccountsSignerPriority(ctx, k, msg.GetSigners())
+	if err != nil {
+		return ctx, err
+	}
+	s := msg.QuoSolvency.Solvency
+	voter, err := k.GetSolvencyVoter(ctx, s.Id, s.Chain)
+	if err != nil {
+		return ctx, err
+	}
+	if voter.Empty() {
+		voter = types.NewSolvencyVoter(s.Id, s.Chain, s.PubKey, s.Coins, s.Height)
+	}
+	if err := reserveSolvencyAttestations(ctx, k, voter, msg.GetSigners()); err != nil {
+		return ctx, err
+	}
+	return newCtx, nil
+}
+
+func ErrataTxQuorumAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg types.MsgErrataTxQuorum) (cosmos.Context, error) {
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	newCtx, err := activeNodeAccountsSignerPriority(ctx, k, msg.GetSigners())
+	if err != nil {
+		return ctx, err
+	}
+	er := msg.QuoErrata.ErrataTx
+	voter, err := k.GetErrataTxVoter(ctx, er.Id, er.Chain)
+	if err != nil {
+		return ctx, err
+	}
+	if err := reserveErrataTxAttestations(ctx, k, voter, msg.GetSigners()); err != nil {
+		return ctx, err
+	}
+	return newCtx, nil
+}
+
+func reserveObservedTxAttestations(ctx cosmos.Context, k keeper.Keeper, voter types.ObservedTxVoter, tx common.ObservedTx, signers []cosmos.AccAddress, inbound bool) error {
+	for _, signer := range signers {
+		if !voter.Add(tx, signer) {
+			return cosmos.ErrUnknownRequest("observed tx attestation already submitted")
+		}
+	}
+	if !ctx.IsCheckTx() {
+		return nil
+	}
+	if inbound {
+		k.SetObservedTxInVoter(ctx, voter)
+	} else {
+		k.SetObservedTxOutVoter(ctx, voter)
+	}
+	return nil
+}
+
+func reserveNetworkFeeAttestations(ctx cosmos.Context, k keeper.Keeper, voter types.ObservedNetworkFeeVoter, signers []cosmos.AccAddress) error {
+	for _, signer := range signers {
+		if !voter.Sign(signer) {
+			return cosmos.ErrUnknownRequest("network fee attestation already submitted")
+		}
+	}
+	if ctx.IsCheckTx() {
+		k.SetObservedNetworkFeeVoter(ctx, voter)
+	}
+	return nil
+}
+
+func reserveSolvencyAttestations(ctx cosmos.Context, k keeper.Keeper, voter types.SolvencyVoter, signers []cosmos.AccAddress) error {
+	for _, signer := range signers {
+		if !voter.Sign(signer) {
+			return cosmos.ErrUnknownRequest("solvency attestation already submitted")
+		}
+	}
+	if ctx.IsCheckTx() {
+		k.SetSolvencyVoter(ctx, voter)
+	}
+	return nil
+}
+
+func reserveErrataTxAttestations(ctx cosmos.Context, k keeper.Keeper, voter types.ErrataTxVoter, signers []cosmos.AccAddress) error {
+	for _, signer := range signers {
+		if !voter.Sign(signer) {
+			return cosmos.ErrUnknownRequest("errata tx attestation already submitted")
+		}
+	}
+	if ctx.IsCheckTx() {
+		k.SetErrataTxVoter(ctx, voter)
+	}
+	return nil
+}
+
+func DepositRequestPowAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgDepositRequestPow) (cosmos.Context, error) {
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	owner, err := AccAddressFromCompressedSecp256k1(msg.DepositPubkey)
+	if err != nil {
+		return ctx, err
+	}
+	return depositPowAnte(ctx, k, owner, msg.PowToken, msg.OperatorPubKey, msg.NodePubKey, msg.PowDurationMs)
+}
+
+func depositPowAnte(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, powToken, operatorPubKey, nodePubKey string, powDurationMs uint64) (cosmos.Context, error) {
+	if err := validateDepositPowToken(ctx, k, owner, powToken); err != nil {
+		return ctx, err
+	}
+	if existing, err := k.GetDepositSessionByPowToken(ctx, strings.TrimSpace(powToken)); err == nil && !existing.DepositAddress.IsEmpty() {
+		expiry := getConfigDurationBlocks(ctx, k, constants.Deposit_PowExpiryMinutes)
+		if expiry <= 0 || existing.CreatedHeight+expiry >= ctx.BlockHeight() {
+			return ctx, cosmos.ErrUnknownRequest("deposit pow token already used")
+		}
+	}
+	if ctx.IsCheckTx() {
+		if _, err := RegisterDepositPowToken(ctx, k, owner, powToken, operatorPubKey, nodePubKey, powDurationMs); err != nil {
+			return ctx, err
+		}
+	}
+	return ctx, nil
+}
+
+func ShielderSplitAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgShielderSplit) (cosmos.Context, error) {
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	owner, err := AccAddressFromCompressedSecp256k1(msg.DepositPubkey)
+	if err != nil {
+		return ctx, err
+	}
+	session, err := k.GetDepositSession(ctx, owner)
+	if err != nil {
+		return ctx, err
+	}
+	if session.DepositID.IsEmpty() {
+		return ctx, cosmos.ErrUnknownRequest("deposit not matched")
+	}
+	depositID := session.DepositID
+	return shielderSplitAnte(ctx, k, owner, depositID, msg.Commitments, msg.DepositPubkey, msg.Signature)
+}
+
+func shielderSplitAnte(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, depositID common.TxID, commitments []string, depositPubkey, signature string) (cosmos.Context, error) {
+	deposit, err := k.GetDepositRecord(ctx, depositID)
+	if err != nil {
+		return ctx, err
+	}
+	if deposit.DepositID.IsEmpty() {
+		return ctx, cosmos.ErrUnknownRequest("deposit not found")
+	}
+	if !deposit.Owner.Equals(owner) {
+		return ctx, cosmos.ErrUnknownRequest("deposit owner mismatch")
+	}
+	if deposit.AuctionID != "" {
+		return ctx, cosmos.ErrUnknownRequest("node sale bid deposits split through auction-split")
+	}
+	switch deposit.Status {
+	case types.DepositStatusDepositMatched:
+	case types.DepositStatusSettled:
+		if deposit.Settlement == "" || deposit.SplitSats != 0 || len(deposit.Commitments) != 0 {
+			return ctx, cosmos.ErrUnknownRequest("duplicate deposit settlement")
+		}
+	case types.DepositStatusCommitted:
+		return ctx, cosmos.ErrUnknownRequest("deposit already split")
+	default:
+		return ctx, cosmos.ErrUnknownRequest("deposit is not matched")
+	}
+	if deposit.SplitSats > deposit.AmountSats {
+		return ctx, cosmos.ErrUnknownRequest("deposit split amount exceeds deposit amount")
+	}
+	availableSats := deposit.AmountSats - deposit.SplitSats
+	if availableSats == 0 {
+		return ctx, cosmos.ErrUnknownRequest("deposit already fully split")
+	}
+	noteCommitments, err := parseShielderNoteCommitments(commitments, availableSats, deposit.IsNodeBond() || deposit.Settlement == types.DepositSettlementOperatorBond)
+	if err != nil {
+		return ctx, err
+	}
+	authorizedAmountSats := shielderNoteCommitmentTotal(noteCommitments)
+	noteCommitments, floorRemainder, err := applyShielderNoteFloor(ctx, k, noteCommitments, availableSats, false)
+	if err != nil {
+		return ctx, err
+	}
+	if floorRemainder > 0 {
+		availableSats -= floorRemainder
+	}
+	amountSats := shielderNoteCommitmentTotal(noteCommitments)
+	if amountSats == 0 {
+		return ctx, cosmos.ErrUnknownRequest("missing shielder commitment amount")
+	}
+	if amountSats != availableSats {
+		return ctx, cosmos.ErrUnknownRequest("shielder commitment denominations must match deposit amount")
+	}
+	if strings.TrimSpace(depositPubkey) != "" || strings.TrimSpace(signature) != "" {
+		if err := VerifySplitAuthorization(depositPubkey, signature, depositPubkey, authorizedAmountSats, commitments); err != nil {
+			return ctx, err
+		}
+	}
+	if ctx.IsCheckTx() {
+		deposit.Status = types.DepositStatusSettled
+		if err := k.SetDepositRecord(ctx, deposit); err != nil {
+			return ctx, err
+		}
+	}
+	return ctx, nil
+}
+
+func ShielderRedeemAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgShielderRedeem) (cosmos.Context, error) {
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	return shielderRedeemAnte(ctx, k, msg.Proof, msg.Public)
+}
+
+func shielderRedeemAnte(ctx cosmos.Context, k keeper.Keeper, proof, public []byte) (cosmos.Context, error) {
+	publicInputs, err := parseShielderRedeemPublicInputs(public)
+	if err != nil {
+		return ctx, err
+	}
+	if k.ShielderNullifierSpent(ctx, publicInputs.NullifierHash) {
+		return ctx, cosmos.ErrUnknownRequest("shielder nullifier already spent")
+	}
+	if !k.ShielderMerkleRootExists(ctx, publicInputs.DenominationSats, publicInputs.MerkleRoot) {
+		return ctx, cosmos.ErrUnknownRequest("unknown shielder merkle root")
+	}
+	recipient, err := common.NewAddress(publicInputs.Recipient)
+	if err != nil {
+		return ctx, err
+	}
+	if !recipient.GetChain().Equals(common.BTCChain) {
+		return ctx, cosmos.ErrUnknownRequest("shielder redeem recipient must be bitcoin")
+	}
+	if err := VerifyShielderRedeemJSON(proof, public); err != nil {
+		return ctx, err
+	}
+	if ctx.IsCheckTx() {
+		withdrawalID := shielderRedeemID(publicInputs.NullifierHash, recipient.String())
+		if err := k.SetShielderNullifierSpent(ctx, publicInputs.NullifierHash, withdrawalID); err != nil {
+			return ctx, err
+		}
+	}
+	return ctx, nil
+}
+
+func ShielderSplitFeesAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgShielderSplitFees) (cosmos.Context, error) {
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	bond, err := k.GetShielderNodeBond(ctx, msg.NodePubKey)
+	if err != nil {
+		return ctx, err
+	}
+	if bond.NodePubKey == "" {
+		return ctx, cosmos.ErrUnknownRequest("shielder node bond not found")
+	}
+	if !bond.FeeShareActive {
+		return ctx, cosmos.ErrUnknownRequest("shielder node has no active fee share")
+	}
+	if !bond.NodeAddress.Equals(msg.Signer) {
+		return ctx, cosmos.ErrUnknownRequest("shielder fee signer mismatch")
+	}
+	if !bond.PendingFeeDepositID.IsEmpty() {
+		return ctx, cosmos.ErrUnknownRequest("shielder fee settlement already pending split")
+	}
+	pool, err := distributeFeePool(ctx, k)
+	if err != nil {
+		return ctx, err
+	}
+	if pool.FeePerSlotShare <= bond.FeeDebtSats {
+		return ctx, cosmos.ErrUnknownRequest("no shielder fees claimable")
+	}
+	noteCommitments, err := parseShielderNoteCommitments(msg.Commitments, pool.FeePerSlotShare-bond.FeeDebtSats, false)
+	if err != nil {
+		return ctx, err
+	}
+	noteCommitments, _, err = applyShielderNoteFloor(ctx, k, noteCommitments, pool.FeePerSlotShare-bond.FeeDebtSats, false)
+	if err != nil {
+		return ctx, err
+	}
+	notePubKeys, err := parseShielderFeeNotePubKeys(msg.FeeNotePubKeys, len(noteCommitments))
+	if err != nil {
+		return ctx, err
+	}
+	for _, pubKey := range notePubKeys {
+		if k.ShielderFeeNotePubKeyUsed(ctx, pubKey) {
+			return ctx, cosmos.ErrUnknownRequest("shielder fee note pubkey already used")
+		}
+	}
+	if ctx.IsCheckTx() {
+		bond.FeeDebtSats = pool.FeePerSlotShare
+		bond.UpdatedHeight = ctx.BlockHeight()
+		if err := k.SetShielderNodeBond(ctx, bond); err != nil {
+			return ctx, err
+		}
+		for _, pubKey := range notePubKeys {
+			if err := k.SetShielderFeeNotePubKey(ctx, pubKey, common.BlankTxID); err != nil {
+				return ctx, err
+			}
+		}
+	}
+	return ctx, nil
+}
+
+func NodeSlotAuctionCreateAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgNodeSlotAuctionCreate) (cosmos.Context, error) {
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	if _, err := validateNodeSlotAuctionCreate(ctx, k, msg.Signer, msg.NodePubKey, msg.ExpiryHeight); err != nil {
+		return ctx, err
+	}
+	if ctx.IsCheckTx() {
+		if _, err := CreateNodeSlotAuction(ctx, k, msg.Signer, msg.NodePubKey, msg.ReserveSats, msg.ExpiryHeight); err != nil {
+			return ctx, err
+		}
+	}
+	return ctx, nil
+}
+
+func NodeSlotAuctionBidPowAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgNodeSlotAuctionBidPow) (cosmos.Context, error) {
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	if err := validateNodeSlotBidPow(ctx, k, msg.Signer, msg.PowToken, msg.AuctionId); err != nil {
+		return ctx, err
+	}
+	if ctx.IsCheckTx() {
+		if _, _, err := RegisterNodeSlotBidDepositPowToken(ctx, k, msg.Signer, msg.PowToken, msg.AuctionId, msg.OperatorPubKey, msg.NodePubKey, msg.PowDurationMs); err != nil {
+			return ctx, err
+		}
+	}
+	return ctx, nil
+}
+
+func NodeSlotAuctionSelectBidAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgNodeSlotAuctionSelectBid) (cosmos.Context, error) {
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	auction, bid, err := validateNodeSlotBidSelection(ctx, k, msg.Signer, msg.AuctionId, msg.BidId)
+	if err != nil {
+		return ctx, err
+	}
+	if ctx.IsCheckTx() {
+		auction.Status = types.NodeSlotAuctionSelected
+		auction.SelectedBidID = bid.BidID
+		bid.Selected = true
+		if err := k.SetNodeSlotAuction(ctx, auction); err != nil {
+			return ctx, err
+		}
+		if err := k.SetNodeSlotBid(ctx, bid); err != nil {
+			return ctx, err
+		}
+	}
+	return ctx, nil
+}
+
+func NodeSlotAuctionSplitAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgNodeSlotAuctionSplit) (cosmos.Context, error) {
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	auction, bid, deposit, err := validateNodeSlotAuctionSplit(ctx, k, msg.Signer, msg.AuctionId, msg.BidId, msg.Commitments)
+	if err != nil {
+		return ctx, err
+	}
+	if ctx.IsCheckTx() {
+		auction.Status = types.NodeSlotAuctionSettled
+		bid.Settled = true
+		deposit.Status = types.DepositStatusSettled
+		if err := k.SetNodeSlotAuction(ctx, auction); err != nil {
+			return ctx, err
+		}
+		if err := k.SetNodeSlotBid(ctx, bid); err != nil {
+			return ctx, err
+		}
+		if err := k.SetDepositRecord(ctx, deposit); err != nil {
+			return ctx, err
+		}
+	}
+	return ctx, nil
 }
 
 // InfiniteGasDecorator uses an infinite gas meter to prevent out-of-gas panics

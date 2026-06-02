@@ -174,7 +174,7 @@ func renderConfigCommand() *cobra.Command {
 		SuggestionsMinimumDistance: 2,
 		Run: func(cmd *cobra.Command, args []string) {
 			config.Init()
-			config.InitThornode(cmd.Context())
+			config.InitThornado(cmd.Context())
 		},
 	}
 }

@@ -133,12 +133,12 @@ func ShielderVaultAddressInvariant(k KVStore) common.Invariant {
 				msg = append(msg, fmt.Sprintf("%s: deposit address is not BTC", record.Address))
 				broken = true
 			}
-			nextIndex, err := k.GetNextVaultDepositPathIndex(ctx, record.VaultPubKey)
+			nextIndex, err := k.GetNextVaultDepositPathIndex(ctx, record.VaultPubKey, common.VaultDepositPathType(record.PathType))
 			if err != nil {
 				msg = append(msg, fmt.Sprintf("%s: missing path index cursor: %v", record.Address, err))
 				broken = true
-			} else if record.PathIndex >= nextIndex {
-				msg = append(msg, fmt.Sprintf("%s: path index %d not below cursor %d", record.Address, record.PathIndex, nextIndex))
+			} else if record.DepositNonce >= nextIndex {
+				msg = append(msg, fmt.Sprintf("%s: deposit nonce %d not below cursor %d", record.Address, record.DepositNonce, nextIndex))
 				broken = true
 			}
 		}

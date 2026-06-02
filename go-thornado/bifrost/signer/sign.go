@@ -545,7 +545,7 @@ func (s *Signer) secp256k1VerificationSignature(pk common.PubKey) []byte {
 	return nil
 }
 
-func (s *Signer) sendKeygenToThornado(height int64, poolPk common.PubKey, secp256k1Signature []byte, blame []ttypes.Blame, input common.PubKeys, keygenType ttypes.KeygenType, keygenTime int64, poolPubKeyEddsa common.PubKey) error {
+func (s *Signer) sendKeygenToThornado(height int64, vaultPk common.PubKey, secp256k1Signature []byte, blame []ttypes.Blame, input common.PubKeys, keygenType ttypes.KeygenType, keygenTime int64, vaultPubKeyEddsa common.PubKey) error {
 	// collect supported chains in the configuration
 	chains := common.Chains{
 		common.BTCChain,
@@ -562,8 +562,8 @@ func (s *Signer) sendKeygenToThornado(height int64, poolPk common.PubKey, secp25
 	var keysharesFrost []byte
 	var err error
 	if s.cfg.Signer.BackupKeyshares {
-		if !poolPk.IsEmpty() {
-			keysharePath := filepath.Join(app.DefaultNodeHome, fmt.Sprintf("localstate-%s.json", poolPk))
+		if !vaultPk.IsEmpty() {
+			keysharePath := filepath.Join(app.DefaultNodeHome, fmt.Sprintf("localstate-%s.json", vaultPk))
 			frostRaw, isFrost, readErr := frostKeyshareRawFromLocalStatePath(keysharePath)
 			switch {
 			case readErr != nil:
@@ -580,9 +580,9 @@ func (s *Signer) sendKeygenToThornado(height int64, poolPk common.PubKey, secp25
 				}
 			}
 		}
-		if !poolPubKeyEddsa.IsEmpty() {
+		if !vaultPubKeyEddsa.IsEmpty() {
 			keysharesEddsa, err = tss.EncryptKeyshares(
-				filepath.Join(app.DefaultNodeHome, fmt.Sprintf("localstate-%s.json", poolPubKeyEddsa)),
+				filepath.Join(app.DefaultNodeHome, fmt.Sprintf("localstate-%s.json", vaultPubKeyEddsa)),
 				os.Getenv("SIGNER_SEED_PHRASE"),
 			)
 			if err != nil {
@@ -596,12 +596,12 @@ func (s *Signer) sendKeygenToThornado(height int64, poolPk common.PubKey, secp25
 		if bridge, ok := s.thornadoBridge.(interface {
 			GetKeygenStdTxWithFrost(common.PubKey, []byte, []byte, []ttypes.Blame, common.PubKeys, ttypes.KeygenType, common.Chains, int64, int64, common.PubKey, []byte, []byte) (sdktypes.Msg, error)
 		}); ok {
-			keygenMsg, err = bridge.GetKeygenStdTxWithFrost(poolPk, secp256k1Signature, keyshares, blame, input, keygenType, chains, height, keygenTime, poolPubKeyEddsa, keysharesEddsa, keysharesFrost)
+			keygenMsg, err = bridge.GetKeygenStdTxWithFrost(vaultPk, secp256k1Signature, keyshares, blame, input, keygenType, chains, height, keygenTime, vaultPubKeyEddsa, keysharesEddsa, keysharesFrost)
 		} else {
-			keygenMsg, err = s.thornadoBridge.GetKeygenStdTx(poolPk, secp256k1Signature, keyshares, blame, input, keygenType, chains, height, keygenTime, poolPubKeyEddsa, keysharesEddsa)
+			keygenMsg, err = s.thornadoBridge.GetKeygenStdTx(vaultPk, secp256k1Signature, keyshares, blame, input, keygenType, chains, height, keygenTime, vaultPubKeyEddsa, keysharesEddsa)
 		}
 	} else {
-		keygenMsg, err = s.thornadoBridge.GetKeygenStdTx(poolPk, secp256k1Signature, keyshares, blame, input, keygenType, chains, height, keygenTime, poolPubKeyEddsa, keysharesEddsa)
+		keygenMsg, err = s.thornadoBridge.GetKeygenStdTx(vaultPk, secp256k1Signature, keyshares, blame, input, keygenType, chains, height, keygenTime, vaultPubKeyEddsa, keysharesEddsa)
 	}
 	if err != nil {
 		return fmt.Errorf("fail to get keygen id: %w", err)
@@ -738,7 +738,7 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 		return nil, nil, nil
 	}
 	if !s.shouldSign(tx) {
-		s.logger.Info().Str("signer_address", chain.GetAddress(tx.VaultPubKey)).Msg("different pool address, ignore")
+		s.logger.Info().Str("signer_address", chain.GetAddress(tx.VaultPubKey)).Msg("different vault address, ignore")
 		return nil, nil, nil
 	}
 	designated, err := s.isDesignatedFrostSigner(item, chain, blockHeight, signingTransactionPeriod)

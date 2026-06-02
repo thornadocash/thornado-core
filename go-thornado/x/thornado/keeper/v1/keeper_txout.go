@@ -136,24 +136,17 @@ func (k KVStore) GetTxOutValue(ctx cosmos.Context, height int64) (cosmos.Uint, c
 	if err != nil {
 		return cosmos.ZeroUint(), cosmos.ZeroUint(), err
 	}
-	runeValue, cloutValue := k.GetTOIsValue(ctx, txout.TxArray...)
-	return runeValue, cloutValue, nil
+	assetValue, cloutValue := k.GetTOIsValue(ctx, txout.TxArray...)
+	return assetValue, cloutValue, nil
 }
 
 func (k KVStore) GetTOIsValue(ctx cosmos.Context, tois ...TxOutItem) (cosmos.Uint, cosmos.Uint) {
-	runeValue := cosmos.ZeroUint()
-	cloutValue := cosmos.ZeroUint()
+	assetValue := cosmos.ZeroUint()
 	for i := range tois {
 		for _, coin := range append(common.Coins{tois[i].Coin}, tois[i].MaxGas...) {
-			if coin.IsRune() {
-				runeValue = runeValue.Add(coin.Amount)
-			}
-		}
-
-		if tois[i].CloutSpent != nil {
-			cloutValue = cloutValue.Add(*tois[i].CloutSpent)
+			assetValue = assetValue.Add(coin.Amount)
 		}
 	}
 
-	return runeValue, cloutValue
+	return assetValue, cosmos.ZeroUint()
 }

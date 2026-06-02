@@ -103,8 +103,6 @@ pub struct WithdrawalProof {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WithdrawalPublicInputs {
     pub nullifier_hash: String,
-    #[serde(default)]
-    pub owner_pubkey: String,
     pub denomination_sats: u64,
     pub recipient: String,
     pub fee_sats: u64,
@@ -351,7 +349,6 @@ fn shielder_withdrawal_from_receipt(
     let anchor = orchard::merkle_root_hex(leaves)?;
     let mut public = WithdrawalPublicInputs {
         nullifier_hash: String::new(),
-        owner_pubkey: receipt.owner_pubkey.clone(),
         denomination_sats: receipt.denomination_sats,
         recipient: recipient.to_string(),
         fee_sats,

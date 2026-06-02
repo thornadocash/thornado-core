@@ -29,8 +29,13 @@ func NewConfigValue() *ConfigVals {
 
 			// Deposit
 			Deposit_AmountMinSats:             546,
-			Deposit_PowDifficultyMin:          0,
+			Deposit_PowDifficultyMin:          20,
+			Deposit_PowDifficultyMax:          64,
 			Deposit_PowExpiryMinutes:          0,
+			Deposit_PowRetargetStepMax:        1,
+			Deposit_PowSamplesMin:             8,
+			Deposit_PowTargetPercentile:       90,
+			Deposit_PowTargetSeconds:          10,
 			Deposit_SessionExpiryMinutes:      0,
 			Deposit_SweepRetryIntervalMinutes: 72,
 			Deposit_RefundIfForgottenDays:     30,
@@ -80,10 +85,8 @@ func NewConfigValue() *ConfigVals {
 			Shielder_FeeShareScale:     1_000_000_000_000,
 			Shielder_NoteAmountMinSats: 546,
 
-			// Signing/slashing
-			Signer_Concurrency:       10,
-			Slash_PauseThreshold:     0,
-			Slash_PenaltyBasisPoints: 15000,
+			// Signing
+			Signer_Concurrency: 10,
 
 			// Tx/vault operations
 			TxOut_MaxAttempts:                0,

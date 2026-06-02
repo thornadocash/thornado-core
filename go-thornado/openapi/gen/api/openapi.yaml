@@ -40,7 +40,7 @@ paths:
         "200":
           description: Balances response
       summary: Balances
-  /thornado/node/address/{address}:
+  /thornado/node/{address}:
     get:
       parameters:
       - explode: false

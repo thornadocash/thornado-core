@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	// validators can get credit for observing a tx for up to this amount of time after it is committed, after which it count against a slash penalty.
+	// validators can get credit for observing a tx for up to this amount of time after it is committed, after which it count against a penalty.
 	defaultLateObserveTimeout = 2 * time.Minute
 
 	// Prune observed txs after this amount of time, even if they are not yet committed.

@@ -87,11 +87,6 @@ func (c Coin) IsNative() bool {
 	return c.Asset.GetChain().Equals(BTCChain)
 }
 
-// IsRune checks whether the coin's Asset is RUNE.
-func (c Coin) IsRune() bool {
-	return c.Asset.IsRune()
-}
-
 // Native create a new instance of cosmos.Coin
 func (c Coin) Native() (cosmos.Coin, error) {
 	if !c.IsNative() {
@@ -250,16 +245,6 @@ func (oldCoins Coins) SafeSub(subCoins ...Coin) Coins {
 		}
 	}
 	return newCoins
-}
-
-// HasSynthetic check whether the coins contains synth coin
-func (cs Coins) HasSynthetic() bool {
-	for _, c := range cs {
-		if c.Asset.IsSyntheticAsset() {
-			return true
-		}
-	}
-	return false
 }
 
 // NoneEmpty return a new Coins , which ignore the coin that is empty

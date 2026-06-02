@@ -44,8 +44,6 @@ func assetEncoder(_ *aminojson.Encoder, v protoreflect.Value, w io.Writer) error
 		Chain:   common.Chain(a.Chain),
 		Symbol:  common.Symbol(a.Symbol),
 		Ticker:  common.Ticker(a.Ticker),
-		Synth:   a.Synth,
-		Trade:   a.Trade,
 		Secured: a.Secured,
 	}
 

@@ -1,19 +1,14 @@
 package common
 
-import (
-	"fmt"
-
-	"github.com/thornadocash/go-thornado/common/cosmos"
-)
+import "fmt"
 
 // NewFee return a new instance of Fee
-func NewFee(coins Coins, poolDeduct cosmos.Uint) Fee {
+func NewFee(coins Coins) Fee {
 	return Fee{
-		Coins:      coins,
-		PoolDeduct: poolDeduct,
+		Coins: coins,
 	}
 }
 
 func (f Fee) String() string {
-	return fmt.Sprintf("%d: %s", f.PoolDeduct.Uint64(), f.Coins.String())
+	return fmt.Sprintf("%s", f.Coins.String())
 }

@@ -35,12 +35,18 @@ func GetBaseAddress(chain common.Chain, bridge thornadoclient.ThornadoBridge) ([
 		}
 		newAddresses = append(newAddresses, addr)
 		if chain.Equals(common.BTCChain) {
-			for pathIndex := uint64(common.FirstDepositPathIndex); pathIndex <= common.DepositAddressLookahead; pathIndex++ {
-				derived, err := common.DeriveBTCTaprootAddress(v.PubKey, pathIndex)
+			for _, pathType := range []common.VaultDepositPathType{common.VaultDepositPathUser, common.VaultDepositPathNode} {
+				pathIndexes, err := common.VaultDepositLookaheadPathIndexes(pathType)
 				if err != nil {
 					continue
 				}
-				newAddresses = append(newAddresses, derived)
+				for _, pathIndex := range pathIndexes {
+					derived, err := common.DeriveBTCTaprootAddress(v.PubKey, pathIndex)
+					if err != nil {
+						continue
+					}
+					newAddresses = append(newAddresses, derived)
+				}
 			}
 		}
 	}

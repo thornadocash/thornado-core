@@ -1,0 +1,3312 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thornado MVP</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --ink: #16202a;
+      --muted: #5f6d7a;
+      --line: #d9dee5;
+      --accent: #9a6b12;
+      --accent-strong: #6f4b08;
+      --blue: #2453a6;
+      --violet: #6147a8;
+      --warn: #b15d00;
+      --danger: #b42318;
+      --ok: #7a540d;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 40px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .status {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      min-width: 260px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .hash {
+      max-width: 440px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: var(--ink);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 390px;
+      gap: 20px;
+      margin-top: 22px;
+      align-items: start;
+    }
+
+    .flow {
+      display: grid;
+      gap: 14px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      padding: 6px;
+      background: rgba(245, 247, 250, 0.96);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .tab-button {
+      flex: 1;
+      min-height: 46px;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid transparent;
+      font-size: 14px;
+    }
+
+    .tab-button.active {
+      background: #fff;
+      color: var(--ink);
+      border-color: var(--line);
+    }
+
+    .tab-panel[hidden] {
+      display: none;
+    }
+
+    section,
+    aside {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    .overview {
+      display: none;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .metric {
+      min-height: 92px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .metric span,
+    .panel-label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 18px;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .step {
+      min-height: 68px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #f8fafb;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .step strong {
+      display: block;
+      color: var(--ink);
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .step.done {
+      border-color: #d6bd80;
+      background: #fbf5e7;
+    }
+
+    .step.active {
+      border-color: #c89a3c;
+      background: #f8efd9;
+    }
+
+    .app-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 20px;
+      margin-top: 22px;
+      align-items: start;
+    }
+
+    .app-board {
+      position: relative;
+      display: grid;
+      gap: 24px;
+      padding: 24px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .flow-stage {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(260px, 420px);
+      justify-content: center;
+      gap: 16px;
+      align-items: center;
+      min-height: 0;
+    }
+
+    .stage-card {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 12px;
+      min-height: 140px;
+      min-width: 0;
+      padding: 54px 18px 18px;
+      border: 1px solid #2c343d;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .stage-card h2 {
+      margin-bottom: 0;
+      text-align: center;
+      font-size: 20px;
+      color: #26323d;
+    }
+
+    .stage-heading {
+      position: absolute;
+      top: 16px;
+      left: 56px;
+      right: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 34px;
+      min-width: 0;
+      pointer-events: none;
+    }
+
+    .stage-card.done .stage-heading {
+      justify-content: center;
+    }
+
+    .stage-toggle {
+      display: none;
+      position: absolute;
+      top: -4px;
+      right: -44px;
+      min-height: 34px;
+      width: 34px;
+      padding: 0;
+      border: 1px solid #d6bd80;
+      background: #fffaf0;
+      color: var(--accent-strong);
+      font-size: 20px;
+      line-height: 1;
+      pointer-events: auto;
+    }
+
+    .stage-card.done .stage-toggle {
+      display: inline-grid;
+      place-items: center;
+    }
+
+    .card-tools {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      pointer-events: none;
+    }
+
+    .icon-button {
+      width: 34px;
+      min-height: 34px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background: #fff;
+      color: var(--ink);
+      font-weight: 800;
+      pointer-events: auto;
+    }
+
+    .popover {
+      position: absolute;
+      top: 50px;
+      left: 12px;
+      right: 12px;
+      z-index: 5;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .custom-secret-panel {
+      display: grid;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #f8fafb;
+    }
+
+    .secret-box {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border: 1px dashed #b8c2cd;
+      border-radius: 10px;
+      background: #fbfcfd;
+    }
+
+    .secret-value {
+      min-height: 48px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #fbf5e7;
+      border: 1px solid #d6bd80;
+      color: #4b3508;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .secret-help {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .field-error {
+      color: var(--danger);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .stage-card.locked {
+      display: none;
+    }
+
+    .stage-card.done {
+      min-height: 0;
+      padding: 48px 14px 12px;
+      border-color: #d6bd80;
+      background: #fbf5e7;
+    }
+
+    .stage-card.done > :not(.stage-heading):not(.stage-summary) {
+      display: none !important;
+    }
+
+    .stage-card.done h2 {
+      font-size: 14px;
+      color: #26323d;
+    }
+
+    .stage-summary {
+      display: none;
+      color: var(--muted);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .stage-card.done .stage-summary {
+      display: block;
+    }
+
+    .stage-card.done.expanded > :not(.stage-summary) {
+      display: grid !important;
+    }
+
+    .stage-card.done.expanded > [hidden] {
+      display: none !important;
+    }
+
+    .stage-card.done.expanded > .stage-heading {
+      display: flex !important;
+    }
+
+    .stage-card.done.expanded > .card-tools {
+      display: block !important;
+    }
+
+    .stage-card.done.expanded .stage-summary {
+      display: none;
+    }
+
+    .split-confirm {
+      display: grid;
+      gap: 8px;
+      justify-items: center;
+      padding: 16px 8px;
+      text-align: center;
+    }
+
+    .deposit-amount-large {
+      font-size: 42px;
+      line-height: 1;
+      font-weight: 300;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .confirmation-count {
+      color: var(--muted);
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .deposit-history {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .batch-row {
+      display: grid;
+      grid-template-columns: minmax(92px, 1fr) auto auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfcfd;
+      font-size: 13px;
+    }
+
+    .batch-row span {
+      color: var(--muted);
+    }
+
+    .compact-fields {
+      display: grid;
+      gap: 10px;
+    }
+
+    .compact-fields.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .wait-clock {
+      display: grid;
+      place-items: center;
+      min-height: 76px;
+      border-radius: 12px;
+      background: #fbf7ed;
+      border: 1px solid #d6bd80;
+      font-size: 28px;
+      font-weight: 300;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timer-bar {
+      height: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #eee4cd;
+      border: 1px solid #d6bd80;
+    }
+
+    .timer-bar > span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--accent);
+      transition: width 0.2s linear;
+    }
+
+    .notes-table {
+      display: grid;
+      gap: 8px;
+      max-height: 300px;
+      overflow: auto;
+    }
+
+    .note-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .note-group h3 {
+      margin: 8px 0 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent-strong);
+    }
+
+    .note-row {
+      display: grid;
+      grid-template-columns: minmax(96px, 1fr) auto auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfcfd;
+      font-size: 13px;
+    }
+
+    .note-row span,
+    .note-row a {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .note-row button {
+      min-height: 32px;
+      padding: 0 10px;
+    }
+
+    .note-withdrawal {
+      grid-column: 1 / -1;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+
+    .note-withdrawal a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    .split-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .address-box {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .qr {
+      display: grid;
+      place-items: center;
+      min-height: 168px;
+      border-radius: 8px;
+      border: 1px solid #d6bd80;
+      background: #fbf7ed;
+      color: var(--muted);
+      font-weight: 700;
+      text-align: center;
+      padding: 12px;
+    }
+
+    .qr.generated {
+      background: #fff;
+      background-size: auto;
+    }
+
+    .qr svg {
+      width: min(100%, 180px);
+      height: auto;
+      display: block;
+    }
+
+    .pow-status {
+      display: grid;
+      place-items: center;
+      min-height: 50px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .pow-spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid #dbe2ea;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .button-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      margin-right: 8px;
+      vertical-align: -2px;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .address-result {
+      display: grid;
+      gap: 8px;
+    }
+
+    .address-line {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .address-line .value {
+      margin-top: 0;
+    }
+
+    .expiry-line {
+      display: grid;
+      gap: 2px;
+      padding: 8px 10px;
+      border: 1px solid #dce4eb;
+      border-radius: 8px;
+      background: #f7fafc;
+      color: #33414f;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .expiry-line strong {
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .expiry-line.expired {
+      border-color: #f0c7c4;
+      background: #fff6f5;
+      color: #8f332d;
+    }
+
+    .copy-button {
+      min-height: 38px;
+      background: #e7ebef;
+      color: #26323d;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #f8fafb;
+      color: #324150;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .pill.ok {
+      background: #fbf5e7;
+      border-color: #d6bd80;
+      color: var(--ok);
+    }
+
+    .pill.warn {
+      background: #fff4e5;
+      border-color: #f0cf9d;
+      color: var(--warn);
+    }
+
+    .panel-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .side-panel {
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 9px;
+      border-bottom: 1px solid #edf0f3;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .row strong {
+      color: var(--ink);
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+
+    .meter {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e6ebf0;
+      margin-top: 12px;
+    }
+
+    .meter > span {
+      display: block;
+      height: 100%;
+      width: 18%;
+      background: var(--accent);
+    }
+
+    .fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 650;
+      color: #2c3742;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid #c8d0d9;
+      border-radius: 6px;
+      padding: 10px 11px;
+      color: var(--ink);
+      background: #fff;
+      font: inherit;
+      min-height: 40px;
+    }
+
+    textarea {
+      min-height: 76px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: 2px solid rgba(154, 107, 18, 0.22);
+      border-color: var(--accent);
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 6px;
+      min-height: 40px;
+      padding: 0 14px;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #e7ebef;
+      color: #26323d;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .value {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: #fbf5e7;
+      border: 1px solid #d6bd80;
+      color: #4b3508;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .notes {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+      max-height: 320px;
+      overflow: auto;
+    }
+
+    .note {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfcfd;
+    }
+
+    .note input {
+      width: 16px;
+      height: 16px;
+      min-height: 0;
+    }
+
+    .note strong {
+      display: block;
+      font-size: 13px;
+    }
+
+    .note span {
+      display: block;
+      margin-top: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+
+    .note .note-pool {
+      font-family: inherit;
+      white-space: normal;
+    }
+
+    .log {
+      margin-top: 12px;
+      min-height: 420px;
+      max-height: 680px;
+      overflow: auto;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      background: #111820;
+      color: #e8eef5;
+      border-radius: 6px;
+      padding: 12px;
+    }
+
+    .message {
+      min-height: 22px;
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .message.error {
+      color: var(--danger);
+    }
+
+    .message.ok {
+      color: var(--ok);
+    }
+
+    @media (max-width: 860px) {
+      header,
+      .grid,
+      .app-layout {
+        display: block;
+      }
+
+      .app-board {
+        padding: 14px;
+      }
+
+      .status {
+        align-items: flex-start;
+        margin-top: 14px;
+        min-width: 0;
+      }
+
+      aside {
+        margin-top: 20px;
+      }
+
+      .fields {
+        grid-template-columns: 1fr;
+      }
+
+      .overview,
+      .timeline,
+      .split-panel,
+      .compact-fields.two {
+        grid-template-columns: 1fr;
+      }
+
+      .note-row {
+        grid-template-columns: minmax(86px, 1fr) auto;
+      }
+
+      .note-row button {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .flow-stage {
+        display: block;
+        margin-bottom: 16px;
+      }
+
+      .stage-card {
+        margin-top: 10px;
+      }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Thornado MVP</h1>
+        <p>Local web client served by the Go THORNado node.</p>
+      </div>
+      <div class="status">
+        <span>Node state hash</span>
+        <span id="stateHash" class="hash">loading</span>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Thornado views">
+      <button id="tabUser" class="tab-button active" type="button">App</button>
+      <button id="tabNodes" class="tab-button" type="button">Nodes</button>
+      <button id="tabNetwork" class="tab-button" type="button">Network</button>
+    </nav>
+
+    <div class="overview">
+      <div class="metric">
+        <span>Wallet</span>
+        <strong id="walletMetric">Generating mnemonic</strong>
+      </div>
+      <div class="metric">
+        <span>Deposit</span>
+        <strong id="depositMetric">No intent</strong>
+      </div>
+      <div class="metric">
+        <span>Notes</span>
+        <strong id="notesMetric">0 minted</strong>
+      </div>
+      <div class="metric">
+        <span>Privacy</span>
+        <strong id="privacyMetric">No pool yet</strong>
+      </div>
+    </div>
+
+    <div id="userPanel" class="tab-panel app-layout">
+      <section class="app-board" aria-label="Thornado app flow">
+        <div class="flow-stage">
+          <div id="stageDeposit" class="stage-card">
+            <div class="card-tools">
+              <button id="depositInfoButton" class="icon-button" type="button" aria-label="Deposit info">i</button>
+            </div>
+            <div class="stage-heading">
+              <h2>Deposit</h2>
+              <button class="stage-toggle" type="button" data-stage-toggle="stageDeposit" aria-label="Toggle deposit">⌄</button>
+            </div>
+            <div id="depositSummary" class="stage-summary">No deposit yet</div>
+            <div id="depositInfo" class="popover" hidden>
+              The secret stays in your browser. Thornado derives your pubkey locally, then mines a small proof of work before requesting a deposit address. The address is watched only until the next churn, because churn rotates custody keys. PoW makes bulk address spam expensive without asking you to solve a CAPTCHA.
+            </div>
+            <textarea id="walletRoot" hidden spellcheck="false"></textarea>
+            <input id="walletPassphrase" type="password" hidden autocomplete="off">
+            <div id="customSecretPanel" class="custom-secret-panel" hidden>
+              <label>
+                Enter a new 12 or 24 word phrase
+                <textarea id="customWalletRoot" spellcheck="false" placeholder="Enter your BIP39 seedphrase"></textarea>
+              </label>
+              <div id="customSecretError" class="field-error" hidden></div>
+              <div class="actions">
+                <button id="cancelCustomSecret" class="secondary" type="button">Cancel</button>
+                <button id="saveCustomSecret" type="button">Done</button>
+              </div>
+            </div>
+            <div id="secretBox" class="secret-box">
+              <button id="revealSecret" class="secondary" type="button">Reveal Secret</button>
+              <div id="secretValue" class="secret-value" hidden></div>
+              <div id="secretHelp" class="secret-help" hidden>Save this secret to withdraw your deposit later.</div>
+              <div id="secretActions" class="actions" hidden>
+                <button id="useCustomSecret" class="secondary" type="button">Use Custom Secret</button>
+                <button id="doneSecret" type="button">Done</button>
+              </div>
+            </div>
+            <div class="actions">
+              <button id="requestDeposit">Get Address</button>
+            </div>
+            <div id="powStatus" class="pow-status" hidden>
+              <div class="pow-spinner" aria-label="Mining PoW"></div>
+            </div>
+            <div id="depositResult" class="address-result" hidden>
+              <div id="depositQr" class="qr">Deposit address and QR will appear here</div>
+              <div class="address-line">
+                <div id="depositAddress" class="value"></div>
+                <button id="copyDepositAddress" class="copy-button" type="button">Copy</button>
+              </div>
+              <div id="depositExpiry" class="expiry-line" hidden></div>
+            </div>
+            <div id="walletRootStatus" class="value" hidden></div>
+            <div id="clientPubkey" class="value" hidden></div>
+            <div id="powResult" class="value" hidden></div>
+            <div id="depositHistory" class="deposit-history" hidden></div>
+          </div>
+        </div>
+
+        <div class="flow-stage">
+          <div id="stageSplit" class="stage-card locked">
+            <div class="stage-heading">
+              <h2>Split</h2>
+              <button class="stage-toggle" type="button" data-stage-toggle="stageSplit" aria-label="Toggle split">⌄</button>
+            </div>
+            <div class="card-tools">
+              <button id="splitInfoButton" class="icon-button" type="button" aria-label="Split info">i</button>
+            </div>
+            <div id="splitSummary" class="stage-summary">No notes minted</div>
+            <div id="splitInfo" class="popover" hidden>
+              Split your deposit into Equal Denomination Notes into the Privacy Pool. Each Note is held by an index on your Secret Phrase.
+            </div>
+            <input id="intentId" placeholder="dep-1" hidden>
+            <input id="amountSats" type="number" min="0" step="1" value="111000000" hidden>
+            <input id="txid" value="tx-demo" hidden>
+            <div id="splitConfirmView" class="split-confirm">
+            <div id="splitAmountLarge" class="deposit-amount-large">0 BTC</div>
+              <div id="splitConfs" class="confirmation-count">0 / 1 confirmations</div>
+            </div>
+            <div class="actions">
+              <button id="splitDeposit" disabled>Split Deposit</button>
+            </div>
+            <strong id="confirmations" hidden>0 / 1</strong>
+            <strong id="knownAmount" hidden>0 BTC</strong>
+            <strong id="remainderSats" hidden>0 BTC</strong>
+            <div id="denomBreakdown" class="panel-list"></div>
+          </div>
+        </div>
+
+        <div class="flow-stage">
+          <div id="stageWait" class="stage-card locked">
+            <div class="card-tools">
+              <button id="waitInfoButton" class="icon-button" type="button" aria-label="Wait info">i</button>
+            </div>
+            <div class="stage-heading">
+              <h2>Wait</h2>
+              <button class="stage-toggle" type="button" data-stage-toggle="stageWait" aria-label="Toggle wait">⌄</button>
+            </div>
+            <div id="waitSummary" class="stage-summary">Waiting for note maturity</div>
+            <div id="waitInfo" class="popover" hidden>
+              Wait for your notes to mature before withdrawal. Min maturity time is <span id="waitMinMaturity">--:--:--</span>.
+            </div>
+            <div id="waitClock" class="wait-clock">--:--:--</div>
+            <div class="timer-bar"><span id="waitTimerBar"></span></div>
+            <strong id="waitDemo" hidden>~1 min</strong>
+            <strong id="laterDepositMetric" hidden>none</strong>
+            <strong id="withdrawRisk" hidden>high before split</strong>
+            <div class="meter" hidden><span id="privacyMeter"></span></div>
+          </div>
+        </div>
+
+        <div class="flow-stage">
+          <div id="stageWithdraw" class="stage-card locked">
+            <div class="card-tools">
+              <button id="withdrawInfoButton" class="icon-button" type="button" aria-label="Withdraw info">i</button>
+            </div>
+            <div class="stage-heading">
+              <h2>Withdraw</h2>
+              <button class="stage-toggle" type="button" data-stage-toggle="stageWithdraw" aria-label="Toggle withdraw">⌄</button>
+            </div>
+            <div id="withdrawSummary" class="stage-summary">Withdrawal ready</div>
+            <div id="withdrawInfo" class="popover" hidden>
+              Withdraw one synced unspent note to your BTC address. Completed rows link to the final BTC transaction.
+            </div>
+            <div id="notes" class="notes notes-table"></div>
+            <label>
+              Receive address
+              <input id="recipient" value="tb1qrecipientdemo">
+            </label>
+            <input id="feeSats" type="number" min="0" step="1" value="100000" hidden>
+            <div class="actions">
+              <button id="validateProof" class="secondary" hidden disabled>Validate proof</button>
+              <button id="withdrawNote" hidden disabled>Withdraw selected note</button>
+            </div>
+            <strong id="feePreview" hidden>0.001 BTC</strong>
+            <strong id="receiptFingerprint" hidden>none</strong>
+          </div>
+        </div>
+
+        <div id="message" class="message"></div>
+      </section>
+
+      <aside>
+        <h2>Events</h2>
+        <p>Latest API responses and errors.</p>
+        <pre id="log" class="log"></pre>
+      </aside>
+    </div>
+
+    <div id="networkPanel" class="tab-panel grid" hidden>
+      <div class="flow">
+        <section>
+          <h2>Client Network</h2>
+          <p>Mirror and light-node surfaces from the PDF. Local dev uses this node as the light-node.</p>
+          <div class="split-panel">
+            <div>
+              <span class="panel-label">Mirror registry</span>
+              <div class="panel-list">
+                <div class="row"><span>Mirror hash</span><strong>local dev build</strong></div>
+                <div class="row"><span>SSL vouching</span><strong>not wired</strong></div>
+                <div class="row"><span>Weekly mirror check</span><strong>not wired</strong></div>
+              </div>
+            </div>
+            <div>
+              <span class="panel-label">Light node</span>
+              <div class="panel-list">
+                <div class="row"><span>Attached node</span><strong id="nodeEndpoint">same origin</strong></div>
+                <div class="row"><span>Broadcast tx</span><strong>dev API only</strong></div>
+                <div class="row"><span>State query</span><strong>/state/hash</strong></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Operators And Governance</h2>
+          <p>Slot, bond, churn, penalty, fee-bucket, and shutdown controls are protocol surfaces, not user wallet actions.</p>
+          <div class="split-panel">
+            <div>
+              <span class="panel-label">Operator set</span>
+              <div class="panel-list">
+                <div class="row"><span>Threshold</span><strong>67% FROST</strong></div>
+                <div class="row"><span>Churn interval</span><strong id="networkChurnInterval">3 days</strong></div>
+                <div class="row"><span>Target nodes</span><strong id="networkTargetNodes">4</strong></div>
+                <div class="row"><span>Next churn</span><strong id="networkNextChurn">not scheduled</strong></div>
+                <div class="row"><span>Max churn</span><strong id="networkMaxChurn">1 per cycle</strong></div>
+                <div class="row"><span>Offline penalty</span><strong>1% per missed cycle</strong></div>
+              </div>
+            </div>
+            <div>
+              <span class="panel-label">Governance</span>
+              <div class="panel-list">
+                <div class="row"><span>Permanent slots</span><strong>auction market</strong></div>
+                <div class="row"><span>Bond</span><strong>10 + 2.5n BTC</strong></div>
+                <div class="row"><span>Shutdown vote</span><strong>67% required</strong></div>
+                <div class="row"><span>Maintenance mode</span><strong>30 days</strong></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <aside>
+        <div class="side-panel">
+          <h2>System Params</h2>
+          <div class="panel-list">
+            <div class="row"><span>Denominations</span><strong>10, 1, 0.1, 0.01 BTC</strong></div>
+            <div class="row"><span>PoW target</span><strong>17-bit browser hashcash</strong></div>
+            <div class="row"><span>Outbound fee</span><strong>0.001 BTC</strong></div>
+            <div class="row"><span>Fee bucket</span><strong>30 x 0.01 BTC</strong></div>
+          </div>
+        </div>
+
+        <div class="side-panel">
+          <h2>Cluster Readiness</h2>
+          <div class="pill-row">
+            <span class="pill warn">auto deposit watch</span>
+            <span class="pill warn">split ZK proof</span>
+            <span class="pill warn">withdraw ZK proof</span>
+            <span class="pill warn">mirror registry</span>
+            <span class="pill warn">slot auction</span>
+            <span class="pill warn">fee claims</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div id="nodesPanel" class="tab-panel grid" hidden>
+      <div class="flow">
+        <section>
+          <h2>Node Status</h2>
+          <div class="split-panel">
+            <div>
+              <span class="panel-label">Bond state</span>
+              <div class="actions">
+                <button id="refreshNodeTools" class="secondary" type="button">Refresh</button>
+              </div>
+              <div class="panel-list">
+                <div class="row"><span>Next slot</span><strong id="nodeNextSlot">unknown</strong></div>
+                <div class="row"><span>Required bond</span><strong id="nodeRequiredBond">unknown</strong></div>
+                <div class="row"><span>Node sales</span><strong>separate page</strong></div>
+              </div>
+            </div>
+            <div>
+              <span class="panel-label">Available flows</span>
+              <div class="panel-list">
+                <div class="row"><span>Bond</span><strong>PoW deposit</strong></div>
+                <div class="row"><span>Voting</span><strong>gasless tx</strong></div>
+                <div class="row"><span>Request leave</span><strong>not wired</strong></div>
+                <div class="row"><span>Sales</span><strong>separate page</strong></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>PoW Deposit</h2>
+          <div class="split-panel">
+            <div>
+              <span class="panel-label">Bond</span>
+              <label>
+                Operator pubkey
+                <input id="bondOperatorPubkey" placeholder="tthorpub1...">
+              </label>
+              <label>
+                Node consensus pubkey
+                <input id="bondNodePubkey" placeholder="tthorv1pub1...">
+              </label>
+              <div class="actions">
+                <button id="requestBondAddress" type="button">Get Bond Address</button>
+              </div>
+              <div id="bondAddress" class="value" hidden></div>
+            </div>
+            <div>
+              <span class="panel-label">Bond split</span>
+              <label>
+                Deposit path pubkey
+                <input id="bondSplitDepositPubkey" placeholder="compressed secp256k1 pubkey">
+              </label>
+              <label>
+                Commitments JSON or CSV
+                <input id="bondSplitCommitments" placeholder='["commitment"]'>
+              </label>
+              <div class="actions">
+                <button id="buildBondSplitCommand" type="button">Build Split Command</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Gasless Tx</h2>
+          <div class="split-panel">
+            <div>
+              <span class="panel-label">Operator identity</span>
+              <label>
+                Key name
+                <input id="nodeKeyName" value="node">
+              </label>
+              <label>
+                IP address
+                <input id="nodeIpAddress" placeholder="127.0.0.1">
+              </label>
+              <div class="actions">
+                <button id="buildSetIpCommand" type="button">Set IP</button>
+                <button id="buildSetVersionCommand" class="secondary" type="button">Set Version</button>
+              </div>
+            </div>
+            <div>
+              <span class="panel-label">Keys</span>
+              <label>
+                Secp256k1 pubkey
+                <input id="nodeSecpPubkey" placeholder="tthorpub1...">
+              </label>
+              <label>
+                Ed25519 pubkey
+                <input id="nodeEdPubkey" placeholder="tthorpub1...">
+              </label>
+              <label>
+                Consensus pubkey
+                <input id="nodeConsPubkey" placeholder="tthorv1pub1...">
+              </label>
+              <div class="actions">
+                <button id="buildSetKeysCommand" type="button">Set Node Keys</button>
+              </div>
+            </div>
+          </div>
+          <div class="split-panel">
+            <div>
+              <span class="panel-label">Voting</span>
+              <label>
+                Upgrade name
+                <input id="upgradeName" placeholder="upgrade name">
+              </label>
+              <label>
+                Upgrade height
+                <input id="upgradeHeight" type="number" min="1" step="1" placeholder="height">
+              </label>
+              <label>
+                Upgrade info
+                <input id="upgradeInfo" placeholder="optional info">
+              </label>
+              <div class="actions">
+                <button id="buildProposeUpgradeCommand" type="button">Propose</button>
+                <button id="buildApproveUpgradeCommand" class="secondary" type="button">Approve</button>
+                <button id="buildRejectUpgradeCommand" class="secondary" type="button">Reject</button>
+              </div>
+            </div>
+            <div>
+              <span class="panel-label">Operations</span>
+              <label>
+                Fee note pubkeys JSON or CSV
+                <input id="feeNotePubkeys" placeholder='["pubkey"]'>
+              </label>
+              <label>
+                Fee commitments JSON or CSV
+                <input id="feeCommitments" placeholder='["commitment"]'>
+              </label>
+              <label>
+                Operator signature hex
+                <input id="feeOperatorSignature" placeholder="signature">
+              </label>
+              <div class="actions">
+                <button id="buildSplitFeesCommand" type="button">Split Fees</button>
+                <button id="buildPauseCommand" class="secondary" type="button">Pause</button>
+                <button id="buildResumeCommand" class="secondary" type="button">Resume</button>
+              </div>
+            </div>
+          </div>
+          <pre id="nodeCommandOutput" class="log"></pre>
+        </section>
+
+        <section>
+          <h2>Request Leave</h2>
+          <div class="panel-list">
+            <div class="row"><span>Status</span><strong>not exposed by tx service</strong></div>
+            <div class="row"><span>Current alternative</span><strong>maintenance toggle exists in handler only</strong></div>
+          </div>
+        </section>
+      </div>
+
+      <aside>
+        <div class="side-panel">
+          <h2>Node Notes</h2>
+          <div class="panel-list">
+            <div class="row"><span>PoW deposit</span><strong>bond address request</strong></div>
+            <div class="row"><span>Gasless tx</span><strong>signed by node key</strong></div>
+            <div class="row"><span>Node sales</span><strong>separate page</strong></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script type="module">
+    let thornadoWasmReady;
+
+    async function thornadoWasm() {
+      if (!thornadoWasmReady) {
+        thornadoWasmReady = import("/thornado/ui/wasm/thornado_web_wasm.js?v=3").then(async (mod) => {
+          await mod.default();
+          return mod;
+        });
+      }
+      const mod = await thornadoWasmReady;
+      return {
+        clientPubkeyFromSecretJson: mod.client_pubkey_from_secret_json,
+        clientPubkeyForDepositJson: mod.client_pubkey_for_deposit_json,
+        splitAuthorizationJson: mod.split_authorization_json,
+        splitAuthorizationForDepositJson: mod.split_authorization_for_deposit_json,
+        deriveSplitReceiptJson: mod.derive_split_receipt_json,
+        deriveSplitReceiptForDepositJson: mod.derive_split_receipt_for_deposit_json,
+        noteRecoveryCandidatesJson: mod.note_recovery_candidates_json,
+        recoverNoteReceiptJson: mod.recover_note_receipt_json,
+        nullifierHashJson: mod.nullifier_hash_json,
+        verifyWithdrawalJson: mod.verify_withdrawal_json,
+        zkWithdrawalFromReceiptJson: mod.zk_withdrawal_from_receipt_json || mod.shielder_withdrawal_from_receipt_json
+      };
+    }
+    const DOMAIN = "thornado-mvp-v1";
+    const POW_DIFFICULTY_BITS = 17;
+    const MIN_POW_MS = 2000;
+    const MIN_CONFS = 1;
+    const DENOMINATIONS = [1000000000, 100000000, 10000000, 1000000];
+    const DEMO_MATURITY_MS = 60000;
+    const MIN_LATER_DEPOSITS = 3;
+    const POOL_REFRESH_MS = 15000;
+    const DEFAULT_CHURN_CYCLE_MS = 20 * 60 * 1000;
+    const BIP39_WORDS = ["abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident","account","accuse","achieve","acid","acoustic","acquire","across","act","action","actor","actress","actual","adapt","add","addict","address","adjust","admit","adult","advance","advice","aerobic","affair","afford","afraid","again","age","agent","agree","ahead","aim","air","airport","aisle","alarm","album","alcohol","alert","alien","all","alley","allow","almost","alone","alpha","already","also","alter","always","amateur","amazing","among","amount","amused","analyst","anchor","ancient","anger","angle","angry","animal","ankle","announce","annual","another","answer","antenna","antique","anxiety","any","apart","apology","appear","apple","approve","april","arch","arctic","area","arena","argue","arm","armed","armor","army","around","arrange","arrest","arrive","arrow","art","artefact","artist","artwork","ask","aspect","assault","asset","assist","assume","asthma","athlete","atom","attack","attend","attitude","attract","auction","audit","august","aunt","author","auto","autumn","average","avocado","avoid","awake","aware","away","awesome","awful","awkward","axis","baby","bachelor","bacon","badge","bag","balance","balcony","ball","bamboo","banana","banner","bar","barely","bargain","barrel","base","basic","basket","battle","beach","bean","beauty","because","become","beef","before","begin","behave","behind","believe","below","belt","bench","benefit","best","betray","better","between","beyond","bicycle","bid","bike","bind","biology","bird","birth","bitter","black","blade","blame","blanket","blast","bleak","bless","blind","blood","blossom","blouse","blue","blur","blush","board","boat","body","boil","bomb","bone","bonus","book","boost","border","boring","borrow","boss","bottom","bounce","box","boy","bracket","brain","brand","brass","brave","bread","breeze","brick","bridge","brief","bright","bring","brisk","broccoli","broken","bronze","broom","brother","brown","brush","bubble","buddy","budget","buffalo","build","bulb","bulk","bullet","bundle","bunker","burden","burger","burst","bus","business","busy","butter","buyer","buzz","cabbage","cabin","cable","cactus","cage","cake","call","calm","camera","camp","can","canal","cancel","candy","cannon","canoe","canvas","canyon","capable","capital","captain","car","carbon","card","cargo","carpet","carry","cart","case","cash","casino","castle","casual","cat","catalog","catch","category","cattle","caught","cause","caution","cave","ceiling","celery","cement","census","century","cereal","certain","chair","chalk","champion","change","chaos","chapter","charge","chase","chat","cheap","check","cheese","chef","cherry","chest","chicken","chief","child","chimney","choice","choose","chronic","chuckle","chunk","churn","cigar","cinnamon","circle","citizen","city","civil","claim","clap","clarify","claw","clay","clean","clerk","clever","click","client","cliff","climb","clinic","clip","clock","clog","close","cloth","cloud","clown","club","clump","cluster","clutch","coach","coast","coconut","code","coffee","coil","coin","collect","color","column","combine","come","comfort","comic","common","company","concert","conduct","confirm","congress","connect","consider","control","convince","cook","cool","copper","copy","coral","core","corn","correct","cost","cotton","couch","country","couple","course","cousin","cover","coyote","crack","cradle","craft","cram","crane","crash","crater","crawl","crazy","cream","credit","creek","crew","cricket","crime","crisp","critic","crop","cross","crouch","crowd","crucial","cruel","cruise","crumble","crunch","crush","cry","crystal","cube","culture","cup","cupboard","curious","current","curtain","curve","cushion","custom","cute","cycle","dad","damage","damp","dance","danger","daring","dash","daughter","dawn","day","deal","debate","debris","decade","december","decide","decline","decorate","decrease","deer","defense","define","defy","degree","delay","deliver","demand","demise","denial","dentist","deny","depart","depend","deposit","depth","deputy","derive","describe","desert","design","desk","despair","destroy","detail","detect","develop","device","devote","diagram","dial","diamond","diary","dice","diesel","diet","differ","digital","dignity","dilemma","dinner","dinosaur","direct","dirt","disagree","discover","disease","dish","dismiss","disorder","display","distance","divert","divide","divorce","dizzy","doctor","document","dog","doll","dolphin","domain","donate","donkey","donor","door","dose","double","dove","draft","dragon","drama","drastic","draw","dream","dress","drift","drill","drink","drip","drive","drop","drum","dry","duck","dumb","dune","during","dust","dutch","duty","dwarf","dynamic","eager","eagle","early","earn","earth","easily","east","easy","echo","ecology","economy","edge","edit","educate","effort","egg","eight","either","elbow","elder","electric","elegant","element","elephant","elevator","elite","else","embark","embody","embrace","emerge","emotion","employ","empower","empty","enable","enact","end","endless","endorse","enemy","energy","enforce","engage","engine","enhance","enjoy","enlist","enough","enrich","enroll","ensure","enter","entire","entry","envelope","episode","equal","equip","era","erase","erode","erosion","error","erupt","escape","essay","essence","estate","eternal","ethics","evidence","evil","evoke","evolve","exact","example","excess","exchange","excite","exclude","excuse","execute","exercise","exhaust","exhibit","exile","exist","exit","exotic","expand","expect","expire","explain","expose","express","extend","extra","eye","eyebrow","fabric","face","faculty","fade","faint","faith","fall","false","fame","family","famous","fan","fancy","fantasy","farm","fashion","fat","fatal","father","fatigue","fault","favorite","feature","february","federal","fee","feed","feel","female","fence","festival","fetch","fever","few","fiber","fiction","field","figure","file","film","filter","final","find","fine","finger","finish","fire","firm","first","fiscal","fish","fit","fitness","fix","flag","flame","flash","flat","flavor","flee","flight","flip","float","flock","floor","flower","fluid","flush","fly","foam","focus","fog","foil","fold","follow","food","foot","force","forest","forget","fork","fortune","forum","forward","fossil","foster","found","fox","fragile","frame","frequent","fresh","friend","fringe","frog","front","frost","frown","frozen","fruit","fuel","fun","funny","furnace","fury","future","gadget","gain","galaxy","gallery","game","gap","garage","garbage","garden","garlic","garment","gas","gasp","gate","gather","gauge","gaze","general","genius","genre","gentle","genuine","gesture","ghost","giant","gift","giggle","ginger","giraffe","girl","give","glad","glance","glare","glass","glide","glimpse","globe","gloom","glory","glove","glow","glue","goat","goddess","gold","good","goose","gorilla","gospel","gossip","govern","gown","grab","grace","grain","grant","grape","grass","gravity","great","green","grid","grief","grit","grocery","group","grow","grunt","guard","guess","guide","guilt","guitar","gun","gym","habit","hair","half","hammer","hamster","hand","happy","harbor","hard","harsh","harvest","hat","have","hawk","hazard","head","health","heart","heavy","hedgehog","height","hello","helmet","help","hen","hero","hidden","high","hill","hint","hip","hire","history","hobby","hockey","hold","hole","holiday","hollow","home","honey","hood","hope","horn","horror","horse","hospital","host","hotel","hour","hover","hub","huge","human","humble","humor","hundred","hungry","hunt","hurdle","hurry","hurt","husband","hybrid","ice","icon","idea","identify","idle","ignore","ill","illegal","illness","image","imitate","immense","immune","impact","impose","improve","impulse","inch","include","income","increase","index","indicate","indoor","industry","infant","inflict","inform","inhale","inherit","initial","inject","injury","inmate","inner","innocent","input","inquiry","insane","insect","inside","inspire","install","intact","interest","into","invest","invite","involve","iron","island","isolate","issue","item","ivory","jacket","jaguar","jar","jazz","jealous","jeans","jelly","jewel","job","join","joke","journey","joy","judge","juice","jump","jungle","junior","junk","just","kangaroo","keen","keep","ketchup","key","kick","kid","kidney","kind","kingdom","kiss","kit","kitchen","kite","kitten","kiwi","knee","knife","knock","know","lab","label","labor","ladder","lady","lake","lamp","language","laptop","large","later","latin","laugh","laundry","lava","law","lawn","lawsuit","layer","lazy","leader","leaf","learn","leave","lecture","left","leg","legal","legend","leisure","lemon","lend","length","lens","leopard","lesson","letter","level","liar","liberty","library","license","life","lift","light","like","limb","limit","link","lion","liquid","list","little","live","lizard","load","loan","lobster","local","lock","logic","lonely","long","loop","lottery","loud","lounge","love","loyal","lucky","luggage","lumber","lunar","lunch","luxury","lyrics","machine","mad","magic","magnet","maid","mail","main","major","make","mammal","man","manage","mandate","mango","mansion","manual","maple","marble","march","margin","marine","market","marriage","mask","mass","master","match","material","math","matrix","matter","maximum","maze","meadow","mean","measure","meat","mechanic","medal","media","melody","melt","member","memory","mention","menu","mercy","merge","merit","merry","mesh","message","metal","method","middle","midnight","milk","million","mimic","mind","minimum","minor","minute","miracle","mirror","misery","miss","mistake","mix","mixed","mixture","mobile","model","modify","mom","moment","monitor","monkey","monster","month","moon","moral","more","morning","mosquito","mother","motion","motor","mountain","mouse","move","movie","much","muffin","mule","multiply","muscle","museum","mushroom","music","must","mutual","myself","mystery","myth","naive","name","napkin","narrow","nasty","nation","nature","near","neck","need","negative","neglect","neither","nephew","nerve","nest","net","network","neutral","never","news","next","nice","night","noble","noise","nominee","noodle","normal","north","nose","notable","note","nothing","notice","novel","now","nuclear","number","nurse","nut","oak","obey","object","oblige","obscure","observe","obtain","obvious","occur","ocean","october","odor","off","offer","office","often","oil","okay","old","olive","olympic","omit","once","one","onion","online","only","open","opera","opinion","oppose","option","orange","orbit","orchard","order","ordinary","organ","orient","original","orphan","ostrich","other","outdoor","outer","output","outside","oval","oven","over","own","owner","oxygen","oyster","ozone","pact","paddle","page","pair","palace","palm","panda","panel","panic","panther","paper","parade","parent","park","parrot","party","pass","patch","path","patient","patrol","pattern","pause","pave","payment","peace","peanut","pear","peasant","pelican","pen","penalty","pencil","people","pepper","perfect","permit","person","pet","phone","photo","phrase","physical","piano","picnic","picture","piece","pig","pigeon","pill","pilot","pink","pioneer","pipe","pistol","pitch","pizza","place","planet","plastic","plate","play","please","pledge","pluck","plug","plunge","poem","poet","point","polar","pole","police","pond","pony","pool","popular","portion","position","possible","post","potato","pottery","poverty","powder","power","practice","praise","predict","prefer","prepare","present","pretty","prevent","price","pride","primary","print","priority","prison","private","prize","problem","process","produce","profit","program","project","promote","proof","property","prosper","protect","proud","provide","public","pudding","pull","pulp","pulse","pumpkin","punch","pupil","puppy","purchase","purity","purpose","purse","push","put","puzzle","pyramid","quality","quantum","quarter","question","quick","quit","quiz","quote","rabbit","raccoon","race","rack","radar","radio","rail","rain","raise","rally","ramp","ranch","random","range","rapid","rare","rate","rather","raven","raw","razor","ready","real","reason","rebel","rebuild","recall","receive","recipe","record","recycle","reduce","reflect","reform","refuse","region","regret","regular","reject","relax","release","relief","rely","remain","remember","remind","remove","render","renew","rent","reopen","repair","repeat","replace","report","require","rescue","resemble","resist","resource","response","result","retire","retreat","return","reunion","reveal","review","reward","rhythm","rib","ribbon","rice","rich","ride","ridge","rifle","right","rigid","ring","riot","ripple","risk","ritual","rival","river","road","roast","robot","robust","rocket","romance","roof","rookie","room","rose","rotate","rough","round","route","royal","rubber","rude","rug","rule","run","runway","rural","sad","saddle","sadness","safe","sail","salad","salmon","salon","salt","salute","same","sample","sand","satisfy","satoshi","sauce","sausage","save","say","scale","scan","scare","scatter","scene","scheme","school","science","scissors","scorpion","scout","scrap","screen","script","scrub","sea","search","season","seat","second","secret","section","security","seed","seek","segment","select","sell","seminar","senior","sense","sentence","series","service","session","settle","setup","seven","shadow","shaft","shallow","share","shed","shell","sheriff","shield","shift","shine","ship","shiver","shock","shoe","shoot","shop","short","shoulder","shove","shrimp","shrug","shuffle","shy","sibling","sick","side","siege","sight","sign","silent","silk","silly","silver","similar","simple","since","sing","siren","sister","situate","six","size","skate","sketch","ski","skill","skin","skirt","skull","slab","slam","sleep","slender","slice","slide","slight","slim","slogan","slot","slow","slush","small","smart","smile","smoke","smooth","snack","snake","snap","sniff","snow","soap","soccer","social","sock","soda","soft","solar","soldier","solid","solution","solve","someone","song","soon","sorry","sort","soul","sound","soup","source","south","space","spare","spatial","spawn","speak","special","speed","spell","spend","sphere","spice","spider","spike","spin","spirit","split","spoil","sponsor","spoon","sport","spot","spray","spread","spring","spy","square","squeeze","squirrel","stable","stadium","staff","stage","stairs","stamp","stand","start","state","stay","steak","steel","stem","step","stereo","stick","still","sting","stock","stomach","stone","stool","story","stove","strategy","street","strike","strong","struggle","student","stuff","stumble","style","subject","submit","subway","success","such","sudden","suffer","sugar","suggest","suit","summer","sun","sunny","sunset","super","supply","supreme","sure","surface","surge","surprise","surround","survey","suspect","sustain","swallow","swamp","swap","swarm","swear","sweet","swift","swim","swing","switch","sword","symbol","symptom","syrup","system","table","tackle","tag","tail","talent","talk","tank","tape","target","task","taste","tattoo","taxi","teach","team","tell","ten","tenant","tennis","tent","term","test","text","thank","that","theme","then","theory","there","they","thing","this","thought","three","thrive","throw","thumb","thunder","ticket","tide","tiger","tilt","timber","time","tiny","tip","tired","tissue","title","toast","tobacco","today","toddler","toe","together","toilet","token","tomato","tomorrow","tone","tongue","tonight","tool","tooth","top","topic","topple","torch","tornado","tortoise","toss","total","tourist","toward","tower","town","toy","track","trade","traffic","tragic","train","transfer","trap","trash","travel","tray","treat","tree","trend","trial","tribe","trick","trigger","trim","trip","trophy","trouble","truck","true","truly","trumpet","trust","truth","try","tube","tuition","tumble","tuna","tunnel","turkey","turn","turtle","twelve","twenty","twice","twin","twist","two","type","typical","ugly","umbrella","unable","unaware","uncle","uncover","under","undo","unfair","unfold","unhappy","uniform","unique","unit","universe","unknown","unlock","until","unusual","unveil","update","upgrade","uphold","upon","upper","upset","urban","urge","usage","use","used","useful","useless","usual","utility","vacant","vacuum","vague","valid","valley","valve","van","vanish","vapor","various","vast","vault","vehicle","velvet","vendor","venture","venue","verb","verify","version","very","vessel","veteran","viable","vibrant","vicious","victory","video","view","village","vintage","violin","virtual","virus","visa","visit","visual","vital","vivid","vocal","voice","void","volcano","volume","vote","voyage","wage","wagon","wait","walk","wall","walnut","want","warfare","warm","warrior","wash","wasp","waste","water","wave","way","wealth","weapon","wear","weasel","weather","web","wedding","weekend","weird","welcome","west","wet","whale","what","wheat","wheel","when","where","whip","whisper","wide","width","wife","wild","will","win","window","wine","wing","wink","winner","winter","wire","wisdom","wise","wish","witness","wolf","woman","wonder","wood","wool","word","work","world","worry","worth","wrap","wreck","wrestle","wrist","write","wrong","yard","year","yellow","you","young","youth","zebra","zero","zone","zoo"];
+    const state = {
+      receipt: null,
+      batches: [],
+      activeBatchIndex: 0,
+      nextDepositIndex: 0,
+      selectedNote: 0,
+      activeIntentId: null,
+      depositOwner: null,
+      depositRequestPending: false,
+      depositAutoConfirming: false,
+      splitPending: false,
+      depositExpiresAt: null,
+      withdrawingNote: null,
+      withdrawnNotes: {},
+      churnCycleMs: DEFAULT_CHURN_CYCLE_MS,
+      churnServerDeltaMs: 0,
+      waitStartedAt: null,
+      waitMaturesAt: null,
+      secretMode: "hidden",
+      lastWithdrawalProof: null,
+      lastWithdrawalPublic: null,
+      lastWithdrawalFeeSats: null,
+      lastWithdrawalNoteKey: null
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function nodeOrigin() {
+      if (location.protocol === "file:") {
+        throw new Error("Open this page from a running Thornado node to use API actions.");
+      }
+      return location.origin;
+    }
+
+    function renderNodeEndpoint() {
+      const el = $("nodeEndpoint");
+      if (!el) {
+        return;
+      }
+      el.textContent = location.protocol === "file:" ? "file mode" : location.origin;
+    }
+
+    function setMessage(text, kind = "") {
+      const el = $("message");
+      el.textContent = text;
+      el.className = `message ${kind}`.trim();
+    }
+
+    function log(label, value) {
+      const now = new Date().toLocaleTimeString();
+      $("log").textContent = `[${now}] ${label}\n${JSON.stringify(value, null, 2)}\n\n${$("log").textContent}`;
+    }
+
+    function short(value, head = 10, tail = 8) {
+      if (!value) {
+        return "none";
+      }
+      return value.length > head + tail ? `${value.slice(0, head)}...${value.slice(-tail)}` : value;
+    }
+
+    function setStep(id, status) {
+      const el = $(id);
+      if (!el) {
+        return;
+      }
+      el.classList.remove("active", "done");
+      if (status) {
+        el.classList.add(status);
+      }
+    }
+
+    function setStage(id, status) {
+      const el = $(id);
+      el.classList.remove("active", "locked", "done");
+      if (status) {
+        el.classList.add(status);
+      }
+      const expanded = el.dataset.expanded === "1";
+      el.classList.toggle("expanded", expanded);
+      const toggle = el.querySelector(".stage-toggle");
+      if (toggle) {
+        toggle.textContent = expanded ? "-" : "+";
+      }
+      const wrapper = el.closest(".flow-stage");
+      if (wrapper) {
+        wrapper.hidden = status === "locked";
+      }
+    }
+
+    function toggleStage(stageId) {
+      const el = $(stageId);
+      el.dataset.expanded = el.dataset.expanded === "1" ? "0" : "1";
+      updateDashboard();
+    }
+
+    function renderDepositQr(address) {
+      const el = $("depositQr");
+      el.textContent = "";
+      if (!address) {
+        el.className = "qr";
+        el.textContent = "Deposit address and QR will appear here";
+        return;
+      }
+      el.className = "qr generated";
+      if (typeof qrcode !== "function") {
+        el.className = "qr";
+        el.textContent = "QR library failed to load";
+        return;
+      }
+      const qr = qrcode(0, "M");
+      qr.addData(address);
+      qr.make();
+      el.innerHTML = qr.createSvgTag(4, 4);
+    }
+
+    function waitRemainingMs() {
+      if (!state.waitMaturesAt) {
+        return null;
+      }
+      return Math.max(0, state.waitMaturesAt - Date.now());
+    }
+
+    function depositRemainingMs() {
+      if (!state.depositExpiresAt) {
+        return null;
+      }
+      return Math.max(0, state.depositExpiresAt - Date.now());
+    }
+
+    function depositExpired() {
+      return state.activeIntentId && state.depositExpiresAt && depositRemainingMs() === 0;
+    }
+
+    function formatClock(ms) {
+      if (ms === null) {
+        return "--:--:--";
+      }
+      const total = Math.ceil(ms / 1000);
+      const days = String(Math.floor(total / 86400)).padStart(2, "0");
+      const hours = String(Math.floor((total % 86400) / 3600)).padStart(2, "0");
+      const minutes = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+      return `${days}:${hours}:${minutes}`;
+    }
+
+    function selectedReceiptNote() {
+      return state.receipt?.notes?.[state.selectedNote || 0] || null;
+    }
+
+    function noteKey(note) {
+      return note?.commitment || `${note?.deposit_index || 0}:${note?.denomination_sats || 0}:${note?.index || 0}`;
+    }
+
+    function batchLabel(batch) {
+      const type = String(batch.depositType || "user").toLowerCase() === "node" ? "Node" : "User";
+      return `${type} Deposit ${Number(batch.depositIndex || 0) + 1}`;
+    }
+
+    function combinedReceipt() {
+      const notes = state.batches.flatMap((batch) => batch.receipt?.notes || []);
+      if (!notes.length) {
+        return null;
+      }
+      return {
+        notes,
+        remainder_sats: state.batches.reduce((sum, batch) => sum + Number(batch.receipt?.remainder_sats || 0), 0)
+      };
+    }
+
+    function setReceiptFromBatches() {
+      state.receipt = combinedReceipt();
+      state.selectedNote = Math.min(state.selectedNote || 0, Math.max(0, (state.receipt?.notes?.length || 1) - 1));
+    }
+
+    function upsertBatch(batch) {
+      const key = Number(batch.depositIndex || 0);
+      const existingIndex = state.batches.findIndex((item) => Number(item.depositIndex || 0) === key);
+      if (existingIndex >= 0) {
+        state.batches[existingIndex] = { ...state.batches[existingIndex], ...batch };
+      } else {
+        state.batches.push(batch);
+      }
+      state.batches.sort((a, b) => Number(a.depositIndex || 0) - Number(b.depositIndex || 0));
+      state.nextDepositIndex = Math.max(state.nextDepositIndex, key + 1);
+      setReceiptFromBatches();
+    }
+
+    function activeBatch() {
+      return state.batches.find((batch) => Number(batch.depositIndex || 0) === Number(state.activeBatchIndex || 0)) || null;
+    }
+
+    function btcExplorerUrl(txHash) {
+      return `https://mempool.space/testnet/tx/${String(txHash || "").toLowerCase()}`;
+    }
+
+    function updateNotePoolPosition(note, leavesResponse) {
+      const leaves = Array.isArray(leavesResponse.leaves) ? leavesResponse.leaves : [];
+      const position = leaves.indexOf(note.commitment);
+      note.pool_leaf_position = position >= 0 ? position : null;
+      note.pool_leaf_count = Number(leavesResponse.leaf_count || leaves.length);
+      note.later_note_count = position >= 0 ? Math.max(0, leaves.length - position - 1) : 0;
+      note.privacy_target_later_notes = MIN_LATER_DEPOSITS;
+    }
+
+    async function refreshReceiptPoolPositions() {
+      const notes = state.receipt?.notes || [];
+      if (!notes.length || location.protocol === "file:") {
+        return;
+      }
+      const denominations = [...new Set(notes.map((note) => note.denomination_sats))];
+      const responses = await Promise.all(
+        denominations.map(async (denomination) => [
+          denomination,
+          await api(`/thornado/shielder/leaves/${denomination}`)
+        ])
+      );
+      const byDenomination = new Map(responses);
+      for (const note of notes) {
+        const leavesResponse = byDenomination.get(note.denomination_sats);
+        if (leavesResponse) {
+          updateNotePoolPosition(note, leavesResponse);
+        }
+      }
+    }
+
+    function findOutboundHash(payload, inHash, recipient = "", amountSats = 0) {
+      const txouts = Array.isArray(payload?.txouts)
+        ? payload.txouts
+        : payload?.keysign
+          ? [payload.keysign]
+          : payload?.txout
+            ? [payload.txout]
+            : [];
+      for (const txout of txouts) {
+        for (const item of txout.tx_array || []) {
+          const matchesInHash = inHash && String(item.in_hash || "").toUpperCase() === String(inHash || "").toUpperCase();
+          const matchesOutput = recipient
+            && item.to_address === recipient
+            && Number(item.coin?.amount || 0) === Number(amountSats || 0);
+          if ((matchesInHash || matchesOutput) && item.out_hash) {
+            return item.out_hash;
+          }
+        }
+      }
+      return "";
+    }
+
+    async function scanKeysignBlocksForOutbound(inHash, recipient = "", amountSats = 0, requestedHeight = 0) {
+      const current = await api("/thornado/txout");
+      const currentHeight = Number(current?.txout?.height || 0);
+      const start = Math.max(1, Number(requestedHeight || 0));
+      const foundInQueue = findOutboundHash(current, inHash, recipient, amountSats);
+      if (foundInQueue || !currentHeight || !start) {
+        return foundInQueue;
+      }
+      for (let height = currentHeight; height >= start; height -= 1) {
+        const payload = await api(`/thornado/keysign/${height}`).catch(() => null);
+        const outHash = findOutboundHash(payload, inHash, recipient, amountSats);
+        if (outHash) {
+          return outHash;
+        }
+      }
+      return "";
+    }
+
+    async function waitForOutboundHash(inHash, recipient = "", amountSats = 0, requestedHeight = 0, timeoutMs = 300000) {
+      const started = Date.now();
+      while (Date.now() - started < timeoutMs) {
+        const outHash = await scanKeysignBlocksForOutbound(inHash, recipient, amountSats, requestedHeight);
+        if (outHash) {
+          return outHash;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+      return "";
+    }
+
+    function formatDuration(ms) {
+      if (ms === null) {
+        return "not scheduled";
+      }
+      if (ms <= 0) {
+        return "expired";
+      }
+      const totalMinutes = Math.ceil(ms / 60000);
+      const days = Math.floor(totalMinutes / 1440);
+      const hours = Math.floor((totalMinutes % 1440) / 60);
+      const minutes = totalMinutes % 60;
+      const parts = [];
+      if (days) {
+        parts.push(`${days}d`);
+      }
+      if (hours || days) {
+        parts.push(`${hours}h`);
+      }
+      parts.push(`${minutes}m`);
+      return parts.join(" ");
+    }
+
+    function formatChurnCountdown(ms) {
+      if (ms === null) {
+        return "--:--:--:--";
+      }
+      const totalSeconds = Math.ceil(Math.max(0, ms) / 1000);
+      const days = String(Math.floor(totalSeconds / 86400)).padStart(2, "0");
+      const hours = String(Math.floor((totalSeconds % 86400) / 3600)).padStart(2, "0");
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      return `${days}:${hours}:${minutes}:${seconds}`;
+    }
+
+    function applyChurnWindow(window) {
+      state.churnCycleMs = window.cycle_ms || DEFAULT_CHURN_CYCLE_MS;
+      state.churnServerDeltaMs = Date.now() - window.server_now_ms;
+      if (window.remaining_ms !== undefined) {
+        state.depositExpiresAt = Date.now() + window.remaining_ms;
+      } else {
+        state.depositExpiresAt = window.next_churn_at_ms + state.churnServerDeltaMs;
+      }
+      const intervalEl = $("networkChurnInterval");
+      if (intervalEl) {
+        intervalEl.textContent = formatDuration(state.churnCycleMs);
+      }
+      const targetNodesEl = $("networkTargetNodes");
+      if (targetNodesEl && window.target_active_nodes !== undefined) {
+        targetNodesEl.textContent = String(window.target_active_nodes);
+      }
+      const maxChurnEl = $("networkMaxChurn");
+      if (maxChurnEl && window.max_nodes_per_churn !== undefined) {
+        maxChurnEl.textContent = `${window.max_nodes_per_churn} per cycle`;
+      }
+      renderDepositExpiry();
+      return window;
+    }
+
+    async function refreshChurnWindow() {
+      await api("/thornado/config").catch((error) => log("thornado/config", { error: error.message }));
+      const now = Date.now();
+      return applyChurnWindow({
+        server_time_ms: now,
+        next_churn_at_ms: now + DEFAULT_CHURN_CYCLE_MS,
+        cycle_ms: DEFAULT_CHURN_CYCLE_MS,
+        max_nodes_per_churn: 0
+      });
+    }
+
+    function renderDepositExpiry() {
+      const el = $("depositExpiry");
+      const nextChurnEl = $("networkNextChurn");
+      if (!state.depositExpiresAt) {
+        el.hidden = true;
+        if (nextChurnEl) {
+          nextChurnEl.textContent = "not scheduled";
+        }
+        return;
+      }
+      const remaining = depositRemainingMs();
+      const expired = remaining === 0;
+      if (nextChurnEl) {
+        nextChurnEl.textContent = expired ? "expired" : formatChurnCountdown(remaining);
+      }
+      if (!state.activeIntentId) {
+        el.hidden = true;
+        return;
+      }
+      el.hidden = false;
+      el.className = `expiry-line${expired ? " expired" : ""}`;
+      el.innerHTML = expired
+        ? "<strong>Deposit address expired</strong><span>Request a new address for the current churn cycle.</span>"
+        : `<strong>Valid until next churn: ${formatChurnCountdown(remaining)}</strong>`;
+    }
+
+    function renderSecret() {
+      const secret = $("walletRoot").value.trim();
+      const isRevealed = state.secretMode === "revealed";
+      const isCustom = state.secretMode === "custom";
+      $("customSecretPanel").hidden = !isCustom;
+      $("secretBox").hidden = isCustom;
+      $("revealSecret").hidden = isRevealed;
+      $("secretValue").hidden = !isRevealed;
+      $("secretHelp").hidden = !isRevealed;
+      $("secretActions").hidden = !isRevealed;
+      $("secretValue").textContent = isRevealed ? secret : "";
+      $("requestDeposit").hidden = state.secretMode !== "hidden" || !$("depositQr").hidden;
+    }
+
+    function resetDepositState() {
+      state.activeIntentId = null;
+      state.depositOwner = null;
+      state.batches = [];
+      state.activeBatchIndex = 0;
+      state.nextDepositIndex = 0;
+      state.depositExpiresAt = null;
+      state.churnCycleMs = DEFAULT_CHURN_CYCLE_MS;
+      state.receipt = null;
+      state.selectedNote = 0;
+      state.waitStartedAt = null;
+      state.waitMaturesAt = null;
+      state.lastWithdrawalProof = null;
+      state.lastWithdrawalPublic = null;
+      state.lastWithdrawalFeeSats = null;
+      state.lastWithdrawalNoteKey = null;
+      state.splitPending = false;
+      state.withdrawingNote = null;
+      state.withdrawnNotes = {};
+      ["stageDeposit", "stageSplit", "stageWait", "stageWithdraw"].forEach((id) => {
+        $(id).dataset.expanded = "0";
+      });
+      $("intentId").value = "";
+      $("depositAddress").hidden = true;
+      $("depositResult").hidden = true;
+      $("clientPubkey").hidden = true;
+      $("powResult").hidden = true;
+      $("confirmations").textContent = `0 / ${MIN_CONFS}`;
+      renderDepositHistory();
+    }
+
+    function renderDepositHistory() {
+      const el = $("depositHistory");
+      if (!el) {
+        return;
+      }
+      el.textContent = "";
+      el.hidden = state.batches.length === 0;
+      for (const batch of state.batches) {
+        const row = document.createElement("div");
+        row.className = "batch-row";
+        const amount = Number(batch.amountSats || 0);
+        const notes = batch.receipt?.notes?.length || 0;
+        const status = batch.status === "committed"
+          ? `${notes} notes`
+          : batch.status === "deposit_matched"
+            ? "Ready to split"
+            : batch.depositAddress ? "Address issued" : "Found";
+        row.innerHTML = `
+          <strong>${batchLabel(batch)}</strong>
+          <span>${amount > 0 ? btcAmount(amount) : short(batch.depositAddress, 10, 8)}</span>
+          <span>${status}</span>
+        `;
+        el.append(row);
+      }
+    }
+
+    function renderDenominations() {
+      const el = $("denomBreakdown");
+      el.textContent = "";
+      const counts = {};
+      for (const note of state.receipt?.notes || []) {
+        counts[note.denomination_sats] = (counts[note.denomination_sats] || 0) + 1;
+      }
+      if (!Object.keys(counts).length) {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = "<span>No notes minted</span><strong>split pending</strong>";
+        el.append(row);
+        return;
+      }
+      for (const denomination of Object.keys(counts).sort((a, b) => Number(b) - Number(a))) {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = `<span>${btcAmount(Number(denomination))}</span><strong>${counts[denomination]} notes</strong>`;
+        el.append(row);
+      }
+    }
+
+    function hydrateReceipt() {
+      setReceiptFromBatches();
+      if (!state.receipt?.notes?.length) {
+        return;
+      }
+      const maturedAt = Date.now() - 1;
+      state.waitStartedAt = state.waitStartedAt || maturedAt - DEMO_MATURITY_MS;
+      state.waitMaturesAt = state.waitMaturesAt || maturedAt;
+      state.selectedNote = Math.min(state.selectedNote || 0, state.receipt.notes.length - 1);
+      $("confirmations").textContent = `${MIN_CONFS} / ${MIN_CONFS}`;
+      $("amountSats").value = String(state.batches.reduce((sum, batch) => sum + Number(batch.amountSats || 0), 0));
+      $("depositResult").hidden = true;
+      $("depositQr").hidden = true;
+      $("depositAddress").hidden = true;
+      $("copyDepositAddress").hidden = true;
+      $("stageDeposit").dataset.expanded = "0";
+      $("stageSplit").dataset.expanded = "0";
+      $("stageWait").dataset.expanded = "0";
+      $("stageWithdraw").dataset.expanded = "1";
+    }
+
+    function openWithdrawForRecoveredNotes() {
+      if (!state.receipt?.notes?.length) {
+        return;
+      }
+      $("stageDeposit").dataset.expanded = "0";
+      $("stageSplit").dataset.expanded = "0";
+      $("stageWait").dataset.expanded = "0";
+      $("stageWithdraw").dataset.expanded = "1";
+    }
+
+    function updateDashboard() {
+      setReceiptFromBatches();
+      renderDepositHistory();
+      const notes = state.receipt?.notes || [];
+      const batch = activeBatch();
+      const hasWallet = Boolean($("walletRoot").value.trim());
+      const hasDeposit = Boolean(
+        state.activeIntentId
+          && $("depositAddress").textContent.trim()
+          && !state.depositRequestPending
+      );
+      const isDepositExpired = depositExpired();
+      const hasObservableDeposit = hasDeposit && !isDepositExpired;
+      const hasConfirmed = $("confirmations").textContent === `${MIN_CONFS} / ${MIN_CONFS}`
+        || batch?.status === "deposit_matched"
+        || batch?.status === "committed";
+      const hasSplit = notes.length > 0;
+      const remainingMs = waitRemainingMs();
+      const hasMatureNote = hasSplit && remainingMs === 0;
+      const hasProof = Boolean(state.lastWithdrawalProof && state.lastWithdrawalPublic);
+      const note = selectedReceiptNote();
+      const laterNoteCount = note?.later_note_count;
+      const hasLaterNoteCount = Number.isFinite(laterNoteCount);
+      const targetLaterNotes = Number.isFinite(note?.privacy_target_later_notes)
+        ? note.privacy_target_later_notes
+        : MIN_LATER_DEPOSITS;
+      const laterNoteProgress = hasLaterNoteCount
+        ? `${laterNoteCount} / ${targetLaterNotes}`
+        : hasSplit ? "syncing" : "none";
+      const missingLaterNotes = hasLaterNoteCount
+        ? Math.max(0, targetLaterNotes - laterNoteCount)
+        : targetLaterNotes;
+      const poolReady = hasMatureNote && hasLaterNoteCount && laterNoteCount >= targetLaterNotes;
+      $("walletMetric").textContent = hasWallet ? "Mnemonic local" : "No mnemonic";
+      $("depositMetric").textContent = state.batches.length
+        ? `${state.batches.length} batches`
+        : hasDeposit ? isDepositExpired ? "Expired" : state.activeIntentId : "No intent";
+      $("notesMetric").textContent = `${notes.length} minted`;
+      $("privacyMetric").textContent = hasSplit ? `${laterNoteProgress} later` : "No pool yet";
+      setStep("stepWallet", hasWallet ? "done" : "active");
+      setStep("stepDeposit", hasObservableDeposit || hasConfirmed ? "done" : hasWallet ? "active" : "");
+      setStep("stepSplit", hasSplit ? "done" : hasConfirmed ? "active" : "");
+      setStep("stepWithdraw", hasSplit ? "active" : "");
+      setStage("stageDeposit", hasConfirmed ? "done" : "active");
+      setStage("stageSplit", hasSplit ? "done" : hasConfirmed ? "active" : "locked");
+      setStage("stageWait", hasMatureNote ? "done" : hasSplit ? "active" : "locked");
+      setStage("stageWithdraw", hasMatureNote ? "active" : "locked");
+      $("splitDeposit").disabled = !hasConfirmed || batch?.status === "committed" || state.splitPending;
+      $("splitDeposit").innerHTML = state.splitPending
+        ? '<span class="button-spinner" aria-hidden="true"></span>Splitting'
+        : "Split Deposit";
+      $("withdrawNote").disabled = !hasMatureNote;
+      $("validateProof").disabled = !hasMatureNote;
+      $("depositResult").hidden = !hasDeposit;
+      $("depositQr").hidden = !hasDeposit || isDepositExpired;
+      $("depositAddress").hidden = !hasDeposit || isDepositExpired;
+      $("copyDepositAddress").hidden = !hasDeposit || isDepositExpired;
+      $("requestDeposit").hidden = state.secretMode !== "hidden" || !$("depositQr").hidden;
+      renderDepositQr(hasDeposit && !isDepositExpired ? $("depositAddress").textContent : "");
+      renderDepositExpiry();
+      $("knownAmount").textContent = btcAmount(Number($("amountSats").value || 0));
+      $("splitAmountLarge").textContent = btcAmount(Number($("amountSats").value || 0));
+      $("splitConfs").textContent = `${hasConfirmed ? MIN_CONFS : 0} / ${MIN_CONFS} confirmations`;
+      $("splitConfirmView").hidden = hasSplit;
+      $("splitDeposit").hidden = !hasConfirmed;
+      $("denomBreakdown").hidden = true;
+      $("waitClock").textContent = formatClock(remainingMs);
+      $("waitMinMaturity").textContent = formatClock(DEMO_MATURITY_MS);
+      const waitProgress = hasSplit
+        ? Math.min(1, Math.max(0, (DEMO_MATURITY_MS - remainingMs) / DEMO_MATURITY_MS))
+        : 0;
+      $("waitTimerBar").style.width = `${Math.round(waitProgress * 100)}%`;
+      $("waitDemo").textContent = hasMatureNote ? "time ready" : hasSplit ? "~1 min" : "waiting for split";
+      $("laterDepositMetric").textContent = laterNoteProgress;
+      $("withdrawRisk").textContent = poolReady
+        ? "lower after later notes"
+        : hasMatureNote && hasLaterNoteCount
+          ? `wait for ${missingLaterNotes} more same-denom notes`
+          : hasSplit
+            ? hasMatureNote ? "syncing pool position" : "high until time passes"
+            : "high before split";
+      const poolProgress = hasLaterNoteCount
+        ? Math.min(1, laterNoteCount / targetLaterNotes)
+        : 0;
+      $("privacyMeter").style.width = hasSplit
+        ? `${Math.round(30 + poolProgress * 62)}%`
+        : hasDeposit ? "18%" : "8%";
+      $("receiptFingerprint").textContent = notes[0]?.root_fingerprint || "none";
+      $("remainderSats").textContent = btcAmount(state.receipt?.remainder_sats || 0);
+      $("feePreview").textContent = btcAmount(Number($("feeSats").value || 0));
+      $("depositSummary").textContent = hasConfirmed
+        ? state.batches.length > 1 ? `${state.batches.length} deposits found` : "Deposit confirmed"
+        : hasDeposit
+          ? `Address ${short($("depositAddress").textContent.trim(), 14, 10)}`
+          : "No deposit yet";
+      $("splitSummary").textContent = hasSplit
+        ? `${notes.length} notes minted`
+        : hasConfirmed
+          ? `Matched ${short(state.activeIntentId, 12, 10)}`
+          : "Waiting for deposit";
+      $("waitSummary").textContent = hasMatureNote
+        ? "Mature"
+        : hasSplit
+          ? `Matures in ${formatClock(remainingMs)}`
+          : "Waiting for split";
+      $("withdrawSummary").textContent = hasProof
+        ? "Proof generated"
+        : hasMatureNote
+          ? "Ready to withdraw"
+          : "Waiting for maturity";
+      renderDenominations();
+      renderSecret();
+    }
+
+    async function api(path, options = {}) {
+      const response = await fetch(new URL(path, nodeOrigin()), {
+        headers: options.body ? { "content-type": "application/json" } : undefined,
+        ...options,
+        body: options.body ? JSON.stringify(options.body) : undefined
+      });
+      const text = await response.text();
+      const payload = text ? JSON.parse(text) : null;
+      if (!response.ok) {
+        let message = payload && payload.error ? payload.error : response.statusText;
+        if (payload && payload.raw_log) {
+          message = payload.raw_log;
+        }
+        if (message === "deposit intent not found") {
+          message = "Deposit intent not found on this node. Request a fresh deposit address, then observe that new intent.";
+        }
+        throw new Error(message);
+      }
+      if (payload && payload.state_hash) {
+        $("stateHash").textContent = payload.state_hash;
+      }
+      return payload;
+    }
+
+    async function refreshHash() {
+      const payload = await api("/thornado/block");
+      const height = payload?.id?.height || payload?.header?.height || payload?.block?.header?.height || "latest";
+      const hash = payload?.id?.hash || payload?.block_id?.hash || "online";
+      document.getElementById("stateHash").textContent = height + ":" + hash;
+    }
+
+    function sats(value) {
+      return new Intl.NumberFormat().format(value);
+    }
+
+    function btcAmount(value) {
+      const btc = Number(value || 0) / 100000000;
+      const text = btc === 0
+        ? "0"
+        : btc >= 1
+          ? btc.toFixed(8).replace(/0+$/, "").replace(/\.$/, "")
+          : btc.toFixed(8).replace(/0+$/, "").replace(/\.$/, "");
+      return `${text} BTC`;
+    }
+
+    function getAmountSats() {
+      const amount = Number($("amountSats").value);
+      if (!Number.isSafeInteger(amount) || amount < 0) {
+        throw new Error("amount must be a positive BTC value");
+      }
+      return amount;
+    }
+
+    function getIntentId() {
+      const id = $("intentId").value.trim();
+      if (!id) {
+        throw new Error("intent ID is required");
+      }
+      return id;
+    }
+
+    function greedyDenominations(amountSats) {
+      let remaining = amountSats;
+      const denominations = [];
+      for (const denomination of DENOMINATIONS) {
+        while (remaining >= denomination) {
+          denominations.push(denomination);
+          remaining -= denomination;
+        }
+      }
+      return { denominations, remaining };
+    }
+
+    function encodePart(part) {
+      const bytes = new TextEncoder().encode(String(part));
+      const out = new Uint8Array(8 + bytes.length);
+      const view = new DataView(out.buffer);
+      view.setBigUint64(0, BigInt(bytes.length), false);
+      out.set(bytes, 8);
+      return out;
+    }
+
+    function bytesToHex(bytes) {
+      return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+    }
+
+    function hexToBytes(hex) {
+      const clean = hex.trim().replace(/^0x/i, "").replace(/\s+/g, "");
+      if (!clean || clean.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(clean)) {
+        throw new Error("seed hex must contain an even number of hex characters");
+      }
+      const bytes = new Uint8Array(clean.length / 2);
+      for (let index = 0; index < bytes.length; index += 1) {
+        bytes[index] = parseInt(clean.slice(index * 2, index * 2 + 2), 16);
+      }
+      return bytes;
+    }
+
+    async function hashPartsBytes(parts) {
+      const encoded = parts.map(encodePart);
+      const total = encoded.reduce((sum, bytes) => sum + bytes.length, 0);
+      const merged = new Uint8Array(total);
+      let offset = 0;
+      for (const bytes of encoded) {
+        merged.set(bytes, offset);
+        offset += bytes.length;
+      }
+      const digest = await crypto.subtle.digest("SHA-256", merged);
+      return new Uint8Array(digest);
+    }
+
+    async function hashParts(parts) {
+      return bytesToHex(await hashPartsBytes(parts));
+    }
+
+    async function sha256(bytes) {
+      return new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+    }
+
+    function ripemd160(bytes) {
+      const r1 = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,7,4,13,1,10,6,15,3,12,0,9,5,2,14,11,8,3,10,14,4,9,15,8,1,2,7,0,6,13,11,5,12,1,9,11,10,0,8,12,4,13,3,7,15,14,5,6,2,4,0,5,9,7,12,2,10,14,1,3,8,11,6,15,13];
+      const r2 = [5,14,7,0,9,2,11,4,13,6,15,8,1,10,3,12,6,11,3,7,0,13,5,10,14,15,8,12,4,9,1,2,15,5,1,3,7,14,6,9,11,8,12,2,10,0,4,13,8,6,4,1,3,11,15,0,5,12,2,13,9,7,10,14,12,15,10,4,1,5,8,7,6,2,13,14,0,3,9,11];
+      const s1 = [11,14,15,12,5,8,7,9,11,13,14,15,6,7,9,8,7,6,8,13,11,9,7,15,7,12,15,9,11,7,13,12,11,13,6,7,14,9,13,15,14,8,13,6,5,12,7,5,11,12,14,15,14,15,9,8,9,14,5,6,8,6,5,12,9,15,5,11,6,8,13,12,5,12,13,14,11,8,5,6];
+      const s2 = [8,9,9,11,13,15,15,5,7,7,8,11,14,14,12,6,9,13,15,7,12,8,9,11,7,7,12,7,6,15,13,11,9,7,15,11,8,6,6,14,12,13,5,14,13,13,7,5,15,5,8,11,14,14,6,14,6,9,12,9,12,5,15,8,8,5,12,9,12,5,14,6,8,13,6,5,15,13,11,11];
+      const rotl = (x, n) => ((x << n) | (x >>> (32 - n))) >>> 0;
+      const f = (j, x, y, z) => j < 16 ? (x ^ y ^ z) : j < 32 ? ((x & y) | (~x & z)) : j < 48 ? ((x | ~y) ^ z) : j < 64 ? ((x & z) | (y & ~z)) : (x ^ (y | ~z));
+      const k1 = (j) => j < 16 ? 0x00000000 : j < 32 ? 0x5a827999 : j < 48 ? 0x6ed9eba1 : j < 64 ? 0x8f1bbcdc : 0xa953fd4e;
+      const k2 = (j) => j < 16 ? 0x50a28be6 : j < 32 ? 0x5c4dd124 : j < 48 ? 0x6d703ef3 : j < 64 ? 0x7a6d76e9 : 0x00000000;
+      const msg = new Uint8Array((((bytes.length + 8) >>> 6) + 1) << 6);
+      msg.set(bytes);
+      msg[bytes.length] = 0x80;
+      const bitLen = bytes.length * 8;
+      for (let i = 0; i < 8; i += 1) msg[msg.length - 8 + i] = Math.floor(bitLen / 2 ** (8 * i)) & 0xff;
+      let h0 = 0x67452301, h1 = 0xefcdab89, h2 = 0x98badcfe, h3 = 0x10325476, h4 = 0xc3d2e1f0;
+      for (let offset = 0; offset < msg.length; offset += 64) {
+        const x = new Array(16);
+        for (let i = 0; i < 16; i += 1) x[i] = msg[offset + 4 * i] | (msg[offset + 4 * i + 1] << 8) | (msg[offset + 4 * i + 2] << 16) | (msg[offset + 4 * i + 3] << 24);
+        let al = h0, bl = h1, cl = h2, dl = h3, el = h4;
+        let ar = h0, br = h1, cr = h2, dr = h3, er = h4;
+        for (let j = 0; j < 80; j += 1) {
+          let t = (rotl((al + f(j, bl, cl, dl) + x[r1[j]] + k1(j)) >>> 0, s1[j]) + el) >>> 0;
+          al = el; el = dl; dl = rotl(cl, 10); cl = bl; bl = t;
+          t = (rotl((ar + f(79 - j, br, cr, dr) + x[r2[j]] + k2(j)) >>> 0, s2[j]) + er) >>> 0;
+          ar = er; er = dr; dr = rotl(cr, 10); cr = br; br = t;
+        }
+        const t = (h1 + cl + dr) >>> 0;
+        h1 = (h2 + dl + er) >>> 0;
+        h2 = (h3 + el + ar) >>> 0;
+        h3 = (h4 + al + br) >>> 0;
+        h4 = (h0 + bl + cr) >>> 0;
+        h0 = t;
+      }
+      const out = new Uint8Array(20);
+      [h0, h1, h2, h3, h4].forEach((word, i) => {
+        out[i * 4] = word & 0xff;
+        out[i * 4 + 1] = (word >>> 8) & 0xff;
+        out[i * 4 + 2] = (word >>> 16) & 0xff;
+        out[i * 4 + 3] = (word >>> 24) & 0xff;
+      });
+      return out;
+    }
+
+    function bech32Encode(hrp, data) {
+      const alphabet = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+      const polymod = (values) => {
+        const gen = [0x3b6a57b2,0x26508e6d,0x1ea119fa,0x3d4233dd,0x2a1462b3];
+        let chk = 1;
+        for (const value of values) {
+          const top = chk >>> 25;
+          chk = ((chk & 0x1ffffff) << 5) ^ value;
+          for (let i = 0; i < 5; i += 1) if ((top >>> i) & 1) chk ^= gen[i];
+        }
+        return chk;
+      };
+      const hrpValues = [...hrp].map((ch) => ch.charCodeAt(0) >>> 5).concat([0], [...hrp].map((ch) => ch.charCodeAt(0) & 31));
+      const checksumBase = hrpValues.concat(data, [0,0,0,0,0,0]);
+      const mod = polymod(checksumBase) ^ 1;
+      const checksum = [];
+      for (let i = 0; i < 6; i += 1) checksum.push((mod >>> (5 * (5 - i))) & 31);
+      return `${hrp}1${data.concat(checksum).map((v) => alphabet[v]).join("")}`;
+    }
+
+    function convertBits(bytes, from, to, pad = true) {
+      let acc = 0, bits = 0;
+      const maxv = (1 << to) - 1;
+      const out = [];
+      for (const value of bytes) {
+        acc = (acc << from) | value;
+        bits += from;
+        while (bits >= to) {
+          bits -= to;
+          out.push((acc >>> bits) & maxv);
+        }
+      }
+      if (pad && bits > 0) out.push((acc << (to - bits)) & maxv);
+      return out;
+    }
+
+    async function ownerAddressFromCompressedPubkey(pubkeyHex) {
+      const hash = ripemd160(await sha256(hexToBytes(pubkeyHex)));
+      return bech32Encode("tthor", convertBits(hash, 8, 5));
+    }
+
+    async function currentPowDifficultyBits() {
+      const config = await api("/thornado/config").catch(() => null);
+      const list = Array.isArray(config?.configs) ? config.configs : [];
+      const current = list.find((item) => item.key === "Deposit_PowDifficultyCurrent");
+      const minimum = list.find((item) => item.key === "Deposit_PowDifficultyMin");
+      return Number(current?.value || minimum?.value || config?.Deposit?.PowDifficultyCurrent?.value || POW_DIFFICULTY_BITS);
+    }
+
+    function bytesToBits(bytes) {
+      return [...bytes].map((byte) => byte.toString(2).padStart(8, "0")).join("");
+    }
+
+    async function generateMnemonic12() {
+      const entropy = new Uint8Array(16);
+      crypto.getRandomValues(entropy);
+      const checksum = bytesToBits(await sha256(entropy)).slice(0, 4);
+      const bits = `${bytesToBits(entropy)}${checksum}`;
+      const words = [];
+      for (let offset = 0; offset < bits.length; offset += 11) {
+        words.push(BIP39_WORDS[parseInt(bits.slice(offset, offset + 11), 2)]);
+      }
+      return words.join(" ");
+    }
+
+    function hasLeadingZeroBits(bytes, bits) {
+      const fullZeroBytes = Math.floor(bits / 8);
+      const remainingBits = bits % 8;
+      for (let index = 0; index < fullZeroBytes; index += 1) {
+        if (bytes[index] !== 0) {
+          return false;
+        }
+      }
+      if (remainingBits === 0) {
+        return true;
+      }
+      const byte = bytes[fullZeroBytes];
+      const mask = 0xff << (8 - remainingBits);
+      return (byte & mask) === 0;
+    }
+
+    async function mineDepositPow(label, owner, difficultyBits) {
+      const uniqueLabel = `${label || "browser"}-${Date.now()}-${crypto.getRandomValues(new Uint32Array(1))[0].toString(16)}`;
+      const startedAt = performance.now();
+      const bits = Number(difficultyBits || POW_DIFFICULTY_BITS);
+      for (let nonce = 0; nonce < Number.MAX_SAFE_INTEGER; nonce += 1) {
+        const token = `${uniqueLabel}:${nonce}`;
+        const digest = await sha256(new TextEncoder().encode(`${owner}:${token}`));
+        const elapsedMs = performance.now() - startedAt;
+        if (hasLeadingZeroBits(digest, bits) && elapsedMs >= MIN_POW_MS) {
+          return {
+            token,
+            nonce,
+            digest: bytesToHex(digest),
+            difficulty_bits: bits,
+            elapsed_ms: Math.round(elapsedMs)
+          };
+        }
+        if (nonce > 0 && nonce % 2000 === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+      }
+      throw new Error("unable to mine deposit proof of work");
+    }
+
+    async function generateWalletRoot() {
+      const mnemonic = await generateMnemonic12();
+      $("walletRoot").value = mnemonic;
+      state.secretMode = "hidden";
+      const seedHex = await bip39SeedFromMnemonic(mnemonic, $("walletPassphrase").value);
+      const pubkey = await clientPubkeyFromSeed(seedHex);
+      $("walletRootStatus").hidden = true;
+      $("walletRootStatus").textContent = `Generated 12-word BIP39 mnemonic in this browser. Root fingerprint ${await rootFingerprint(seedHex)}.`;
+      $("clientPubkey").hidden = true;
+      $("clientPubkey").textContent = `Client pubkey ${pubkey}`;
+      updateDashboard();
+    }
+
+    async function bip39SeedFromMnemonic(mnemonic, passphrase) {
+      const encoder = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        "raw",
+        encoder.encode(mnemonic.normalize("NFKD")),
+        "PBKDF2",
+        false,
+        ["deriveBits"]
+      );
+      const bits = await crypto.subtle.deriveBits(
+        {
+          name: "PBKDF2",
+          hash: "SHA-512",
+          iterations: 2048,
+          salt: encoder.encode(`mnemonic${passphrase || ""}`.normalize("NFKD"))
+        },
+        key,
+        512
+      );
+      return bytesToHex(new Uint8Array(bits));
+    }
+
+    async function walletRootSeedHex() {
+      const root = $("walletRoot").value.trim();
+      if (!root) {
+        throw new Error("generate or paste a BIP39 root before splitting");
+      }
+      const words = await validateMnemonic(root, [12, 15, 18, 21, 24]);
+      return bip39SeedFromMnemonic(words.join(" "), $("walletPassphrase").value);
+    }
+
+    async function validateMnemonic(mnemonic, allowedWordCounts) {
+      const words = mnemonic.normalize("NFKD").toLowerCase().split(/\s+/).filter(Boolean);
+      if (!allowedWordCounts.includes(words.length)) {
+        throw new Error(`mnemonic must have ${allowedWordCounts.join(" or ")} words`);
+      }
+      const indexes = [];
+      for (const word of words) {
+        const index = BIP39_WORDS.indexOf(word);
+        if (index === -1) {
+          throw new Error(`unknown BIP39 word: ${word}`);
+        }
+        indexes.push(index);
+      }
+      const bits = indexes.map((index) => index.toString(2).padStart(11, "0")).join("");
+      const entropyBitLength = Math.floor(bits.length * 32 / 33);
+      const checksumBitLength = bits.length - entropyBitLength;
+      const entropyBits = bits.slice(0, entropyBitLength);
+      const checksumBits = bits.slice(entropyBitLength);
+      const entropy = new Uint8Array(entropyBitLength / 8);
+      for (let offset = 0; offset < entropy.length; offset += 1) {
+        entropy[offset] = parseInt(entropyBits.slice(offset * 8, offset * 8 + 8), 2);
+      }
+      const expectedChecksum = bytesToBits(await sha256(entropy)).slice(0, checksumBitLength);
+      if (checksumBits !== expectedChecksum) {
+        throw new Error("mnemonic checksum is invalid");
+      }
+      return words;
+    }
+
+    async function rootFingerprint(seedHex) {
+      return bytesToHex((await sha256(hexToBytes(seedHex))).slice(0, 4));
+    }
+
+    async function clientPubkeyFromSeed(seedHex, depositIndex = 0) {
+      const wasm = await thornadoWasm();
+      if (wasm.clientPubkeyForDepositJson) {
+        return wasm.clientPubkeyForDepositJson(seedHex, BigInt(depositIndex));
+      }
+      return wasm.clientPubkeyFromSecretJson(seedHex);
+    }
+
+    async function refreshClientPubkey(depositIndex = state.activeBatchIndex || 0) {
+      const seedHex = await walletRootSeedHex();
+      const pubkey = await clientPubkeyFromSeed(seedHex, depositIndex);
+      $("clientPubkey").hidden = true;
+      $("clientPubkey").textContent = `Client pubkey ${pubkey}`;
+      return pubkey;
+    }
+
+    function notePath(depositIndex, noteIndex, depositType = "user") {
+      return `tc84/btc/${depositType}/${depositIndex}/${noteIndex}`;
+    }
+
+    async function deriveSplitReceipt(depositId, amountSats, seedHex, depositIndex = state.activeBatchIndex || 0) {
+      const wasm = await thornadoWasm();
+      const fingerprint = await rootFingerprint(seedHex);
+      const receipt = JSON.parse(wasm.deriveSplitReceiptForDepositJson
+        ? wasm.deriveSplitReceiptForDepositJson(depositId, BigInt(depositIndex), BigInt(amountSats), seedHex)
+        : wasm.deriveSplitReceiptJson(depositId, BigInt(amountSats), seedHex));
+      receipt.notes = receipt.notes.map((note) => ({
+        ...note,
+        deposit_index: depositIndex,
+        derivation_path: notePath(depositIndex, note.index + 1),
+        root_fingerprint: fingerprint
+      }));
+      return receipt;
+    }
+
+    async function splitAuthorization(seedHex, depositId, amountSats, noteCommitments, depositIndex = state.activeBatchIndex || 0) {
+      const wasm = await thornadoWasm();
+      return JSON.parse(wasm.splitAuthorizationForDepositJson
+        ? wasm.splitAuthorizationForDepositJson(
+            seedHex,
+            BigInt(depositIndex),
+            depositId,
+            BigInt(amountSats),
+            JSON.stringify(noteCommitments)
+          )
+        : wasm.splitAuthorizationJson(
+            seedHex,
+            depositId,
+            BigInt(amountSats),
+            JSON.stringify(noteCommitments)
+          ));
+    }
+
+    function commitments(receipt) {
+      return receipt.notes.map((note) => ({
+        denomination_sats: note.denomination_sats,
+        owner_pubkey: note.owner_pubkey,
+        signature: note.signature,
+        commitment: note.commitment
+      }));
+    }
+
+    async function generateWithdrawalProof(noteIndex = state.selectedNote || 0) {
+      if (!state.receipt?.notes?.length) {
+        throw new Error("split into notes before withdrawing");
+      }
+      const note = state.receipt.notes[noteIndex];
+      if (!note) {
+        throw new Error("select a note to withdraw");
+      }
+      const recipient = $("recipient").value.trim();
+      if (!recipient) {
+        throw new Error("receive address is required");
+      }
+      const feeSats = await quoteWithdrawalFee(note);
+      const seedHex = await walletRootSeedHex();
+      const leavesResponse = await api(`/thornado/shielder/leaves/${note.denomination_sats}`);
+      updateNotePoolPosition(note, leavesResponse);
+      renderNotes();
+      updateDashboard();
+      const wasm = await thornadoWasm();
+      const [proof, publicInputs] = JSON.parse(wasm.zkWithdrawalFromReceiptJson(
+        JSON.stringify(note),
+        seedHex,
+        JSON.stringify(leavesResponse.leaves),
+        recipient,
+        BigInt(feeSats)
+      ));
+      state.lastWithdrawalProof = proof;
+      state.lastWithdrawalPublic = publicInputs;
+      state.lastWithdrawalFeeSats = feeSats;
+      state.lastWithdrawalNoteKey = noteKey(note);
+      return { proof, public: publicInputs, note };
+    }
+
+    async function waitForDepositSession(owner, timeoutMs = 30000) {
+      const started = Date.now();
+      let lastError = null;
+      while (Date.now() - started < timeoutMs) {
+        try {
+          const session = await api(`/thornado/deposit/session/${owner}`);
+          if (session?.deposit_address) {
+            return session;
+          }
+        } catch (error) {
+          lastError = error;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+      }
+      throw lastError || new Error("deposit session was not committed");
+    }
+
+    async function waitForMatchedDepositSession(owner, timeoutMs = 60000) {
+      const started = Date.now();
+      let lastSession = null;
+      let lastError = null;
+      while (Date.now() - started < timeoutMs) {
+        try {
+          const session = await api(`/thornado/deposit/session/${owner}`);
+          lastSession = session;
+          if (session?.deposit_id) {
+            return session;
+          }
+        } catch (error) {
+          lastError = error;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+      if (lastSession) {
+        throw new Error(`deposit not matched yet: ${lastSession.status || "unknown"}`);
+      }
+      throw lastError || new Error("deposit was not matched by the node");
+    }
+
+    async function discoverDepositBatches() {
+      if (location.protocol === "file:" || !$("walletRoot").value.trim()) {
+        return [];
+      }
+      const seedHex = await walletRootSeedHex();
+      const wasm = await thornadoWasm();
+      if (!wasm.noteRecoveryCandidatesJson || !wasm.recoverNoteReceiptJson || !wasm.nullifierHashJson || !wasm.clientPubkeyForDepositJson) {
+        setMessage("Secret connected. Rebuild WASM to enable local note recovery.", "warn");
+        return state.batches;
+      }
+      const sync = await api("/thornado/shielder/sync");
+      const candidates = JSON.parse(wasm.noteRecoveryCandidatesJson(seedHex, BigInt(32), BigInt(128)));
+      const spentNullifiers = new Map((sync.nullifiers || []).map((item) => [
+        String(item.nullifier_hash || "").toUpperCase(),
+        item.withdrawal_id
+      ]));
+      const fingerprint = await rootFingerprint(seedHex);
+      const recoveredByBatch = new Map();
+      let scanned = 0;
+      for (const record of sync.notes || []) {
+        scanned += 1;
+        let note = null;
+        let key = 0;
+        const seenRecoveryCandidates = new Set();
+        for (const candidate of candidates) {
+          const candidateKey = `${candidate.deposit_index}:${candidate.index}`;
+          if (seenRecoveryCandidates.has(candidateKey)) {
+            continue;
+          }
+          seenRecoveryCandidates.add(candidateKey);
+          const depositPubkey = wasm.clientPubkeyForDepositJson(seedHex, BigInt(candidate.deposit_index));
+          try {
+            note = JSON.parse(wasm.recoverNoteReceiptJson(
+              seedHex,
+              BigInt(candidate.deposit_index),
+              BigInt(candidate.index),
+              depositPubkey,
+              BigInt(record.denomination_sats),
+              record.commitment
+            ));
+            key = Number(candidate.deposit_index || 0);
+            break;
+          } catch (_) {
+            note = null;
+          }
+        }
+        if (!note) continue;
+        note.root_fingerprint = fingerprint;
+        note.nullifier_hash = wasm.nullifierHashJson(note.nullifier);
+        const nullifierHashKey = String(note.nullifier_hash || "").toUpperCase();
+        note.spent = spentNullifiers.has(nullifierHashKey);
+        const batch = recoveredByBatch.get(key) || {
+          depositIndex: key,
+          owner: state.depositOwner,
+          depositId: "",
+          depositType: "user",
+          settlement: "",
+          nodePubKey: "",
+          amountSats: 0,
+          status: "committed",
+          receipt: { notes: [], remainder_sats: 0 }
+        };
+        batch.amountSats += Number(note.denomination_sats || 0);
+        batch.receipt.notes.push(note);
+        recoveredByBatch.set(key, batch);
+        if (note.spent) {
+          state.withdrawnNotes[noteKey(note)] = {
+            txhash: spentNullifiers.get(nullifierHashKey),
+            status: "spent",
+            nullifierHash: note.nullifier_hash
+          };
+        }
+      }
+      for (const batch of recoveredByBatch.values()) {
+        batch.receipt.notes.sort((a, b) => Number(a.index || 0) - Number(b.index || 0));
+        upsertBatch(batch);
+      }
+      hydrateReceipt();
+      openWithdrawForRecoveredNotes();
+      renderDepositHistory();
+      renderNotes();
+      setMessage(`Synced ${sync.notes?.length || 0} public notes and ${sync.nullifiers?.length || 0} spent nullifiers. Recovered ${state.receipt?.notes?.length || 0} local notes.`, recoveredByBatch.size ? "ok" : "warn");
+      return state.batches;
+    }
+
+    async function waitForCommittedTx(txhash, timeoutMs = 30000) {
+      if (!txhash) {
+        return null;
+      }
+      const started = Date.now();
+      let lastError = null;
+      while (Date.now() - started < timeoutMs) {
+        try {
+          const payload = await api(`/cosmos/tx/v1beta1/txs/${txhash}`);
+          const response = payload?.tx_response;
+          if (response) {
+            if (Number(response.code || 0) !== 0) {
+              throw new Error(response.raw_log || `transaction ${txhash} failed`);
+            }
+            return response;
+          }
+        } catch (error) {
+          lastError = error;
+          if (!String(error.message || "").toLowerCase().includes("not found")) {
+            throw error;
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+      }
+      throw lastError || new Error(`transaction ${txhash} was not committed`);
+    }
+
+    async function quoteWithdrawalFee(note) {
+      const quote = await api(`/thornado/shielder/redeem/quote/${note.denomination_sats}`);
+      const feeSats = Number(quote.fee_sats);
+      if (!Number.isSafeInteger(feeSats) || feeSats < 0) {
+        throw new Error("node returned an invalid withdrawal fee quote");
+      }
+      $("feeSats").value = String(feeSats);
+      $("feePreview").textContent = btcAmount(feeSats);
+      return feeSats;
+    }
+
+    async function validateGeneratedProof(noteIndex = state.selectedNote || 0) {
+      let proof = state.lastWithdrawalProof;
+      let publicInputs = state.lastWithdrawalPublic;
+      const requestedFee = Number($("feeSats").value || 0);
+      const note = state.receipt?.notes?.[noteIndex];
+      if (!proof || !publicInputs || state.lastWithdrawalFeeSats !== requestedFee || state.lastWithdrawalNoteKey !== noteKey(note)) {
+        const generated = await generateWithdrawalProof(noteIndex);
+        proof = generated.proof;
+        publicInputs = generated.public;
+      }
+      const wasm = await thornadoWasm();
+      wasm.verifyWithdrawalJson(JSON.stringify(proof), JSON.stringify(publicInputs));
+      log("withdraw/proof/validate", {
+        nullifier_hash: publicInputs.nullifier_hash,
+        merkle_root: publicInputs.merkle_root,
+        proof_bytes: proof.orchard?.proof_hex?.length ? proof.orchard.proof_hex.length / 2 : 0
+      });
+      setMessage("Withdrawal proof validates locally.", "ok");
+      updateDashboard();
+      return { proof, public: publicInputs };
+    }
+
+    function renderNotes() {
+      const el = $("notes");
+      el.textContent = "";
+      if (!state.receipt) {
+        const row = document.createElement("p");
+        row.textContent = "No notes synced.";
+        el.append(row);
+        return;
+      }
+      const mature = waitRemainingMs() === 0;
+      const globalNotes = state.receipt.notes || [];
+      const batches = state.batches.filter((batch) => batch.receipt?.notes?.length);
+      for (const batch of batches) {
+        const depositGroup = document.createElement("div");
+        depositGroup.className = "note-group";
+        const depositHeading = document.createElement("h3");
+        const batchAmount = batch.receipt.notes.reduce((sum, note) => sum + Number(note.denomination_sats || 0), 0);
+        depositHeading.textContent = `${batchLabel(batch)} - ${btcAmount(batchAmount)}`;
+        depositGroup.append(depositHeading);
+
+        const groups = new Map();
+        for (const note of batch.receipt.notes) {
+          const list = groups.get(note.denomination_sats) || [];
+          list.push(note);
+          groups.set(note.denomination_sats, list);
+        }
+        for (const denomination of [...groups.keys()].sort((a, b) => Number(b) - Number(a))) {
+          const items = groups.get(denomination);
+          const poolSize = Number.isFinite(items[0]?.pool_leaf_count) ? items[0].pool_leaf_count : items.length;
+          const denomHeading = document.createElement("h4");
+          denomHeading.textContent = `${btcAmount(denomination)} (${poolSize} notes)`;
+          depositGroup.append(denomHeading);
+          for (const note of items) {
+            const index = globalNotes.findIndex((item) => noteKey(item) === noteKey(note));
+            const key = noteKey(note);
+            const withdrawal = state.withdrawnNotes[key];
+            const isSpent = note.spent || withdrawal?.status === "spent";
+            const isWithdrawing = state.withdrawingNote === key;
+            const row = document.createElement("div");
+            row.className = "note-row";
+            const maturity = formatClock(waitRemainingMs());
+            const action = document.createElement("button");
+            action.type = "button";
+            action.textContent = isSpent ? "Spent" : isWithdrawing ? "Progress" : withdrawal ? "Hide" : "Withdraw";
+            action.disabled = isSpent || !mature || isWithdrawing;
+            if (withdrawal?.outHash) {
+              action.addEventListener("click", () => {
+                const detail = row.querySelector(".note-withdrawal");
+                if (detail) {
+                  detail.hidden = !detail.hidden;
+                  action.textContent = detail.hidden ? "Show" : "Hide";
+                }
+              });
+            } else {
+              action.addEventListener("click", () => run(() => withdrawNote(Math.max(0, index))));
+            }
+            row.innerHTML = `
+              <span>${btcAmount(note.denomination_sats)}</span>
+              <span>Maturity ${maturity}</span>
+            `;
+            row.append(action);
+            if (withdrawal?.outHash) {
+              const detail = document.createElement("div");
+              detail.className = "note-withdrawal";
+              detail.innerHTML = `Withdrawal: <a href="${btcExplorerUrl(withdrawal.outHash)}" target="_blank" rel="noopener">${withdrawal.outHash}</a>`;
+              row.append(detail);
+            }
+            depositGroup.append(row);
+          }
+        }
+        el.append(depositGroup);
+      }
+    }
+
+    async function requestDeposit() {
+      if (location.protocol === "file:") {
+        throw new Error("Open this page from a running Thornado node to get a deposit address.");
+      }
+      state.depositRequestPending = true;
+      state.depositAutoConfirming = false;
+      $("requestDeposit").disabled = true;
+      $("depositResult").hidden = true;
+      $("depositAddress").textContent = "";
+      renderDepositQr("");
+      $("powStatus").hidden = false;
+      if (!$("walletRoot").value.trim()) {
+        await generateWalletRoot();
+      }
+      try {
+        const depositIndex = state.nextDepositIndex;
+        state.activeBatchIndex = depositIndex;
+        const userPubkey = await refreshClientPubkey(depositIndex);
+        const owner = await ownerAddressFromCompressedPubkey(userPubkey);
+        const mined = await mineDepositPow("browser", owner, await currentPowDifficultyBits());
+        $("powResult").hidden = true;
+        $("powResult").textContent = `PoW ${mined.token}`;
+        const payload = await api("/thornado/deposit", {
+          method: "POST",
+          body: {
+            pow_token: mined.token,
+            deposit_pubkey: userPubkey,
+            pow_duration_ms: mined.elapsed_ms
+          }
+        });
+        const session = await waitForDepositSession(payload.owner);
+        const churnWindow = await refreshChurnWindow();
+        state.activeIntentId = userPubkey;
+        state.depositOwner = payload.owner;
+        applyChurnWindow(churnWindow);
+        upsertBatch({
+          depositIndex,
+          owner: payload.owner,
+          pubkey: userPubkey,
+          depositType: "user",
+          depositId: session.deposit_id || "",
+          depositAddress: session.deposit_address,
+          amountSats: Number(session.amount_sats || 0),
+          status: session.status || "address_issued",
+          session
+        });
+        state.waitStartedAt = null;
+        state.waitMaturesAt = null;
+        $("intentId").value = state.activeIntentId;
+        $("depositAddress").hidden = false;
+        $("depositAddress").textContent = session.deposit_address;
+        $("confirmations").textContent = `0 / ${MIN_CONFS}`;
+        renderDepositHistory();
+        log("deposit/request", { batch: batchLabel({ depositIndex }), user_pubkey: userPubkey, owner, pow: mined, response: payload, session });
+        setMessage("Deposit address committed on-chain.", "ok");
+        autoConfirmDeposit();
+      } finally {
+        state.depositRequestPending = false;
+        $("powStatus").hidden = true;
+        $("requestDeposit").disabled = false;
+        updateDashboard();
+      }
+    }
+
+    async function confirmDeposit() {
+      const intentId = getIntentId();
+      if (!state.activeIntentId) {
+        throw new Error("Request a deposit address before observing a deposit.");
+      }
+      if (intentId !== state.activeIntentId) {
+        throw new Error(`Active deposit intent is ${state.activeIntentId}; request a fresh address before observing ${intentId}.`);
+      }
+      const amountSats = getAmountSats();
+      if (!state.depositOwner) {
+        throw new Error("request a deposit address before checking deposit status");
+      }
+      const session = await waitForMatchedDepositSession(state.depositOwner);
+      $("intentId").value = state.activeIntentId;
+      const deposit = await api(`/thornado/deposit/${session.deposit_id}`).catch(() => null);
+      const matchedAmount = Number(deposit?.amount_sats || session.amount_sats || 0);
+      if (Number.isFinite(matchedAmount) && matchedAmount > 0) {
+        $("amountSats").value = String(matchedAmount);
+      }
+      upsertBatch({
+        depositIndex: state.activeBatchIndex,
+        owner: state.depositOwner,
+        depositId: session.deposit_id,
+        depositAddress: session.deposit_address,
+        amountSats: matchedAmount,
+        status: deposit?.status || session.status || "deposit_matched",
+        session,
+        deposit
+      });
+      log("deposit/status", { session, deposit });
+      $("confirmations").textContent = `${MIN_CONFS} / ${MIN_CONFS}`;
+      renderDepositHistory();
+      setMessage("Deposit status refreshed from the node.", "ok");
+      updateDashboard();
+    }
+
+    async function autoConfirmDeposit() {
+      if (state.depositAutoConfirming || !state.depositOwner) {
+        return;
+      }
+      state.depositAutoConfirming = true;
+      try {
+        await confirmDeposit();
+      } catch (error) {
+        setMessage(`Waiting for deposit confirmation: ${error.message}`, "warn");
+        setTimeout(() => {
+          state.depositAutoConfirming = false;
+          if (state.depositOwner && $("confirmations").textContent !== `${MIN_CONFS} / ${MIN_CONFS}`) {
+            autoConfirmDeposit();
+          }
+        }, 4000);
+        return;
+      }
+      state.depositAutoConfirming = false;
+    }
+
+    async function splitDeposit() {
+      state.splitPending = true;
+      updateDashboard();
+      setMessage("Splitting deposit into notes...", "");
+      try {
+        const intentId = getIntentId();
+        const amountSats = getAmountSats();
+        const depositIndex = Number(state.activeBatchIndex || 0);
+        const seedHex = await walletRootSeedHex();
+        $("walletRootStatus").hidden = true;
+        $("walletRootStatus").textContent = `Root fingerprint ${await rootFingerprint(seedHex)}. Notes are indexed on your secret phrase.`;
+        const receipt = await deriveSplitReceipt(intentId, amountSats, seedHex, depositIndex);
+        const noteCommitments = commitments(receipt);
+        const commitmentAmountSats = noteCommitments.reduce((sum, note) => sum + Number(note.denomination_sats || 0), 0);
+        const authorization = await splitAuthorization(seedHex, intentId, commitmentAmountSats, noteCommitments, depositIndex);
+        const payload = await api("/thornado/split", {
+          method: "POST",
+          body: {
+            note_commitments: noteCommitments,
+            deposit_pubkey: authorization.deposit_pubkey,
+            signature: authorization.signature
+          }
+        });
+        payload.tx_response = await waitForCommittedTx(payload.txhash);
+        upsertBatch({
+          depositIndex,
+          owner: state.depositOwner,
+          depositId: intentId,
+          depositAddress: $("depositAddress").textContent.trim(),
+          amountSats,
+          status: "committed",
+          receipt
+        });
+        state.selectedNote = 0;
+        state.waitStartedAt = Date.now();
+        state.waitMaturesAt = state.waitStartedAt + DEMO_MATURITY_MS;
+        await refreshReceiptPoolPositions();
+        renderNotes();
+        renderDepositHistory();
+        log("split", { ...payload, receipt });
+        setMessage(`Minted ${receipt.notes.length} notes with ${btcAmount(receipt.remainder_sats)} remainder.`, "ok");
+      } finally {
+        state.splitPending = false;
+        updateDashboard();
+      }
+    }
+
+    async function withdrawNote(noteIndex = state.selectedNote || 0) {
+      state.selectedNote = noteIndex;
+      const note = selectedReceiptNote();
+      const key = noteKey(note);
+      state.withdrawingNote = key;
+      renderNotes();
+      try {
+        setMessage("Generating Orchard withdrawal proof in this browser...", "");
+        const { proof, public: publicInputs } = await validateGeneratedProof(noteIndex);
+        const payload = await api("/thornado/withdraw", {
+          method: "POST",
+          body: { proof, public: publicInputs }
+        });
+        payload.tx_response = await waitForCommittedTx(payload.txhash, 45000);
+        const withdrawalID = payload.withdrawal_id || publicInputs.nullifier_hash;
+        const redeem = payload.withdrawal_id
+          ? await api(`/thornado/shielder/redeem/${payload.withdrawal_id}`).catch(() => null)
+          : null;
+        const inHash = redeem?.in_hash || withdrawalID;
+        const requestedHeight = Number(redeem?.requested_height || 0);
+        const netSats = Math.max(0, Number(note.denomination_sats || 0) - Number($("feeSats").value || 0));
+        const outHash = await waitForOutboundHash(inHash, $("recipient").value.trim(), netSats, requestedHeight);
+        state.withdrawnNotes[key] = { txhash: payload.txhash, withdrawalID, inHash, outHash };
+        log("withdraw", { ...payload, out_hash: outHash });
+        setMessage("Withdrawal proof accepted and payout authorized.", "ok");
+      } finally {
+        state.withdrawingNote = null;
+        renderNotes();
+        updateDashboard();
+      }
+    }
+
+    function shellQuote(value) {
+      const raw = String(value || "");
+      return `'${raw.replaceAll("'", "'\\''")}'`;
+    }
+
+    function thornadoTxCommand(args, from) {
+      const parts = [
+        "./build/thornado", "tx", "thornado",
+        ...args,
+        "--from", from || "user",
+        "--home", "/tmp/thornado-ui-e2e/node1",
+        "--keyring-backend", "file",
+        "--chain-id", "thornado-e2e",
+        "--node", "tcp://127.0.0.1:26657",
+        "--broadcast-mode", "sync",
+        "--yes"
+      ];
+      return parts.map(shellQuote).join(" ");
+    }
+
+    async function refreshNodeTools() {
+      const [metrics, auctions, block] = await Promise.all([
+        api("/thornado/node/metrics").catch(() => null),
+        api("/thornado/node/auctions").catch(() => ({ auctions: [] })),
+        api("/thornado/block").catch(() => null)
+      ]);
+      const height = Number(block?.id?.height || block?.header?.height || block?.block?.header?.height || 0);
+      if (metrics) {
+        $("nodeNextSlot").textContent = String(metrics.next_slot ?? "unknown");
+        $("nodeRequiredBond").textContent = metrics.next_slot_bond_required_sats
+          ? btcAmount(Number(metrics.next_slot_bond_required_sats))
+          : "unknown";
+      }
+	      log("node/tools/refresh", { metrics, auctions, height });
+	    }
+
+    async function requestBondAddress() {
+      if (!$("walletRoot").value.trim()) {
+        await generateWalletRoot();
+      }
+      const operatorPubKey = $("bondOperatorPubkey").value.trim();
+      const nodePubKey = $("bondNodePubkey").value.trim();
+      if (!operatorPubKey || !nodePubKey) {
+        throw new Error("operator pubkey and node consensus pubkey are required");
+      }
+      const userPubkey = await refreshClientPubkey();
+      const owner = await ownerAddressFromCompressedPubkey(userPubkey);
+      const mined = await mineDepositPow("node-bond", owner, await currentPowDifficultyBits());
+      const payload = await api("/thornado/deposit", {
+        method: "POST",
+        body: {
+          pow_token: mined.token,
+          deposit_pubkey: userPubkey,
+          pow_duration_ms: mined.elapsed_ms,
+          operator_pub_key: operatorPubKey,
+          node_pub_key: nodePubKey
+        }
+      });
+      const session = await waitForDepositSession(payload.owner);
+      $("bondAddress").hidden = false;
+      $("bondAddress").textContent = [
+        `Deposit ${session.deposit_address}`,
+        `Owner ${payload.owner}`,
+        `Path ${session.deposit_path_index || "pending"}`
+      ].join("\n");
+      log("node/bond/address", { owner, response: payload, session });
+      setMessage("Node bond address committed on-chain.", "ok");
+      await refreshNodeTools();
+    }
+
+    function writeNodeCommand(label, command) {
+      $("nodeCommandOutput").textContent = `${label}\n\n${command}`;
+      log("node/command", { label, command });
+    }
+
+	    function nodeKeyName() {
+	      return $("nodeKeyName").value.trim() || "node";
+	    }
+
+	    function buildBondSplitCommand() {
+	      const depositPubkey = $("bondSplitDepositPubkey").value.trim() || $("clientPubkey").textContent.trim();
+	      const commitments = $("bondSplitCommitments").value.trim();
+	      if (!depositPubkey || !commitments) {
+	        throw new Error("deposit path pubkey and commitments are required");
+	      }
+	      writeNodeCommand("Split bond deposit", thornadoTxCommand([
+	        "split", commitments, depositPubkey, "<signature>"
+	      ], nodeKeyName()));
+	    }
+
+	    function buildSetIpCommand() {
+	      const ip = $("nodeIpAddress").value.trim();
+	      if (!ip) {
+	        throw new Error("ip address is required");
+	      }
+	      writeNodeCommand("Set IP", thornadoTxCommand(["set-ip-address", ip], nodeKeyName()));
+	    }
+
+	    function buildSetVersionCommand() {
+	      writeNodeCommand("Set version", thornadoTxCommand(["set-version"], nodeKeyName()));
+	    }
+
+	    function buildSetKeysCommand() {
+	      const secp = $("nodeSecpPubkey").value.trim();
+	      const ed = $("nodeEdPubkey").value.trim();
+	      const cons = $("nodeConsPubkey").value.trim();
+	      if (!secp || !ed || !cons) {
+	        throw new Error("secp256k1, ed25519, and consensus pubkeys are required");
+	      }
+	      writeNodeCommand("Set node keys", thornadoTxCommand(["set-node-keys", secp, ed, cons], nodeKeyName()));
+	    }
+
+	    function buildProposeUpgradeCommand() {
+	      const name = $("upgradeName").value.trim();
+	      const height = $("upgradeHeight").value.trim();
+	      const info = $("upgradeInfo").value.trim();
+	      if (!name || !height) {
+	        throw new Error("upgrade name and height are required");
+	      }
+	      const args = ["propose-upgrade", name, height];
+	      if (info) {
+	        args.push("--info", info);
+	      }
+	      writeNodeCommand("Propose upgrade", thornadoTxCommand(args, nodeKeyName()));
+	    }
+
+	    function buildApproveUpgradeCommand() {
+	      const name = $("upgradeName").value.trim();
+	      if (!name) {
+	        throw new Error("upgrade name is required");
+	      }
+	      writeNodeCommand("Approve upgrade", thornadoTxCommand(["approve-upgrade", name], nodeKeyName()));
+	    }
+
+	    function buildRejectUpgradeCommand() {
+	      const name = $("upgradeName").value.trim();
+	      if (!name) {
+	        throw new Error("upgrade name is required");
+	      }
+	      writeNodeCommand("Reject upgrade", thornadoTxCommand(["reject-upgrade", name], nodeKeyName()));
+	    }
+
+	    function buildSplitFeesCommand() {
+	      const nodePubKey = $("bondNodePubkey").value.trim() || $("nodeConsPubkey").value.trim();
+	      const sig = $("feeOperatorSignature").value.trim();
+	      const commitments = $("feeCommitments").value.trim();
+	      const pubkeys = $("feeNotePubkeys").value.trim();
+	      if (!nodePubKey || !sig || !commitments || !pubkeys) {
+	        throw new Error("node pubkey, operator signature, commitments, and fee note pubkeys are required");
+	      }
+	      writeNodeCommand("Split fees", thornadoTxCommand([
+	        "split-fees", nodePubKey, sig, commitments, pubkeys
+	      ], nodeKeyName()));
+	    }
+
+	    function buildPauseCommand() {
+	      writeNodeCommand("Pause chain", thornadoTxCommand(["pause-chain"], nodeKeyName()));
+	    }
+
+	    function buildResumeCommand() {
+	      writeNodeCommand("Resume chain", thornadoTxCommand(["resume-chain"], nodeKeyName()));
+	    }
+
+    async function run(action) {
+      setMessage("");
+      try {
+        await action();
+      } catch (error) {
+        const message = error?.message || String(error);
+        $("requestDeposit").disabled = false;
+        $("powStatus").hidden = true;
+        setMessage(message, "error");
+        log("error", { error: message });
+      }
+    }
+
+    function revealSecret() {
+      state.secretMode = "revealed";
+      renderSecret();
+    }
+
+    function hideSecret() {
+      state.secretMode = "hidden";
+      renderSecret();
+    }
+
+    function toggleInfo(id) {
+      const el = $(id);
+      el.hidden = !el.hidden;
+    }
+
+    function startCustomSecret() {
+      state.secretMode = "custom";
+      $("customWalletRoot").value = "";
+      $("customSecretError").hidden = true;
+      $("customSecretError").textContent = "";
+      renderSecret();
+      $("customWalletRoot").focus();
+    }
+
+    function cancelCustomSecret() {
+      $("customWalletRoot").value = "";
+      $("customSecretError").hidden = true;
+      $("customSecretError").textContent = "";
+      state.secretMode = "revealed";
+      renderSecret();
+    }
+
+    async function saveCustomSecret() {
+      $("customSecretError").hidden = true;
+      $("customSecretError").textContent = "";
+      let words;
+      try {
+        words = await validateMnemonic($("customWalletRoot").value, [12, 24]);
+      } catch (error) {
+        $("customSecretError").textContent = error.message;
+        $("customSecretError").hidden = false;
+        throw error;
+      }
+      $("walletRoot").value = words.join(" ");
+      $("customWalletRoot").value = "";
+      state.secretMode = "hidden";
+      resetDepositState();
+      await discoverDepositBatches();
+      updateDashboard();
+    }
+
+    async function copyDepositAddress() {
+      if (depositExpired()) {
+        throw new Error("Deposit address expired. Request a new address for the current churn cycle.");
+      }
+      const address = $("depositAddress").textContent.trim();
+      if (!address) {
+        return;
+      }
+      let copied = false;
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(address);
+          copied = true;
+        }
+      } catch {
+        copied = false;
+      }
+      if (!copied) {
+        const scratch = document.createElement("textarea");
+        scratch.value = address;
+        scratch.setAttribute("readonly", "");
+        scratch.style.position = "fixed";
+        scratch.style.top = "-1000px";
+        document.body.append(scratch);
+        scratch.select();
+        try {
+          copied = document.execCommand("copy");
+        } catch {
+          copied = false;
+        }
+        scratch.remove();
+      }
+      $("copyDepositAddress").textContent = copied ? "Copied" : "Copy blocked";
+      setMessage(copied ? "Deposit address copied." : "Clipboard blocked by the browser. Select the address manually.", copied ? "ok" : "warn");
+      setTimeout(() => {
+        $("copyDepositAddress").textContent = "Copy";
+      }, 1200);
+    }
+
+	    function showTab(tabName) {
+	      const isNetwork = tabName === "network";
+	      const isNodes = tabName === "nodes";
+	      $("userPanel").hidden = isNetwork || isNodes;
+	      $("networkPanel").hidden = !isNetwork;
+	      $("nodesPanel").hidden = !isNodes;
+	      $("tabUser").classList.toggle("active", !isNetwork && !isNodes);
+	      $("tabNodes").classList.toggle("active", isNodes);
+	      $("tabNetwork").classList.toggle("active", isNetwork);
+	      if (isNetwork || isNodes) {
+	        refreshNodeTools().catch((error) => log("node/tools/refresh", { error: error.message }));
+	      }
+	    }
+
+	    $("tabUser").addEventListener("click", () => showTab("user"));
+	    $("tabNodes").addEventListener("click", () => showTab("nodes"));
+	    $("tabNetwork").addEventListener("click", () => showTab("network"));
+    $("requestDeposit").addEventListener("click", () => run(requestDeposit));
+    $("depositInfoButton").addEventListener("click", () => toggleInfo("depositInfo"));
+    $("splitInfoButton").addEventListener("click", () => toggleInfo("splitInfo"));
+    $("waitInfoButton").addEventListener("click", () => toggleInfo("waitInfo"));
+    $("withdrawInfoButton").addEventListener("click", () => toggleInfo("withdrawInfo"));
+    document.querySelectorAll("[data-stage-toggle]").forEach((button) => {
+      button.addEventListener("click", () => toggleStage(button.dataset.stageToggle));
+    });
+    $("revealSecret").addEventListener("click", revealSecret);
+    $("useCustomSecret").addEventListener("click", startCustomSecret);
+    $("doneSecret").addEventListener("click", hideSecret);
+    $("cancelCustomSecret").addEventListener("click", cancelCustomSecret);
+    $("saveCustomSecret").addEventListener("click", () => run(saveCustomSecret));
+    $("copyDepositAddress").addEventListener("click", () => run(copyDepositAddress));
+    $("splitDeposit").addEventListener("click", () => run(splitDeposit));
+    $("validateProof").addEventListener("click", () => run(validateGeneratedProof));
+	    $("withdrawNote").addEventListener("click", () => run(withdrawNote));
+	    $("refreshNodeTools").addEventListener("click", () => run(refreshNodeTools));
+	    $("requestBondAddress").addEventListener("click", () => run(requestBondAddress));
+	    $("buildBondSplitCommand").addEventListener("click", () => run(buildBondSplitCommand));
+	    $("buildSetIpCommand").addEventListener("click", () => run(buildSetIpCommand));
+	    $("buildSetVersionCommand").addEventListener("click", () => run(buildSetVersionCommand));
+	    $("buildSetKeysCommand").addEventListener("click", () => run(buildSetKeysCommand));
+	    $("buildProposeUpgradeCommand").addEventListener("click", () => run(buildProposeUpgradeCommand));
+	    $("buildApproveUpgradeCommand").addEventListener("click", () => run(buildApproveUpgradeCommand));
+	    $("buildRejectUpgradeCommand").addEventListener("click", () => run(buildRejectUpgradeCommand));
+	    $("buildSplitFeesCommand").addEventListener("click", () => run(buildSplitFeesCommand));
+	    $("buildPauseCommand").addEventListener("click", () => run(buildPauseCommand));
+	    $("buildResumeCommand").addEventListener("click", () => run(buildResumeCommand));
+	    $("amountSats").addEventListener("input", updateDashboard);
+    $("feeSats").addEventListener("input", () => {
+      state.lastWithdrawalProof = null;
+      state.lastWithdrawalPublic = null;
+      state.lastWithdrawalFeeSats = null;
+      state.lastWithdrawalNoteKey = null;
+      updateDashboard();
+    });
+    $("walletRoot").addEventListener("input", () => {
+      resetDepositState();
+      updateDashboard();
+    });
+    $("walletPassphrase").addEventListener("input", () => {
+      resetDepositState();
+      updateDashboard();
+    });
+
+    const urlParams = new URLSearchParams(location.search);
+    if (urlParams.has("recipient")) {
+      $("recipient").value = urlParams.get("recipient") || "";
+    }
+
+    generateWalletRoot().catch((error) => setMessage(error.message, "error"));
+    renderNodeEndpoint();
+    refreshChurnWindow().catch((error) => log("churn/window", { error: error.message }));
+    renderNotes();
+    updateDashboard();
+    setInterval(() => {
+      if (state.waitMaturesAt || state.depositExpiresAt) {
+        renderNotes();
+        updateDashboard();
+      }
+    }, 1000);
+    setInterval(() => {
+      if (!state.receipt?.notes?.length || location.protocol === "file:") {
+        return;
+      }
+      refreshReceiptPoolPositions()
+        .then(() => {
+          renderNotes();
+          updateDashboard();
+        })
+        .catch((error) => log("notes/pool", { error: error?.message || String(error) }));
+    }, POOL_REFRESH_MS);
+    if (location.protocol === "file:") {
+      $("stateHash").textContent = "file mode";
+    } else {
+      refreshHash().catch((error) => setMessage(error.message, "error"));
+    }
+  </script>
+</body>
+</html>

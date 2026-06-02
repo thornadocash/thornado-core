@@ -38,8 +38,7 @@ type Manager interface {
 	NetworkMgr() NetworkManager
 	NodeMgr() NodeManager
 	ObMgr() ObserverManager
-	Slasher() Slasher
-	ScheduledMigrationManager() ScheduledMigrationManager
+	PenaltyManager() PenaltyManager
 }
 
 // GasManager define all the methods required to manage gas
@@ -49,19 +48,17 @@ type GasManager interface {
 	AddGasAsset(outAsset common.Asset, gas common.Gas, increaseTxCount bool)
 	ProcessGas(ctx cosmos.Context, keeper keeper.Keeper)
 	GetGas() common.Gas
-	GetAssetOutboundFee(ctx cosmos.Context, asset common.Asset, inRune bool) (cosmos.Uint, error)
+	GetAssetOutboundFee(ctx cosmos.Context, asset common.Asset) (cosmos.Uint, error)
 	GetGasDetails(ctx cosmos.Context, chain common.Chain) (common.Coin, int64, error)
 	GetMaxGas(ctx cosmos.Context, chain common.Chain) (common.Coin, error)
 	GetGasRate(ctx cosmos.Context, chain common.Chain) cosmos.Uint
 	GetNetworkFee(ctx cosmos.Context, chain common.Chain) (types.NetworkFee, error)
-	CalcOutboundFeeMultiplier(ctx cosmos.Context, targetSurplusRune, gasSpentRune, gasWithheldRune, maxMultiplier, minMultiplier cosmos.Uint) cosmos.Uint
 }
 
 // EventManager define methods need to be support to manage events
 type EventManager interface {
 	EmitEvent(ctx cosmos.Context, evt EmitEventItem) error
 	EmitGasEvent(ctx cosmos.Context, gasEvent *EventGas) error
-	EmitSwapEvent(ctx cosmos.Context, swap *EventSwap) error
 	EmitFeeEvent(ctx cosmos.Context, feeEvent *EventFee) error
 }
 
@@ -74,7 +71,7 @@ type TxOutStore interface {
 	TryAddTxOutItem(ctx cosmos.Context, mgr Manager, toi TxOutItem, minOut cosmos.Uint) (bool, error)
 	UnSafeAddTxOutItem(ctx cosmos.Context, mgr Manager, toi TxOutItem, height int64) error
 	GetOutboundItemByToAddress(cosmos.Context, common.Address) []TxOutItem
-	CalcTxOutHeight(cosmos.Context, semver.Version, TxOutItem) (int64, cosmos.Uint, error)
+	CalcTxOutHeight(cosmos.Context, semver.Version, TxOutItem) (int64, error)
 	DiscoverOutbounds(ctx cosmos.Context, transactionFeeAsset cosmos.Uint, maxGasAsset common.Coin, toi TxOutItem, vaults Vaults) ([]TxOutItem, cosmos.Uint)
 }
 
@@ -104,31 +101,23 @@ type NetworkManager interface {
 	CalcAnchor(_ cosmos.Context, _ Manager, _ common.Asset) (cosmos.Uint, cosmos.Uint, cosmos.Uint)
 }
 
-// Slasher define all the method to perform slash
-type Slasher interface {
-	BeginBlock(ctx cosmos.Context, constAccessor constants.ConfigValues)
-	LackSigning(ctx cosmos.Context, mgr Manager) error
-	SlashVault(ctx cosmos.Context, vaultPK common.PubKey, coins common.Coins, mgr Manager) error
-	IncSlashPoints(ctx cosmos.Context, point int64, addresses ...cosmos.AccAddress)
-	DecSlashPoints(ctx cosmos.Context, point int64, addresses ...cosmos.AccAddress)
-}
-
-type ScheduledMigrationManager interface {
-	EndBlock(ctx cosmos.Context, mgr Manager) error
+// PenaltyManager tracks node penalty points.
+type PenaltyManager interface {
+	IncPenaltyPoints(ctx cosmos.Context, point int64, addresses ...cosmos.AccAddress)
+	DecPenaltyPoints(ctx cosmos.Context, point int64, addresses ...cosmos.AccAddress)
 }
 
 // Mgrs is an implementation of Manager interface
 type Mgrs struct {
-	currentVersion            semver.Version
-	constAccessor             constants.ConfigValues
-	gasMgr                    GasManager
-	eventMgr                  EventManager
-	txOutStore                TxOutStore
-	networkMgr                NetworkManager
-	nodeMgr                   NodeManager
-	obMgr                     ObserverManager
-	slasher                   Slasher
-	scheduledMigrationManager ScheduledMigrationManager
+	currentVersion semver.Version
+	constAccessor  constants.ConfigValues
+	gasMgr         GasManager
+	eventMgr       EventManager
+	txOutStore     TxOutStore
+	networkMgr     NetworkManager
+	nodeMgr        NodeManager
+	obMgr          ObserverManager
+	penaltyManager PenaltyManager
 
 	K             keeper.Keeper
 	cdc           codec.Codec
@@ -234,14 +223,9 @@ func (mgr *Mgrs) recreateManagers(ctx cosmos.Context, v semver.Version) error {
 		return fmt.Errorf("fail to get observer manager: %w", err)
 	}
 
-	mgr.slasher, err = GetSlasher(v, mgr.K, mgr.eventMgr)
+	mgr.penaltyManager, err = GetPenaltyManager(v, mgr.K, mgr.eventMgr)
 	if err != nil {
-		return fmt.Errorf("fail to create slasher: %w", err)
-	}
-
-	mgr.scheduledMigrationManager, err = GetScheduledMigrationManager(v, mgr)
-	if err != nil {
-		return fmt.Errorf("fail to create scheduled migration manager: %w", err)
+		return fmt.Errorf("fail to create penaltyManager: %w", err)
 	}
 
 	return nil
@@ -268,12 +252,8 @@ func (mgr *Mgrs) NodeMgr() NodeManager { return mgr.nodeMgr }
 // ObMgr return an implementation of ObserverManager
 func (mgr *Mgrs) ObMgr() ObserverManager { return mgr.obMgr }
 
-// Slasher return an implementation of Slasher
-func (mgr *Mgrs) Slasher() Slasher { return mgr.slasher }
-
-func (mgr *Mgrs) ScheduledMigrationManager() ScheduledMigrationManager {
-	return mgr.scheduledMigrationManager
-}
+// PenaltyManager return an implementation of PenaltyManager
+func (mgr *Mgrs) PenaltyManager() PenaltyManager { return mgr.penaltyManager }
 
 // GetKeeper return Keeper
 func GetKeeper(
@@ -321,11 +301,7 @@ func GetObserverManager(version semver.Version) (ObserverManager, error) {
 	return newObserverMgr(), nil
 }
 
-// GetSlasher return an implementation of Slasher
-func GetSlasher(version semver.Version, keeper keeper.Keeper, eventMgr EventManager) (Slasher, error) {
-	return newSlasher(keeper, eventMgr), nil
-}
-
-func GetScheduledMigrationManager(_ semver.Version, mgr Manager) (ScheduledMigrationManager, error) {
-	return newScheduledMigrationMgr(mgr), nil
+// GetPenaltyManager return an implementation of PenaltyManager
+func GetPenaltyManager(version semver.Version, keeper keeper.Keeper, eventMgr EventManager) (PenaltyManager, error) {
+	return newPenaltyManager(keeper, eventMgr), nil
 }

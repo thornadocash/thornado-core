@@ -142,8 +142,6 @@ func initGenesis(ctx cosmos.Context, k keeper.Keeper, data GenesisState) []abci.
 	ctx.Logger().Info("Bond Module", "address", bondAddr.String())
 	baseAddr, _ := k.GetModuleAddress(BaseName)
 	ctx.Logger().Info("Base Module", "address", baseAddr.String())
-	treasuryAddr, _ := k.GetModuleAddress(TreasuryName)
-	ctx.Logger().Info("Treasury Module", "address", treasuryAddr.String())
 
 	k.SetVersionWithCtx(ctx, constants.SWVersion)
 	if err := k.SetNetwork(ctx, data.Network); err != nil {

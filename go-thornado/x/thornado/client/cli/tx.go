@@ -35,7 +35,6 @@ func GetTxCmd() *cobra.Command {
 	cmd.AddCommand(GetCmdApproveUpgrade())
 	cmd.AddCommand(GetCmdRejectUpgrade())
 	cmd.AddCommand(GetCmdSetIPAddress())
-	cmd.AddCommand(GetCmdBan())
 	cmd.AddCommand(GetCmdConfig())
 	cmd.AddCommand(GetCmdNodePauseChain())
 	cmd.AddCommand(GetCmdNodeResumeChain())
@@ -52,8 +51,8 @@ func GetTxCmd() *cobra.Command {
 
 func GetCmdTssPool() *cobra.Command {
 	return &cobra.Command{
-		Use:   "tss-pool [members-json-or-csv] [pool-pubkey] [pool-pubkey-eddsa] [height] [check-signature]",
-		Short: "submit a successful TSS/FROST keygen result",
+		Use:   "frost-vault [members-json-or-csv] [vault-pubkey] [vault-pubkey-eddsa] [height] [check-signature]",
+		Short: "submit a successful FROST base vault keygen result",
 		Args:  cobra.ExactArgs(5),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
@@ -64,13 +63,13 @@ func GetCmdTssPool() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			poolPubKey, err := common.NewPubKey(args[1])
+			vaultPubKey, err := common.NewPubKey(args[1])
 			if err != nil {
-				return fmt.Errorf("invalid pool pubkey: %w", err)
+				return fmt.Errorf("invalid vault pubkey: %w", err)
 			}
-			poolPubKeyEddsa, err := common.NewPubKey(args[2])
+			vaultPubKeyEddsa, err := common.NewPubKey(args[2])
 			if err != nil {
-				return fmt.Errorf("invalid eddsa pool pubkey: %w", err)
+				return fmt.Errorf("invalid eddsa vault pubkey: %w", err)
 			}
 			height, err := strconv.ParseInt(args[3], 10, 64)
 			if err != nil {
@@ -78,7 +77,7 @@ func GetCmdTssPool() *cobra.Command {
 			}
 			msg, err := types.NewMsgTssPoolV2(
 				members,
-				poolPubKey,
+				vaultPubKey,
 				[]byte(args[4]),
 				nil,
 				types.KeygenType_BaseVaultKeygen,
@@ -87,7 +86,7 @@ func GetCmdTssPool() *cobra.Command {
 				[]string{"BTC"},
 				clientCtx.GetFromAddress(),
 				1,
-				poolPubKeyEddsa,
+				vaultPubKeyEddsa,
 				nil,
 				nil,
 			)
@@ -254,32 +253,6 @@ func GetCmdNodeResumeChain() *cobra.Command {
 			}
 
 			msg := types.NewMsgNodePauseChain(int64(-1), clientCtx.GetFromAddress())
-			if err = msg.ValidateBasic(); err != nil {
-				return err
-			}
-			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
-		},
-	}
-}
-
-// GetCmdBan command to ban a node accounts
-func GetCmdBan() *cobra.Command {
-	return &cobra.Command{
-		Use:   "ban [node address]",
-		Short: "votes to ban a node address (caution: costs 0.1% of minimum bond)",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			clientCtx, err := client.GetClientTxContext(cmd)
-			if err != nil {
-				return err
-			}
-
-			addr, err := cosmos.AccAddressFromBech32(args[0])
-			if err != nil {
-				return fmt.Errorf("invalid node address: %w", err)
-			}
-
-			msg := types.NewMsgBan(addr, clientCtx.GetFromAddress())
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}

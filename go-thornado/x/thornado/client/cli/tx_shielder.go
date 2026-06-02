@@ -11,7 +11,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/spf13/cobra"
 
-	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
@@ -33,9 +32,9 @@ func GetCmdShielder() *cobra.Command {
 
 func GetCmdDepositRequestPow() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "request-deposit [pow-token]",
+		Use:   "request-deposit [pow-token] [deposit-pubkey]",
 		Short: "register POW token and request a Bitcoin deposit address",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
@@ -50,7 +49,12 @@ func GetCmdDepositRequestPow() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			msg := types.NewMsgDepositRequestPow(args[0], clientCtx.GetFromAddress(), operatorPubKey, nodePubKey)
+			powDurationMs, err := cmd.Flags().GetUint64("pow-duration-ms")
+			if err != nil {
+				return err
+			}
+			msg := types.NewMsgDepositRequestPow(args[0], args[1], operatorPubKey, nodePubKey)
+			msg.PowDurationMs = powDurationMs
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
@@ -59,30 +63,31 @@ func GetCmdDepositRequestPow() *cobra.Command {
 	}
 	cmd.Flags().String("operator-pubkey", "", "operator mnemonic root pubkey for node bond deposits")
 	cmd.Flags().String("node-pubkey", "", "node consensus pubkey to bond for")
+	cmd.Flags().Uint64("pow-duration-ms", 0, "local proof-of-work solve time in milliseconds")
 	return cmd
 }
 
 func GetCmdShielderSplit() *cobra.Command {
 	return &cobra.Command{
-		Use:   "split [deposit-id] [commitments-json-or-csv]",
+		Use:   "split [commitments-json-or-csv] [deposit-pubkey] [signature]",
 		Short: "insert Shielder commitments for a settled Bitcoin deposit",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
 			}
 
-			depositID, err := common.NewTxID(args[0])
-			if err != nil {
-				return fmt.Errorf("invalid deposit id: %w", err)
-			}
-			commitments, err := parseCommitmentsArg(args[1])
+			commitments, err := parseCommitmentsArg(args[0])
 			if err != nil {
 				return err
 			}
 
-			msg := types.NewMsgShielderSplit(depositID, commitments, clientCtx.GetFromAddress())
+			msg := &types.MsgShielderSplit{
+				Commitments:   commitments,
+				DepositPubkey: strings.TrimSpace(args[1]),
+				Signature:     strings.TrimSpace(args[2]),
+			}
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
@@ -111,7 +116,7 @@ func GetCmdShielderRedeem() *cobra.Command {
 				return fmt.Errorf("invalid public inputs: %w", err)
 			}
 
-			msg := types.NewMsgShielderRedeem(proof, public, clientCtx.GetFromAddress())
+			msg := types.NewMsgShielderRedeem(proof, public)
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
@@ -179,7 +184,7 @@ func GetCmdNodeSlotAuctionCreate() *cobra.Command {
 }
 
 func GetCmdNodeSlotAuctionBidPow() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "auction-bid-pow [auction-id] [pow-token] [operator-pubkey] [node-pubkey]",
 		Short: "request a Bitcoin deposit address for a node slot auction bid",
 		Args:  cobra.ExactArgs(4),
@@ -188,13 +193,20 @@ func GetCmdNodeSlotAuctionBidPow() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			powDurationMs, err := cmd.Flags().GetUint64("pow-duration-ms")
+			if err != nil {
+				return err
+			}
 			msg := types.NewMsgNodeSlotAuctionBidPow(args[0], args[1], args[2], args[3], clientCtx.GetFromAddress())
+			msg.PowDurationMs = powDurationMs
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
+	cmd.Flags().Uint64("pow-duration-ms", 0, "local proof-of-work solve time in milliseconds")
+	return cmd
 }
 
 func GetCmdNodeSlotAuctionSelectBid() *cobra.Command {

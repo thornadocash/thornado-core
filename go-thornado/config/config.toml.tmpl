@@ -317,7 +317,7 @@ enable = {{ .StateSync.Enable }}
 # header hash obtained from a trusted source, and a period during which validators can be trusted.
 #
 # For Cosmos SDK-based chains, trust_period should usually be about 2/3 of the unbonding time (~2
-# weeks) during which they can be financially punished (slashed) for misbehavior.
+# weeks) during which they can be financially punished (penalized) for misbehavior.
 rpc_servers = "{{ .StateSync.RPCServers }}"
 trust_height = {{ .StateSync.TrustHeight }}
 trust_hash = "{{ .StateSync.TrustHash }}"

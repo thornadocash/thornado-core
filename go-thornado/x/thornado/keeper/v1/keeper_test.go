@@ -78,7 +78,6 @@ func setupKeeperForTest(c *C) (cosmos.Context, KVStore) {
 		ModuleName:                     {authtypes.Minter, authtypes.Burner},
 		ReserveName:                    {},
 		BaseName:                       {},
-		TreasuryName:                   {},
 		BondName:                       {authtypes.Staking},
 	}
 	ak := authkeeper.NewAccountKeeper(
@@ -123,7 +122,6 @@ var _ = Suite(&KeeperTestSuit{})
 func (KeeperTestSuit) TestKeeperVersion(c *C) {
 	ctx, k := setupKeeperForTest(c)
 
-	c.Check(k.GetRuneBalanceOfModule(ctx, BaseName).Equal(cosmos.NewUint(100000000*common.One)), Equals, true)
 	coinsToSend := common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(1*common.One)))
 	c.Check(k.SendFromModuleToModule(ctx, BaseName, BondName, coinsToSend), IsNil)
 

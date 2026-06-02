@@ -137,8 +137,8 @@ func (s *GetBaseAddressSuite) TestGetBaseAddress_MixedAlgos(c *C) {
 	}
 	addrs, err := GetBaseAddress(common.BTCChain, bridge)
 	c.Assert(err, IsNil)
-	// First: skipped (ed25519), Second: base address plus BTC deposit lookahead, Third: skipped (bad key)
-	c.Assert(len(addrs), Equals, int(common.DepositAddressLookahead)+1)
+	// First: skipped (ed25519), Second: base address plus user/node BTC deposit lookahead, Third: skipped (bad key)
+	c.Assert(len(addrs), Equals, int(common.DepositAddressLookahead)*2+1)
 }
 
 // -------------------------------------------------------------------------------------

@@ -58,6 +58,11 @@ func (vm *NodeMgr) BeginBlock(ctx cosmos.Context, mgr Manager, existingNodes []s
 	if !onChurnTick && !isRegularChurn {
 		return nil
 	}
+	if isRegularChurn {
+		if err := RetargetDepositPowDifficulty(ctx, vm.k); err != nil {
+			return err
+		}
+	}
 
 	halt := vm.k.GetConfigInt64(ctx, constants.Halt_Churning)
 	if halt > 0 && halt <= ctx.BlockHeight() {
@@ -135,7 +140,7 @@ func (vm *NodeMgr) churn(ctx cosmos.Context) error {
 func (vm *NodeMgr) churnInner(ctx cosmos.Context) error {
 	desiredNodeSet := vm.k.GetConfigInt64(ctx, constants.Node_SetDesired)
 	redline := vm.k.GetConfigInt64(ctx, constants.Node_BadRedline)
-	minSlashPointsForBadNode := vm.k.GetConfigInt64(ctx, constants.Node_PenaltyChurnOutThreshold)
+	minPenaltyPointsForBadNode := vm.k.GetConfigInt64(ctx, constants.Node_PenaltyChurnOutThreshold)
 
 	// update selected actor
 	if err := vm.markSelectedActors(ctx); err != nil {
@@ -149,7 +154,7 @@ func (vm *NodeMgr) churnInner(ctx cosmos.Context) error {
 
 	// Mark bad, old, low bond, and old version nodes
 	// mark someone to get churned out for bad behavior
-	_, err := vm.markBadActor(ctx, minSlashPointsForBadNode, redline)
+	_, err := vm.markBadActor(ctx, minPenaltyPointsForBadNode, redline)
 	if err != nil {
 		return err
 	}
@@ -310,7 +315,7 @@ func (vm *NodeMgr) EndBlock(ctx cosmos.Context, mgr Manager) []abci.ValidatorUpd
 			ctx.Logger().Error("fail to get retiring vaults", "error", err)
 		}
 
-		if len(retiring) == 0 { // wait until all funds are migrated before starting ragnarok
+		if len(retiring) == 0 {
 			return nil
 		}
 	}
@@ -325,12 +330,6 @@ func (vm *NodeMgr) EndBlock(ctx cosmos.Context, mgr Manager) []abci.ValidatorUpd
 		ctx.Logger().Error("fail to remove low bond node accounts", "error", err)
 	}
 
-	// payout all active node accounts their rewards
-	// This including nodes churning out, and takes place before changing the activity status below.
-	if err = vm.distributeBondReward(ctx, mgr); err != nil {
-		ctx.Logger().Error("fail to pay node bond rewards", "error", err)
-	}
-
 	nodes := make([]abci.ValidatorUpdate, 0, len(newNodes)+len(removedNodes))
 	for _, na := range newNodes {
 		ctx.EventManager().EmitEvent(
@@ -343,7 +342,7 @@ func (vm *NodeMgr) EndBlock(ctx cosmos.Context, mgr Manager) []abci.ValidatorUpd
 		na.RequestedToLeave = false
 		na.MissingBlocks = 0 // zero missing blocks that weren't signed (if any)
 
-		vm.k.ResetNodeAccountSlashPoints(ctx, na.NodeAddress)
+		vm.k.ResetNodeAccountPenaltyPoints(ctx, na.NodeAddress)
 		if err = vm.k.SetNodeAccount(ctx, na); err != nil {
 			ctx.Logger().Error("fail to save node account", "error", err)
 		}
@@ -480,70 +479,6 @@ func (vm *NodeMgr) getChangedNodes(ctx cosmos.Context, activeNodes NodeAccounts)
 	return newActive, removedNodes, nil
 }
 
-// payNodeAccountBondAward pay
-func (vm *NodeMgr) payNodeAccountBondAward(ctx cosmos.Context, lastChurnHeight int64, na NodeAccount, totalBondReward, totalEffectiveBond, bondHardCap cosmos.Uint, mgr Manager) error {
-	if na.ActiveBlockHeight == 0 || na.Bond.IsZero() {
-		return nil
-	}
-
-	network, err := vm.k.GetNetwork(ctx)
-	if err != nil {
-		return fmt.Errorf("fail to get network: %w", err)
-	}
-
-	slashPts, err := vm.k.GetNodeAccountSlashPoints(ctx, na.NodeAddress)
-	if err != nil {
-		return fmt.Errorf("fail to get node slash points: %w", err)
-	}
-
-	// Find number of blocks since the last churn (the last bond reward payout)
-	totalActiveBlocks := ctx.BlockHeight() - lastChurnHeight
-
-	// find number of blocks they were well behaved (ie active - slash points)
-	earnedBlocks := totalActiveBlocks - slashPts
-	if earnedBlocks < 0 {
-		earnedBlocks = 0
-	}
-
-	naEffectiveBond := na.Bond
-	if naEffectiveBond.GT(bondHardCap) {
-		naEffectiveBond = bondHardCap
-	}
-
-	// reward = totalBondReward * (naEffectiveBond / totalEffectiveBond) * (unslashed blocks since last churn / blocks since last churn)
-	reward := common.GetUncappedShare(naEffectiveBond, totalEffectiveBond, totalBondReward)
-	reward = common.GetUncappedShare(cosmos.NewUint(uint64(earnedBlocks)), cosmos.NewUint(uint64(totalActiveBlocks)), reward)
-
-	// Add to their bond the amount rewarded
-	na.Bond = na.Bond.Add(reward)
-
-	// Minus the number of rune Thornado have awarded them
-	network.BondRewardRune = common.SafeSub(network.BondRewardRune, reward)
-
-	// Minus the number of units na has (do not include slash points)
-	network.TotalBondUnits = common.SafeSub(
-		network.TotalBondUnits,
-		cosmos.NewUint(uint64(totalActiveBlocks)),
-	)
-
-	if err := vm.k.SetNetwork(ctx, network); err != nil {
-		return fmt.Errorf("fail to save network data: %w", err)
-	}
-
-	// minus slash points used in this calculation
-	vm.k.SetNodeAccountSlashPoints(ctx, na.NodeAddress, slashPts-totalActiveBlocks)
-
-	if err := vm.k.SetNodeAccount(ctx, na); err != nil {
-		return fmt.Errorf("fail to save node account: %w", err)
-	}
-	bondRewardEvent := NewEventBond(reward, BondReward, common.Tx{}, &na, nil)
-	if err := mgr.EventMgr().EmitEvent(ctx, bondRewardEvent); err != nil {
-		ctx.Logger().Error("fail to emit bond event", "error", err)
-	}
-
-	return nil
-}
-
 func (vm *NodeMgr) getPendingTxOut(ctx cosmos.Context) (int64, error) {
 	signingTransactionPeriod := getConfigDurationBlocks(ctx, vm.k, constants.Keysign_PeriodMinutes)
 	startHeight := ctx.BlockHeight() - signingTransactionPeriod
@@ -561,40 +496,6 @@ func (vm *NodeMgr) getPendingTxOut(ctx cosmos.Context) (int64, error) {
 		}
 	}
 	return count, nil
-}
-
-func (vm *NodeMgr) distributeBondReward(ctx cosmos.Context, mgr Manager) error {
-	var resultErr error
-	active, err := vm.k.ListActiveNodes(ctx)
-	if err != nil {
-		return fmt.Errorf("fail to get all active node account: %w", err)
-	}
-
-	lastChurnHeight := int64(0)
-	for _, node := range active {
-		if node.ActiveBlockHeight > lastChurnHeight {
-			lastChurnHeight = node.ActiveBlockHeight
-		}
-	}
-
-	totalEffectiveBond, bondHardCap := getTotalEffectiveBond(active)
-
-	network, err := vm.k.GetNetwork(ctx)
-	if err != nil {
-		return fmt.Errorf("fail to get network: %w", err)
-	}
-
-	for _, item := range active {
-		if err := vm.payNodeAccountBondAward(ctx, lastChurnHeight, item, network.BondRewardRune, totalEffectiveBond, bondHardCap, mgr); err != nil {
-			resultErr = errors.Join(resultErr, err)
-			ctx.Logger().Error("fail to pay node account bond award", "node address", item.NodeAddress.String(), "error", err)
-		}
-	}
-	return resultErr
-}
-
-func (vm *NodeMgr) ragnarokBond(ctx cosmos.Context, nth int64, mgr Manager) error {
-	return nil
 }
 
 func (vm *NodeMgr) setupNodeNodes(ctx cosmos.Context, height int64) error {
@@ -643,17 +544,17 @@ func (vm *NodeMgr) setupNodeNodes(ctx cosmos.Context, height int64) error {
 	return nil
 }
 
-func (vm *NodeMgr) getScore(ctx cosmos.Context, slashPts, lastChurnHeight int64) cosmos.Uint {
+func (vm *NodeMgr) getScore(ctx cosmos.Context, penaltyPts, lastChurnHeight int64) cosmos.Uint {
 	// get to the 8th decimal point, but keep numbers integers for safer math
 	score := cosmos.NewUint(uint64((ctx.BlockHeight() - lastChurnHeight) * common.One))
-	if slashPts == 0 {
+	if penaltyPts == 0 {
 		return score
 	}
-	return score.QuoUint64(uint64(slashPts))
+	return score.QuoUint64(uint64(penaltyPts))
 }
 
-// Iterate over active node accounts, finding bad actors with high slash points
-func (vm *NodeMgr) findBadActors(ctx cosmos.Context, minSlashPointsForBadNode, badNodeRedline int64) (NodeAccounts, error) {
+// Iterate over active node accounts, finding bad actors with high penalty points
+func (vm *NodeMgr) findBadActors(ctx cosmos.Context, minPenaltyPointsForBadNode, badNodeRedline int64) (NodeAccounts, error) {
 	badActors := make(NodeAccounts, 0)
 
 	// Guard against division by zero: badNodeRedline is used as a divisor
@@ -674,7 +575,7 @@ func (vm *NodeMgr) findBadActors(ctx cosmos.Context, minSlashPointsForBadNode, b
 
 	// NOTE: Our score gives a numerical representation of the behavior our a
 	// node account. The lower the score, the worse behavior. The score is
-	// determined by relative to how many slash points they have over how long
+	// determined by relative to how many penalty points they have over how long
 	// they have been an active node account.
 	type badTracker struct {
 		Score       cosmos.Uint
@@ -683,19 +584,19 @@ func (vm *NodeMgr) findBadActors(ctx cosmos.Context, minSlashPointsForBadNode, b
 	tracker := make([]badTracker, 0, len(nas))
 	totalScore := cosmos.ZeroUint()
 
-	// Find bad actor relative to age / slashpoints
+	// Find bad actor relative to age / penaltypoints
 	lastChurnHeight := getLastChurnHeight(ctx, vm.k)
 	for _, na := range nas {
-		slashPts, err := vm.k.GetNodeAccountSlashPoints(ctx, na.NodeAddress)
+		penaltyPts, err := vm.k.GetNodeAccountPenaltyPoints(ctx, na.NodeAddress)
 		if err != nil {
-			return badActors, fmt.Errorf("fail to get node slash points: %w", err)
+			return badActors, fmt.Errorf("fail to get node penalty points: %w", err)
 		}
 
-		if slashPts <= minSlashPointsForBadNode {
+		if penaltyPts <= minPenaltyPointsForBadNode {
 			continue
 		}
 
-		score := vm.getScore(ctx, slashPts, lastChurnHeight)
+		score := vm.getScore(ctx, penaltyPts, lastChurnHeight)
 		totalScore = totalScore.Add(score)
 
 		tracker = append(tracker, badTracker{
@@ -828,11 +729,11 @@ func (vm *NodeMgr) findLowBondActor(ctx cosmos.Context) (NodeAccount, error) {
 func (vm *NodeMgr) markActor(ctx cosmos.Context, na NodeAccount, reason string) error {
 	if !na.IsEmpty() && na.LeaveScore == 0 {
 		ctx.Logger().Info("marked Node to be churned out", "node address", na.NodeAddress, "reason", reason)
-		slashPts, err := vm.k.GetNodeAccountSlashPoints(ctx, na.NodeAddress)
+		penaltyPts, err := vm.k.GetNodeAccountPenaltyPoints(ctx, na.NodeAddress)
 		if err != nil {
-			return fmt.Errorf("fail to get node account(%s) slash points: %w", na.NodeAddress, err)
+			return fmt.Errorf("fail to get node account(%s) penalty points: %w", na.NodeAddress, err)
 		}
-		na.LeaveScore = vm.getScore(ctx, slashPts, getLastChurnHeight(ctx, vm.k)).Uint64()
+		na.LeaveScore = vm.getScore(ctx, penaltyPts, getLastChurnHeight(ctx, vm.k)).Uint64()
 		return vm.k.SetNodeAccount(ctx, na)
 	}
 	return nil
@@ -873,8 +774,8 @@ func (vm *NodeMgr) markLowBondActor(ctx cosmos.Context, desiredNodeSet int64) er
 }
 
 // Mark a bad actor to be churned out
-func (vm *NodeMgr) markBadActor(ctx cosmos.Context, minSlashPointsForBadNode, redline int64) (int64, error) {
-	nas, err := vm.findBadActors(ctx, minSlashPointsForBadNode, redline)
+func (vm *NodeMgr) markBadActor(ctx cosmos.Context, minPenaltyPointsForBadNode, redline int64) (int64, error) {
+	nas, err := vm.findBadActors(ctx, minPenaltyPointsForBadNode, redline)
 	if err != nil {
 		return 0, err
 	}
@@ -1076,7 +977,7 @@ func (vm *NodeMgr) nextVaultNodeAccounts(ctx cosmos.Context, targetCount int) (N
 	}
 
 	// find out all the nodes that had been marked to leave , and update their score again , because even after a node has been marked
-	// to be churn out , they can continue to accumulate slash points, in the scenario that an active node go offline , and consistently fail
+	// to be churn out , they can continue to accumulate penalty points, in the scenario that an active node go offline , and consistently fail
 	// keygen / keysign for a while , we would like to churn it out first
 	lastChurnHeight := getLastChurnHeight(ctx, vm.k)
 	for idx, item := range active {
@@ -1084,13 +985,13 @@ func (vm *NodeMgr) nextVaultNodeAccounts(ctx cosmos.Context, targetCount int) (N
 		if item.LeaveScore == 0 {
 			continue
 		}
-		var slashPts int64
-		slashPts, err = vm.k.GetNodeAccountSlashPoints(ctx, item.NodeAddress)
+		var penaltyPts int64
+		penaltyPts, err = vm.k.GetNodeAccountPenaltyPoints(ctx, item.NodeAddress)
 		if err != nil {
-			ctx.Logger().Error("fail to get node account slash points", "error", err, "node address", item.NodeAddress.String())
+			ctx.Logger().Error("fail to get node account penalty points", "error", err, "node address", item.NodeAddress.String())
 			continue
 		}
-		newScore := vm.getScore(ctx, slashPts, lastChurnHeight)
+		newScore := vm.getScore(ctx, penaltyPts, lastChurnHeight)
 		if !newScore.IsZero() {
 			active[idx].LeaveScore = newScore.Uint64()
 		}

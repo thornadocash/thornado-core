@@ -18,6 +18,12 @@ var (
 	_ sdk.LegacyMsg        = &MsgObservedTxIn{}
 )
 
+const (
+	MaxObservedTxBatchSize      = 100
+	MaxObservedTxCoinItems      = 1
+	MaxObservedTxMetadataLength = 256
+)
+
 // NewMsgObservedTxIn is a constructor function for MsgObservedTxIn
 func NewMsgObservedTxIn(txs common.ObservedTxs, signer cosmos.AccAddress) *MsgObservedTxIn {
 	return &MsgObservedTxIn{
@@ -37,8 +43,11 @@ func (m *MsgObservedTxIn) ValidateBasic() error {
 	if len(m.Txs) == 0 {
 		return cosmos.ErrUnknownRequest("Txs cannot be empty")
 	}
+	if len(m.Txs) > MaxObservedTxBatchSize {
+		return cosmos.ErrUnknownRequest(fmt.Sprintf("too many observed txs: %d, max %d", len(m.Txs), MaxObservedTxBatchSize))
+	}
 	for _, tx := range m.Txs {
-		if err := tx.Valid(); err != nil {
+		if err := validateObservedTxPayload(tx); err != nil {
 			return cosmos.ErrUnknownRequest(err.Error())
 		}
 		obAddr, err := tx.ObservedPubKey.GetAddress(tx.Tx.Coins[0].Asset.GetChain())
@@ -62,6 +71,25 @@ func (m *MsgObservedTxIn) ValidateBasic() error {
 	return nil
 }
 
+func validateObservedTxPayload(tx common.ObservedTx) error {
+	if err := tx.Valid(); err != nil {
+		return err
+	}
+	if len(tx.Tx.Coins) > MaxObservedTxCoinItems {
+		return fmt.Errorf("too many observed tx coins: %d, max %d", len(tx.Tx.Coins), MaxObservedTxCoinItems)
+	}
+	if len(tx.Tx.Gas) > MaxObservedTxCoinItems {
+		return fmt.Errorf("too many observed tx gas coins: %d, max %d", len(tx.Tx.Gas), MaxObservedTxCoinItems)
+	}
+	if len(tx.Aggregator) > MaxObservedTxMetadataLength {
+		return fmt.Errorf("observed tx aggregator too long")
+	}
+	if len(tx.AggregatorTarget) > MaxObservedTxMetadataLength {
+		return fmt.Errorf("observed tx aggregator target too long")
+	}
+	return nil
+}
+
 func observedInboundAddressMatches(pubKey common.PubKey, chain common.Chain, txAddress, rootAddress common.Address) bool {
 	return observedVaultAddressMatches(pubKey, chain, txAddress, rootAddress)
 }
@@ -73,13 +101,19 @@ func observedVaultAddressMatches(pubKey common.PubKey, chain common.Chain, txAdd
 	if !chain.Equals(common.BTCChain) {
 		return false
 	}
-	for pathIndex := common.FirstDepositPathIndex; pathIndex <= common.DepositAddressLookahead; pathIndex++ {
-		childAddress, err := common.DeriveBTCTaprootAddress(pubKey, pathIndex)
+	for _, pathType := range []common.VaultDepositPathType{common.VaultDepositPathUser, common.VaultDepositPathNode} {
+		pathIndexes, err := common.VaultDepositLookaheadPathIndexes(pathType)
 		if err != nil {
 			return false
 		}
-		if txAddress.Equals(childAddress) {
-			return true
+		for _, pathIndex := range pathIndexes {
+			childAddress, err := common.DeriveBTCTaprootAddress(pubKey, pathIndex)
+			if err != nil {
+				return false
+			}
+			if txAddress.Equals(childAddress) {
+				return true
+			}
 		}
 	}
 	return false

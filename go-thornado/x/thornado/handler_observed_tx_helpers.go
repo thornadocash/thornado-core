@@ -24,20 +24,20 @@ func processTxInAttestation(
 	nas NodeAccounts,
 	tx ObservedTx,
 	signer cosmos.AccAddress,
-	shouldSlashForDuplicate bool,
+	shouldPenalizeForDuplicate bool,
 ) (ObservedTxVoter, bool) {
 	k := mgr.Keeper()
-	slasher := mgr.Slasher()
+	penaltyManager := mgr.PenaltyManager()
 
-	observeSlashPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
+	observePenaltyPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
 	lackOfObservationPenalty := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_MissPenaltyPoints)
 	observeFlex := getConfigDurationBlocks(ctx, k, constants.Observation_DelayFlexibilityMinutes)
 
-	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
+	penaltyCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
 		telemetry.NewLabel("reason", "failed_observe_txin"),
 		telemetry.NewLabel("chain", string(tx.Tx.Chain)),
 	}))
-	slashCtx = ctx.WithContext(context.WithValue(slashCtx.Context(), constants.CtxObservedTx, tx.Tx.ID.String()))
+	penaltyCtx = ctx.WithContext(context.WithValue(penaltyCtx.Context(), constants.CtxObservedTx, tx.Tx.ID.String()))
 
 	ok := false
 	if err := k.SetLastObserveHeight(ctx, tx.Tx.Chain, signer, tx.BlockHeight); err != nil {
@@ -47,11 +47,11 @@ func processTxInAttestation(
 	// As an observation requires processing by all nodes no matter what,
 	// any observation should increment Observation_SubmitPenaltyPoints,
 	// to be decremented only if contributing to or within Observation_DelayFlexibilityMinutes of consensus.
-	slasher.IncSlashPoints(slashCtx, observeSlashPoints, signer)
+	penaltyManager.IncPenaltyPoints(penaltyCtx, observePenaltyPoints, signer)
 
 	if !voter.Add(tx, signer) {
-		if !shouldSlashForDuplicate {
-			slasher.DecSlashPoints(slashCtx, observeSlashPoints, signer)
+		if !shouldPenalizeForDuplicate {
+			penaltyManager.DecPenaltyPoints(penaltyCtx, observePenaltyPoints, signer)
 		}
 		// A duplicate message, so do nothing further.
 		return voter, ok
@@ -67,20 +67,20 @@ func processTxInAttestation(
 			voter.Tx = *voter.GetTx(nas)
 
 			// This signer brings the voter to consensus;
-			// decrement all the signers' slash points and increment the non-signers' slash points.
+			// decrement all the signers' penalty points and increment the non-signers' penalty points.
 			signers := voter.GetConsensusSigners()
 			nonSigners := getNonSigners(nas, signers)
-			slasher.DecSlashPoints(slashCtx, observeSlashPoints, signers...)
-			slasher.IncSlashPoints(slashCtx, lackOfObservationPenalty, nonSigners...)
+			penaltyManager.DecPenaltyPoints(penaltyCtx, observePenaltyPoints, signers...)
+			penaltyManager.IncPenaltyPoints(penaltyCtx, lackOfObservationPenalty, nonSigners...)
 		} else if ctx.BlockHeight() <= (voter.FinalisedHeight+observeFlex) &&
 			voter.Tx.IsFinal() == tx.IsFinal() &&
 			voter.Tx.Tx.EqualsEx(tx.Tx) &&
 			!voter.Tx.HasSigned(signer) {
-			// Track already-decremented slash points with the consensus Tx's Signers list.
+			// Track already-decremented penalty points with the consensus Tx's Signers list.
 			voter.Tx.Signers = append(voter.Tx.Signers, signer.String())
-			// event the tx had been processed , given the signer just a bit late , so still take away their slash points
+			// event the tx had been processed , given the signer just a bit late , so still take away their penalty points
 			// but only when the tx signer are voting is the tx that already reached consensus
-			slasher.DecSlashPoints(slashCtx, observeSlashPoints+lackOfObservationPenalty, signer)
+			penaltyManager.DecPenaltyPoints(penaltyCtx, observePenaltyPoints+lackOfObservationPenalty, signer)
 		}
 	}
 	if !ok && voter.HasConsensus(nas) && !tx.IsFinal() && voter.FinalisedHeight == 0 {
@@ -94,20 +94,20 @@ func processTxInAttestation(
 			voter.Tx = *voter.GetTx(nas)
 
 			// This signer brings the voter to consensus;
-			// decrement all the signers' slash points and increment the non-signers' slash points.
+			// decrement all the signers' penalty points and increment the non-signers' penalty points.
 			signers := voter.GetConsensusSigners()
 			nonSigners := getNonSigners(nas, signers)
-			slasher.DecSlashPoints(slashCtx, observeSlashPoints, signers...)
-			slasher.IncSlashPoints(slashCtx, lackOfObservationPenalty, nonSigners...)
+			penaltyManager.DecPenaltyPoints(penaltyCtx, observePenaltyPoints, signers...)
+			penaltyManager.IncPenaltyPoints(penaltyCtx, lackOfObservationPenalty, nonSigners...)
 		} else if ctx.BlockHeight() <= (voter.Height+observeFlex) &&
 			voter.Tx.IsFinal() == tx.IsFinal() &&
 			voter.Tx.Tx.EqualsEx(tx.Tx) &&
 			!voter.Tx.HasSigned(signer) {
-			// Track already-decremented slash points with the consensus Tx's Signers list.
+			// Track already-decremented penalty points with the consensus Tx's Signers list.
 			voter.Tx.Signers = append(voter.Tx.Signers, signer.String())
-			// event the tx had been processed , given the signer just a bit late , so still take away their slash points
+			// event the tx had been processed , given the signer just a bit late , so still take away their penalty points
 			// but only when the tx signer are voting is the tx that already reached consensus
-			slasher.DecSlashPoints(slashCtx, observeSlashPoints+lackOfObservationPenalty, signer)
+			penaltyManager.DecPenaltyPoints(penaltyCtx, observePenaltyPoints+lackOfObservationPenalty, signer)
 		}
 	}
 
@@ -273,21 +273,21 @@ func processTxOutAttestation(
 	nas NodeAccounts,
 	tx ObservedTx,
 	signer cosmos.AccAddress,
-	shouldSlashForDuplicate bool,
+	shouldPenalizeForDuplicate bool,
 ) (ObservedTxVoter, bool) {
 	k := mgr.Keeper()
-	slasher := mgr.Slasher()
+	penaltyManager := mgr.PenaltyManager()
 
-	observeSlashPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
+	observePenaltyPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
 	lackOfObservationPenalty := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_MissPenaltyPoints)
 	observeFlex := getConfigDurationBlocks(ctx, k, constants.Observation_DelayFlexibilityMinutes)
 	ok := false
 
-	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
+	penaltyCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
 		telemetry.NewLabel("reason", "failed_observe_txout"),
 		telemetry.NewLabel("chain", string(tx.Tx.Chain)),
 	}))
-	slashCtx = ctx.WithContext(context.WithValue(slashCtx.Context(), constants.CtxObservedTx, tx.Tx.ID.String()))
+	penaltyCtx = ctx.WithContext(context.WithValue(penaltyCtx.Context(), constants.CtxObservedTx, tx.Tx.ID.String()))
 
 	if err := k.SetLastObserveHeight(ctx, tx.Tx.Chain, signer, tx.BlockHeight); err != nil {
 		ctx.Logger().Error("fail to save last observe height", "error", err, "signer", signer, "chain", tx.Tx.Chain)
@@ -296,11 +296,11 @@ func processTxOutAttestation(
 	// As an observation requires processing by all nodes no matter what,
 	// any observation should increment Observation_SubmitPenaltyPoints,
 	// to be decremented only if contributing to or within Observation_DelayFlexibilityMinutes of consensus.
-	slasher.IncSlashPoints(slashCtx, observeSlashPoints, signer)
+	penaltyManager.IncPenaltyPoints(penaltyCtx, observePenaltyPoints, signer)
 
 	if !voter.Add(tx, signer) {
-		if !shouldSlashForDuplicate {
-			slasher.DecSlashPoints(slashCtx, observeSlashPoints, signer)
+		if !shouldPenalizeForDuplicate {
+			penaltyManager.DecPenaltyPoints(penaltyCtx, observePenaltyPoints, signer)
 		}
 		// A duplicate message, so do nothing further.
 		return voter, ok
@@ -331,19 +331,19 @@ func processTxOutAttestation(
 			)
 
 			// This signer brings the voter to consensus;
-			// decrement all the signers' slash points and increment the non-signers' slash points.
+			// decrement all the signers' penalty points and increment the non-signers' penalty points.
 			signers := voter.GetConsensusSigners()
 			nonSigners := getNonSigners(nas, signers)
-			slasher.DecSlashPoints(slashCtx, observeSlashPoints, signers...)
-			slasher.IncSlashPoints(slashCtx, lackOfObservationPenalty, nonSigners...)
+			penaltyManager.DecPenaltyPoints(penaltyCtx, observePenaltyPoints, signers...)
+			penaltyManager.IncPenaltyPoints(penaltyCtx, lackOfObservationPenalty, nonSigners...)
 		} else if ctx.BlockHeight() <= (voter.FinalisedHeight+observeFlex) &&
 			voter.Tx.IsFinal() == tx.IsFinal() &&
 			voter.Tx.Tx.EqualsEx(tx.Tx) &&
 			!voter.Tx.HasSigned(signer) {
-			// Track already-decremented slash points with the consensus Tx's Signers list.
+			// Track already-decremented penalty points with the consensus Tx's Signers list.
 			voter.Tx.Signers = append(voter.Tx.Signers, signer.String())
-			// event the tx had been processed , given the signer just a bit late , so we still take away their slash points
-			slasher.DecSlashPoints(slashCtx, observeSlashPoints+lackOfObservationPenalty, signer)
+			// event the tx had been processed , given the signer just a bit late , so we still take away their penalty points
+			penaltyManager.DecPenaltyPoints(penaltyCtx, observePenaltyPoints+lackOfObservationPenalty, signer)
 		}
 
 		// Gas correction for re-org re-observations.
@@ -374,20 +374,20 @@ func processTxOutAttestation(
 			voter.Tx = *voter.GetTx(nas)
 
 			// This signer brings the voter to consensus;
-			// decrement all the signers' slash points and increment the non-signers' slash points.
+			// decrement all the signers' penalty points and increment the non-signers' penalty points.
 			signers := voter.GetConsensusSigners()
 			nonSigners := getNonSigners(nas, signers)
-			slasher.DecSlashPoints(slashCtx, observeSlashPoints, signers...)
-			slasher.IncSlashPoints(slashCtx, lackOfObservationPenalty, nonSigners...)
+			penaltyManager.DecPenaltyPoints(penaltyCtx, observePenaltyPoints, signers...)
+			penaltyManager.IncPenaltyPoints(penaltyCtx, lackOfObservationPenalty, nonSigners...)
 		} else if ctx.BlockHeight() <= (voter.Height+observeFlex) &&
 			voter.Tx.IsFinal() == tx.IsFinal() &&
 			voter.Tx.Tx.EqualsEx(tx.Tx) &&
 			!voter.Tx.HasSigned(signer) {
-			// Track already-decremented slash points with the consensus Tx's Signers list.
+			// Track already-decremented penalty points with the consensus Tx's Signers list.
 			voter.Tx.Signers = append(voter.Tx.Signers, signer.String())
-			// event the tx had been processed , given the signer just a bit late , so still take away their slash points
+			// event the tx had been processed , given the signer just a bit late , so still take away their penalty points
 			// but only when the tx signer are voting is the tx that already reached consensus
-			slasher.DecSlashPoints(slashCtx, observeSlashPoints+lackOfObservationPenalty, signer)
+			penaltyManager.DecPenaltyPoints(penaltyCtx, observePenaltyPoints+lackOfObservationPenalty, signer)
 		}
 
 		// Gas correction for re-org re-observations (non-finalized consensus path).
@@ -545,7 +545,7 @@ func handleObservedTxOutQuorum(
 	k := mgr.Keeper()
 
 	if isCancelOrApprovalTx(tx) {
-		ctx.Logger().Info("skipping slash for cancel tx", "txid", tx.Tx.ID)
+		ctx.Logger().Info("skipping penalty for cancel tx", "txid", tx.Tx.ID)
 		// Credit gas to gas manager and deduct from vault (legit operational spend, no penalty)
 		// This also adds to fee_spent_rune for dynamic outbound fee calculation
 		if err := addGasFees(ctx, mgr, tx); err != nil {
@@ -554,7 +554,7 @@ func handleObservedTxOutQuorum(
 		return nil
 	}
 
-	vaultSlash := false
+	vaultPenalty := false
 	txOut := voter.GetTx(activeNodeAccounts) // get consensus tx, in case our for loop is incorrect
 	if txOut == nil || txOut.IsEmpty() {
 		ctx.Logger().Error("fail to get consensus tx from voter", "txid", tx.Tx.ID)
@@ -581,8 +581,8 @@ func handleObservedTxOutQuorum(
 	// Vault accounting - always runs because outbound is irrevocable.
 	// Gas and coin deductions must happen regardless of handler success.
 
-	// only deduct gas fee via the manager if there was not a vault slash that covered it
-	if !vaultSlash {
+	// only deduct gas fee via the manager if there was not a vault penalty that covered it
+	if !vaultPenalty {
 		if err := addGasFees(ctx, mgr, tx); err != nil {
 			ctx.Logger().Error("fail to add gas fee", "error", err)
 		}
@@ -594,8 +594,8 @@ func handleObservedTxOutQuorum(
 	if err != nil {
 		ctx.Logger().Error("fail to get vault", "error", err)
 	} else {
-		// if the vault was slashed we skipped the gas manager above and deduct gas directly
-		if vaultSlash {
+		// if the vault was penalized we skipped the gas manager above and deduct gas directly
+		if vaultPenalty {
 			vault.SubFunds(tx.Tx.Gas.ToCoins())
 		}
 
@@ -735,13 +735,19 @@ func isBTCChildSweepToRoot(tx ObservedTx, pubkey common.PubKey) bool {
 	if err != nil || !tx.Tx.ToAddress.Equals(rootAddr) {
 		return false
 	}
-	for pathIndex := uint64(common.FirstDepositPathIndex); pathIndex <= common.DepositAddressLookahead; pathIndex++ {
-		childAddr, err := common.DeriveBTCTaprootAddress(pubkey, pathIndex)
+	for _, pathType := range []common.VaultDepositPathType{common.VaultDepositPathUser, common.VaultDepositPathNode} {
+		pathIndexes, err := common.VaultDepositLookaheadPathIndexes(pathType)
 		if err != nil {
 			return false
 		}
-		if tx.Tx.FromAddress.Equals(childAddr) {
-			return true
+		for _, pathIndex := range pathIndexes {
+			childAddr, err := common.DeriveBTCTaprootAddress(pubkey, pathIndex)
+			if err != nil {
+				return false
+			}
+			if tx.Tx.FromAddress.Equals(childAddr) {
+				return true
+			}
 		}
 	}
 	return false

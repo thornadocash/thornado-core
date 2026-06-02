@@ -39,7 +39,7 @@ func (h ProposeUpgradeHandler) Run(ctx cosmos.Context, m cosmos.Msg) (*cosmos.Re
 
 	ctx.Logger().Info(
 		"Node propose upgrade",
-		"thor_address", msg.Signer.String(),
+		"node_address", msg.Signer.String(),
 		"name", msg.Name,
 		"height", u.Height,
 		"info", u.Info,
@@ -123,7 +123,7 @@ func (h ProposeUpgradeHandler) handle(ctx cosmos.Context, msg *MsgProposeUpgrade
 
 	ctx.EventManager().EmitEvent(
 		cosmos.NewEvent("propose_upgrade",
-			cosmos.NewAttribute("thor_address", msg.Signer.String()),
+			cosmos.NewAttribute("node_address", msg.Signer.String()),
 			cosmos.NewAttribute("name", name),
 			cosmos.NewAttribute("height", strconv.FormatInt(u.Height, 10)),
 			cosmos.NewAttribute("info", u.Info),
@@ -134,7 +134,7 @@ func (h ProposeUpgradeHandler) handle(ctx cosmos.Context, msg *MsgProposeUpgrade
 
 	ctx.EventManager().EmitEvent(
 		cosmos.NewEvent("approve_upgrade",
-			cosmos.NewAttribute("thor_address", msg.Signer.String()),
+			cosmos.NewAttribute("node_address", msg.Signer.String()),
 			cosmos.NewAttribute("name", name),
 		),
 	)
@@ -163,7 +163,7 @@ func (h ApproveUpgradeHandler) Run(ctx cosmos.Context, m cosmos.Msg) (*cosmos.Re
 
 	ctx.Logger().Info(
 		"Node approving upgrade",
-		"thor_address", msg.Signer.String(),
+		"node_address", msg.Signer.String(),
 		"name", msg.Name,
 	)
 
@@ -217,7 +217,7 @@ func (h ApproveUpgradeHandler) handle(ctx cosmos.Context, msg *MsgApproveUpgrade
 
 	ctx.EventManager().EmitEvent(
 		cosmos.NewEvent("approve_upgrade",
-			cosmos.NewAttribute("thor_address", msg.Signer.String()),
+			cosmos.NewAttribute("node_address", msg.Signer.String()),
 			cosmos.NewAttribute("name", name),
 		),
 	)
@@ -245,7 +245,7 @@ func (h RejectUpgradeHandler) Run(ctx cosmos.Context, m cosmos.Msg) (*cosmos.Res
 	}
 	ctx.Logger().Info(
 		"Node rejecting upgrade",
-		"thor_address", msg.Signer.String(),
+		"node_address", msg.Signer.String(),
 		"name", msg.Name,
 	)
 	if err := h.validate(ctx, msg); err != nil {
@@ -296,7 +296,7 @@ func (h RejectUpgradeHandler) handle(ctx cosmos.Context, msg *MsgRejectUpgrade) 
 
 	ctx.EventManager().EmitEvent(
 		cosmos.NewEvent("reject_upgrade",
-			cosmos.NewAttribute("thor_address", msg.Signer.String()),
+			cosmos.NewAttribute("node_address", msg.Signer.String()),
 			cosmos.NewAttribute("name", name),
 		),
 	)
@@ -424,5 +424,5 @@ func ActiveNodeAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper
 		return ctx, err
 	}
 
-	return ctx, k.DeductNativeTxFeeFromBond(ctx, signer)
+	return ctx, nil
 }

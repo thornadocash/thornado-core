@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"sort"
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -20,7 +21,6 @@ import (
 )
 
 type ShielderRedeemRequest struct {
-	Owner  cosmos.AccAddress
 	Proof  json.RawMessage
 	Public json.RawMessage
 }
@@ -41,35 +41,9 @@ type shielderNoteCommitment struct {
 }
 
 func CreateNodeSlotAuction(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAddress, nodePubKey string, reserveSats uint64, expiryHeight int64) (types.NodeSlotAuction, error) {
-	if seller.Empty() {
-		return types.NodeSlotAuction{}, fmt.Errorf("missing node slot auction seller")
-	}
-	if expiryHeight <= ctx.BlockHeight() {
-		return types.NodeSlotAuction{}, fmt.Errorf("node slot auction expiry must be in the future")
-	}
-	duration := expiryHeight - ctx.BlockHeight()
-	if minExpiry := getConfigDurationBlocks(ctx, k, constants.NodeSale_AuctionExpiryMinMinutes); minExpiry > 0 && duration < minExpiry {
-		return types.NodeSlotAuction{}, fmt.Errorf("node slot auction expiry below minimum: %d/%d", duration, minExpiry)
-	}
-	if maxExpiry := getConfigDurationBlocks(ctx, k, constants.NodeSale_AuctionExpiryMaxMinutes); maxExpiry > 0 && duration > maxExpiry {
-		return types.NodeSlotAuction{}, fmt.Errorf("node slot auction expiry above maximum: %d/%d", duration, maxExpiry)
-	}
-	bond, err := k.GetShielderNodeBond(ctx, nodePubKey)
+	bond, err := validateNodeSlotAuctionCreate(ctx, k, seller, nodePubKey, expiryHeight)
 	if err != nil {
 		return types.NodeSlotAuction{}, err
-	}
-	if bond.NodePubKey == "" || bond.BondSats == 0 {
-		return types.NodeSlotAuction{}, fmt.Errorf("node has no bonded slot")
-	}
-	nodeAccount, err := k.GetNodeAccount(ctx, bond.NodeAddress)
-	if err != nil {
-		return types.NodeSlotAuction{}, err
-	}
-	if nodeAccount.BondAddress.String() != seller.String() {
-		return types.NodeSlotAuction{}, fmt.Errorf("node slot auction seller mismatch")
-	}
-	if nodeAccount.Status != NodeStandby {
-		return types.NodeSlotAuction{}, fmt.Errorf("node slot must be standby before auction")
 	}
 	auctionID := nodeSlotAuctionID(nodePubKey, bond.Slot, ctx.BlockHeight())
 	auction := types.NodeSlotAuction{
@@ -88,7 +62,102 @@ func CreateNodeSlotAuction(ctx cosmos.Context, k keeper.Keeper, seller cosmos.Ac
 	return auction, k.SetNodeSlotAuction(ctx, auction)
 }
 
+func validateNodeSlotAuctionCreate(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAddress, nodePubKey string, expiryHeight int64) (types.ShielderNodeBond, error) {
+	if seller.Empty() {
+		return types.ShielderNodeBond{}, fmt.Errorf("missing node slot auction seller")
+	}
+	if expiryHeight <= ctx.BlockHeight() {
+		return types.ShielderNodeBond{}, fmt.Errorf("node slot auction expiry must be in the future")
+	}
+	duration := expiryHeight - ctx.BlockHeight()
+	if minExpiry := getConfigDurationBlocks(ctx, k, constants.NodeSale_AuctionExpiryMinMinutes); minExpiry > 0 && duration < minExpiry {
+		return types.ShielderNodeBond{}, fmt.Errorf("node slot auction expiry below minimum: %d/%d", duration, minExpiry)
+	}
+	if maxExpiry := getConfigDurationBlocks(ctx, k, constants.NodeSale_AuctionExpiryMaxMinutes); maxExpiry > 0 && duration > maxExpiry {
+		return types.ShielderNodeBond{}, fmt.Errorf("node slot auction expiry above maximum: %d/%d", duration, maxExpiry)
+	}
+	bond, err := k.GetShielderNodeBond(ctx, nodePubKey)
+	if err != nil {
+		return types.ShielderNodeBond{}, err
+	}
+	if bond.NodePubKey == "" || bond.BondSats == 0 || !bond.FeeShareActive || bond.Sold {
+		return types.ShielderNodeBond{}, fmt.Errorf("node has no active bonded slot")
+	}
+	nodeAccount, err := k.GetNodeAccount(ctx, bond.NodeAddress)
+	if err != nil {
+		return types.ShielderNodeBond{}, err
+	}
+	if nodeAccount.BondAddress.String() != seller.String() {
+		return types.ShielderNodeBond{}, fmt.Errorf("node slot auction seller mismatch")
+	}
+	if nodeAccount.Status != NodeStandby {
+		return types.ShielderNodeBond{}, fmt.Errorf("node slot must be standby before auction")
+	}
+	iter := k.GetNodeSlotAuctionIterator(ctx)
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		var auction types.NodeSlotAuction
+		if err := json.Unmarshal(iter.Value(), &auction); err != nil {
+			return types.ShielderNodeBond{}, err
+		}
+		if auction.SellerNodePubKey != nodePubKey {
+			continue
+		}
+		switch auction.Status {
+		case types.NodeSlotAuctionOpen:
+			if auction.ExpiryHeight > ctx.BlockHeight() {
+				return types.ShielderNodeBond{}, fmt.Errorf("node slot auction already open")
+			}
+		case types.NodeSlotAuctionSelected:
+			return types.ShielderNodeBond{}, fmt.Errorf("node slot auction already selected")
+		}
+	}
+	return bond, nil
+}
+
+func validateNodeSlotBidPow(ctx cosmos.Context, k keeper.Keeper, bidder cosmos.AccAddress, powToken, auctionID string) error {
+	auction, err := k.GetNodeSlotAuction(ctx, auctionID)
+	if err != nil {
+		return err
+	}
+	if auction.AuctionID == "" || auction.Status != types.NodeSlotAuctionOpen {
+		return fmt.Errorf("node slot auction is not open")
+	}
+	if auction.ExpiryHeight <= ctx.BlockHeight() {
+		return fmt.Errorf("node slot auction expired")
+	}
+	if err := validateDepositPowToken(ctx, k, bidder, powToken); err != nil {
+		return err
+	}
+	if existing, err := k.GetDepositSessionByPowToken(ctx, strings.TrimSpace(powToken)); err == nil && !existing.DepositAddress.IsEmpty() {
+		expiry := getConfigDurationBlocks(ctx, k, constants.Deposit_PowExpiryMinutes)
+		if expiry <= 0 || existing.CreatedHeight+expiry >= ctx.BlockHeight() {
+			return fmt.Errorf("deposit pow token already used")
+		}
+	}
+	return nil
+}
+
 func SelectNodeSlotBid(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAddress, auctionID, bidID string) (types.NodeSlotAuction, types.NodeSlotBid, error) {
+	auction, bid, err := validateNodeSlotBidSelection(ctx, k, seller, auctionID, bidID)
+	if err != nil {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, err
+	}
+	auction.SelectedBidID = bid.BidID
+	auction.Status = types.NodeSlotAuctionSelected
+	auction.UpdatedHeight = ctx.BlockHeight()
+	bid.Selected = true
+	bid.UpdatedHeight = ctx.BlockHeight()
+	if err := k.SetNodeSlotAuction(ctx, auction); err != nil {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, err
+	}
+	if err := k.SetNodeSlotBid(ctx, bid); err != nil {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, err
+	}
+	return auction, bid, nil
+}
+
+func validateNodeSlotBidSelection(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAddress, auctionID, bidID string) (types.NodeSlotAuction, types.NodeSlotBid, error) {
 	auction, err := k.GetNodeSlotAuction(ctx, auctionID)
 	if err != nil {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, err
@@ -128,47 +197,13 @@ func SelectNodeSlotBid(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAdd
 	if deposit.DepositID.IsEmpty() || deposit.Status != types.DepositStatusDepositMatched {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, fmt.Errorf("node slot bid deposit is not settleable")
 	}
-	auction.SelectedBidID = bid.BidID
-	auction.Status = types.NodeSlotAuctionSelected
-	auction.UpdatedHeight = ctx.BlockHeight()
-	bid.Selected = true
-	bid.UpdatedHeight = ctx.BlockHeight()
-	if err := k.SetNodeSlotAuction(ctx, auction); err != nil {
-		return types.NodeSlotAuction{}, types.NodeSlotBid{}, err
-	}
-	if err := k.SetNodeSlotBid(ctx, bid); err != nil {
-		return types.NodeSlotAuction{}, types.NodeSlotBid{}, err
-	}
 	return auction, bid, nil
 }
 
 func SplitNodeSlotSale(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAddress, auctionID, bidID string, sellerCommitments []string) (types.DepositRecord, error) {
-	auction, err := k.GetNodeSlotAuction(ctx, auctionID)
+	auction, bid, deposit, err := validateNodeSlotAuctionSplit(ctx, k, seller, auctionID, bidID, sellerCommitments)
 	if err != nil {
 		return types.DepositRecord{}, err
-	}
-	if auction.AuctionID == "" || auction.Status != types.NodeSlotAuctionSelected || auction.SelectedBidID != strings.TrimSpace(bidID) {
-		return types.DepositRecord{}, fmt.Errorf("node slot auction bid not selected")
-	}
-	if !auction.Seller.Equals(seller) {
-		return types.DepositRecord{}, fmt.Errorf("node slot auction seller mismatch")
-	}
-	bid, err := k.GetNodeSlotBid(ctx, bidID)
-	if err != nil {
-		return types.DepositRecord{}, err
-	}
-	if bid.BidID == "" || bid.Settled {
-		return types.DepositRecord{}, fmt.Errorf("node slot bid is not settleable")
-	}
-	deposit, err := k.GetDepositRecord(ctx, bid.DepositID)
-	if err != nil {
-		return types.DepositRecord{}, err
-	}
-	if deposit.DepositID.IsEmpty() || len(deposit.Commitments) > 0 {
-		return types.DepositRecord{}, fmt.Errorf("node slot sale deposit is not splittable")
-	}
-	if deposit.Status != types.DepositStatusDepositMatched {
-		return types.DepositRecord{}, fmt.Errorf("node slot sale deposit is not matched")
 	}
 	sellerPayout := auction.OriginalBondSats
 	if bid.AmountSats < sellerPayout {
@@ -234,6 +269,51 @@ func SplitNodeSlotSale(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAdd
 		return types.DepositRecord{}, err
 	}
 	return deposit, nil
+}
+
+func validateNodeSlotAuctionSplit(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAddress, auctionID, bidID string, sellerCommitments []string) (types.NodeSlotAuction, types.NodeSlotBid, types.DepositRecord, error) {
+	auction, err := k.GetNodeSlotAuction(ctx, auctionID)
+	if err != nil {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, err
+	}
+	if auction.AuctionID == "" || auction.Status != types.NodeSlotAuctionSelected || auction.SelectedBidID != strings.TrimSpace(bidID) {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot auction bid not selected")
+	}
+	if auction.ExpiryHeight <= ctx.BlockHeight() {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot auction expired")
+	}
+	if !auction.Seller.Equals(seller) {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot auction seller mismatch")
+	}
+	bid, err := k.GetNodeSlotBid(ctx, bidID)
+	if err != nil {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, err
+	}
+	if bid.BidID == "" || bid.Settled {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot bid is not settleable")
+	}
+	deposit, err := k.GetDepositRecord(ctx, bid.DepositID)
+	if err != nil {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, err
+	}
+	if deposit.DepositID.IsEmpty() || len(deposit.Commitments) > 0 {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot sale deposit is not splittable")
+	}
+	if deposit.Status != types.DepositStatusDepositMatched {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot sale deposit is not matched")
+	}
+	sellerPayout := auction.OriginalBondSats
+	if bid.AmountSats < sellerPayout {
+		sellerPayout = bid.AmountSats
+	}
+	notes, err := parseShielderNoteCommitments(sellerCommitments, sellerPayout, false)
+	if err != nil {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, err
+	}
+	if _, _, err := applyShielderNoteFloor(ctx, k, notes, sellerPayout, false); err != nil {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, err
+	}
+	return auction, bid, deposit, nil
 }
 
 func recordPendingShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, session types.DepositSession, amountSats uint64) (uint64, error) {
@@ -373,13 +453,11 @@ func PostShielderSplit(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 		}
 		deposit.Status = types.DepositStatusSettled
 	case types.DepositStatusSettled:
-		if deposit.Settlement == "" {
-			return types.DepositRecord{}, fmt.Errorf("deposit missing settlement")
+		if deposit.Settlement == "" || deposit.SplitSats != 0 || len(deposit.Commitments) != 0 {
+			return types.DepositRecord{}, fmt.Errorf("duplicate deposit settlement")
 		}
 	case types.DepositStatusCommitted:
-		if deposit.Settlement == "" {
-			return types.DepositRecord{}, fmt.Errorf("deposit missing settlement")
-		}
+		return types.DepositRecord{}, fmt.Errorf("deposit already split")
 	default:
 		return types.DepositRecord{}, fmt.Errorf("deposit is not matched")
 	}
@@ -395,7 +473,7 @@ func PostShielderSplit(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 	if err != nil {
 		return types.DepositRecord{}, err
 	}
-	noteCommitments, floorRemainder, err := applyShielderNoteFloor(ctx, k, noteCommitments, availableSats, true)
+	noteCommitments, floorRemainder, err := applyShielderNoteFloor(ctx, k, noteCommitments, availableSats, false)
 	if err != nil {
 		return types.DepositRecord{}, err
 	}
@@ -430,8 +508,8 @@ func PostShielderSplit(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 	if total == 0 {
 		return types.DepositRecord{}, fmt.Errorf("missing shielder commitment amount")
 	}
-	if total > availableSats {
-		return types.DepositRecord{}, fmt.Errorf("shielder commitment denominations exceed deposit amount")
+	if total != availableSats {
+		return types.DepositRecord{}, fmt.Errorf("shielder commitment denominations must match deposit amount")
 	}
 
 	for _, note := range noteCommitments {
@@ -456,15 +534,11 @@ func PostShielderSplit(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 		if err := k.SetShielderDenominationCommitment(ctx, note.DenominationSats, note.Commitment, depositID); err != nil {
 			return types.DepositRecord{}, err
 		}
-		if strings.TrimSpace(note.OwnerPubkey) != "" {
-			if err := k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
-				OwnerPubkey:      strings.TrimSpace(note.OwnerPubkey),
-				Commitment:       note.Commitment,
-				DenominationSats: note.DenominationSats,
-				DepositID:        depositID,
-			}); err != nil {
-				return types.DepositRecord{}, err
-			}
+		if err := k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+			Commitment:       note.Commitment,
+			DenominationSats: note.DenominationSats,
+		}); err != nil {
+			return types.DepositRecord{}, err
 		}
 		byDenomination[note.DenominationSats] = append(byDenomination[note.DenominationSats], note.Commitment)
 	}
@@ -502,7 +576,7 @@ func AccAddressFromCompressedSecp256k1(pubkeyHex string) (cosmos.AccAddress, err
 	return cosmos.AccAddress(pubkey.Address()), nil
 }
 
-func VerifyGaslessSplitAuthorization(depositPubkey string, signatureHex string, depositID string, amountSats uint64, commitments []string) error {
+func VerifySplitAuthorization(depositPubkey string, signatureHex string, depositID string, amountSats uint64, commitments []string) error {
 	notes := make([]shielderNoteCommitment, 0, len(commitments))
 	for _, raw := range commitments {
 		var note shielderNoteCommitment
@@ -721,15 +795,11 @@ func insertShielderCommitments(ctx cosmos.Context, k keeper.Keeper, depositID co
 		if err := k.SetShielderDenominationCommitment(ctx, note.DenominationSats, note.Commitment, depositID); err != nil {
 			return err
 		}
-		if strings.TrimSpace(note.OwnerPubkey) != "" {
-			if err := k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
-				OwnerPubkey:      strings.TrimSpace(note.OwnerPubkey),
-				Commitment:       note.Commitment,
-				DenominationSats: note.DenominationSats,
-				DepositID:        depositID,
-			}); err != nil {
-				return err
-			}
+		if err := k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+			Commitment:       note.Commitment,
+			DenominationSats: note.DenominationSats,
+		}); err != nil {
+			return err
 		}
 		byDenomination[note.DenominationSats] = append(byDenomination[note.DenominationSats], note.Commitment)
 	}
@@ -853,9 +923,6 @@ func transferNodeSlotSaleBond(ctx cosmos.Context, k keeper.Keeper, auction types
 }
 
 func AuthorizeShielderRedeem(ctx cosmos.Context, k keeper.Keeper, req ShielderRedeemRequest) (types.ShielderRedeem, error) {
-	if req.Owner.Empty() {
-		return types.ShielderRedeem{}, fmt.Errorf("missing shielder redeem owner")
-	}
 	if err := VerifyShielderRedeemJSON(req.Proof, req.Public); err != nil {
 		return types.ShielderRedeem{}, err
 	}
@@ -891,7 +958,6 @@ func AuthorizeShielderRedeem(ctx cosmos.Context, k keeper.Keeper, req ShielderRe
 	}
 	withdrawal := types.ShielderRedeem{
 		WithdrawalID:    withdrawalID,
-		Owner:           req.Owner,
 		NullifierHash:   publicInputs.NullifierHash,
 		MerkleRoot:      publicInputs.MerkleRoot,
 		Recipient:       recipient,
@@ -941,7 +1007,7 @@ func shielderBondRequiredSats(ctx cosmos.Context, k keeper.Keeper, slot uint64) 
 }
 
 func validateDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, powToken string) error {
-	difficulty := k.GetConfigInt64(ctx, constants.Deposit_PowDifficultyMin)
+	difficulty := currentDepositPowDifficulty(ctx, k)
 	if difficulty <= 0 {
 		return nil
 	}
@@ -965,6 +1031,132 @@ func validateDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.A
 		}
 	}
 	return nil
+}
+
+func currentDepositPowDifficulty(ctx cosmos.Context, k keeper.Keeper) int64 {
+	state, err := k.GetDepositPowDifficultyState(ctx)
+	if err == nil && state.Difficulty > 0 {
+		return state.Difficulty
+	}
+	return k.GetConfigInt64(ctx, constants.Deposit_PowDifficultyMin)
+}
+
+func RetargetDepositPowDifficulty(ctx cosmos.Context, k keeper.Keeper) error {
+	state, err := k.GetDepositPowDifficultyState(ctx)
+	if err != nil {
+		return err
+	}
+	if state.Difficulty <= 0 {
+		state.Difficulty = k.GetConfigInt64(ctx, constants.Deposit_PowDifficultyMin)
+	}
+	lastRetargetHeight := state.LastRetargetHeight
+
+	samples, totalWeight, err := depositPowRetargetSamples(ctx, k, lastRetargetHeight)
+	if err != nil {
+		return err
+	}
+	minSamples := uint64(k.GetConfigInt64(ctx, constants.Deposit_PowSamplesMin))
+	if uint64(len(samples)) < minSamples || totalWeight == 0 {
+		state.LastRetargetHeight = ctx.BlockHeight()
+		state.SampleCount = uint64(len(samples))
+		state.UpdatedHeight = ctx.BlockHeight()
+		return k.SetDepositPowDifficultyState(ctx, state)
+	}
+
+	percentile := k.GetConfigInt64(ctx, constants.Deposit_PowTargetPercentile)
+	if percentile <= 0 || percentile > 100 {
+		percentile = 90
+	}
+	targetMs := uint64(k.GetConfigInt64(ctx, constants.Deposit_PowTargetSeconds)) * 1000
+	if targetMs == 0 {
+		targetMs = 10_000
+	}
+	p90 := weightedPowPercentile(samples, totalWeight, uint64(percentile))
+	nextDifficulty := retargetPowDifficulty(state.Difficulty, p90, targetMs, k.GetConfigInt64(ctx, constants.Deposit_PowRetargetStepMax))
+	minDifficulty := k.GetConfigInt64(ctx, constants.Deposit_PowDifficultyMin)
+	maxDifficulty := k.GetConfigInt64(ctx, constants.Deposit_PowDifficultyMax)
+	if nextDifficulty < minDifficulty {
+		nextDifficulty = minDifficulty
+	}
+	if maxDifficulty > 0 && nextDifficulty > maxDifficulty {
+		nextDifficulty = maxDifficulty
+	}
+
+	state.Difficulty = nextDifficulty
+	state.LastRetargetHeight = ctx.BlockHeight()
+	state.SampleCount = uint64(len(samples))
+	state.WeightedP90Ms = p90
+	state.UpdatedHeight = ctx.BlockHeight()
+	return k.SetDepositPowDifficultyState(ctx, state)
+}
+
+type depositPowRetargetSample struct {
+	durationMs uint64
+	weightSats uint64
+}
+
+func depositPowRetargetSamples(ctx cosmos.Context, k keeper.Keeper, sinceHeight int64) ([]depositPowRetargetSample, uint64, error) {
+	iter := k.GetDepositPowTimingIterator(ctx)
+	defer iter.Close()
+
+	var samples []depositPowRetargetSample
+	var totalWeight uint64
+	for ; iter.Valid(); iter.Next() {
+		var record types.DepositPowTiming
+		if err := json.Unmarshal(iter.Value(), &record); err != nil {
+			return nil, 0, err
+		}
+		if !record.Deposited || record.MatchedHeight <= sinceHeight || record.DurationMs == 0 || record.DepositAmountSats == 0 {
+			continue
+		}
+		samples = append(samples, depositPowRetargetSample{
+			durationMs: record.DurationMs,
+			weightSats: record.DepositAmountSats,
+		})
+		totalWeight += record.DepositAmountSats
+	}
+	return samples, totalWeight, nil
+}
+
+func weightedPowPercentile(samples []depositPowRetargetSample, totalWeight, percentile uint64) uint64 {
+	if len(samples) == 0 || totalWeight == 0 {
+		return 0
+	}
+	sort.Slice(samples, func(i, j int) bool {
+		return samples[i].durationMs < samples[j].durationMs
+	})
+	targetWeight := (totalWeight*percentile + 99) / 100
+	var seen uint64
+	for _, sample := range samples {
+		seen += sample.weightSats
+		if seen >= targetWeight {
+			return sample.durationMs
+		}
+	}
+	return samples[len(samples)-1].durationMs
+}
+
+func retargetPowDifficulty(current int64, observedMs, targetMs uint64, maxStep int64) int64 {
+	if current <= 0 || observedMs == 0 || targetMs == 0 {
+		return current
+	}
+	if maxStep <= 0 {
+		maxStep = 1
+	}
+	step := int64(0)
+	if observedMs*2 < targetMs {
+		for adjusted := observedMs; adjusted*2 < targetMs && step < maxStep; adjusted *= 2 {
+			step++
+		}
+		return current + step
+	}
+	if observedMs > targetMs*2 {
+		for adjusted := observedMs; adjusted > targetMs*2 && step < maxStep; adjusted /= 2 {
+			step++
+		}
+		return current - step
+	}
+	return current
 }
 
 func addWithdrawalFee(ctx cosmos.Context, k keeper.Keeper, amountSats uint64) error {
@@ -1017,6 +1209,9 @@ func SplitShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 	if bond.NodePubKey == "" || !bond.FeeShareActive {
 		return types.DepositRecord{}, fmt.Errorf("shielder node has no confirmed bond")
 	}
+	if !bond.NodeAddress.Equals(owner) {
+		return types.DepositRecord{}, fmt.Errorf("shielder fee owner mismatch")
+	}
 	if !bond.PendingFeeDepositID.IsEmpty() {
 		return types.DepositRecord{}, fmt.Errorf("shielder fee settlement already pending split")
 	}
@@ -1029,6 +1224,9 @@ func SplitShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 		return types.DepositRecord{}, fmt.Errorf("no shielder fees claimable")
 	}
 	claimSats := accrued - bond.FeeDebtSats
+	if pool.TotalClaimedSats > pool.TotalCollectedSats || claimSats > pool.TotalCollectedSats-pool.TotalClaimedSats {
+		return types.DepositRecord{}, fmt.Errorf("shielder fee claim exceeds available fees")
+	}
 	depositID, err := shielderFeeDepositID(nodePubKey, owner, accrued, ctx.BlockHeight())
 	if err != nil {
 		return types.DepositRecord{}, err
@@ -1096,6 +1294,12 @@ func SplitShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 			return types.DepositRecord{}, err
 		}
 		if err := k.SetShielderFeeNotePubKey(ctx, notePubKeys[idx], deposit.DepositID); err != nil {
+			return types.DepositRecord{}, err
+		}
+		if err := k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+			Commitment:       note.Commitment,
+			DenominationSats: note.DenominationSats,
+		}); err != nil {
 			return types.DepositRecord{}, err
 		}
 		byDenomination[note.DenominationSats] = append(byDenomination[note.DenominationSats], note.Commitment)

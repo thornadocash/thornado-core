@@ -17,11 +17,11 @@ func TestAddPubKeyRegistersBaseVaultBeforeDepositLookahead(t *testing.T) {
 	}
 
 	pkm := &PubKeyManager{
-		rwMutex:          &sync.RWMutex{},
-		logger:           zerolog.Nop(),
-		callback:         []OnNewPubKey{},
-		pathCallback:     []OnNewPubKeyPath{},
-		depositAddresses: map[string]common.ChainPoolInfo{},
+		rwMutex:        &sync.RWMutex{},
+		logger:         zerolog.Nop(),
+		callback:       []OnNewPubKey{},
+		pathCallback:   []OnNewPubKeyPath{},
+		vaultAddresses: map[string]common.ChainVaultInfo{},
 	}
 
 	var mu sync.Mutex
@@ -33,7 +33,8 @@ func TestAddPubKeyRegistersBaseVaultBeforeDepositLookahead(t *testing.T) {
 		return nil
 	})
 	pkm.RegisterPathCallback(func(_ common.PubKey, pathIndex uint64) error {
-		if pathIndex != common.FirstDepositPathIndex {
+		firstUserPath, err := common.VaultDepositPathIndex(common.VaultDepositPathUser, 0, common.DepositPathCommitmentRoot)
+		if err != nil || pathIndex != firstUserPath {
 			return nil
 		}
 		mu.Lock()

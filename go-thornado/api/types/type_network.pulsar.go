@@ -14,24 +14,18 @@ import (
 )
 
 var (
-	md_Network                            protoreflect.MessageDescriptor
-	fd_Network_bond_reward_rune           protoreflect.FieldDescriptor
-	fd_Network_total_bond_units           protoreflect.FieldDescriptor
-	fd_Network_LPIncomeSplit              protoreflect.FieldDescriptor
-	fd_Network_NodeIncomeSplit            protoreflect.FieldDescriptor
-	fd_Network_outbound_gas_spent_rune    protoreflect.FieldDescriptor
-	fd_Network_outbound_gas_withheld_rune protoreflect.FieldDescriptor
+	md_Network                       protoreflect.MessageDescriptor
+	fd_Network_NodeIncomeSplit       protoreflect.FieldDescriptor
+	fd_Network_outbound_gas_spent    protoreflect.FieldDescriptor
+	fd_Network_outbound_gas_withheld protoreflect.FieldDescriptor
 )
 
 func init() {
 	file_types_type_network_proto_init()
 	md_Network = File_types_type_network_proto.Messages().ByName("Network")
-	fd_Network_bond_reward_rune = md_Network.Fields().ByName("bond_reward_rune")
-	fd_Network_total_bond_units = md_Network.Fields().ByName("total_bond_units")
-	fd_Network_LPIncomeSplit = md_Network.Fields().ByName("LPIncomeSplit")
 	fd_Network_NodeIncomeSplit = md_Network.Fields().ByName("NodeIncomeSplit")
-	fd_Network_outbound_gas_spent_rune = md_Network.Fields().ByName("outbound_gas_spent_rune")
-	fd_Network_outbound_gas_withheld_rune = md_Network.Fields().ByName("outbound_gas_withheld_rune")
+	fd_Network_outbound_gas_spent = md_Network.Fields().ByName("outbound_gas_spent")
+	fd_Network_outbound_gas_withheld = md_Network.Fields().ByName("outbound_gas_withheld")
 }
 
 var _ protoreflect.Message = (*fastReflection_Network)(nil)
@@ -99,39 +93,21 @@ func (x *fastReflection_Network) Interface() protoreflect.ProtoMessage {
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
 func (x *fastReflection_Network) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
-	if x.BondRewardRune != "" {
-		value := protoreflect.ValueOfString(x.BondRewardRune)
-		if !f(fd_Network_bond_reward_rune, value) {
-			return
-		}
-	}
-	if x.TotalBondUnits != "" {
-		value := protoreflect.ValueOfString(x.TotalBondUnits)
-		if !f(fd_Network_total_bond_units, value) {
-			return
-		}
-	}
-	if x.LPIncomeSplit != int64(0) {
-		value := protoreflect.ValueOfInt64(x.LPIncomeSplit)
-		if !f(fd_Network_LPIncomeSplit, value) {
-			return
-		}
-	}
 	if x.NodeIncomeSplit != int64(0) {
 		value := protoreflect.ValueOfInt64(x.NodeIncomeSplit)
 		if !f(fd_Network_NodeIncomeSplit, value) {
 			return
 		}
 	}
-	if x.OutboundGasSpentRune != uint64(0) {
-		value := protoreflect.ValueOfUint64(x.OutboundGasSpentRune)
-		if !f(fd_Network_outbound_gas_spent_rune, value) {
+	if x.OutboundGasSpent != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.OutboundGasSpent)
+		if !f(fd_Network_outbound_gas_spent, value) {
 			return
 		}
 	}
-	if x.OutboundGasWithheldRune != uint64(0) {
-		value := protoreflect.ValueOfUint64(x.OutboundGasWithheldRune)
-		if !f(fd_Network_outbound_gas_withheld_rune, value) {
+	if x.OutboundGasWithheld != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.OutboundGasWithheld)
+		if !f(fd_Network_outbound_gas_withheld, value) {
 			return
 		}
 	}
@@ -150,18 +126,12 @@ func (x *fastReflection_Network) Range(f func(protoreflect.FieldDescriptor, prot
 // a repeated field is populated if it is non-empty.
 func (x *fastReflection_Network) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.Network.bond_reward_rune":
-		return x.BondRewardRune != ""
-	case "types.Network.total_bond_units":
-		return x.TotalBondUnits != ""
-	case "types.Network.LPIncomeSplit":
-		return x.LPIncomeSplit != int64(0)
 	case "types.Network.NodeIncomeSplit":
 		return x.NodeIncomeSplit != int64(0)
-	case "types.Network.outbound_gas_spent_rune":
-		return x.OutboundGasSpentRune != uint64(0)
-	case "types.Network.outbound_gas_withheld_rune":
-		return x.OutboundGasWithheldRune != uint64(0)
+	case "types.Network.outbound_gas_spent":
+		return x.OutboundGasSpent != uint64(0)
+	case "types.Network.outbound_gas_withheld":
+		return x.OutboundGasWithheld != uint64(0)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.Network"))
@@ -178,18 +148,12 @@ func (x *fastReflection_Network) Has(fd protoreflect.FieldDescriptor) bool {
 // Clear is a mutating operation and unsafe for concurrent use.
 func (x *fastReflection_Network) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.Network.bond_reward_rune":
-		x.BondRewardRune = ""
-	case "types.Network.total_bond_units":
-		x.TotalBondUnits = ""
-	case "types.Network.LPIncomeSplit":
-		x.LPIncomeSplit = int64(0)
 	case "types.Network.NodeIncomeSplit":
 		x.NodeIncomeSplit = int64(0)
-	case "types.Network.outbound_gas_spent_rune":
-		x.OutboundGasSpentRune = uint64(0)
-	case "types.Network.outbound_gas_withheld_rune":
-		x.OutboundGasWithheldRune = uint64(0)
+	case "types.Network.outbound_gas_spent":
+		x.OutboundGasSpent = uint64(0)
+	case "types.Network.outbound_gas_withheld":
+		x.OutboundGasWithheld = uint64(0)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.Network"))
@@ -206,23 +170,14 @@ func (x *fastReflection_Network) Clear(fd protoreflect.FieldDescriptor) {
 // of the value; to obtain a mutable reference, use Mutable.
 func (x *fastReflection_Network) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.Network.bond_reward_rune":
-		value := x.BondRewardRune
-		return protoreflect.ValueOfString(value)
-	case "types.Network.total_bond_units":
-		value := x.TotalBondUnits
-		return protoreflect.ValueOfString(value)
-	case "types.Network.LPIncomeSplit":
-		value := x.LPIncomeSplit
-		return protoreflect.ValueOfInt64(value)
 	case "types.Network.NodeIncomeSplit":
 		value := x.NodeIncomeSplit
 		return protoreflect.ValueOfInt64(value)
-	case "types.Network.outbound_gas_spent_rune":
-		value := x.OutboundGasSpentRune
+	case "types.Network.outbound_gas_spent":
+		value := x.OutboundGasSpent
 		return protoreflect.ValueOfUint64(value)
-	case "types.Network.outbound_gas_withheld_rune":
-		value := x.OutboundGasWithheldRune
+	case "types.Network.outbound_gas_withheld":
+		value := x.OutboundGasWithheld
 		return protoreflect.ValueOfUint64(value)
 	default:
 		if descriptor.IsExtension() {
@@ -244,18 +199,12 @@ func (x *fastReflection_Network) Get(descriptor protoreflect.FieldDescriptor) pr
 // Set is a mutating operation and unsafe for concurrent use.
 func (x *fastReflection_Network) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.Network.bond_reward_rune":
-		x.BondRewardRune = value.Interface().(string)
-	case "types.Network.total_bond_units":
-		x.TotalBondUnits = value.Interface().(string)
-	case "types.Network.LPIncomeSplit":
-		x.LPIncomeSplit = value.Int()
 	case "types.Network.NodeIncomeSplit":
 		x.NodeIncomeSplit = value.Int()
-	case "types.Network.outbound_gas_spent_rune":
-		x.OutboundGasSpentRune = value.Uint()
-	case "types.Network.outbound_gas_withheld_rune":
-		x.OutboundGasWithheldRune = value.Uint()
+	case "types.Network.outbound_gas_spent":
+		x.OutboundGasSpent = value.Uint()
+	case "types.Network.outbound_gas_withheld":
+		x.OutboundGasWithheld = value.Uint()
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.Network"))
@@ -276,18 +225,12 @@ func (x *fastReflection_Network) Set(fd protoreflect.FieldDescriptor, value prot
 // Mutable is a mutating operation and unsafe for concurrent use.
 func (x *fastReflection_Network) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.Network.bond_reward_rune":
-		panic(fmt.Errorf("field bond_reward_rune of message types.Network is not mutable"))
-	case "types.Network.total_bond_units":
-		panic(fmt.Errorf("field total_bond_units of message types.Network is not mutable"))
-	case "types.Network.LPIncomeSplit":
-		panic(fmt.Errorf("field LPIncomeSplit of message types.Network is not mutable"))
 	case "types.Network.NodeIncomeSplit":
 		panic(fmt.Errorf("field NodeIncomeSplit of message types.Network is not mutable"))
-	case "types.Network.outbound_gas_spent_rune":
-		panic(fmt.Errorf("field outbound_gas_spent_rune of message types.Network is not mutable"))
-	case "types.Network.outbound_gas_withheld_rune":
-		panic(fmt.Errorf("field outbound_gas_withheld_rune of message types.Network is not mutable"))
+	case "types.Network.outbound_gas_spent":
+		panic(fmt.Errorf("field outbound_gas_spent of message types.Network is not mutable"))
+	case "types.Network.outbound_gas_withheld":
+		panic(fmt.Errorf("field outbound_gas_withheld of message types.Network is not mutable"))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.Network"))
@@ -301,17 +244,11 @@ func (x *fastReflection_Network) Mutable(fd protoreflect.FieldDescriptor) protor
 // For lists, maps, and messages, this returns a new, empty, mutable value.
 func (x *fastReflection_Network) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.Network.bond_reward_rune":
-		return protoreflect.ValueOfString("")
-	case "types.Network.total_bond_units":
-		return protoreflect.ValueOfString("")
-	case "types.Network.LPIncomeSplit":
-		return protoreflect.ValueOfInt64(int64(0))
 	case "types.Network.NodeIncomeSplit":
 		return protoreflect.ValueOfInt64(int64(0))
-	case "types.Network.outbound_gas_spent_rune":
+	case "types.Network.outbound_gas_spent":
 		return protoreflect.ValueOfUint64(uint64(0))
-	case "types.Network.outbound_gas_withheld_rune":
+	case "types.Network.outbound_gas_withheld":
 		return protoreflect.ValueOfUint64(uint64(0))
 	default:
 		if fd.IsExtension() {
@@ -382,25 +319,14 @@ func (x *fastReflection_Network) ProtoMethods() *protoiface.Methods {
 		var n int
 		var l int
 		_ = l
-		l = len(x.BondRewardRune)
-		if l > 0 {
-			n += 1 + l + runtime.Sov(uint64(l))
-		}
-		l = len(x.TotalBondUnits)
-		if l > 0 {
-			n += 1 + l + runtime.Sov(uint64(l))
-		}
-		if x.LPIncomeSplit != 0 {
-			n += 1 + runtime.Sov(uint64(x.LPIncomeSplit))
-		}
 		if x.NodeIncomeSplit != 0 {
 			n += 1 + runtime.Sov(uint64(x.NodeIncomeSplit))
 		}
-		if x.OutboundGasSpentRune != 0 {
-			n += 1 + runtime.Sov(uint64(x.OutboundGasSpentRune))
+		if x.OutboundGasSpent != 0 {
+			n += 1 + runtime.Sov(uint64(x.OutboundGasSpent))
 		}
-		if x.OutboundGasWithheldRune != 0 {
-			n += 1 + runtime.Sov(uint64(x.OutboundGasWithheldRune))
+		if x.OutboundGasWithheld != 0 {
+			n += 1 + runtime.Sov(uint64(x.OutboundGasWithheld))
 		}
 		if x.unknownFields != nil {
 			n += len(x.unknownFields)
@@ -431,13 +357,13 @@ func (x *fastReflection_Network) ProtoMethods() *protoiface.Methods {
 			i -= len(x.unknownFields)
 			copy(dAtA[i:], x.unknownFields)
 		}
-		if x.OutboundGasWithheldRune != 0 {
-			i = runtime.EncodeVarint(dAtA, i, uint64(x.OutboundGasWithheldRune))
+		if x.OutboundGasWithheld != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.OutboundGasWithheld))
 			i--
 			dAtA[i] = 0x40
 		}
-		if x.OutboundGasSpentRune != 0 {
-			i = runtime.EncodeVarint(dAtA, i, uint64(x.OutboundGasSpentRune))
+		if x.OutboundGasSpent != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.OutboundGasSpent))
 			i--
 			dAtA[i] = 0x38
 		}
@@ -445,25 +371,6 @@ func (x *fastReflection_Network) ProtoMethods() *protoiface.Methods {
 			i = runtime.EncodeVarint(dAtA, i, uint64(x.NodeIncomeSplit))
 			i--
 			dAtA[i] = 0x30
-		}
-		if x.LPIncomeSplit != 0 {
-			i = runtime.EncodeVarint(dAtA, i, uint64(x.LPIncomeSplit))
-			i--
-			dAtA[i] = 0x28
-		}
-		if len(x.TotalBondUnits) > 0 {
-			i -= len(x.TotalBondUnits)
-			copy(dAtA[i:], x.TotalBondUnits)
-			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.TotalBondUnits)))
-			i--
-			dAtA[i] = 0x12
-		}
-		if len(x.BondRewardRune) > 0 {
-			i -= len(x.BondRewardRune)
-			copy(dAtA[i:], x.BondRewardRune)
-			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.BondRewardRune)))
-			i--
-			dAtA[i] = 0xa
 		}
 		if input.Buf != nil {
 			input.Buf = append(input.Buf, dAtA...)
@@ -514,89 +421,6 @@ func (x *fastReflection_Network) ProtoMethods() *protoiface.Methods {
 				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: Network: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
-			case 1:
-				if wireType != 2 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field BondRewardRune", wireType)
-				}
-				var stringLen uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
-					}
-					if iNdEx >= l {
-						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					stringLen |= uint64(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				intStringLen := int(stringLen)
-				if intStringLen < 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
-				}
-				postIndex := iNdEx + intStringLen
-				if postIndex < 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
-				}
-				if postIndex > l {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-				}
-				x.BondRewardRune = string(dAtA[iNdEx:postIndex])
-				iNdEx = postIndex
-			case 2:
-				if wireType != 2 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field TotalBondUnits", wireType)
-				}
-				var stringLen uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
-					}
-					if iNdEx >= l {
-						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					stringLen |= uint64(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				intStringLen := int(stringLen)
-				if intStringLen < 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
-				}
-				postIndex := iNdEx + intStringLen
-				if postIndex < 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
-				}
-				if postIndex > l {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-				}
-				x.TotalBondUnits = string(dAtA[iNdEx:postIndex])
-				iNdEx = postIndex
-			case 5:
-				if wireType != 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field LPIncomeSplit", wireType)
-				}
-				x.LPIncomeSplit = 0
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
-					}
-					if iNdEx >= l {
-						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					x.LPIncomeSplit |= int64(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
 			case 6:
 				if wireType != 0 {
 					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field NodeIncomeSplit", wireType)
@@ -618,9 +442,9 @@ func (x *fastReflection_Network) ProtoMethods() *protoiface.Methods {
 				}
 			case 7:
 				if wireType != 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field OutboundGasSpentRune", wireType)
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field OutboundGasSpent", wireType)
 				}
-				x.OutboundGasSpentRune = 0
+				x.OutboundGasSpent = 0
 				for shift := uint(0); ; shift += 7 {
 					if shift >= 64 {
 						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
@@ -630,16 +454,16 @@ func (x *fastReflection_Network) ProtoMethods() *protoiface.Methods {
 					}
 					b := dAtA[iNdEx]
 					iNdEx++
-					x.OutboundGasSpentRune |= uint64(b&0x7F) << shift
+					x.OutboundGasSpent |= uint64(b&0x7F) << shift
 					if b < 0x80 {
 						break
 					}
 				}
 			case 8:
 				if wireType != 0 {
-					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field OutboundGasWithheldRune", wireType)
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field OutboundGasWithheld", wireType)
 				}
-				x.OutboundGasWithheldRune = 0
+				x.OutboundGasWithheld = 0
 				for shift := uint(0); ; shift += 7 {
 					if shift >= 64 {
 						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
@@ -649,7 +473,7 @@ func (x *fastReflection_Network) ProtoMethods() *protoiface.Methods {
 					}
 					b := dAtA[iNdEx]
 					iNdEx++
-					x.OutboundGasWithheldRune |= uint64(b&0x7F) << shift
+					x.OutboundGasWithheld |= uint64(b&0x7F) << shift
 					if b < 0x80 {
 						break
 					}
@@ -707,12 +531,9 @@ type Network struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	BondRewardRune          string `protobuf:"bytes,1,opt,name=bond_reward_rune,json=bondRewardRune,proto3" json:"bond_reward_rune,omitempty"`
-	TotalBondUnits          string `protobuf:"bytes,2,opt,name=total_bond_units,json=totalBondUnits,proto3" json:"total_bond_units,omitempty"`
-	LPIncomeSplit           int64  `protobuf:"varint,5,opt,name=LPIncomeSplit,proto3" json:"LPIncomeSplit,omitempty"`
-	NodeIncomeSplit         int64  `protobuf:"varint,6,opt,name=NodeIncomeSplit,proto3" json:"NodeIncomeSplit,omitempty"`
-	OutboundGasSpentRune    uint64 `protobuf:"varint,7,opt,name=outbound_gas_spent_rune,json=outboundGasSpentRune,proto3" json:"outbound_gas_spent_rune,omitempty"`
-	OutboundGasWithheldRune uint64 `protobuf:"varint,8,opt,name=outbound_gas_withheld_rune,json=outboundGasWithheldRune,proto3" json:"outbound_gas_withheld_rune,omitempty"`
+	NodeIncomeSplit     int64  `protobuf:"varint,6,opt,name=NodeIncomeSplit,proto3" json:"NodeIncomeSplit,omitempty"`
+	OutboundGasSpent    uint64 `protobuf:"varint,7,opt,name=outbound_gas_spent,json=outboundGasSpent,proto3" json:"outbound_gas_spent,omitempty"`
+	OutboundGasWithheld uint64 `protobuf:"varint,8,opt,name=outbound_gas_withheld,json=outboundGasWithheld,proto3" json:"outbound_gas_withheld,omitempty"`
 }
 
 func (x *Network) Reset() {
@@ -735,27 +556,6 @@ func (*Network) Descriptor() ([]byte, []int) {
 	return file_types_type_network_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Network) GetBondRewardRune() string {
-	if x != nil {
-		return x.BondRewardRune
-	}
-	return ""
-}
-
-func (x *Network) GetTotalBondUnits() string {
-	if x != nil {
-		return x.TotalBondUnits
-	}
-	return ""
-}
-
-func (x *Network) GetLPIncomeSplit() int64 {
-	if x != nil {
-		return x.LPIncomeSplit
-	}
-	return 0
-}
-
 func (x *Network) GetNodeIncomeSplit() int64 {
 	if x != nil {
 		return x.NodeIncomeSplit
@@ -763,16 +563,16 @@ func (x *Network) GetNodeIncomeSplit() int64 {
 	return 0
 }
 
-func (x *Network) GetOutboundGasSpentRune() uint64 {
+func (x *Network) GetOutboundGasSpent() uint64 {
 	if x != nil {
-		return x.OutboundGasSpentRune
+		return x.OutboundGasSpent
 	}
 	return 0
 }
 
-func (x *Network) GetOutboundGasWithheldRune() uint64 {
+func (x *Network) GetOutboundGasWithheld() uint64 {
 	if x != nil {
-		return x.OutboundGasWithheldRune
+		return x.OutboundGasWithheld
 	}
 	return 0
 }
@@ -783,29 +583,17 @@ var file_types_type_network_proto_rawDesc = []byte{
 	0x0a, 0x18, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x5f, 0x6e, 0x65, 0x74,
 	0x77, 0x6f, 0x72, 0x6b, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x05, 0x74, 0x79, 0x70, 0x65,
 	0x73, 0x1a, 0x14, 0x67, 0x6f, 0x67, 0x6f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67, 0x6f, 0x67,
-	0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0xe1, 0x02, 0x0a, 0x07, 0x4e, 0x65, 0x74, 0x77,
-	0x6f, 0x72, 0x6b, 0x12, 0x48, 0x0a, 0x10, 0x62, 0x6f, 0x6e, 0x64, 0x5f, 0x72, 0x65, 0x77, 0x61,
-	0x72, 0x64, 0x5f, 0x72, 0x75, 0x6e, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x1e, 0xc8,
-	0xde, 0x1f, 0x00, 0xda, 0xde, 0x1f, 0x16, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x73, 0x64, 0x6b,
-	0x2e, 0x69, 0x6f, 0x2f, 0x6d, 0x61, 0x74, 0x68, 0x2e, 0x55, 0x69, 0x6e, 0x74, 0x52, 0x0e, 0x62,
-	0x6f, 0x6e, 0x64, 0x52, 0x65, 0x77, 0x61, 0x72, 0x64, 0x52, 0x75, 0x6e, 0x65, 0x12, 0x48, 0x0a,
-	0x10, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x62, 0x6f, 0x6e, 0x64, 0x5f, 0x75, 0x6e, 0x69, 0x74,
-	0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x42, 0x1e, 0xc8, 0xde, 0x1f, 0x00, 0xda, 0xde, 0x1f,
-	0x16, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x73, 0x64, 0x6b, 0x2e, 0x69, 0x6f, 0x2f, 0x6d, 0x61,
-	0x74, 0x68, 0x2e, 0x55, 0x69, 0x6e, 0x74, 0x52, 0x0e, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x42, 0x6f,
-	0x6e, 0x64, 0x55, 0x6e, 0x69, 0x74, 0x73, 0x12, 0x24, 0x0a, 0x0d, 0x4c, 0x50, 0x49, 0x6e, 0x63,
-	0x6f, 0x6d, 0x65, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x18, 0x05, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d,
-	0x4c, 0x50, 0x49, 0x6e, 0x63, 0x6f, 0x6d, 0x65, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x12, 0x28, 0x0a,
-	0x0f, 0x4e, 0x6f, 0x64, 0x65, 0x49, 0x6e, 0x63, 0x6f, 0x6d, 0x65, 0x53, 0x70, 0x6c, 0x69, 0x74,
-	0x18, 0x06, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0f, 0x4e, 0x6f, 0x64, 0x65, 0x49, 0x6e, 0x63, 0x6f,
-	0x6d, 0x65, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x12, 0x35, 0x0a, 0x17, 0x6f, 0x75, 0x74, 0x62, 0x6f,
-	0x75, 0x6e, 0x64, 0x5f, 0x67, 0x61, 0x73, 0x5f, 0x73, 0x70, 0x65, 0x6e, 0x74, 0x5f, 0x72, 0x75,
-	0x6e, 0x65, 0x18, 0x07, 0x20, 0x01, 0x28, 0x04, 0x52, 0x14, 0x6f, 0x75, 0x74, 0x62, 0x6f, 0x75,
-	0x6e, 0x64, 0x47, 0x61, 0x73, 0x53, 0x70, 0x65, 0x6e, 0x74, 0x52, 0x75, 0x6e, 0x65, 0x12, 0x3b,
-	0x0a, 0x1a, 0x6f, 0x75, 0x74, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x5f, 0x67, 0x61, 0x73, 0x5f, 0x77,
-	0x69, 0x74, 0x68, 0x68, 0x65, 0x6c, 0x64, 0x5f, 0x72, 0x75, 0x6e, 0x65, 0x18, 0x08, 0x20, 0x01,
-	0x28, 0x04, 0x52, 0x17, 0x6f, 0x75, 0x74, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x47, 0x61, 0x73, 0x57,
-	0x69, 0x74, 0x68, 0x68, 0x65, 0x6c, 0x64, 0x52, 0x75, 0x6e, 0x65, 0x42, 0x80, 0x01, 0x0a, 0x09,
+	0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0xa1, 0x01, 0x0a, 0x07, 0x4e, 0x65, 0x74, 0x77,
+	0x6f, 0x72, 0x6b, 0x12, 0x28, 0x0a, 0x0f, 0x4e, 0x6f, 0x64, 0x65, 0x49, 0x6e, 0x63, 0x6f, 0x6d,
+	0x65, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x18, 0x06, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0f, 0x4e, 0x6f,
+	0x64, 0x65, 0x49, 0x6e, 0x63, 0x6f, 0x6d, 0x65, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x12, 0x2c, 0x0a,
+	0x12, 0x6f, 0x75, 0x74, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x5f, 0x67, 0x61, 0x73, 0x5f, 0x73, 0x70,
+	0x65, 0x6e, 0x74, 0x18, 0x07, 0x20, 0x01, 0x28, 0x04, 0x52, 0x10, 0x6f, 0x75, 0x74, 0x62, 0x6f,
+	0x75, 0x6e, 0x64, 0x47, 0x61, 0x73, 0x53, 0x70, 0x65, 0x6e, 0x74, 0x12, 0x32, 0x0a, 0x15, 0x6f,
+	0x75, 0x74, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x5f, 0x67, 0x61, 0x73, 0x5f, 0x77, 0x69, 0x74, 0x68,
+	0x68, 0x65, 0x6c, 0x64, 0x18, 0x08, 0x20, 0x01, 0x28, 0x04, 0x52, 0x13, 0x6f, 0x75, 0x74, 0x62,
+	0x6f, 0x75, 0x6e, 0x64, 0x47, 0x61, 0x73, 0x57, 0x69, 0x74, 0x68, 0x68, 0x65, 0x6c, 0x64, 0x4a,
+	0x04, 0x08, 0x01, 0x10, 0x02, 0x4a, 0x04, 0x08, 0x02, 0x10, 0x03, 0x42, 0x80, 0x01, 0x0a, 0x09,
 	0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x42, 0x10, 0x54, 0x79, 0x70, 0x65, 0x4e,
 	0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67,
 	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61,

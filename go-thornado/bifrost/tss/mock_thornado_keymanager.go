@@ -32,10 +32,10 @@ func (k *MockThornadoKeyManager) ExportAsKeyStore(password string) (*EncryptedKe
 	return nil, nil
 }
 
-func (k *MockThornadoKeyManager) RemoteSign(msg []byte, algo common.SigningAlgo, poolPubKey string) ([]byte, []byte, error) {
+func (k *MockThornadoKeyManager) RemoteSign(msg []byte, algo common.SigningAlgo, vaultPubKey string) ([]byte, []byte, error) {
 	// this is the key we are using to test TSS keysign result in BTC chain
 	// tthorpub1addwnpepqwznsrgk2t5vn2cszr6ku6zned6tqxknugzw3vhdcjza284d7djp5rql6vn
-	if poolPubKey == "tthorpub1addwnpepqwznsrgk2t5vn2cszr6ku6zned6tqxknugzw3vhdcjza284d7djp5rql6vn" {
+	if vaultPubKey == "tthorpub1addwnpepqwznsrgk2t5vn2cszr6ku6zned6tqxknugzw3vhdcjza284d7djp5rql6vn" {
 		msgToSign := base64.StdEncoding.EncodeToString(msg)
 		if msgToSign == "wqYuqkdeLjxtkKjmeAK0fOZygdw8zZgsDaJX7mrqWRE=" {
 			sig, err := getSignature("ku/n0D18euwqkgM0kZn0OVX9+D7wfDBIWBMya1SGxWg=", "fw0sE6osjVN6vQtr9WxFrOpdxizPz9etSTOKGdjDY9A=")
@@ -45,7 +45,7 @@ func (k *MockThornadoKeyManager) RemoteSign(msg []byte, algo common.SigningAlgo,
 			return sig, nil, err
 		}
 	}
-	if poolPubKey == "tthorpub1addwnpepqw2k68efthm08f0f5akhjs6fk5j2pze4wkwt4fmnymf9yd463puruhh0lyz" {
+	if vaultPubKey == "tthorpub1addwnpepqw2k68efthm08f0f5akhjs6fk5j2pze4wkwt4fmnymf9yd463puruhh0lyz" {
 		msgToSign := base64.StdEncoding.EncodeToString(msg)
 		switch msgToSign {
 		case "BMxXf+K+1dYu3qGgvH59GXoxwwFfTnLjB7hHf3qflPk=":
@@ -62,7 +62,7 @@ func (k *MockThornadoKeyManager) RemoteSign(msg []byte, algo common.SigningAlgo,
 			return sig, nil, err
 		}
 	}
-	if poolPubKey == "tthorpub1addwnpepqtvzm6wa6ezgjj9l4sdvzcf64wf0wzs8x9mgjfhjp6tkzcvkyfyqg9a9p8e" {
+	if vaultPubKey == "tthorpub1addwnpepqtvzm6wa6ezgjj9l4sdvzcf64wf0wzs8x9mgjfhjp6tkzcvkyfyqg9a9p8e" {
 		msgToSign := base64.StdEncoding.EncodeToString(msg)
 		if msgToSign == "PIZUt687khEYQizRpYbLyQgDw1Ou+xzbSrLQ8fTKiaw=" {
 			sig, err := base64.StdEncoding.DecodeString("HxT9xOyBYuhHfK8iLSbPniJq6u6KYfJVmq28iO+/Sa44ocAuckpzs3g6zBelr4pUaxatoKixAaPt2UtlgPP2sA==")

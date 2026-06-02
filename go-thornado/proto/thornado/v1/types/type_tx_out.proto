@@ -40,10 +40,6 @@ message TxOutItem {
     (gogoproto.customtype) = "cosmossdk.io/math.Uint",
     (gogoproto.nullable) = true
   ];
-  string clout_spent = 14 [
-    (gogoproto.customtype) = "cosmossdk.io/math.Uint",
-    (gogoproto.nullable) = true
-  ];
   string vault_pub_key_eddsa = 15 [
     (gogoproto.casttype) = "github.com/thornadocash/go-thornado/common.PubKey",
     (gogoproto.nullable) = true

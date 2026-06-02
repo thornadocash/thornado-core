@@ -112,7 +112,6 @@ type TxArrayItem struct {
 	Aggregator            string         `json:"aggregator,omitempty"`
 	AggregatorTargetAsset string         `json:"aggregator_target_asset,omitempty"`
 	AggregatorTargetLimit *cosmos.Uint   `json:"aggregator_target_limit,omitempty"`
-	CloutSpent            string         `json:"clout_spent,omitempty"`
 	VaultPubKeyEddsa      common.PubKey  `json:"vault_pub_key_eddsa,omitempty"`
 	VaultPathIndex        uint64         `json:"vault_path_index,omitempty"`
 	TxType                string         `json:"tx_type,omitempty"`

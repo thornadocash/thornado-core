@@ -78,5 +78,21 @@ func (h ObservedTxInHandler) handle(ctx cosmos.Context, msg MsgObservedTxIn) (*c
 // and also during deliver. Store changes will persist if this function
 // succeeds, regardless of the success of the transaction.
 func ObservedTxInAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg MsgObservedTxIn) (cosmos.Context, error) {
-	return activeNodeAccountsSignerPriority(ctx, k, msg.GetSigners())
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	newCtx, err := activeNodeAccountsSignerPriority(ctx, k, msg.GetSigners())
+	if err != nil {
+		return ctx, err
+	}
+	for _, tx := range msg.Txs {
+		voter, err := ensureVaultAndGetTxInVoter(ctx, tx.ObservedPubKey, tx.Tx.ID, k)
+		if err != nil {
+			return ctx, err
+		}
+		if err := reserveObservedTxAttestations(ctx, k, voter, tx, msg.GetSigners(), true); err != nil {
+			return ctx, err
+		}
+	}
+	return newCtx, nil
 }

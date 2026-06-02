@@ -72,7 +72,9 @@ func (s *BaseCacheTestSuite) TestGetBaseAddressCachedRefreshSuccess(c *C) {
 	chain := common.BTCChain
 	pair := makeBasePubKeyPair(c)
 	refreshedAddresses := []common.Address{expectedAddress(c, pair.PubKey, chain)}
-	firstDepositAddress, err := common.DeriveBTCTaprootAddress(pair.PubKey, common.FirstDepositPathIndex)
+	firstDepositPath, err := common.VaultDepositPathIndex(common.VaultDepositPathUser, 0, common.DepositPathCommitmentRoot)
+	c.Assert(err, IsNil)
+	firstDepositAddress, err := common.DeriveBTCTaprootAddress(pair.PubKey, firstDepositPath)
 	c.Assert(err, IsNil)
 
 	var cache atomic.Pointer[BaseCache]
@@ -85,7 +87,7 @@ func (s *BaseCacheTestSuite) TestGetBaseAddressCachedRefreshSuccess(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(addresses[0], Equals, refreshedAddresses[0])
 	c.Assert(addresses[1], Equals, firstDepositAddress)
-	c.Assert(addresses, HasLen, int(common.DepositAddressLookahead)+1)
+	c.Assert(addresses, HasLen, int(common.DepositAddressLookahead)*2+1)
 	c.Assert(bridge.calls, Equals, 1)
 	c.Assert(cache.Load(), NotNil)
 	c.Assert(cache.Load().Addresses, DeepEquals, addresses)

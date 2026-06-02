@@ -26,6 +26,8 @@ func NewMsgNetworkFeeQuorum(quoNetFee *common.QuorumNetworkFee, signer cosmos.Ac
 	}
 }
 
+const MaxNetworkFeeQuorumAttestations = 300
+
 // ValidateBasic implements HasValidateBasic
 // ValidateBasic is now ran in the message service router handler for messages that
 // used to be routed using the external handler and only when HasValidateBasic is implemented.
@@ -33,6 +35,13 @@ func NewMsgNetworkFeeQuorum(quoNetFee *common.QuorumNetworkFee, signer cosmos.Ac
 func (m *MsgNetworkFeeQuorum) ValidateBasic() error {
 	if m.QuoNetFee == nil || m.QuoNetFee.NetworkFee == nil {
 		return cosmos.ErrUnknownRequest("QuoNetFee and NetworkFee cannot be nil")
+	}
+	attestations := len(m.QuoNetFee.Attestations)
+	if attestations == 0 {
+		return cosmos.ErrUnknownRequest("no attestations found")
+	}
+	if attestations > MaxNetworkFeeQuorumAttestations {
+		return cosmos.ErrUnknownRequest(fmt.Sprintf("too many attestations: %d, max %d", attestations, MaxNetworkFeeQuorumAttestations))
 	}
 	nf := m.QuoNetFee.NetworkFee
 	if nf.Height <= 0 {

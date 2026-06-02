@@ -105,7 +105,6 @@ func (k KVStore) SetNodePauseChain(ctx cosmos.Context, acc cosmos.AccAddress) {
 func (k KVStore) IsOperationalConfig(key string) bool {
 	exactUnmatches := []string{
 		constants.Chain_PauseNodeMinutes.String(),
-		constants.Slash_PauseThreshold.String(),
 	}
 	for i := range exactUnmatches {
 		if strings.EqualFold(key, exactUnmatches[i]) {

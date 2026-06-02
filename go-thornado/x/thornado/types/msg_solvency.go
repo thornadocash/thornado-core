@@ -18,6 +18,8 @@ var (
 	_ sdk.LegacyMsg        = &MsgSolvency{}
 )
 
+const MaxSolvencyCoins = 1
+
 // NewMsgSolvency create a new MsgSolvency
 func NewMsgSolvency(chain common.Chain, pubKey common.PubKey, coins common.Coins, height int64, signer cosmos.AccAddress) (*MsgSolvency, error) {
 	s := &common.Solvency{
@@ -66,6 +68,9 @@ func (m *MsgSolvency) ValidateBasic() error {
 	}
 	if m.PubKey.IsEmpty() {
 		return cosmos.ErrUnknownRequest("pubkey is empty")
+	}
+	if len(m.Coins) > MaxSolvencyCoins {
+		return cosmos.ErrUnknownRequest(fmt.Sprintf("too many solvency coins: %d, max %d", len(m.Coins), MaxSolvencyCoins))
 	}
 	if m.Height <= 0 {
 		return cosmos.ErrUnknownRequest("block height is invalid")

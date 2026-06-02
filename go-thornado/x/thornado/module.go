@@ -197,7 +197,6 @@ func (am AppModule) BeginBlock(goCtx context.Context) error {
 	if err := am.mgr.NetworkMgr().BeginBlock(ctx, am.mgr); err != nil {
 		ctx.Logger().Error("fail to begin network manager", "error", err)
 	}
-	am.mgr.Slasher().BeginBlock(ctx, am.mgr.GetConstants())
 	if err := am.mgr.NodeMgr().BeginBlock(ctx, am.mgr, existingNodes); err != nil {
 		ctx.Logger().Error("Fail to begin block on node", "error", err)
 	}
@@ -215,10 +214,6 @@ func (am AppModule) EndBlock(goCtx context.Context) ([]abci.ValidatorUpdate, err
 	ctx = ctx.WithLogger(ctx.Logger().With("height", ctx.BlockHeight()))
 
 	ctx.Logger().Debug("End Block")
-
-	if err := am.mgr.Slasher().LackSigning(ctx, am.mgr); err != nil {
-		ctx.Logger().Error("Unable to slash for lack of signing:", "error", err)
-	}
 
 	am.mgr.ObMgr().EndBlock(ctx, am.mgr.Keeper())
 
@@ -248,10 +243,6 @@ func (am AppModule) EndBlock(goCtx context.Context) ([]abci.ValidatorUpdate, err
 		if err := emitEndBlockTelemetry(ctx, am.mgr); err != nil {
 			ctx.Logger().Error("unable to emit end block telemetry", "error", err)
 		}
-	}
-
-	if err := am.mgr.ScheduledMigrationManager().EndBlock(ctx, am.mgr); err != nil {
-		ctx.Logger().Error("fail to process scheduled migration", "error", err)
 	}
 
 	return nodes, nil

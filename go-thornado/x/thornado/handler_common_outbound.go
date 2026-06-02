@@ -1,14 +1,10 @@
 package thornado
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
-	sdkmath "cosmossdk.io/math"
 	abcitypes "github.com/cometbft/cometbft/abci/types"
-	"github.com/cosmos/cosmos-sdk/telemetry"
-	"github.com/hashicorp/go-metrics"
 
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
@@ -26,19 +22,6 @@ func NewCommonOutboundTxHandler(mgr Manager) CommonOutboundTxHandler {
 	return CommonOutboundTxHandler{
 		mgr: mgr,
 	}
-}
-
-func (h CommonOutboundTxHandler) slash(ctx cosmos.Context, tx ObservedTx) error {
-	toSlash := make(common.Coins, len(tx.Tx.Coins))
-	copy(toSlash, tx.Tx.Coins)
-	toSlash = toSlash.Add(tx.Tx.Gas.ToCoins()...)
-
-	ctx = ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{ // nolint
-		telemetry.NewLabel("reason", "failed_outbound"),
-		telemetry.NewLabel("chain", string(tx.Tx.Chain)),
-	}))
-
-	return h.mgr.Slasher().SlashVault(ctx, tx.ObservedPubKey, toSlash, h.mgr)
 }
 
 func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxID common.TxID) (*cosmos.Result, error) {
@@ -70,7 +53,7 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 	}
 	h.mgr.Keeper().SetObservedTxInVoter(ctx, voter)
 
-	shouldSlash := true
+	shouldHalt := true
 	signingTransPeriod := getConfigDurationBlocks(ctx, h.mgr.Keeper(), constants.Keysign_PeriodMinutes)
 	// every Signing Transaction Period , BTCChain will check whether a
 	// TxOutItem had been sent by signer or not
@@ -144,8 +127,7 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 								}, false)
 							}
 						} else if maxGasAmt.LT(realGasAmt) {
-							// signer spend more than the maximum gas prescribed by BTCChain , slash it
-							ctx.Logger().Info("slash node", "max gas", maxGasAmt, "real gas spend", realGasAmt, "gap", common.SafeSub(realGasAmt, maxGasAmt).String())
+							ctx.Logger().Info("outbound spent more than maximum gas", "max gas", maxGasAmt, "real gas spend", realGasAmt, "gap", common.SafeSub(realGasAmt, maxGasAmt).String())
 							matchCoin = false
 						}
 					}
@@ -163,7 +145,7 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 						)
 					}
 					if gasAmount.GTE(maxGasCap) && maxGasAmount.LT(maxGasCap) {
-						ctx.Logger().Info("EVM chain transaction spent more than max gas cap, should be slashed", "chain", txOutItem.Chain, "gas", gasAmount.String(), "max gas cap", maxGasCap)
+						ctx.Logger().Info("transaction spent more than max gas cap", "chain", txOutItem.Chain, "gas", gasAmount.String(), "max gas cap", maxGasCap)
 						matchCoin = false
 					}
 				}
@@ -172,7 +154,7 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 					continue
 				}
 				txOut.TxArray[i].OutHash = tx.Tx.ID
-				shouldSlash = false
+				shouldHalt = false
 				if err = h.mgr.Keeper().SetTxOut(ctx, txOut); err != nil {
 					ctx.Logger().Error("fail to save tx out", "error", err)
 				}
@@ -183,64 +165,34 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 		}
 		// If the TxOutItem matching the observed outbound has been found,
 		// do not check other blocks.
-		if !shouldSlash {
+		if !shouldHalt {
 			break
 		}
 	}
 
-	slashed := false
-	// Slash the vault if no matching TxOutItem was found, unless this is an
+	halted := false
+	// Halt the BTC vault if no matching TxOutItem was found, unless this is an
 	// authorized operational transaction.
-	if shouldSlash && !isOutboundFakeGasTx(tx) && !isCancelOrApprovalTx(tx) {
-		ctx.Logger().Info("slash node account, no matched tx out item", "inbound txid", inTxID, "outbound tx", tx.Tx)
+	if shouldHalt && !isOutboundFakeGasTx(tx) && !isCancelOrApprovalTx(tx) {
+		ctx.Logger().Info("halt BTC vault, no matched tx out item", "inbound txid", inTxID, "outbound tx", tx.Tx)
 
-		// Send security alert for unmatched outbounds.
-		// Note: Security event emission errors are logged but don't halt processing,
-		// as the slashing penalty is the primary security mechanism.
 		msg := fmt.Sprintf("missing tx out in=%s", inTxID)
-		if err = h.mgr.EventMgr().EmitEvent(ctx, NewEventSecurity(tx.Tx, msg)); err != nil {
-			ctx.Logger().Error("fail to emit security event", "error", err)
+		if err = haltBTCVaultForIssue(ctx, h.mgr.Keeper(), h.mgr.EventMgr(), tx.Tx, msg); err != nil {
+			return nil, ErrInternal(err, "fail to halt BTC vault")
 		}
-
-		if err = h.slash(ctx, tx); err != nil {
-			return nil, ErrInternal(err, "fail to slash account")
-		}
-		slashed = true
+		halted = true
 	}
 
 	if err := h.mgr.Keeper().SetLastSignedHeight(ctx, voter.FinalisedHeight); err != nil {
 		ctx.Logger().Info("fail to update last signed height", "error", err)
 	}
 
-	// the slash event is not exposed, but detected upstream in the handler
 	var events []abcitypes.Event
-	if slashed {
-		events = append(events, abcitypes.Event{Type: "vault-slash"})
+	if halted {
+		events = append(events, abcitypes.Event{Type: "vault-halt"})
 	}
 
 	return &cosmos.Result{Events: events}, nil
-}
-
-// calcReclaim attempts to split spent clout between two reclaimable clouts as equally as possible.
-func calcReclaim(reclaimable1, reclaimable2, spent cosmos.Uint) (reclaim1, reclaim2 cosmos.Uint) {
-	// Ensure that the spent clout doesn't exceed the total reclaimable clout
-	totalReclaimable := reclaimable1.Add(reclaimable2)
-	if spent.GT(totalReclaimable) {
-		return reclaimable1, reclaimable2
-	}
-
-	// Split the spent clout in half
-	halfSpent := spent.Quo(sdkmath.NewUint(2))
-
-	// If either clout is less than half the spent amount, allocate all to that clout
-	if reclaimable1.LT(halfSpent) {
-		return reclaimable1, spent.Sub(reclaimable1)
-	} else if reclaimable2.LT(spent.Sub(halfSpent)) {
-		return spent.Sub(reclaimable2), reclaimable2
-	}
-
-	// Otherwise, split the spent clout equally
-	return halfSpent, spent.Sub(halfSpent)
 }
 
 func maxEVMGasForChain(ctx cosmos.Context, k keeper.Keeper, chain common.Chain) (cosmos.Uint, bool) {

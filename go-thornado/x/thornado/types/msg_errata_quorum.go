@@ -25,6 +25,8 @@ func NewMsgErrataTxQuorum(tx *common.QuorumErrataTx, signer cosmos.AccAddress) *
 	}
 }
 
+const MaxErrataTxQuorumAttestations = 300
+
 // ValidateBasic implements HasValidateBasic
 // ValidateBasic is now ran in the message service router handler for messages that
 // used to be routed using the external handler and only when HasValidateBasic is implemented.
@@ -35,6 +37,13 @@ func (m *MsgErrataTxQuorum) ValidateBasic() error {
 	}
 	if m.QuoErrata == nil {
 		return cosmos.ErrUnknownRequest("QuoErrata cannot be nil")
+	}
+	attestations := len(m.QuoErrata.Attestations)
+	if attestations == 0 {
+		return cosmos.ErrUnknownRequest("no attestations found")
+	}
+	if attestations > MaxErrataTxQuorumAttestations {
+		return cosmos.ErrUnknownRequest(fmt.Sprintf("too many attestations: %d, max %d", attestations, MaxErrataTxQuorumAttestations))
 	}
 	tx := m.QuoErrata.ErrataTx
 	if tx == nil {

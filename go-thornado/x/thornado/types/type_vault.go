@@ -110,19 +110,17 @@ func (m Vault) Valid() error {
 	return nil
 }
 
-// HasFunds check whether the vault pool has fund
+// HasFunds checks whether the vault holds any funds.
 func (m Vault) HasFunds() bool {
 	for _, coin := range m.Coins {
-		if !coin.IsRune() { // non-native rune is omitted from the calculation
-			if !coin.Amount.IsZero() {
-				return true
-			}
+		if !coin.Amount.IsZero() {
+			return true
 		}
 	}
 	return false
 }
 
-// HasFundsForChain check whether the vault pool has funds for a specific chain
+// HasFundsForChain checks whether the vault holds funds for a specific chain.
 func (m Vault) HasFundsForChain(chain common.Chain) bool {
 	for _, coin := range m.Coins {
 		if coin.Asset.GetChain().Equals(chain) && !coin.Amount.IsZero() {
@@ -319,7 +317,7 @@ func (m *Vault) DeriveBTCAddress(pathIndex uint64) (common.Address, error) {
 
 // SortBy order coins by the given asset
 func (vs Vaults) SortBy(sortBy common.Asset) Vaults {
-	// use the vault pool with the highest quantity of our coin
+	// use the vault with the highest quantity of our coin
 	sort.SliceStable(vs[:], func(i, j int) bool {
 		return vs[i].GetCoin(sortBy).Amount.GT(vs[j].GetCoin(sortBy).Amount)
 	})

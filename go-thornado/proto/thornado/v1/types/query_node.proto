@@ -43,11 +43,11 @@ message QueryNodeResponse {
   // the currently set version of the node
   string ip_address = 15 [ (gogoproto.jsontag) = "ip_address" ];
   string version = 16 [ (gogoproto.jsontag) = "version" ];
-  // the accumulated slash points, reset at churn but excessive slash points may
+  // the accumulated penalty points, reset at churn but excessive penalty points may
   // carry over
-  int64 slash_points = 17 [ (gogoproto.jsontag) = "slash_points" ];
+  int64 penalty_points = 17 [ (gogoproto.jsontag) = "penalty_points" ];
   NodeJail jail = 18 [ (gogoproto.jsontag) = "jail" ];
-  string current_award = 19 [ (gogoproto.jsontag) = "current_award" ];
+  reserved 19;
   // the last observed heights for all chain by the node
   repeated ChainHeight observe_chains = 20
       [ (gogoproto.jsontag) = "observe_chains" ];
@@ -103,7 +103,7 @@ message QueryNodeBondResponse {
   int64 created_height = 12;
   int64 updated_height = 13;
   string node_status = 14;
-  int64 slash_points = 15;
+  int64 penalty_points = 15;
 }
 
 message QueryNodeSlotAuctionRequest {

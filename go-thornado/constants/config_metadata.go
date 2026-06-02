@@ -23,7 +23,13 @@ var configDescriptions = map[string]string{
 
 	Deposit_AmountMinSats.String():             "Minimum BTC deposit amount in sats.",
 	Deposit_PowDifficultyMin.String():          "Minimum proof-of-work difficulty for deposit address requests.",
+	"Deposit_PowDifficultyCurrent":             "Current retargeted proof-of-work difficulty for deposit address requests.",
+	Deposit_PowDifficultyMax.String():          "Maximum proof-of-work difficulty after retargeting.",
 	Deposit_PowExpiryMinutes.String():          "Minutes before an unused deposit proof-of-work token expires.",
+	Deposit_PowRetargetStepMax.String():        "Maximum proof-of-work difficulty bits adjusted per churn cycle.",
+	Deposit_PowSamplesMin.String():             "Minimum confirmed deposit samples before proof-of-work retargeting.",
+	Deposit_PowTargetPercentile.String():       "Confirmed-deposit solve percentile targeted by proof-of-work retargeting.",
+	Deposit_PowTargetSeconds.String():          "Target proof-of-work solve time in seconds.",
 	Deposit_SessionExpiryMinutes.String():      "Minutes before an issued deposit session expires.",
 	Deposit_SweepRetryIntervalMinutes.String(): "Minutes between retry attempts for deposit sweeps.",
 	Deposit_RefundIfForgottenDays.String():     "Days before a matched deposit that has not been split is returned to its BTC sender.",
@@ -66,9 +72,6 @@ var configDescriptions = map[string]string{
 	Shielder_NoteAmountMinSats.String(): "Minimum shielded note amount before dust goes to fees.",
 
 	Signer_Concurrency.String(): "Maximum concurrent signing operations.",
-
-	Slash_PauseThreshold.String():     "Slash threshold that can trigger pause behavior.",
-	Slash_PenaltyBasisPoints.String(): "Basis points used for slashing penalties.",
 
 	TxOut_MaxAttempts.String(): "Maximum outbound transaction attempts, or zero for unlimited.",
 

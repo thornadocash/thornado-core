@@ -32,7 +32,12 @@ const (
 
 	Deposit_AmountMinSats
 	Deposit_PowDifficultyMin
+	Deposit_PowDifficultyMax
 	Deposit_PowExpiryMinutes
+	Deposit_PowRetargetStepMax
+	Deposit_PowSamplesMin
+	Deposit_PowTargetPercentile
+	Deposit_PowTargetSeconds
 	Deposit_SessionExpiryMinutes
 	Deposit_SweepRetryIntervalMinutes
 	Deposit_RefundIfForgottenDays
@@ -75,9 +80,6 @@ const (
 	Shielder_NoteAmountMinSats
 
 	Signer_Concurrency
-
-	Slash_PauseThreshold
-	Slash_PenaltyBasisPoints
 
 	TxOut_MaxAttempts
 

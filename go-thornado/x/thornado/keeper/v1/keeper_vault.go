@@ -42,7 +42,7 @@ func (k KVStore) getVault(ctx cosmos.Context, key []byte, record *Vault) (bool, 
 	return true, nil
 }
 
-// GetVaultIterator only iterate vault pools
+// GetVaultIterator only iterates vaults.
 func (k KVStore) GetVaultIterator(ctx cosmos.Context) cosmos.Iterator {
 	return k.getIterator(ctx, prefixVault)
 }
@@ -113,11 +113,6 @@ func (k KVStore) getSortedVaultSecurity(ctx cosmos.Context, vaults Vaults, signi
 
 		// get total value
 		totalValue := cosmos.ZeroUint()
-		for _, coin := range vault.Coins {
-			if coin.IsRune() {
-				continue
-			}
-		}
 
 		// add recent unsent txout items to totalValue
 		h := ctx.BlockHeight() - signingTransPeriod
@@ -132,20 +127,15 @@ func (k KVStore) getSortedVaultSecurity(ctx cosmos.Context, vaults Vaults, signi
 			}
 			for _, item := range txOut.TxArray {
 				if item.OutHash.IsEmpty() {
-					var toAddress common.Address
-					toAddress, err = vault.GetAddress(item.Coin.Asset.GetChain())
+					toAddress, err := vault.GetAddress(item.Coin.Asset.GetChain())
 					if err != nil {
 						ctx.Logger().Error("failed to get address of chain", "error", err)
 						continue
 					}
 					if item.VaultPubKey.Equals(vault.PubKey) {
-						if item.Coin.IsRune() {
-							totalValue = common.SafeSub(totalValue, item.Coin.Amount)
-						}
+						totalValue = common.SafeSub(totalValue, item.Coin.Amount)
 					} else if item.ToAddress.Equals(toAddress) {
-						if item.Coin.IsRune() {
-							totalValue = totalValue.Add(item.Coin.Amount)
-						}
+						totalValue = totalValue.Add(item.Coin.Amount)
 					}
 				}
 			}
@@ -264,22 +254,6 @@ func (k KVStore) GetVault(ctx cosmos.Context, pk common.PubKey) (Vault, error) {
 		record.BlockHeight = ctx.BlockHeight()
 	}
 	return record, err
-}
-
-// HasValidVaultPools check the data store to see whether we have a valid vault
-func (k KVStore) HasValidVaultPools(ctx cosmos.Context) (bool, error) {
-	iterator := k.GetVaultIterator(ctx)
-	defer iterator.Close()
-	for ; iterator.Valid(); iterator.Next() {
-		var vault Vault
-		if err := k.cdc.Unmarshal(iterator.Value(), &vault); err != nil {
-			return false, dbError(ctx, "fail to unmarshal vault", err)
-		}
-		if vault.HasFunds() {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 func (k KVStore) getBaseIndex(ctx cosmos.Context) (common.PubKeys, error) {

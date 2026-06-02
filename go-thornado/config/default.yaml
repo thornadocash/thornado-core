@@ -45,7 +45,7 @@ bifrost:
     retry_interval: 2s
     reschedule_buffer_blocks: 150 # 15 minutes
     block_scanner:
-      chain_id: ThorChain
+      chain_id: thornado
       start_block_height: 0
       block_retry_interval: 10s
       block_height_discover_back_off: 5s
@@ -142,23 +142,23 @@ bifrost:
       opt_to_retire: false
       solvency_blocks: 0
 ########################################################################################
-# Thor
+# Thornado
 ########################################################################################
 
-thor:
+thornado:
   node_relay_url: https://node-relay-bot.herokuapp.com
   vault_pubkeys_cutoff_blocks: 1_000_000
   seed_nodes_endpoint: https://gateway.liquify.com/chain/thornado_api/thornado/nodes
   stagenet_admin_addresses: "sthor1gdq9qejfy33jctztqdrg5v4hvxnytmvjhduacc" # 9R official stagenet
   api:
     quote:
-      recommended_min_amount_fee_multiplier: 3 # the multiplier for calculateMinSwapAmount
+      recommended_min_amount_fee_multiplier: 3 # fee guidance multiplier
       max_lag: 3m
     pagination:
       default_page_size: 100
       max_page_size: 1000
   telemetry:
-    slash_points: false
+    penalty_points: false
     price_per_node: false
 
   log_filter:

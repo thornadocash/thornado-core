@@ -19,21 +19,21 @@ func processNetworkFeeAttestation(
 	attester cosmos.AccAddress,
 	active NodeAccounts,
 	nf *common.NetworkFee,
-	shouldSlashForDuplicate bool,
+	shouldPenalizeForDuplicate bool,
 ) error {
-	observeSlashPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
+	observePenaltyPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
 	lackOfObservationPenalty := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_MissPenaltyPoints)
 	observeFlex := getConfigDurationBlocks(ctx, mgr.Keeper(), constants.Observation_DelayFlexibilityMinutes)
 
-	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
+	penaltyCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
 		telemetry.NewLabel("reason", "failed_observe_network_fee"),
 		telemetry.NewLabel("chain", string(nf.Chain)),
 	}))
 
 	if !voter.Sign(attester) {
-		// Slash for the network having to handle the extra message/s.
-		if shouldSlashForDuplicate {
-			mgr.Slasher().IncSlashPoints(slashCtx, observeSlashPoints, attester)
+		// Penalty for the network having to handle the extra message/s.
+		if shouldPenalizeForDuplicate {
+			mgr.PenaltyManager().IncPenaltyPoints(penaltyCtx, observePenaltyPoints, attester)
 		}
 		ctx.Logger().Info("signer already signed network fee", "signer", attester.String(), "block height", nf.Height, "chain", nf.Chain.String())
 		return nil
@@ -41,15 +41,15 @@ func processNetworkFeeAttestation(
 
 	// doesn't have consensus yet
 	if !voter.HasConsensus(active) {
-		// Before consensus, slash until consensus.
-		mgr.Slasher().IncSlashPoints(slashCtx, observeSlashPoints, attester)
+		// Before consensus, penalty until consensus.
+		mgr.PenaltyManager().IncPenaltyPoints(penaltyCtx, observePenaltyPoints, attester)
 		return nil
 	}
 
 	if voter.BlockHeight > 0 {
-		// After consensus, only decrement slash points if within the Observation_DelayFlexibilityMinutes window.
+		// After consensus, only decrement penalty points if within the Observation_DelayFlexibilityMinutes window.
 		if (voter.BlockHeight + observeFlex) >= ctx.BlockHeight() {
-			mgr.Slasher().DecSlashPoints(slashCtx, lackOfObservationPenalty, attester)
+			mgr.PenaltyManager().DecPenaltyPoints(penaltyCtx, lackOfObservationPenalty, attester)
 		}
 		// MsgNetworkFeeQuorum tx already processed
 		return nil
@@ -57,13 +57,13 @@ func processNetworkFeeAttestation(
 
 	voter.BlockHeight = ctx.BlockHeight()
 
-	// This signer brings the voter to consensus; increment the signer's slash points like the before-consensus signers,
-	// then decrement all the signers' slash points and increment the non-signers' slash points.
-	mgr.Slasher().IncSlashPoints(slashCtx, observeSlashPoints, attester)
+	// This signer brings the voter to consensus; increment the signer's penalty points like the before-consensus signers,
+	// then decrement all the signers' penalty points and increment the non-signers' penalty points.
+	mgr.PenaltyManager().IncPenaltyPoints(penaltyCtx, observePenaltyPoints, attester)
 	signers := voter.GetSigners()
 	nonSigners := getNonSigners(active, signers)
-	mgr.Slasher().DecSlashPoints(slashCtx, observeSlashPoints, signers...)
-	mgr.Slasher().IncSlashPoints(slashCtx, lackOfObservationPenalty, nonSigners...)
+	mgr.PenaltyManager().DecPenaltyPoints(penaltyCtx, observePenaltyPoints, signers...)
+	mgr.PenaltyManager().IncPenaltyPoints(penaltyCtx, lackOfObservationPenalty, nonSigners...)
 
 	ctx.Logger().Info("update network fee", "chain", nf.Chain.String(), "transaction-size", nf.TransactionSize, "fee-rate", nf.TransactionRate)
 	if err := mgr.Keeper().SaveNetworkFee(ctx, nf.Chain, NetworkFee{

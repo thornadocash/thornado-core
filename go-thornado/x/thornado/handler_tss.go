@@ -93,13 +93,13 @@ func (h TssHandler) validate(ctx cosmos.Context, msg *MsgTssPool) error {
 		}
 	}
 
-	if !msg.PoolPubKeyEddsa.IsEmpty() {
-		if _, err := common.NewPubKey(msg.PoolPubKeyEddsa.String()); err != nil {
+	if !msg.VaultPubKeyEddsa.IsEmpty() {
+		if _, err := common.NewPubKey(msg.VaultPubKeyEddsa.String()); err != nil {
 			return cosmos.ErrUnknownRequest(err.Error())
 		}
 	}
 
-	newMsg, err := NewMsgTssPoolV2(msg.PubKeys, msg.PoolPubKey, nil, nil, msg.KeygenType, msg.Height, msg.Blame, msg.Chains, msg.Signer, msg.KeygenTime, msg.PoolPubKeyEddsa, msg.KeysharesBackupEddsa)
+	newMsg, err := NewMsgTssPoolV2(msg.PubKeys, msg.VaultPubKey, nil, nil, msg.KeygenType, msg.Height, msg.Blame, msg.Chains, msg.Signer, msg.KeygenTime, msg.VaultPubKeyEddsa, msg.KeysharesBackupEddsa)
 	if err != nil {
 		return fmt.Errorf("fail to recreate MsgTssPool,err: %w", err)
 	}
@@ -114,14 +114,14 @@ func (h TssHandler) validate(ctx cosmos.Context, msg *MsgTssPool) error {
 
 	// verify the check signatures if provided (only a subset of members in signing party)
 	if len(msg.Secp256K1Signature) > 0 {
-		err = verifySecp256K1Signature(msg.PoolPubKey, msg.Secp256K1Signature)
+		err = verifySecp256K1Signature(msg.VaultPubKey, msg.Secp256K1Signature)
 		if err != nil {
 			ctx.Logger().Error(
 				"invalid secp256k1 check signature",
 				"err", err,
 				"ID", msg.ID,
 				"signer", msg.Signer.String(),
-				"pubkey", msg.PoolPubKey,
+				"pubkey", msg.VaultPubKey,
 				"signature", base64.StdEncoding.EncodeToString(msg.Secp256K1Signature),
 			)
 			return cosmos.ErrUnknownRequest("invalid secp256k1 check signature")
@@ -197,16 +197,16 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 			"tss keygen results blame",
 			"height", msg.Height,
 			"id", msg.ID,
-			"pubkey_ecdsa", msg.PoolPubKey,
-			"pubkey_eddsa", msg.PoolPubKeyEddsa,
+			"pubkey_ecdsa", msg.VaultPubKey,
+			"pubkey_eddsa", msg.VaultPubKeyEddsa,
 			"blames", strings.Join(blames, ", "),
 			"reason", failReason,
 			"blamer", msg.Signer,
 		)
 	}
 	// only record TSS metric when keygen is success
-	if msg.IsSuccess() && !msg.PoolPubKey.IsEmpty() {
-		metric, err := h.mgr.Keeper().GetTssKeygenMetric(ctx, msg.PoolPubKey)
+	if msg.IsSuccess() && !msg.VaultPubKey.IsEmpty() {
+		metric, err := h.mgr.Keeper().GetTssKeygenMetric(ctx, msg.VaultPubKey)
 		if err != nil {
 			ctx.Logger().Error("fail to get keygen metric", "error", err)
 		} else {
@@ -220,30 +220,30 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 		return fmt.Errorf("fail to get tss voter: %w", err)
 	}
 
-	// when PoolPubKey is empty , which means TssVoter with id(msg.ID) doesn't
+	// when VaultPubKey is empty , which means TssVoter with id(msg.ID) doesn't
 	// exist before, this is the first time to create it
-	// set the PoolPubKey to the one in msg, there is no reason voter.PubKeys
+	// set the VaultPubKey to the one in msg, there is no reason voter.PubKeys
 	// have anything in it either, thus override it with msg.PubKeys as well
-	if voter.PoolPubKey.IsEmpty() {
-		voter.PoolPubKey = msg.PoolPubKey
-		voter.PoolPubKeyEddsa = msg.PoolPubKeyEddsa
+	if voter.VaultPubKey.IsEmpty() {
+		voter.VaultPubKey = msg.VaultPubKey
+		voter.VaultPubKeyEddsa = msg.VaultPubKeyEddsa
 		voter.PubKeys = msg.PubKeys
 	}
-	// voter's pool pubkey is the same as the one in message
-	if !voter.PoolPubKey.Equals(msg.PoolPubKey) || !voter.PoolPubKeyEddsa.Equals(msg.PoolPubKeyEddsa) {
-		return fmt.Errorf("invalid pool pubkey")
+	// voter's vault pubkey is the same as the one in message
+	if !voter.VaultPubKey.Equals(msg.VaultPubKey) || !voter.VaultPubKeyEddsa.Equals(msg.VaultPubKeyEddsa) {
+		return fmt.Errorf("invalid vault pubkey")
 	}
-	observeSlashPoints := h.mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
+	observePenaltyPoints := h.mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
 	lackOfObservationPenalty := h.mgr.Keeper().GetConfigInt64(ctx, constants.Observation_MissPenaltyPoints)
 	observeFlex := getConfigDurationBlocks(ctx, h.mgr.Keeper(), constants.Observation_DelayFlexibilityMinutes)
 
-	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
+	penaltyCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
 		telemetry.NewLabel("reason", "failed_observe_tss_pool"),
 	}))
 
 	if !voter.Sign(msg.Signer, msg.Chains, string(msg.Secp256K1Signature)) {
-		// Slash for the network having to handle the extra message/s.
-		h.mgr.Slasher().IncSlashPoints(slashCtx, observeSlashPoints, msg.Signer)
+		// Penalty for the network having to handle the extra message/s.
+		h.mgr.PenaltyManager().IncPenaltyPoints(penaltyCtx, observePenaltyPoints, msg.Signer)
 		ctx.Logger().Info("signer already signed MsgTssPool", "signer", msg.Signer.String(), "txid", msg.ID)
 		return nil
 
@@ -251,15 +251,15 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 	h.mgr.Keeper().SetTssVoter(ctx, voter)
 
 	if !voter.HasConsensus() {
-		// Slash until 2/3rds consensus.
-		h.mgr.Slasher().IncSlashPoints(slashCtx, observeSlashPoints, msg.Signer)
+		// Penalty until 2/3rds consensus.
+		h.mgr.PenaltyManager().IncPenaltyPoints(penaltyCtx, observePenaltyPoints, msg.Signer)
 		return nil
 	}
 
 	if voter.BlockHeight > 0 && (voter.BlockHeight+observeFlex) >= ctx.BlockHeight() {
-		// After 2/3rds consensus, only decrement slash points if within the Observation_DelayFlexibilityMinutes period.
+		// After 2/3rds consensus, only decrement penalty points if within the Observation_DelayFlexibilityMinutes period.
 		// (This is expected to only apply for a failed keygen.)
-		h.mgr.Slasher().DecSlashPoints(slashCtx, lackOfObservationPenalty, msg.Signer)
+		h.mgr.PenaltyManager().DecPenaltyPoints(penaltyCtx, lackOfObservationPenalty, msg.Signer)
 	}
 
 	if voter.BlockHeight == 0 {
@@ -303,11 +303,11 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 		}
 
 		// As this signer brings the voter to 2/3rds consensus,
-		// increment the signer's slash points like the before-consensus signers,
-		// then decrement all the signers' slash points and increment the non-signers' slash points.
-		h.mgr.Slasher().IncSlashPoints(slashCtx, observeSlashPoints, msg.Signer)
-		h.mgr.Slasher().DecSlashPoints(slashCtx, observeSlashPoints, signers...)
-		h.mgr.Slasher().IncSlashPoints(slashCtx, lackOfObservationPenalty, nonSigners...)
+		// increment the signer's penalty points like the before-consensus signers,
+		// then decrement all the signers' penalty points and increment the non-signers' penalty points.
+		h.mgr.PenaltyManager().IncPenaltyPoints(penaltyCtx, observePenaltyPoints, msg.Signer)
+		h.mgr.PenaltyManager().DecPenaltyPoints(penaltyCtx, observePenaltyPoints, signers...)
+		h.mgr.PenaltyManager().IncPenaltyPoints(penaltyCtx, lackOfObservationPenalty, nonSigners...)
 
 		// Do the below only for a non-success message upon 2/3rds consensus.
 		if !msg.IsSuccess() {
@@ -324,9 +324,9 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 				}
 			}
 
-			// if a node fail to join the keygen, thus hold off the network
-			// from churning then it will be slashed accordingly
-			slashPoints := h.mgr.Keeper().GetConfigInt64(ctx, constants.Keygen_FailPenaltyPoints)
+			// If a node fails to join keygen and holds off churn, track it with
+			// reliability points. Thornado does not financially penalize bonds.
+			penaltyPoints := h.mgr.Keeper().GetConfigInt64(ctx, constants.Keygen_FailPenaltyPoints)
 			for _, b := range msg.Blame {
 				for _, node := range b.BlameNodes {
 					nodePubKey, err := common.NewPubKey(node.Pubkey)
@@ -339,15 +339,15 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 						return fmt.Errorf("fail to get node from it's pub key: %w", err)
 					}
 					if na.Status == NodeActive {
-						failedKeygenSlashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
+						failedKeygenPenaltyCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
 							telemetry.NewLabel("reason", "failed_keygen"),
 						}))
-						if err := h.mgr.Keeper().IncNodeAccountSlashPoints(failedKeygenSlashCtx, na.NodeAddress, slashPoints); err != nil {
-							ctx.Logger().Error("fail to inc slash points", "error", err)
+						if err := h.mgr.Keeper().IncNodeAccountPenaltyPoints(failedKeygenPenaltyCtx, na.NodeAddress, penaltyPoints); err != nil {
+							ctx.Logger().Error("fail to inc penalty points", "error", err)
 						}
 
-						if err := h.mgr.EventMgr().EmitEvent(ctx, NewEventSlashPoint(na.NodeAddress, slashPoints, "fail keygen")); err != nil {
-							ctx.Logger().Error("fail to emit slash point event")
+						if err := h.mgr.EventMgr().EmitEvent(ctx, NewEventPenaltyPoint(na.NodeAddress, penaltyPoints, "fail keygen")); err != nil {
+							ctx.Logger().Error("fail to emit penalty point event")
 						}
 					} else {
 						// go to jail
@@ -358,39 +358,7 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 							ctx.Logger().Error("fail to set node account jail", "node address", na.NodeAddress, "reason", reason, "error", err)
 						}
 
-						network, err := h.mgr.Keeper().GetNetwork(ctx)
-						if err != nil {
-							return fmt.Errorf("fail to get network: %w", err)
-						}
-
-						slashBond := network.CalcNodeRewards(cosmos.NewUint(uint64(slashPoints)))
-						if slashBond.GT(na.Bond) {
-							slashBond = na.Bond
-						}
-						ctx.Logger().Info("fail keygen , slash bond", "address", na.NodeAddress, "amount", slashBond.String())
-						// take out bond from the node account and add it to the Reserve
-						// thus good behaviour nodes and liquidity providers will get reward
-						na.Bond = common.SafeSub(na.Bond, slashBond)
-						coin := common.NewCoin(common.BTCAsset, slashBond)
-						if !coin.Amount.IsZero() {
-							if err := h.mgr.Keeper().SendFromModuleToModule(ctx, BondName, ReserveName, common.NewCoins(coin)); err != nil {
-								return fmt.Errorf("fail to transfer funds from bond to reserve: %w", err)
-							}
-							slashFloat, _ := new(big.Float).SetInt(slashBond.BigInt()).Float32()
-							telemetry.IncrCounterWithLabels(
-								[]string{"thornado", "bond_slash"},
-								slashFloat,
-								[]metrics.Label{
-									telemetry.NewLabel("address", na.NodeAddress.String()),
-									telemetry.NewLabel("reason", "failed_keygen"),
-								},
-							)
-						}
-
-						bondEvent := NewEventBond(slashBond, BondCost, common.Tx{}, &na, nil)
-						if err := h.mgr.EventMgr().EmitEvent(ctx, bondEvent); err != nil {
-							return fmt.Errorf("fail to emit bond event: %w", err)
-						}
+						ctx.Logger().Info("fail keygen; jailed node without bond penalty", "address", na.NodeAddress)
 					}
 					if err := h.mgr.Keeper().SetNodeAccount(ctx, na); err != nil {
 						return fmt.Errorf("fail to save node account: %w", err)
@@ -406,7 +374,7 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 
 	// when keygen success
 	if msg.IsSuccess() {
-		// Separately from the usual consensus-agreement slash points,
+		// Separately from the usual consensus-agreement penalty points,
 		// those who haven't agreed with a consensus success message incur Keygen_FailPenaltyPoints until agreement.
 		judgeLateSigner(ctx, h.mgr, msg, voter)
 
@@ -416,7 +384,7 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 				"tss keygen results success",
 				"height", msg.Height,
 				"id", msg.ID,
-				"pubkey", msg.PoolPubKey,
+				"pubkey", msg.VaultPubKey,
 			)
 
 			if len(voter.Secp256K1Signatures) > 0 {
@@ -445,7 +413,7 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 
 			vaultType := BaseVault
 			chains := voter.ConsensusChains()
-			vault := NewVaultV2(ctx.BlockHeight(), InitVault, vaultType, voter.PoolPubKey, chains.Strings(), voter.PoolPubKeyEddsa)
+			vault := NewVaultV2(ctx.BlockHeight(), InitVault, vaultType, voter.VaultPubKey, chains.Strings(), voter.VaultPubKeyEddsa)
 			vault.Membership = voter.PubKeys
 
 			if err := h.mgr.Keeper().SetVault(ctx, vault); err != nil {
@@ -461,7 +429,7 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 			}
 
 			var metric *keeper.TssKeygenMetric
-			metric, err = h.mgr.Keeper().GetTssKeygenMetric(ctx, msg.PoolPubKey)
+			metric, err = h.mgr.Keeper().GetTssKeygenMetric(ctx, msg.VaultPubKey)
 			if err != nil {
 				ctx.Logger().Error("fail to get keygen metric", "error", err)
 			} else {
@@ -494,7 +462,7 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 				for i, addr := range addrs {
 					members[i] = addr.String()
 				}
-				if err := h.mgr.EventMgr().EmitEvent(ctx, NewEventTssKeygenSuccess(msg.PoolPubKey, msg.Height, members)); err != nil {
+				if err := h.mgr.EventMgr().EmitEvent(ctx, NewEventTssKeygenSuccess(msg.VaultPubKey, msg.Height, members)); err != nil {
 					ctx.Logger().Error("fail to emit keygen success event")
 				}
 			}
@@ -509,14 +477,14 @@ func judgeLateSigner(ctx cosmos.Context, mgr Manager, msg *MsgTssPool, voter Tss
 	if !voter.HasConsensus() || !msg.IsSuccess() {
 		return
 	}
-	slashPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Keygen_FailPenaltyPoints)
-	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
+	penaltyPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Keygen_FailPenaltyPoints)
+	penaltyCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
 		telemetry.NewLabel("reason", "failed_observe_tss_pool"),
 	}))
 
-	// when voter already has 2/3 majority signers , restore current message signer's slash points
+	// when voter already has 2/3 majority signers , restore current message signer's penalty points
 	if voter.MajorityConsensusBlockHeight > 0 {
-		mgr.Slasher().DecSlashPoints(slashCtx, slashPoints, msg.Signer)
+		mgr.PenaltyManager().DecPenaltyPoints(penaltyCtx, penaltyPoints, msg.Signer)
 		if err := mgr.Keeper().ReleaseNodeAccountFromJail(ctx, msg.Signer); err != nil {
 			ctx.Logger().Error("fail to release node account from jail", "node address", msg.Signer, "error", err)
 		}
@@ -538,7 +506,7 @@ func judgeLateSigner(ctx cosmos.Context, mgr Manager, msg *MsgTssPool, voter Tss
 		}
 		// whoever is in the keygen list , but didn't broadcast MsgTssPool
 		if !voter.HasSigned(thorAddr) {
-			mgr.Slasher().IncSlashPoints(slashCtx, slashPoints, thorAddr)
+			mgr.PenaltyManager().IncPenaltyPoints(penaltyCtx, penaltyPoints, thorAddr)
 			// go to jail
 			jailTime := getConfigDurationBlocks(ctx, mgr.Keeper(), constants.Keygen_FailJailMinutes)
 			releaseHeight := ctx.BlockHeight() + jailTime
@@ -554,9 +522,24 @@ func judgeLateSigner(ctx cosmos.Context, mgr Manager, msg *MsgTssPool, voter Tss
 // and also during deliver. Store changes will persist if this function
 // succeeds, regardless of the success of the transaction.
 func TssAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg MsgTssPool) (cosmos.Context, error) {
-	err := validateTssAuth(ctx, k, msg.Signer)
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	if err := validateTssAuth(ctx, k, msg.Signer); err != nil {
+		return ctx, err
+	}
+	voter, err := k.GetTssVoter(ctx, msg.ID)
 	if err != nil {
 		return ctx, err
+	}
+	if voter.IsEmpty() {
+		voter = NewTssVoter(msg.ID, msg.PubKeys, msg.VaultPubKey, msg.VaultPubKeyEddsa)
+	}
+	if !voter.Sign(msg.Signer, msg.Chains, string(msg.Secp256K1Signature)) {
+		return ctx, cosmos.ErrUnknownRequest("tss attestation already submitted")
+	}
+	if ctx.IsCheckTx() {
+		k.SetTssVoter(ctx, voter)
 	}
 
 	return ctx.WithPriority(ActiveNodePriority), nil

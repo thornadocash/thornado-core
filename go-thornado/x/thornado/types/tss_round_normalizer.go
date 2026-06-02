@@ -9,7 +9,7 @@ import (
 )
 
 // CanonicalTssRound normalizes raw TSS round names into the canonical constants
-// used in Thornode consensus and telemetry. When algo is empty, it is inferred
+// used in Thornado consensus and telemetry. When algo is empty, it is inferred
 // from the raw round name when possible.
 func CanonicalTssRound(round string, algo common.SigningAlgo) string {
 	if round == "" {

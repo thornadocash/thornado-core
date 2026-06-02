@@ -66,6 +66,9 @@ func (m *MsgSolvencyQuorum) ValidateBasic() error {
 	if s.PubKey.IsEmpty() {
 		return cosmos.ErrUnknownRequest("pubkey is empty")
 	}
+	if len(s.Coins) > MaxSolvencyCoins {
+		return cosmos.ErrUnknownRequest(fmt.Sprintf("too many solvency coins: %d, max %d", len(s.Coins), MaxSolvencyCoins))
+	}
 	if s.Height <= 0 {
 		return cosmos.ErrUnknownRequest("block height is invalid")
 	}

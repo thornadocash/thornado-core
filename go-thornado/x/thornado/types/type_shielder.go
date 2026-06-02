@@ -42,10 +42,15 @@ type DepositSession struct {
 	DepositAddress   common.Address    `json:"deposit_address"`
 	VaultPubKey      common.PubKey     `json:"vault_pub_key"`
 	DepositPathIndex uint64            `json:"deposit_path_index"`
+	DepositPath      string            `json:"deposit_path,omitempty"`
+	DepositPathType  string            `json:"deposit_path_type,omitempty"`
+	DepositNonce     uint64            `json:"deposit_nonce,omitempty"`
 	OperatorPubKey   common.PubKey     `json:"operator_pub_key,omitempty"`
 	NodePubKey       string            `json:"node_pub_key,omitempty"`
 	AuctionID        string            `json:"auction_id,omitempty"`
 	CreatedHeight    int64             `json:"created_height"`
+	PowDurationMs    uint64            `json:"pow_duration_ms,omitempty"`
+	PowDifficulty    int64             `json:"pow_difficulty,omitempty"`
 	Status           string            `json:"status"`
 	DepositID        common.TxID       `json:"deposit_id,omitempty"`
 }
@@ -79,6 +84,9 @@ type DepositRecord struct {
 	ReturnAddress    common.Address    `json:"return_address,omitempty"`
 	VaultPubKey      common.PubKey     `json:"vault_pub_key"`
 	DepositPathIndex uint64            `json:"deposit_path_index"`
+	DepositPath      string            `json:"deposit_path,omitempty"`
+	DepositPathType  string            `json:"deposit_path_type,omitempty"`
+	DepositNonce     uint64            `json:"deposit_nonce,omitempty"`
 	OperatorPubKey   common.PubKey     `json:"operator_pub_key,omitempty"`
 	NodePubKey       string            `json:"node_pub_key,omitempty"`
 	AuctionID        string            `json:"auction_id,omitempty"`
@@ -88,6 +96,8 @@ type DepositRecord struct {
 	NodeSlot         uint64            `json:"node_slot,omitempty"`
 	BondConfirmed    bool              `json:"bond_confirmed,omitempty"`
 	MatchedHeight    int64             `json:"matched_height"`
+	PowDurationMs    uint64            `json:"pow_duration_ms,omitempty"`
+	PowDifficulty    int64             `json:"pow_difficulty,omitempty"`
 	Status           string            `json:"status"`
 	Commitments      []string          `json:"commitments,omitempty"`
 }
@@ -126,12 +136,52 @@ type DepositAddress struct {
 	Address        common.Address    `json:"address"`
 	VaultPubKey    common.PubKey     `json:"vault_pub_key"`
 	PathIndex      uint64            `json:"path_index"`
+	Path           string            `json:"path,omitempty"`
+	PathType       string            `json:"path_type,omitempty"`
+	DepositNonce   uint64            `json:"deposit_nonce,omitempty"`
 	Owner          cosmos.AccAddress `json:"owner"`
 	PowToken       string            `json:"pow_token"`
 	OperatorPubKey common.PubKey     `json:"operator_pub_key,omitempty"`
 	NodePubKey     string            `json:"node_pub_key,omitempty"`
 	AuctionID      string            `json:"auction_id,omitempty"`
 	CreatedHeight  int64             `json:"created_height"`
+}
+
+type DepositPowTiming struct {
+	PowToken          string            `json:"pow_token"`
+	Owner             cosmos.AccAddress `json:"owner"`
+	DurationMs        uint64            `json:"duration_ms"`
+	Difficulty        int64             `json:"difficulty"`
+	CreatedHeight     int64             `json:"created_height"`
+	DepositID         common.TxID       `json:"deposit_id,omitempty"`
+	DepositAmountSats uint64            `json:"deposit_amount_sats,omitempty"`
+	MatchedHeight     int64             `json:"matched_height,omitempty"`
+	Deposited         bool              `json:"deposited,omitempty"`
+}
+
+func (m DepositPowTiming) Key() string {
+	return strings.TrimSpace(m.PowToken)
+}
+
+func (m DepositPowTiming) Valid() error {
+	if strings.TrimSpace(m.PowToken) == "" {
+		return fmt.Errorf("missing deposit pow token")
+	}
+	if m.Owner.Empty() {
+		return fmt.Errorf("missing deposit pow owner")
+	}
+	if m.Difficulty < 0 {
+		return fmt.Errorf("invalid deposit pow difficulty")
+	}
+	return nil
+}
+
+type DepositPowDifficultyState struct {
+	Difficulty         int64  `json:"difficulty"`
+	LastRetargetHeight int64  `json:"last_retarget_height"`
+	SampleCount        uint64 `json:"sample_count,omitempty"`
+	WeightedP90Ms      uint64 `json:"weighted_p90_ms,omitempty"`
+	UpdatedHeight      int64  `json:"updated_height,omitempty"`
 }
 
 func (m DepositAddress) Key() string {
@@ -280,46 +330,37 @@ func (m DepositAddress) Valid() error {
 }
 
 type StoredShielderNoteRecord struct {
-	OwnerPubkey      string      `json:"owner_pubkey"`
-	Commitment       string      `json:"commitment"`
-	DenominationSats uint64      `json:"denomination_sats"`
-	DepositID        common.TxID `json:"deposit_id"`
+	Commitment       string `json:"commitment"`
+	DenominationSats uint64 `json:"denomination_sats"`
 }
 
 func (m StoredShielderNoteRecord) Key() string {
-	return strings.TrimSpace(m.OwnerPubkey)
+	return strings.TrimSpace(m.Commitment)
 }
 
 func (m StoredShielderNoteRecord) Valid() error {
-	if strings.TrimSpace(m.OwnerPubkey) == "" {
-		return fmt.Errorf("missing shielder note owner pubkey")
-	}
 	if strings.TrimSpace(m.Commitment) == "" {
 		return fmt.Errorf("missing shielder note commitment")
 	}
 	if m.DenominationSats == 0 {
 		return fmt.Errorf("missing shielder note denomination")
 	}
-	if m.DepositID.IsEmpty() {
-		return fmt.Errorf("missing shielder note deposit id")
-	}
 	return nil
 }
 
 type ShielderRedeem struct {
-	WithdrawalID    string            `json:"withdrawal_id"`
-	Owner           cosmos.AccAddress `json:"owner"`
-	NullifierHash   string            `json:"nullifier_hash"`
-	MerkleRoot      string            `json:"merkle_root"`
-	Recipient       common.Address    `json:"recipient"`
-	AmountSats      uint64            `json:"amount_sats"`
-	FeeSats         uint64            `json:"fee_sats"`
-	InHash          common.TxID       `json:"in_hash"`
-	VaultPubKey     common.PubKey     `json:"vault_pub_key"`
-	RequestedHeight int64             `json:"requested_height"`
-	Status          string            `json:"status"`
-	Proof           json.RawMessage   `json:"proof,omitempty"`
-	Public          json.RawMessage   `json:"public,omitempty"`
+	WithdrawalID    string          `json:"withdrawal_id"`
+	NullifierHash   string          `json:"nullifier_hash"`
+	MerkleRoot      string          `json:"merkle_root"`
+	Recipient       common.Address  `json:"recipient"`
+	AmountSats      uint64          `json:"amount_sats"`
+	FeeSats         uint64          `json:"fee_sats"`
+	InHash          common.TxID     `json:"in_hash"`
+	VaultPubKey     common.PubKey   `json:"vault_pub_key"`
+	RequestedHeight int64           `json:"requested_height"`
+	Status          string          `json:"status"`
+	Proof           json.RawMessage `json:"proof,omitempty"`
+	Public          json.RawMessage `json:"public,omitempty"`
 }
 
 func (m ShielderRedeem) Key() string {
@@ -329,9 +370,6 @@ func (m ShielderRedeem) Key() string {
 func (m ShielderRedeem) Valid() error {
 	if strings.TrimSpace(m.WithdrawalID) == "" {
 		return fmt.Errorf("missing shielder redeem id")
-	}
-	if m.Owner.Empty() {
-		return fmt.Errorf("missing shielder redeem owner")
 	}
 	if strings.TrimSpace(m.NullifierHash) == "" {
 		return fmt.Errorf("missing shielder nullifier hash")

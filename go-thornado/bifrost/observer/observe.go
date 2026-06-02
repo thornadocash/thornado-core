@@ -29,7 +29,7 @@ import (
 
 // signedTxOutCacheSize is the number of signed tx out observations to keep in memory
 // to prevent duplicate observations. Based on historical data at the time of writing,
-// the peak of Thornado's L1 swaps was 10k per day.
+// the peak inbound observation rate was 10k per day.
 const signedTxOutCacheSize = 10_000
 
 // deckRefreshTime is the time to wait before reconciling txIn status.
@@ -581,8 +581,8 @@ func (o *Observer) filterObservations(chain common.Chain, items []*types.TxInIte
 		// a inbound and outbound txn, if we both apply.
 
 		isInternal := false
-		// check if the from address is a valid pool
-		if ok, cpi := o.pubkeyMgr.IsValidPoolAddress(txInItem.Sender, chain); ok {
+		// check if the from address is a known vault
+		if ok, cpi := o.pubkeyMgr.IsValidVaultAddress(txInItem.Sender, chain); ok {
 			tx := txInItem.Copy()
 			tx.ObservedVaultPubKey = cpi.PubKey
 			isInternal = true
@@ -602,10 +602,10 @@ func (o *Observer) filterObservations(chain common.Chain, items []*types.TxInIte
 			continue
 		}
 
-		// check if the to address is a valid pool address
+		// check if the to address is a valid vault address
 		// for inbound message , if it is still in mempool , it will be ignored unless it is internal transaction
 		// internal tx means both from & to addresses belongs to the network. for example migrate/consolidate
-		if ok, cpi := o.pubkeyMgr.IsValidPoolAddress(txInItem.To, chain); ok && (!memPool || isInternal) {
+		if ok, cpi := o.pubkeyMgr.IsValidVaultAddress(txInItem.To, chain); ok && (!memPool || isInternal) {
 			tx := txInItem.Copy()
 			tx.ObservedVaultPubKey = cpi.PubKey
 			txs = append(txs, tx)
@@ -726,12 +726,12 @@ func (o *Observer) getThornadoTxIns(txIn *types.TxIn, finalized bool, finaliseHe
 			continue
 		}
 
-		o.logger.Debug().Msgf("pool pubkey %s", item.ObservedVaultPubKey)
+		o.logger.Debug().Msgf("vault pubkey %s", item.ObservedVaultPubKey)
 		chainAddr, err := item.ObservedVaultPubKey.GetAddress(txIn.Chain)
 		o.logger.Debug().Msgf("%s address %s", txIn.Chain.String(), chainAddr)
 		if err != nil {
-			o.errCounter.WithLabelValues("fail to parse observed pool address", item.ObservedVaultPubKey.String()).Inc()
-			o.logger.Err(err).Msgf("fail to parse observed pool address: %s", item.ObservedVaultPubKey.String())
+			o.errCounter.WithLabelValues("fail to parse observed vault address", item.ObservedVaultPubKey.String()).Inc()
+			o.logger.Err(err).Msgf("fail to parse observed vault address: %s", item.ObservedVaultPubKey.String())
 			invalidIndices = append(invalidIndices, i)
 			continue
 		}
@@ -805,7 +805,7 @@ func (o *Observer) Stop() error {
 
 	close(o.stopChan)
 	if err := o.pubkeyMgr.Stop(); err != nil {
-		o.logger.Error().Err(err).Msg("fail to stop pool address manager")
+		o.logger.Error().Err(err).Msg("fail to stop vault address manager")
 	}
 	if err := o.storage.Close(); err != nil {
 		o.logger.Err(err).Msg("fail to close observer storage")

@@ -53,7 +53,6 @@ func (KeeperTestSuit) TestShielderState(c *C) {
 	withdrawalID := "ABCDEF"
 	withdrawal := types.ShielderRedeem{
 		WithdrawalID:    withdrawalID,
-		Owner:           owner,
 		NullifierHash:   "nullifier",
 		MerkleRoot:      "root",
 		Recipient:       addr,
@@ -109,7 +108,7 @@ func (KeeperTestSuit) TestShielderState(c *C) {
 	c.Check(gotFeePool.TotalCollectedSats, Equals, uint64(2_000_000))
 	c.Check(gotFeePool.FeePerSlotShare, Equals, uint64(20_000_000_000))
 
-	empty := types.ShielderRedeem{Owner: owner, AmountSats: 1, FeeSats: 0}
+	empty := types.ShielderRedeem{AmountSats: 1, FeeSats: 0}
 	c.Assert(empty.Valid(), NotNil)
 	c.Assert(types.DepositRecord{Owner: owner, AmountSats: 1}.Valid(), NotNil)
 	c.Assert(types.DepositSession{Owner: cosmos.AccAddress{}}.Valid(), NotNil)
@@ -136,11 +135,16 @@ func (KeeperTestSuit) TestShielderInvariants(c *C) {
 	}
 	c.Assert(k.SetDepositRecord(ctx, deposit), IsNil)
 	c.Assert(k.SetShielderCommitment(ctx, commitment, depositID), IsNil)
-	c.Assert(k.SetNextVaultDepositPathIndex(ctx, vaultPubKey, 2), IsNil)
+	c.Assert(k.SetNextVaultDepositPathIndex(ctx, vaultPubKey, common.VaultDepositPathUser, 2), IsNil)
+	pathIndex, err := common.VaultDepositPathIndex(common.VaultDepositPathUser, 0, common.DepositPathCommitmentRoot)
+	c.Assert(err, IsNil)
 	c.Assert(k.SetDepositAddress(ctx, types.DepositAddress{
 		Address:       depositAddress,
 		VaultPubKey:   vaultPubKey,
-		PathIndex:     1,
+		PathIndex:     pathIndex,
+		Path:          common.VaultDepositPath(common.VaultDepositPathUser, 0, common.DepositPathCommitmentRoot),
+		PathType:      string(common.VaultDepositPathUser),
+		DepositNonce:  0,
 		Owner:         owner,
 		PowToken:      "pow-token",
 		CreatedHeight: ctx.BlockHeight(),
@@ -174,7 +178,7 @@ func (KeeperTestSuit) TestShielderInvariants(c *C) {
 	c.Check(broken, Equals, true)
 	c.Check(len(msg) > 0, Equals, true)
 
-	c.Assert(k.SetNextVaultDepositPathIndex(ctx, vaultPubKey, 1), IsNil)
+	c.Assert(k.SetNextVaultDepositPathIndex(ctx, vaultPubKey, common.VaultDepositPathUser, 0), IsNil)
 	msg, broken = ShielderVaultAddressInvariant(k)(ctx)
 	c.Check(broken, Equals, true)
 	c.Check(len(msg) > 0, Equals, true)

@@ -8,7 +8,6 @@ import "gogoproto/gogo.proto";
 import "types/query_account.proto";
 import "types/query_bank.proto";
 import "types/query_balance_module.proto";
-import "types/query_ban.proto";
 import "types/query_block.proto";
 import "types/query_constant_values.proto";
 import "types/query_deposit.proto";
@@ -26,7 +25,6 @@ import "types/query_tx.proto";
 import "types/query_upgrade.proto";
 import "types/query_vault.proto";
 import "types/query_version.proto";
-import "types/type_ban_voter.proto";
 import "types/type_network_fee.proto";
 import "types/type_tss_metric.proto";
 
@@ -46,7 +44,7 @@ service Query {
   }
 
   rpc Node(QueryNodeRequest) returns (QueryNodeResponse) {
-    option (google.api.http).get = "/thornado/node/address/{address}";
+    option (google.api.http).get = "/thornado/node/{address}";
   }
 
   rpc Nodes(QueryNodesRequest) returns (QueryNodesResponse) {
@@ -59,10 +57,6 @@ service Query {
 
   rpc NodeSlot(QueryNodeSlotRequest) returns (QueryNodeSlotResponse) {
     option (google.api.http).get = "/thornado/node/slot/{slot}";
-  }
-
-  rpc Ban(QueryBanRequest) returns (BanVoter) {
-    option (google.api.http).get = "/thornado/ban/{address}";
   }
 
   rpc ConfigValues(QueryConfigValuesRequest) returns (QueryConfigValuesResponse) {

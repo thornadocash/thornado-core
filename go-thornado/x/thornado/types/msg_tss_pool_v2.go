@@ -10,7 +10,7 @@ import (
 // NewMsgTssPool is a constructor function for MsgTssPool
 func NewMsgTssPoolV2(
 	pks []string,
-	poolpk common.PubKey,
+	vaultpk common.PubKey,
 	secp256k1Signature,
 	keysharesBackup []byte,
 	keygenType KeygenType,
@@ -19,19 +19,19 @@ func NewMsgTssPoolV2(
 	chains []string,
 	signer cosmos.AccAddress,
 	keygenTime int64,
-	poolPubKeyEddsa common.PubKey,
+	vaultPubKeyEddsa common.PubKey,
 	keysharesBackupEddsa []byte,
 	keysharesBackupFrost ...[]byte,
 ) (*MsgTssPool, error) {
-	id, err := getTssID(pks, poolpk, height, bl)
+	id, err := getTssID(pks, vaultpk, height, bl)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get tss id: %w", err)
 	}
 	msg := &MsgTssPool{
 		ID:                   id,
 		PubKeys:              pks,
-		PoolPubKey:           poolpk,
-		PoolPubKeyEddsa:      poolPubKeyEddsa,
+		VaultPubKey:          vaultpk,
+		VaultPubKeyEddsa:     vaultPubKeyEddsa,
 		Height:               height,
 		KeygenType:           keygenType,
 		Blame:                bl,

@@ -6,13 +6,11 @@ import (
 )
 
 const (
-	ModuleName   = types.ModuleName
-	ReserveName  = types.ReserveName
-	BaseName     = types.BaseName
-	TreasuryName = types.TreasuryName
-	BondName     = types.BondName
-	LendingName  = types.LendingName
-	StoreKey     = types.StoreKey
+	ModuleName  = types.ModuleName
+	ReserveName = types.ReserveName
+	BaseName    = types.BaseName
+	BondName    = types.BondName
+	StoreKey    = types.StoreKey
 
 	// Vaults
 	BaseVault     = types.VaultType_BaseVault
@@ -49,7 +47,6 @@ var (
 	NewNetwork                 = types.NewNetwork
 	NewObservedTx              = common.NewObservedTx
 	NewTssVoter                = types.NewTssVoter
-	NewBanVoter                = types.NewBanVoter
 	NewErrataTxVoter           = types.NewErrataTxVoter
 	NewObservedTxVoter         = types.NewObservedTxVoter
 	NewKeygen                  = types.NewKeygen
@@ -66,10 +63,7 @@ var (
 	GetRandomNode              = types.GetRandomNode
 	GetRandomVaultNode         = types.GetRandomVaultNode
 	GetRandomBTCAddress        = types.GetRandomBTCAddress
-	GetRandomETHAddress        = types.GetRandomETHAddress
-	GetRandomBCHAddress        = types.GetRandomBCHAddress
-	GetRandomRUNEAddress       = types.GetRandomRUNEAddress
-	GetRandomTHORAddress       = types.GetRandomTHORAddress
+	GetRandomThornadoAddress   = types.GetRandomThornadoAddress
 	GetRandomTxHash            = types.GetRandomTxHash
 	GetRandomBech32Addr        = types.GetRandomBech32Addr
 	GetRandomPubKey            = types.GetRandomPubKey
@@ -84,7 +78,6 @@ var (
 type (
 	ObservedTxs             = common.ObservedTxs
 	ObservedTxVoter         = types.ObservedTxVoter
-	BanVoter                = types.BanVoter
 	ErrataTxVoter           = types.ErrataTxVoter
 	TssVoter                = types.TssVoter
 	TssKeysignFailVoter     = types.TssKeysignFailVoter

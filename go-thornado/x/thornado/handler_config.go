@@ -8,7 +8,6 @@ import (
 
 	"github.com/blang/semver"
 
-	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
@@ -69,42 +68,19 @@ func (h ConfigHandler) handle(ctx cosmos.Context, msg MsgConfig) error {
 	currentConfigValue, _ := h.mgr.Keeper().GetConfig(ctx, msg.Key)
 	// Here, an error is assumed to mean the Config key is currently unset.
 
-	// Cost and emitting of SetNodeConfig, even if a duplicate
+	// Authorization and emitting of SetNodeConfig, even if a duplicate
 	// (for instance if needed to confirm a new supermajority after a node number decrease).
-	nodeAccount, err := h.mgr.Keeper().GetNodeAccount(ctx, msg.Signer)
-	if err != nil {
+	if _, err := h.mgr.Keeper().GetNodeAccount(ctx, msg.Signer); err != nil {
 		ctx.Logger().Error("fail to get node account", "error", err, "address", msg.Signer.String())
 		return cosmos.ErrUnauthorized(fmt.Sprintf("%s is not authorized", msg.Signer))
 	}
-	cost := h.mgr.Keeper().GetNativeTxFee(ctx)
-	if cost.GT(nodeAccount.Bond) {
-		cost = nodeAccount.Bond
-	}
-	nodeAccount.Bond = common.SafeSub(nodeAccount.Bond, cost)
-	if err = h.mgr.Keeper().SetNodeAccount(ctx, nodeAccount); err != nil {
-		ctx.Logger().Error("fail to save node account", "error", err)
-		return fmt.Errorf("fail to save node account: %w", err)
-	}
-	// move set config cost from bond module to reserve
-	coin := common.NewCoin(common.BTCAsset, cost)
-	if !cost.IsZero() {
-		if err = h.mgr.Keeper().SendFromModuleToModule(ctx, BondName, ReserveName, common.NewCoins(coin)); err != nil {
-			ctx.Logger().Error("fail to transfer funds from bond to reserve", "error", err)
-			return err
-		}
-	}
-	if err = h.mgr.Keeper().SetNodeConfig(ctx, msg.Key, msg.Value, msg.Signer); err != nil {
+	if err := h.mgr.Keeper().SetNodeConfig(ctx, msg.Key, msg.Value, msg.Signer); err != nil {
 		ctx.Logger().Error("fail to save node config", "error", err)
 		return err
 	}
 	nodeConfigEvent := NewEventSetNodeConfig(strings.ToUpper(msg.Key), strconv.FormatInt(msg.Value, 10), msg.Signer.String())
-	if err = h.mgr.EventMgr().EmitEvent(ctx, nodeConfigEvent); err != nil {
+	if err := h.mgr.EventMgr().EmitEvent(ctx, nodeConfigEvent); err != nil {
 		ctx.Logger().Error("fail to emit set_node_config event", "error", err)
-		return err
-	}
-	bondEvent := NewEventBond(cost, BondCost, common.Tx{}, &nodeAccount, nil)
-	if err = h.mgr.EventMgr().EmitEvent(ctx, bondEvent); err != nil {
-		ctx.Logger().Error("fail to emit bond event", "error", err)
 		return err
 	}
 

@@ -2,7 +2,6 @@ syntax = "proto3";
 package types;
 
 import "cosmos/msg/v1/msg.proto";
-import "types/msg_ban.proto";
 import "types/msg_deposit.proto";
 import "types/msg_errata.proto";
 import "types/msg_config.proto";
@@ -29,7 +28,6 @@ option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
 service Msg {
   option (cosmos.msg.v1.service) = true;
 
-  rpc Ban(MsgBan) returns (MsgEmpty);
   rpc Deposit(MsgDeposit) returns (MsgEmpty);
   rpc ErrataTx(MsgErrataTx) returns (MsgEmpty);
   rpc ErrataTxQuorum(MsgErrataTxQuorum) returns (MsgEmpty);
@@ -40,7 +38,7 @@ service Msg {
   rpc ObservedTxIn(MsgObservedTxIn) returns (MsgEmpty);
   rpc ObservedTxOut(MsgObservedTxOut) returns (MsgEmpty);
   rpc ObservedTxQuorum(MsgObservedTxQuorum) returns (MsgEmpty);
-  rpc ThorSend(MsgSend) returns (MsgEmpty);
+  rpc Send(MsgSend) returns (MsgEmpty);
   rpc SetIPAddress(MsgSetIPAddress) returns (MsgEmpty);
   rpc SetNodeKeys(MsgSetNodeKeys) returns (MsgEmpty);
   rpc Solvency(MsgSolvency) returns (MsgEmpty);
@@ -55,9 +53,6 @@ service Msg {
   rpc DepositRequestPow(MsgDepositRequestPow) returns (MsgDepositRequestPowResponse);
   rpc ShielderSplit(MsgShielderSplit) returns (MsgShielderSplitResponse);
   rpc ShielderRedeem(MsgShielderRedeem) returns (MsgShielderRedeemResponse);
-  rpc GaslessDepositRequestPow(MsgGaslessDepositRequestPow) returns (MsgDepositRequestPowResponse);
-  rpc GaslessShielderSplit(MsgGaslessShielderSplit) returns (MsgShielderSplitResponse);
-  rpc GaslessShielderRedeem(MsgGaslessShielderRedeem) returns (MsgShielderRedeemResponse);
   rpc ShielderSplitFees(MsgShielderSplitFees) returns (MsgShielderSplitFeesResponse);
   rpc NodeSlotAuctionCreate(MsgNodeSlotAuctionCreate) returns (MsgNodeSlotAuctionCreateResponse);
   rpc NodeSlotAuctionBidPow(MsgNodeSlotAuctionBidPow) returns (MsgDepositRequestPowResponse);

@@ -83,5 +83,19 @@ func (h NetworkFeeHandler) handle(ctx cosmos.Context, msg MsgNetworkFee) (*cosmo
 // and also during deliver. Store changes will persist if this function
 // succeeds, regardless of the success of the transaction.
 func NetworkFeeAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg MsgNetworkFee) (cosmos.Context, error) {
-	return activeNodeAccountsSignerPriority(ctx, k, msg.GetSigners())
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	newCtx, err := activeNodeAccountsSignerPriority(ctx, k, msg.GetSigners())
+	if err != nil {
+		return ctx, err
+	}
+	voter, err := k.GetObservedNetworkFeeVoter(ctx, msg.BlockHeight, msg.Chain, int64(msg.TransactionFeeRate), int64(msg.TransactionSize))
+	if err != nil {
+		return ctx, err
+	}
+	if err := reserveNetworkFeeAttestations(ctx, k, voter, msg.GetSigners()); err != nil {
+		return ctx, err
+	}
+	return newCtx, nil
 }

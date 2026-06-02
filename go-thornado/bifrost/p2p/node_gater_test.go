@@ -120,7 +120,7 @@ func (m *MockThornadoBridge) SetConstants(c map[string]int64) {
 }
 func (m *MockThornadoBridge) GetContext() client.Context                                { return client.Context{} }
 func (m *MockThornadoBridge) GetErrataMsg(txID common.TxID, chain common.Chain) sdk.Msg { return nil }
-func (m *MockThornadoBridge) GetKeygenStdTx(poolPubKey common.PubKey, secp256k1Signature, keysharesBackup []byte, blame []types.Blame, inputPks common.PubKeys, keygenType types.KeygenType, chains common.Chains, height, keygenTime int64, poolPubKeyEddsa common.PubKey, keysharesBackupEddsa []byte) (sdk.Msg, error) {
+func (m *MockThornadoBridge) GetKeygenStdTx(vaultPubKey common.PubKey, secp256k1Signature, keysharesBackup []byte, blame []types.Blame, inputPks common.PubKeys, keygenType types.KeygenType, chains common.Chains, height, keygenTime int64, vaultPubKeyEddsa common.PubKey, keysharesBackupEddsa []byte) (sdk.Msg, error) {
 	return nil, nil
 }
 
@@ -161,9 +161,8 @@ func (m *MockThornadoBridge) PostKeysignFailure(blame types.Blame, height int64,
 func (m *MockThornadoBridge) PostNetworkFee(height int64, chain common.Chain, transactionSize, transactionRate uint64) (common.TxID, error) {
 	return "", nil
 }
-func (m *MockThornadoBridge) RagnarokInProgress() (bool, error) { return false, nil }
-func (m *MockThornadoBridge) WaitToCatchUp() error              { return nil }
-func (m *MockThornadoBridge) GetBlockHeight() (int64, error)    { return 0, nil }
+func (m *MockThornadoBridge) WaitToCatchUp() error           { return nil }
+func (m *MockThornadoBridge) GetBlockHeight() (int64, error) { return 0, nil }
 func (m *MockThornadoBridge) GetLastObservedInHeight(chain common.Chain) (int64, error) {
 	return 0, nil
 }

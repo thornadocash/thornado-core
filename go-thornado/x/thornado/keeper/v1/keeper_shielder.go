@@ -67,6 +67,36 @@ func (k KVStore) GetDepositSessionByPowToken(ctx cosmos.Context, powToken string
 	return k.GetDepositSession(ctx, addr)
 }
 
+func (k KVStore) SetDepositPowTiming(ctx cosmos.Context, record types.DepositPowTiming) error {
+	if err := record.Valid(); err != nil {
+		return err
+	}
+	return k.setShielderJSON(ctx, k.GetKey(prefixDepositPowTiming, record.Key()), record)
+}
+
+func (k KVStore) GetDepositPowTiming(ctx cosmos.Context, powToken string) (types.DepositPowTiming, error) {
+	record := types.DepositPowTiming{PowToken: strings.TrimSpace(powToken)}
+	found, err := k.getShielderJSON(ctx, k.GetKey(prefixDepositPowTiming, record.Key()), &record)
+	if !found {
+		return types.DepositPowTiming{}, err
+	}
+	return record, err
+}
+
+func (k KVStore) GetDepositPowTimingIterator(ctx cosmos.Context) cosmos.Iterator {
+	return k.getIterator(ctx, prefixDepositPowTiming)
+}
+
+func (k KVStore) SetDepositPowDifficultyState(ctx cosmos.Context, state types.DepositPowDifficultyState) error {
+	return k.setShielderJSON(ctx, k.GetKey(prefixDepositPowDifficulty, "current"), state)
+}
+
+func (k KVStore) GetDepositPowDifficultyState(ctx cosmos.Context) (types.DepositPowDifficultyState, error) {
+	var state types.DepositPowDifficultyState
+	_, err := k.getShielderJSON(ctx, k.GetKey(prefixDepositPowDifficulty, "current"), &state)
+	return state, err
+}
+
 func (k KVStore) SetDepositAddress(ctx cosmos.Context, record types.DepositAddress) error {
 	if err := record.Valid(); err != nil {
 		return err
@@ -84,40 +114,45 @@ func (k KVStore) GetDepositAddressIterator(ctx cosmos.Context) cosmos.Iterator {
 	return k.getIterator(ctx, prefixDepositAddress)
 }
 
-func (k KVStore) GetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey) (uint64, error) {
+func vaultDepositPathCursorKey(vaultPubKey common.PubKey, pathType common.VaultDepositPathType) string {
+	return vaultPubKey.String() + "/" + string(pathType)
+}
+
+func (k KVStore) GetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey, pathType common.VaultDepositPathType) (uint64, error) {
 	if vaultPubKey.IsEmpty() {
 		return 0, fmt.Errorf("missing vault pubkey")
 	}
 	var index uint64
-	found, err := k.getShielderJSON(ctx, k.GetKey(prefixVaultDepositPathIndex, vaultPubKey.String()), &index)
+	found, err := k.getShielderJSON(ctx, k.GetKey(prefixVaultDepositPathIndex, vaultDepositPathCursorKey(vaultPubKey, pathType)), &index)
 	if err != nil {
 		return 0, err
 	}
-	if !found || index == 0 {
-		return common.FirstDepositPathIndex, nil
+	if !found {
+		return 0, nil
 	}
 	return index, nil
 }
 
-func (k KVStore) SetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey, index uint64) error {
+func (k KVStore) SetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey, pathType common.VaultDepositPathType, index uint64) error {
 	if vaultPubKey.IsEmpty() {
 		return fmt.Errorf("missing vault pubkey")
 	}
-	if index == 0 {
-		return fmt.Errorf("vault deposit path index cannot be zero")
-	}
-	return k.setShielderJSON(ctx, k.GetKey(prefixVaultDepositPathIndex, vaultPubKey.String()), index)
+	return k.setShielderJSON(ctx, k.GetKey(prefixVaultDepositPathIndex, vaultDepositPathCursorKey(vaultPubKey, pathType)), index)
 }
 
-func (k KVStore) AllocateVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey) (uint64, error) {
-	index, err := k.GetNextVaultDepositPathIndex(ctx, vaultPubKey)
+func (k KVStore) AllocateVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey, pathType common.VaultDepositPathType) (uint64, uint64, error) {
+	depositIndex, err := k.GetNextVaultDepositPathIndex(ctx, vaultPubKey, pathType)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
-	if err := k.SetNextVaultDepositPathIndex(ctx, vaultPubKey, index+1); err != nil {
-		return 0, err
+	pathIndex, err := common.VaultDepositPathIndex(pathType, depositIndex, common.DepositPathCommitmentRoot)
+	if err != nil {
+		return 0, 0, err
 	}
-	return index, nil
+	if err := k.SetNextVaultDepositPathIndex(ctx, vaultPubKey, pathType, depositIndex+1); err != nil {
+		return 0, 0, err
+	}
+	return depositIndex, pathIndex, nil
 }
 
 func (k KVStore) SetDepositRecord(ctx cosmos.Context, deposit types.DepositRecord) error {

@@ -1,15 +1,6 @@
 package thornado
 
-import (
-	"context"
-
-	"github.com/cosmos/cosmos-sdk/telemetry"
-	"github.com/hashicorp/go-metrics"
-
-	"github.com/thornadocash/go-thornado/common"
-	"github.com/thornadocash/go-thornado/common/cosmos"
-	"github.com/thornadocash/go-thornado/constants"
-)
+import "github.com/thornadocash/go-thornado/common/cosmos"
 
 // ConsolidateHandler handles transactions the network sends to itself, to consolidate UTXOs
 type ConsolidateHandler struct {
@@ -44,25 +35,12 @@ func (h ConsolidateHandler) validate(ctx cosmos.Context, msg MsgConsolidate) err
 	return msg.ValidateBasic()
 }
 
-func (h ConsolidateHandler) slash(ctx cosmos.Context, tx ObservedTx) error {
-	toSlash := make(common.Coins, len(tx.Tx.Coins))
-	copy(toSlash, tx.Tx.Coins)
-	toSlash = toSlash.Add(tx.Tx.Gas.ToCoins()...)
-
-	ctx = ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{ // nolint
-		telemetry.NewLabel("reason", "failed_consolidation"),
-		telemetry.NewLabel("chain", string(tx.Tx.Chain)),
-	}))
-
-	return h.mgr.Slasher().SlashVault(ctx, tx.ObservedPubKey, toSlash, h.mgr)
-}
-
 func (h ConsolidateHandler) handle(ctx cosmos.Context, msg MsgConsolidate) (*cosmos.Result, error) {
-	shouldSlash := false
+	shouldHalt := false
 
 	// ensure transaction is sending to/from same address
 	if !msg.ObservedTx.Tx.FromAddress.Equals(msg.ObservedTx.Tx.ToAddress) {
-		shouldSlash = true
+		shouldHalt = true
 	}
 
 	vault, err := h.mgr.Keeper().GetVault(ctx, msg.ObservedTx.ObservedPubKey)
@@ -70,14 +48,14 @@ func (h ConsolidateHandler) handle(ctx cosmos.Context, msg MsgConsolidate) (*cos
 		ctx.Logger().Error("unable to get vault for consolidation", "error", err)
 	} else { // nolint
 		if !vault.IsBase() {
-			shouldSlash = true
+			shouldHalt = true
 		}
 	}
 
-	if shouldSlash {
-		ctx.Logger().Info("slash vault, invalid consolidation", "tx", msg.ObservedTx.Tx)
-		if errSlash := h.slash(ctx, msg.ObservedTx); errSlash != nil {
-			return nil, ErrInternal(errSlash, "fail to slash account")
+	if shouldHalt {
+		ctx.Logger().Info("halt BTC vault, invalid consolidation", "tx", msg.ObservedTx.Tx)
+		if err := haltBTCVaultForIssue(ctx, h.mgr.Keeper(), h.mgr.EventMgr(), msg.ObservedTx.Tx, "invalid consolidation"); err != nil {
+			return nil, ErrInternal(err, "fail to halt BTC vault")
 		}
 	}
 

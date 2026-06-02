@@ -1799,25 +1799,25 @@ func (a *DefaultApiService) ThornadoNetworkFeeGetExecute(r ApiThornadoNetworkFee
 	return localVarHTTPResponse, nil
 }
 
-type ApiThornadoNodeAddressAddressGetRequest struct {
+type ApiThornadoNodeAddressGetRequest struct {
 	ctx context.Context
 	ApiService *DefaultApiService
 	address string
 }
 
-func (r ApiThornadoNodeAddressAddressGetRequest) Execute() (*http.Response, error) {
-	return r.ApiService.ThornadoNodeAddressAddressGetExecute(r)
+func (r ApiThornadoNodeAddressGetRequest) Execute() (*http.Response, error) {
+	return r.ApiService.ThornadoNodeAddressGetExecute(r)
 }
 
 /*
-ThornadoNodeAddressAddressGet Node by address
+ThornadoNodeAddressGet Node by address
 
  @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
  @param address
- @return ApiThornadoNodeAddressAddressGetRequest
+ @return ApiThornadoNodeAddressGetRequest
 */
-func (a *DefaultApiService) ThornadoNodeAddressAddressGet(ctx context.Context, address string) ApiThornadoNodeAddressAddressGetRequest {
-	return ApiThornadoNodeAddressAddressGetRequest{
+func (a *DefaultApiService) ThornadoNodeAddressGet(ctx context.Context, address string) ApiThornadoNodeAddressGetRequest {
+	return ApiThornadoNodeAddressGetRequest{
 		ApiService: a,
 		ctx: ctx,
 		address: address,
@@ -1825,19 +1825,19 @@ func (a *DefaultApiService) ThornadoNodeAddressAddressGet(ctx context.Context, a
 }
 
 // Execute executes the request
-func (a *DefaultApiService) ThornadoNodeAddressAddressGetExecute(r ApiThornadoNodeAddressAddressGetRequest) (*http.Response, error) {
+func (a *DefaultApiService) ThornadoNodeAddressGetExecute(r ApiThornadoNodeAddressGetRequest) (*http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet
 		localVarPostBody     interface{}
 		formFiles            []formFile
 	)
 
-	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoNodeAddressAddressGet")
+	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "DefaultApiService.ThornadoNodeAddressGet")
 	if err != nil {
 		return nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thornado/node/address/{address}"
+	localVarPath := localBasePath + "/thornado/node/{address}"
 	localVarPath = strings.Replace(localVarPath, "{"+"address"+"}", url.PathEscape(parameterToString(r.address, "")), -1)
 
 	localVarHeaderParams := make(map[string]string)

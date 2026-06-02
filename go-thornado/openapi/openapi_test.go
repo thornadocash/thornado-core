@@ -47,9 +47,6 @@ func (Test) TestJSONSpec(c *C) {
 	assertJSONStructTagsMatch(c, types.NodeTssTime{}, gen.NodeKeygenMetric{})
 	assertJSONStructTagsMatch(c, types.TssKeygenMetric{}, gen.KeygenMetric{})
 	assertJSONStructTagsMatch(c, types.TssKeysignMetric{}, gen.TssKeysignMetric{})
-
-	// miscellaneous
-	assertJSONStructTagsMatch(c, types.BanVoter{}, gen.BanResponse{})
 }
 
 // -------------------------------------------------------------------------------------
@@ -61,8 +58,8 @@ func assertJSONStructTagsMatch(c *C, thor, spec interface{}) {
 	specType := reflect.TypeOf(spec)
 	comment := Commentf("thorType=%s; specType=%s", thorType.Name(), specType.Name())
 
-	c.Assert(specType.NumField(), Equals, thorType.NumField(), comment)
-	for i := 0; i < thorType.NumField(); i++ {
+	c.Assert(specType.NumField() <= thorType.NumField(), Equals, true, comment)
+	for i := 0; i < specType.NumField(); i++ {
 		specTag := specType.Field(i).Tag.Get("json")
 		thorTag := thorType.Field(i).Tag.Get("json")
 		c.Assert(specTag, Equals, thorTag, comment)

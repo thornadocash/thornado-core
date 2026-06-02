@@ -8,8 +8,8 @@ import (
 
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
 	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
+	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/btc"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/types"
-	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/utxo"
 	"github.com/thornadocash/go-thornado/bifrost/pubkeymanager"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/common"
@@ -37,7 +37,7 @@ func LoadChains(thorKeys *thornadoclient.Keys,
 		if chain.ChainID != common.BTCChain {
 			return nil, fmt.Errorf("chain %s is not supported by thornado bifrost", chain.ChainID)
 		}
-		return utxo.NewClient(thorKeys, chain, thornadoBridge, localState, m)
+		return btc.NewClient(thorKeys, chain, thornadoBridge, localState, m)
 	}
 
 	for _, chain := range cfg {
@@ -54,7 +54,7 @@ func LoadChains(thorKeys *thornadoclient.Keys,
 		}
 
 		// trunk-ignore-all(golangci-lint/forcetypeassert)
-		utxoClient := client.(*utxo.Client)
+		utxoClient := client.(*btc.Client)
 		pubKeyValidator.RegisterCallback(utxoClient.RegisterPublicKey)
 		pubKeyValidator.RegisterPathCallback(utxoClient.RegisterPublicKeyAtPath)
 		chains[chain.ChainID] = client

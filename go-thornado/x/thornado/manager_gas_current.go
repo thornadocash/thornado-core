@@ -89,12 +89,8 @@ func (gm *GasMgr) GetGas() common.Gas {
 	return gas
 }
 
-// GetAssetOutboundFee returns current outbound fee for the asset. fee = chainBaseFee *
-// assetDOFM (asset-specific Dynamic Outbound Fee Multiplier)
-// - asset: the asset to calculate the fee for
-// - inRune: whether the fee should be returned in RUNE. If false the fee is returned in
-// asset units.
-func (gm *GasMgr) GetAssetOutboundFee(ctx cosmos.Context, asset common.Asset, inRune bool) (cosmos.Uint, error) {
+// GetAssetOutboundFee returns current outbound fee for the asset in asset units.
+func (gm *GasMgr) GetAssetOutboundFee(ctx cosmos.Context, asset common.Asset) (cosmos.Uint, error) {
 	if asset.IsNative() {
 		return cosmos.ZeroUint(), nil
 	}
@@ -108,26 +104,6 @@ func (gm *GasMgr) GetAssetOutboundFee(ctx cosmos.Context, asset common.Asset, in
 	_, gasRateUnitsPerOne := asset.GetChain().GetGasUnits()
 	fee := cosmos.NewUint(chainOutboundFee.TransactionSize).MulUint64(chainOutboundFee.TransactionFeeRate).MulUint64(common.One).Quo(gasRateUnitsPerOne)
 	return fee, nil
-}
-
-// CalcOutboundFeeMultiplier returns the current outbound fee multiplier based on current and target outbound fee surplus
-func (gm *GasMgr) CalcOutboundFeeMultiplier(ctx cosmos.Context, targetSurplusRune, gasSpentRune, gasWithheldRune, maxMultiplier, minMultiplier cosmos.Uint) cosmos.Uint {
-	// Sanity check
-	if targetSurplusRune.Equal(cosmos.ZeroUint()) {
-		ctx.Logger().Error("target gas surplus is zero")
-		return maxMultiplier
-	}
-	if minMultiplier.GT(maxMultiplier) {
-		ctx.Logger().Error("min multiplier greater than max multiplier", "minMultiplier", minMultiplier, "maxMultiplier", maxMultiplier)
-		return cosmos.NewUint(30_000) // should never happen, return old default
-	}
-
-	// Find current surplus (gas withheld from user - gas spent by the reserve)
-	surplusRune := common.SafeSub(gasWithheldRune, gasSpentRune)
-
-	// How many BPs to reduce the multiplier
-	multiplierReducedBps := common.GetSafeShare(surplusRune, targetSurplusRune, common.SafeSub(maxMultiplier, minMultiplier))
-	return common.SafeSub(maxMultiplier, multiplierReducedBps)
 }
 
 // TODO: Replace combined GetMaxGas/GetGasRate calls with single GetGasDetails calls, so GetNetworkFee called only once.

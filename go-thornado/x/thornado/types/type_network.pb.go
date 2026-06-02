@@ -4,7 +4,6 @@
 package types
 
 import (
-	cosmossdk_io_math "cosmossdk.io/math"
 	fmt "fmt"
 	_ "github.com/cosmos/gogoproto/gogoproto"
 	proto "github.com/cosmos/gogoproto/proto"
@@ -25,12 +24,9 @@ var _ = math.Inf
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type Network struct {
-	BondRewardRune          cosmossdk_io_math.Uint `protobuf:"bytes,1,opt,name=bond_reward_rune,json=bondRewardRune,proto3,customtype=cosmossdk.io/math.Uint" json:"bond_reward_rune"`
-	TotalBondUnits          cosmossdk_io_math.Uint `protobuf:"bytes,2,opt,name=total_bond_units,json=totalBondUnits,proto3,customtype=cosmossdk.io/math.Uint" json:"total_bond_units"`
-	LPIncomeSplit           int64                  `protobuf:"varint,5,opt,name=LPIncomeSplit,proto3" json:"LPIncomeSplit,omitempty"`
-	NodeIncomeSplit         int64                  `protobuf:"varint,6,opt,name=NodeIncomeSplit,proto3" json:"NodeIncomeSplit,omitempty"`
-	OutboundGasSpentRune    uint64                 `protobuf:"varint,7,opt,name=outbound_gas_spent_rune,json=outboundGasSpentRune,proto3" json:"outbound_gas_spent_rune,omitempty"`
-	OutboundGasWithheldRune uint64                 `protobuf:"varint,8,opt,name=outbound_gas_withheld_rune,json=outboundGasWithheldRune,proto3" json:"outbound_gas_withheld_rune,omitempty"`
+	NodeIncomeSplit     int64  `protobuf:"varint,6,opt,name=NodeIncomeSplit,proto3" json:"NodeIncomeSplit,omitempty"`
+	OutboundGasSpent    uint64 `protobuf:"varint,7,opt,name=outbound_gas_spent,json=outboundGasSpent,proto3" json:"outbound_gas_spent,omitempty"`
+	OutboundGasWithheld uint64 `protobuf:"varint,8,opt,name=outbound_gas_withheld,json=outboundGasWithheld,proto3" json:"outbound_gas_withheld,omitempty"`
 }
 
 func (m *Network) Reset()         { *m = Network{} }
@@ -66,13 +62,6 @@ func (m *Network) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Network proto.InternalMessageInfo
 
-func (m *Network) GetLPIncomeSplit() int64 {
-	if m != nil {
-		return m.LPIncomeSplit
-	}
-	return 0
-}
-
 func (m *Network) GetNodeIncomeSplit() int64 {
 	if m != nil {
 		return m.NodeIncomeSplit
@@ -80,16 +69,16 @@ func (m *Network) GetNodeIncomeSplit() int64 {
 	return 0
 }
 
-func (m *Network) GetOutboundGasSpentRune() uint64 {
+func (m *Network) GetOutboundGasSpent() uint64 {
 	if m != nil {
-		return m.OutboundGasSpentRune
+		return m.OutboundGasSpent
 	}
 	return 0
 }
 
-func (m *Network) GetOutboundGasWithheldRune() uint64 {
+func (m *Network) GetOutboundGasWithheld() uint64 {
 	if m != nil {
-		return m.OutboundGasWithheldRune
+		return m.OutboundGasWithheld
 	}
 	return 0
 }
@@ -101,29 +90,23 @@ func init() {
 func init() { proto.RegisterFile("types/type_network.proto", fileDescriptor_49c31b28fa74db19) }
 
 var fileDescriptor_49c31b28fa74db19 = []byte{
-	// 341 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x91, 0xcf, 0x4a, 0xeb, 0x40,
-	0x14, 0x87, 0x93, 0xde, 0xdb, 0xf6, 0xde, 0x80, 0x7f, 0x08, 0xc5, 0x86, 0x2e, 0xa6, 0x45, 0x5c,
-	0x64, 0x63, 0xb2, 0x50, 0x57, 0xee, 0xba, 0x51, 0x41, 0x8a, 0xa4, 0x14, 0xc1, 0x4d, 0x98, 0x64,
-	0x86, 0x24, 0xb4, 0x99, 0x13, 0x32, 0x27, 0x54, 0xdf, 0xc2, 0xc7, 0xea, 0xb2, 0x4b, 0x71, 0x51,
-	0xb4, 0x7d, 0x11, 0x99, 0x69, 0x2b, 0xad, 0x2b, 0x37, 0xc3, 0xcc, 0xf9, 0xce, 0xf7, 0x83, 0x33,
-	0xc7, 0x72, 0xf0, 0xa5, 0xe0, 0xd2, 0x57, 0x67, 0x28, 0x38, 0x4e, 0xa1, 0x1c, 0x7b, 0x45, 0x09,
-	0x08, 0x76, 0x5d, 0x93, 0x4e, 0x2b, 0x81, 0x04, 0x74, 0xc5, 0x57, 0xb7, 0x35, 0x3c, 0xfd, 0xac,
-	0x59, 0xcd, 0xc1, 0xba, 0xdd, 0xbe, 0xb5, 0x8e, 0x23, 0x10, 0x2c, 0x2c, 0xf9, 0x94, 0x96, 0x2c,
-	0x2c, 0x2b, 0xc1, 0x1d, 0xb3, 0x67, 0xba, 0xff, 0xfb, 0x64, 0xb6, 0xe8, 0x1a, 0xef, 0x8b, 0xee,
-	0x49, 0x0c, 0x32, 0x07, 0x29, 0xd9, 0xd8, 0xcb, 0xc0, 0xcf, 0x29, 0xa6, 0xde, 0x28, 0x13, 0x18,
-	0x1c, 0x2a, 0x2f, 0xd0, 0x5a, 0x50, 0x09, 0xae, 0x92, 0x10, 0x90, 0x4e, 0x42, 0x9d, 0x57, 0x89,
-	0x0c, 0xa5, 0x53, 0xfb, 0x5d, 0x92, 0xf6, 0xfa, 0x20, 0xd8, 0x48, 0x59, 0xf6, 0x99, 0x75, 0x70,
-	0xff, 0x70, 0x27, 0x62, 0xc8, 0xf9, 0xb0, 0x98, 0x64, 0xe8, 0xd4, 0x7b, 0xa6, 0xfb, 0x27, 0xd8,
-	0x2f, 0xda, 0xae, 0x75, 0x34, 0x00, 0xc6, 0x77, 0xfb, 0x1a, 0xba, 0xef, 0x67, 0xd9, 0xbe, 0xb2,
-	0xda, 0x50, 0x61, 0x04, 0x95, 0x60, 0x61, 0x42, 0x65, 0x28, 0x0b, 0x2e, 0x70, 0x3d, 0x6a, 0xb3,
-	0x67, 0xba, 0x7f, 0x83, 0xd6, 0x16, 0xdf, 0x50, 0x39, 0x54, 0x50, 0x0f, 0x74, 0x6d, 0x75, 0xf6,
-	0xb4, 0x69, 0x86, 0x69, 0xca, 0x27, 0x9b, 0x4f, 0xfa, 0xa7, 0xcd, 0xf6, 0x8e, 0xf9, 0xb8, 0xe1,
-	0x4a, 0xee, 0x0f, 0x66, 0x4b, 0x62, 0xce, 0x97, 0xc4, 0xfc, 0x58, 0x12, 0xf3, 0x75, 0x45, 0x8c,
-	0xf9, 0x8a, 0x18, 0x6f, 0x2b, 0x62, 0x3c, 0x5d, 0x26, 0x19, 0xa6, 0x55, 0xe4, 0xc5, 0x90, 0xfb,
-	0x98, 0x42, 0x29, 0x28, 0x83, 0x98, 0xca, 0xd4, 0x4f, 0xe0, 0x7c, 0xfb, 0xf6, 0x9f, 0xbf, 0x91,
-	0xde, 0xae, 0x8c, 0x1a, 0x7a, 0x75, 0x17, 0x5f, 0x01, 0x00, 0x00, 0xff, 0xff, 0xa6, 0x52, 0x70,
-	0x95, 0xf3, 0x01, 0x00, 0x00,
+	// 245 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x28, 0xa9, 0x2c, 0x48,
+	0x2d, 0xd6, 0x07, 0x91, 0xf1, 0x79, 0xa9, 0x25, 0xe5, 0xf9, 0x45, 0xd9, 0x7a, 0x05, 0x45, 0xf9,
+	0x25, 0xf9, 0x42, 0xac, 0x60, 0x19, 0x29, 0x91, 0xf4, 0xfc, 0xf4, 0x7c, 0xb0, 0x88, 0x3e, 0x88,
+	0x05, 0x91, 0x54, 0x5a, 0xc8, 0xc8, 0xc5, 0xee, 0x07, 0x51, 0x2e, 0xa4, 0xc1, 0xc5, 0xef, 0x97,
+	0x9f, 0x92, 0xea, 0x99, 0x97, 0x9c, 0x9f, 0x9b, 0x1a, 0x5c, 0x90, 0x93, 0x59, 0x22, 0xc1, 0xa6,
+	0xc0, 0xa8, 0xc1, 0x1c, 0x84, 0x2e, 0x2c, 0xa4, 0xc3, 0x25, 0x94, 0x5f, 0x5a, 0x92, 0x94, 0x5f,
+	0x9a, 0x97, 0x12, 0x9f, 0x9e, 0x58, 0x1c, 0x5f, 0x5c, 0x90, 0x9a, 0x57, 0x22, 0xc1, 0xae, 0xc0,
+	0xa8, 0xc1, 0x12, 0x24, 0x00, 0x93, 0x71, 0x4f, 0x2c, 0x0e, 0x06, 0x89, 0x0b, 0x19, 0x71, 0x89,
+	0xa2, 0xa8, 0x2e, 0xcf, 0x2c, 0xc9, 0xc8, 0x48, 0xcd, 0x49, 0x91, 0xe0, 0x00, 0x6b, 0x10, 0x46,
+	0xd2, 0x10, 0x0e, 0x95, 0xf2, 0x62, 0xe1, 0x60, 0x14, 0x60, 0xf2, 0x62, 0xe1, 0x60, 0x12, 0x60,
+	0x76, 0xf2, 0x3b, 0xf1, 0x48, 0x8e, 0xf1, 0xc2, 0x23, 0x39, 0xc6, 0x07, 0x8f, 0xe4, 0x18, 0x27,
+	0x3c, 0x96, 0x63, 0xb8, 0xf0, 0x58, 0x8e, 0xe1, 0xc6, 0x63, 0x39, 0x86, 0x28, 0x93, 0xf4, 0xcc,
+	0x92, 0x8c, 0xd2, 0x24, 0xbd, 0xe4, 0xfc, 0x5c, 0xfd, 0x92, 0x8c, 0xfc, 0xa2, 0xbc, 0xc4, 0x94,
+	0xfc, 0xe4, 0xc4, 0xe2, 0x0c, 0xfd, 0xf4, 0x7c, 0x5d, 0x18, 0x5f, 0xbf, 0x02, 0x2e, 0x05, 0x0e,
+	0x9d, 0xe2, 0x24, 0x36, 0xb0, 0xd7, 0x8d, 0x01, 0x01, 0x00, 0x00, 0xff, 0xff, 0xec, 0x74, 0x90,
+	0x08, 0x33, 0x01, 0x00, 0x00,
 }
 
 func (m *Network) Marshal() (dAtA []byte, err error) {
@@ -146,13 +129,13 @@ func (m *Network) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.OutboundGasWithheldRune != 0 {
-		i = encodeVarintTypeNetwork(dAtA, i, uint64(m.OutboundGasWithheldRune))
+	if m.OutboundGasWithheld != 0 {
+		i = encodeVarintTypeNetwork(dAtA, i, uint64(m.OutboundGasWithheld))
 		i--
 		dAtA[i] = 0x40
 	}
-	if m.OutboundGasSpentRune != 0 {
-		i = encodeVarintTypeNetwork(dAtA, i, uint64(m.OutboundGasSpentRune))
+	if m.OutboundGasSpent != 0 {
+		i = encodeVarintTypeNetwork(dAtA, i, uint64(m.OutboundGasSpent))
 		i--
 		dAtA[i] = 0x38
 	}
@@ -161,31 +144,6 @@ func (m *Network) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x30
 	}
-	if m.LPIncomeSplit != 0 {
-		i = encodeVarintTypeNetwork(dAtA, i, uint64(m.LPIncomeSplit))
-		i--
-		dAtA[i] = 0x28
-	}
-	{
-		size := m.TotalBondUnits.Size()
-		i -= size
-		if _, err := m.TotalBondUnits.MarshalTo(dAtA[i:]); err != nil {
-			return 0, err
-		}
-		i = encodeVarintTypeNetwork(dAtA, i, uint64(size))
-	}
-	i--
-	dAtA[i] = 0x12
-	{
-		size := m.BondRewardRune.Size()
-		i -= size
-		if _, err := m.BondRewardRune.MarshalTo(dAtA[i:]); err != nil {
-			return 0, err
-		}
-		i = encodeVarintTypeNetwork(dAtA, i, uint64(size))
-	}
-	i--
-	dAtA[i] = 0xa
 	return len(dAtA) - i, nil
 }
 
@@ -206,21 +164,14 @@ func (m *Network) Size() (n int) {
 	}
 	var l int
 	_ = l
-	l = m.BondRewardRune.Size()
-	n += 1 + l + sovTypeNetwork(uint64(l))
-	l = m.TotalBondUnits.Size()
-	n += 1 + l + sovTypeNetwork(uint64(l))
-	if m.LPIncomeSplit != 0 {
-		n += 1 + sovTypeNetwork(uint64(m.LPIncomeSplit))
-	}
 	if m.NodeIncomeSplit != 0 {
 		n += 1 + sovTypeNetwork(uint64(m.NodeIncomeSplit))
 	}
-	if m.OutboundGasSpentRune != 0 {
-		n += 1 + sovTypeNetwork(uint64(m.OutboundGasSpentRune))
+	if m.OutboundGasSpent != 0 {
+		n += 1 + sovTypeNetwork(uint64(m.OutboundGasSpent))
 	}
-	if m.OutboundGasWithheldRune != 0 {
-		n += 1 + sovTypeNetwork(uint64(m.OutboundGasWithheldRune))
+	if m.OutboundGasWithheld != 0 {
+		n += 1 + sovTypeNetwork(uint64(m.OutboundGasWithheld))
 	}
 	return n
 }
@@ -260,93 +211,6 @@ func (m *Network) Unmarshal(dAtA []byte) error {
 			return fmt.Errorf("proto: Network: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BondRewardRune", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypeNetwork
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypeNetwork
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypeNetwork
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.BondRewardRune.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TotalBondUnits", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypeNetwork
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypeNetwork
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypeNetwork
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.TotalBondUnits.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 5:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LPIncomeSplit", wireType)
-			}
-			m.LPIncomeSplit = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypeNetwork
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.LPIncomeSplit |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		case 6:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NodeIncomeSplit", wireType)
@@ -368,9 +232,9 @@ func (m *Network) Unmarshal(dAtA []byte) error {
 			}
 		case 7:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field OutboundGasSpentRune", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field OutboundGasSpent", wireType)
 			}
-			m.OutboundGasSpentRune = 0
+			m.OutboundGasSpent = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowTypeNetwork
@@ -380,16 +244,16 @@ func (m *Network) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.OutboundGasSpentRune |= uint64(b&0x7F) << shift
+				m.OutboundGasSpent |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 8:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field OutboundGasWithheldRune", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field OutboundGasWithheld", wireType)
 			}
-			m.OutboundGasWithheldRune = 0
+			m.OutboundGasWithheld = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowTypeNetwork
@@ -399,7 +263,7 @@ func (m *Network) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.OutboundGasWithheldRune |= uint64(b&0x7F) << shift
+				m.OutboundGasWithheld |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

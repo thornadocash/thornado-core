@@ -8,12 +8,12 @@ import (
 )
 
 // NewTssVoter create a new instance of TssVoter
-func NewTssVoter(id string, pks []string, pool, poolPubKeyEddsa common.PubKey) TssVoter {
+func NewTssVoter(id string, pks []string, pool, vaultPubKeyEddsa common.PubKey) TssVoter {
 	return TssVoter{
-		ID:              id,
-		PubKeys:         pks,
-		PoolPubKey:      pool,
-		PoolPubKeyEddsa: poolPubKeyEddsa,
+		ID:               id,
+		PubKeys:          pks,
+		VaultPubKey:      pool,
+		VaultPubKeyEddsa: vaultPubKeyEddsa,
 	}
 }
 
@@ -141,7 +141,7 @@ func (m *TssVoter) HasConsensus() bool {
 
 // IsEmpty check whether TssVoter represent empty info
 func (m *TssVoter) IsEmpty() bool {
-	return len(m.ID) == 0 || len(m.PoolPubKey) == 0 || len(m.PubKeys) == 0
+	return len(m.ID) == 0 || len(m.VaultPubKey) == 0 || len(m.PubKeys) == 0
 }
 
 // String implement fmt.Stringer

@@ -125,41 +125,17 @@ func GetRandomBech32ConsensusPubKey() string {
 	return result
 }
 
-func GetRandomRUNEAddress() common.Address {
-	return GetRandomTHORAddress()
-}
-
-func GetRandomTHORAddress() common.Address {
+func GetRandomThornadoAddress() common.Address {
 	name := common.RandHexString(10)
 	str, _ := common.ConvertAndEncode(cmd.Bech32PrefixAccAddr, crypto.AddressHash([]byte(name)))
-	thor, _ := common.NewAddress(str)
-	return thor
-}
-
-func GetRandomETHAddress() common.Address {
-	return GetRandomBTCAddress()
-}
-
-func GetRandomGAIAAddress() common.Address {
-	return GetRandomTHORAddress()
+	addr, _ := common.NewAddress(str)
+	return addr
 }
 
 func GetRandomBTCAddress() common.Address {
 	pubKey := GetRandomPubKey()
 	addr, _ := pubKey.GetAddress(common.BTCChain)
 	return addr
-}
-
-func GetRandomLTCAddress() common.Address {
-	return GetRandomBTCAddress()
-}
-
-func GetRandomDOGEAddress() common.Address {
-	return GetRandomBTCAddress()
-}
-
-func GetRandomBCHAddress() common.Address {
-	return GetRandomBTCAddress()
 }
 
 // GetRandomTxHash create a random txHash used for test purpose

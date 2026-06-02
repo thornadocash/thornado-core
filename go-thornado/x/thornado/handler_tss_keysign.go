@@ -14,6 +14,7 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 // TssKeysignHandler is design to process MsgTssKeysignFail
@@ -22,7 +23,7 @@ type TssKeysignHandler struct {
 }
 
 // NewTssKeysignHandler create a new instance of TssKeysignHandler
-// when a signer fail to join tss keysign , thornado need to slash the node account
+// when a signer fail to join tss keysign , thornado need to penalty the node account
 func NewTssKeysignHandler(mgr Manager) TssKeysignHandler {
 	return TssKeysignHandler{
 		mgr: mgr,
@@ -85,22 +86,22 @@ func (h TssKeysignHandler) handle(ctx cosmos.Context, msg MsgTssKeysignFail) (*c
 	if err != nil {
 		return nil, err
 	}
-	observeSlashPoints := h.mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
+	observePenaltyPoints := h.mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
 
 	// add labels to telemetry context
 	labels := []metrics.Label{
 		telemetry.NewLabel("reason", "failed_keysign"),
 	}
-	if len(msg.Coins) == 1 { // only label when slash is for single asset
+	if len(msg.Coins) == 1 { // only label when penalty is for single asset
 		labels = append(
 			labels,
 			telemetry.NewLabel("chain", string(msg.Coins[0].Asset.Chain)),
 			telemetry.NewLabel("symbol", string(msg.Coins[0].Asset.Symbol)),
 		)
 	}
-	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, labels))
+	penaltyCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, labels))
 
-	h.mgr.Slasher().IncSlashPoints(slashCtx, observeSlashPoints, msg.Signer)
+	h.mgr.PenaltyManager().IncPenaltyPoints(penaltyCtx, observePenaltyPoints, msg.Signer)
 	if !voter.Sign(msg.Signer) {
 		ctx.Logger().Info("signer already signed MsgTssKeysignFail", "signer", msg.Signer.String(), "txid", msg.ID)
 		return &cosmos.Result{}, nil
@@ -191,14 +192,14 @@ func (h TssKeysignHandler) handle(ctx cosmos.Context, msg MsgTssKeysignFail) (*c
 		}
 	}
 
-	h.mgr.Slasher().DecSlashPoints(slashCtx, observeSlashPoints, voter.GetSigners()...)
+	h.mgr.PenaltyManager().DecPenaltyPoints(penaltyCtx, observePenaltyPoints, voter.GetSigners()...)
 	voter.Signers = nil
 	voter.LastRoundCount = 0
 	h.mgr.Keeper().SetTssKeysignFailVoter(ctx, voter)
 	h.markTxOutPendingRetry(ctx, msg)
 
-	slashPoints := h.mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_FailPenaltyPoints)
-	// fail to generate a new tss key let's slash the node account
+	penaltyPoints := h.mgr.Keeper().GetConfigInt64(ctx, constants.Keysign_FailPenaltyPoints)
+	// fail to generate a new tss key let's penalty the node account
 
 	for _, node := range msg.Blame.BlameNodes {
 		nodePubKey, err := common.NewPubKey(node.Pubkey)
@@ -209,12 +210,12 @@ func (h TssKeysignHandler) handle(ctx cosmos.Context, msg MsgTssKeysignFail) (*c
 		if err != nil {
 			return nil, ErrInternal(err, fmt.Sprintf("fail to get node account,pub key: %s", nodePubKey.String()))
 		}
-		if err := h.mgr.Keeper().IncNodeAccountSlashPoints(slashCtx, na.NodeAddress, slashPoints); err != nil {
-			ctx.Logger().Error("fail to inc slash points", "error", err)
+		if err := h.mgr.Keeper().IncNodeAccountPenaltyPoints(penaltyCtx, na.NodeAddress, penaltyPoints); err != nil {
+			ctx.Logger().Error("fail to inc penalty points", "error", err)
 		}
 
-		if err := h.mgr.EventMgr().EmitEvent(ctx, NewEventSlashPoint(na.NodeAddress, slashPoints, "fail keysign")); err != nil {
-			ctx.Logger().Error("fail to emit slash point event")
+		if err := h.mgr.EventMgr().EmitEvent(ctx, NewEventPenaltyPoint(na.NodeAddress, penaltyPoints, "fail keysign")); err != nil {
+			ctx.Logger().Error("fail to emit penalty point event")
 		}
 		// go to jail
 		ctx.Logger().Info("jailing node", "pubkey", na.PubKeySet.Secp256k1)
@@ -292,5 +293,32 @@ func validateKeysignAuth(ctx cosmos.Context, k keeper.Keeper, signers []cosmos.A
 // and also during deliver. Store changes will persist if this function
 // succeeds, regardless of the success of the transaction.
 func TssKeysignFailAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg MsgTssKeysignFail) (cosmos.Context, error) {
-	return validateKeysignAuth(ctx, k, msg.GetSigners())
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	expected, err := NewMsgTssKeysignFail(msg.Height, msg.Blame, msg.Coins, msg.Signer, msg.PubKey)
+	if err != nil {
+		return ctx, err
+	}
+	if !strings.EqualFold(expected.ID, msg.ID) {
+		return ctx, cosmos.ErrUnknownRequest("invalid keysign fail message")
+	}
+	newCtx, err := validateKeysignAuth(ctx, k, msg.GetSigners())
+	if err != nil {
+		return ctx, err
+	}
+	voter, err := k.GetTssKeysignFailVoter(ctx, msg.ID)
+	if err != nil {
+		return ctx, err
+	}
+	if voter.Empty() {
+		voter = types.NewTssKeysignFailVoter(msg.ID, msg.Height)
+	}
+	if !voter.Sign(msg.Signer) {
+		return ctx, cosmos.ErrUnknownRequest("tss keysign failure attestation already submitted")
+	}
+	if ctx.IsCheckTx() {
+		k.SetTssKeysignFailVoter(ctx, voter)
+	}
+	return newCtx, nil
 }

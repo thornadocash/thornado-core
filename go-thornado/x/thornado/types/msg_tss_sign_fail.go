@@ -48,7 +48,7 @@ func NewMsgTssKeysignFail(height int64, blame Blame, coins common.Coins, signer 
 // getTssKeysignFailID this method will use all the members that caused the tss
 // keysign failure , as well as the block height of the txout item to generate
 // a hash, given that , if the same party keep failing the same txout item ,
-// then we will only slash it once.
+// then we will only penalty it once.
 func getMsgTssKeysignFailID(members []Node, height int64, coins common.Coins, pubKey common.PubKey, round string) (string, error) {
 	// ensure input pubkeys list is deterministically sorted
 	sort.SliceStable(members, func(i, j int) bool {
@@ -86,13 +86,31 @@ func (m *MsgTssKeysignFail) ValidateBasic() error {
 	if len(m.Coins) == 0 {
 		return cosmos.ErrUnknownRequest("no coins")
 	}
+	if len(m.Coins) > MaxObservedTxCoinItems {
+		return cosmos.ErrUnknownRequest("too many coins")
+	}
 	if err := m.Coins.Valid(); err != nil {
 		return cosmos.ErrInvalidCoins(err.Error())
 	}
 	if m.Blame.IsEmpty() {
 		return cosmos.ErrUnknownRequest("tss blame is empty")
 	}
+	if len(m.Blame.FailReason) > MaxTssTextLength {
+		return cosmos.ErrUnknownRequest("tss blame reason too long")
+	}
+	if len(m.Blame.Round) > MaxTssTextLength {
+		return cosmos.ErrUnknownRequest("tss blame round too long")
+	}
+	if len(m.Blame.BlameNodes) > MaxTssBlames {
+		return cosmos.ErrUnknownRequest("too many tss blame nodes")
+	}
 	for _, node := range m.Blame.BlameNodes {
+		if len(node.BlameData) > MaxTssBlameDataSize {
+			return cosmos.ErrUnknownRequest("tss blame data too large")
+		}
+		if len(node.BlameSignature) > MaxTssBlameSignatureSize {
+			return cosmos.ErrUnknownRequest("tss blame signature too large")
+		}
 		if _, err := common.NewPubKey(node.Pubkey); err != nil {
 			return cosmos.ErrUnknownRequest("invalid blame node pubkey: " + node.Pubkey)
 		}

@@ -1,7 +1,7 @@
 /*
-Thornode API
+Thornado API
 
-Thornode REST API.
+Thornado REST API.
 
 Contact: devs@thornado.org
 */

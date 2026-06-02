@@ -14,6 +14,7 @@ FLOW1_SKIP_BIFROST_NODES="${FLOW1_SKIP_BIFROST_NODES:-}"
 
 THORNADO="${BUILD_DIR}/thornado"
 BIFROST="${BUILD_DIR}/bifrost"
+THORNADO_UI="${BUILD_DIR}/thornado-ui"
 SHIELDER_HELPER="${BUILD_DIR}/shielder-e2e-helper"
 
 log() {
@@ -423,8 +424,10 @@ build_binaries() {
   log "building real Thornado and Bifrost binaries"
   mkdir -p "$BUILD_DIR"
   (cd "$ROOT_DIR" && cargo build -p thornado-ffi --release)
+  "$ROOT_DIR/go-thornado/go-wrappers/frost/build-libgofrost.sh" >/dev/null
   (cd "$ROOT_DIR/go-thornado" && go build -tags mocknet -o "$THORNADO" ./cmd/thornado)
   (cd "$ROOT_DIR/go-thornado" && go build -tags mocknet -o "$BIFROST" ./cmd/bifrost)
+  (cd "$ROOT_DIR/go-thornado" && go build -tags mocknet -o "$THORNADO_UI" ./cmd/thornado-ui)
   (cd "$ROOT_DIR/go-thornado" && go build -tags mocknet -o "$SHIELDER_HELPER" ./cmd/shielder-e2e-helper)
 }
 
@@ -434,6 +437,11 @@ reset_all() {
     -f "$ROOT_DIR/ops/docker-compose.localnet.yml" \
     -f "$ROOT_DIR/ops/docker-compose.mock.yml" \
     --profile mock --profile three-node --profile client down -v >/dev/null 2>&1 || true
+  local stale_containers
+  stale_containers="$(docker ps -aq --filter 'name=^/thornado-.*bitcoind$' --filter status=exited 2>/dev/null || true)"
+  if [[ -n "$stale_containers" ]]; then
+    docker rm $stale_containers >/dev/null 2>&1 || true
+  fi
   pkill -f "$RUN_ROOT" >/dev/null 2>&1 || true
   pkill -f "$BIFROST --log-level" >/dev/null 2>&1 || true
   pkill -f "$BIFROST" >/dev/null 2>&1 || true

@@ -22,41 +22,41 @@ func processSolvencyAttestation(
 	attester cosmos.AccAddress,
 	active NodeAccounts,
 	s *common.Solvency,
-	shouldSlashForDuplicate bool,
+	shouldPenalizeForDuplicate bool,
 ) error {
 	k := mgr.Keeper()
 
-	observeSlashPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
+	observePenaltyPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_SubmitPenaltyPoints)
 	lackOfObservationPenalty := mgr.Keeper().GetConfigInt64(ctx, constants.Observation_MissPenaltyPoints)
 	observeFlex := getConfigDurationBlocks(ctx, k, constants.Observation_DelayFlexibilityMinutes)
 
-	slashCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
+	penaltyCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
 		telemetry.NewLabel("reason", "failed_observe_solvency"),
 		telemetry.NewLabel("chain", string(s.Chain)),
 	}))
 
-	slasher := mgr.Slasher()
+	penaltyManager := mgr.PenaltyManager()
 
 	if !voter.Sign(attester) {
-		// Slash for the network having to handle the extra message/s.
-		if shouldSlashForDuplicate {
-			slasher.IncSlashPoints(slashCtx, observeSlashPoints, attester)
+		// Penalty for the network having to handle the extra message/s.
+		if shouldPenalizeForDuplicate {
+			penaltyManager.IncPenaltyPoints(penaltyCtx, observePenaltyPoints, attester)
 		}
 		ctx.Logger().Info("signer already signed MsgSolvency", "signer", attester.String(), "id", s.Id)
 		return nil
 	}
 
 	if !voter.HasConsensus(active) {
-		// Before consensus, slash until consensus.
-		slasher.IncSlashPoints(slashCtx, observeSlashPoints, attester)
+		// Before consensus, penalty until consensus.
+		penaltyManager.IncPenaltyPoints(penaltyCtx, observePenaltyPoints, attester)
 		return nil
 	}
 
 	// from this point , solvency reach consensus
 	if voter.ConsensusBlockHeight > 0 {
-		// After consensus, only decrement slash points if within the Observation_DelayFlexibilityMinutes window.
+		// After consensus, only decrement penalty points if within the Observation_DelayFlexibilityMinutes window.
 		if (voter.ConsensusBlockHeight + observeFlex) >= ctx.BlockHeight() {
-			slasher.DecSlashPoints(slashCtx, lackOfObservationPenalty, attester)
+			penaltyManager.DecPenaltyPoints(penaltyCtx, lackOfObservationPenalty, attester)
 		}
 		// solvency tx already processed
 		return nil
@@ -69,13 +69,13 @@ func processSolvencyAttestation(
 
 	voter.ConsensusBlockHeight = ctx.BlockHeight()
 
-	// This signer brings the voter to consensus; increment the signer's slash points like the before-consensus signers,
-	// then decrement all the signers' slash points and increment the non-signers' slash points.
-	slasher.IncSlashPoints(slashCtx, observeSlashPoints, attester)
+	// This signer brings the voter to consensus; increment the signer's penalty points like the before-consensus signers,
+	// then decrement all the signers' penalty points and increment the non-signers' penalty points.
+	penaltyManager.IncPenaltyPoints(penaltyCtx, observePenaltyPoints, attester)
 	signers := voter.GetSigners()
 	nonSigners := getNonSigners(active, signers)
-	slasher.DecSlashPoints(slashCtx, observeSlashPoints, signers...)
-	slasher.IncSlashPoints(slashCtx, lackOfObservationPenalty, nonSigners...)
+	penaltyManager.DecPenaltyPoints(penaltyCtx, observePenaltyPoints, signers...)
+	penaltyManager.IncPenaltyPoints(penaltyCtx, lackOfObservationPenalty, nonSigners...)
 
 	// Do checks for whether to act on this consensus or not.
 	haltSolvencyCheckKey := constants.Halt_SolvencyCheck.String()
@@ -178,7 +178,7 @@ func insolvencyCheck(ctx cosmos.Context, mgr Manager, vault Vault, coins common.
 
 		// Compute the gap between vault and wallet balances.
 		// When walletCoin is absent (IsEmpty), the full vault amount is the gap,
-		// which then goes through the same RUNE-value threshold check as partial gaps.
+		// which then goes through the same asset-value threshold check as partial gaps.
 		gap := cosmos.ZeroUint()
 		if walletCoin.IsEmpty() {
 			gap = c.Amount
@@ -189,13 +189,13 @@ func insolvencyCheck(ctx cosmos.Context, mgr Manager, vault Vault, coins common.
 			continue
 		}
 
-		gapInRune := gap
-		if gapInRune.IsZero() && !gap.IsZero() {
-			ctx.Logger().Info("cannot value gap for solvency check (pool has no liquidity), treating as insolvent", "asset", c.Asset.String(), "gap", gap.String())
+		gapValue := gap
+		if gapValue.IsZero() && !gap.IsZero() {
+			ctx.Logger().Info("cannot value gap for solvency check (vault has no accounted funds), treating as insolvent", "asset", c.Asset.String(), "gap", gap.String())
 			return true
 		}
-		if !gapInRune.IsZero() {
-			ctx.Logger().Info("vault insolvent", "asset", c.Asset.String(), "vault amount", c.Amount.String(), "wallet amount", walletCoin.Amount.String(), "gap", gap.String(), "gap in rune", gapInRune.String())
+		if !gapValue.IsZero() {
+			ctx.Logger().Info("vault insolvent", "asset", c.Asset.String(), "vault amount", c.Amount.String(), "wallet amount", walletCoin.Amount.String(), "gap", gap.String(), "gap value", gapValue.String())
 			return true
 		}
 	}

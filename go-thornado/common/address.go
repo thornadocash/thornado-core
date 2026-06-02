@@ -18,7 +18,6 @@ type Address string
 const (
 	NoAddress   = Address("")
 	NoopAddress = Address("noop")
-	// TreasuryAddress is defined in address_treasury_*.go with build tags for network-specific addresses
 )
 
 var alphaNumRegex = regexp.MustCompile("^[:_A-Za-z0-9]*$")

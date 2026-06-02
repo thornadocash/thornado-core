@@ -71,7 +71,7 @@ func AddChainMetrics(chain common.Chain, counters map[MetricName]prometheus.Coun
 		Namespace: "block_scanner",
 		Subsystem: chain.String() + "_block_scanner",
 		Name:      chain.String() + "_block_no_tx_in",
-		Help:      "block that has tx , but not to our pool address",
+		Help:      "block that has tx , but not to our vault address",
 	})
 	counters[BlockNoTxOut(chain)] = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "block_scanner",

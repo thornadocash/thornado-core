@@ -22,7 +22,7 @@ func (s *KeeperTssSuite) TestTssVoter(c *C) {
 	voter, err := k.GetTssVoter(ctx, voter.ID)
 	c.Assert(err, IsNil)
 	c.Check(voter.ID, Equals, "hello")
-	c.Check(voter.PoolPubKey.Equals(pk), Equals, true)
+	c.Check(voter.VaultPubKey.Equals(pk), Equals, true)
 	iter := k.GetTssVoterIterator(ctx)
 	c.Check(iter, NotNil)
 	iter.Close()

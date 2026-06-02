@@ -137,14 +137,14 @@ func (m *NodeAccount) String() string {
 }
 
 // CalcBondUnits calculate bond
-func (m *NodeAccount) CalcBondUnits(height, slashpoints int64) cosmos.Uint {
-	// ensure slashpoints is not negative
-	slashpoints = int64(math.Max(float64(0), float64(slashpoints)))
-	if height < 0 || m.ActiveBlockHeight < 0 || slashpoints < 0 {
+func (m *NodeAccount) CalcBondUnits(height, penaltypoints int64) cosmos.Uint {
+	// ensure penaltypoints is not negative
+	penaltypoints = int64(math.Max(float64(0), float64(penaltypoints)))
+	if height < 0 || m.ActiveBlockHeight < 0 || penaltypoints < 0 {
 		return cosmos.ZeroUint()
 	}
 
-	blockCount := height - (m.ActiveBlockHeight + slashpoints)
+	blockCount := height - (m.ActiveBlockHeight + penaltypoints)
 	if blockCount < 0 { // ensure we're never negative
 		blockCount = 0
 	}

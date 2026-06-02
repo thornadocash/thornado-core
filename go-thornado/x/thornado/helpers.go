@@ -20,6 +20,23 @@ func isSimulationMode(ctx cosmos.Context) bool {
 	return ok && simulationMode
 }
 
+func haltBTCVaultForIssue(ctx cosmos.Context, k keeper.Keeper, eventMgr EventManager, tx common.Tx, reason string) error {
+	height := ctx.BlockHeight()
+	signingKey := fmt.Sprintf(constants.ConfigTemplateHaltSigning, common.BTCChain)
+	k.SetConfig(ctx, signingKey, height)
+	k.SetConfig(ctx, constants.Halt_SolvencyCheck.String(), height)
+	if eventMgr == nil {
+		return nil
+	}
+	if err := eventMgr.EmitEvent(ctx, NewEventSecurity(tx, reason)); err != nil {
+		ctx.Logger().Error("fail to emit vault halt security event", "error", err)
+	}
+	if err := eventMgr.EmitEvent(ctx, NewEventSetConfig(signingKey, fmt.Sprintf("%d", height))); err != nil {
+		ctx.Logger().Error("fail to emit halt signing config event", "error", err)
+	}
+	return eventMgr.EmitEvent(ctx, NewEventSetConfig(constants.Halt_SolvencyCheck.String(), fmt.Sprintf("%d", height)))
+}
+
 func isStableToStable(ctx cosmos.Context, k keeper.Keeper, source, target common.Asset) bool {
 	anchors := k.GetAnchors(ctx, common.BTCAsset)
 	if len(anchors) == 0 {
@@ -148,37 +165,6 @@ func addGasFees(ctx cosmos.Context, mgr Manager, tx ObservedTx) error {
 	return nil
 }
 
-func emitPoolBalanceChangedEvent(ctx cosmos.Context, poolMod PoolMod, reason string, mgr Manager) {
-	_ = mgr.EventMgr().EmitEvent(ctx, NewEventPoolBalanceChanged(poolMod, reason))
-}
-
-func getSynthSupplyRemaining(ctx cosmos.Context, mgr Manager, asset common.Asset) (cosmos.Uint, error) {
-	return cosmos.ZeroUint(), nil
-}
-
-func isSynthMintPaused(ctx cosmos.Context, mgr Manager, targetAsset common.Asset, outputAmt cosmos.Uint) error {
-	// check if the pool is in ragnarok
-	k := "RAGNAROK-" + targetAsset.ConfigString()
-	v, err := mgr.Keeper().GetConfig(ctx, k)
-	if err != nil {
-		return err
-	}
-	if v > 0 {
-		return fmt.Errorf("pool is in ragnarok")
-	}
-
-	remaining, err := getSynthSupplyRemaining(ctx, mgr, targetAsset)
-	if err != nil {
-		return err
-	}
-
-	if remaining.LT(outputAmt) {
-		return fmt.Errorf("insufficient synth capacity: want=%d have=%d", outputAmt.Uint64(), remaining.Uint64())
-	}
-
-	return nil
-}
-
 func telem(input cosmos.Uint) float32 {
 	if !input.BigInt().IsUint64() {
 		return 0
@@ -197,10 +183,6 @@ func telemInt(input cosmos.Int) float32 {
 
 func emitEndBlockTelemetry(ctx cosmos.Context, mgr Manager) error {
 	return nil
-}
-
-func getVaultsLiquidityRune(ctx cosmos.Context, keeper keeper.Keeper) (cosmos.Uint, error) {
-	return cosmos.ZeroUint(), nil
 }
 
 func getEffectiveSecurityBond(nas NodeAccounts) cosmos.Uint {
@@ -376,9 +358,7 @@ func IsModuleAccAddress(keeper keeper.Keeper, accAddr cosmos.AccAddress) bool {
 	return accAddr.Equals(keeper.GetModuleAccAddress(BaseName)) ||
 		accAddr.Equals(keeper.GetModuleAccAddress(BondName)) ||
 		accAddr.Equals(keeper.GetModuleAccAddress(ReserveName)) ||
-		accAddr.Equals(keeper.GetModuleAccAddress(LendingName)) ||
-		accAddr.Equals(keeper.GetModuleAccAddress(ModuleName)) ||
-		accAddr.Equals(keeper.GetModuleAccAddress(TreasuryName))
+		accAddr.Equals(keeper.GetModuleAccAddress(ModuleName))
 }
 
 // getLastChurnHeight returns the block height of the last churn.
@@ -396,10 +376,6 @@ func getLastChurnHeight(ctx cosmos.Context, k keeper.Keeper) int64 {
 		}
 	}
 	return lastChurnHeight
-}
-
-func polPoolValue(ctx cosmos.Context, mgr Manager) (cosmos.Uint, error) {
-	return cosmos.ZeroUint(), nil
 }
 
 func trimKeyPrefix(key []byte) string {

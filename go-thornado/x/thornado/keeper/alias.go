@@ -5,12 +5,11 @@ import (
 )
 
 const (
-	ModuleName   = types.ModuleName
-	ReserveName  = types.ReserveName
-	BaseName     = types.BaseName
-	TreasuryName = types.TreasuryName
-	BondName     = types.BondName
-	StoreKey     = types.StoreKey
+	ModuleName  = types.ModuleName
+	ReserveName = types.ReserveName
+	BaseName    = types.BaseName
+	BondName    = types.BondName
+	StoreKey    = types.StoreKey
 
 	ActiveVault = types.VaultStatus_ActiveVault
 
@@ -31,7 +30,6 @@ var (
 
 type (
 	ObservedTxVoter         = types.ObservedTxVoter
-	BanVoter                = types.BanVoter
 	ErrataTxVoter           = types.ErrataTxVoter
 	TssVoter                = types.TssVoter
 	TssKeysignFailVoter     = types.TssKeysignFailVoter

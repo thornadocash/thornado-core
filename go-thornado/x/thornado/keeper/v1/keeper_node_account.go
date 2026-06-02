@@ -238,7 +238,7 @@ func (k KVStore) SetNodeAccount(ctx cosmos.Context, na NodeAccount) error {
 			// became active. This must be the first block they are active, so
 			// Thornado will set it now.
 			na.ActiveBlockHeight = ctx.BlockHeight()
-			k.ResetNodeAccountSlashPoints(ctx, na.NodeAddress) // reset slash points
+			k.ResetNodeAccountPenaltyPoints(ctx, na.NodeAddress) // reset penalty points
 		}
 	}
 
@@ -299,42 +299,42 @@ func VotePrefix(name string) string {
 	return fmt.Sprintf("%s%s/", prefixUpgradeVotes, name)
 }
 
-// GetNodeAccountSlashPoints - get the slash points associated with the given
+// GetNodeAccountPenaltyPoints - get the penalty points associated with the given
 // node address
-func (k KVStore) GetNodeAccountSlashPoints(ctx cosmos.Context, addr cosmos.AccAddress) (int64, error) {
+func (k KVStore) GetNodeAccountPenaltyPoints(ctx cosmos.Context, addr cosmos.AccAddress) (int64, error) {
 	record := int64(0)
-	_, err := k.getInt64(ctx, k.GetKey(prefixNodeSlashPoints, addr.String()), &record)
+	_, err := k.getInt64(ctx, k.GetKey(prefixNodePenaltyPoints, addr.String()), &record)
 	return record, err
 }
 
-// SetNodeAccountSlashPoints - set the slash points associated with the given
+// SetNodeAccountPenaltyPoints - set the penalty points associated with the given
 // node address and uint
-func (k KVStore) SetNodeAccountSlashPoints(ctx cosmos.Context, addr cosmos.AccAddress, pts int64) {
-	// make sure slash point doesn't go to negative
+func (k KVStore) SetNodeAccountPenaltyPoints(ctx cosmos.Context, addr cosmos.AccAddress, pts int64) {
+	// make sure penalty point doesn't go to negative
 	if pts < 0 {
 		pts = 0
 	}
-	k.setInt64(ctx, k.GetKey(prefixNodeSlashPoints, addr.String()), pts)
+	k.setInt64(ctx, k.GetKey(prefixNodePenaltyPoints, addr.String()), pts)
 }
 
-// ResetNodeAccountSlashPoints - reset the slash points to zero for associated
+// ResetNodeAccountPenaltyPoints - reset the penalty points to zero for associated
 // with the given node address
-func (k KVStore) ResetNodeAccountSlashPoints(ctx cosmos.Context, addr cosmos.AccAddress) {
-	k.del(ctx, k.GetKey(prefixNodeSlashPoints, addr.String()))
+func (k KVStore) ResetNodeAccountPenaltyPoints(ctx cosmos.Context, addr cosmos.AccAddress) {
+	k.del(ctx, k.GetKey(prefixNodePenaltyPoints, addr.String()))
 }
 
-// IncNodeAccountSlashPoints - increments the slash points associated with the
+// IncNodeAccountPenaltyPoints - increments the penalty points associated with the
 // given node address and uint
-func (k KVStore) IncNodeAccountSlashPoints(ctx cosmos.Context, addr cosmos.AccAddress, pts int64) error {
-	current, err := k.GetNodeAccountSlashPoints(ctx, addr)
+func (k KVStore) IncNodeAccountPenaltyPoints(ctx cosmos.Context, addr cosmos.AccAddress, pts int64) error {
+	current, err := k.GetNodeAccountPenaltyPoints(ctx, addr)
 	if err != nil {
 		return err
 	}
-	k.SetNodeAccountSlashPoints(ctx, addr, current+pts)
+	k.SetNodeAccountPenaltyPoints(ctx, addr, current+pts)
 
 	metricLabels, _ := ctx.Context().Value(constants.CtxMetricLabels).([]metrics.Label)
 	telemetry.IncrCounterWithLabels(
-		[]string{"thornado", "point_slash"},
+		[]string{"thornado", "point_penalty"},
 		float32(pts),
 		append(
 			metricLabels,
@@ -342,21 +342,21 @@ func (k KVStore) IncNodeAccountSlashPoints(ctx cosmos.Context, addr cosmos.AccAd
 		),
 	)
 
-	if config.GetThornado().Telemetry.SlashPoints {
-		slashTelemetry(ctx, pts, addr, "IncSlashPoints")
+	if config.GetThornado().Telemetry.PenaltyPoints {
+		penaltyTelemetry(ctx, pts, addr, "IncPenaltyPoints")
 	}
 
 	return nil
 }
 
-// DecNodeAccountSlashPoints - decrements the slash points associated with the
+// DecNodeAccountPenaltyPoints - decrements the penalty points associated with the
 // given node address and uint
-func (k KVStore) DecNodeAccountSlashPoints(ctx cosmos.Context, addr cosmos.AccAddress, pts int64) error {
-	current, err := k.GetNodeAccountSlashPoints(ctx, addr)
+func (k KVStore) DecNodeAccountPenaltyPoints(ctx cosmos.Context, addr cosmos.AccAddress, pts int64) error {
+	current, err := k.GetNodeAccountPenaltyPoints(ctx, addr)
 	if err != nil {
 		return err
 	}
-	k.SetNodeAccountSlashPoints(ctx, addr, current-pts)
+	k.SetNodeAccountPenaltyPoints(ctx, addr, current-pts)
 
 	dec := pts
 	if dec > current {
@@ -365,7 +365,7 @@ func (k KVStore) DecNodeAccountSlashPoints(ctx cosmos.Context, addr cosmos.AccAd
 
 	metricLabels, _ := ctx.Context().Value(constants.CtxMetricLabels).([]metrics.Label)
 	telemetry.IncrCounterWithLabels(
-		[]string{"thornado", "point_slash_return"},
+		[]string{"thornado", "point_penalty_return"},
 		float32(dec),
 		append(
 			metricLabels,
@@ -373,8 +373,8 @@ func (k KVStore) DecNodeAccountSlashPoints(ctx cosmos.Context, addr cosmos.AccAd
 		),
 	)
 
-	if config.GetThornado().Telemetry.SlashPoints {
-		slashTelemetry(ctx, -pts, addr, "DecSlashPoints")
+	if config.GetThornado().Telemetry.PenaltyPoints {
+		penaltyTelemetry(ctx, -pts, addr, "DecPenaltyPoints")
 	}
 
 	return nil
@@ -436,9 +436,5 @@ func (k KVStore) ReleaseNodeAccountFromJail(ctx cosmos.Context, addr cosmos.AccA
 	jail.ReleaseHeight = ctx.BlockHeight()
 	jail.Reason = ""
 	k.setJail(ctx, k.GetKey(prefixNodeJail, addr.String()), jail)
-	return nil
-}
-
-func (k KVStore) DeductNativeTxFeeFromBond(ctx cosmos.Context, nodeAddr cosmos.AccAddress) error {
 	return nil
 }

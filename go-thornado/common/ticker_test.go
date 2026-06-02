@@ -9,16 +9,16 @@ type TickerSuite struct{}
 var _ = Suite(&TickerSuite{})
 
 func (s TickerSuite) TestTicker(c *C) {
-	const RuneTicker = Ticker("RUNE")
+	const TestTicker = Ticker("TEST")
 
-	runeTicker, err := NewTicker("rune")
+	testTicker, err := NewTicker("test")
 	c.Assert(err, IsNil)
 	bnbTicker, err := NewTicker("bnb")
 	c.Assert(err, IsNil)
-	c.Check(runeTicker.IsEmpty(), Equals, false)
-	c.Check(runeTicker.Equals(RuneTicker), Equals, true)
-	c.Check(bnbTicker.Equals(RuneTicker), Equals, false)
-	c.Check(runeTicker.String(), Equals, "RUNE")
+	c.Check(testTicker.IsEmpty(), Equals, false)
+	c.Check(testTicker.Equals(TestTicker), Equals, true)
+	c.Check(bnbTicker.Equals(TestTicker), Equals, false)
+	c.Check(testTicker.String(), Equals, "TEST")
 
 	tomobTicker, err := NewTicker("TOMOB-1E1")
 	c.Assert(err, IsNil)

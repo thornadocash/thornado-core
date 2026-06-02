@@ -18,7 +18,7 @@ Expected: know exactly what is dirty before testing. Do not mix unrelated genera
 
 ```sh
 cd go-thornado
-go test ./frost/go-wrappers/go-frost/sessions -count=1
+go test ./go-wrappers/frost/go-frost/sessions -count=1
 go test ./bifrost/pkg/chainclients/utxo -run 'Frost|Bitcoin|Taproot|Signer' -count=1
 go test ./bifrost/tss ./bifrost/p2p/messages ./bifrost/p2p/storage ./bifrost/signer ./x/thornado/types -count=1
 ```

@@ -24,7 +24,7 @@ Method | HTTP request | Description
 [**ThornadoMetricKeygenPubKeyGet**](DefaultApi.md#ThornadoMetricKeygenPubKeyGet) | **Get** /thornado/metric/keygen/{pub_key} | Keygen metric by vault pubkey
 [**ThornadoMetricsGet**](DefaultApi.md#ThornadoMetricsGet) | **Get** /thornado/metrics | Keygen and keysign metrics
 [**ThornadoNetworkFeeGet**](DefaultApi.md#ThornadoNetworkFeeGet) | **Get** /thornado/network_fee | BTC network fee
-[**ThornadoNodeAddressAddressGet**](DefaultApi.md#ThornadoNodeAddressAddressGet) | **Get** /thornado/node/address/{address} | Node by address
+[**ThornadoNodeAddressGet**](DefaultApi.md#ThornadoNodeAddressGet) | **Get** /thornado/node/{address} | Node by address
 [**ThornadoNodeAuctionAuctionIdBidsGet**](DefaultApi.md#ThornadoNodeAuctionAuctionIdBidsGet) | **Get** /thornado/node/auction/{auction_id}/bids | Node slot auction bids
 [**ThornadoNodeAuctionAuctionIdGet**](DefaultApi.md#ThornadoNodeAuctionAuctionIdGet) | **Get** /thornado/node/auction/{auction_id} | Node slot auction
 [**ThornadoNodeAuctionsGet**](DefaultApi.md#ThornadoNodeAuctionsGet) | **Get** /thornado/node/auctions | Node slot auctions
@@ -1300,9 +1300,9 @@ No authorization required
 [[Back to README]](../README.md)
 
 
-## ThornadoNodeAddressAddressGet
+## ThornadoNodeAddressGet
 
-> ThornadoNodeAddressAddressGet(ctx, address).Execute()
+> ThornadoNodeAddressGet(ctx, address).Execute()
 
 Node by address
 
@@ -1323,9 +1323,9 @@ func main() {
 
     configuration := openapiclient.NewConfiguration()
     apiClient := openapiclient.NewAPIClient(configuration)
-    resp, r, err := apiClient.DefaultApi.ThornadoNodeAddressAddressGet(context.Background(), address).Execute()
+    resp, r, err := apiClient.DefaultApi.ThornadoNodeAddressGet(context.Background(), address).Execute()
     if err != nil {
-        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoNodeAddressAddressGet``: %v\n", err)
+        fmt.Fprintf(os.Stderr, "Error when calling `DefaultApi.ThornadoNodeAddressGet``: %v\n", err)
         fmt.Fprintf(os.Stderr, "Full HTTP response: %v\n", r)
     }
 }
@@ -1341,7 +1341,7 @@ Name | Type | Description  | Notes
 
 ### Other Parameters
 
-Other parameters are passed through a pointer to a apiThornadoNodeAddressAddressGetRequest struct via the builder pattern
+Other parameters are passed through a pointer to a apiThornadoNodeAddressGetRequest struct via the builder pattern
 
 
 Name | Type | Description  | Notes

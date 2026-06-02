@@ -43,14 +43,13 @@ const (
 	KeygenEndpoint           = "/thornado/keygen"
 	KeysignEndpoint          = "/thornado/keysign"
 	LastBlockEndpoint        = "/thornado/lastblock"
-	NodeAccountEndpoint      = "/thornado/node/address"
+	NodeAccountEndpoint      = "/thornado/node"
 	NodeAccountsEndpoint     = "/thornado/nodes"
 	SignerMembershipEndpoint = "/thornado/vaults/%s/signers"
 	StatusEndpoint           = "/status"
 	VaultEndpoint            = "/thornado/vault/%s"
 	BaseVaultEndpoint        = "/thornado/vaults/base"
 	PubKeysEndpoint          = "/thornado/vaults/pubkeys"
-	RagnarokEndpoint         = "/thornado/ragnarok"
 	ConfigEndpoint           = "/thornado/config"
 	ConfigDefaultsEndpoint   = "/thornado/config/defaults"
 	ChainVersionEndpoint     = "/thornado/version"
@@ -82,7 +81,7 @@ type ThornadoBridge interface {
 	GetConstants() (map[string]int64, error)
 	GetContext() client.Context
 	GetErrataMsg(txID common.TxID, chain common.Chain) sdk.Msg
-	GetKeygenStdTx(poolPubKey common.PubKey, secp256k1Signature, keysharesBackup []byte, blame []stypes.Blame, inputPks common.PubKeys, keygenType stypes.KeygenType, chains common.Chains, height, keygenTime int64, poolPubKeyEddsa common.PubKey, keysharesBackupEddsa []byte) (sdk.Msg, error)
+	GetKeygenStdTx(vaultPubKey common.PubKey, secp256k1Signature, keysharesBackup []byte, blame []stypes.Blame, inputPks common.PubKeys, keygenType stypes.KeygenType, chains common.Chains, height, keygenTime int64, vaultPubKeyEddsa common.PubKey, keysharesBackupEddsa []byte) (sdk.Msg, error)
 	GetKeysignParty(vaultPubKey common.PubKey) (common.PubKeys, error)
 	GetConfigValue(key string) (int64, error)
 	GetConfigValueWithRef(template, ref string) (int64, error)
@@ -96,7 +95,6 @@ type ThornadoBridge interface {
 	GetNetworkFee(chain common.Chain) (transactionSize, transactionFeeRate uint64, err error)
 	PostKeysignFailure(blame stypes.Blame, height int64, coins common.Coins, pubkey common.PubKey) (common.TxID, error)
 	PostNetworkFee(height int64, chain common.Chain, transactionSize, transactionRate uint64) (common.TxID, error)
-	RagnarokInProgress() (bool, error)
 	WaitToCatchUp() error
 	GetBlockHeight() (int64, error)
 	GetBlockTimestamp(height int64) (time.Time, error)
@@ -333,17 +331,17 @@ func (b *thornadoBridge) GetSolvencyMsg(height int64, chain common.Chain, pubKey
 }
 
 // GetKeygenStdTx get keygen tx from params
-func (b *thornadoBridge) GetKeygenStdTx(poolPubKey common.PubKey, secp256k1Signature, keysharesBackup []byte, blame []stypes.Blame, inputPks common.PubKeys, keygenType stypes.KeygenType, chains common.Chains, height, keygenTime int64, poolPubKeyEddsa common.PubKey, keysharesBackupEddsa []byte) (sdk.Msg, error) {
-	return b.GetKeygenStdTxWithFrost(poolPubKey, secp256k1Signature, keysharesBackup, blame, inputPks, keygenType, chains, height, keygenTime, poolPubKeyEddsa, keysharesBackupEddsa, nil)
+func (b *thornadoBridge) GetKeygenStdTx(vaultPubKey common.PubKey, secp256k1Signature, keysharesBackup []byte, blame []stypes.Blame, inputPks common.PubKeys, keygenType stypes.KeygenType, chains common.Chains, height, keygenTime int64, vaultPubKeyEddsa common.PubKey, keysharesBackupEddsa []byte) (sdk.Msg, error) {
+	return b.GetKeygenStdTxWithFrost(vaultPubKey, secp256k1Signature, keysharesBackup, blame, inputPks, keygenType, chains, height, keygenTime, vaultPubKeyEddsa, keysharesBackupEddsa, nil)
 }
 
-func (b *thornadoBridge) GetKeygenStdTxWithFrost(poolPubKey common.PubKey, secp256k1Signature, keysharesBackup []byte, blame []stypes.Blame, inputPks common.PubKeys, keygenType stypes.KeygenType, chains common.Chains, height, keygenTime int64, poolPubKeyEddsa common.PubKey, keysharesBackupEddsa, keysharesBackupFrost []byte) (sdk.Msg, error) {
+func (b *thornadoBridge) GetKeygenStdTxWithFrost(vaultPubKey common.PubKey, secp256k1Signature, keysharesBackup []byte, blame []stypes.Blame, inputPks common.PubKeys, keygenType stypes.KeygenType, chains common.Chains, height, keygenTime int64, vaultPubKeyEddsa common.PubKey, keysharesBackupEddsa, keysharesBackupFrost []byte) (sdk.Msg, error) {
 	signerAddr, err := b.keys.GetSignerInfo().GetAddress()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get signer address: %w", err)
 	}
 
-	return stypes.NewMsgTssPoolV2(inputPks.Strings(), poolPubKey, secp256k1Signature, keysharesBackup, keygenType, height, blame, chains.Strings(), signerAddr, keygenTime, poolPubKeyEddsa, keysharesBackupEddsa, keysharesBackupFrost)
+	return stypes.NewMsgTssPoolV2(inputPks.Strings(), vaultPubKey, secp256k1Signature, keysharesBackup, keygenType, height, blame, chains.Strings(), signerAddr, keygenTime, vaultPubKeyEddsa, keysharesBackupEddsa, keysharesBackupFrost)
 }
 
 // GetInboundOutbound separate the txs into inbound and outbound
@@ -363,7 +361,7 @@ func (b *thornadoBridge) GetInboundOutbound(txIns common.ObservedTxs) (common.Ob
 
 		obAddr, err := tx.ObservedPubKey.GetAddress(chain)
 		if err != nil {
-			b.logger.Err(err).Msgf("fail to parse observed pool address: %s", tx.ObservedPubKey.String())
+			b.logger.Err(err).Msgf("fail to parse observed vault address: %s", tx.ObservedPubKey.String())
 			continue
 		}
 		vaultToAddress := tx.Tx.ToAddress.Equals(obAddr)
@@ -419,13 +417,19 @@ func (b *thornadoBridge) GetInboundOutbound(txIns common.ObservedTxs) (common.Ob
 }
 
 func isDerivedBTCVaultAddress(addr common.Address, pubkey common.PubKey) bool {
-	for pathIndex := uint64(common.FirstDepositPathIndex); pathIndex <= common.DepositAddressLookahead; pathIndex++ {
-		derived, err := common.DeriveBTCTaprootAddress(pubkey, pathIndex)
+	for _, pathType := range []common.VaultDepositPathType{common.VaultDepositPathUser, common.VaultDepositPathNode} {
+		pathIndexes, err := common.VaultDepositLookaheadPathIndexes(pathType)
 		if err != nil {
 			return false
 		}
-		if addr.Equals(derived) {
-			return true
+		for _, pathIndex := range pathIndexes {
+			derived, err := common.DeriveBTCTaprootAddress(pubkey, pathIndex)
+			if err != nil {
+				return false
+			}
+			if addr.Equals(derived) {
+				return true
+			}
 		}
 	}
 	return false
@@ -768,22 +772,6 @@ func (b *thornadoBridge) GetConstants() (map[string]int64, error) {
 		return nil, fmt.Errorf("unexpected status code: %d", s)
 	}
 	return decodeConfigInt64Values(buf)
-}
-
-// RagnarokInProgress is to query thornado to check whether ragnarok had been triggered
-func (b *thornadoBridge) RagnarokInProgress() (bool, error) {
-	buf, s, err := b.getWithPath(RagnarokEndpoint)
-	if err != nil {
-		return false, fmt.Errorf("fail to get ragnarok status: %w", err)
-	}
-	if s != http.StatusOK {
-		return false, fmt.Errorf("unexpected status code: %d", s)
-	}
-	var ragnarok bool
-	if err = json.Unmarshal(buf, &ragnarok); err != nil {
-		return false, fmt.Errorf("fail to unmarshal ragnarok status: %w", err)
-	}
-	return ragnarok, nil
 }
 
 // GetThornadoVersion retrieve thornado version

@@ -70,7 +70,7 @@ func (m *ObservedTxVoter) matchActionItem(outboundTx common.Tx) bool {
 
 // AddOutTx trying to add the outbound tx into OutTxs ,
 // return value false indicate the given outbound tx doesn't match any of the
-// actions items , node account should be slashed for a malicious tx
+// actions items , node account should be penalized for a malicious tx
 // true indicated the outbound tx matched an action item , and it has been
 // added into internal OutTxs
 func (m *ObservedTxVoter) AddOutTx(in common.Tx) bool {
@@ -211,7 +211,7 @@ func (m *ObservedTxVoter) SetDone() {
 	m.setStatus(common.Status_done)
 }
 
-// Get consensus signers for slash point decrementation
+// Get consensus signers for penalty point decrementation
 func (m *ObservedTxVoter) GetConsensusSigners() []cosmos.AccAddress {
 	if m.Tx.IsEmpty() {
 		return nil

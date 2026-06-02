@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
@@ -22,11 +22,6 @@ var _ types.MsgServer = (*msgServer)(nil)
 // NewMsgServerImpl returns an implementation of the module MsgServer interface.
 func NewMsgServerImpl(mgr Manager) types.MsgServer {
 	return &msgServer{mgr: mgr}
-}
-
-func (ms msgServer) Ban(goCtx context.Context, msg *types.MsgBan) (*types.MsgEmpty, error) {
-	handler := NewBanHandler(ms.mgr)
-	return externalHandler(goCtx, handler, msg)
 }
 
 func (ms msgServer) Deposit(goCtx context.Context, msg *types.MsgDeposit) (*types.MsgEmpty, error) {
@@ -88,7 +83,11 @@ func (ms msgServer) DepositRequestPow(goCtx context.Context, msg *types.MsgDepos
 	if err := msg.ValidateBasic(); err != nil {
 		return nil, err
 	}
-	session, err := RegisterDepositPowToken(ctx, ms.mgr.Keeper(), msg.Signer, msg.PowToken, msg.OperatorPubKey, msg.NodePubKey)
+	owner, err := AccAddressFromCompressedSecp256k1(msg.DepositPubkey)
+	if err != nil {
+		return nil, err
+	}
+	session, err := RegisterDepositPowToken(ctx, ms.mgr.Keeper(), owner, msg.PowToken, msg.OperatorPubKey, msg.NodePubKey, msg.PowDurationMs)
 	if err != nil {
 		return nil, err
 	}
@@ -104,76 +103,18 @@ func (ms msgServer) ShielderSplit(goCtx context.Context, msg *types.MsgShielderS
 	if err := msg.ValidateBasic(); err != nil {
 		return nil, err
 	}
-	depositID, err := common.NewTxID(msg.DepositId)
-	if err != nil {
-		return nil, err
-	}
-	deposit, err := PostShielderSplit(ctx, ms.mgr.Keeper(), msg.Signer, depositID, msg.Commitments)
-	if err != nil {
-		return nil, err
-	}
-	return &types.MsgShielderSplitResponse{
-		DepositId: deposit.DepositID.String(),
-		Status:    deposit.Status,
-	}, nil
-}
-
-func (ms msgServer) ShielderRedeem(goCtx context.Context, msg *types.MsgShielderRedeem) (*types.MsgShielderRedeemResponse, error) {
-	ctx := sdk.UnwrapSDKContext(goCtx)
-	if err := msg.ValidateBasic(); err != nil {
-		return nil, err
-	}
-	authorization, err := AuthorizeShielderRedeem(ctx, ms.mgr.Keeper(), ShielderRedeemRequest{
-		Owner:  msg.Signer,
-		Proof:  msg.Proof,
-		Public: msg.Public,
-	})
-	if err != nil {
-		return nil, err
-	}
-	withdrawal, err := QueueAuthorizedWithdrawalTxOut(ctx, ms.mgr.Keeper(), authorization)
-	if err != nil {
-		return nil, err
-	}
-	return &types.MsgShielderRedeemResponse{
-		WithdrawalId: withdrawal.WithdrawalID,
-		Status:       withdrawal.Status,
-	}, nil
-}
-
-func (ms msgServer) GaslessDepositRequestPow(goCtx context.Context, msg *types.MsgGaslessDepositRequestPow) (*types.MsgDepositRequestPowResponse, error) {
-	ctx := sdk.UnwrapSDKContext(goCtx)
-	if err := msg.ValidateBasic(); err != nil {
-		return nil, err
-	}
 	owner, err := AccAddressFromCompressedSecp256k1(msg.DepositPubkey)
 	if err != nil {
 		return nil, err
 	}
-	session, err := RegisterDepositPowToken(ctx, ms.mgr.Keeper(), owner, msg.PowToken, msg.OperatorPubKey, msg.NodePubKey)
+	session, err := ms.mgr.Keeper().GetDepositSession(ctx, owner)
 	if err != nil {
 		return nil, err
 	}
-	return &types.MsgDepositRequestPowResponse{
-		DepositAddress:   session.DepositAddress.String(),
-		VaultPubKey:      session.VaultPubKey.String(),
-		DepositPathIndex: session.DepositPathIndex,
-	}, nil
-}
-
-func (ms msgServer) GaslessShielderSplit(goCtx context.Context, msg *types.MsgGaslessShielderSplit) (*types.MsgShielderSplitResponse, error) {
-	ctx := sdk.UnwrapSDKContext(goCtx)
-	if err := msg.ValidateBasic(); err != nil {
-		return nil, err
+	if session.DepositID.IsEmpty() {
+		return nil, fmt.Errorf("deposit not matched")
 	}
-	depositID, err := common.NewTxID(msg.DepositId)
-	if err != nil {
-		return nil, err
-	}
-	owner, err := AccAddressFromCompressedSecp256k1(msg.DepositPubkey)
-	if err != nil {
-		return nil, err
-	}
+	depositID := session.DepositID
 	deposit, err := ms.mgr.Keeper().GetDepositRecord(ctx, depositID)
 	if err != nil {
 		return nil, err
@@ -189,7 +130,8 @@ func (ms msgServer) GaslessShielderSplit(goCtx context.Context, msg *types.MsgGa
 	if amountSats == 0 {
 		return nil, fmt.Errorf("missing shielder commitment amount")
 	}
-	if err := VerifyGaslessSplitAuthorization(msg.DepositPubkey, msg.Signature, msg.DepositId, amountSats, msg.Commitments); err != nil {
+	splitRef := strings.TrimSpace(msg.DepositPubkey)
+	if err := VerifySplitAuthorization(msg.DepositPubkey, msg.Signature, splitRef, amountSats, msg.Commitments); err != nil {
 		return nil, err
 	}
 	deposit, err = PostShielderSplit(ctx, ms.mgr.Keeper(), owner, depositID, msg.Commitments)
@@ -197,22 +139,16 @@ func (ms msgServer) GaslessShielderSplit(goCtx context.Context, msg *types.MsgGa
 		return nil, err
 	}
 	return &types.MsgShielderSplitResponse{
-		DepositId: deposit.DepositID.String(),
-		Status:    deposit.Status,
+		Status: deposit.Status,
 	}, nil
 }
 
-func (ms msgServer) GaslessShielderRedeem(goCtx context.Context, msg *types.MsgGaslessShielderRedeem) (*types.MsgShielderRedeemResponse, error) {
+func (ms msgServer) ShielderRedeem(goCtx context.Context, msg *types.MsgShielderRedeem) (*types.MsgShielderRedeemResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 	if err := msg.ValidateBasic(); err != nil {
 		return nil, err
 	}
-	owner, err := AccAddressFromCompressedSecp256k1(msg.OwnerPubkey)
-	if err != nil {
-		return nil, err
-	}
 	authorization, err := AuthorizeShielderRedeem(ctx, ms.mgr.Keeper(), ShielderRedeemRequest{
-		Owner:  owner,
 		Proof:  msg.Proof,
 		Public: msg.Public,
 	})
@@ -262,7 +198,7 @@ func (ms msgServer) NodeSlotAuctionBidPow(goCtx context.Context, msg *types.MsgN
 	if err := msg.ValidateBasic(); err != nil {
 		return nil, err
 	}
-	session, bid, err := RegisterNodeSlotBidDepositPowToken(ctx, ms.mgr.Keeper(), msg.Signer, msg.PowToken, msg.AuctionId, msg.OperatorPubKey, msg.NodePubKey)
+	session, bid, err := RegisterNodeSlotBidDepositPowToken(ctx, ms.mgr.Keeper(), msg.Signer, msg.PowToken, msg.AuctionId, msg.OperatorPubKey, msg.NodePubKey, msg.PowDurationMs)
 	if err != nil {
 		return nil, err
 	}
@@ -294,13 +230,10 @@ func (ms msgServer) NodeSlotAuctionSplit(goCtx context.Context, msg *types.MsgNo
 	if err != nil {
 		return nil, err
 	}
-	return &types.MsgShielderSplitResponse{
-		DepositId: deposit.DepositID.String(),
-		Status:    deposit.Status,
-	}, nil
+	return &types.MsgShielderSplitResponse{Status: deposit.Status}, nil
 }
 
-func (ms msgServer) ThorSend(goCtx context.Context, msg *types.MsgSend) (*types.MsgEmpty, error) {
+func (ms msgServer) Send(goCtx context.Context, msg *types.MsgSend) (*types.MsgEmpty, error) {
 	handler := NewSendHandler(ms.mgr)
 	return externalHandler(goCtx, handler, msg)
 }

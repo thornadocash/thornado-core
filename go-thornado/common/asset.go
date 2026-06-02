@@ -14,9 +14,9 @@ import (
 
 var (
 	// EmptyAsset empty asset, not valid
-	EmptyAsset = Asset{Symbol: "", Ticker: "", Synth: false}
+	EmptyAsset = Asset{Symbol: "", Ticker: ""}
 	// BTCAsset BTC
-	BTCAsset = Asset{Chain: BTCChain, Symbol: "BTC", Ticker: "BTC", Synth: false}
+	BTCAsset = Asset{Chain: BTCChain, Symbol: "BTC", Ticker: "BTC"}
 )
 
 var _ sdk.CustomProtobufType = (*Asset)(nil)
@@ -27,17 +27,11 @@ func NewAsset(input string) (Asset, error) {
 	var asset Asset
 	var sym string
 	var parts []string
-	re := regexp.MustCompile("[~./-]")
+	re := regexp.MustCompile("[.-]")
 
 	match := re.FindString(input)
 
 	switch match {
-	case "~":
-		parts = strings.SplitN(input, match, 2)
-		asset.Trade = true
-	case "/":
-		parts = strings.SplitN(input, match, 2)
-		asset.Synth = true
 	case "-":
 		parts = strings.SplitN(input, match, 2)
 		asset.Secured = true
@@ -95,15 +89,12 @@ func (a Asset) Valid() error {
 	if err := a.Symbol.Valid(); err != nil {
 		return fmt.Errorf("invalid symbol: %w", err)
 	}
-	if (a.Synth && a.Trade) || (a.Trade && a.Secured) || (a.Secured && a.Synth) {
-		return fmt.Errorf("assets can only be one of trade, synth or secured")
-	}
 	return nil
 }
 
 // Equals determinate whether two assets are equivalent
 func (a Asset) Equals(a2 Asset) bool {
-	return a.Chain.Equals(a2.Chain) && a.Symbol.Equals(a2.Symbol) && a.Ticker.Equals(a2.Ticker) && a.Synth == a2.Synth && a.Trade == a2.Trade && a.Secured == a2.Secured
+	return a.Chain.Equals(a2.Chain) && a.Symbol.Equals(a2.Symbol) && a.Ticker.Equals(a2.Ticker) && a.Secured == a2.Secured
 }
 
 func (a Asset) GetChain() Chain {
@@ -112,42 +103,14 @@ func (a Asset) GetChain() Chain {
 
 // Get layer1 asset version
 func (a Asset) GetLayer1Asset() Asset {
-	if !a.IsSyntheticAsset() && !a.IsTradeAsset() && !a.IsSecuredAsset() {
+	if !a.IsSecuredAsset() {
 		return a
 	}
 	return Asset{
 		Chain:   a.Chain,
 		Symbol:  a.Symbol,
 		Ticker:  a.Ticker,
-		Synth:   false,
-		Trade:   false,
 		Secured: false,
-	}
-}
-
-// Get synthetic asset of asset
-func (a Asset) GetSyntheticAsset() Asset {
-	if a.IsSyntheticAsset() {
-		return a
-	}
-	return Asset{
-		Chain:  a.Chain,
-		Symbol: a.Symbol,
-		Ticker: a.Ticker,
-		Synth:  true,
-	}
-}
-
-// Get trade asset of asset
-func (a Asset) GetTradeAsset() Asset {
-	if a.IsTradeAsset() {
-		return a
-	}
-	return Asset{
-		Chain:  a.Chain,
-		Symbol: a.Symbol,
-		Ticker: a.Ticker,
-		Trade:  true,
 	}
 }
 
@@ -164,35 +127,11 @@ func (a Asset) GetSecuredAsset() Asset {
 	}
 }
 
-// Get derived asset of asset
-func (a Asset) GetDerivedAsset() Asset {
-	return Asset{
-		Chain:  BTCChain,
-		Symbol: a.Symbol,
-		Ticker: a.Ticker,
-		Synth:  false,
-	}
-}
-
-// Check if asset is a pegged asset
-func (a Asset) IsSyntheticAsset() bool {
-	return a.Synth
-}
-
-func (a Asset) IsTradeAsset() bool {
-	return a.Trade
-}
-
 func (a Asset) IsSecuredAsset() bool {
 	return a.Secured
 }
 
 func (a Asset) IsVaultAsset() bool {
-	return a.IsSyntheticAsset()
-}
-
-// Check if asset is a derived asset
-func (a Asset) IsDerivedAsset() bool {
 	return false
 }
 
@@ -209,12 +148,6 @@ func (a Asset) IsEmpty() bool {
 // String implement fmt.Stringer , return the string representation of Asset
 func (a Asset) String() string {
 	div := "."
-	if a.Synth {
-		div = "/"
-	}
-	if a.Trade {
-		div = "~"
-	}
 	if a.Secured {
 		div = "-"
 	}
@@ -240,11 +173,6 @@ func (a Asset) IsGasAsset() bool {
 	return a.Equals(gasAsset)
 }
 
-// IsRune is retained for compatibility; Thornado has no RUNE asset.
-func (a Asset) IsRune() bool {
-	return false
-}
-
 // IsWhitelisted is retained for compatibility; Thornado has no internal whitelist.
 func (a Asset) IsWhitelisted() bool {
 	return false
@@ -256,7 +184,7 @@ func (a Asset) IsNative() bool {
 }
 
 func (a Asset) IsExternalL1Asset() bool {
-	return !a.IsSyntheticAsset() && !a.IsDerivedAsset() && !a.IsTradeAsset() && !a.IsSecuredAsset() && !a.IsNative()
+	return !a.IsSecuredAsset() && !a.IsNative()
 }
 
 // MarshalJSON implement Marshaler interface

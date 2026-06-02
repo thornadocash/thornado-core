@@ -10,8 +10,6 @@ const (
 	ReserveName      = types.ReserveName
 	BaseName         = types.BaseName
 	BondName         = types.BondName
-	LendingName      = types.LendingName
-	TreasuryName     = types.TreasuryName
 	RouterKey        = types.RouterKey
 	StoreKey         = types.StoreKey
 	DefaultCodespace = types.DefaultCodespace
@@ -40,8 +38,6 @@ const (
 	// Bond type
 	BondPaid        = types.BondType_bond_paid
 	BondReturned    = types.BondType_bond_returned
-	BondCost        = types.BondType_bond_cost
-	BondReward      = types.BondType_bond_reward
 	BaseVaultKeygen = types.KeygenType_BaseVaultKeygen
 
 	TxOutStatusPendingBatch = types.TxOutStatusPendingBatch
@@ -57,7 +53,6 @@ var (
 	NewNetwork                     = types.NewNetwork
 	NewObservedTx                  = common.NewObservedTx
 	NewTssVoter                    = types.NewTssVoter
-	NewBanVoter                    = types.NewBanVoter
 	NewErrataTxVoter               = types.NewErrataTxVoter
 	NewObservedTxVoter             = types.NewObservedTxVoter
 	NewMsgConfig                   = types.NewMsgConfig
@@ -76,21 +71,11 @@ var (
 	NewMsgOperatorRotate           = types.NewMsgOperatorRotate
 	NewMsgPriceFeedQuorumBatch     = types.NewMsgPriceFeedQuorumBatch
 	NewTxOut                       = types.NewTxOut
-	NewEventRewards                = types.NewEventRewards
-	NewEventPool                   = types.NewEventPool
-	NewEventDonate                 = types.NewEventDonate
-	NewEventSwap                   = types.NewEventSwap
-	NewEventLimitSwap              = types.NewEventLimitSwap
-	NewEventModifyLimitSwap        = types.NewEventModifyLimitSwap
-	NewEventLimitSwapClose         = types.NewEventLimitSwapClose
 	NewEventBond                   = types.NewEventBond
-	NewEventReBond                 = types.NewEventReBond
 	NewEventGas                    = types.NewEventGas
 	NewEventScheduledOutbound      = types.NewEventScheduledOutbound
 	NewEventSecurity               = types.NewEventSecurity
-	NewEventSlash                  = types.NewEventSlash
-	NewEventSlashPoint             = types.NewEventSlashPoint
-	NewEventErrata                 = types.NewEventErrata
+	NewEventPenaltyPoint           = types.NewEventPenaltyPoint
 	NewEventFee                    = types.NewEventFee
 	NewEventOutbound               = types.NewEventOutbound
 	NewEventSetConfig              = types.NewEventSetConfig
@@ -99,13 +84,11 @@ var (
 	NewEventTssKeygenFailure       = types.NewEventTssKeygenFailure
 	NewEventTssKeygenMetric        = types.NewEventTssKeygenMetric
 	NewEventTssKeysignMetric       = types.NewEventTssKeysignMetric
-	NewEventPoolBalanceChanged     = types.NewEventPoolBalanceChanged
 	NewEventMintBurn               = types.NewEventMintBurn
 	NewEventVersion                = types.NewEventVersion
 	NewEventOperatorRotate         = types.NewEventOperatorRotate
 	NewEventOraclePrice            = types.NewEventOraclePrice
 	NewEventFailedOutboundRecovery = types.NewEventFailedOutboundRecovery
-	NewPoolMod                     = types.NewPoolMod
 	NewMsgOutboundTx               = types.NewMsgOutboundTx
 	NewMsgMigrate                  = types.NewMsgMigrate
 	ModuleCdc                      = types.ModuleCdc
@@ -115,7 +98,6 @@ var (
 	NewVault                       = types.NewVault
 	NewVaultV2                     = types.NewVaultV2
 	NewMsgErrataTx                 = types.NewMsgErrataTx
-	NewMsgBan                      = types.NewMsgBan
 	NewMsgSetVersion               = types.NewMsgSetVersion
 	NewMsgProposeUpgrade           = types.NewMsgProposeUpgrade
 	NewMsgApproveUpgrade           = types.NewMsgApproveUpgrade
@@ -130,14 +112,8 @@ var (
 	GetRandomObservedTxVoter       = types.GetRandomObservedTxVoter
 	GetRandomNode                  = types.GetRandomNode
 	GetRandomVaultNode             = types.GetRandomVaultNode
-	GetRandomTHORAddress           = types.GetRandomTHORAddress
-	GetRandomRUNEAddress           = types.GetRandomRUNEAddress
-	GetRandomETHAddress            = types.GetRandomETHAddress
-	GetRandomGAIAAddress           = types.GetRandomGAIAAddress
+	GetRandomThornadoAddress       = types.GetRandomThornadoAddress
 	GetRandomBTCAddress            = types.GetRandomBTCAddress
-	GetRandomLTCAddress            = types.GetRandomLTCAddress
-	GetRandomDOGEAddress           = types.GetRandomDOGEAddress
-	GetRandomBCHAddress            = types.GetRandomBCHAddress
 	GetRandomTxHash                = types.GetRandomTxHash
 	GetRandomBech32Addr            = types.GetRandomBech32Addr
 	GetRandomBech32ConsensusPubKey = types.GetRandomBech32ConsensusPubKey
@@ -172,7 +148,6 @@ type (
 	MsgNodePauseChain           = types.MsgNodePauseChain
 	MsgMigrate                  = types.MsgMigrate
 	MsgErrataTx                 = types.MsgErrataTx
-	MsgBan                      = types.MsgBan
 	MsgSetVersion               = types.MsgSetVersion
 	MsgProposeUpgrade           = types.MsgProposeUpgrade
 	MsgApproveUpgrade           = types.MsgApproveUpgrade
@@ -200,7 +175,6 @@ type (
 	ObservedTx              = common.ObservedTx
 	ObservedTxVoter         = types.ObservedTxVoter
 	ObservedTxVoters        = types.ObservedTxVoters
-	BanVoter                = types.BanVoter
 	ErrataTxVoter           = types.ErrataTxVoter
 	TssVoter                = types.TssVoter
 	TssKeysignFailVoter     = types.TssKeysignFailVoter
@@ -208,13 +182,6 @@ type (
 	TxOut                   = types.TxOut
 	Keygen                  = types.Keygen
 	KeygenBlock             = types.KeygenBlock
-	EventSwap               = types.EventSwap
-	EventDonate             = types.EventDonate
-	EventRewards            = types.EventRewards
-	EventErrata             = types.EventErrata
-	PoolAmt                 = types.PoolAmt
-	PoolMod                 = types.PoolMod
-	PoolMods                = types.PoolMods
 	Vault                   = types.Vault
 	Vaults                  = types.Vaults
 	NodeAccount             = types.NodeAccount
@@ -224,10 +191,8 @@ type (
 	VaultStatus             = types.VaultStatus
 	GasPool                 = types.GasPool
 	EventGas                = types.EventGas
-	EventPool               = types.EventPool
 	EventBond               = types.EventBond
 	EventFee                = types.EventFee
-	EventSlash              = types.EventSlash
 	EventOutbound           = types.EventOutbound
 	NetworkFee              = types.NetworkFee
 	PriceFeed               = types.PriceFeed

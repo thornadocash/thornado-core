@@ -8,9 +8,18 @@ import (
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
+func testUserDepositPathIndex(t *testing.T, depositIndex uint64) uint64 {
+	t.Helper()
+	pathIndex, err := common.VaultDepositPathIndex(common.VaultDepositPathUser, depositIndex, common.DepositPathCommitmentRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pathIndex
+}
+
 func TestObservedOutboundMatchesBTCSweepWithActualFee(t *testing.T) {
 	pubKey := GetRandomPubKey()
-	pathIndex := uint64(common.FirstDepositPathIndex)
+	pathIndex := testUserDepositPathIndex(t, 0)
 	from, err := common.DeriveBTCTaprootAddress(pubKey, pathIndex)
 	if err != nil {
 		t.Fatal(err)
@@ -59,8 +68,8 @@ func TestObservedOutboundMatchesBTCSweepWithActualFee(t *testing.T) {
 
 func TestObservedOutboundRejectsBTCSweepFromWrongPath(t *testing.T) {
 	pubKey := GetRandomPubKey()
-	expectedPath := uint64(common.FirstDepositPathIndex)
-	wrongPath := expectedPath + 1
+	expectedPath := testUserDepositPathIndex(t, 0)
+	wrongPath := testUserDepositPathIndex(t, 1)
 	from, err := common.DeriveBTCTaprootAddress(pubKey, wrongPath)
 	if err != nil {
 		t.Fatal(err)
@@ -109,7 +118,7 @@ func TestObservedOutboundRejectsBTCSweepFromWrongPath(t *testing.T) {
 
 func TestObservedOutboundRejectsBTCSweepOverMaxGas(t *testing.T) {
 	pubKey := GetRandomPubKey()
-	pathIndex := uint64(common.FirstDepositPathIndex)
+	pathIndex := testUserDepositPathIndex(t, 0)
 	from, err := common.DeriveBTCTaprootAddress(pubKey, pathIndex)
 	if err != nil {
 		t.Fatal(err)
@@ -158,7 +167,7 @@ func TestObservedOutboundRejectsBTCSweepOverMaxGas(t *testing.T) {
 
 func TestObservedOutboundRejectsAlreadyCompletedBTCSweep(t *testing.T) {
 	pubKey := GetRandomPubKey()
-	pathIndex := uint64(common.FirstDepositPathIndex)
+	pathIndex := testUserDepositPathIndex(t, 0)
 	from, err := common.DeriveBTCTaprootAddress(pubKey, pathIndex)
 	if err != nil {
 		t.Fatal(err)

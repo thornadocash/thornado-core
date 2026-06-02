@@ -97,5 +97,22 @@ func (h SolvencyHandler) handle(ctx cosmos.Context, msg MsgSolvency) (*cosmos.Re
 // and also during deliver. Store changes will persist if this function
 // succeeds, regardless of the success of the transaction.
 func SolvencyAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg MsgSolvency) (cosmos.Context, error) {
-	return activeNodeAccountsSignerPriority(ctx, k, msg.GetSigners())
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	newCtx, err := activeNodeAccountsSignerPriority(ctx, k, msg.GetSigners())
+	if err != nil {
+		return ctx, err
+	}
+	voter, err := k.GetSolvencyVoter(ctx, msg.Id, msg.Chain)
+	if err != nil {
+		return ctx, err
+	}
+	if voter.Empty() {
+		voter = NewSolvencyVoter(msg.Id, msg.Chain, msg.PubKey, msg.Coins, msg.Height)
+	}
+	if err := reserveSolvencyAttestations(ctx, k, voter, msg.GetSigners()); err != nil {
+		return ctx, err
+	}
+	return newCtx, nil
 }

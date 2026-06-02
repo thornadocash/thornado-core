@@ -221,7 +221,7 @@ func UpdateActiveNodeVersions(
 		}
 		ctx.EventManager().EmitEvent(
 			cosmos.NewEvent("set_version",
-				cosmos.NewAttribute("thor_address", v.NodeAddress.String()),
+				cosmos.NewAttribute("node_address", v.NodeAddress.String()),
 				cosmos.NewAttribute("version", version)))
 	}
 

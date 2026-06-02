@@ -21,7 +21,6 @@ type Keeper interface {
 	GetMinJoinLast(ctx cosmos.Context) (semver.Version, int64)
 	SetMinJoinLast(ctx cosmos.Context)
 	GetKey(prefix kvTypes.DbPrefix, key string, other ...string) []byte
-	GetRuneBalanceOfModule(ctx cosmos.Context, moduleName string) cosmos.Uint
 	GetBalanceOfModule(ctx cosmos.Context, moduleName, denom string) cosmos.Uint
 	SendFromModuleToModule(ctx cosmos.Context, from, to string, coin common.Coins) error
 	SendFromAccountToModule(ctx cosmos.Context, from cosmos.AccAddress, to string, coin common.Coins) error
@@ -63,7 +62,6 @@ type Keeper interface {
 	KeeperTssKeysignFail
 	KeeperKeygen
 	KeeperErrataTx
-	KeeperBanVoter
 	KeeperConfigStore
 	KeeperNetworkFee
 	KeeperObservedNetworkFeeVoter
@@ -103,15 +101,14 @@ type KeeperNodeAccount interface {
 	SetNodeAccount(ctx cosmos.Context, na NodeAccount) error
 	EnsureNodeKeysUnique(ctx cosmos.Context, signer cosmos.AccAddress, consensusPubKey string, pubKeys common.PubKeySet) error
 	GetNodeAccountIterator(ctx cosmos.Context) cosmos.Iterator
-	GetNodeAccountSlashPoints(_ cosmos.Context, _ cosmos.AccAddress) (int64, error)
-	SetNodeAccountSlashPoints(_ cosmos.Context, _ cosmos.AccAddress, _ int64)
-	IncNodeAccountSlashPoints(_ cosmos.Context, _ cosmos.AccAddress, _ int64) error
-	DecNodeAccountSlashPoints(_ cosmos.Context, _ cosmos.AccAddress, _ int64) error
-	ResetNodeAccountSlashPoints(_ cosmos.Context, _ cosmos.AccAddress)
+	GetNodeAccountPenaltyPoints(_ cosmos.Context, _ cosmos.AccAddress) (int64, error)
+	SetNodeAccountPenaltyPoints(_ cosmos.Context, _ cosmos.AccAddress, _ int64)
+	IncNodeAccountPenaltyPoints(_ cosmos.Context, _ cosmos.AccAddress, _ int64) error
+	DecNodeAccountPenaltyPoints(_ cosmos.Context, _ cosmos.AccAddress, _ int64) error
+	ResetNodeAccountPenaltyPoints(_ cosmos.Context, _ cosmos.AccAddress)
 	GetNodeAccountJail(ctx cosmos.Context, addr cosmos.AccAddress) (Jail, error)
 	SetNodeAccountJail(ctx cosmos.Context, addr cosmos.AccAddress, height int64, reason string) error
 	ReleaseNodeAccountFromJail(ctx cosmos.Context, addr cosmos.AccAddress) error
-	DeductNativeTxFeeFromBond(ctx cosmos.Context, nodeAddr cosmos.AccAddress) error
 	RemoveLowBondNodeAccounts(ctx cosmos.Context) error
 }
 
@@ -165,12 +162,17 @@ type KeeperShielder interface {
 	SetDepositSession(ctx cosmos.Context, session types.DepositSession) error
 	GetDepositSession(ctx cosmos.Context, owner cosmos.AccAddress) (types.DepositSession, error)
 	GetDepositSessionByPowToken(ctx cosmos.Context, powToken string) (types.DepositSession, error)
+	SetDepositPowTiming(ctx cosmos.Context, record types.DepositPowTiming) error
+	GetDepositPowTiming(ctx cosmos.Context, powToken string) (types.DepositPowTiming, error)
+	GetDepositPowTimingIterator(ctx cosmos.Context) cosmos.Iterator
+	SetDepositPowDifficultyState(ctx cosmos.Context, state types.DepositPowDifficultyState) error
+	GetDepositPowDifficultyState(ctx cosmos.Context) (types.DepositPowDifficultyState, error)
 	SetDepositAddress(ctx cosmos.Context, record types.DepositAddress) error
 	GetDepositAddress(ctx cosmos.Context, address common.Address) (types.DepositAddress, error)
 	GetDepositAddressIterator(ctx cosmos.Context) cosmos.Iterator
-	GetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey) (uint64, error)
-	SetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey, index uint64) error
-	AllocateVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey) (uint64, error)
+	GetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey, pathType common.VaultDepositPathType) (uint64, error)
+	SetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey, pathType common.VaultDepositPathType, index uint64) error
+	AllocateVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey, pathType common.VaultDepositPathType) (uint64, uint64, error)
 	SetDepositRecord(ctx cosmos.Context, deposit types.DepositRecord) error
 	GetDepositRecord(ctx cosmos.Context, depositID common.TxID) (types.DepositRecord, error)
 	GetDepositRecordIterator(ctx cosmos.Context) cosmos.Iterator
@@ -216,7 +218,6 @@ type KeeperVault interface {
 	VaultExists(ctx cosmos.Context, pk common.PubKey) bool
 	SetVault(ctx cosmos.Context, vault Vault) error
 	GetVault(ctx cosmos.Context, pk common.PubKey) (Vault, error)
-	HasValidVaultPools(ctx cosmos.Context) (bool, error)
 	GetBaseVaults(ctx cosmos.Context) (Vaults, error)
 	GetBaseVaultsByStatus(_ cosmos.Context, _ VaultStatus) (Vaults, error)
 	GetLeastSecure(_ cosmos.Context, _ Vaults, _ int64) Vault
@@ -255,12 +256,6 @@ type KeeperKeygen interface {
 	SetKeygenBlock(ctx cosmos.Context, keygenBlock KeygenBlock)
 	GetKeygenBlockIterator(ctx cosmos.Context) cosmos.Iterator
 	GetKeygenBlock(ctx cosmos.Context, height int64) (KeygenBlock, error)
-}
-
-type KeeperBanVoter interface {
-	SetBanVoter(_ cosmos.Context, _ BanVoter)
-	GetBanVoter(_ cosmos.Context, _ cosmos.AccAddress) (BanVoter, error)
-	GetBanVoterIterator(_ cosmos.Context) cosmos.Iterator
 }
 
 type KeeperErrataTx interface {
@@ -310,15 +305,10 @@ type KeeperOracle interface {
 }
 
 type KeeperHalt interface {
-	IsTradingHalt(ctx cosmos.Context, msg cosmos.Msg) bool
-	IsGlobalTradingHalted(ctx cosmos.Context) bool
-	IsChainTradingHalted(ctx cosmos.Context, chain common.Chain) bool
 	IsChainHalted(ctx cosmos.Context, chain common.Chain) bool
 }
 
 type KeeperAnchors interface {
 	GetAnchors(ctx cosmos.Context, asset common.Asset) []common.Asset
 	AnchorMedian(ctx cosmos.Context, assets []common.Asset) cosmos.Uint
-	DollarsPerRune(ctx cosmos.Context) cosmos.Uint
-	RunePerDollar(ctx cosmos.Context) cosmos.Uint
 }

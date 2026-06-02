@@ -21,7 +21,7 @@ type OnNewPubKeyPath func(pk common.PubKey, pathIndex uint64) error
 
 // PubKeyValidator define the method that can be used to interact with public keys
 type PubKeyValidator interface {
-	IsValidPoolAddress(addr string, chain common.Chain) (bool, common.ChainPoolInfo)
+	IsValidVaultAddress(addr string, chain common.Chain) (bool, common.ChainVaultInfo)
 	HasPubKey(pk common.PubKey) bool
 	AddPubKey(pk common.PubKey, signer bool, algo common.SigningAlgo)
 	AddNodePubKey(pk common.PubKey, algo common.SigningAlgo)
@@ -45,30 +45,30 @@ type pubKeyInfo struct {
 
 // PubKeyManager manager an always up to date pubkeys , which implement PubKeyValidator interface
 type PubKeyManager struct {
-	bridge           thornadoclient.ThornadoBridge
-	pubkeys          []pubKeyInfo
-	rwMutex          *sync.RWMutex
-	logger           zerolog.Logger
-	errCounter       *prometheus.CounterVec
-	m                *metrics.Metrics
-	stopChan         chan struct{}
-	callback         []OnNewPubKey
-	pathCallback     []OnNewPubKeyPath
-	depositAddresses map[string]common.ChainPoolInfo
+	bridge         thornadoclient.ThornadoBridge
+	pubkeys        []pubKeyInfo
+	rwMutex        *sync.RWMutex
+	logger         zerolog.Logger
+	errCounter     *prometheus.CounterVec
+	m              *metrics.Metrics
+	stopChan       chan struct{}
+	callback       []OnNewPubKey
+	pathCallback   []OnNewPubKeyPath
+	vaultAddresses map[string]common.ChainVaultInfo
 }
 
 // NewPubKeyManager create a new instance of PubKeyManager
 func NewPubKeyManager(bridge thornadoclient.ThornadoBridge, m *metrics.Metrics) (*PubKeyManager, error) {
 	return &PubKeyManager{
-		logger:           log.With().Str("module", "public_key_mgr").Logger(),
-		bridge:           bridge,
-		errCounter:       m.GetCounterVec(metrics.PubKeyManagerError),
-		m:                m,
-		stopChan:         make(chan struct{}),
-		rwMutex:          &sync.RWMutex{},
-		callback:         []OnNewPubKey{},
-		pathCallback:     []OnNewPubKeyPath{},
-		depositAddresses: map[string]common.ChainPoolInfo{},
+		logger:         log.With().Str("module", "public_key_mgr").Logger(),
+		bridge:         bridge,
+		errCounter:     m.GetCounterVec(metrics.PubKeyManagerError),
+		m:              m,
+		stopChan:       make(chan struct{}),
+		rwMutex:        &sync.RWMutex{},
+		callback:       []OnNewPubKey{},
+		pathCallback:   []OnNewPubKeyPath{},
+		vaultAddresses: map[string]common.ChainVaultInfo{},
 	}, nil
 }
 
@@ -201,30 +201,37 @@ func (pkm *PubKeyManager) addDepositAddressLookahead(pk common.PubKey) {
 	type depositAddress struct {
 		pathIndex uint64
 		address   string
-		info      common.ChainPoolInfo
+		info      common.ChainVaultInfo
 	}
 
-	addrs := make([]depositAddress, 0, common.DepositAddressLookahead-common.FirstDepositPathIndex+1)
-	for pathIndex := uint64(common.FirstDepositPathIndex); pathIndex <= common.DepositAddressLookahead; pathIndex++ {
-		addr, err := common.DeriveBTCTaprootAddress(pk, pathIndex)
+	addrs := make([]depositAddress, 0, common.DepositAddressLookahead*2)
+	for _, pathType := range []common.VaultDepositPathType{common.VaultDepositPathUser, common.VaultDepositPathNode} {
+		pathIndexes, err := common.VaultDepositLookaheadPathIndexes(pathType)
 		if err != nil {
-			pkm.logger.Error().Err(err).Str("pubkey", pk.String()).Uint64("path_index", pathIndex).Msg("fail to derive shielder deposit address")
+			pkm.logger.Error().Err(err).Str("pubkey", pk.String()).Str("path_type", string(pathType)).Msg("fail to derive deposit path lookahead")
 			continue
 		}
-		addrs = append(addrs, depositAddress{
-			pathIndex: pathIndex,
-			address:   strings.ToLower(addr.String()),
-			info: common.ChainPoolInfo{
-				Chain:       common.BTCChain,
-				PubKey:      pk,
-				PoolAddress: addr,
-			},
-		})
+		for _, pathIndex := range pathIndexes {
+			addr, err := common.DeriveBTCTaprootAddress(pk, pathIndex)
+			if err != nil {
+				pkm.logger.Error().Err(err).Str("pubkey", pk.String()).Uint64("path_index", pathIndex).Msg("fail to derive shielder deposit address")
+				continue
+			}
+			addrs = append(addrs, depositAddress{
+				pathIndex: pathIndex,
+				address:   strings.ToLower(addr.String()),
+				info: common.ChainVaultInfo{
+					Chain:        common.BTCChain,
+					PubKey:       pk,
+					VaultAddress: addr,
+				},
+			})
+		}
 	}
 
 	pkm.rwMutex.Lock()
 	for _, item := range addrs {
-		pkm.depositAddresses[item.address] = item.info
+		pkm.vaultAddresses[item.address] = item.info
 	}
 	pkm.rwMutex.Unlock()
 
@@ -333,24 +340,24 @@ func (pkm *PubKeyManager) updatePubKeys() {
 	}
 }
 
-func matchAddress(addr string, chain common.Chain, key common.PubKey) (bool, common.ChainPoolInfo) {
-	cpi, err := common.NewChainPoolInfo(chain, key)
+func matchAddress(addr string, chain common.Chain, key common.PubKey) (bool, common.ChainVaultInfo) {
+	cpi, err := common.NewChainVaultInfo(chain, key)
 	if err != nil {
-		return false, common.NoChainPoolInfo
+		return false, common.NoChainVaultInfo
 	}
-	if strings.EqualFold(cpi.PoolAddress.String(), addr) {
+	if strings.EqualFold(cpi.VaultAddress.String(), addr) {
 		return true, cpi
 	}
-	return false, common.NoChainPoolInfo
+	return false, common.NoChainVaultInfo
 }
 
-// IsValidPoolAddress check whether the given address is a pool addr
-func (pkm *PubKeyManager) IsValidPoolAddress(addr string, chain common.Chain) (bool, common.ChainPoolInfo) {
+// IsValidVaultAddress check whether the given address is a vault addr
+func (pkm *PubKeyManager) IsValidVaultAddress(addr string, chain common.Chain) (bool, common.ChainVaultInfo) {
 	pkm.rwMutex.RLock()
 	defer pkm.rwMutex.RUnlock()
 
 	if chain.Equals(common.BTCChain) {
-		if cpi, ok := pkm.depositAddresses[strings.ToLower(addr)]; ok {
+		if cpi, ok := pkm.vaultAddresses[strings.ToLower(addr)]; ok {
 			return true, cpi
 		}
 	}
@@ -366,7 +373,7 @@ func (pkm *PubKeyManager) IsValidPoolAddress(addr string, chain common.Chain) (b
 			return ok, cpi
 		}
 	}
-	return false, common.NoChainPoolInfo
+	return false, common.NoChainVaultInfo
 }
 
 // getPubkeys from Thornado

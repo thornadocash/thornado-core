@@ -121,5 +121,5 @@ func SetNodeKeysAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keepe
 		return ctx, err
 	}
 
-	return ctx, k.DeductNativeTxFeeFromBond(ctx, msg.Signer)
+	return ctx, nil
 }

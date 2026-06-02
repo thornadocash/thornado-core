@@ -26,7 +26,7 @@ buf generate --template buf.gen.pulsar.yaml
 cd ..
 
 cp -r $GO_MOD_PACKAGE/* ../../.
-rm -rf gitlab.com
+rm -rf github.com gitlab.com
 
 # Copy files over for dep injection
 rm -rf ../../api && mkdir ../../api

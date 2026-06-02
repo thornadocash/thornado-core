@@ -26,7 +26,6 @@ const (
 	Query_Nodes_FullMethodName                = "/types.Query/Nodes"
 	Query_NodeMetrics_FullMethodName          = "/types.Query/NodeMetrics"
 	Query_NodeSlot_FullMethodName             = "/types.Query/NodeSlot"
-	Query_Ban_FullMethodName                  = "/types.Query/Ban"
 	Query_ConfigValues_FullMethodName         = "/types.Query/ConfigValues"
 	Query_ConfigNodesAllValues_FullMethodName = "/types.Query/ConfigNodesAllValues"
 	Query_ConfigNodesValues_FullMethodName    = "/types.Query/ConfigNodesValues"
@@ -86,7 +85,6 @@ type QueryClient interface {
 	Nodes(ctx context.Context, in *QueryNodesRequest, opts ...grpc.CallOption) (*QueryNodesResponse, error)
 	NodeMetrics(ctx context.Context, in *QueryNodeMetricsRequest, opts ...grpc.CallOption) (*QueryNodeMetricsResponse, error)
 	NodeSlot(ctx context.Context, in *QueryNodeSlotRequest, opts ...grpc.CallOption) (*QueryNodeSlotResponse, error)
-	Ban(ctx context.Context, in *QueryBanRequest, opts ...grpc.CallOption) (*BanVoter, error)
 	ConfigValues(ctx context.Context, in *QueryConfigValuesRequest, opts ...grpc.CallOption) (*QueryConfigValuesResponse, error)
 	ConfigNodesAllValues(ctx context.Context, in *QueryConfigNodesAllValuesRequest, opts ...grpc.CallOption) (*QueryConfigNodesAllValuesResponse, error)
 	ConfigNodesValues(ctx context.Context, in *QueryConfigNodesValuesRequest, opts ...grpc.CallOption) (*QueryConfigNodesValuesResponse, error)
@@ -200,15 +198,6 @@ func (c *queryClient) NodeMetrics(ctx context.Context, in *QueryNodeMetricsReque
 func (c *queryClient) NodeSlot(ctx context.Context, in *QueryNodeSlotRequest, opts ...grpc.CallOption) (*QueryNodeSlotResponse, error) {
 	out := new(QueryNodeSlotResponse)
 	err := c.cc.Invoke(ctx, Query_NodeSlot_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) Ban(ctx context.Context, in *QueryBanRequest, opts ...grpc.CallOption) (*BanVoter, error) {
-	out := new(BanVoter)
-	err := c.cc.Invoke(ctx, Query_Ban_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -640,7 +629,6 @@ type QueryServer interface {
 	Nodes(context.Context, *QueryNodesRequest) (*QueryNodesResponse, error)
 	NodeMetrics(context.Context, *QueryNodeMetricsRequest) (*QueryNodeMetricsResponse, error)
 	NodeSlot(context.Context, *QueryNodeSlotRequest) (*QueryNodeSlotResponse, error)
-	Ban(context.Context, *QueryBanRequest) (*BanVoter, error)
 	ConfigValues(context.Context, *QueryConfigValuesRequest) (*QueryConfigValuesResponse, error)
 	ConfigNodesAllValues(context.Context, *QueryConfigNodesAllValuesRequest) (*QueryConfigNodesAllValuesResponse, error)
 	ConfigNodesValues(context.Context, *QueryConfigNodesValuesRequest) (*QueryConfigNodesValuesResponse, error)
@@ -714,9 +702,6 @@ func (UnimplementedQueryServer) NodeMetrics(context.Context, *QueryNodeMetricsRe
 }
 func (UnimplementedQueryServer) NodeSlot(context.Context, *QueryNodeSlotRequest) (*QueryNodeSlotResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NodeSlot not implemented")
-}
-func (UnimplementedQueryServer) Ban(context.Context, *QueryBanRequest) (*BanVoter, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Ban not implemented")
 }
 func (UnimplementedQueryServer) ConfigValues(context.Context, *QueryConfigValuesRequest) (*QueryConfigValuesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ConfigValues not implemented")
@@ -991,24 +976,6 @@ func _Query_NodeSlot_Handler(srv interface{}, ctx context.Context, dec func(inte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(QueryServer).NodeSlot(ctx, req.(*QueryNodeSlotRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_Ban_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryBanRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).Ban(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_Ban_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).Ban(ctx, req.(*QueryBanRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1875,10 +1842,6 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "NodeSlot",
 			Handler:    _Query_NodeSlot_Handler,
-		},
-		{
-			MethodName: "Ban",
-			Handler:    _Query_Ban_Handler,
 		},
 		{
 			MethodName: "ConfigValues",

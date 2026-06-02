@@ -192,10 +192,6 @@ func (c Chain) P2WPKHOutputValue() int64 {
 	}
 }
 
-func (c Chain) MaxMemoLength() int {
-	return 0
-}
-
 // DefaultCoinbase returns the default coinbase address for each chain, returns 0 if no
 // coinbase emission is used. This is used used at the time of writing as a fallback
 // value in Bifrost, and for inbound confirmation count estimates in the quote APIs.

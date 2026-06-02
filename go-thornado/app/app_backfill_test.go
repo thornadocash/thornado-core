@@ -129,11 +129,9 @@ func TestBlockedAddresses(t *testing.T) {
 	addrs := BlockedAddresses()
 	require.NotEmpty(t, addrs)
 
-	// Lending and treasury should NOT be blocked
-	lendingAddr := authtypes.NewModuleAddress("lending").String()
-	treasuryAddr := authtypes.NewModuleAddress("treasury").String()
-	require.False(t, addrs[lendingAddr])
-	require.False(t, addrs[treasuryAddr])
+	// Unknown module addresses should not be blocked by default.
+	unknownAddr := authtypes.NewModuleAddress("unknown").String()
+	require.False(t, addrs[unknownAddr])
 }
 
 func TestNewTestAppOptionsWithFlagHome(t *testing.T) {

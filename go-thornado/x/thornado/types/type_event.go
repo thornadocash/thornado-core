@@ -13,235 +13,25 @@ import (
 
 // all event types support by Thornado
 const (
-	AddLiquidityEventType           = "add_liquidity"
 	BondEventType                   = "bond"
-	ReBondEventType                 = "rebond"
-	DonateEventType                 = "donate"
-	ErrataEventType                 = "errata"
 	FeeEventType                    = "fee"
 	GasEventType                    = "gas"
 	OutboundEventType               = "outbound"
-	PendingLiquidity                = "pending_liquidity"
-	PoolBalanceChangeEventType      = "pool_balance_change"
-	PoolEventType                   = "pool"
-	RewardEventType                 = "rewards"
 	ScheduledOutboundEventType      = "scheduled_outbound"
 	SecurityEventType               = "security"
 	SetConfigEventType              = "set_config"
 	SetNodeConfigEventType          = "set_node_config"
-	SlashEventType                  = "slash"
-	SlashPointEventType             = "slash_points"
-	SwapEventType                   = "swap"
-	LimitSwapEventType              = "limit_swap"
-	ModifyLimitSwapEventType        = "limit_swap_mod"
-	LimitSwapCloseEventType         = "limit_swap_close"
+	PenaltyPointEventType           = "penalty_points"
 	MintBurnType                    = "mint_burn"
-	SwitchEventType                 = "switch"
 	OperatorRotateEventType         = "operator_rotate"
 	TSSKeygenSuccess                = "tss_keygen_success"
 	TSSKeygenFailure                = "tss_keygen_failure"
 	TSSKeygenMetricEventType        = "tss_keygen"
 	TSSKeysignMetricEventType       = "tss_keysign"
 	VersionEventType                = "version"
-	WithdrawEventType               = "withdraw"
 	OraclePriceEvent                = "oracle_price"
 	FailedOutboundRecoveryEventType = "failed_outbound_recovery"
 )
-
-// PoolMods a list of pool modifications
-type PoolMods []PoolMod
-
-// NewPoolMod create a new instance of PoolMod
-func NewPoolMod(asset common.Asset, runeAmt cosmos.Uint, runeAdd bool, assetAmt cosmos.Uint, assetAdd bool) PoolMod {
-	return PoolMod{
-		Asset:    asset,
-		RuneAmt:  runeAmt,
-		RuneAdd:  runeAdd,
-		AssetAmt: assetAmt,
-		AssetAdd: assetAdd,
-	}
-}
-
-// NewEventLimitSwap create a new swap event
-func NewEventLimitSwap(source, target common.Coin, txid common.TxID) *EventLimitSwap {
-	return &EventLimitSwap{
-		Source: source,
-		Target: target,
-		TxID:   txid,
-	}
-}
-
-// Type return a string that represent the type, it should not duplicated with other event
-func (m *EventLimitSwap) Type() string {
-	return LimitSwapEventType
-}
-
-// Events convert EventLimitSwap to key value pairs used in cosmos
-func (m *EventLimitSwap) Events() (cosmos.Events, error) {
-	evt := cosmos.NewEvent(m.Type(),
-		cosmos.NewAttribute("source", m.Source.String()),
-		cosmos.NewAttribute("target", m.Target.String()),
-		cosmos.NewAttribute("txid", m.TxID.String()),
-	)
-	return cosmos.Events{evt}, nil
-}
-
-// NewEventModifyLimitSwap create a new modify limit swap event
-func NewEventModifyLimitSwap(from common.Address, source, target common.Coin, mod cosmos.Uint) *EventModifyLimitSwap {
-	return &EventModifyLimitSwap{
-		From:                 from,
-		Source:               source,
-		Target:               target,
-		ModifiedTargetAmount: mod,
-	}
-}
-
-// Type return a string that represent the type, it should not duplicated with other event
-func (m *EventModifyLimitSwap) Type() string {
-	return ModifyLimitSwapEventType
-}
-
-// Events convert EventModifyLimitSwap to key value pairs used in cosmos
-func (m *EventModifyLimitSwap) Events() (cosmos.Events, error) {
-	evt := cosmos.NewEvent(m.Type(),
-		cosmos.NewAttribute("from", m.From.String()),
-		cosmos.NewAttribute("source", m.Source.String()),
-		cosmos.NewAttribute("target", m.Target.String()),
-		cosmos.NewAttribute("modified_target_amount", m.ModifiedTargetAmount.String()),
-	)
-	return cosmos.Events{evt}, nil
-}
-
-// NewEventLimitSwapClose create a new limit swap close event
-func NewEventLimitSwapClose(txid common.TxID, reason string, blockHeight int64) *EventLimitSwapClose {
-	return &EventLimitSwapClose{
-		TxID:        txid,
-		Reason:      reason,
-		BlockHeight: blockHeight,
-	}
-}
-
-// Type return a string that represent the type, it should not duplicated with other event
-func (m *EventLimitSwapClose) Type() string {
-	return LimitSwapCloseEventType
-}
-
-// Events convert EventLimitSwapClose to key value pairs used in cosmos
-func (m *EventLimitSwapClose) Events() (cosmos.Events, error) {
-	evt := cosmos.NewEvent(m.Type(),
-		cosmos.NewAttribute("txid", m.TxID.String()),
-		cosmos.NewAttribute("reason", m.Reason),
-		cosmos.NewAttribute("block_height", fmt.Sprintf("%d", m.BlockHeight)),
-	)
-	return cosmos.Events{evt}, nil
-}
-
-// NewEventSwap create a new swap event
-func NewEventSwap(pool common.Asset, swapTarget, fee, swapSlip, liquidityFeeInRune cosmos.Uint, inTx common.Tx, emitAsset common.Coin, synthUnits cosmos.Uint) *EventSwap {
-	return &EventSwap{
-		Pool:               pool,
-		SwapTarget:         swapTarget,
-		SwapSlip:           swapSlip,
-		LiquidityFee:       fee,
-		LiquidityFeeInRune: liquidityFeeInRune,
-		InTx:               inTx,
-		EmitAsset:          emitAsset,
-		SynthUnits:         synthUnits,
-		PoolSlip:           cosmos.ZeroUint(),
-	}
-}
-
-// Type return a string that represent the type, it should not duplicated with other event
-func (m *EventSwap) Type() string {
-	return SwapEventType
-}
-
-// Events convert EventSwap to key value pairs used in cosmos
-func (m *EventSwap) Events() (cosmos.Events, error) {
-	evt := cosmos.NewEvent(m.Type(),
-		cosmos.NewAttribute("pool", m.Pool.String()),
-		cosmos.NewAttribute("swap_target", m.SwapTarget.String()),
-		cosmos.NewAttribute("swap_slip", m.SwapSlip.String()),
-		cosmos.NewAttribute("liquidity_fee", m.LiquidityFee.String()),
-		cosmos.NewAttribute("liquidity_fee_in_rune", m.LiquidityFeeInRune.String()),
-		cosmos.NewAttribute("emit_asset", m.EmitAsset.String()),
-		cosmos.NewAttribute("pool_slip", m.PoolSlip.String()),
-	)
-	if !m.SynthUnits.IsZero() {
-		evt = evt.AppendAttributes(cosmos.NewAttribute("synth_units", m.SynthUnits.String()))
-	}
-	evt = evt.AppendAttributes(m.InTx.ToAttributes()...)
-	return cosmos.Events{evt}, nil
-}
-
-// NewEventDonate create a new donate event
-func NewEventDonate(pool common.Asset, inTx common.Tx) *EventDonate {
-	return &EventDonate{
-		Pool: pool,
-		InTx: inTx,
-	}
-}
-
-// Type return donate event type
-func (m *EventDonate) Type() string {
-	return DonateEventType
-}
-
-// Events get all events
-func (m *EventDonate) Events() (cosmos.Events, error) {
-	evt := cosmos.NewEvent(m.Type(),
-		cosmos.NewAttribute("pool", m.Pool.String()))
-	evt = evt.AppendAttributes(m.InTx.ToAttributes()...)
-	return cosmos.Events{evt}, nil
-}
-
-// NewEventPool create a new pool change event
-func NewEventPool(pool common.Asset, status string) *EventPool {
-	return &EventPool{
-		Pool:   pool,
-		Status: status,
-	}
-}
-
-// Type return pool event type
-func (m *EventPool) Type() string {
-	return PoolEventType
-}
-
-// Events provide an instance of cosmos.Events
-func (m *EventPool) Events() (cosmos.Events, error) {
-	return cosmos.Events{
-		cosmos.NewEvent(m.Type(),
-			cosmos.NewAttribute("pool", m.Pool.String()),
-			cosmos.NewAttribute("pool_status", m.Status)),
-	}, nil
-}
-
-// NewEventRewards create a new reward event
-func NewEventRewards(bondReward cosmos.Uint, poolRewards []PoolAmt, incomeBurn cosmos.Uint) *EventRewards {
-	return &EventRewards{
-		BondReward:  bondReward,
-		PoolRewards: poolRewards,
-		IncomeBurn:  incomeBurn,
-	}
-}
-
-// Type return reward event type
-func (m *EventRewards) Type() string {
-	return RewardEventType
-}
-
-// Events return a standard cosmos event
-func (m *EventRewards) Events() (cosmos.Events, error) {
-	evt := cosmos.NewEvent(m.Type(),
-		cosmos.NewAttribute("bond_reward", m.BondReward.String()),
-		cosmos.NewAttribute("income_burn", m.IncomeBurn.String()),
-	)
-	for _, item := range m.PoolRewards {
-		evt = evt.AppendAttributes(cosmos.NewAttribute(item.Asset.String(), strconv.FormatInt(item.Amount, 10)))
-	}
-	return cosmos.Events{evt}, nil
-}
 
 // NewEventBond create a new Bond Events
 func NewEventBond(amount cosmos.Uint, bondType BondType, txIn common.Tx, nodeAccount *NodeAccount, bondAddress cosmos.AccAddress) *EventBond {
@@ -270,37 +60,6 @@ func (m *EventBond) Events() (cosmos.Events, error) {
 	return cosmos.Events{evt}, nil
 }
 
-// NewEventReBond create a new ReBond Event
-func NewEventReBond(
-	amount cosmos.Uint, txIn common.Tx,
-	nodeAccount *NodeAccount,
-	oldProvider, newProvider cosmos.AccAddress,
-) *EventReBond {
-	return &EventReBond{
-		Amount:         amount,
-		TxIn:           txIn,
-		NodeAddress:    nodeAccount.NodeAddress,
-		OldBondAddress: oldProvider,
-		NewBondAddress: newProvider,
-	}
-}
-
-// Type return bond event Type
-func (m *EventReBond) Type() string {
-	return ReBondEventType
-}
-
-// Events return all the event attributes
-func (m *EventReBond) Events() (cosmos.Events, error) {
-	evt := cosmos.NewEvent(m.Type(),
-		cosmos.NewAttribute("amount", m.Amount.String()),
-		cosmos.NewAttribute("node_address", m.NodeAddress.String()),
-		cosmos.NewAttribute("old_bond_address", m.OldBondAddress.String()),
-		cosmos.NewAttribute("new_bond_address", m.NewBondAddress.String()))
-	evt = evt.AppendAttributes(m.TxIn.ToAttributes()...)
-	return cosmos.Events{evt}, nil
-}
-
 // NewEventGas create a new EventGas instance
 func NewEventGas() *EventGas {
 	return &EventGas{
@@ -313,7 +72,6 @@ func NewEventGas() *EventGas {
 func (m *EventGas) UpsertGasPool(pool GasPool) {
 	for i, p := range m.Pools {
 		if p.Asset == pool.Asset {
-			m.Pools[i].RuneAmt = p.RuneAmt.Add(pool.RuneAmt)
 			m.Pools[i].AssetAmt = p.AssetAmt.Add(pool.AssetAmt)
 			return
 		}
@@ -333,7 +91,6 @@ func (m *EventGas) Events() (cosmos.Events, error) {
 		evt := cosmos.NewEvent(m.Type(),
 			cosmos.NewAttribute("asset", item.Asset.String()),
 			cosmos.NewAttribute("asset_amt", item.AssetAmt.String()),
-			cosmos.NewAttribute("rune_amt", item.RuneAmt.String()),
 			cosmos.NewAttribute("transaction_count", strconv.FormatInt(item.Count, 10)))
 		events = append(events, evt)
 	}
@@ -396,64 +153,11 @@ func (m *EventSecurity) Events() (cosmos.Events, error) {
 	return cosmos.Events{evt}, nil
 }
 
-// NewEventSlash create a new slash event
-func NewEventSlash(pool common.Asset, slashAmount []PoolAmt) *EventSlash {
-	return &EventSlash{
-		Pool:        pool,
-		SlashAmount: slashAmount,
-	}
-}
-
-// Type return slash event type
-func (m *EventSlash) Type() string {
-	return SlashEventType
-}
-
-// Events return a standard cosmos events
-func (m *EventSlash) Events() (cosmos.Events, error) {
-	evt := cosmos.NewEvent(m.Type(),
-		cosmos.NewAttribute("pool", m.Pool.String()))
-	for _, item := range m.SlashAmount {
-		evt = evt.AppendAttributes(cosmos.NewAttribute(item.Asset.String(), strconv.FormatInt(item.Amount, 10)))
-	}
-	return cosmos.Events{evt}, nil
-}
-
-// NewEventErrata create a new errata event
-func NewEventErrata(txID common.TxID, pools PoolMods) *EventErrata {
-	return &EventErrata{
-		TxID:  txID,
-		Pools: pools,
-	}
-}
-
-// Type return slash event type
-func (m *EventErrata) Type() string {
-	return ErrataEventType
-}
-
-// Events return a cosmos.Events type
-func (m *EventErrata) Events() (cosmos.Events, error) {
-	events := make(cosmos.Events, 0, len(m.Pools))
-	for _, item := range m.Pools {
-		evt := cosmos.NewEvent(m.Type(),
-			cosmos.NewAttribute("in_tx_id", m.TxID.String()),
-			cosmos.NewAttribute("asset", item.Asset.String()),
-			cosmos.NewAttribute("rune_amt", item.RuneAmt.String()),
-			cosmos.NewAttribute("rune_add", strconv.FormatBool(item.RuneAdd)),
-			cosmos.NewAttribute("asset_amt", item.AssetAmt.String()),
-			cosmos.NewAttribute("asset_add", strconv.FormatBool(item.AssetAdd)))
-		events = append(events, evt)
-	}
-	return events, nil
-}
-
 // NewEventFee create a new EventFee
-func NewEventFee(txID common.TxID, fee common.Fee, synthUnits cosmos.Uint) *EventFee {
+func NewEventFee(txID common.TxID, fee common.Fee) *EventFee {
 	return &EventFee{
-		TxID:       txID,
-		Fee:        fee,
-		SynthUnits: synthUnits,
+		TxID: txID,
+		Fee:  fee,
 	}
 }
 
@@ -466,13 +170,7 @@ func (m *EventFee) Type() string {
 func (m *EventFee) Events() (cosmos.Events, error) {
 	evt := cosmos.NewEvent(m.Type(),
 		cosmos.NewAttribute("tx_id", m.TxID.String()),
-		cosmos.NewAttribute("coins", m.Fee.Coins.String()),
-		cosmos.NewAttribute("pool_deduct", m.Fee.PoolDeduct.String()))
-	if !m.SynthUnits.IsZero() {
-		evt = evt.AppendAttributes(
-			cosmos.NewAttribute("synth_units", m.SynthUnits.String()),
-		)
-	}
+		cosmos.NewAttribute("coins", m.Fee.Coins.String()))
 	return cosmos.Events{evt}, nil
 }
 
@@ -591,51 +289,26 @@ func (m *EventTssKeysignMetric) Events() (cosmos.Events, error) {
 	return cosmos.Events{evt}, nil
 }
 
-// NewEventSlashPoint create a new slash point event
-func NewEventSlashPoint(addr cosmos.AccAddress, slashPoints int64, reason string) *EventSlashPoint {
-	return &EventSlashPoint{
-		NodeAddress: addr,
-		SlashPoints: slashPoints,
-		Reason:      reason,
+// NewEventPenaltyPoint create a new penalty point event
+func NewEventPenaltyPoint(addr cosmos.AccAddress, penaltyPoints int64, reason string) *EventPenaltyPoint {
+	return &EventPenaltyPoint{
+		NodeAddress:   addr,
+		PenaltyPoints: penaltyPoints,
+		Reason:        reason,
 	}
 }
 
 // Type return a string which represent the type of this event
-func (m *EventSlashPoint) Type() string {
-	return SlashPointEventType
+func (m *EventPenaltyPoint) Type() string {
+	return PenaltyPointEventType
 }
 
 // Events return cosmos sdk events
-func (m *EventSlashPoint) Events() (cosmos.Events, error) {
+func (m *EventPenaltyPoint) Events() (cosmos.Events, error) {
 	evt := cosmos.NewEvent(m.Type(),
 		cosmos.NewAttribute("node_address", m.NodeAddress.String()),
-		cosmos.NewAttribute("slash_points", strconv.FormatInt(m.SlashPoints, 10)),
+		cosmos.NewAttribute("penalty_points", strconv.FormatInt(m.PenaltyPoints, 10)),
 		cosmos.NewAttribute("reason", m.Reason))
-	return cosmos.Events{evt}, nil
-}
-
-// NewEventPoolBalanceChanged create a new instance of EventPoolBalanceChanged
-func NewEventPoolBalanceChanged(poolMod PoolMod, reason string) *EventPoolBalanceChanged {
-	return &EventPoolBalanceChanged{
-		PoolChange: poolMod,
-		Reason:     reason,
-	}
-}
-
-// Type return a string which represent the type of this event
-func (m *EventPoolBalanceChanged) Type() string {
-	return PoolBalanceChangeEventType
-}
-
-// Events return cosmos sdk events
-func (m *EventPoolBalanceChanged) Events() (cosmos.Events, error) {
-	evt := cosmos.NewEvent(m.Type(),
-		cosmos.NewAttribute("asset", m.PoolChange.Asset.String()),
-		cosmos.NewAttribute("rune_amt", m.PoolChange.RuneAmt.String()),
-		cosmos.NewAttribute("rune_add", strconv.FormatBool(m.PoolChange.RuneAdd)),
-		cosmos.NewAttribute("asset_amt", m.PoolChange.AssetAmt.String()),
-		cosmos.NewAttribute("asset_add", strconv.FormatBool(m.PoolChange.AssetAdd)),
-		cosmos.NewAttribute("reason", m.GetReason()))
 	return cosmos.Events{evt}, nil
 }
 
@@ -725,39 +398,6 @@ func (m *EventVersion) Events() (cosmos.Events, error) {
 	evt := cosmos.NewEvent(m.Type(),
 		cosmos.NewAttribute("version", m.Version),
 	)
-	return cosmos.Events{evt}, nil
-}
-
-// NewEventSwitch creates a new switch event.
-func NewEventSwitch(
-	amt cosmos.Uint,
-	asset common.Asset,
-	assetAddress common.Address,
-	runeAddress common.Address,
-	txID common.TxID,
-) *EventSwitch {
-	return &EventSwitch{
-		Amount:       amt,
-		Asset:        asset,
-		AssetAddress: assetAddress,
-		RuneAddress:  runeAddress,
-		TxID:         txID,
-	}
-}
-
-// Type return the deposit event type
-func (m *EventSwitch) Type() string {
-	return SwitchEventType
-}
-
-// Events return the cosmos event
-func (m *EventSwitch) Events() (cosmos.Events, error) {
-	evt := cosmos.NewEvent(m.Type(),
-		cosmos.NewAttribute("amount", m.Amount.String()),
-		cosmos.NewAttribute("asset", m.Asset.String()),
-		cosmos.NewAttribute("rune_address", m.RuneAddress.String()),
-		cosmos.NewAttribute("asset_address", m.AssetAddress.String()),
-		cosmos.NewAttribute("tx_id", m.TxID.String()))
 	return cosmos.Events{evt}, nil
 }
 

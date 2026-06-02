@@ -1,7 +1,7 @@
 /*
-Thornode API
+Thornado API
 
-Thornode REST API.
+Thornado REST API.
 
 Contact: devs@thornado.org
 */
@@ -32,8 +32,6 @@ type TxOutItem struct {
 	AggregatorTargetAsset *string `json:"aggregator_target_asset,omitempty"`
 	// the minimum number of tokens the swapper wants to receive of the output asset
 	AggregatorTargetLimit *string `json:"aggregator_target_limit,omitempty"`
-	// clout spent for the outbound
-	CloutSpent *string `json:"clout_spent,omitempty"`
 }
 
 // NewTxOutItem instantiates a new TxOutItem object
@@ -441,38 +439,6 @@ func (o *TxOutItem) SetAggregatorTargetLimit(v string) {
 	o.AggregatorTargetLimit = &v
 }
 
-// GetCloutSpent returns the CloutSpent field value if set, zero value otherwise.
-func (o *TxOutItem) GetCloutSpent() string {
-	if o == nil || o.CloutSpent == nil {
-		var ret string
-		return ret
-	}
-	return *o.CloutSpent
-}
-
-// GetCloutSpentOk returns a tuple with the CloutSpent field value if set, nil otherwise
-// and a boolean to check if the value has been set.
-func (o *TxOutItem) GetCloutSpentOk() (*string, bool) {
-	if o == nil || o.CloutSpent == nil {
-		return nil, false
-	}
-	return o.CloutSpent, true
-}
-
-// HasCloutSpent returns a boolean if a field has been set.
-func (o *TxOutItem) HasCloutSpent() bool {
-	if o != nil && o.CloutSpent != nil {
-		return true
-	}
-
-	return false
-}
-
-// SetCloutSpent gets a reference to the given string and assigns it to the CloutSpent field.
-func (o *TxOutItem) SetCloutSpent(v string) {
-	o.CloutSpent = &v
-}
-
 func (o TxOutItem) MarshalJSON_deprecated() ([]byte, error) {
 	toSerialize := map[string]interface{}{}
 	if o.Height != nil {
@@ -513,9 +479,6 @@ func (o TxOutItem) MarshalJSON_deprecated() ([]byte, error) {
 	}
 	if o.AggregatorTargetLimit != nil {
 		toSerialize["aggregator_target_limit"] = o.AggregatorTargetLimit
-	}
-	if o.CloutSpent != nil {
-		toSerialize["clout_spent"] = o.CloutSpent
 	}
 	return json.Marshal(toSerialize)
 }

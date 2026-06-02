@@ -24,6 +24,14 @@ const (
 	MinKeysharesBackupEntropy   float64 = 7
 	MinKeysharesBackupSize      int     = 1024
 	MinFrostKeysharesBackupSize int     = 256
+	MaxKeysharesBackupSize      int     = 256 * 1024
+	MaxTssPubKeys               int     = 100
+	MaxTssChains                int     = 16
+	MaxTssBlames                int     = 100
+	MaxTssBlameDataSize         int     = 4096
+	MaxTssBlameSignatureSize    int     = 256
+	MaxTssTextLength            int     = 256
+	MaxTssSignatureSize         int     = 64
 )
 
 // MatchMnemonic will match substrings that look like a 12+ word mnemonic.
@@ -36,15 +44,15 @@ var (
 )
 
 // NewMsgTssPool is a constructor function for MsgTssPool
-func NewMsgTssPool(pks []string, poolpk common.PubKey, secp256k1Signature, keysharesBackup []byte, keygenType KeygenType, height int64, bl []Blame, chains []string, signer cosmos.AccAddress, keygenTime int64) (*MsgTssPool, error) {
-	id, err := getTssID(pks, poolpk, height, bl)
+func NewMsgTssPool(pks []string, vaultpk common.PubKey, secp256k1Signature, keysharesBackup []byte, keygenType KeygenType, height int64, bl []Blame, chains []string, signer cosmos.AccAddress, keygenTime int64) (*MsgTssPool, error) {
+	id, err := getTssID(pks, vaultpk, height, bl)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get tss id: %w", err)
 	}
 	return &MsgTssPool{
 		ID:                 id,
 		PubKeys:            pks,
-		PoolPubKey:         poolpk,
+		VaultPubKey:        vaultpk,
 		Height:             height,
 		KeygenType:         keygenType,
 		Blame:              bl,
@@ -57,7 +65,7 @@ func NewMsgTssPool(pks []string, poolpk common.PubKey, secp256k1Signature, keysh
 }
 
 // getTssID
-func getTssID(members []string, poolPk common.PubKey, height int64, bl []Blame) (string, error) {
+func getTssID(members []string, vaultPk common.PubKey, height int64, bl []Blame) (string, error) {
 	// ensure input pubkeys list is deterministically sorted
 	sort.SliceStable(members, func(i, j int) bool {
 		return members[i] < members[j]
@@ -80,7 +88,7 @@ func getTssID(members []string, poolPk common.PubKey, height int64, bl []Blame) 
 	for _, item := range pubkeys {
 		sb.WriteString("p:" + item)
 	}
-	sb.WriteString(poolPk.String())
+	sb.WriteString(vaultPk.String())
 	sb.WriteString(fmt.Sprintf("%d", height))
 	hash := sha256.New()
 	_, err := hash.Write([]byte(sb.String()))
@@ -104,8 +112,14 @@ func (m *MsgTssPool) ValidateBasic() error {
 	if len(m.PubKeys) < 2 {
 		return cosmos.ErrUnknownRequest("Must have at least 2 pub keys")
 	}
-	if len(m.PubKeys) > 100 {
+	if len(m.PubKeys) > MaxTssPubKeys {
 		return cosmos.ErrUnknownRequest("Must have no more then 100 pub keys")
+	}
+	if len(m.Blame) > MaxTssBlames {
+		return cosmos.ErrUnknownRequest("too many tss blame records")
+	}
+	if len(m.Secp256K1Signature) > MaxTssSignatureSize {
+		return cosmos.ErrUnknownRequest("secp256k1 signature too large")
 	}
 	// Validate blame nodes: all blamed pubkeys must be keygen participants and no duplicates.
 	// This prevents a malicious quorum from spamming blame against non-participants.
@@ -115,7 +129,19 @@ func (m *MsgTssPool) ValidateBasic() error {
 	}
 	seenBlameNodes := make(map[string]struct{})
 	for _, b := range m.Blame {
+		if len(b.FailReason) > MaxTssTextLength {
+			return cosmos.ErrUnknownRequest("tss blame reason too long")
+		}
+		if len(b.Round) > MaxTssTextLength {
+			return cosmos.ErrUnknownRequest("tss blame round too long")
+		}
 		for _, node := range b.BlameNodes {
+			if len(node.BlameData) > MaxTssBlameDataSize {
+				return cosmos.ErrUnknownRequest("tss blame data too large")
+			}
+			if len(node.BlameSignature) > MaxTssBlameSignatureSize {
+				return cosmos.ErrUnknownRequest("tss blame signature too large")
+			}
 			if _, exists := pubKeySet[node.Pubkey]; !exists {
 				return cosmos.ErrUnknownRequest("blame node not in keygen participants")
 			}
@@ -145,19 +171,22 @@ func (m *MsgTssPool) ValidateBasic() error {
 	if !isSignerInPubKeys {
 		return cosmos.ErrUnknownRequest("signer is not part of keygen member")
 	}
-	// PoolPubKey can't be empty only when keygen success
+	// VaultPubKey can't be empty only when keygen success
 	if m.IsSuccess() {
-		if m.PoolPubKey.IsEmpty() {
+		if m.VaultPubKey.IsEmpty() {
 			return cosmos.ErrUnknownRequest("Pool pubkey cannot be empty")
 		}
 	}
-	// ensure pool pubkey is a valid bech32 pubkey
-	if _, err := common.NewPubKey(m.PoolPubKey.String()); err != nil {
+	// ensure vault pubkey is a valid bech32 pubkey
+	if _, err := common.NewPubKey(m.VaultPubKey.String()); err != nil {
 		return cosmos.ErrUnknownRequest(err.Error())
 	}
 	chains := m.GetChains()
 	if len(chains) != len(m.Chains) {
 		return cosmos.ErrUnknownRequest("One or more chains were not valid")
+	}
+	if len(m.Chains) > MaxTssChains {
+		return cosmos.ErrUnknownRequest("too many tss chains")
 	}
 	if !chains.Has(common.BTCAsset.Chain) {
 		return cosmos.ErrUnknownRequest("must support rune asset chain")
@@ -176,6 +205,9 @@ func (m *MsgTssPool) ValidateBasic() error {
 		if len(m.KeysharesBackup) < MinKeysharesBackupSize {
 			return cosmos.ErrUnknownRequest("invalid keyshares backup")
 		}
+		if len(m.KeysharesBackup) > MaxKeysharesBackupSize {
+			return cosmos.ErrUnknownRequest("keyshares backup too large")
+		}
 
 		// sanity check probability distribution of keyshares backup bytes
 		entropy := common.Entropy(m.KeysharesBackup)
@@ -193,6 +225,9 @@ func (m *MsgTssPool) ValidateBasic() error {
 		if len(m.KeysharesBackupEddsa) < MinKeysharesBackupSize {
 			return cosmos.ErrUnknownRequest("invalid eddsa keyshares backup")
 		}
+		if len(m.KeysharesBackupEddsa) > MaxKeysharesBackupSize {
+			return cosmos.ErrUnknownRequest("eddsa keyshares backup too large")
+		}
 
 		entropy := common.Entropy(m.KeysharesBackupEddsa)
 		// analyze-ignore(float-comparison)
@@ -208,6 +243,9 @@ func (m *MsgTssPool) ValidateBasic() error {
 
 		if len(m.KeysharesBackupFrost) < MinFrostKeysharesBackupSize {
 			return cosmos.ErrUnknownRequest("invalid frost keyshares backup")
+		}
+		if len(m.KeysharesBackupFrost) > MaxKeysharesBackupSize {
+			return cosmos.ErrUnknownRequest("frost keyshares backup too large")
 		}
 
 		entropy := common.Entropy(m.KeysharesBackupFrost)

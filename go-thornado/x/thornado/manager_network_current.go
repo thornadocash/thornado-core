@@ -83,9 +83,6 @@ func (vm *NetworkMgr) BeginBlock(ctx cosmos.Context, mgr Manager) error {
 	return vm.spawnDerivedAssets(ctx, mgr)
 }
 
-func (vm *NetworkMgr) suspendVirtualPool(ctx cosmos.Context, mgr Manager, derivedAsset common.Asset, suspendReasonErr error) {
-}
-
 func (vm *NetworkMgr) GetAvailableAnchorsAndDepths(
 	ctx cosmos.Context,
 	mgr Manager,
@@ -482,11 +479,6 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 	return nil
 }
 
-// paySaverYield - takes a pool asset and total rune collected in yield to the pool, then pays out savers their proportion of yield based on its size
-func (vm *NetworkMgr) paySaverYield(ctx cosmos.Context, asset common.Asset, runeAmt cosmos.Uint) error {
-	return nil
-}
-
 // TriggerKeygen generate a record to instruct signer kick off keygen process
 func (vm *NetworkMgr) TriggerKeygen(ctx cosmos.Context, nas NodeAccounts) error {
 	halt := vm.k.GetConfigInt64(ctx, constants.Halt_Churning)
@@ -628,14 +620,6 @@ func (vm *NetworkMgr) cleanupBaseIndex(ctx cosmos.Context) error {
 	return nil
 }
 
-func (vm *NetworkMgr) withdrawSavers(ctx cosmos.Context, pool common.Asset, na NodeAccount, mgr Manager) (done bool, err error) {
-	return true, nil
-}
-
-func (vm *NetworkMgr) withdrawLPs(ctx cosmos.Context, pool common.Asset, na NodeAccount, mgr Manager) (done bool) {
-	return true
-}
-
 // UpdateNetwork Update the network data to reflect changing in this block
 func (vm *NetworkMgr) UpdateNetwork(ctx cosmos.Context, constAccessor constants.ConfigValues, gasManager GasManager, eventMgr EventManager) error {
 	network, err := vm.k.GetNetwork(ctx)
@@ -643,10 +627,6 @@ func (vm *NetworkMgr) UpdateNetwork(ctx cosmos.Context, constAccessor constants.
 		return fmt.Errorf("fail to get existing network data: %w", err)
 	}
 	return vm.k.SetNetwork(ctx, network)
-}
-
-func (vm *NetworkMgr) redeemSynthAssetToReserve(ctx cosmos.Context, p common.Asset) error {
-	return nil
 }
 
 // calculateNetworkSolvency calculates the aggregate solvency across all active vaults

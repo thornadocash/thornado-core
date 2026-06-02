@@ -78,14 +78,6 @@ func (s *queryServer) NodeSlot(c context.Context, req *types.QueryNodeSlotReques
 	return s.queryNodeSlot(ctx, req)
 }
 
-func (s *queryServer) Ban(c context.Context, req *types.QueryBanRequest) (*types.BanVoter, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	ctx := s.unwrapSdkContext(c)
-	return s.queryBan(ctx, req)
-}
-
 func (s *queryServer) ConfigValues(c context.Context, req *types.QueryConfigValuesRequest) (*types.QueryConfigValuesResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err

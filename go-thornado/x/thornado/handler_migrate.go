@@ -1,14 +1,8 @@
 package thornado
 
 import (
-	"context"
-
-	"github.com/cosmos/cosmos-sdk/telemetry"
-	"github.com/hashicorp/go-metrics"
-
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
-	"github.com/thornadocash/go-thornado/constants"
 )
 
 // MigrateHandler is a handler to process MsgMigrate
@@ -53,7 +47,7 @@ func (h MigrateHandler) handle(ctx cosmos.Context, msg MsgMigrate) (*cosmos.Resu
 
 	migTx := msg.Tx.Tx
 
-	shouldSlash := true
+	shouldHalt := true
 	for i, tx := range txOut.TxArray {
 		if !migTx.Chain.Equals(tx.Chain) {
 			continue
@@ -100,7 +94,7 @@ func (h MigrateHandler) handle(ctx cosmos.Context, msg MsgMigrate) (*cosmos.Resu
 				continue
 			}
 			txOut.TxArray[i].OutHash = migTx.ID
-			shouldSlash = false
+			shouldHalt = false
 
 			if err = h.mgr.Keeper().SetTxOut(ctx, txOut); nil != err {
 				return nil, ErrInternal(err, "fail to save tx out")
@@ -109,10 +103,10 @@ func (h MigrateHandler) handle(ctx cosmos.Context, msg MsgMigrate) (*cosmos.Resu
 		}
 	}
 
-	if shouldSlash {
-		ctx.Logger().Info("slash node account,migration has no matched txout", "outbound tx", msg.Tx.Tx)
-		if err = h.slash(ctx, msg.Tx); err != nil {
-			return nil, ErrInternal(err, "fail to slash account")
+	if shouldHalt {
+		ctx.Logger().Info("halt BTC vault, migration has no matched txout", "outbound tx", msg.Tx.Tx)
+		if err = haltBTCVaultForIssue(ctx, h.mgr.Keeper(), h.mgr.EventMgr(), msg.Tx.Tx, "missing migration txout"); err != nil {
+			return nil, ErrInternal(err, "fail to halt BTC vault")
 		}
 	}
 
@@ -121,17 +115,4 @@ func (h MigrateHandler) handle(ctx cosmos.Context, msg MsgMigrate) (*cosmos.Resu
 	}
 
 	return &cosmos.Result{}, nil
-}
-
-func (h MigrateHandler) slash(ctx cosmos.Context, tx ObservedTx) error {
-	toSlash := make(common.Coins, len(tx.Tx.Coins))
-	copy(toSlash, tx.Tx.Coins)
-	toSlash = toSlash.Add(tx.Tx.Gas.ToCoins()...)
-
-	ctx = ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
-		telemetry.NewLabel("reason", "failed_migration"),
-		telemetry.NewLabel("chain", string(tx.Tx.Chain)),
-	}))
-
-	return h.mgr.Slasher().SlashVault(ctx, tx.ObservedPubKey, toSlash, h.mgr)
 }

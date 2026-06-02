@@ -25,6 +25,8 @@ func NewMsgObservedTxQuorum(tx *common.QuorumTx, signer cosmos.AccAddress) *MsgO
 	}
 }
 
+const MaxObservedTxQuorumAttestations = 300
+
 // ValidateBasic implements HasValidateBasic
 // ValidateBasic is now ran in the message service router handler for messages that
 // used to be routed using the external handler and only when HasValidateBasic is implemented.
@@ -36,10 +38,17 @@ func (m *MsgObservedTxQuorum) ValidateBasic() error {
 	if m.QuoTx == nil {
 		return cosmos.ErrUnknownRequest("QuoTx cannot be nil")
 	}
+	attestations := len(m.QuoTx.Attestations)
+	if attestations == 0 {
+		return cosmos.ErrUnknownRequest("no attestations found")
+	}
+	if attestations > MaxObservedTxQuorumAttestations {
+		return cosmos.ErrUnknownRequest(fmt.Sprintf("too many attestations: %d, max %d", attestations, MaxObservedTxQuorumAttestations))
+	}
 
 	tx := m.QuoTx.ObsTx
 
-	if err := tx.Valid(); err != nil {
+	if err := validateObservedTxPayload(tx); err != nil {
 		return cosmos.ErrUnknownRequest(err.Error())
 	}
 	obAddr, err := tx.ObservedPubKey.GetAddress(tx.Tx.Coins[0].Asset.GetChain())

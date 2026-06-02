@@ -199,10 +199,9 @@ func TestEnshrinedBifrostStartStop(t *testing.T) {
 
 	ebs := NewEnshrinedBifrost(cdc, logger, EBifrostConfig{
 		Enable:  true,
-		Address: "localhost:50051",
+		Address: "127.0.0.1:0",
 	})
 
-	// Test start (using a high port to avoid conflicts)
 	err := ebs.Start()
 	require.NoError(t, err)
 

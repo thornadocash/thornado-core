@@ -14,7 +14,7 @@ import (
 	cmtsecp256k1 "github.com/cometbft/cometbft/crypto/secp256k1"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	frostsessions "github.com/thornadocash/go-thornado/frost/go-wrappers/go-frost/sessions"
+	frostsessions "github.com/thornadocash/go-thornado/go-wrappers/frost/go-frost/sessions"
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
@@ -72,12 +72,12 @@ func (kg *KeyGen) GenerateNewKey(keygenBlockHeight int64, pKeys common.PubKeys, 
 		return common.EmptyPubKeySet, nil, fmt.Errorf("FROST engine did not return local keyshare")
 	}
 
-	poolPubKey, err := common.NewPubKeyFromCrypto(cmtsecp256k1.PubKey(pubKeyBytes))
+	vaultPubKey, err := common.NewPubKeyFromCrypto(cmtsecp256k1.PubKey(pubKeyBytes))
 	if err != nil {
 		return common.EmptyPubKeySet, nil, err
 	}
 	if err := kg.localState.SaveLocalState(storage.KeygenLocalState{
-		PubKey:          poolPubKey.String(),
+		PubKey:          vaultPubKey.String(),
 		LocalData:       localShare,
 		ParticipantKeys: participants,
 		LocalPartyKey:   localParty.String(),
@@ -88,11 +88,11 @@ func (kg *KeyGen) GenerateNewKey(keygenBlockHeight int64, pKeys common.PubKeys, 
 
 	kg.logger.Info().
 		Int64("height", keygenBlockHeight).
-		Str("pubkey", poolPubKey.String()).
+		Str("pubkey", vaultPubKey.String()).
 		Int("members", len(participants)).
 		Strs("chains", chains.Strings()).
 		Msg("FROST keygen complete")
-	return common.NewPubKeySet(poolPubKey, common.EmptyPubKey), nil, nil
+	return common.NewPubKeySet(vaultPubKey, common.EmptyPubKey), nil, nil
 }
 
 type sharedFrostKeygen struct {

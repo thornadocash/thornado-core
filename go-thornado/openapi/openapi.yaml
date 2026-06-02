@@ -34,7 +34,7 @@ paths:
       responses:
         "200":
           description: Balances response
-  /thornado/node/address/{address}:
+  /thornado/node/{address}:
     get:
       summary: Node by address
       parameters:

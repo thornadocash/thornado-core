@@ -34,10 +34,10 @@ type ChainClient interface {
 	GetHeight() (int64, error)
 
 	// GetAddress returns the address for the given public key.
-	GetAddress(poolPubKey common.PubKey) string
+	GetAddress(vaultPubKey common.PubKey) string
 
 	// GetAccount returns the account for the given public key.
-	GetAccount(poolPubKey common.PubKey, height *big.Int) (common.Account, error)
+	GetAccount(vaultPubKey common.PubKey, height *big.Int) (common.Account, error)
 
 	// GetAccountByAddress returns the account for the given address.
 	GetAccountByAddress(address string, height *big.Int) (common.Account, error)

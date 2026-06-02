@@ -93,10 +93,6 @@ func (k KVStoreDummy) GetKey(prefix kvTypes.DbPrefix, key string, other ...strin
 	return []byte(s)
 }
 
-func (k KVStoreDummy) GetRuneBalanceOfModule(ctx cosmos.Context, moduleName string) cosmos.Uint {
-	return cosmos.ZeroUint()
-}
-
 func (k KVStoreDummy) GetBalanceOfModule(ctx cosmos.Context, moduleName, denom string) cosmos.Uint {
 	return cosmos.ZeroUint()
 }
@@ -176,10 +172,6 @@ func (k KVStoreDummy) GetLastChainHeights(ctx cosmos.Context) (map[common.Chain]
 	return nil, kaboom
 }
 
-func (k KVStoreDummy) GetPoolBalances(_ cosmos.Context, _, _ common.Asset) (cosmos.Uint, cosmos.Uint) {
-	return cosmos.ZeroUint(), cosmos.ZeroUint()
-}
-
 func (k KVStoreDummy) TotalActiveNodes(_ cosmos.Context) (int, error) { return 0, kaboom }
 func (k KVStoreDummy) ListNodesWithBond(_ cosmos.Context) (NodeAccounts, error) {
 	return nil, kaboom
@@ -215,16 +207,16 @@ func (k KVStoreDummy) EnsureNodeKeysUnique(_ cosmos.Context, _ cosmos.AccAddress
 }
 func (k KVStoreDummy) GetNodeAccountIterator(_ cosmos.Context) cosmos.Iterator { return nil }
 
-func (k KVStoreDummy) GetNodeAccountSlashPoints(_ cosmos.Context, _ cosmos.AccAddress) (int64, error) {
+func (k KVStoreDummy) GetNodeAccountPenaltyPoints(_ cosmos.Context, _ cosmos.AccAddress) (int64, error) {
 	return 0, kaboom
 }
-func (k KVStoreDummy) SetNodeAccountSlashPoints(_ cosmos.Context, _ cosmos.AccAddress, _ int64) {}
-func (k KVStoreDummy) ResetNodeAccountSlashPoints(_ cosmos.Context, _ cosmos.AccAddress)        {}
-func (k KVStoreDummy) IncNodeAccountSlashPoints(_ cosmos.Context, _ cosmos.AccAddress, _ int64) error {
+func (k KVStoreDummy) SetNodeAccountPenaltyPoints(_ cosmos.Context, _ cosmos.AccAddress, _ int64) {}
+func (k KVStoreDummy) ResetNodeAccountPenaltyPoints(_ cosmos.Context, _ cosmos.AccAddress)        {}
+func (k KVStoreDummy) IncNodeAccountPenaltyPoints(_ cosmos.Context, _ cosmos.AccAddress, _ int64) error {
 	return kaboom
 }
 
-func (k KVStoreDummy) DecNodeAccountSlashPoints(_ cosmos.Context, _ cosmos.AccAddress, _ int64) error {
+func (k KVStoreDummy) DecNodeAccountPenaltyPoints(_ cosmos.Context, _ cosmos.AccAddress, _ int64) error {
 	return kaboom
 }
 
@@ -239,10 +231,6 @@ func (k KVStoreDummy) SetNodeAccountJail(ctx cosmos.Context, addr cosmos.AccAddr
 func (k KVStoreDummy) ReleaseNodeAccountFromJail(ctx cosmos.Context, addr cosmos.AccAddress) error {
 	return kaboom
 }
-func (k KVStoreDummy) DeductNativeTxFeeFromBond(ctx cosmos.Context, nodeAddr cosmos.AccAddress) error {
-	return kaboom
-}
-
 func (k KVStoreDummy) GetObservingAddresses(_ cosmos.Context) ([]cosmos.AccAddress, error) {
 	return nil, kaboom
 }
@@ -370,9 +358,8 @@ func (k KVStoreDummy) GetPendingOutbounds(_ cosmos.Context, _ common.Asset) []Tx
 }
 func (k KVStoreDummy) DeleteVault(_ cosmos.Context, _ common.PubKey) error { return kaboom }
 
-func (k KVStoreDummy) HasValidVaultPools(_ cosmos.Context) (bool, error) { return false, kaboom }
-func (k KVStoreDummy) GetNetwork(_ cosmos.Context) (Network, error)      { return Network{}, kaboom }
-func (k KVStoreDummy) SetNetwork(_ cosmos.Context, _ Network) error      { return kaboom }
+func (k KVStoreDummy) GetNetwork(_ cosmos.Context) (Network, error) { return Network{}, kaboom }
+func (k KVStoreDummy) SetNetwork(_ cosmos.Context, _ Network) error { return kaboom }
 
 func (k KVStoreDummy) SetTssKeysignFailVoter(_ cosmos.Context, tss TssKeysignFailVoter) {
 }
@@ -395,14 +382,6 @@ func (k KVStoreDummy) SetErrataTxVoter(_ cosmos.Context, _ ErrataTxVoter)       
 func (k KVStoreDummy) GetErrataTxVoterIterator(_ cosmos.Context) cosmos.Iterator { return nil }
 func (k KVStoreDummy) GetErrataTxVoter(_ cosmos.Context, _ common.TxID, _ common.Chain) (ErrataTxVoter, error) {
 	return ErrataTxVoter{}, kaboom
-}
-func (k KVStoreDummy) SetBanVoter(_ cosmos.Context, _ BanVoter) {}
-func (k KVStoreDummy) GetBanVoter(_ cosmos.Context, _ cosmos.AccAddress) (BanVoter, error) {
-	return BanVoter{}, kaboom
-}
-
-func (k KVStoreDummy) GetBanVoterIterator(ctx cosmos.Context) cosmos.Iterator {
-	return nil
 }
 func (k KVStoreDummy) GetConfig(_ cosmos.Context, key string) (int64, error) { return 0, kaboom }
 func (k KVStoreDummy) GetConfigWithRef(_ cosmos.Context, template string, key ...any) (int64, error) {
@@ -499,17 +478,12 @@ func (k KVStoreDummy) GetConfigInt64(ctx cosmos.Context, key constants.ConfigNam
 	return -1
 }
 
-func (k KVStoreDummy) IsTradingHalt(ctx cosmos.Context, msg cosmos.Msg) bool            { return false }
-func (k KVStoreDummy) IsGlobalTradingHalted(ctx cosmos.Context) bool                    { return false }
-func (k KVStoreDummy) IsChainTradingHalted(ctx cosmos.Context, chain common.Chain) bool { return false }
-func (k KVStoreDummy) IsChainHalted(ctx cosmos.Context, chain common.Chain) bool        { return false }
+func (k KVStoreDummy) IsChainHalted(ctx cosmos.Context, chain common.Chain) bool { return false }
 
 func (k KVStoreDummy) GetAnchors(ctx cosmos.Context, asset common.Asset) []common.Asset { return nil }
 func (k KVStoreDummy) AnchorMedian(ctx cosmos.Context, assets []common.Asset) cosmos.Uint {
 	return cosmos.ZeroUint()
 }
-func (k KVStoreDummy) DollarsPerRune(ctx cosmos.Context) cosmos.Uint { return cosmos.ZeroUint() }
-func (k KVStoreDummy) RunePerDollar(ctx cosmos.Context) cosmos.Uint  { return cosmos.ZeroUint() }
 func (k KVStoreDummy) GetNativeTxFee(ctx cosmos.Context) cosmos.Uint {
 	return cosmos.ZeroUint()
 }
@@ -545,6 +519,21 @@ func (k KVStoreDummy) GetDepositSession(_ cosmos.Context, _ cosmos.AccAddress) (
 func (k KVStoreDummy) GetDepositSessionByPowToken(_ cosmos.Context, _ string) (types.DepositSession, error) {
 	return types.DepositSession{}, nil
 }
+func (k KVStoreDummy) SetDepositPowTiming(_ cosmos.Context, _ types.DepositPowTiming) error {
+	return nil
+}
+func (k KVStoreDummy) GetDepositPowTiming(_ cosmos.Context, _ string) (types.DepositPowTiming, error) {
+	return types.DepositPowTiming{}, nil
+}
+func (k KVStoreDummy) GetDepositPowTimingIterator(_ cosmos.Context) cosmos.Iterator {
+	return NewDummyIterator()
+}
+func (k KVStoreDummy) SetDepositPowDifficultyState(_ cosmos.Context, _ types.DepositPowDifficultyState) error {
+	return nil
+}
+func (k KVStoreDummy) GetDepositPowDifficultyState(_ cosmos.Context) (types.DepositPowDifficultyState, error) {
+	return types.DepositPowDifficultyState{}, nil
+}
 func (k KVStoreDummy) SetDepositAddress(_ cosmos.Context, _ types.DepositAddress) error {
 	return nil
 }
@@ -554,14 +543,15 @@ func (k KVStoreDummy) GetDepositAddress(_ cosmos.Context, _ common.Address) (typ
 func (k KVStoreDummy) GetDepositAddressIterator(_ cosmos.Context) cosmos.Iterator {
 	return NewDummyIterator()
 }
-func (k KVStoreDummy) GetNextVaultDepositPathIndex(_ cosmos.Context, _ common.PubKey) (uint64, error) {
-	return common.FirstDepositPathIndex, nil
+func (k KVStoreDummy) GetNextVaultDepositPathIndex(_ cosmos.Context, _ common.PubKey, _ common.VaultDepositPathType) (uint64, error) {
+	return 0, nil
 }
-func (k KVStoreDummy) SetNextVaultDepositPathIndex(_ cosmos.Context, _ common.PubKey, _ uint64) error {
+func (k KVStoreDummy) SetNextVaultDepositPathIndex(_ cosmos.Context, _ common.PubKey, _ common.VaultDepositPathType, _ uint64) error {
 	return nil
 }
-func (k KVStoreDummy) AllocateVaultDepositPathIndex(_ cosmos.Context, _ common.PubKey) (uint64, error) {
-	return common.FirstDepositPathIndex, nil
+func (k KVStoreDummy) AllocateVaultDepositPathIndex(_ cosmos.Context, _ common.PubKey, pathType common.VaultDepositPathType) (uint64, uint64, error) {
+	pathIndex, err := common.VaultDepositPathIndex(pathType, 0, common.DepositPathCommitmentRoot)
+	return 0, pathIndex, err
 }
 func (k KVStoreDummy) SetDepositRecord(_ cosmos.Context, _ types.DepositRecord) error {
 	return nil
