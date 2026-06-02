@@ -620,6 +620,7 @@ func (x *localhostBifrostSubscribeToEventsServer) Send(m *EventNotification) err
 	return x.ServerStream.SendMsg(m)
 }
 
+var LocalhostBifrost_serviceDesc = _LocalhostBifrost_serviceDesc
 var _LocalhostBifrost_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "types.LocalhostBifrost",
 	HandlerType: (*LocalhostBifrostServer)(nil),

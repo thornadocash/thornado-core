@@ -23,14 +23,14 @@ type TssHandler struct {
 	mgr Manager
 }
 
-// NewTssHandler create a new handler to process MsgTssPool
+// NewTssHandler create a new handler to process MsgKeygenVault
 func NewTssHandler(mgr Manager) TssHandler {
 	return TssHandler{mgr: mgr}
 }
 
 // Run it the main entry point to execute Version logic
 func (h TssHandler) Run(ctx cosmos.Context, m cosmos.Msg) (*cosmos.Result, error) {
-	msg, ok := m.(*MsgTssPool)
+	msg, ok := m.(*MsgKeygenVault)
 	if !ok {
 		return nil, errInvalidMessage
 	}
@@ -77,7 +77,7 @@ var verifySecp256K1Signature = func(pk common.PubKey, sig []byte) error {
 	return nil
 }
 
-func (h TssHandler) validate(ctx cosmos.Context, msg *MsgTssPool) error {
+func (h TssHandler) validate(ctx cosmos.Context, msg *MsgKeygenVault) error {
 	// ValidateBasic is also executed in message service router's handler and isn't versioned there
 	if err := msg.ValidateBasic(); err != nil {
 		return err
@@ -99,9 +99,9 @@ func (h TssHandler) validate(ctx cosmos.Context, msg *MsgTssPool) error {
 		}
 	}
 
-	newMsg, err := NewMsgTssPoolV2(msg.PubKeys, msg.VaultPubKey, nil, nil, msg.KeygenType, msg.Height, msg.Blame, msg.Chains, msg.Signer, msg.KeygenTime, msg.VaultPubKeyEddsa, msg.KeysharesBackupEddsa)
+	newMsg, err := NewMsgKeygenVaultV2(msg.PubKeys, msg.VaultPubKey, nil, nil, msg.KeygenType, msg.Height, msg.Blame, msg.Chains, msg.Signer, msg.KeygenTime, msg.VaultPubKeyEddsa, msg.KeysharesBackupEddsa)
 	if err != nil {
-		return fmt.Errorf("fail to recreate MsgTssPool,err: %w", err)
+		return fmt.Errorf("fail to recreate MsgKeygenVault,err: %w", err)
 	}
 	if msg.ID != newMsg.ID {
 		return cosmos.ErrUnknownRequest("invalid tss message")
@@ -167,7 +167,7 @@ func validateTssAuth(ctx cosmos.Context, k keeper.Keeper, signer cosmos.AccAddre
 	return nil
 }
 
-func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
+func (h TssHandler) handle(ctx cosmos.Context, msg *MsgKeygenVault) error {
 	ctx.Logger().Info("handler tss", "current version", h.mgr.GetVersion())
 	blames := make([]string, 0)
 	if len(msg.Blame) > 0 {
@@ -238,13 +238,13 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 	observeFlex := getConfigDurationBlocks(ctx, h.mgr.Keeper(), constants.Observation_DelayFlexibilityMinutes)
 
 	penaltyCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
-		telemetry.NewLabel("reason", "failed_observe_tss_pool"),
+		telemetry.NewLabel("reason", "failed_observe_keygen_vault"),
 	}))
 
 	if !voter.Sign(msg.Signer, msg.Chains, string(msg.Secp256K1Signature)) {
 		// Penalty for the network having to handle the extra message/s.
 		h.mgr.PenaltyManager().IncPenaltyPoints(penaltyCtx, observePenaltyPoints, msg.Signer)
-		ctx.Logger().Info("signer already signed MsgTssPool", "signer", msg.Signer.String(), "txid", msg.ID)
+		ctx.Logger().Info("signer already signed MsgKeygenVault", "signer", msg.Signer.String(), "txid", msg.ID)
 		return nil
 
 	}
@@ -472,14 +472,14 @@ func (h TssHandler) handle(ctx cosmos.Context, msg *MsgTssPool) error {
 	return nil
 }
 
-func judgeLateSigner(ctx cosmos.Context, mgr Manager, msg *MsgTssPool, voter TssVoter) {
+func judgeLateSigner(ctx cosmos.Context, mgr Manager, msg *MsgKeygenVault, voter TssVoter) {
 	// if the voter doesn't reach 2/3 majority consensus , this method should not take any actions
 	if !voter.HasConsensus() || !msg.IsSuccess() {
 		return
 	}
 	penaltyPoints := mgr.Keeper().GetConfigInt64(ctx, constants.Keygen_FailPenaltyPoints)
 	penaltyCtx := ctx.WithContext(context.WithValue(ctx.Context(), constants.CtxMetricLabels, []metrics.Label{
-		telemetry.NewLabel("reason", "failed_observe_tss_pool"),
+		telemetry.NewLabel("reason", "failed_observe_keygen_vault"),
 	}))
 
 	// when voter already has 2/3 majority signers , restore current message signer's penalty points
@@ -504,7 +504,7 @@ func judgeLateSigner(ctx cosmos.Context, mgr Manager, msg *MsgTssPool, voter Tss
 			ctx.Logger().Error("fail to get thor address", "error", err)
 			continue
 		}
-		// whoever is in the keygen list , but didn't broadcast MsgTssPool
+		// whoever is in the keygen list , but didn't broadcast MsgKeygenVault
 		if !voter.HasSigned(thorAddr) {
 			mgr.PenaltyManager().IncPenaltyPoints(penaltyCtx, penaltyPoints, thorAddr)
 			// go to jail
@@ -521,7 +521,7 @@ func judgeLateSigner(ctx cosmos.Context, mgr Manager, msg *MsgTssPool, voter Tss
 // TssAnteHandler called by the ante handler to gate mempool entry
 // and also during deliver. Store changes will persist if this function
 // succeeds, regardless of the success of the transaction.
-func TssAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg MsgTssPool) (cosmos.Context, error) {
+func TssAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg MsgKeygenVault) (cosmos.Context, error) {
 	if err := msg.ValidateBasic(); err != nil {
 		return ctx, err
 	}

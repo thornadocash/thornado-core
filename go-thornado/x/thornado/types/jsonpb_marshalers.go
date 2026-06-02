@@ -278,13 +278,6 @@ func (m *QueryAccountResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error
 	return jsonify(res)
 }
 
-func (m *QueryBalancesResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
-	res := map[string]any{
-		"result": m.Balances,
-	}
-	return jsonify(res)
-}
-
 // QueryOpenAPiBlockTx overrides the openapi type with a custom Tx field for marshaling.
 type QueryOpenApiBlockTx struct {
 	openapi.BlockTx

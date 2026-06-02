@@ -41,7 +41,7 @@ func GetTxCmd() *cobra.Command {
 	cmd.AddCommand(GetCmdDeposit())
 	cmd.AddCommand(GetCmdDepositRequestPow())
 	cmd.AddCommand(GetCmdSend())
-	cmd.AddCommand(GetCmdTssPool())
+	cmd.AddCommand(GetCmdKeygenVault())
 	cmd.AddCommand(GetCmdShielder())
 	cmd.AddCommand(GetCmdObserveTxIns())
 	cmd.AddCommand(GetCmdObserveTxOuts())
@@ -49,7 +49,7 @@ func GetTxCmd() *cobra.Command {
 	return cmd
 }
 
-func GetCmdTssPool() *cobra.Command {
+func GetCmdKeygenVault() *cobra.Command {
 	return &cobra.Command{
 		Use:   "frost-vault [members-json-or-csv] [vault-pubkey] [vault-pubkey-eddsa] [height] [check-signature]",
 		Short: "submit a successful FROST base vault keygen result",
@@ -75,7 +75,7 @@ func GetCmdTssPool() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("invalid keygen height: %w", err)
 			}
-			msg, err := types.NewMsgTssPoolV2(
+			msg, err := types.NewMsgKeygenVaultV2(
 				members,
 				vaultPubKey,
 				[]byte(args[4]),

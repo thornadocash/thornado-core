@@ -6,8 +6,8 @@ Goal: prove a fresh 4-validator genesis automatically produces the first FROST B
 
 - result: PASS; command: `FLOW_LIMIT=1 ops/scripts/real-4node-e2e.sh`; evidence: `/tmp/thornado-flow1-happy-final/meta/base-vaults.json`, `/tmp/thornado-flow1-happy-final/logs/bifrost-*.log`, `/tmp/thornado-flow1-happy-final/logs/thornado-*.log`; validated: true
 - result: final base vault: `tthorpub1addwnpepqf6sqde37dzw8lej3pqv6atgvkggnnhzlxwku78cdarmlehl8jrncsceg68`; one `ActiveVault`, type `BaseVault`, chain `BTC`, four genesis members, no coins; validated: true
-- result: local E2E config now uses `Vault_BaseMembersMin=4`, `Node_BondStartAmountSats=0`, `Node_BondSlotIncrementSats=100000000`, and `Churn_RetryIntervalBlocks=720`; no `EnableFrostBTC`, no `AsgardSize`, no `BaseVaultMembersMinimum`; validated: true
-- result: negative TSS probes passed; evidence: `/tmp/thornado-flow1-negative-final/meta/negative-tss-current/results.json`; validated: true
+- result: local E2E config now uses `Vault_BaseMembersMin=4`, `Node_BondStartAmountSats=0`, `Node_BondSlotIncrementSats=100000000`, and `Churn_RetryIntervalBlocks=720`; validated: true
+- result: negative keygen vault probes passed; evidence: `/tmp/thornado-flow1-negative-final/meta/negative-keygen-vault-current/results.json`; validated: true
 - result: persisted Bifrost restart passed; node1 restarted with scanner start height `0`, reloaded state, stayed healthy, and did not re-run FROST keygen; evidence: `/tmp/thornado-flow1-persist-final/meta/persist-restart/result.json`, `/tmp/thornado-flow1-persist-final/logs/bifrost-1-restart-current.log`; validated: true
 - result: three-active genesis fixture passed; command: `FLOW_LIMIT=1 FLOW1_SCENARIO=three_active ops/scripts/real-4node-e2e.sh`; evidence: `/tmp/thornado-flow1-three-active/meta/three_active-base-vaults.json`; validated: true
 - result: missing secp genesis fixture passed; command: `FLOW_LIMIT=1 FLOW1_SCENARIO=missing_secp ops/scripts/real-4node-e2e.sh`; evidence: `/tmp/thornado-flow1-missing-secp/meta/genesis-validate.log`; validated: true
@@ -37,7 +37,7 @@ Section results: all setup/genesis checks passed in the final run.
 - check: keygen membership equals node1-node4 secp pubkeys; desired_result: no standby, future, duplicate, or missing key appears; validated: true
 - check: every genesis Bifrost receives the same keygen block; desired_result: signer logs show matching height, type, membership, and `chains:["BTC"]`; validated: true
 - check: every genesis Bifrost completes FROST keygen; desired_result: logs show `FROST keygen complete`, `members:4`, `chains:["BTC"]`; validated: true
-- check: every genesis Bifrost submits `MsgTssPool`; desired_result: Thornado receives enough valid messages for consensus; validated: true
+- check: every genesis Bifrost submits `MsgKeygenVault`; desired_result: Thornado receives enough valid messages for consensus; validated: true
 - check: Thornado accepts keygen quorum; desired_result: one active base vault is created and no blame path is taken; validated: true
 - check: base vault pubkey converts to BTC taproot address; desired_result: `bitcoin-cli validateaddress` reports valid witness v1 regtest address; validated: true
 - check: no funds exist in base vault yet; desired_result: vault `coins` is null/zero and regtest `scantxoutset` for the derived address returns zero UTXOs; validated: true
@@ -61,7 +61,7 @@ Section results: all API, KV, local persistence, and external BTC checks passed.
 ## Bad Paths
 
 - check: malformed pool pubkey submitted through `tss-pool`; desired_result: CLI rejects before broadcast; validated: true
-- check: non-member node5 submits `MsgTssPool` for the genesis keygen members; desired_result: signer is rejected and no vault mutation occurs; validated: true
+- check: non-member node5 submits `MsgKeygenVault` for the genesis keygen members; desired_result: signer is rejected and no vault mutation occurs; validated: true
 - check: active signer submits a member set that swaps in node5; desired_result: handler rejects as unauthorized and no extra vault is created; validated: true
 - check: active signer submits for future/nonexistent keygen height `999`; desired_result: handler rejects as unauthorized and no extra vault is created; validated: true
 - check: exact FROST replay for existing voter; desired_result: duplicate/no-op does not create a second vault; validated: true
@@ -74,7 +74,7 @@ Section results: live malformed/unauthorized/replay/alternate-pubkey bad paths p
 
 ## Attack Paths
 
-- check: malicious signer replays old exact `MsgTssPool`; desired_result: duplicate message does not create a second vault; validated: true
+- check: malicious signer replays old exact `MsgKeygenVault`; desired_result: duplicate message does not create a second vault; validated: true
 - check: malicious signer submits alternate FROST pubkey with only one vote; desired_result: message cannot reach consensus and active vault count remains one; validated: true
 - check: malicious signer uses valid member list but wrong signer account; desired_result: auth rejects because signer does not map to a keygen member node account; validated: true
 - check: malicious signer uses valid active signer but wrong member set; desired_result: auth rejects because keygen block membership does not match; validated: true

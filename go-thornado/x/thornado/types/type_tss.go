@@ -134,7 +134,7 @@ func (m *TssVoter) ConsensusCheckSignature() (string, bool) {
 	return "", false
 }
 
-// HasConsensus determine if this tss pool has enough signers
+// HasConsensus determine if this keygen vault has enough signers
 func (m *TssVoter) HasConsensus() bool {
 	return HasSuperMajority(len(m.Signers), len(m.PubKeys))
 }

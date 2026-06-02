@@ -58,8 +58,8 @@ var (
 	NewMsgConfig                   = types.NewMsgConfig
 	NewMsgNodePauseChain           = types.NewMsgNodePauseChain
 	NewMsgDeposit                  = types.NewMsgDeposit
-	NewMsgTssPool                  = types.NewMsgTssPool
-	NewMsgTssPoolV2                = types.NewMsgTssPoolV2
+	NewMsgKeygenVault              = types.NewMsgKeygenVault
+	NewMsgKeygenVaultV2            = types.NewMsgKeygenVaultV2
 	NewMsgTssKeysignFail           = types.NewMsgTssKeysignFail
 	NewMsgObservedTxIn             = types.NewMsgObservedTxIn
 	NewMsgObservedTxOut            = types.NewMsgObservedTxOut
@@ -157,7 +157,7 @@ type (
 	MsgMaint                    = types.MsgMaint
 	MsgObservedTxIn             = types.MsgObservedTxIn
 	MsgObservedTxOut            = types.MsgObservedTxOut
-	MsgTssPool                  = types.MsgTssPool
+	MsgKeygenVault              = types.MsgKeygenVault
 	MsgTssKeysignFail           = types.MsgTssKeysignFail
 	MsgNetworkFee               = types.MsgNetworkFee
 	MsgSolvency                 = types.MsgSolvency

@@ -44,9 +44,7 @@ func TestFrostVaultSignerRemoteSignSuccess(t *testing.T) {
 	signature, _, err := signer.RemoteSign(digest[:], common.SigningAlgoSecp256k1, vaultPubKey.String())
 	require.NoError(t, err)
 
-	secpPubKey, err := vaultPubKey.Secp256K1()
-	require.NoError(t, err)
-	require.NoError(t, frostsessions.Verify(secpPubKey.SerializeCompressed(), digest[:], signature))
+	require.NoError(t, verifyTaprootSignature(vaultPubKey, common.MainVaultPathIndex, digest[:], signature))
 }
 
 func TestFrostVaultSignerRemoteSignMissingState(t *testing.T) {

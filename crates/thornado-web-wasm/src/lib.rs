@@ -81,7 +81,7 @@ pub struct NoteRecoveryCandidate {
 }
 
 fn default_deposit_index() -> u64 {
-    1
+    0
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -121,7 +121,7 @@ pub fn derive_split_receipt_json(
     amount_sats: u64,
     client_seed: &str,
 ) -> std::result::Result<String, JsValue> {
-    let receipt = derive_split_receipt_for_deposit(deposit_id, 1, amount_sats, client_seed)
+    let receipt = derive_split_receipt_for_deposit(deposit_id, 0, amount_sats, client_seed)
         .map_err(js_error)?;
     serde_json::to_string(&receipt).map_err(|error| JsValue::from_str(&error.to_string()))
 }
@@ -141,7 +141,7 @@ pub fn derive_split_receipt_for_deposit_json(
 
 #[wasm_bindgen]
 pub fn client_pubkey_from_secret_json(client_seed: &str) -> std::result::Result<String, JsValue> {
-    Ok(client_pubkey_for_deposit(client_seed, 1))
+    Ok(client_pubkey_for_deposit(client_seed, 0))
 }
 
 #[wasm_bindgen]
@@ -162,7 +162,7 @@ pub fn split_authorization_json(
     let note_commitments: Vec<NoteCommitment> = serde_json::from_str(note_commitments_json)
         .map_err(|error| JsValue::from_str(&error.to_string()))?;
     let authorization =
-        split_authorization_for_deposit(client_seed, 1, deposit_id, amount_sats, &note_commitments);
+        split_authorization_for_deposit(client_seed, 0, deposit_id, amount_sats, &note_commitments);
     serde_json::to_string(&authorization).map_err(|error| JsValue::from_str(&error.to_string()))
 }
 

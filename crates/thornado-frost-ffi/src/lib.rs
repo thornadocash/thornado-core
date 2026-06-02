@@ -7,8 +7,12 @@ use base64::engine::general_purpose::STANDARD as B64;
 use base64::Engine;
 use frost_secp256k1_tr as frost;
 use frost_secp256k1_tr::keys::dkg;
-use frost_secp256k1_tr::keys::{IdentifierList, KeyPackage, PublicKeyPackage, Tweak};
-use frost_secp256k1_tr::{Identifier, Signature, SigningPackage};
+use frost_secp256k1_tr::keys::{
+    IdentifierList, KeyPackage, PublicKeyPackage, SigningShare, Tweak, VerifyingShare,
+};
+use frost_secp256k1_tr::{
+    Ciphersuite, Field, Group, Identifier, Signature, SigningPackage, VerifyingKey,
+};
 use once_cell::sync::Lazy;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
@@ -79,6 +83,7 @@ struct SignInput {
     share: String,
     message: String,
     merkle_root: Option<String>,
+    child_tweak: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -223,12 +228,78 @@ fn decode_msg(bytes: &[u8]) -> Result<ProtocolMessage, WrapperError> {
 
 fn decode_merkle_root(input: Option<String>) -> Result<Option<Vec<u8>>, WrapperError> {
     match input {
-        Some(encoded) if !encoded.is_empty() => B64
+        Some(encoded) => B64
             .decode(encoded)
             .map(Some)
             .map_err(|e| WrapperError::Message(e.to_string())),
-        _ => Ok(None),
+        None => Ok(None),
     }
+}
+
+type FrostGroup = <frost::Secp256K1Sha256TR as Ciphersuite>::Group;
+type FrostField = <FrostGroup as Group>::Field;
+type FrostScalar = <FrostField as Field>::Scalar;
+type FrostElement = <FrostGroup as Group>::Element;
+
+fn decode_child_tweak(input: Option<String>) -> Result<Option<FrostScalar>, WrapperError> {
+    let Some(encoded) = input else {
+        return Ok(None);
+    };
+    let bytes = B64
+        .decode(encoded)
+        .map_err(|e| WrapperError::Message(e.to_string()))?;
+    let serialized = <FrostField as Field>::Serialization::try_from(bytes.as_slice())
+        .map_err(|_| WrapperError::Message("invalid child tweak length".to_string()))?;
+    let scalar = <FrostField as Field>::deserialize(&serialized)
+        .map_err(|e| WrapperError::Message(format!("invalid child tweak scalar: {e:?}")))?;
+    if scalar == <FrostField as Field>::zero() {
+        return Err(WrapperError::Message(
+            "child tweak scalar must be non-zero".to_string(),
+        ));
+    }
+    Ok(Some(scalar))
+}
+
+fn additive_tweak_point(tweak: FrostScalar) -> FrostElement {
+    <FrostGroup as Group>::generator() * tweak
+}
+
+fn apply_child_tweak_to_key_package(
+    key_package: KeyPackage,
+    tweak: Option<FrostScalar>,
+) -> KeyPackage {
+    let Some(tweak) = tweak else {
+        return key_package;
+    };
+    let tp = additive_tweak_point(tweak);
+    let verifying_key = VerifyingKey::new(key_package.verifying_key().to_element() + tp);
+    let signing_share = SigningShare::new(key_package.signing_share().to_scalar() + tweak);
+    let verifying_share = VerifyingShare::new(key_package.verifying_share().to_element() + tp);
+    KeyPackage::new(
+        *key_package.identifier(),
+        signing_share,
+        verifying_share,
+        verifying_key,
+        *key_package.min_signers(),
+    )
+}
+
+fn apply_child_tweak_to_public_package(
+    public_key_package: PublicKeyPackage,
+    tweak: Option<FrostScalar>,
+    min_signers: u16,
+) -> PublicKeyPackage {
+    let Some(tweak) = tweak else {
+        return public_key_package;
+    };
+    let tp = additive_tweak_point(tweak);
+    let verifying_key = VerifyingKey::new(public_key_package.verifying_key().to_element() + tp);
+    let verifying_shares = public_key_package
+        .verifying_shares()
+        .iter()
+        .map(|(id, share)| (*id, VerifyingShare::new(share.to_element() + tp)))
+        .collect();
+    PublicKeyPackage::new(verifying_shares, verifying_key, Some(min_signers))
 }
 
 fn queue_msg(
@@ -617,6 +688,9 @@ fn sign(input: SignInput) -> Result<SignOutput, WrapperError> {
     )
     .map_err(frost_error("keysign"))?;
     let merkle_root = decode_merkle_root(input.merkle_root)?;
+    let child_tweak = decode_child_tweak(input.child_tweak)?;
+    let public_key_package =
+        apply_child_tweak_to_public_package(public_key_package, child_tweak, share.min_signers);
 
     let mut commitments_map = BTreeMap::new();
     let mut nonces_map = BTreeMap::new();
@@ -638,6 +712,7 @@ fn sign(input: SignInput) -> Result<SignOutput, WrapperError> {
                 .map_err(|e| WrapperError::Message(e.to_string()))?,
         )
         .map_err(frost_error("keysign"))?;
+        let key_package = apply_child_tweak_to_key_package(key_package, child_tweak);
         let (nonces, commitments) = frost::round1::commit(key_package.signing_share(), &mut OsRng);
         commitments_map.insert(id, commitments);
         nonces_map.insert(id, nonces);

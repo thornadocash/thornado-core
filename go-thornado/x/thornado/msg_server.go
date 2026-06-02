@@ -263,7 +263,7 @@ func (ms msgServer) TssKeysignFail(goCtx context.Context, msg *types.MsgTssKeysi
 	return externalHandler(goCtx, handler, msg)
 }
 
-func (ms msgServer) TssPool(goCtx context.Context, msg *types.MsgTssPool) (*types.MsgEmpty, error) {
+func (ms msgServer) KeygenVault(goCtx context.Context, msg *types.MsgKeygenVault) (*types.MsgEmpty, error) {
 	handler := NewTssHandler(ms.mgr)
 	return externalHandler(goCtx, handler, msg)
 }

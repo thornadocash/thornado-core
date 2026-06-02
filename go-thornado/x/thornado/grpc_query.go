@@ -459,11 +459,3 @@ func (s *queryServer) Account(c context.Context, req *types.QueryAccountRequest)
 	ctx := s.unwrapSdkContext(c)
 	return s.queryAccount(ctx, req)
 }
-
-func (s *queryServer) Balances(c context.Context, req *types.QueryBalancesRequest) (*types.QueryBalancesResponse, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	ctx := s.unwrapSdkContext(c)
-	return s.queryBalances(ctx, req)
-}

@@ -99,7 +99,7 @@ Required contracts:
 
 Pass criteria:
 - every signer has FROST local state for the same vault pubkey,
-- keyshares are backed up in `MsgTssPool.keyshares_backup_frost`,
+- keyshares are backed up in `MsgKeygenVault.keyshares_backup_frost`,
 - restore path can recreate local state from backup,
 - vault address derives on BTC regtest.
 

@@ -9,8 +9,8 @@ import "types/type_keygen.proto";
 import "gogoproto/gogo.proto";
 import "amino/amino.proto";
 
-message MsgTssPool {
-  option (amino.name) = "thornado/TssPool";
+message MsgKeygenVault {
+  option (amino.name) = "thornado/KeygenVault";
 
   string id = 1 [ (gogoproto.customname) = "ID" ];
   string vault_pub_key = 2

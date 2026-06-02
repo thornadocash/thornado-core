@@ -1671,26 +1671,6 @@ func (qs queryServer) queryAccount(ctx cosmos.Context, req *types.QueryAccountRe
 	}, nil
 }
 
-func (qs queryServer) queryBalances(ctx cosmos.Context, req *types.QueryBalancesRequest) (*types.QueryBalancesResponse, error) {
-	b32, err := cosmos.AccAddressFromBech32(req.Address)
-	if err != nil {
-		return nil, fmt.Errorf("fail to parse address: %w", err)
-	}
-	b := qs.mgr.Keeper().GetBalance(ctx, b32)
-
-	balances := make([]*types.Amount, len(b))
-	for i, bal := range b {
-		balances[i] = &types.Amount{
-			Denom:  bal.Denom,
-			Amount: bal.Amount.String(),
-		}
-	}
-
-	return &types.QueryBalancesResponse{
-		Balances: balances,
-	}, nil
-}
-
 func (qs queryServer) queryUpgradeVotes(ctx cosmos.Context, req *types.QueryUpgradeVotesRequest) (*types.QueryUpgradeVotesResponse, error) {
 	if len(req.Name) == 0 {
 		return nil, errors.New("upgrade name not provided")

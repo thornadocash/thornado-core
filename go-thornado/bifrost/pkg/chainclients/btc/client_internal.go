@@ -74,7 +74,7 @@ func (c *Client) processReorg(block *btcjson.GetBlockVerboseTxResult) ([]types.T
 	if err != nil {
 		c.log.Err(err).Msgf("fail to reprocess all txs")
 	}
-	var txIns []types.TxIn
+	txIns := make([]types.TxIn, 0)
 	for _, height := range blockHeights {
 		c.log.Info().Int64("height", height).Msg("rescanning block")
 		var b *btcjson.GetBlockVerboseTxResult
@@ -158,6 +158,7 @@ func (c *Client) reConfirmTx(height int64) ([]int64, error) {
 		r, err = c.rpc.GetBlockVerbose(hash)
 		if err != nil {
 			c.log.Err(err).Int64("height", blockMeta.Height).Msg("fail to get block verbose result")
+			continue
 		}
 		blockMeta.PreviousHash = r.PreviousHash
 		blockMeta.BlockHash = r.Hash

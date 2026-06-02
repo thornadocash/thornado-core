@@ -14,200 +14,200 @@ import (
 	sync "sync"
 )
 
-var _ protoreflect.List = (*_MsgTssPool_4_list)(nil)
+var _ protoreflect.List = (*_MsgKeygenVault_4_list)(nil)
 
-type _MsgTssPool_4_list struct {
+type _MsgKeygenVault_4_list struct {
 	list *[]string
 }
 
-func (x *_MsgTssPool_4_list) Len() int {
+func (x *_MsgKeygenVault_4_list) Len() int {
 	if x.list == nil {
 		return 0
 	}
 	return len(*x.list)
 }
 
-func (x *_MsgTssPool_4_list) Get(i int) protoreflect.Value {
+func (x *_MsgKeygenVault_4_list) Get(i int) protoreflect.Value {
 	return protoreflect.ValueOfString((*x.list)[i])
 }
 
-func (x *_MsgTssPool_4_list) Set(i int, value protoreflect.Value) {
+func (x *_MsgKeygenVault_4_list) Set(i int, value protoreflect.Value) {
 	valueUnwrapped := value.String()
 	concreteValue := valueUnwrapped
 	(*x.list)[i] = concreteValue
 }
 
-func (x *_MsgTssPool_4_list) Append(value protoreflect.Value) {
+func (x *_MsgKeygenVault_4_list) Append(value protoreflect.Value) {
 	valueUnwrapped := value.String()
 	concreteValue := valueUnwrapped
 	*x.list = append(*x.list, concreteValue)
 }
 
-func (x *_MsgTssPool_4_list) AppendMutable() protoreflect.Value {
-	panic(fmt.Errorf("AppendMutable can not be called on message MsgTssPool at list field PubKeys as it is not of Message kind"))
+func (x *_MsgKeygenVault_4_list) AppendMutable() protoreflect.Value {
+	panic(fmt.Errorf("AppendMutable can not be called on message MsgKeygenVault at list field PubKeys as it is not of Message kind"))
 }
 
-func (x *_MsgTssPool_4_list) Truncate(n int) {
+func (x *_MsgKeygenVault_4_list) Truncate(n int) {
 	*x.list = (*x.list)[:n]
 }
 
-func (x *_MsgTssPool_4_list) NewElement() protoreflect.Value {
+func (x *_MsgKeygenVault_4_list) NewElement() protoreflect.Value {
 	v := ""
 	return protoreflect.ValueOfString(v)
 }
 
-func (x *_MsgTssPool_4_list) IsValid() bool {
+func (x *_MsgKeygenVault_4_list) IsValid() bool {
 	return x.list != nil
 }
 
-var _ protoreflect.List = (*_MsgTssPool_6_list)(nil)
+var _ protoreflect.List = (*_MsgKeygenVault_6_list)(nil)
 
-type _MsgTssPool_6_list struct {
+type _MsgKeygenVault_6_list struct {
 	list *[]*Blame
 }
 
-func (x *_MsgTssPool_6_list) Len() int {
+func (x *_MsgKeygenVault_6_list) Len() int {
 	if x.list == nil {
 		return 0
 	}
 	return len(*x.list)
 }
 
-func (x *_MsgTssPool_6_list) Get(i int) protoreflect.Value {
+func (x *_MsgKeygenVault_6_list) Get(i int) protoreflect.Value {
 	return protoreflect.ValueOfMessage((*x.list)[i].ProtoReflect())
 }
 
-func (x *_MsgTssPool_6_list) Set(i int, value protoreflect.Value) {
+func (x *_MsgKeygenVault_6_list) Set(i int, value protoreflect.Value) {
 	valueUnwrapped := value.Message()
 	concreteValue := valueUnwrapped.Interface().(*Blame)
 	(*x.list)[i] = concreteValue
 }
 
-func (x *_MsgTssPool_6_list) Append(value protoreflect.Value) {
+func (x *_MsgKeygenVault_6_list) Append(value protoreflect.Value) {
 	valueUnwrapped := value.Message()
 	concreteValue := valueUnwrapped.Interface().(*Blame)
 	*x.list = append(*x.list, concreteValue)
 }
 
-func (x *_MsgTssPool_6_list) AppendMutable() protoreflect.Value {
+func (x *_MsgKeygenVault_6_list) AppendMutable() protoreflect.Value {
 	v := new(Blame)
 	*x.list = append(*x.list, v)
 	return protoreflect.ValueOfMessage(v.ProtoReflect())
 }
 
-func (x *_MsgTssPool_6_list) Truncate(n int) {
+func (x *_MsgKeygenVault_6_list) Truncate(n int) {
 	for i := n; i < len(*x.list); i++ {
 		(*x.list)[i] = nil
 	}
 	*x.list = (*x.list)[:n]
 }
 
-func (x *_MsgTssPool_6_list) NewElement() protoreflect.Value {
+func (x *_MsgKeygenVault_6_list) NewElement() protoreflect.Value {
 	v := new(Blame)
 	return protoreflect.ValueOfMessage(v.ProtoReflect())
 }
 
-func (x *_MsgTssPool_6_list) IsValid() bool {
+func (x *_MsgKeygenVault_6_list) IsValid() bool {
 	return x.list != nil
 }
 
-var _ protoreflect.List = (*_MsgTssPool_7_list)(nil)
+var _ protoreflect.List = (*_MsgKeygenVault_7_list)(nil)
 
-type _MsgTssPool_7_list struct {
+type _MsgKeygenVault_7_list struct {
 	list *[]string
 }
 
-func (x *_MsgTssPool_7_list) Len() int {
+func (x *_MsgKeygenVault_7_list) Len() int {
 	if x.list == nil {
 		return 0
 	}
 	return len(*x.list)
 }
 
-func (x *_MsgTssPool_7_list) Get(i int) protoreflect.Value {
+func (x *_MsgKeygenVault_7_list) Get(i int) protoreflect.Value {
 	return protoreflect.ValueOfString((*x.list)[i])
 }
 
-func (x *_MsgTssPool_7_list) Set(i int, value protoreflect.Value) {
+func (x *_MsgKeygenVault_7_list) Set(i int, value protoreflect.Value) {
 	valueUnwrapped := value.String()
 	concreteValue := valueUnwrapped
 	(*x.list)[i] = concreteValue
 }
 
-func (x *_MsgTssPool_7_list) Append(value protoreflect.Value) {
+func (x *_MsgKeygenVault_7_list) Append(value protoreflect.Value) {
 	valueUnwrapped := value.String()
 	concreteValue := valueUnwrapped
 	*x.list = append(*x.list, concreteValue)
 }
 
-func (x *_MsgTssPool_7_list) AppendMutable() protoreflect.Value {
-	panic(fmt.Errorf("AppendMutable can not be called on message MsgTssPool at list field Chains as it is not of Message kind"))
+func (x *_MsgKeygenVault_7_list) AppendMutable() protoreflect.Value {
+	panic(fmt.Errorf("AppendMutable can not be called on message MsgKeygenVault at list field Chains as it is not of Message kind"))
 }
 
-func (x *_MsgTssPool_7_list) Truncate(n int) {
+func (x *_MsgKeygenVault_7_list) Truncate(n int) {
 	*x.list = (*x.list)[:n]
 }
 
-func (x *_MsgTssPool_7_list) NewElement() protoreflect.Value {
+func (x *_MsgKeygenVault_7_list) NewElement() protoreflect.Value {
 	v := ""
 	return protoreflect.ValueOfString(v)
 }
 
-func (x *_MsgTssPool_7_list) IsValid() bool {
+func (x *_MsgKeygenVault_7_list) IsValid() bool {
 	return x.list != nil
 }
 
 var (
-	md_MsgTssPool                        protoreflect.MessageDescriptor
-	fd_MsgTssPool_id                     protoreflect.FieldDescriptor
-	fd_MsgTssPool_vault_pub_key          protoreflect.FieldDescriptor
-	fd_MsgTssPool_keygen_type            protoreflect.FieldDescriptor
-	fd_MsgTssPool_pub_keys               protoreflect.FieldDescriptor
-	fd_MsgTssPool_height                 protoreflect.FieldDescriptor
-	fd_MsgTssPool_blame                  protoreflect.FieldDescriptor
-	fd_MsgTssPool_chains                 protoreflect.FieldDescriptor
-	fd_MsgTssPool_signer                 protoreflect.FieldDescriptor
-	fd_MsgTssPool_keygen_time            protoreflect.FieldDescriptor
-	fd_MsgTssPool_keyshares_backup       protoreflect.FieldDescriptor
-	fd_MsgTssPool_secp256k1_signature    protoreflect.FieldDescriptor
-	fd_MsgTssPool_vault_pub_key_eddsa    protoreflect.FieldDescriptor
-	fd_MsgTssPool_keyshares_backup_eddsa protoreflect.FieldDescriptor
-	fd_MsgTssPool_keyshares_backup_frost protoreflect.FieldDescriptor
-	fd_MsgTssPool_vault_pub_key_frost    protoreflect.FieldDescriptor
-	fd_MsgTssPool_observed_monero_height protoreflect.FieldDescriptor
+	md_MsgKeygenVault                        protoreflect.MessageDescriptor
+	fd_MsgKeygenVault_id                     protoreflect.FieldDescriptor
+	fd_MsgKeygenVault_vault_pub_key          protoreflect.FieldDescriptor
+	fd_MsgKeygenVault_keygen_type            protoreflect.FieldDescriptor
+	fd_MsgKeygenVault_pub_keys               protoreflect.FieldDescriptor
+	fd_MsgKeygenVault_height                 protoreflect.FieldDescriptor
+	fd_MsgKeygenVault_blame                  protoreflect.FieldDescriptor
+	fd_MsgKeygenVault_chains                 protoreflect.FieldDescriptor
+	fd_MsgKeygenVault_signer                 protoreflect.FieldDescriptor
+	fd_MsgKeygenVault_keygen_time            protoreflect.FieldDescriptor
+	fd_MsgKeygenVault_keyshares_backup       protoreflect.FieldDescriptor
+	fd_MsgKeygenVault_secp256k1_signature    protoreflect.FieldDescriptor
+	fd_MsgKeygenVault_vault_pub_key_eddsa    protoreflect.FieldDescriptor
+	fd_MsgKeygenVault_keyshares_backup_eddsa protoreflect.FieldDescriptor
+	fd_MsgKeygenVault_keyshares_backup_frost protoreflect.FieldDescriptor
+	fd_MsgKeygenVault_vault_pub_key_frost    protoreflect.FieldDescriptor
+	fd_MsgKeygenVault_observed_monero_height protoreflect.FieldDescriptor
 )
 
 func init() {
-	file_types_msg_tss_pool_proto_init()
-	md_MsgTssPool = File_types_msg_tss_pool_proto.Messages().ByName("MsgTssPool")
-	fd_MsgTssPool_id = md_MsgTssPool.Fields().ByName("id")
-	fd_MsgTssPool_vault_pub_key = md_MsgTssPool.Fields().ByName("vault_pub_key")
-	fd_MsgTssPool_keygen_type = md_MsgTssPool.Fields().ByName("keygen_type")
-	fd_MsgTssPool_pub_keys = md_MsgTssPool.Fields().ByName("pub_keys")
-	fd_MsgTssPool_height = md_MsgTssPool.Fields().ByName("height")
-	fd_MsgTssPool_blame = md_MsgTssPool.Fields().ByName("blame")
-	fd_MsgTssPool_chains = md_MsgTssPool.Fields().ByName("chains")
-	fd_MsgTssPool_signer = md_MsgTssPool.Fields().ByName("signer")
-	fd_MsgTssPool_keygen_time = md_MsgTssPool.Fields().ByName("keygen_time")
-	fd_MsgTssPool_keyshares_backup = md_MsgTssPool.Fields().ByName("keyshares_backup")
-	fd_MsgTssPool_secp256k1_signature = md_MsgTssPool.Fields().ByName("secp256k1_signature")
-	fd_MsgTssPool_vault_pub_key_eddsa = md_MsgTssPool.Fields().ByName("vault_pub_key_eddsa")
-	fd_MsgTssPool_keyshares_backup_eddsa = md_MsgTssPool.Fields().ByName("keyshares_backup_eddsa")
-	fd_MsgTssPool_keyshares_backup_frost = md_MsgTssPool.Fields().ByName("keyshares_backup_frost")
-	fd_MsgTssPool_vault_pub_key_frost = md_MsgTssPool.Fields().ByName("vault_pub_key_frost")
-	fd_MsgTssPool_observed_monero_height = md_MsgTssPool.Fields().ByName("observed_monero_height")
+	file_types_msg_keygen_vault_proto_init()
+	md_MsgKeygenVault = File_types_msg_keygen_vault_proto.Messages().ByName("MsgKeygenVault")
+	fd_MsgKeygenVault_id = md_MsgKeygenVault.Fields().ByName("id")
+	fd_MsgKeygenVault_vault_pub_key = md_MsgKeygenVault.Fields().ByName("vault_pub_key")
+	fd_MsgKeygenVault_keygen_type = md_MsgKeygenVault.Fields().ByName("keygen_type")
+	fd_MsgKeygenVault_pub_keys = md_MsgKeygenVault.Fields().ByName("pub_keys")
+	fd_MsgKeygenVault_height = md_MsgKeygenVault.Fields().ByName("height")
+	fd_MsgKeygenVault_blame = md_MsgKeygenVault.Fields().ByName("blame")
+	fd_MsgKeygenVault_chains = md_MsgKeygenVault.Fields().ByName("chains")
+	fd_MsgKeygenVault_signer = md_MsgKeygenVault.Fields().ByName("signer")
+	fd_MsgKeygenVault_keygen_time = md_MsgKeygenVault.Fields().ByName("keygen_time")
+	fd_MsgKeygenVault_keyshares_backup = md_MsgKeygenVault.Fields().ByName("keyshares_backup")
+	fd_MsgKeygenVault_secp256k1_signature = md_MsgKeygenVault.Fields().ByName("secp256k1_signature")
+	fd_MsgKeygenVault_vault_pub_key_eddsa = md_MsgKeygenVault.Fields().ByName("vault_pub_key_eddsa")
+	fd_MsgKeygenVault_keyshares_backup_eddsa = md_MsgKeygenVault.Fields().ByName("keyshares_backup_eddsa")
+	fd_MsgKeygenVault_keyshares_backup_frost = md_MsgKeygenVault.Fields().ByName("keyshares_backup_frost")
+	fd_MsgKeygenVault_vault_pub_key_frost = md_MsgKeygenVault.Fields().ByName("vault_pub_key_frost")
+	fd_MsgKeygenVault_observed_monero_height = md_MsgKeygenVault.Fields().ByName("observed_monero_height")
 }
 
-var _ protoreflect.Message = (*fastReflection_MsgTssPool)(nil)
+var _ protoreflect.Message = (*fastReflection_MsgKeygenVault)(nil)
 
-type fastReflection_MsgTssPool MsgTssPool
+type fastReflection_MsgKeygenVault MsgKeygenVault
 
-func (x *MsgTssPool) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_MsgTssPool)(x)
+func (x *MsgKeygenVault) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_MsgKeygenVault)(x)
 }
 
-func (x *MsgTssPool) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_msg_tss_pool_proto_msgTypes[0]
+func (x *MsgKeygenVault) slowProtoReflect() protoreflect.Message {
+	mi := &file_types_msg_keygen_vault_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -218,43 +218,43 @@ func (x *MsgTssPool) slowProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-var _fastReflection_MsgTssPool_messageType fastReflection_MsgTssPool_messageType
-var _ protoreflect.MessageType = fastReflection_MsgTssPool_messageType{}
+var _fastReflection_MsgKeygenVault_messageType fastReflection_MsgKeygenVault_messageType
+var _ protoreflect.MessageType = fastReflection_MsgKeygenVault_messageType{}
 
-type fastReflection_MsgTssPool_messageType struct{}
+type fastReflection_MsgKeygenVault_messageType struct{}
 
-func (x fastReflection_MsgTssPool_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_MsgTssPool)(nil)
+func (x fastReflection_MsgKeygenVault_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_MsgKeygenVault)(nil)
 }
-func (x fastReflection_MsgTssPool_messageType) New() protoreflect.Message {
-	return new(fastReflection_MsgTssPool)
+func (x fastReflection_MsgKeygenVault_messageType) New() protoreflect.Message {
+	return new(fastReflection_MsgKeygenVault)
 }
-func (x fastReflection_MsgTssPool_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_MsgTssPool
+func (x fastReflection_MsgKeygenVault_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_MsgKeygenVault
 }
 
 // Descriptor returns message descriptor, which contains only the protobuf
 // type information for the message.
-func (x *fastReflection_MsgTssPool) Descriptor() protoreflect.MessageDescriptor {
-	return md_MsgTssPool
+func (x *fastReflection_MsgKeygenVault) Descriptor() protoreflect.MessageDescriptor {
+	return md_MsgKeygenVault
 }
 
 // Type returns the message type, which encapsulates both Go and protobuf
 // type information. If the Go type information is not needed,
 // it is recommended that the message descriptor be used instead.
-func (x *fastReflection_MsgTssPool) Type() protoreflect.MessageType {
-	return _fastReflection_MsgTssPool_messageType
+func (x *fastReflection_MsgKeygenVault) Type() protoreflect.MessageType {
+	return _fastReflection_MsgKeygenVault_messageType
 }
 
 // New returns a newly allocated and mutable empty message.
-func (x *fastReflection_MsgTssPool) New() protoreflect.Message {
-	return new(fastReflection_MsgTssPool)
+func (x *fastReflection_MsgKeygenVault) New() protoreflect.Message {
+	return new(fastReflection_MsgKeygenVault)
 }
 
 // Interface unwraps the message reflection interface and
 // returns the underlying ProtoMessage interface.
-func (x *fastReflection_MsgTssPool) Interface() protoreflect.ProtoMessage {
-	return (*MsgTssPool)(x)
+func (x *fastReflection_MsgKeygenVault) Interface() protoreflect.ProtoMessage {
+	return (*MsgKeygenVault)(x)
 }
 
 // Range iterates over every populated field in an undefined order,
@@ -262,100 +262,100 @@ func (x *fastReflection_MsgTssPool) Interface() protoreflect.ProtoMessage {
 // Range returns immediately if f returns false.
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
-func (x *fastReflection_MsgTssPool) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+func (x *fastReflection_MsgKeygenVault) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
 	if x.Id != "" {
 		value := protoreflect.ValueOfString(x.Id)
-		if !f(fd_MsgTssPool_id, value) {
+		if !f(fd_MsgKeygenVault_id, value) {
 			return
 		}
 	}
 	if x.VaultPubKey != "" {
 		value := protoreflect.ValueOfString(x.VaultPubKey)
-		if !f(fd_MsgTssPool_vault_pub_key, value) {
+		if !f(fd_MsgKeygenVault_vault_pub_key, value) {
 			return
 		}
 	}
 	if x.KeygenType != 0 {
 		value := protoreflect.ValueOfEnum((protoreflect.EnumNumber)(x.KeygenType))
-		if !f(fd_MsgTssPool_keygen_type, value) {
+		if !f(fd_MsgKeygenVault_keygen_type, value) {
 			return
 		}
 	}
 	if len(x.PubKeys) != 0 {
-		value := protoreflect.ValueOfList(&_MsgTssPool_4_list{list: &x.PubKeys})
-		if !f(fd_MsgTssPool_pub_keys, value) {
+		value := protoreflect.ValueOfList(&_MsgKeygenVault_4_list{list: &x.PubKeys})
+		if !f(fd_MsgKeygenVault_pub_keys, value) {
 			return
 		}
 	}
 	if x.Height != int64(0) {
 		value := protoreflect.ValueOfInt64(x.Height)
-		if !f(fd_MsgTssPool_height, value) {
+		if !f(fd_MsgKeygenVault_height, value) {
 			return
 		}
 	}
 	if len(x.Blame) != 0 {
-		value := protoreflect.ValueOfList(&_MsgTssPool_6_list{list: &x.Blame})
-		if !f(fd_MsgTssPool_blame, value) {
+		value := protoreflect.ValueOfList(&_MsgKeygenVault_6_list{list: &x.Blame})
+		if !f(fd_MsgKeygenVault_blame, value) {
 			return
 		}
 	}
 	if len(x.Chains) != 0 {
-		value := protoreflect.ValueOfList(&_MsgTssPool_7_list{list: &x.Chains})
-		if !f(fd_MsgTssPool_chains, value) {
+		value := protoreflect.ValueOfList(&_MsgKeygenVault_7_list{list: &x.Chains})
+		if !f(fd_MsgKeygenVault_chains, value) {
 			return
 		}
 	}
 	if len(x.Signer) != 0 {
 		value := protoreflect.ValueOfBytes(x.Signer)
-		if !f(fd_MsgTssPool_signer, value) {
+		if !f(fd_MsgKeygenVault_signer, value) {
 			return
 		}
 	}
 	if x.KeygenTime != int64(0) {
 		value := protoreflect.ValueOfInt64(x.KeygenTime)
-		if !f(fd_MsgTssPool_keygen_time, value) {
+		if !f(fd_MsgKeygenVault_keygen_time, value) {
 			return
 		}
 	}
 	if len(x.KeysharesBackup) != 0 {
 		value := protoreflect.ValueOfBytes(x.KeysharesBackup)
-		if !f(fd_MsgTssPool_keyshares_backup, value) {
+		if !f(fd_MsgKeygenVault_keyshares_backup, value) {
 			return
 		}
 	}
 	if len(x.Secp256K1Signature) != 0 {
 		value := protoreflect.ValueOfBytes(x.Secp256K1Signature)
-		if !f(fd_MsgTssPool_secp256k1_signature, value) {
+		if !f(fd_MsgKeygenVault_secp256k1_signature, value) {
 			return
 		}
 	}
 	if x.VaultPubKeyEddsa != "" {
 		value := protoreflect.ValueOfString(x.VaultPubKeyEddsa)
-		if !f(fd_MsgTssPool_vault_pub_key_eddsa, value) {
+		if !f(fd_MsgKeygenVault_vault_pub_key_eddsa, value) {
 			return
 		}
 	}
 	if len(x.KeysharesBackupEddsa) != 0 {
 		value := protoreflect.ValueOfBytes(x.KeysharesBackupEddsa)
-		if !f(fd_MsgTssPool_keyshares_backup_eddsa, value) {
+		if !f(fd_MsgKeygenVault_keyshares_backup_eddsa, value) {
 			return
 		}
 	}
 	if len(x.KeysharesBackupFrost) != 0 {
 		value := protoreflect.ValueOfBytes(x.KeysharesBackupFrost)
-		if !f(fd_MsgTssPool_keyshares_backup_frost, value) {
+		if !f(fd_MsgKeygenVault_keyshares_backup_frost, value) {
 			return
 		}
 	}
 	if x.VaultPubKeyFrost != "" {
 		value := protoreflect.ValueOfString(x.VaultPubKeyFrost)
-		if !f(fd_MsgTssPool_vault_pub_key_frost, value) {
+		if !f(fd_MsgKeygenVault_vault_pub_key_frost, value) {
 			return
 		}
 	}
 	if x.ObservedMoneroHeight != int64(0) {
 		value := protoreflect.ValueOfInt64(x.ObservedMoneroHeight)
-		if !f(fd_MsgTssPool_observed_monero_height, value) {
+		if !f(fd_MsgKeygenVault_observed_monero_height, value) {
 			return
 		}
 	}
@@ -372,45 +372,45 @@ func (x *fastReflection_MsgTssPool) Range(f func(protoreflect.FieldDescriptor, p
 // In other cases (aside from the nullable cases above),
 // a proto3 scalar field is populated if it contains a non-zero value, and
 // a repeated field is populated if it is non-empty.
-func (x *fastReflection_MsgTssPool) Has(fd protoreflect.FieldDescriptor) bool {
+func (x *fastReflection_MsgKeygenVault) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.MsgTssPool.id":
+	case "types.MsgKeygenVault.id":
 		return x.Id != ""
-	case "types.MsgTssPool.vault_pub_key":
+	case "types.MsgKeygenVault.vault_pub_key":
 		return x.VaultPubKey != ""
-	case "types.MsgTssPool.keygen_type":
+	case "types.MsgKeygenVault.keygen_type":
 		return x.KeygenType != 0
-	case "types.MsgTssPool.pub_keys":
+	case "types.MsgKeygenVault.pub_keys":
 		return len(x.PubKeys) != 0
-	case "types.MsgTssPool.height":
+	case "types.MsgKeygenVault.height":
 		return x.Height != int64(0)
-	case "types.MsgTssPool.blame":
+	case "types.MsgKeygenVault.blame":
 		return len(x.Blame) != 0
-	case "types.MsgTssPool.chains":
+	case "types.MsgKeygenVault.chains":
 		return len(x.Chains) != 0
-	case "types.MsgTssPool.signer":
+	case "types.MsgKeygenVault.signer":
 		return len(x.Signer) != 0
-	case "types.MsgTssPool.keygen_time":
+	case "types.MsgKeygenVault.keygen_time":
 		return x.KeygenTime != int64(0)
-	case "types.MsgTssPool.keyshares_backup":
+	case "types.MsgKeygenVault.keyshares_backup":
 		return len(x.KeysharesBackup) != 0
-	case "types.MsgTssPool.secp256k1_signature":
+	case "types.MsgKeygenVault.secp256k1_signature":
 		return len(x.Secp256K1Signature) != 0
-	case "types.MsgTssPool.vault_pub_key_eddsa":
+	case "types.MsgKeygenVault.vault_pub_key_eddsa":
 		return x.VaultPubKeyEddsa != ""
-	case "types.MsgTssPool.keyshares_backup_eddsa":
+	case "types.MsgKeygenVault.keyshares_backup_eddsa":
 		return len(x.KeysharesBackupEddsa) != 0
-	case "types.MsgTssPool.keyshares_backup_frost":
+	case "types.MsgKeygenVault.keyshares_backup_frost":
 		return len(x.KeysharesBackupFrost) != 0
-	case "types.MsgTssPool.vault_pub_key_frost":
+	case "types.MsgKeygenVault.vault_pub_key_frost":
 		return x.VaultPubKeyFrost != ""
-	case "types.MsgTssPool.observed_monero_height":
+	case "types.MsgKeygenVault.observed_monero_height":
 		return x.ObservedMoneroHeight != int64(0)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgTssPool"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgKeygenVault"))
 		}
-		panic(fmt.Errorf("message types.MsgTssPool does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgKeygenVault does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -420,45 +420,45 @@ func (x *fastReflection_MsgTssPool) Has(fd protoreflect.FieldDescriptor) bool {
 // associated with the given field number.
 //
 // Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgTssPool) Clear(fd protoreflect.FieldDescriptor) {
+func (x *fastReflection_MsgKeygenVault) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.MsgTssPool.id":
+	case "types.MsgKeygenVault.id":
 		x.Id = ""
-	case "types.MsgTssPool.vault_pub_key":
+	case "types.MsgKeygenVault.vault_pub_key":
 		x.VaultPubKey = ""
-	case "types.MsgTssPool.keygen_type":
+	case "types.MsgKeygenVault.keygen_type":
 		x.KeygenType = 0
-	case "types.MsgTssPool.pub_keys":
+	case "types.MsgKeygenVault.pub_keys":
 		x.PubKeys = nil
-	case "types.MsgTssPool.height":
+	case "types.MsgKeygenVault.height":
 		x.Height = int64(0)
-	case "types.MsgTssPool.blame":
+	case "types.MsgKeygenVault.blame":
 		x.Blame = nil
-	case "types.MsgTssPool.chains":
+	case "types.MsgKeygenVault.chains":
 		x.Chains = nil
-	case "types.MsgTssPool.signer":
+	case "types.MsgKeygenVault.signer":
 		x.Signer = nil
-	case "types.MsgTssPool.keygen_time":
+	case "types.MsgKeygenVault.keygen_time":
 		x.KeygenTime = int64(0)
-	case "types.MsgTssPool.keyshares_backup":
+	case "types.MsgKeygenVault.keyshares_backup":
 		x.KeysharesBackup = nil
-	case "types.MsgTssPool.secp256k1_signature":
+	case "types.MsgKeygenVault.secp256k1_signature":
 		x.Secp256K1Signature = nil
-	case "types.MsgTssPool.vault_pub_key_eddsa":
+	case "types.MsgKeygenVault.vault_pub_key_eddsa":
 		x.VaultPubKeyEddsa = ""
-	case "types.MsgTssPool.keyshares_backup_eddsa":
+	case "types.MsgKeygenVault.keyshares_backup_eddsa":
 		x.KeysharesBackupEddsa = nil
-	case "types.MsgTssPool.keyshares_backup_frost":
+	case "types.MsgKeygenVault.keyshares_backup_frost":
 		x.KeysharesBackupFrost = nil
-	case "types.MsgTssPool.vault_pub_key_frost":
+	case "types.MsgKeygenVault.vault_pub_key_frost":
 		x.VaultPubKeyFrost = ""
-	case "types.MsgTssPool.observed_monero_height":
+	case "types.MsgKeygenVault.observed_monero_height":
 		x.ObservedMoneroHeight = int64(0)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgTssPool"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgKeygenVault"))
 		}
-		panic(fmt.Errorf("message types.MsgTssPool does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgKeygenVault does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -468,70 +468,70 @@ func (x *fastReflection_MsgTssPool) Clear(fd protoreflect.FieldDescriptor) {
 // the default value of a bytes scalar is guaranteed to be a copy.
 // For unpopulated composite types, it returns an empty, read-only view
 // of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_MsgTssPool) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgKeygenVault) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.MsgTssPool.id":
+	case "types.MsgKeygenVault.id":
 		value := x.Id
 		return protoreflect.ValueOfString(value)
-	case "types.MsgTssPool.vault_pub_key":
+	case "types.MsgKeygenVault.vault_pub_key":
 		value := x.VaultPubKey
 		return protoreflect.ValueOfString(value)
-	case "types.MsgTssPool.keygen_type":
+	case "types.MsgKeygenVault.keygen_type":
 		value := x.KeygenType
 		return protoreflect.ValueOfEnum((protoreflect.EnumNumber)(value))
-	case "types.MsgTssPool.pub_keys":
+	case "types.MsgKeygenVault.pub_keys":
 		if len(x.PubKeys) == 0 {
-			return protoreflect.ValueOfList(&_MsgTssPool_4_list{})
+			return protoreflect.ValueOfList(&_MsgKeygenVault_4_list{})
 		}
-		listValue := &_MsgTssPool_4_list{list: &x.PubKeys}
+		listValue := &_MsgKeygenVault_4_list{list: &x.PubKeys}
 		return protoreflect.ValueOfList(listValue)
-	case "types.MsgTssPool.height":
+	case "types.MsgKeygenVault.height":
 		value := x.Height
 		return protoreflect.ValueOfInt64(value)
-	case "types.MsgTssPool.blame":
+	case "types.MsgKeygenVault.blame":
 		if len(x.Blame) == 0 {
-			return protoreflect.ValueOfList(&_MsgTssPool_6_list{})
+			return protoreflect.ValueOfList(&_MsgKeygenVault_6_list{})
 		}
-		listValue := &_MsgTssPool_6_list{list: &x.Blame}
+		listValue := &_MsgKeygenVault_6_list{list: &x.Blame}
 		return protoreflect.ValueOfList(listValue)
-	case "types.MsgTssPool.chains":
+	case "types.MsgKeygenVault.chains":
 		if len(x.Chains) == 0 {
-			return protoreflect.ValueOfList(&_MsgTssPool_7_list{})
+			return protoreflect.ValueOfList(&_MsgKeygenVault_7_list{})
 		}
-		listValue := &_MsgTssPool_7_list{list: &x.Chains}
+		listValue := &_MsgKeygenVault_7_list{list: &x.Chains}
 		return protoreflect.ValueOfList(listValue)
-	case "types.MsgTssPool.signer":
+	case "types.MsgKeygenVault.signer":
 		value := x.Signer
 		return protoreflect.ValueOfBytes(value)
-	case "types.MsgTssPool.keygen_time":
+	case "types.MsgKeygenVault.keygen_time":
 		value := x.KeygenTime
 		return protoreflect.ValueOfInt64(value)
-	case "types.MsgTssPool.keyshares_backup":
+	case "types.MsgKeygenVault.keyshares_backup":
 		value := x.KeysharesBackup
 		return protoreflect.ValueOfBytes(value)
-	case "types.MsgTssPool.secp256k1_signature":
+	case "types.MsgKeygenVault.secp256k1_signature":
 		value := x.Secp256K1Signature
 		return protoreflect.ValueOfBytes(value)
-	case "types.MsgTssPool.vault_pub_key_eddsa":
+	case "types.MsgKeygenVault.vault_pub_key_eddsa":
 		value := x.VaultPubKeyEddsa
 		return protoreflect.ValueOfString(value)
-	case "types.MsgTssPool.keyshares_backup_eddsa":
+	case "types.MsgKeygenVault.keyshares_backup_eddsa":
 		value := x.KeysharesBackupEddsa
 		return protoreflect.ValueOfBytes(value)
-	case "types.MsgTssPool.keyshares_backup_frost":
+	case "types.MsgKeygenVault.keyshares_backup_frost":
 		value := x.KeysharesBackupFrost
 		return protoreflect.ValueOfBytes(value)
-	case "types.MsgTssPool.vault_pub_key_frost":
+	case "types.MsgKeygenVault.vault_pub_key_frost":
 		value := x.VaultPubKeyFrost
 		return protoreflect.ValueOfString(value)
-	case "types.MsgTssPool.observed_monero_height":
+	case "types.MsgKeygenVault.observed_monero_height":
 		value := x.ObservedMoneroHeight
 		return protoreflect.ValueOfInt64(value)
 	default:
 		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgTssPool"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgKeygenVault"))
 		}
-		panic(fmt.Errorf("message types.MsgTssPool does not contain field %s", descriptor.FullName()))
+		panic(fmt.Errorf("message types.MsgKeygenVault does not contain field %s", descriptor.FullName()))
 	}
 }
 
@@ -545,51 +545,51 @@ func (x *fastReflection_MsgTssPool) Get(descriptor protoreflect.FieldDescriptor)
 // empty, read-only value, then it panics.
 //
 // Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgTssPool) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+func (x *fastReflection_MsgKeygenVault) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.MsgTssPool.id":
+	case "types.MsgKeygenVault.id":
 		x.Id = value.Interface().(string)
-	case "types.MsgTssPool.vault_pub_key":
+	case "types.MsgKeygenVault.vault_pub_key":
 		x.VaultPubKey = value.Interface().(string)
-	case "types.MsgTssPool.keygen_type":
+	case "types.MsgKeygenVault.keygen_type":
 		x.KeygenType = (KeygenType)(value.Enum())
-	case "types.MsgTssPool.pub_keys":
+	case "types.MsgKeygenVault.pub_keys":
 		lv := value.List()
-		clv := lv.(*_MsgTssPool_4_list)
+		clv := lv.(*_MsgKeygenVault_4_list)
 		x.PubKeys = *clv.list
-	case "types.MsgTssPool.height":
+	case "types.MsgKeygenVault.height":
 		x.Height = value.Int()
-	case "types.MsgTssPool.blame":
+	case "types.MsgKeygenVault.blame":
 		lv := value.List()
-		clv := lv.(*_MsgTssPool_6_list)
+		clv := lv.(*_MsgKeygenVault_6_list)
 		x.Blame = *clv.list
-	case "types.MsgTssPool.chains":
+	case "types.MsgKeygenVault.chains":
 		lv := value.List()
-		clv := lv.(*_MsgTssPool_7_list)
+		clv := lv.(*_MsgKeygenVault_7_list)
 		x.Chains = *clv.list
-	case "types.MsgTssPool.signer":
+	case "types.MsgKeygenVault.signer":
 		x.Signer = value.Bytes()
-	case "types.MsgTssPool.keygen_time":
+	case "types.MsgKeygenVault.keygen_time":
 		x.KeygenTime = value.Int()
-	case "types.MsgTssPool.keyshares_backup":
+	case "types.MsgKeygenVault.keyshares_backup":
 		x.KeysharesBackup = value.Bytes()
-	case "types.MsgTssPool.secp256k1_signature":
+	case "types.MsgKeygenVault.secp256k1_signature":
 		x.Secp256K1Signature = value.Bytes()
-	case "types.MsgTssPool.vault_pub_key_eddsa":
+	case "types.MsgKeygenVault.vault_pub_key_eddsa":
 		x.VaultPubKeyEddsa = value.Interface().(string)
-	case "types.MsgTssPool.keyshares_backup_eddsa":
+	case "types.MsgKeygenVault.keyshares_backup_eddsa":
 		x.KeysharesBackupEddsa = value.Bytes()
-	case "types.MsgTssPool.keyshares_backup_frost":
+	case "types.MsgKeygenVault.keyshares_backup_frost":
 		x.KeysharesBackupFrost = value.Bytes()
-	case "types.MsgTssPool.vault_pub_key_frost":
+	case "types.MsgKeygenVault.vault_pub_key_frost":
 		x.VaultPubKeyFrost = value.Interface().(string)
-	case "types.MsgTssPool.observed_monero_height":
+	case "types.MsgKeygenVault.observed_monero_height":
 		x.ObservedMoneroHeight = value.Int()
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgTssPool"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgKeygenVault"))
 		}
-		panic(fmt.Errorf("message types.MsgTssPool does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgKeygenVault does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -603,115 +603,115 @@ func (x *fastReflection_MsgTssPool) Set(fd protoreflect.FieldDescriptor, value p
 // It panics if the field does not contain a composite type.
 //
 // Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgTssPool) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgKeygenVault) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.MsgTssPool.pub_keys":
+	case "types.MsgKeygenVault.pub_keys":
 		if x.PubKeys == nil {
 			x.PubKeys = []string{}
 		}
-		value := &_MsgTssPool_4_list{list: &x.PubKeys}
+		value := &_MsgKeygenVault_4_list{list: &x.PubKeys}
 		return protoreflect.ValueOfList(value)
-	case "types.MsgTssPool.blame":
+	case "types.MsgKeygenVault.blame":
 		if x.Blame == nil {
 			x.Blame = []*Blame{}
 		}
-		value := &_MsgTssPool_6_list{list: &x.Blame}
+		value := &_MsgKeygenVault_6_list{list: &x.Blame}
 		return protoreflect.ValueOfList(value)
-	case "types.MsgTssPool.chains":
+	case "types.MsgKeygenVault.chains":
 		if x.Chains == nil {
 			x.Chains = []string{}
 		}
-		value := &_MsgTssPool_7_list{list: &x.Chains}
+		value := &_MsgKeygenVault_7_list{list: &x.Chains}
 		return protoreflect.ValueOfList(value)
-	case "types.MsgTssPool.id":
-		panic(fmt.Errorf("field id of message types.MsgTssPool is not mutable"))
-	case "types.MsgTssPool.vault_pub_key":
-		panic(fmt.Errorf("field vault_pub_key of message types.MsgTssPool is not mutable"))
-	case "types.MsgTssPool.keygen_type":
-		panic(fmt.Errorf("field keygen_type of message types.MsgTssPool is not mutable"))
-	case "types.MsgTssPool.height":
-		panic(fmt.Errorf("field height of message types.MsgTssPool is not mutable"))
-	case "types.MsgTssPool.signer":
-		panic(fmt.Errorf("field signer of message types.MsgTssPool is not mutable"))
-	case "types.MsgTssPool.keygen_time":
-		panic(fmt.Errorf("field keygen_time of message types.MsgTssPool is not mutable"))
-	case "types.MsgTssPool.keyshares_backup":
-		panic(fmt.Errorf("field keyshares_backup of message types.MsgTssPool is not mutable"))
-	case "types.MsgTssPool.secp256k1_signature":
-		panic(fmt.Errorf("field secp256k1_signature of message types.MsgTssPool is not mutable"))
-	case "types.MsgTssPool.vault_pub_key_eddsa":
-		panic(fmt.Errorf("field vault_pub_key_eddsa of message types.MsgTssPool is not mutable"))
-	case "types.MsgTssPool.keyshares_backup_eddsa":
-		panic(fmt.Errorf("field keyshares_backup_eddsa of message types.MsgTssPool is not mutable"))
-	case "types.MsgTssPool.keyshares_backup_frost":
-		panic(fmt.Errorf("field keyshares_backup_frost of message types.MsgTssPool is not mutable"))
-	case "types.MsgTssPool.vault_pub_key_frost":
-		panic(fmt.Errorf("field vault_pub_key_frost of message types.MsgTssPool is not mutable"))
-	case "types.MsgTssPool.observed_monero_height":
-		panic(fmt.Errorf("field observed_monero_height of message types.MsgTssPool is not mutable"))
+	case "types.MsgKeygenVault.id":
+		panic(fmt.Errorf("field id of message types.MsgKeygenVault is not mutable"))
+	case "types.MsgKeygenVault.vault_pub_key":
+		panic(fmt.Errorf("field vault_pub_key of message types.MsgKeygenVault is not mutable"))
+	case "types.MsgKeygenVault.keygen_type":
+		panic(fmt.Errorf("field keygen_type of message types.MsgKeygenVault is not mutable"))
+	case "types.MsgKeygenVault.height":
+		panic(fmt.Errorf("field height of message types.MsgKeygenVault is not mutable"))
+	case "types.MsgKeygenVault.signer":
+		panic(fmt.Errorf("field signer of message types.MsgKeygenVault is not mutable"))
+	case "types.MsgKeygenVault.keygen_time":
+		panic(fmt.Errorf("field keygen_time of message types.MsgKeygenVault is not mutable"))
+	case "types.MsgKeygenVault.keyshares_backup":
+		panic(fmt.Errorf("field keyshares_backup of message types.MsgKeygenVault is not mutable"))
+	case "types.MsgKeygenVault.secp256k1_signature":
+		panic(fmt.Errorf("field secp256k1_signature of message types.MsgKeygenVault is not mutable"))
+	case "types.MsgKeygenVault.vault_pub_key_eddsa":
+		panic(fmt.Errorf("field vault_pub_key_eddsa of message types.MsgKeygenVault is not mutable"))
+	case "types.MsgKeygenVault.keyshares_backup_eddsa":
+		panic(fmt.Errorf("field keyshares_backup_eddsa of message types.MsgKeygenVault is not mutable"))
+	case "types.MsgKeygenVault.keyshares_backup_frost":
+		panic(fmt.Errorf("field keyshares_backup_frost of message types.MsgKeygenVault is not mutable"))
+	case "types.MsgKeygenVault.vault_pub_key_frost":
+		panic(fmt.Errorf("field vault_pub_key_frost of message types.MsgKeygenVault is not mutable"))
+	case "types.MsgKeygenVault.observed_monero_height":
+		panic(fmt.Errorf("field observed_monero_height of message types.MsgKeygenVault is not mutable"))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgTssPool"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgKeygenVault"))
 		}
-		panic(fmt.Errorf("message types.MsgTssPool does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgKeygenVault does not contain field %s", fd.FullName()))
 	}
 }
 
 // NewField returns a new value that is assignable to the field
 // for the given descriptor. For scalars, this returns the default value.
 // For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_MsgTssPool) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_MsgKeygenVault) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.MsgTssPool.id":
+	case "types.MsgKeygenVault.id":
 		return protoreflect.ValueOfString("")
-	case "types.MsgTssPool.vault_pub_key":
+	case "types.MsgKeygenVault.vault_pub_key":
 		return protoreflect.ValueOfString("")
-	case "types.MsgTssPool.keygen_type":
+	case "types.MsgKeygenVault.keygen_type":
 		return protoreflect.ValueOfEnum(0)
-	case "types.MsgTssPool.pub_keys":
+	case "types.MsgKeygenVault.pub_keys":
 		list := []string{}
-		return protoreflect.ValueOfList(&_MsgTssPool_4_list{list: &list})
-	case "types.MsgTssPool.height":
+		return protoreflect.ValueOfList(&_MsgKeygenVault_4_list{list: &list})
+	case "types.MsgKeygenVault.height":
 		return protoreflect.ValueOfInt64(int64(0))
-	case "types.MsgTssPool.blame":
+	case "types.MsgKeygenVault.blame":
 		list := []*Blame{}
-		return protoreflect.ValueOfList(&_MsgTssPool_6_list{list: &list})
-	case "types.MsgTssPool.chains":
+		return protoreflect.ValueOfList(&_MsgKeygenVault_6_list{list: &list})
+	case "types.MsgKeygenVault.chains":
 		list := []string{}
-		return protoreflect.ValueOfList(&_MsgTssPool_7_list{list: &list})
-	case "types.MsgTssPool.signer":
+		return protoreflect.ValueOfList(&_MsgKeygenVault_7_list{list: &list})
+	case "types.MsgKeygenVault.signer":
 		return protoreflect.ValueOfBytes(nil)
-	case "types.MsgTssPool.keygen_time":
+	case "types.MsgKeygenVault.keygen_time":
 		return protoreflect.ValueOfInt64(int64(0))
-	case "types.MsgTssPool.keyshares_backup":
+	case "types.MsgKeygenVault.keyshares_backup":
 		return protoreflect.ValueOfBytes(nil)
-	case "types.MsgTssPool.secp256k1_signature":
+	case "types.MsgKeygenVault.secp256k1_signature":
 		return protoreflect.ValueOfBytes(nil)
-	case "types.MsgTssPool.vault_pub_key_eddsa":
+	case "types.MsgKeygenVault.vault_pub_key_eddsa":
 		return protoreflect.ValueOfString("")
-	case "types.MsgTssPool.keyshares_backup_eddsa":
+	case "types.MsgKeygenVault.keyshares_backup_eddsa":
 		return protoreflect.ValueOfBytes(nil)
-	case "types.MsgTssPool.keyshares_backup_frost":
+	case "types.MsgKeygenVault.keyshares_backup_frost":
 		return protoreflect.ValueOfBytes(nil)
-	case "types.MsgTssPool.vault_pub_key_frost":
+	case "types.MsgKeygenVault.vault_pub_key_frost":
 		return protoreflect.ValueOfString("")
-	case "types.MsgTssPool.observed_monero_height":
+	case "types.MsgKeygenVault.observed_monero_height":
 		return protoreflect.ValueOfInt64(int64(0))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgTssPool"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgKeygenVault"))
 		}
-		panic(fmt.Errorf("message types.MsgTssPool does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.MsgKeygenVault does not contain field %s", fd.FullName()))
 	}
 }
 
 // WhichOneof reports which field within the oneof is populated,
 // returning nil if none are populated.
 // It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_MsgTssPool) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+func (x *fastReflection_MsgKeygenVault) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
 	switch d.FullName() {
 	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.MsgTssPool", d.FullName()))
+		panic(fmt.Errorf("%s is not a oneof field in types.MsgKeygenVault", d.FullName()))
 	}
 	panic("unreachable")
 }
@@ -719,7 +719,7 @@ func (x *fastReflection_MsgTssPool) WhichOneof(d protoreflect.OneofDescriptor) p
 // GetUnknown retrieves the entire list of unknown fields.
 // The caller may only mutate the contents of the RawFields
 // if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_MsgTssPool) GetUnknown() protoreflect.RawFields {
+func (x *fastReflection_MsgKeygenVault) GetUnknown() protoreflect.RawFields {
 	return x.unknownFields
 }
 
@@ -730,7 +730,7 @@ func (x *fastReflection_MsgTssPool) GetUnknown() protoreflect.RawFields {
 // An empty RawFields may be passed to clear the fields.
 //
 // SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_MsgTssPool) SetUnknown(fields protoreflect.RawFields) {
+func (x *fastReflection_MsgKeygenVault) SetUnknown(fields protoreflect.RawFields) {
 	x.unknownFields = fields
 }
 
@@ -742,7 +742,7 @@ func (x *fastReflection_MsgTssPool) SetUnknown(fields protoreflect.RawFields) {
 // message type, but the details are implementation dependent.
 // Validity is not part of the protobuf data model, and may not
 // be preserved in marshaling or other operations.
-func (x *fastReflection_MsgTssPool) IsValid() bool {
+func (x *fastReflection_MsgKeygenVault) IsValid() bool {
 	return x != nil
 }
 
@@ -752,9 +752,9 @@ func (x *fastReflection_MsgTssPool) IsValid() bool {
 // The returned methods type is identical to
 // "google.golang.org/protobuf/runtime/protoiface".Methods.
 // Consult the protoiface package documentation for details.
-func (x *fastReflection_MsgTssPool) ProtoMethods() *protoiface.Methods {
+func (x *fastReflection_MsgKeygenVault) ProtoMethods() *protoiface.Methods {
 	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*MsgTssPool)
+		x := input.Message.Interface().(*MsgKeygenVault)
 		if x == nil {
 			return protoiface.SizeOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -842,7 +842,7 @@ func (x *fastReflection_MsgTssPool) ProtoMethods() *protoiface.Methods {
 	}
 
 	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*MsgTssPool)
+		x := input.Message.Interface().(*MsgKeygenVault)
 		if x == nil {
 			return protoiface.MarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -991,7 +991,7 @@ func (x *fastReflection_MsgTssPool) ProtoMethods() *protoiface.Methods {
 		}, nil
 	}
 	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*MsgTssPool)
+		x := input.Message.Interface().(*MsgKeygenVault)
 		if x == nil {
 			return protoiface.UnmarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -1023,10 +1023,10 @@ func (x *fastReflection_MsgTssPool) ProtoMethods() *protoiface.Methods {
 			fieldNum := int32(wire >> 3)
 			wireType := int(wire & 0x7)
 			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgTssPool: wiretype end group for non-group")
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgKeygenVault: wiretype end group for non-group")
 			}
 			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgTssPool: illegal tag %d (wire type %d)", fieldNum, wire)
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: MsgKeygenVault: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
 			case 1:
@@ -1540,7 +1540,7 @@ func (x *fastReflection_MsgTssPool) ProtoMethods() *protoiface.Methods {
 // versions:
 // 	protoc-gen-go v1.27.0
 // 	protoc        (unknown)
-// source: types/msg_tss_pool.proto
+// source: types/msg_keygen_vault.proto
 
 const (
 	// Verify that this generated code is sufficiently up-to-date.
@@ -1549,7 +1549,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type MsgTssPool struct {
+type MsgKeygenVault struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -1572,240 +1572,241 @@ type MsgTssPool struct {
 	ObservedMoneroHeight int64      `protobuf:"varint,16,opt,name=observed_monero_height,json=observedMoneroHeight,proto3" json:"observed_monero_height,omitempty"`
 }
 
-func (x *MsgTssPool) Reset() {
-	*x = MsgTssPool{}
+func (x *MsgKeygenVault) Reset() {
+	*x = MsgKeygenVault{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_msg_tss_pool_proto_msgTypes[0]
+		mi := &file_types_msg_keygen_vault_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *MsgTssPool) String() string {
+func (x *MsgKeygenVault) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*MsgTssPool) ProtoMessage() {}
+func (*MsgKeygenVault) ProtoMessage() {}
 
-// Deprecated: Use MsgTssPool.ProtoReflect.Descriptor instead.
-func (*MsgTssPool) Descriptor() ([]byte, []int) {
-	return file_types_msg_tss_pool_proto_rawDescGZIP(), []int{0}
+// Deprecated: Use MsgKeygenVault.ProtoReflect.Descriptor instead.
+func (*MsgKeygenVault) Descriptor() ([]byte, []int) {
+	return file_types_msg_keygen_vault_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *MsgTssPool) GetId() string {
+func (x *MsgKeygenVault) GetId() string {
 	if x != nil {
 		return x.Id
 	}
 	return ""
 }
 
-func (x *MsgTssPool) GetVaultPubKey() string {
+func (x *MsgKeygenVault) GetVaultPubKey() string {
 	if x != nil {
 		return x.VaultPubKey
 	}
 	return ""
 }
 
-func (x *MsgTssPool) GetKeygenType() KeygenType {
+func (x *MsgKeygenVault) GetKeygenType() KeygenType {
 	if x != nil {
 		return x.KeygenType
 	}
 	return KeygenType_UnknownKeygen
 }
 
-func (x *MsgTssPool) GetPubKeys() []string {
+func (x *MsgKeygenVault) GetPubKeys() []string {
 	if x != nil {
 		return x.PubKeys
 	}
 	return nil
 }
 
-func (x *MsgTssPool) GetHeight() int64 {
+func (x *MsgKeygenVault) GetHeight() int64 {
 	if x != nil {
 		return x.Height
 	}
 	return 0
 }
 
-func (x *MsgTssPool) GetBlame() []*Blame {
+func (x *MsgKeygenVault) GetBlame() []*Blame {
 	if x != nil {
 		return x.Blame
 	}
 	return nil
 }
 
-func (x *MsgTssPool) GetChains() []string {
+func (x *MsgKeygenVault) GetChains() []string {
 	if x != nil {
 		return x.Chains
 	}
 	return nil
 }
 
-func (x *MsgTssPool) GetSigner() []byte {
+func (x *MsgKeygenVault) GetSigner() []byte {
 	if x != nil {
 		return x.Signer
 	}
 	return nil
 }
 
-func (x *MsgTssPool) GetKeygenTime() int64 {
+func (x *MsgKeygenVault) GetKeygenTime() int64 {
 	if x != nil {
 		return x.KeygenTime
 	}
 	return 0
 }
 
-func (x *MsgTssPool) GetKeysharesBackup() []byte {
+func (x *MsgKeygenVault) GetKeysharesBackup() []byte {
 	if x != nil {
 		return x.KeysharesBackup
 	}
 	return nil
 }
 
-func (x *MsgTssPool) GetSecp256K1Signature() []byte {
+func (x *MsgKeygenVault) GetSecp256K1Signature() []byte {
 	if x != nil {
 		return x.Secp256K1Signature
 	}
 	return nil
 }
 
-func (x *MsgTssPool) GetVaultPubKeyEddsa() string {
+func (x *MsgKeygenVault) GetVaultPubKeyEddsa() string {
 	if x != nil {
 		return x.VaultPubKeyEddsa
 	}
 	return ""
 }
 
-func (x *MsgTssPool) GetKeysharesBackupEddsa() []byte {
+func (x *MsgKeygenVault) GetKeysharesBackupEddsa() []byte {
 	if x != nil {
 		return x.KeysharesBackupEddsa
 	}
 	return nil
 }
 
-func (x *MsgTssPool) GetKeysharesBackupFrost() []byte {
+func (x *MsgKeygenVault) GetKeysharesBackupFrost() []byte {
 	if x != nil {
 		return x.KeysharesBackupFrost
 	}
 	return nil
 }
 
-func (x *MsgTssPool) GetVaultPubKeyFrost() string {
+func (x *MsgKeygenVault) GetVaultPubKeyFrost() string {
 	if x != nil {
 		return x.VaultPubKeyFrost
 	}
 	return ""
 }
 
-func (x *MsgTssPool) GetObservedMoneroHeight() int64 {
+func (x *MsgKeygenVault) GetObservedMoneroHeight() int64 {
 	if x != nil {
 		return x.ObservedMoneroHeight
 	}
 	return 0
 }
 
-var File_types_msg_tss_pool_proto protoreflect.FileDescriptor
+var File_types_msg_keygen_vault_proto protoreflect.FileDescriptor
 
-var file_types_msg_tss_pool_proto_rawDesc = []byte{
-	0x0a, 0x18, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2f, 0x6d, 0x73, 0x67, 0x5f, 0x74, 0x73, 0x73, 0x5f,
-	0x70, 0x6f, 0x6f, 0x6c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x05, 0x74, 0x79, 0x70, 0x65,
-	0x73, 0x1a, 0x16, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x5f, 0x62, 0x6c,
-	0x61, 0x6d, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x17, 0x74, 0x79, 0x70, 0x65, 0x73,
-	0x2f, 0x74, 0x79, 0x70, 0x65, 0x5f, 0x6b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x2e, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x1a, 0x14, 0x67, 0x6f, 0x67, 0x6f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67, 0x6f,
-	0x67, 0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x11, 0x61, 0x6d, 0x69, 0x6e, 0x6f, 0x2f,
-	0x61, 0x6d, 0x69, 0x6e, 0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0xb4, 0x07, 0x0a, 0x0a,
-	0x4d, 0x73, 0x67, 0x54, 0x73, 0x73, 0x50, 0x6f, 0x6f, 0x6c, 0x12, 0x16, 0x0a, 0x02, 0x69, 0x64,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x06, 0xe2, 0xde, 0x1f, 0x02, 0x49, 0x44, 0x52, 0x02,
-	0x69, 0x64, 0x12, 0x59, 0x0a, 0x0d, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x5f, 0x70, 0x75, 0x62, 0x5f,
-	0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x42, 0x35, 0xfa, 0xde, 0x1f, 0x31, 0x67,
-	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61,
-	0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61,
-	0x64, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79,
-	0x52, 0x0b, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x52, 0x0a,
-	0x0b, 0x6b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x18, 0x03, 0x20, 0x01,
-	0x28, 0x0e, 0x32, 0x11, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x4b, 0x65, 0x79, 0x67, 0x65,
-	0x6e, 0x54, 0x79, 0x70, 0x65, 0x42, 0x1e, 0xfa, 0xde, 0x1f, 0x0a, 0x4b, 0x65, 0x79, 0x67, 0x65,
-	0x6e, 0x54, 0x79, 0x70, 0x65, 0x9a, 0xe7, 0xb0, 0x2a, 0x0b, 0x6b, 0x65, 0x79, 0x67, 0x65, 0x6e,
-	0x5f, 0x74, 0x79, 0x70, 0x65, 0x52, 0x0a, 0x6b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x54, 0x79, 0x70,
-	0x65, 0x12, 0x19, 0x0a, 0x08, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x73, 0x18, 0x04, 0x20,
-	0x03, 0x28, 0x09, 0x52, 0x07, 0x70, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x73, 0x12, 0x16, 0x0a, 0x06,
-	0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x05, 0x20, 0x01, 0x28, 0x03, 0x52, 0x06, 0x68, 0x65,
-	0x69, 0x67, 0x68, 0x74, 0x12, 0x28, 0x0a, 0x05, 0x62, 0x6c, 0x61, 0x6d, 0x65, 0x18, 0x06, 0x20,
-	0x03, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x42, 0x6c, 0x61, 0x6d,
-	0x65, 0x42, 0x04, 0xc8, 0xde, 0x1f, 0x00, 0x52, 0x05, 0x62, 0x6c, 0x61, 0x6d, 0x65, 0x12, 0x16,
-	0x0a, 0x06, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x73, 0x18, 0x07, 0x20, 0x03, 0x28, 0x09, 0x52, 0x06,
-	0x63, 0x68, 0x61, 0x69, 0x6e, 0x73, 0x12, 0x54, 0x0a, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72,
-	0x18, 0x08, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x3c, 0xfa, 0xde, 0x1f, 0x2d, 0x67, 0x69, 0x74, 0x68,
-	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f,
-	0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x41,
-	0x63, 0x63, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x9a, 0xe7, 0xb0, 0x2a, 0x06, 0x62, 0x65,
-	0x63, 0x68, 0x33, 0x32, 0x52, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x12, 0x1f, 0x0a, 0x0b,
-	0x6b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x09, 0x20, 0x01, 0x28,
-	0x03, 0x52, 0x0a, 0x6b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x54, 0x69, 0x6d, 0x65, 0x12, 0x29, 0x0a,
-	0x10, 0x6b, 0x65, 0x79, 0x73, 0x68, 0x61, 0x72, 0x65, 0x73, 0x5f, 0x62, 0x61, 0x63, 0x6b, 0x75,
-	0x70, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0f, 0x6b, 0x65, 0x79, 0x73, 0x68, 0x61, 0x72,
-	0x65, 0x73, 0x42, 0x61, 0x63, 0x6b, 0x75, 0x70, 0x12, 0x2f, 0x0a, 0x13, 0x73, 0x65, 0x63, 0x70,
-	0x32, 0x35, 0x36, 0x6b, 0x31, 0x5f, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65, 0x18,
-	0x0b, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x12, 0x73, 0x65, 0x63, 0x70, 0x32, 0x35, 0x36, 0x6b, 0x31,
-	0x53, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65, 0x12, 0x68, 0x0a, 0x13, 0x76, 0x61, 0x75,
-	0x6c, 0x74, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x5f, 0x65, 0x64, 0x64, 0x73, 0x61,
-	0x18, 0x0c, 0x20, 0x01, 0x28, 0x09, 0x42, 0x39, 0xc8, 0xde, 0x1f, 0x01, 0xfa, 0xde, 0x1f, 0x31,
-	0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e,
-	0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e,
-	0x61, 0x64, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x50, 0x75, 0x62, 0x4b, 0x65,
-	0x79, 0x52, 0x10, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x45, 0x64,
-	0x64, 0x73, 0x61, 0x12, 0x3a, 0x0a, 0x16, 0x6b, 0x65, 0x79, 0x73, 0x68, 0x61, 0x72, 0x65, 0x73,
-	0x5f, 0x62, 0x61, 0x63, 0x6b, 0x75, 0x70, 0x5f, 0x65, 0x64, 0x64, 0x73, 0x61, 0x18, 0x0d, 0x20,
-	0x01, 0x28, 0x0c, 0x42, 0x04, 0xc8, 0xde, 0x1f, 0x01, 0x52, 0x14, 0x6b, 0x65, 0x79, 0x73, 0x68,
-	0x61, 0x72, 0x65, 0x73, 0x42, 0x61, 0x63, 0x6b, 0x75, 0x70, 0x45, 0x64, 0x64, 0x73, 0x61, 0x12,
-	0x3a, 0x0a, 0x16, 0x6b, 0x65, 0x79, 0x73, 0x68, 0x61, 0x72, 0x65, 0x73, 0x5f, 0x62, 0x61, 0x63,
-	0x6b, 0x75, 0x70, 0x5f, 0x66, 0x72, 0x6f, 0x73, 0x74, 0x18, 0x0e, 0x20, 0x01, 0x28, 0x0c, 0x42,
-	0x04, 0xc8, 0xde, 0x1f, 0x01, 0x52, 0x14, 0x6b, 0x65, 0x79, 0x73, 0x68, 0x61, 0x72, 0x65, 0x73,
-	0x42, 0x61, 0x63, 0x6b, 0x75, 0x70, 0x46, 0x72, 0x6f, 0x73, 0x74, 0x12, 0x68, 0x0a, 0x13, 0x76,
-	0x61, 0x75, 0x6c, 0x74, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x5f, 0x66, 0x72, 0x6f,
-	0x73, 0x74, 0x18, 0x0f, 0x20, 0x01, 0x28, 0x09, 0x42, 0x39, 0xc8, 0xde, 0x1f, 0x01, 0xfa, 0xde,
-	0x1f, 0x31, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f,
-	0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f,
-	0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x50, 0x75, 0x62,
-	0x4b, 0x65, 0x79, 0x52, 0x10, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79,
-	0x46, 0x72, 0x6f, 0x73, 0x74, 0x12, 0x34, 0x0a, 0x16, 0x6f, 0x62, 0x73, 0x65, 0x72, 0x76, 0x65,
-	0x64, 0x5f, 0x6d, 0x6f, 0x6e, 0x65, 0x72, 0x6f, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18,
-	0x10, 0x20, 0x01, 0x28, 0x03, 0x52, 0x14, 0x6f, 0x62, 0x73, 0x65, 0x72, 0x76, 0x65, 0x64, 0x4d,
-	0x6f, 0x6e, 0x65, 0x72, 0x6f, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x3a, 0x15, 0x8a, 0xe7, 0xb0,
-	0x2a, 0x10, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x54, 0x73, 0x73, 0x50, 0x6f,
-	0x6f, 0x6c, 0x42, 0x83, 0x01, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73,
-	0x42, 0x0f, 0x4d, 0x73, 0x67, 0x54, 0x73, 0x73, 0x50, 0x6f, 0x6f, 0x6c, 0x50, 0x72, 0x6f, 0x74,
-	0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f,
-	0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d,
-	0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70,
-	0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73,
-	0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2, 0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73,
-	0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54,
-	0x79, 0x70, 0x65, 0x73, 0xc8, 0xe1, 0x1e, 0x00, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+var file_types_msg_keygen_vault_proto_rawDesc = []byte{
+	0x0a, 0x1c, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2f, 0x6d, 0x73, 0x67, 0x5f, 0x6b, 0x65, 0x79, 0x67,
+	0x65, 0x6e, 0x5f, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x05,
+	0x74, 0x79, 0x70, 0x65, 0x73, 0x1a, 0x16, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2f, 0x74, 0x79, 0x70,
+	0x65, 0x5f, 0x62, 0x6c, 0x61, 0x6d, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x17, 0x74,
+	0x79, 0x70, 0x65, 0x73, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x5f, 0x6b, 0x65, 0x79, 0x67, 0x65, 0x6e,
+	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x14, 0x67, 0x6f, 0x67, 0x6f, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x2f, 0x67, 0x6f, 0x67, 0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x11, 0x61, 0x6d,
+	0x69, 0x6e, 0x6f, 0x2f, 0x61, 0x6d, 0x69, 0x6e, 0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22,
+	0xbc, 0x07, 0x0a, 0x0e, 0x4d, 0x73, 0x67, 0x4b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x56, 0x61, 0x75,
+	0x6c, 0x74, 0x12, 0x16, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x06,
+	0xe2, 0xde, 0x1f, 0x02, 0x49, 0x44, 0x52, 0x02, 0x69, 0x64, 0x12, 0x59, 0x0a, 0x0d, 0x76, 0x61,
+	0x75, 0x6c, 0x74, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x09, 0x42, 0x35, 0xfa, 0xde, 0x1f, 0x31, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
+	0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67,
+	0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f,
+	0x6e, 0x2e, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x52, 0x0b, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x50,
+	0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x52, 0x0a, 0x0b, 0x6b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x5f,
+	0x74, 0x79, 0x70, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x11, 0x2e, 0x74, 0x79, 0x70,
+	0x65, 0x73, 0x2e, 0x4b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x54, 0x79, 0x70, 0x65, 0x42, 0x1e, 0xfa,
+	0xde, 0x1f, 0x0a, 0x4b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x54, 0x79, 0x70, 0x65, 0x9a, 0xe7, 0xb0,
+	0x2a, 0x0b, 0x6b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x52, 0x0a, 0x6b,
+	0x65, 0x79, 0x67, 0x65, 0x6e, 0x54, 0x79, 0x70, 0x65, 0x12, 0x19, 0x0a, 0x08, 0x70, 0x75, 0x62,
+	0x5f, 0x6b, 0x65, 0x79, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x09, 0x52, 0x07, 0x70, 0x75, 0x62,
+	0x4b, 0x65, 0x79, 0x73, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x05,
+	0x20, 0x01, 0x28, 0x03, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x28, 0x0a, 0x05,
+	0x62, 0x6c, 0x61, 0x6d, 0x65, 0x18, 0x06, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x74, 0x79,
+	0x70, 0x65, 0x73, 0x2e, 0x42, 0x6c, 0x61, 0x6d, 0x65, 0x42, 0x04, 0xc8, 0xde, 0x1f, 0x00, 0x52,
+	0x05, 0x62, 0x6c, 0x61, 0x6d, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x73,
+	0x18, 0x07, 0x20, 0x03, 0x28, 0x09, 0x52, 0x06, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x73, 0x12, 0x54,
+	0x0a, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x18, 0x08, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x3c,
+	0xfa, 0xde, 0x1f, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63,
+	0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73, 0x64, 0x6b,
+	0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73,
+	0x73, 0x9a, 0xe7, 0xb0, 0x2a, 0x06, 0x62, 0x65, 0x63, 0x68, 0x33, 0x32, 0x52, 0x06, 0x73, 0x69,
+	0x67, 0x6e, 0x65, 0x72, 0x12, 0x1f, 0x0a, 0x0b, 0x6b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x5f, 0x74,
+	0x69, 0x6d, 0x65, 0x18, 0x09, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0a, 0x6b, 0x65, 0x79, 0x67, 0x65,
+	0x6e, 0x54, 0x69, 0x6d, 0x65, 0x12, 0x29, 0x0a, 0x10, 0x6b, 0x65, 0x79, 0x73, 0x68, 0x61, 0x72,
+	0x65, 0x73, 0x5f, 0x62, 0x61, 0x63, 0x6b, 0x75, 0x70, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x0c, 0x52,
+	0x0f, 0x6b, 0x65, 0x79, 0x73, 0x68, 0x61, 0x72, 0x65, 0x73, 0x42, 0x61, 0x63, 0x6b, 0x75, 0x70,
+	0x12, 0x2f, 0x0a, 0x13, 0x73, 0x65, 0x63, 0x70, 0x32, 0x35, 0x36, 0x6b, 0x31, 0x5f, 0x73, 0x69,
+	0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65, 0x18, 0x0b, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x12, 0x73,
+	0x65, 0x63, 0x70, 0x32, 0x35, 0x36, 0x6b, 0x31, 0x53, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72,
+	0x65, 0x12, 0x68, 0x0a, 0x13, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b,
+	0x65, 0x79, 0x5f, 0x65, 0x64, 0x64, 0x73, 0x61, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x09, 0x42, 0x39,
+	0xc8, 0xde, 0x1f, 0x01, 0xfa, 0xde, 0x1f, 0x31, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
+	0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f,
+	0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x6d,
+	0x6f, 0x6e, 0x2e, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x52, 0x10, 0x76, 0x61, 0x75, 0x6c, 0x74,
+	0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x45, 0x64, 0x64, 0x73, 0x61, 0x12, 0x3a, 0x0a, 0x16, 0x6b,
+	0x65, 0x79, 0x73, 0x68, 0x61, 0x72, 0x65, 0x73, 0x5f, 0x62, 0x61, 0x63, 0x6b, 0x75, 0x70, 0x5f,
+	0x65, 0x64, 0x64, 0x73, 0x61, 0x18, 0x0d, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x04, 0xc8, 0xde, 0x1f,
+	0x01, 0x52, 0x14, 0x6b, 0x65, 0x79, 0x73, 0x68, 0x61, 0x72, 0x65, 0x73, 0x42, 0x61, 0x63, 0x6b,
+	0x75, 0x70, 0x45, 0x64, 0x64, 0x73, 0x61, 0x12, 0x3a, 0x0a, 0x16, 0x6b, 0x65, 0x79, 0x73, 0x68,
+	0x61, 0x72, 0x65, 0x73, 0x5f, 0x62, 0x61, 0x63, 0x6b, 0x75, 0x70, 0x5f, 0x66, 0x72, 0x6f, 0x73,
+	0x74, 0x18, 0x0e, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x04, 0xc8, 0xde, 0x1f, 0x01, 0x52, 0x14, 0x6b,
+	0x65, 0x79, 0x73, 0x68, 0x61, 0x72, 0x65, 0x73, 0x42, 0x61, 0x63, 0x6b, 0x75, 0x70, 0x46, 0x72,
+	0x6f, 0x73, 0x74, 0x12, 0x68, 0x0a, 0x13, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x5f, 0x70, 0x75, 0x62,
+	0x5f, 0x6b, 0x65, 0x79, 0x5f, 0x66, 0x72, 0x6f, 0x73, 0x74, 0x18, 0x0f, 0x20, 0x01, 0x28, 0x09,
+	0x42, 0x39, 0xc8, 0xde, 0x1f, 0x01, 0xfa, 0xde, 0x1f, 0x31, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
+	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73,
+	0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63, 0x6f,
+	0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x52, 0x10, 0x76, 0x61, 0x75,
+	0x6c, 0x74, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x46, 0x72, 0x6f, 0x73, 0x74, 0x12, 0x34, 0x0a,
+	0x16, 0x6f, 0x62, 0x73, 0x65, 0x72, 0x76, 0x65, 0x64, 0x5f, 0x6d, 0x6f, 0x6e, 0x65, 0x72, 0x6f,
+	0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x10, 0x20, 0x01, 0x28, 0x03, 0x52, 0x14, 0x6f,
+	0x62, 0x73, 0x65, 0x72, 0x76, 0x65, 0x64, 0x4d, 0x6f, 0x6e, 0x65, 0x72, 0x6f, 0x48, 0x65, 0x69,
+	0x67, 0x68, 0x74, 0x3a, 0x19, 0x8a, 0xe7, 0xb0, 0x2a, 0x14, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61,
+	0x64, 0x6f, 0x2f, 0x4b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x42, 0x87,
+	0x01, 0xc8, 0xe1, 0x1e, 0x00, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73,
+	0x42, 0x13, 0x4d, 0x73, 0x67, 0x4b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x56, 0x61, 0x75, 0x6c, 0x74,
+	0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
+	0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68,
+	0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70, 0x69,
+	0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x05, 0x54,
+	0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2, 0x02, 0x11, 0x54,
+	0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
+	0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
-	file_types_msg_tss_pool_proto_rawDescOnce sync.Once
-	file_types_msg_tss_pool_proto_rawDescData = file_types_msg_tss_pool_proto_rawDesc
+	file_types_msg_keygen_vault_proto_rawDescOnce sync.Once
+	file_types_msg_keygen_vault_proto_rawDescData = file_types_msg_keygen_vault_proto_rawDesc
 )
 
-func file_types_msg_tss_pool_proto_rawDescGZIP() []byte {
-	file_types_msg_tss_pool_proto_rawDescOnce.Do(func() {
-		file_types_msg_tss_pool_proto_rawDescData = protoimpl.X.CompressGZIP(file_types_msg_tss_pool_proto_rawDescData)
+func file_types_msg_keygen_vault_proto_rawDescGZIP() []byte {
+	file_types_msg_keygen_vault_proto_rawDescOnce.Do(func() {
+		file_types_msg_keygen_vault_proto_rawDescData = protoimpl.X.CompressGZIP(file_types_msg_keygen_vault_proto_rawDescData)
 	})
-	return file_types_msg_tss_pool_proto_rawDescData
+	return file_types_msg_keygen_vault_proto_rawDescData
 }
 
-var file_types_msg_tss_pool_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_types_msg_tss_pool_proto_goTypes = []interface{}{
-	(*MsgTssPool)(nil), // 0: types.MsgTssPool
-	(KeygenType)(0),    // 1: types.KeygenType
-	(*Blame)(nil),      // 2: types.Blame
+var file_types_msg_keygen_vault_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_types_msg_keygen_vault_proto_goTypes = []interface{}{
+	(*MsgKeygenVault)(nil), // 0: types.MsgKeygenVault
+	(KeygenType)(0),        // 1: types.KeygenType
+	(*Blame)(nil),          // 2: types.Blame
 }
-var file_types_msg_tss_pool_proto_depIdxs = []int32{
-	1, // 0: types.MsgTssPool.keygen_type:type_name -> types.KeygenType
-	2, // 1: types.MsgTssPool.blame:type_name -> types.Blame
+var file_types_msg_keygen_vault_proto_depIdxs = []int32{
+	1, // 0: types.MsgKeygenVault.keygen_type:type_name -> types.KeygenType
+	2, // 1: types.MsgKeygenVault.blame:type_name -> types.Blame
 	2, // [2:2] is the sub-list for method output_type
 	2, // [2:2] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
@@ -1813,16 +1814,16 @@ var file_types_msg_tss_pool_proto_depIdxs = []int32{
 	0, // [0:2] is the sub-list for field type_name
 }
 
-func init() { file_types_msg_tss_pool_proto_init() }
-func file_types_msg_tss_pool_proto_init() {
-	if File_types_msg_tss_pool_proto != nil {
+func init() { file_types_msg_keygen_vault_proto_init() }
+func file_types_msg_keygen_vault_proto_init() {
+	if File_types_msg_keygen_vault_proto != nil {
 		return
 	}
 	file_types_type_blame_proto_init()
 	file_types_type_keygen_proto_init()
 	if !protoimpl.UnsafeEnabled {
-		file_types_msg_tss_pool_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*MsgTssPool); i {
+		file_types_msg_keygen_vault_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*MsgKeygenVault); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1838,18 +1839,18 @@ func file_types_msg_tss_pool_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: file_types_msg_tss_pool_proto_rawDesc,
+			RawDescriptor: file_types_msg_keygen_vault_proto_rawDesc,
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_types_msg_tss_pool_proto_goTypes,
-		DependencyIndexes: file_types_msg_tss_pool_proto_depIdxs,
-		MessageInfos:      file_types_msg_tss_pool_proto_msgTypes,
+		GoTypes:           file_types_msg_keygen_vault_proto_goTypes,
+		DependencyIndexes: file_types_msg_keygen_vault_proto_depIdxs,
+		MessageInfos:      file_types_msg_keygen_vault_proto_msgTypes,
 	}.Build()
-	File_types_msg_tss_pool_proto = out.File
-	file_types_msg_tss_pool_proto_rawDesc = nil
-	file_types_msg_tss_pool_proto_goTypes = nil
-	file_types_msg_tss_pool_proto_depIdxs = nil
+	File_types_msg_keygen_vault_proto = out.File
+	file_types_msg_keygen_vault_proto_rawDesc = nil
+	file_types_msg_keygen_vault_proto_goTypes = nil
+	file_types_msg_keygen_vault_proto_depIdxs = nil
 }

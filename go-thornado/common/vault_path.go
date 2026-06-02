@@ -24,33 +24,35 @@ const (
 	VaultDepositPathNode VaultDepositPathType = "node"
 
 	DepositPathCommitmentRoot uint64 = 0
-	depositPathKindShift      uint   = 48
-	depositPathNonceShift     uint   = 16
-	depositPathSegmentMask    uint64 = 0xffff
+	depositPathSegmentMask    uint64 = 0xffffffff
 )
 
-var vaultPathDomain = []byte("thornado:vault-path:v1")
+var vaultPathDomain = []byte("thornado:frost-bip86-child:v1")
 
 func VaultDepositPathIndex(pathType VaultDepositPathType, depositIndex, commitmentIndex uint64) (uint64, error) {
 	if depositIndex > depositPathSegmentMask {
 		return 0, fmt.Errorf("deposit path index out of range")
 	}
-	if commitmentIndex > depositPathSegmentMask {
-		return 0, fmt.Errorf("commitment path index out of range")
+	if commitmentIndex != DepositPathCommitmentRoot {
+		return 0, fmt.Errorf("vault deposit addresses only support root commitment path")
 	}
-	var kind uint64
 	switch pathType {
-	case VaultDepositPathUser:
-		kind = 1
-	case VaultDepositPathNode:
-		kind = 2
+	case VaultDepositPathUser, VaultDepositPathNode:
 	default:
 		return 0, fmt.Errorf("unknown vault deposit path type: %s", pathType)
 	}
-	return kind<<depositPathKindShift | depositIndex<<depositPathNonceShift | commitmentIndex, nil
+	return depositIndex + 1, nil
 }
 
 func VaultDepositPath(pathType VaultDepositPathType, depositIndex, commitmentIndex uint64) string {
+	pathIndex, err := VaultDepositPathIndex(pathType, depositIndex, commitmentIndex)
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("m/86'/0'/0'/0/%d", pathIndex)
+}
+
+func UserSecretPath(pathType VaultDepositPathType, depositIndex, commitmentIndex uint64) string {
 	return fmt.Sprintf("tc84/btc/%s/%d/%d", pathType, depositIndex, commitmentIndex)
 }
 
@@ -70,20 +72,14 @@ func VaultPathTweakRoot(pubkey PubKey, pathIndex uint64) ([]byte, error) {
 	if pathIndex == MainVaultPathIndex {
 		return nil, nil
 	}
-	secpPubKey, err := pubkey.Secp256K1()
+	basePubKey, err := DeriveBTCBIP86InternalPubKey(pubkey, MainVaultPathIndex)
 	if err != nil {
 		return nil, err
 	}
-	var index [8]byte
-	binary.BigEndian.PutUint64(index[:], pathIndex)
-	h := sha256.New()
-	h.Write(vaultPathDomain)
-	h.Write(secpPubKey.SerializeCompressed())
-	h.Write(index[:])
-	return h.Sum(nil), nil
+	return vaultChildTweak(basePubKey, pathIndex), nil
 }
 
-func DeriveBTCTaprootPubKey(pubkey PubKey, pathIndex uint64) ([]byte, error) {
+func DeriveBTCBIP86InternalPubKey(pubkey PubKey, pathIndex uint64) (*btcec.PublicKey, error) {
 	secpPubKey, err := pubkey.Secp256K1()
 	if err != nil {
 		return nil, err
@@ -93,14 +89,44 @@ func DeriveBTCTaprootPubKey(pubkey PubKey, pathIndex uint64) ([]byte, error) {
 		return nil, err
 	}
 	if pathIndex == MainVaultPathIndex {
-		return btcschnorr.SerializePubKey(basePubKey), nil
+		return basePubKey, nil
 	}
-	tweakRoot, err := VaultPathTweakRoot(pubkey, pathIndex)
+	childTweak := vaultChildTweak(basePubKey, pathIndex)
+	return addTweak(basePubKey, childTweak), nil
+}
+
+func DeriveBTCTaprootPubKey(pubkey PubKey, pathIndex uint64) ([]byte, error) {
+	internalPubKey, err := DeriveBTCBIP86InternalPubKey(pubkey, pathIndex)
 	if err != nil {
 		return nil, err
 	}
-	childPubKey := taprootOutputKey(basePubKey, tweakRoot)
-	return btcschnorr.SerializePubKey(childPubKey), nil
+	outputKey := taprootOutputKey(internalPubKey, nil)
+	return btcschnorr.SerializePubKey(outputKey), nil
+}
+
+func vaultChildTweak(pubKey *btcec.PublicKey, pathIndex uint64) []byte {
+	var index [8]byte
+	binary.BigEndian.PutUint64(index[:], pathIndex)
+	h := sha256.New()
+	h.Write(vaultPathDomain)
+	h.Write(pubKey.SerializeCompressed())
+	h.Write(index[:])
+	return h.Sum(nil)
+}
+
+func addTweak(pubKey *btcec.PublicKey, tweak []byte) *btcec.PublicKey {
+	var tweakScalar btcec.ModNScalar
+	tweakScalar.SetBytes((*[32]byte)(tweak))
+
+	var pubPoint btcec.JacobianPoint
+	pubKey.AsJacobian(&pubPoint)
+
+	var tweakPoint, tweakedPoint btcec.JacobianPoint
+	btcec.ScalarBaseMultNonConst(&tweakScalar, &tweakPoint)
+	btcec.AddNonConst(&pubPoint, &tweakPoint, &tweakedPoint)
+	tweakedPoint.ToAffine()
+
+	return btcec.NewPublicKey(&tweakedPoint.X, &tweakedPoint.Y)
 }
 
 func taprootOutputKey(pubKey *btcec.PublicKey, scriptRoot []byte) *btcec.PublicKey {

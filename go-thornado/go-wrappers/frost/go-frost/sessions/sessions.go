@@ -83,9 +83,10 @@ type keygenOutput struct {
 }
 
 type signInput struct {
-	Share      string `json:"share"`
-	Message    string `json:"message"`
-	MerkleRoot string `json:"merkle_root,omitempty"`
+	Share      string  `json:"share"`
+	Message    string  `json:"message"`
+	MerkleRoot *string `json:"merkle_root,omitempty"`
+	ChildTweak *string `json:"child_tweak,omitempty"`
 }
 
 type signOutput struct {
@@ -214,17 +215,18 @@ func SessionFree(handle Handle) error {
 }
 
 func Sign(shareBytes, msg []byte) ([]byte, error) {
-	return signWith(shareBytes, msg, nil)
+	return signWith(shareBytes, msg, nil, nil)
 }
 
 func SignTaprootTweak(shareBytes, msg, merkleRoot []byte) ([]byte, error) {
-	if len(merkleRoot) == 0 {
-		return signWith(shareBytes, msg, nil)
-	}
-	return signWith(shareBytes, msg, merkleRoot)
+	return signWith(shareBytes, msg, merkleRoot, nil)
 }
 
-func signWith(shareBytes, msg, merkleRoot []byte) ([]byte, error) {
+func SignTaprootChildTweak(shareBytes, msg, childTweak, merkleRoot []byte) ([]byte, error) {
+	return signWith(shareBytes, msg, merkleRoot, childTweak)
+}
+
+func signWith(shareBytes, msg, merkleRoot, childTweak []byte) ([]byte, error) {
 	if len(msg) != 32 {
 		return nil, fmt.Errorf("FROST messages must be 32 bytes, got %d", len(msg))
 	}
@@ -233,8 +235,14 @@ func signWith(shareBytes, msg, merkleRoot []byte) ([]byte, error) {
 		Message: base64.StdEncoding.EncodeToString(msg),
 	}
 	call := callSign
-	if len(merkleRoot) != 0 {
-		input.MerkleRoot = base64.StdEncoding.EncodeToString(merkleRoot)
+	if merkleRoot != nil {
+		encodedRoot := base64.StdEncoding.EncodeToString(merkleRoot)
+		input.MerkleRoot = &encodedRoot
+		call = callSignTaprootTweak
+	}
+	if childTweak != nil {
+		encodedTweak := base64.StdEncoding.EncodeToString(childTweak)
+		input.ChildTweak = &encodedTweak
 		call = callSignTaprootTweak
 	}
 	var output signOutput

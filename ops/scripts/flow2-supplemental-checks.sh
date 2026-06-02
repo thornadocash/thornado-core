@@ -310,7 +310,7 @@ validate_stale_raw_observation() {
     --arg gas "$gas" \
     --arg pk "$pk" \
     --argjson height "$height" \
-    '[{tx:{id:$id,chain:"BTC",from_address:$from,to_address:$to,coins:[{asset:"BTC.BTC",amount:$amount}],gas:[{asset:"BTC.BTC",amount:$gas}],memo:""},block_height:$height,observed_pub_key:$pk,finalise_height:$height}]')"
+    '[{tx:{id:$id,chain:"BTC",from_address:$from,to_address:$to,coins:[{asset:"BTC.BTC",amount:$amount}],gas:[{asset:"BTC.BTC",amount:$gas}]},block_height:$height,observed_pub_key:$pk,finalise_height:$height}]')"
   printf '%s\n' "$raw" >"$RUN_ROOT/meta/flow2-stale-raw-observation.json"
   for i in 1 2 3 4; do
     out="$(thornado_tx "$RUN_ROOT/node${i}" "validator${i}" observe-tx-outs --raw-observations "$raw")"

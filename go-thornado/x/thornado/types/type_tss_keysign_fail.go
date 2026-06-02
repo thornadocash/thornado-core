@@ -57,7 +57,7 @@ func (m *TssKeysignFailVoter) MemberSignerCount(nas NodeAccounts) int {
 	return count
 }
 
-// HasConsensus determine if this tss pool has enough signers
+// HasConsensus determine if this keygen vault has enough signers
 func (m *TssKeysignFailVoter) HasConsensus(nas NodeAccounts) bool {
 	return HasSimpleMajority(m.MemberSignerCount(nas), len(nas))
 }

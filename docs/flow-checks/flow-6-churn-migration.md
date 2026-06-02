@@ -9,7 +9,7 @@ Goal: prove a bonded replacement node joins the signer set, a new FROST base vau
 ## Happy Path
 
 - check: node6 starts as a real Thornado full node; desired_result: RPC, API, gRPC, p2p, and block sync are healthy; validated: true
-- check: node6 starts as a real Bifrost signer; desired_result: health endpoint is ready, THOR/BTC scanners start, P2P peers connect; validated: true
+- check: node6 starts as a real Bifrost signer; desired_result: health endpoint is ready, BTC scanner starts, P2P peers connect; validated: true
 - check: node-gater allowlist includes node6 after bond state; desired_result: existing Bifrost logs show refreshed allowlist count includes node6; validated: true
 - check: node6 registers IP, version, and node keys before churn; desired_result: node query shows correct secp256k1, ed25519 compatibility key, consensus key, IP, version, standby status, and sufficient bond; validated: true
 - check: node6 status before churn is Standby and preflight-eligible; desired_result: node query/preflight has no missing IP, missing keys, outdated version, jail, or insufficient bond error; validated: true

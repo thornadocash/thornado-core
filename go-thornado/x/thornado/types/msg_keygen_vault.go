@@ -38,18 +38,18 @@ const (
 var MatchMnemonic = regexp.MustCompile(`([a-zA-Z]+ ){11}[a-zA-Z]+`)
 
 var (
-	_ sdk.Msg              = &MsgTssPool{}
-	_ sdk.HasValidateBasic = &MsgTssPool{}
-	_ sdk.LegacyMsg        = &MsgTssPool{}
+	_ sdk.Msg              = &MsgKeygenVault{}
+	_ sdk.HasValidateBasic = &MsgKeygenVault{}
+	_ sdk.LegacyMsg        = &MsgKeygenVault{}
 )
 
-// NewMsgTssPool is a constructor function for MsgTssPool
-func NewMsgTssPool(pks []string, vaultpk common.PubKey, secp256k1Signature, keysharesBackup []byte, keygenType KeygenType, height int64, bl []Blame, chains []string, signer cosmos.AccAddress, keygenTime int64) (*MsgTssPool, error) {
+// NewMsgKeygenVault is a constructor function for MsgKeygenVault
+func NewMsgKeygenVault(pks []string, vaultpk common.PubKey, secp256k1Signature, keysharesBackup []byte, keygenType KeygenType, height int64, bl []Blame, chains []string, signer cosmos.AccAddress, keygenTime int64) (*MsgKeygenVault, error) {
 	id, err := getTssID(pks, vaultpk, height, bl)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get tss id: %w", err)
 	}
-	return &MsgTssPool{
+	return &MsgKeygenVault{
 		ID:                 id,
 		PubKeys:            pks,
 		VaultPubKey:        vaultpk,
@@ -102,7 +102,7 @@ func getTssID(members []string, vaultPk common.PubKey, height int64, bl []Blame)
 // ValidateBasic is now ran in the message service router handler for messages that
 // used to be routed using the external handler and only when HasValidateBasic is implemented.
 // No versioning is used there.
-func (m *MsgTssPool) ValidateBasic() error {
+func (m *MsgKeygenVault) ValidateBasic() error {
 	if m.Signer.Empty() {
 		return cosmos.ErrInvalidAddress(m.Signer.String())
 	}
@@ -259,11 +259,11 @@ func (m *MsgTssPool) ValidateBasic() error {
 }
 
 // IsSuccess when blame is empty , then treat it as success
-func (m MsgTssPool) IsSuccess() bool {
+func (m MsgKeygenVault) IsSuccess() bool {
 	return len(m.Blame) == 0
 }
 
-func (m MsgTssPool) GetChains() common.Chains {
+func (m MsgKeygenVault) GetChains() common.Chains {
 	chains := make(common.Chains, 0)
 	for _, c := range m.Chains {
 		chain, err := common.NewChain(c)
@@ -275,7 +275,7 @@ func (m MsgTssPool) GetChains() common.Chains {
 	return chains
 }
 
-func (m MsgTssPool) GetPubKeys() common.PubKeys {
+func (m MsgKeygenVault) GetPubKeys() common.PubKeys {
 	pubkeys := make(common.PubKeys, 0)
 	for _, pk := range m.PubKeys {
 		pk, err := common.NewPubKey(pk)
@@ -288,14 +288,14 @@ func (m MsgTssPool) GetPubKeys() common.PubKeys {
 }
 
 // GetSigners defines whose signature is required
-func (m *MsgTssPool) GetSigners() []cosmos.AccAddress {
+func (m *MsgKeygenVault) GetSigners() []cosmos.AccAddress {
 	return []cosmos.AccAddress{m.Signer}
 }
 
-func MsgTssPoolCustomGetSigners(m proto.Message) ([][]byte, error) {
-	msg, ok := m.(*types.MsgTssPool)
+func MsgKeygenVaultCustomGetSigners(m proto.Message) ([][]byte, error) {
+	msg, ok := m.(*types.MsgKeygenVault)
 	if !ok {
-		return nil, fmt.Errorf("can't cast as MsgTssPool: %T", m)
+		return nil, fmt.Errorf("can't cast as MsgKeygenVault: %T", m)
 	}
 	return [][]byte{msg.Signer}, nil
 }

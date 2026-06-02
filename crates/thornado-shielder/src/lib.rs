@@ -86,7 +86,7 @@ pub struct NoteReceipt {
 }
 
 fn default_deposit_index() -> u64 {
-    1
+    0
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -153,7 +153,7 @@ pub fn derive_split_receipt(
     amount_sats: u64,
     client_seed: &str,
 ) -> Result<SplitReceipt> {
-    derive_split_receipt_for_deposit(deposit_id, 1, amount_sats, client_seed)
+    derive_split_receipt_for_deposit(deposit_id, 0, amount_sats, client_seed)
 }
 
 pub fn derive_split_receipt_for_deposit(
@@ -244,7 +244,7 @@ fn note_authorization_for_secret(
 }
 
 pub fn client_pubkey_from_secret(client_seed: &str) -> String {
-    deposit_owner_pubkey(&deposit_owner_secret(client_seed))
+    client_pubkey_for_deposit(client_seed, 0)
 }
 
 pub fn client_pubkey_for_deposit(client_seed: &str, deposit_index: u64) -> String {
@@ -260,7 +260,7 @@ pub fn split_authorization(
     amount_sats: u64,
     note_commitments: &[NoteCommitment],
 ) -> SplitAuthorization {
-    split_authorization_for_deposit(client_seed, 1, deposit_id, amount_sats, note_commitments)
+    split_authorization_for_deposit(client_seed, 0, deposit_id, amount_sats, note_commitments)
 }
 
 pub fn split_authorization_for_deposit(
@@ -421,7 +421,7 @@ pub fn nullifier_hash(nullifier: &str) -> String {
 }
 
 pub fn note_child_secret(client_seed: &str, deposit_id: &str, index: u64) -> String {
-    note_child_secret_for_deposit(client_seed, 1, deposit_id, index)
+    note_child_secret_for_deposit(client_seed, 0, deposit_id, index)
 }
 
 pub fn note_child_secret_for_deposit(
@@ -479,7 +479,7 @@ fn split_authorization_message(
 }
 
 fn deposit_owner_secret(client_seed: &str) -> String {
-    deposit_owner_secret_for_deposit(client_seed, 1)
+    deposit_owner_secret_for_deposit(client_seed, 0)
 }
 
 fn deposit_owner_secret_for_deposit(client_seed: &str, deposit_index: u64) -> String {

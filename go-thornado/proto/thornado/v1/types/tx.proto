@@ -17,7 +17,7 @@ import "types/msg_set_node_keys.proto";
 import "types/msg_shielder.proto";
 import "types/msg_solvency.proto";
 import "types/msg_tss_keysign_fail.proto";
-import "types/msg_tss_pool.proto";
+import "types/msg_keygen_vault.proto";
 import "types/msg_version.proto";
 import "types/msg_upgrade.proto";
 import "types/msg_maint.proto";
@@ -44,7 +44,7 @@ service Msg {
   rpc Solvency(MsgSolvency) returns (MsgEmpty);
   rpc SolvencyQuorum(MsgSolvencyQuorum) returns (MsgEmpty);
   rpc TssKeysignFail(MsgTssKeysignFail) returns (MsgEmpty);
-  rpc TssPool(MsgTssPool) returns (MsgEmpty);
+  rpc KeygenVault(MsgKeygenVault) returns (MsgEmpty);
   rpc SetVersion(MsgSetVersion) returns (MsgEmpty);
   rpc ProposeUpgrade(MsgProposeUpgrade) returns (MsgEmpty);
   rpc ApproveUpgrade(MsgApproveUpgrade) returns (MsgEmpty);

@@ -115,7 +115,7 @@ func (k KVStore) GetDepositAddressIterator(ctx cosmos.Context) cosmos.Iterator {
 }
 
 func vaultDepositPathCursorKey(vaultPubKey common.PubKey, pathType common.VaultDepositPathType) string {
-	return vaultPubKey.String() + "/" + string(pathType)
+	return vaultPubKey.String()
 }
 
 func (k KVStore) GetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey, pathType common.VaultDepositPathType) (uint64, error) {

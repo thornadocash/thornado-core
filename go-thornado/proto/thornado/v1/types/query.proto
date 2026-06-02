@@ -6,7 +6,6 @@ option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
 import "google/api/annotations.proto";
 import "gogoproto/gogo.proto";
 import "types/query_account.proto";
-import "types/query_bank.proto";
 import "types/query_balance_module.proto";
 import "types/query_block.proto";
 import "types/query_constant_values.proto";
@@ -33,10 +32,6 @@ option (gogoproto.marshaler_all) = true;
 service Query {
   rpc Account(QueryAccountRequest) returns (QueryAccountResponse) {
     option (google.api.http).get = "/auth/accounts/{address}";
-  }
-
-  rpc Balances(QueryBalancesRequest) returns (QueryBalancesResponse) {
-    option (google.api.http).get = "/bank/balances/{address}";
   }
 
   rpc Export(QueryExportRequest) returns (QueryExportResponse) {

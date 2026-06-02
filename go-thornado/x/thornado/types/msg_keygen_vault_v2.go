@@ -7,8 +7,8 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 )
 
-// NewMsgTssPool is a constructor function for MsgTssPool
-func NewMsgTssPoolV2(
+// NewMsgKeygenVault is a constructor function for MsgKeygenVault
+func NewMsgKeygenVaultV2(
 	pks []string,
 	vaultpk common.PubKey,
 	secp256k1Signature,
@@ -22,12 +22,12 @@ func NewMsgTssPoolV2(
 	vaultPubKeyEddsa common.PubKey,
 	keysharesBackupEddsa []byte,
 	keysharesBackupFrost ...[]byte,
-) (*MsgTssPool, error) {
+) (*MsgKeygenVault, error) {
 	id, err := getTssID(pks, vaultpk, height, bl)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get tss id: %w", err)
 	}
-	msg := &MsgTssPool{
+	msg := &MsgKeygenVault{
 		ID:                   id,
 		PubKeys:              pks,
 		VaultPubKey:          vaultpk,

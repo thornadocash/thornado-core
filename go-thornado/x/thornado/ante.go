@@ -152,7 +152,7 @@ func (ad AnteDecorator) anteHandleMessage(ctx sdk.Context, version semver.Versio
 		return SolvencyAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgSolvencyQuorum:
 		return SolvencyQuorumAnteHandler(ctx, version, ad.keeper, *m)
-	case *types.MsgTssPool:
+	case *types.MsgKeygenVault:
 		return TssAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgTssKeysignFail:
 		return TssKeysignFailAnteHandler(ctx, version, ad.keeper, *m)

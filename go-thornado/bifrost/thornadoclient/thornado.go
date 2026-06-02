@@ -341,7 +341,7 @@ func (b *thornadoBridge) GetKeygenStdTxWithFrost(vaultPubKey common.PubKey, secp
 		return nil, fmt.Errorf("failed to get signer address: %w", err)
 	}
 
-	return stypes.NewMsgTssPoolV2(inputPks.Strings(), vaultPubKey, secp256k1Signature, keysharesBackup, keygenType, height, blame, chains.Strings(), signerAddr, keygenTime, vaultPubKeyEddsa, keysharesBackupEddsa, keysharesBackupFrost)
+	return stypes.NewMsgKeygenVaultV2(inputPks.Strings(), vaultPubKey, secp256k1Signature, keysharesBackup, keygenType, height, blame, chains.Strings(), signerAddr, keygenTime, vaultPubKeyEddsa, keysharesBackupEddsa, keysharesBackupFrost)
 }
 
 // GetInboundOutbound separate the txs into inbound and outbound

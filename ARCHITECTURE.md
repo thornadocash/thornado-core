@@ -4,7 +4,7 @@ Thornado uses `go-thornado` as the canonical state machine. The Rust state-machi
 
 ## Components
 
-- `go-thornado`: Go Thornado chain for consensus, node lifecycle, bonding, churning, slashing, vault accounting, Bitcoin observation, outbound queues, Mimir/halts, and eBifrost.
+- `go-thornado`: Go Thornado chain for consensus, node lifecycle, bonding, churning, vault accounting, Bitcoin observation, outbound queues, BTC vault maintenance halts, and eBifrost.
 - `crates/thornado-shielder`: Rust Shielder privacy engine for note derivation, Orchard commitments, Merkle roots, withdrawal proof construction, and proof verification.
 - `crates/thornado-ffi`: C ABI around Shielder for Go and other native callers.
 - `crates/thornado-web-wasm`: browser Shielder bindings for wallet-side note/proof flows.
@@ -15,7 +15,7 @@ Thornado uses `go-thornado` as the canonical state machine. The Rust state-machi
 
 ## Boundaries
 
-`go-thornado` owns consensus state. Shielder owns privacy proofs only. FROST signing will be plumbed into `go-thornado` as a signer sidecar/interface; it should not reintroduce a second Rust state machine.
+`go-thornado` owns consensus state. Shielder owns privacy proofs only. Bitcoin Bifrost uses the Go-wrapped FROST engine for keygen and signing; it does not reintroduce a second Rust state machine.
 
 Withdrawal flow target:
 

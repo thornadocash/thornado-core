@@ -61,23 +61,18 @@ func (s *frostVaultSigner) RemoteSignWithPath(msg []byte, algo common.SigningAlg
 	if err != nil {
 		return nil, nil, err
 	}
-	tweakRoot, err := common.VaultPathTweakRoot(pubKey, pathIndex)
-	if err != nil {
-		return nil, nil, err
-	}
-	signature, err := frostsessions.SignTaprootTweak(state.LocalData, msg, tweakRoot)
-	if err != nil {
-		return nil, nil, tss.NewKeysignError(ttypes.Blame{FailReason: err.Error()})
-	}
-	if pathIndex == common.MainVaultPathIndex {
-		secpPubKey, err := pubKey.Secp256K1()
+	var childTweak []byte
+	if pathIndex != common.MainVaultPathIndex {
+		childTweak, err = common.VaultPathTweakRoot(pubKey, pathIndex)
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := frostsessions.Verify(secpPubKey.SerializeCompressed(), msg, signature); err != nil {
-			return nil, nil, err
-		}
-	} else if err := verifyTaprootSignature(pubKey, pathIndex, msg, signature); err != nil {
+	}
+	signature, err := frostsessions.SignTaprootChildTweak(state.LocalData, msg, childTweak, []byte{})
+	if err != nil {
+		return nil, nil, tss.NewKeysignError(ttypes.Blame{FailReason: err.Error()})
+	}
+	if err := verifyTaprootSignature(pubKey, pathIndex, msg, signature); err != nil {
 		return nil, nil, err
 	}
 
