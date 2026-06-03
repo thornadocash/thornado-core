@@ -22,6 +22,15 @@ message QueryDepositResponse {
   uint64 node_slot = 11;
   bool bond_confirmed = 12;
   uint64 commitment_count = 13;
+  string inbound_tx_id = 14;
+  int64 btc_confirmations = 15;
+  int64 btc_confirmations_required = 16;
+  int64 btc_observed_height = 17;
+  int64 created_height = 18;
+  int64 expires_at_height = 19;
+  int64 purge_at_height = 20;
+  int64 refund_eligible_height = 21;
+  int64 refund_queued_height = 22;
 }
 
 message QueryDepositSessionRequest {
@@ -40,6 +49,13 @@ message QueryDepositSessionResponse {
   int64 created_height = 8;
   string status = 9;
   string deposit_id = 10;
+  string inbound_tx_id = 11;
+  int64 btc_confirmations = 12;
+  int64 btc_confirmations_required = 13;
+  int64 btc_observed_height = 14;
+  int64 expires_at_height = 15;
+  int64 purge_at_height = 16;
+  int64 refund_eligible_height = 17;
 }
 
 message QueryVaultDepositAddressRequest {
@@ -56,4 +72,6 @@ message QueryVaultDepositAddressResponse {
   string node_pub_key = 6;
   string auction_id = 7;
   int64 created_height = 8;
+  int64 expires_at_height = 9;
+  int64 purge_at_height = 10;
 }

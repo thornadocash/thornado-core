@@ -51,18 +51,14 @@ func DepositRecordInvariant(k KVStore) common.Invariant {
 				msg = append(msg, fmt.Sprintf("%s: invalid deposit: %v", deposit.DepositID, err))
 				broken = true
 			}
-			if deposit.SplitSats > deposit.AmountSats {
-				msg = append(msg, fmt.Sprintf("%s: split amount exceeds deposit amount", deposit.DepositID))
+			if deposit.ShieldedSats > deposit.AmountSats {
+				msg = append(msg, fmt.Sprintf("%s: shielded amount exceeds deposit amount", deposit.DepositID))
 				broken = true
 			}
 			switch deposit.Status {
 			case types.DepositStatusDepositMatched:
 				if deposit.Settlement != "" {
 					msg = append(msg, fmt.Sprintf("%s: matched deposit has settlement %s", deposit.DepositID, deposit.Settlement))
-					broken = true
-				}
-				if len(deposit.Commitments) != 0 {
-					msg = append(msg, fmt.Sprintf("%s: matched deposit has commitments", deposit.DepositID))
 					broken = true
 				}
 			case types.DepositStatusSettled:
@@ -73,15 +69,9 @@ func DepositRecordInvariant(k KVStore) common.Invariant {
 					msg = append(msg, fmt.Sprintf("%s: committed deposit missing settlement", deposit.DepositID))
 					broken = true
 				}
-				if len(deposit.Commitments) == 0 {
-					msg = append(msg, fmt.Sprintf("%s: committed deposit missing commitments", deposit.DepositID))
+				if len(deposit.Commitments) != 0 {
+					msg = append(msg, fmt.Sprintf("%s: committed deposit persists source-linked commitments", deposit.DepositID))
 					broken = true
-				}
-				for _, commitment := range deposit.Commitments {
-					if !k.ShielderCommitmentExists(ctx, commitment) {
-						msg = append(msg, fmt.Sprintf("%s: missing commitment index %s", deposit.DepositID, commitment))
-						broken = true
-					}
 				}
 			default:
 				msg = append(msg, fmt.Sprintf("%s: invalid deposit status %s", deposit.DepositID, deposit.Status))

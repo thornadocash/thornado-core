@@ -19,17 +19,17 @@ var (
 	_ sdk.HasValidateBasic = &MsgDepositRequestPow{}
 	_ sdk.LegacyMsg        = &MsgDepositRequestPow{}
 
-	_ sdk.Msg              = &MsgShielderSplit{}
-	_ sdk.HasValidateBasic = &MsgShielderSplit{}
-	_ sdk.LegacyMsg        = &MsgShielderSplit{}
+	_ sdk.Msg              = &MsgShielderShield{}
+	_ sdk.HasValidateBasic = &MsgShielderShield{}
+	_ sdk.LegacyMsg        = &MsgShielderShield{}
 
 	_ sdk.Msg              = &MsgShielderRedeem{}
 	_ sdk.HasValidateBasic = &MsgShielderRedeem{}
 	_ sdk.LegacyMsg        = &MsgShielderRedeem{}
 
-	_ sdk.Msg              = &MsgShielderSplitFees{}
-	_ sdk.HasValidateBasic = &MsgShielderSplitFees{}
-	_ sdk.LegacyMsg        = &MsgShielderSplitFees{}
+	_ sdk.Msg              = &MsgShielderShieldFees{}
+	_ sdk.HasValidateBasic = &MsgShielderShieldFees{}
+	_ sdk.LegacyMsg        = &MsgShielderShieldFees{}
 
 	_ sdk.Msg              = &MsgNodeSlotAuctionCreate{}
 	_ sdk.HasValidateBasic = &MsgNodeSlotAuctionCreate{}
@@ -43,9 +43,9 @@ var (
 	_ sdk.HasValidateBasic = &MsgNodeSlotAuctionSelectBid{}
 	_ sdk.LegacyMsg        = &MsgNodeSlotAuctionSelectBid{}
 
-	_ sdk.Msg              = &MsgNodeSlotAuctionSplit{}
-	_ sdk.HasValidateBasic = &MsgNodeSlotAuctionSplit{}
-	_ sdk.LegacyMsg        = &MsgNodeSlotAuctionSplit{}
+	_ sdk.Msg              = &MsgNodeSlotAuctionShield{}
+	_ sdk.HasValidateBasic = &MsgNodeSlotAuctionShield{}
+	_ sdk.LegacyMsg        = &MsgNodeSlotAuctionShield{}
 )
 
 const (
@@ -54,7 +54,7 @@ const (
 	MaxShielderCommitmentLength       = 512
 	MaxShielderProofJSONLength        = 64 * 1024
 	MaxShielderPublicJSONLength       = 4 * 1024
-	MaxSplitSignatureHexLength        = 160
+	MaxShieldSignatureHexLength       = 160
 	MaxShielderOperatorSignatureBytes = 64
 	MaxShielderIDLength               = 128
 	MaxPowDurationMs                  = 24 * 60 * 60 * 1000
@@ -113,15 +113,15 @@ func MsgDepositRequestPowCustomGetSigners(m proto.Message) ([][]byte, error) {
 	return nil, nil
 }
 
-func NewMsgShielderSplit(commitments []string, depositPubkey, signature string) *MsgShielderSplit {
-	return &MsgShielderSplit{
+func NewMsgShielderShield(commitments []string, depositPubkey, signature string) *MsgShielderShield {
+	return &MsgShielderShield{
 		Commitments:   commitments,
 		DepositPubkey: strings.TrimSpace(depositPubkey),
 		Signature:     strings.TrimSpace(signature),
 	}
 }
 
-func (m *MsgShielderSplit) ValidateBasic() error {
+func (m *MsgShielderShield) ValidateBasic() error {
 	if strings.TrimSpace(m.DepositPubkey) == "" {
 		return fmt.Errorf("missing deposit pubkey")
 	}
@@ -134,20 +134,20 @@ func (m *MsgShielderSplit) ValidateBasic() error {
 	if err := validateCompressedSecpPubkey(m.DepositPubkey); err != nil {
 		return fmt.Errorf("invalid deposit pubkey: %w", err)
 	}
-	if len(strings.TrimSpace(m.Signature)) > MaxSplitSignatureHexLength {
-		return fmt.Errorf("split authorization signature too long")
+	if len(strings.TrimSpace(m.Signature)) > MaxShieldSignatureHexLength {
+		return fmt.Errorf("shield authorization signature too long")
 	}
 	if _, err := hex.DecodeString(strings.TrimSpace(m.Signature)); err != nil {
-		return fmt.Errorf("invalid split authorization signature")
+		return fmt.Errorf("invalid shield authorization signature")
 	}
 	return nil
 }
 
-func (m *MsgShielderSplit) GetSigners() []cosmos.AccAddress { return nil }
+func (m *MsgShielderShield) GetSigners() []cosmos.AccAddress { return nil }
 
-func MsgShielderSplitCustomGetSigners(m proto.Message) ([][]byte, error) {
-	if _, ok := m.(*apitypes.MsgShielderSplit); !ok {
-		return nil, fmt.Errorf("can't cast as MsgShielderSplit: %T", m)
+func MsgShielderShieldCustomGetSigners(m proto.Message) ([][]byte, error) {
+	if _, ok := m.(*apitypes.MsgShielderShield); !ok {
+		return nil, fmt.Errorf("can't cast as MsgShielderShield: %T", m)
 	}
 	return nil, nil
 }
@@ -198,8 +198,8 @@ func validateCompressedSecpPubkey(value string) error {
 	return fmt.Errorf("expected 32-byte x-only or 33-byte compressed pubkey")
 }
 
-func NewMsgShielderSplitFees(nodePubKey string, operatorSignature []byte, commitments, feeNotePubKeys []string, signer cosmos.AccAddress) *MsgShielderSplitFees {
-	return &MsgShielderSplitFees{
+func NewMsgShielderShieldFees(nodePubKey string, operatorSignature []byte, commitments, feeNotePubKeys []string, signer cosmos.AccAddress) *MsgShielderShieldFees {
+	return &MsgShielderShieldFees{
 		NodePubKey:        strings.TrimSpace(nodePubKey),
 		OperatorSignature: operatorSignature,
 		Commitments:       commitments,
@@ -208,7 +208,7 @@ func NewMsgShielderSplitFees(nodePubKey string, operatorSignature []byte, commit
 	}
 }
 
-func (m *MsgShielderSplitFees) ValidateBasic() error {
+func (m *MsgShielderShieldFees) ValidateBasic() error {
 	if m.Signer.Empty() {
 		return cosmos.ErrInvalidAddress(m.Signer.String())
 	}
@@ -247,14 +247,14 @@ func (m *MsgShielderSplitFees) ValidateBasic() error {
 	return nil
 }
 
-func (m *MsgShielderSplitFees) GetSigners() []cosmos.AccAddress {
+func (m *MsgShielderShieldFees) GetSigners() []cosmos.AccAddress {
 	return []cosmos.AccAddress{m.Signer}
 }
 
-func MsgShielderSplitFeesCustomGetSigners(m proto.Message) ([][]byte, error) {
-	msg, ok := m.(*apitypes.MsgShielderSplitFees)
+func MsgShielderShieldFeesCustomGetSigners(m proto.Message) ([][]byte, error) {
+	msg, ok := m.(*apitypes.MsgShielderShieldFees)
 	if !ok {
-		return nil, fmt.Errorf("can't cast as MsgShielderSplitFees: %T", m)
+		return nil, fmt.Errorf("can't cast as MsgShielderShieldFees: %T", m)
 	}
 	return [][]byte{msg.Signer}, nil
 }
@@ -382,8 +382,8 @@ func MsgNodeSlotAuctionSelectBidCustomGetSigners(m proto.Message) ([][]byte, err
 	return [][]byte{msg.Signer}, nil
 }
 
-func NewMsgNodeSlotAuctionSplit(auctionID, bidID string, commitments []string, signer cosmos.AccAddress) *MsgNodeSlotAuctionSplit {
-	return &MsgNodeSlotAuctionSplit{
+func NewMsgNodeSlotAuctionShield(auctionID, bidID string, commitments []string, signer cosmos.AccAddress) *MsgNodeSlotAuctionShield {
+	return &MsgNodeSlotAuctionShield{
 		AuctionId:   strings.TrimSpace(auctionID),
 		BidId:       strings.TrimSpace(bidID),
 		Commitments: commitments,
@@ -391,7 +391,7 @@ func NewMsgNodeSlotAuctionSplit(auctionID, bidID string, commitments []string, s
 	}
 }
 
-func (m *MsgNodeSlotAuctionSplit) ValidateBasic() error {
+func (m *MsgNodeSlotAuctionShield) ValidateBasic() error {
 	if m.Signer.Empty() {
 		return cosmos.ErrInvalidAddress(m.Signer.String())
 	}
@@ -416,14 +416,14 @@ func (m *MsgNodeSlotAuctionSplit) ValidateBasic() error {
 	return nil
 }
 
-func (m *MsgNodeSlotAuctionSplit) GetSigners() []cosmos.AccAddress {
+func (m *MsgNodeSlotAuctionShield) GetSigners() []cosmos.AccAddress {
 	return []cosmos.AccAddress{m.Signer}
 }
 
-func MsgNodeSlotAuctionSplitCustomGetSigners(m proto.Message) ([][]byte, error) {
-	msg, ok := m.(*apitypes.MsgNodeSlotAuctionSplit)
+func MsgNodeSlotAuctionShieldCustomGetSigners(m proto.Message) ([][]byte, error) {
+	msg, ok := m.(*apitypes.MsgNodeSlotAuctionShield)
 	if !ok {
-		return nil, fmt.Errorf("can't cast as MsgNodeSlotAuctionSplit: %T", m)
+		return nil, fmt.Errorf("can't cast as MsgNodeSlotAuctionShield: %T", m)
 	}
 	return [][]byte{msg.Signer}, nil
 }

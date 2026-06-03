@@ -39,7 +39,7 @@ func HandleIndex(w http.ResponseWriter, r *http.Request) {
 
 func RegisterBrowserAPI(rtr *mux.Router, moduleName string, clientCtx client.Context) {
 	rtr.HandleFunc(fmt.Sprintf("/%s/deposit", moduleName), browserHandler(clientCtx, depositMsg)).Methods(http.MethodPost, http.MethodOptions)
-	rtr.HandleFunc(fmt.Sprintf("/%s/split", moduleName), browserHandler(clientCtx, splitMsg)).Methods(http.MethodPost, http.MethodOptions)
+	rtr.HandleFunc(fmt.Sprintf("/%s/shield", moduleName), browserHandler(clientCtx, shieldMsg)).Methods(http.MethodPost, http.MethodOptions)
 	rtr.HandleFunc(fmt.Sprintf("/%s/withdraw", moduleName), browserHandler(clientCtx, withdrawMsg)).Methods(http.MethodPost, http.MethodOptions)
 }
 
@@ -126,7 +126,7 @@ func depositMsg(r *http.Request) (sdk.Msg, string, error) {
 	return msg, owner, nil
 }
 
-func splitMsg(r *http.Request) (sdk.Msg, string, error) {
+func shieldMsg(r *http.Request) (sdk.Msg, string, error) {
 	var req struct {
 		Commitments   []json.RawMessage `json:"commitments"`
 		NoteCommit    []json.RawMessage `json:"note_commitments"`
@@ -152,7 +152,7 @@ func splitMsg(r *http.Request) (sdk.Msg, string, error) {
 		}
 		commitments = append(commitments, string(raw))
 	}
-	msg := &types.MsgShielderSplit{
+	msg := &types.MsgShielderShield{
 		Commitments:   commitments,
 		DepositPubkey: strings.TrimSpace(req.DepositPubkey),
 		Signature:     strings.TrimSpace(req.Signature),

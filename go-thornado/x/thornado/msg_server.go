@@ -95,10 +95,12 @@ func (ms msgServer) DepositRequestPow(goCtx context.Context, msg *types.MsgDepos
 		DepositAddress:   session.DepositAddress.String(),
 		VaultPubKey:      session.VaultPubKey.String(),
 		DepositPathIndex: session.DepositPathIndex,
+		ExpiresAtHeight:  session.ExpiresAtHeight,
+		PurgeAtHeight:    session.PurgeAtHeight,
 	}, nil
 }
 
-func (ms msgServer) ShielderSplit(goCtx context.Context, msg *types.MsgShielderSplit) (*types.MsgShielderSplitResponse, error) {
+func (ms msgServer) ShielderShield(goCtx context.Context, msg *types.MsgShielderShield) (*types.MsgShielderShieldResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 	if err := msg.ValidateBasic(); err != nil {
 		return nil, err
@@ -130,15 +132,15 @@ func (ms msgServer) ShielderSplit(goCtx context.Context, msg *types.MsgShielderS
 	if amountSats == 0 {
 		return nil, fmt.Errorf("missing shielder commitment amount")
 	}
-	splitRef := strings.TrimSpace(msg.DepositPubkey)
-	if err := VerifySplitAuthorization(msg.DepositPubkey, msg.Signature, splitRef, amountSats, msg.Commitments); err != nil {
+	shieldRef := strings.TrimSpace(msg.DepositPubkey)
+	if err := VerifyShieldAuthorization(msg.DepositPubkey, msg.Signature, shieldRef, amountSats, msg.Commitments); err != nil {
 		return nil, err
 	}
-	deposit, err = PostShielderSplit(ctx, ms.mgr.Keeper(), owner, depositID, msg.Commitments)
+	deposit, err = PostShielderShield(ctx, ms.mgr.Keeper(), owner, depositID, msg.Commitments)
 	if err != nil {
 		return nil, err
 	}
-	return &types.MsgShielderSplitResponse{
+	return &types.MsgShielderShieldResponse{
 		Status: deposit.Status,
 	}, nil
 }
@@ -165,16 +167,16 @@ func (ms msgServer) ShielderRedeem(goCtx context.Context, msg *types.MsgShielder
 	}, nil
 }
 
-func (ms msgServer) ShielderSplitFees(goCtx context.Context, msg *types.MsgShielderSplitFees) (*types.MsgShielderSplitFeesResponse, error) {
+func (ms msgServer) ShielderShieldFees(goCtx context.Context, msg *types.MsgShielderShieldFees) (*types.MsgShielderShieldFeesResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 	if err := msg.ValidateBasic(); err != nil {
 		return nil, err
 	}
-	deposit, err := SplitShielderFees(ctx, ms.mgr.Keeper(), msg.Signer, msg.NodePubKey, msg.OperatorSignature, msg.Commitments, msg.FeeNotePubKeys)
+	deposit, err := ShieldShielderFees(ctx, ms.mgr.Keeper(), msg.Signer, msg.NodePubKey, msg.OperatorSignature, msg.Commitments, msg.FeeNotePubKeys)
 	if err != nil {
 		return nil, err
 	}
-	return &types.MsgShielderSplitFeesResponse{
+	return &types.MsgShielderShieldFeesResponse{
 		DepositId:  deposit.DepositID.String(),
 		AmountSats: deposit.AmountSats,
 		Status:     deposit.Status,
@@ -221,16 +223,16 @@ func (ms msgServer) NodeSlotAuctionSelectBid(goCtx context.Context, msg *types.M
 	return &types.MsgEmpty{}, nil
 }
 
-func (ms msgServer) NodeSlotAuctionSplit(goCtx context.Context, msg *types.MsgNodeSlotAuctionSplit) (*types.MsgShielderSplitResponse, error) {
+func (ms msgServer) NodeSlotAuctionShield(goCtx context.Context, msg *types.MsgNodeSlotAuctionShield) (*types.MsgShielderShieldResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 	if err := msg.ValidateBasic(); err != nil {
 		return nil, err
 	}
-	deposit, err := SplitNodeSlotSale(ctx, ms.mgr.Keeper(), msg.Signer, msg.AuctionId, msg.BidId, msg.Commitments)
+	deposit, err := ShieldNodeSlotSale(ctx, ms.mgr.Keeper(), msg.Signer, msg.AuctionId, msg.BidId, msg.Commitments)
 	if err != nil {
 		return nil, err
 	}
-	return &types.MsgShielderSplitResponse{Status: deposit.Status}, nil
+	return &types.MsgShielderShieldResponse{Status: deposit.Status}, nil
 }
 
 func (ms msgServer) Send(goCtx context.Context, msg *types.MsgSend) (*types.MsgEmpty, error) {

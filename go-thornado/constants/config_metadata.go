@@ -32,7 +32,7 @@ var configDescriptions = map[string]string{
 	Deposit_PowTargetSeconds.String():          "Target proof-of-work solve time in seconds.",
 	Deposit_SessionExpiryMinutes.String():      "Minutes before an issued deposit session expires.",
 	Deposit_SweepRetryIntervalMinutes.String(): "Minutes between retry attempts for deposit sweeps.",
-	Deposit_RefundIfForgottenDays.String():     "Days before a matched deposit that has not been split is returned to its BTC sender.",
+	Deposit_RefundIfForgottenDays.String():     "Days before an issued deposit address is purged from monitoring.",
 
 	DoubleSign_MaxAgeMinutes.String(): "Maximum age in minutes for double-sign evidence.",
 

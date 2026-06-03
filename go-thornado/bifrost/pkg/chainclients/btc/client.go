@@ -664,9 +664,17 @@ func (c *Client) GetConfirmationCount(txIn types.TxIn) int64 {
 		return 0
 	}
 
-	// transactions tagged as mempool do not need confirmation
+	// Mempool transactions are observed immediately, but still report the
+	// configured minimum confirmations to Thornado for user-facing progress.
 	if txIn.MemPool {
-		return 0
+		minConfirmations, err := c.bridge.GetConfigValue(constants.BTC_ConfirmationsMin.String())
+		if err != nil || minConfirmations <= 0 {
+			minConfirmations = int64(c.cfg.MinConfirmations)
+		}
+		if minConfirmations <= 0 {
+			minConfirmations = 1
+		}
+		return minConfirmations
 	}
 
 	// get the block height and confirmation required
@@ -691,7 +699,7 @@ func (c *Client) ConfirmationCountReady(txIn types.TxIn) bool {
 		return true
 	}
 
-	// transactions tagged as mempool do not need confirmation
+	// Mempool transactions are ready for pre-confirmation observation.
 	if txIn.MemPool {
 		return true
 	}

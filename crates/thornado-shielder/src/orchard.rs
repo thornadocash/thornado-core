@@ -117,9 +117,9 @@ pub fn create_orchard_note(
     let (note, _, _) = unauthorized
         .decrypt_output_with_key(output_index, &fvk.to_ivk(Scope::External))
         .ok_or(Error::InvalidProof)?;
-    let cmx = hex::encode(ExtractedNoteCommitment::from(note.commitment()).to_bytes());
+    let cmx = ExtractedNoteCommitment::from(note.commitment());
     Ok((
-        cmx,
+        merkle_leaf_hex(&cmx),
         OrchardNoteReceipt {
             output_action: action_to_public_payload(action),
         },
@@ -162,7 +162,7 @@ pub fn prove_orchard_withdrawal(
         try_note_decryption(&domain, &ivk, &output_action).ok_or(Error::InvalidProof)?
     };
     let cmx: ExtractedNoteCommitment = note.commitment().into();
-    if hex::encode(cmx.to_bytes()) != commitment {
+    if merkle_leaf_hex(&cmx) != commitment {
         return Err(Error::InvalidProof);
     }
 
@@ -514,6 +514,10 @@ fn payload_to_action(
         redpallas::Signature::<SpendAuth>::from(parse_hex_64(&payload.spend_auth_sig_hex)?);
     Action::from_parts(nf, rk, cmx, encrypted_note, cv_net, authorization)
         .ok_or(Error::InvalidProof)
+}
+
+fn merkle_leaf_hex(cmx: &ExtractedNoteCommitment) -> String {
+    hex::encode(MerkleHashOrchard::from_cmx(cmx).to_bytes())
 }
 
 fn parse_merkle_hash(value: &str) -> Result<MerkleHashOrchard> {

@@ -109,6 +109,8 @@ func registerDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.A
 		return types.DepositSession{}, err
 	}
 	path := common.VaultDepositPath(pathType, depositNonce, common.DepositPathCommitmentRoot)
+	expiresAtHeight := nextDepositAddressExpiryHeight(ctx, k)
+	purgeAtHeight := depositAddressPurgeHeight(ctx, k, ctx.BlockHeight())
 
 	session := types.DepositSession{
 		Owner:            owner,
@@ -123,23 +125,29 @@ func registerDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.A
 		NodePubKey:       nodePubKey,
 		AuctionID:        auctionID,
 		CreatedHeight:    ctx.BlockHeight(),
+		ExpiresAtHeight:  expiresAtHeight,
+		PurgeAtHeight:    purgeAtHeight,
 		PowDurationMs:    powDurationMs,
 		PowDifficulty:    powDifficulty,
 		Status:           types.DepositStatusAddressIssued,
 	}
 	mapping := types.DepositAddress{
-		Address:        address,
-		VaultPubKey:    vault.PubKey,
-		PathIndex:      pathIndex,
-		Path:           path,
-		PathType:       string(pathType),
-		DepositNonce:   depositNonce,
-		Owner:          owner,
-		PowToken:       powToken,
-		OperatorPubKey: operator,
-		NodePubKey:     nodePubKey,
-		AuctionID:      auctionID,
-		CreatedHeight:  ctx.BlockHeight(),
+		Address:         address,
+		VaultPubKey:     vault.PubKey,
+		PathIndex:       pathIndex,
+		Path:            path,
+		PathType:        string(pathType),
+		DepositNonce:    depositNonce,
+		Owner:           owner,
+		PowToken:        powToken,
+		OperatorPubKey:  operator,
+		NodePubKey:      nodePubKey,
+		AuctionID:       auctionID,
+		CreatedHeight:   ctx.BlockHeight(),
+		ExpiresAtHeight: expiresAtHeight,
+		PurgeAtHeight:   purgeAtHeight,
+		PowDurationMs:   powDurationMs,
+		PowDifficulty:   powDifficulty,
 	}
 	if err := k.SetDepositAddress(ctx, mapping); err != nil {
 		return types.DepositSession{}, err
@@ -179,44 +187,46 @@ func MatchCoreDeposit(ctx cosmos.Context, mgr Manager, tx ObservedTx) (types.Dep
 	if mapping.VaultPubKey.IsEmpty() {
 		return types.DepositRecord{}, fmt.Errorf("deposit address not registered")
 	}
-	session, err := k.GetDepositSession(ctx, mapping.Owner)
-	if err != nil {
-		return types.DepositRecord{}, err
-	}
-	if session.DepositAddress.IsEmpty() {
-		return types.DepositRecord{}, fmt.Errorf("deposit session not found")
-	}
-	if expiry := getConfigDurationBlocks(ctx, k, constants.Deposit_SessionExpiryMinutes); expiry > 0 && session.CreatedHeight+expiry < ctx.BlockHeight() {
-		return types.DepositRecord{}, fmt.Errorf("deposit session expired")
-	}
-	if !tx.Tx.ToAddress.Equals(session.DepositAddress) || !mapping.VaultPubKey.Equals(session.VaultPubKey) || mapping.PathIndex != session.DepositPathIndex {
-		return types.DepositRecord{}, fmt.Errorf("deposit mapping mismatch")
+	if mapping.PurgeAtHeight > 0 && ctx.BlockHeight() >= mapping.PurgeAtHeight {
+		return types.DepositRecord{}, fmt.Errorf("deposit address purged")
 	}
 	if minDeposit := uint64(k.GetConfigInt64(ctx, constants.Deposit_AmountMinSats)); coin.Amount.Uint64() < minDeposit {
 		return types.DepositRecord{}, fmt.Errorf("deposit below dust threshold: %d/%d", coin.Amount.Uint64(), minDeposit)
 	}
+	confirmationRequired := k.GetConfigInt64(ctx, constants.BTC_ConfirmationsMin)
+	if confirmationRequired <= 0 {
+		confirmationRequired = 1
+	}
 
 	deposit := types.DepositRecord{
-		DepositID:        tx.Tx.ID,
-		Owner:            session.Owner,
-		AmountSats:       coin.Amount.Uint64(),
-		DepositAddress:   tx.Tx.ToAddress,
-		ReturnAddress:    tx.Tx.FromAddress,
-		VaultPubKey:      session.VaultPubKey,
-		DepositPathIndex: session.DepositPathIndex,
-		DepositPath:      session.DepositPath,
-		DepositPathType:  session.DepositPathType,
-		DepositNonce:     session.DepositNonce,
-		OperatorPubKey:   session.OperatorPubKey,
-		NodePubKey:       session.NodePubKey,
-		AuctionID:        session.AuctionID,
-		MatchedHeight:    ctx.BlockHeight(),
-		PowDurationMs:    session.PowDurationMs,
-		PowDifficulty:    session.PowDifficulty,
-		Status:           types.DepositStatusDepositMatched,
+		DepositID:                tx.Tx.ID,
+		Owner:                    mapping.Owner,
+		AmountSats:               coin.Amount.Uint64(),
+		DepositAddress:           tx.Tx.ToAddress,
+		ReturnAddress:            tx.Tx.FromAddress,
+		VaultPubKey:              mapping.VaultPubKey,
+		DepositPathIndex:         mapping.PathIndex,
+		DepositPath:              mapping.Path,
+		DepositPathType:          mapping.PathType,
+		DepositNonce:             mapping.DepositNonce,
+		OperatorPubKey:           mapping.OperatorPubKey,
+		NodePubKey:               mapping.NodePubKey,
+		AuctionID:                mapping.AuctionID,
+		MatchedHeight:            ctx.BlockHeight(),
+		CreatedHeight:            mapping.CreatedHeight,
+		ExpiresAtHeight:          mapping.ExpiresAtHeight,
+		PurgeAtHeight:            mapping.PurgeAtHeight,
+		RefundEligibleHeight:     depositRefundEligibleHeight(ctx, k, mapping.ExpiresAtHeight),
+		PowDurationMs:            mapping.PowDurationMs,
+		PowDifficulty:            mapping.PowDifficulty,
+		Status:                   types.DepositStatusDepositMatched,
+		InboundTxID:              tx.Tx.ID,
+		BTCConfirmations:         confirmationRequired,
+		BTCConfirmationsRequired: confirmationRequired,
+		BTCObservedHeight:        tx.BlockHeight,
 	}
-	if session.AuctionID != "" {
-		bidID := nodeSlotBidID(session.AuctionID, session.Owner, session.DepositPathIndex)
+	if mapping.AuctionID != "" {
+		bidID := nodeSlotBidID(mapping.AuctionID, mapping.Owner, mapping.PathIndex)
 		bid, err := k.GetNodeSlotBid(ctx, bidID)
 		if err != nil {
 			return types.DepositRecord{}, err
@@ -234,7 +244,7 @@ func MatchCoreDeposit(ctx cosmos.Context, mgr Manager, tx ObservedTx) (types.Dep
 	if err := k.SetDepositRecord(ctx, deposit); err != nil {
 		return types.DepositRecord{}, err
 	}
-	if timing, err := k.GetDepositPowTiming(ctx, session.PowToken); err == nil && timing.PowToken != "" {
+	if timing, err := k.GetDepositPowTiming(ctx, mapping.PowToken); err == nil && timing.PowToken != "" {
 		timing.DepositID = tx.Tx.ID
 		timing.DepositAmountSats = coin.Amount.Uint64()
 		timing.MatchedHeight = ctx.BlockHeight()
@@ -244,29 +254,72 @@ func MatchCoreDeposit(ctx cosmos.Context, mgr Manager, tx ObservedTx) (types.Dep
 		}
 	}
 
-	session.DepositID = tx.Tx.ID
-	session.Status = types.DepositStatusDepositMatched
-	if err := k.SetDepositSession(ctx, session); err != nil {
-		return types.DepositRecord{}, err
+	if session, err := k.GetDepositSession(ctx, mapping.Owner); err == nil && tx.Tx.ToAddress.Equals(session.DepositAddress) {
+		session.DepositID = tx.Tx.ID
+		session.Status = types.DepositStatusDepositMatched
+		session.RefundEligibleHeight = deposit.RefundEligibleHeight
+		session.InboundTxID = tx.Tx.ID
+		session.BTCConfirmations = confirmationRequired
+		session.BTCConfirmationsRequired = confirmationRequired
+		session.BTCObservedHeight = tx.BlockHeight
+		if err := k.SetDepositSession(ctx, session); err != nil {
+			return types.DepositRecord{}, err
+		}
 	}
-	if err := queueVaultPathSweep(ctx, mgr, tx, session.VaultPubKey, session.DepositPathIndex); err != nil {
+	if err := queueVaultPathSweep(ctx, mgr, tx, mapping.VaultPubKey, mapping.PathIndex); err != nil {
 		return types.DepositRecord{}, err
 	}
 
 	return deposit, nil
 }
 
-func ProcessForgottenDepositReturns(ctx cosmos.Context, mgr Manager) error {
-	k := mgr.Keeper()
-	days := k.GetConfigInt64(ctx, constants.Deposit_RefundIfForgottenDays)
-	if days <= 0 {
+func RecordDepositObservation(ctx cosmos.Context, k keeper.Keeper, tx ObservedTx, finalised bool) error {
+	if !tx.Tx.Chain.Equals(common.BTCChain) || tx.Tx.ID.IsEmpty() || tx.Tx.ToAddress.IsEmpty() {
 		return nil
 	}
-	ageBlocks := constants.MinutesToBlocks(days*24*60, k.GetConfigInt64(ctx, constants.Chain_BlockTimeSeconds))
-	if ageBlocks <= 0 {
+	mapping, err := k.GetDepositAddress(ctx, tx.Tx.ToAddress)
+	if err != nil || mapping.VaultPubKey.IsEmpty() {
 		return nil
+	}
+	required := int64(0)
+	if tx.FinaliseHeight > tx.BlockHeight {
+		required = tx.FinaliseHeight - tx.BlockHeight
+	}
+	if required <= 0 {
+		required = k.GetConfigInt64(ctx, constants.BTC_ConfirmationsMin)
+	}
+	if required <= 0 {
+		required = 1
+	}
+	current := int64(0)
+	if finalised {
+		current = required
 	}
 
+	if session, err := k.GetDepositSession(ctx, mapping.Owner); err == nil && tx.Tx.ToAddress.Equals(session.DepositAddress) {
+		session.InboundTxID = tx.Tx.ID
+		session.BTCObservedHeight = tx.BlockHeight
+		session.BTCConfirmations = current
+		session.BTCConfirmationsRequired = required
+		if err := k.SetDepositSession(ctx, session); err != nil {
+			return err
+		}
+	}
+
+	if deposit, err := k.GetDepositRecord(ctx, tx.Tx.ID); err == nil && !deposit.DepositID.IsEmpty() {
+		deposit.InboundTxID = tx.Tx.ID
+		deposit.BTCObservedHeight = tx.BlockHeight
+		deposit.BTCConfirmations = current
+		deposit.BTCConfirmationsRequired = required
+		if err := k.SetDepositRecord(ctx, deposit); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ProcessExpiredDepositAddressReturns(ctx cosmos.Context, mgr Manager) error {
+	k := mgr.Keeper()
 	iter := k.GetDepositRecordIterator(ctx)
 	defer iter.Close()
 
@@ -279,25 +332,29 @@ func ProcessForgottenDepositReturns(ctx cosmos.Context, mgr Manager) error {
 		if deposit.Status != types.DepositStatusDepositMatched {
 			continue
 		}
-		if len(deposit.Commitments) != 0 || deposit.Settlement != "" {
+		if deposit.Settlement != "" {
 			continue
 		}
-		if deposit.MatchedHeight <= 0 || deposit.MatchedHeight+ageBlocks > ctx.BlockHeight() {
+		if deposit.RefundEligibleHeight <= 0 || deposit.RefundEligibleHeight > ctx.BlockHeight() {
 			continue
 		}
-		if err := queueForgottenDepositReturn(ctx, mgr, deposit); err != nil {
-			ctx.Logger().Error("fail to return forgotten deposit", "error", err, "deposit_id", deposit.DepositID.String())
+		if err := queueExpiredDepositReturn(ctx, mgr, deposit); err != nil {
+			ctx.Logger().Error("fail to return expired deposit", "error", err, "deposit_id", deposit.DepositID.String())
 			continue
 		}
 		deposit.Status = types.DepositStatusReturnQueued
+		deposit.RefundQueuedHeight = ctx.BlockHeight()
 		if err := k.SetDepositRecord(ctx, deposit); err != nil {
-			ctx.Logger().Error("fail to mark forgotten deposit return queued", "error", err, "deposit_id", deposit.DepositID.String())
+			ctx.Logger().Error("fail to mark expired deposit return queued", "error", err, "deposit_id", deposit.DepositID.String())
 		}
 	}
-	return iter.Error()
+	if err := iter.Error(); err != nil {
+		return err
+	}
+	return purgeExpiredDepositAddresses(ctx, mgr)
 }
 
-func queueForgottenDepositReturn(ctx cosmos.Context, mgr Manager, deposit types.DepositRecord) error {
+func queueExpiredDepositReturn(ctx cosmos.Context, mgr Manager, deposit types.DepositRecord) error {
 	if deposit.DepositID.IsEmpty() {
 		return fmt.Errorf("missing deposit id")
 	}
@@ -321,9 +378,9 @@ func queueForgottenDepositReturn(ctx cosmos.Context, mgr Manager, deposit types.
 		GasRate:    gasRate,
 		InHash:     deposit.DepositID,
 		ModuleName: BaseName,
-		TxType:     types.TxOutTypeOut,
+		TxType:     types.TxOutTypeRefund,
 	}
-	ctx.Logger().Info("queued forgotten deposit return",
+	ctx.Logger().Info("queued expired deposit return",
 		"deposit_id", deposit.DepositID.String(),
 		"to", deposit.ReturnAddress.String(),
 		"amount", amount.String(),
@@ -336,4 +393,119 @@ func queueForgottenDepositReturn(ctx cosmos.Context, mgr Manager, deposit types.
 		return fmt.Errorf("deposit return was not queued")
 	}
 	return nil
+}
+
+func nextDepositAddressExpiryHeight(ctx cosmos.Context, k keeper.Keeper) int64 {
+	return nextChurnHeightAfter(ctx, k, ctx.BlockHeight())
+}
+
+func depositAddressPurgeHeight(ctx cosmos.Context, k keeper.Keeper, createdHeight int64) int64 {
+	days := k.GetConfigInt64(ctx, constants.Deposit_RefundIfForgottenDays)
+	if days <= 0 {
+		return 0
+	}
+	blocks := constants.MinutesToBlocks(days*24*60, k.GetConfigInt64(ctx, constants.Chain_BlockTimeSeconds))
+	if blocks <= 0 {
+		return 0
+	}
+	return createdHeight + blocks
+}
+
+func depositRefundEligibleHeight(ctx cosmos.Context, k keeper.Keeper, expiresAtHeight int64) int64 {
+	if expiresAtHeight > ctx.BlockHeight() {
+		return nextChurnHeightAfter(ctx, k, expiresAtHeight)
+	}
+	return nextChurnHeightAfter(ctx, k, ctx.BlockHeight())
+}
+
+func nextChurnHeightAfter(ctx cosmos.Context, k keeper.Keeper, height int64) int64 {
+	interval := getConfigDurationBlocks(ctx, k, constants.Churn_IntervalMinutes)
+	if interval <= 0 {
+		return 0
+	}
+	next := getLastChurnHeight(ctx, k) + interval
+	for next <= height {
+		next += interval
+	}
+	return next
+}
+
+func purgeExpiredDepositAddresses(ctx cosmos.Context, mgr Manager) error {
+	k := mgr.Keeper()
+	iter := k.GetDepositAddressIterator(ctx)
+	defer iter.Close()
+
+	for ; iter.Valid(); iter.Next() {
+		var mapping types.DepositAddress
+		if err := json.Unmarshal(iter.Value(), &mapping); err != nil {
+			ctx.Logger().Error("fail to unmarshal deposit address", "error", err)
+			continue
+		}
+		if mapping.PurgeAtHeight <= 0 || mapping.PurgeAtHeight > ctx.BlockHeight() {
+			continue
+		}
+		if err := k.DeleteDepositAddress(ctx, mapping.Address); err != nil {
+			ctx.Logger().Error("fail to purge deposit address", "error", err, "address", mapping.Address.String())
+		}
+		if err := purgeRefundTxOutItemsForAddress(ctx, k, mapping.Address); err != nil {
+			ctx.Logger().Error("fail to purge stale deposit refund txout", "error", err, "address", mapping.Address.String())
+		}
+	}
+	return iter.Error()
+}
+
+func purgeRefundTxOutItemsForAddress(ctx cosmos.Context, k keeper.Keeper, address common.Address) error {
+	iter := k.GetDepositRecordIterator(ctx)
+	defer iter.Close()
+
+	for ; iter.Valid(); iter.Next() {
+		var deposit types.DepositRecord
+		if err := json.Unmarshal(iter.Value(), &deposit); err != nil {
+			ctx.Logger().Error("fail to unmarshal deposit record", "error", err)
+			continue
+		}
+		if deposit.DepositID.IsEmpty() || !deposit.DepositAddress.Equals(address) {
+			continue
+		}
+		if err := purgeRefundTxOutItems(ctx, k, deposit.DepositID); err != nil {
+			return err
+		}
+	}
+	return iter.Error()
+}
+
+func purgeRefundTxOutItems(ctx cosmos.Context, k keeper.Keeper, depositID common.TxID) error {
+	iter := k.GetTxOutIterator(ctx)
+	defer iter.Close()
+
+	for ; iter.Valid(); iter.Next() {
+		var txOut TxOut
+		if err := json.Unmarshal(iter.Value(), &txOut); err != nil {
+			ctx.Logger().Error("fail to unmarshal txout", "error", err)
+			continue
+		}
+		filtered := txOut.TxArray[:0]
+		changed := false
+		for _, item := range txOut.TxArray {
+			if item.InHash.Equals(depositID) && item.GetTxType() == types.TxOutTypeRefund {
+				changed = true
+				continue
+			}
+			filtered = append(filtered, item)
+		}
+		if !changed {
+			continue
+		}
+		txOut.TxArray = filtered
+		if len(txOut.TxArray) == 0 {
+			if err := k.ClearTxOut(ctx, txOut.Height); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := k.SetTxOut(ctx, &txOut); err != nil {
+			return err
+		}
+	}
+	return iter.Error()
 }

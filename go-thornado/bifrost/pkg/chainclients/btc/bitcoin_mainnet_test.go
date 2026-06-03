@@ -93,7 +93,7 @@ func (s *BitcoinSuite) TestGetConfirmationCount(c *C) {
 		Chain:   common.BTCChain,
 		TxArray: nil,
 	}), Equals, int64(0))
-	// mempool txin , confirmation count should be 0
+	// mempool txin is observed immediately but still reports minimum confirmations
 	c.Assert(s.client.GetConfirmationCount(types.TxIn{
 		Chain: common.BTCChain,
 		TxArray: []*types.TxInItem{
@@ -111,7 +111,7 @@ func (s *BitcoinSuite) TestGetConfirmationCount(c *C) {
 		Filtered:             true,
 		MemPool:              true,
 		ConfirmationRequired: 0,
-	}), Equals, int64(0))
+	}), Equals, int64(1))
 
 	c.Assert(s.client.GetConfirmationCount(types.TxIn{
 		Chain: common.BTCChain,

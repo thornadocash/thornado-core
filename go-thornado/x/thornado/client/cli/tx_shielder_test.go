@@ -10,13 +10,13 @@ func TestShielderTxCommandSurfaceHasAtomicSettlementOnly(t *testing.T) {
 			t.Fatalf("standalone settlement command still exposed: %s", subcmd.Name())
 		}
 	}
-	if _, _, err := cmd.Find([]string{"split"}); err != nil {
-		t.Fatal("missing atomic deposit split command")
+	if _, _, err := cmd.Find([]string{"shield"}); err != nil {
+		t.Fatal("missing atomic deposit shield command")
 	}
-	if _, _, err := cmd.Find([]string{"auction-split"}); err != nil {
-		t.Fatal("missing atomic sale split command")
+	if _, _, err := cmd.Find([]string{"auction-shield"}); err != nil {
+		t.Fatal("missing atomic sale shield command")
 	}
-	if _, _, err := cmd.Find([]string{"split-fees"}); err != nil {
-		t.Fatal("missing atomic fee split command")
+	if _, _, err := cmd.Find([]string{"shield-fees"}); err != nil {
+		t.Fatal("missing atomic fee shield command")
 	}
 }

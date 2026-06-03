@@ -64,7 +64,7 @@ func (ad AnteDecorator) isIntrinsicAuthNativeTx(msgs []cosmos.Msg) bool {
 	for _, msg := range msgs {
 		switch msg.(type) {
 		case *types.MsgDepositRequestPow,
-			*types.MsgShielderSplit,
+			*types.MsgShielderShield,
 			*types.MsgShielderRedeem:
 		default:
 			return false
@@ -182,20 +182,20 @@ func (ad AnteDecorator) anteHandleMessage(ctx sdk.Context, version semver.Versio
 		return ctx, cosmos.ErrUnknownRequest("native deposits are disabled")
 	case *types.MsgDepositRequestPow:
 		return DepositRequestPowAnteHandler(ctx, ad.keeper, *m)
-	case *types.MsgShielderSplit:
-		return ShielderSplitAnteHandler(ctx, ad.keeper, *m)
+	case *types.MsgShielderShield:
+		return ShielderShieldAnteHandler(ctx, ad.keeper, *m)
 	case *types.MsgShielderRedeem:
 		return ShielderRedeemAnteHandler(ctx, ad.keeper, *m)
-	case *types.MsgShielderSplitFees:
-		return ShielderSplitFeesAnteHandler(ctx, ad.keeper, *m)
+	case *types.MsgShielderShieldFees:
+		return ShielderShieldFeesAnteHandler(ctx, ad.keeper, *m)
 	case *types.MsgNodeSlotAuctionCreate:
 		return NodeSlotAuctionCreateAnteHandler(ctx, ad.keeper, *m)
 	case *types.MsgNodeSlotAuctionBidPow:
 		return NodeSlotAuctionBidPowAnteHandler(ctx, ad.keeper, *m)
 	case *types.MsgNodeSlotAuctionSelectBid:
 		return NodeSlotAuctionSelectBidAnteHandler(ctx, ad.keeper, *m)
-	case *types.MsgNodeSlotAuctionSplit:
-		return NodeSlotAuctionSplitAnteHandler(ctx, ad.keeper, *m)
+	case *types.MsgNodeSlotAuctionShield:
+		return NodeSlotAuctionShieldAnteHandler(ctx, ad.keeper, *m)
 	default:
 		return ctx, cosmos.ErrUnknownRequest("invalid message type")
 	}
@@ -370,7 +370,7 @@ func depositPowAnte(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress
 	return ctx, nil
 }
 
-func ShielderSplitAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgShielderSplit) (cosmos.Context, error) {
+func ShielderShieldAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgShielderShield) (cosmos.Context, error) {
 	if err := msg.ValidateBasic(); err != nil {
 		return ctx, err
 	}
@@ -386,10 +386,10 @@ func ShielderSplitAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.Msg
 		return ctx, cosmos.ErrUnknownRequest("deposit not matched")
 	}
 	depositID := session.DepositID
-	return shielderSplitAnte(ctx, k, owner, depositID, msg.Commitments, msg.DepositPubkey, msg.Signature)
+	return shielderShieldAnte(ctx, k, owner, depositID, msg.Commitments, msg.DepositPubkey, msg.Signature)
 }
 
-func shielderSplitAnte(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, depositID common.TxID, commitments []string, depositPubkey, signature string) (cosmos.Context, error) {
+func shielderShieldAnte(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, depositID common.TxID, commitments []string, depositPubkey, signature string) (cosmos.Context, error) {
 	deposit, err := k.GetDepositRecord(ctx, depositID)
 	if err != nil {
 		return ctx, err
@@ -401,25 +401,25 @@ func shielderSplitAnte(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 		return ctx, cosmos.ErrUnknownRequest("deposit owner mismatch")
 	}
 	if deposit.AuctionID != "" {
-		return ctx, cosmos.ErrUnknownRequest("node sale bid deposits split through auction-split")
+		return ctx, cosmos.ErrUnknownRequest("node sale bid deposits shield through auction-shield")
 	}
 	switch deposit.Status {
 	case types.DepositStatusDepositMatched:
 	case types.DepositStatusSettled:
-		if deposit.Settlement == "" || deposit.SplitSats != 0 || len(deposit.Commitments) != 0 {
+		if deposit.Settlement == "" || deposit.ShieldedSats != 0 {
 			return ctx, cosmos.ErrUnknownRequest("duplicate deposit settlement")
 		}
 	case types.DepositStatusCommitted:
-		return ctx, cosmos.ErrUnknownRequest("deposit already split")
+		return ctx, cosmos.ErrUnknownRequest("deposit already shielded")
 	default:
 		return ctx, cosmos.ErrUnknownRequest("deposit is not matched")
 	}
-	if deposit.SplitSats > deposit.AmountSats {
-		return ctx, cosmos.ErrUnknownRequest("deposit split amount exceeds deposit amount")
+	if deposit.ShieldedSats > deposit.AmountSats {
+		return ctx, cosmos.ErrUnknownRequest("deposit shielded amount exceeds deposit amount")
 	}
-	availableSats := deposit.AmountSats - deposit.SplitSats
+	availableSats := deposit.AmountSats - deposit.ShieldedSats
 	if availableSats == 0 {
-		return ctx, cosmos.ErrUnknownRequest("deposit already fully split")
+		return ctx, cosmos.ErrUnknownRequest("deposit already fully shielded")
 	}
 	noteCommitments, err := parseShielderNoteCommitments(commitments, availableSats, deposit.IsNodeBond() || deposit.Settlement == types.DepositSettlementOperatorBond)
 	if err != nil {
@@ -441,7 +441,7 @@ func shielderSplitAnte(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddr
 		return ctx, cosmos.ErrUnknownRequest("shielder commitment denominations must match deposit amount")
 	}
 	if strings.TrimSpace(depositPubkey) != "" || strings.TrimSpace(signature) != "" {
-		if err := VerifySplitAuthorization(depositPubkey, signature, depositPubkey, authorizedAmountSats, commitments); err != nil {
+		if err := VerifyShieldAuthorization(depositPubkey, signature, depositPubkey, authorizedAmountSats, commitments); err != nil {
 			return ctx, err
 		}
 	}
@@ -479,6 +479,9 @@ func shielderRedeemAnte(ctx cosmos.Context, k keeper.Keeper, proof, public []byt
 	if !recipient.GetChain().Equals(common.BTCChain) {
 		return ctx, cosmos.ErrUnknownRequest("shielder redeem recipient must be bitcoin")
 	}
+	if err := RejectLeakyShielderRedeemProof(ctx, k, proof); err != nil {
+		return ctx, err
+	}
 	if err := VerifyShielderRedeemJSON(proof, public); err != nil {
 		return ctx, err
 	}
@@ -491,7 +494,7 @@ func shielderRedeemAnte(ctx cosmos.Context, k keeper.Keeper, proof, public []byt
 	return ctx, nil
 }
 
-func ShielderSplitFeesAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgShielderSplitFees) (cosmos.Context, error) {
+func ShielderShieldFeesAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgShielderShieldFees) (cosmos.Context, error) {
 	if err := msg.ValidateBasic(); err != nil {
 		return ctx, err
 	}
@@ -509,7 +512,7 @@ func ShielderSplitFeesAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types
 		return ctx, cosmos.ErrUnknownRequest("shielder fee signer mismatch")
 	}
 	if !bond.PendingFeeDepositID.IsEmpty() {
-		return ctx, cosmos.ErrUnknownRequest("shielder fee settlement already pending split")
+		return ctx, cosmos.ErrUnknownRequest("shielder fee settlement already pending shield")
 	}
 	pool, err := distributeFeePool(ctx, k)
 	if err != nil {
@@ -602,11 +605,11 @@ func NodeSlotAuctionSelectBidAnteHandler(ctx cosmos.Context, k keeper.Keeper, ms
 	return ctx, nil
 }
 
-func NodeSlotAuctionSplitAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgNodeSlotAuctionSplit) (cosmos.Context, error) {
+func NodeSlotAuctionShieldAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgNodeSlotAuctionShield) (cosmos.Context, error) {
 	if err := msg.ValidateBasic(); err != nil {
 		return ctx, err
 	}
-	auction, bid, deposit, err := validateNodeSlotAuctionSplit(ctx, k, msg.Signer, msg.AuctionId, msg.BidId, msg.Commitments)
+	auction, bid, deposit, err := validateNodeSlotAuctionShield(ctx, k, msg.Signer, msg.AuctionId, msg.BidId, msg.Commitments)
 	if err != nil {
 		return ctx, err
 	}

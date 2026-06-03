@@ -11,10 +11,13 @@ char* thornado_last_error(void);
 void thornado_free_string(char* value);
 char* thornado_client_pubkey_from_secret_json(const char* client_seed);
 char* thornado_client_pubkey_for_deposit_json(const char* client_seed, uint64_t deposit_index);
-char* thornado_derive_split_receipt_json(const char* deposit_id, uint64_t amount_sats, const char* client_seed);
-char* thornado_derive_split_receipt_for_deposit_json(const char* deposit_id, uint64_t deposit_index, uint64_t amount_sats, const char* client_seed);
-char* thornado_split_authorization_json(const char* client_seed, const char* deposit_id, uint64_t amount_sats, const char* note_commitments_json);
-char* thornado_split_authorization_for_deposit_json(const char* client_seed, uint64_t deposit_index, const char* deposit_id, uint64_t amount_sats, const char* note_commitments_json);
+char* thornado_client_pubkey_for_deposit_type_json(const char* client_seed, const char* deposit_type, uint64_t deposit_index);
+char* thornado_derive_shield_receipt_json(const char* deposit_id, uint64_t amount_sats, const char* client_seed);
+char* thornado_derive_shield_receipt_for_deposit_json(const char* deposit_id, uint64_t deposit_index, uint64_t amount_sats, const char* client_seed);
+char* thornado_derive_shield_receipt_for_deposit_type_json(const char* deposit_id, const char* deposit_type, uint64_t deposit_index, uint64_t amount_sats, const char* client_seed);
+char* thornado_shield_authorization_json(const char* client_seed, const char* deposit_id, uint64_t amount_sats, const char* note_commitments_json);
+char* thornado_shield_authorization_for_deposit_json(const char* client_seed, uint64_t deposit_index, const char* deposit_id, uint64_t amount_sats, const char* note_commitments_json);
+char* thornado_shield_authorization_for_deposit_type_json(const char* client_seed, const char* deposit_type, uint64_t deposit_index, const char* deposit_id, uint64_t amount_sats, const char* note_commitments_json);
 char* thornado_merkle_root_json(const char* leaves_json);
 char* thornado_shielder_withdrawal_from_receipt_json(const char* note_json, const char* client_seed, const char* leaves_json, const char* recipient, uint64_t fee_sats);
 bool thornado_verify_withdrawal_json(const char* proof_json, const char* public_json);
@@ -47,40 +50,70 @@ func ClientPubKeyForDeposit(clientSeed string, depositIndex uint64) (string, err
 	return takeString(C.thornado_client_pubkey_for_deposit_json(seed, C.uint64_t(depositIndex)))
 }
 
-func DeriveSplitReceipt(depositID string, amountSats uint64, clientSeed string) (string, error) {
+func ClientPubKeyForDepositType(clientSeed string, depositType string, depositIndex uint64) (string, error) {
+	seed := cString(clientSeed)
+	typ := cString(depositType)
+	defer C.free(unsafe.Pointer(seed))
+	defer C.free(unsafe.Pointer(typ))
+	return takeString(C.thornado_client_pubkey_for_deposit_type_json(seed, typ, C.uint64_t(depositIndex)))
+}
+
+func DeriveShieldReceipt(depositID string, amountSats uint64, clientSeed string) (string, error) {
 	deposit := cString(depositID)
 	seed := cString(clientSeed)
 	defer C.free(unsafe.Pointer(deposit))
 	defer C.free(unsafe.Pointer(seed))
-	return takeString(C.thornado_derive_split_receipt_json(deposit, C.uint64_t(amountSats), seed))
+	return takeString(C.thornado_derive_shield_receipt_json(deposit, C.uint64_t(amountSats), seed))
 }
 
-func DeriveSplitReceiptForDeposit(depositID string, depositIndex uint64, amountSats uint64, clientSeed string) (string, error) {
+func DeriveShieldReceiptForDeposit(depositID string, depositIndex uint64, amountSats uint64, clientSeed string) (string, error) {
 	deposit := cString(depositID)
 	seed := cString(clientSeed)
 	defer C.free(unsafe.Pointer(deposit))
 	defer C.free(unsafe.Pointer(seed))
-	return takeString(C.thornado_derive_split_receipt_for_deposit_json(deposit, C.uint64_t(depositIndex), C.uint64_t(amountSats), seed))
+	return takeString(C.thornado_derive_shield_receipt_for_deposit_json(deposit, C.uint64_t(depositIndex), C.uint64_t(amountSats), seed))
 }
 
-func SplitAuthorization(clientSeed string, depositID string, amountSats uint64, noteCommitmentsJSON string) (string, error) {
+func DeriveShieldReceiptForDepositType(depositID string, depositType string, depositIndex uint64, amountSats uint64, clientSeed string) (string, error) {
+	deposit := cString(depositID)
+	typ := cString(depositType)
+	seed := cString(clientSeed)
+	defer C.free(unsafe.Pointer(deposit))
+	defer C.free(unsafe.Pointer(typ))
+	defer C.free(unsafe.Pointer(seed))
+	return takeString(C.thornado_derive_shield_receipt_for_deposit_type_json(deposit, typ, C.uint64_t(depositIndex), C.uint64_t(amountSats), seed))
+}
+
+func ShieldAuthorization(clientSeed string, depositID string, amountSats uint64, noteCommitmentsJSON string) (string, error) {
 	seed := cString(clientSeed)
 	deposit := cString(depositID)
 	commitments := cString(noteCommitmentsJSON)
 	defer C.free(unsafe.Pointer(seed))
 	defer C.free(unsafe.Pointer(deposit))
 	defer C.free(unsafe.Pointer(commitments))
-	return takeString(C.thornado_split_authorization_json(seed, deposit, C.uint64_t(amountSats), commitments))
+	return takeString(C.thornado_shield_authorization_json(seed, deposit, C.uint64_t(amountSats), commitments))
 }
 
-func SplitAuthorizationForDeposit(clientSeed string, depositIndex uint64, depositID string, amountSats uint64, noteCommitmentsJSON string) (string, error) {
+func ShieldAuthorizationForDeposit(clientSeed string, depositIndex uint64, depositID string, amountSats uint64, noteCommitmentsJSON string) (string, error) {
 	seed := cString(clientSeed)
 	deposit := cString(depositID)
 	commitments := cString(noteCommitmentsJSON)
 	defer C.free(unsafe.Pointer(seed))
 	defer C.free(unsafe.Pointer(deposit))
 	defer C.free(unsafe.Pointer(commitments))
-	return takeString(C.thornado_split_authorization_for_deposit_json(seed, C.uint64_t(depositIndex), deposit, C.uint64_t(amountSats), commitments))
+	return takeString(C.thornado_shield_authorization_for_deposit_json(seed, C.uint64_t(depositIndex), deposit, C.uint64_t(amountSats), commitments))
+}
+
+func ShieldAuthorizationForDepositType(clientSeed string, depositType string, depositIndex uint64, depositID string, amountSats uint64, noteCommitmentsJSON string) (string, error) {
+	seed := cString(clientSeed)
+	typ := cString(depositType)
+	deposit := cString(depositID)
+	commitments := cString(noteCommitmentsJSON)
+	defer C.free(unsafe.Pointer(seed))
+	defer C.free(unsafe.Pointer(typ))
+	defer C.free(unsafe.Pointer(deposit))
+	defer C.free(unsafe.Pointer(commitments))
+	return takeString(C.thornado_shield_authorization_for_deposit_type_json(seed, typ, C.uint64_t(depositIndex), deposit, C.uint64_t(amountSats), commitments))
 }
 
 func MerkleRoot(leavesJSON string) (string, error) {

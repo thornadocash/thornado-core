@@ -4,9 +4,37 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
+	"github.com/thornadocash/go-thornado/x/thornado/keeper"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
+
+type shielderFloorTestKeeper struct {
+	keeper.KVStoreDummy
+	feePool     types.FeePool
+	commitments map[string]bool
+}
+
+func (shielderFloorTestKeeper) GetConfigInt64(_ cosmos.Context, key constants.ConfigName) int64 {
+	return constants.NewConfigValue().GetInt64Value(key)
+}
+
+func (k shielderFloorTestKeeper) GetFeePool(_ cosmos.Context) (types.FeePool, error) {
+	return k.feePool, nil
+}
+
+func (k *shielderFloorTestKeeper) SetFeePool(_ cosmos.Context, pool types.FeePool) error {
+	k.feePool = pool
+	return nil
+}
+
+func (k *shielderFloorTestKeeper) ShielderCommitmentExists(_ cosmos.Context, commitment string) bool {
+	if k.commitments == nil {
+		return false
+	}
+	return k.commitments[commitment]
+}
 
 func TestVerifyShielderRedeemRejectsMalformedJSON(t *testing.T) {
 	err := VerifyShielderRedeemJSON([]byte(`not-json`), []byte(`{}`))
@@ -25,7 +53,47 @@ func TestVerifyShielderRedeemCallsWrapper(t *testing.T) {
 	}
 }
 
-func TestBondSplitCommitmentsAreProtocolGenerated(t *testing.T) {
+func TestRejectLeakyShielderRedeemProofRejectsPrivateFields(t *testing.T) {
+	err := RejectLeakyShielderRedeemProof(cosmos.Context{}, &shielderFloorTestKeeper{}, []byte(`{
+		"nullifier":"nf",
+		"secret":"",
+		"commitment":"",
+		"merkle_root":"root"
+	}`))
+	if err == nil {
+		t.Fatal("expected proof carrying raw nullifier to fail")
+	}
+}
+
+func TestRejectLeakyShielderRedeemProofRejectsKnownCommitment(t *testing.T) {
+	k := &shielderFloorTestKeeper{commitments: map[string]bool{"abc": true}}
+	err := RejectLeakyShielderRedeemProof(cosmos.Context{}, k, []byte(`{
+		"nullifier":"",
+		"secret":"",
+		"commitment":"",
+		"merkle_root":"root",
+		"orchard":{"actions":[{"cmx_hex":"ABC"}]}
+	}`))
+	if err == nil {
+		t.Fatal("expected proof carrying known commitment to fail")
+	}
+}
+
+func TestRejectLeakyShielderRedeemProofAllowsUnknownActionCommitment(t *testing.T) {
+	k := &shielderFloorTestKeeper{commitments: map[string]bool{"spent": true}}
+	err := RejectLeakyShielderRedeemProof(cosmos.Context{}, k, []byte(`{
+		"nullifier":"",
+		"secret":"",
+		"commitment":"",
+		"merkle_root":"root",
+		"orchard":{"actions":[{"cmx_hex":"dummy"}]}
+	}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBondShieldCommitmentsAreProtocolGenerated(t *testing.T) {
 	rawCommitments := []string{
 		`{"denomination_sats":1000000,"commitment":"USER_SUPPLIED_A"}`,
 		`{"denomination_sats":1000000}`,
@@ -52,7 +120,7 @@ func TestBondSplitCommitmentsAreProtocolGenerated(t *testing.T) {
 		notes[idx].Commitment = commitment
 	}
 	if notes[0].Commitment == "USER_SUPPLIED_A" {
-		t.Fatal("bond split used operator-supplied commitment")
+		t.Fatal("bond shield used operator-supplied commitment")
 	}
 	if notes[0].Commitment == "" || notes[1].Commitment == "" || notes[0].Commitment == notes[1].Commitment {
 		t.Fatalf("unexpected generated commitments: %#v", notes)
@@ -66,13 +134,81 @@ func TestBondSplitCommitmentsAreProtocolGenerated(t *testing.T) {
 	}
 }
 
-func TestUserSplitRequiresCommitments(t *testing.T) {
+func TestUserShieldRequiresCommitments(t *testing.T) {
 	payload, err := json.Marshal(shielderNoteCommitment{DenominationSats: 100000})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := parseShielderNoteCommitments([]string{string(payload)}, 100000, false); err == nil {
-		t.Fatal("expected user split without commitment to fail")
+		t.Fatal("expected user shield without commitment to fail")
+	}
+}
+
+func TestShieldDustRemainderGoesToFeeFloor(t *testing.T) {
+	ctx := cosmos.Context{}
+	k := &shielderFloorTestKeeper{}
+	minNote := uint64(k.GetConfigInt64(ctx, constants.Shielder_NoteAmountMinSats))
+	notes := []shielderNoteCommitment{
+		{DenominationSats: minNote, Commitment: "NOTE_A"},
+		{DenominationSats: minNote - 1, Commitment: "DUST_NOTE"},
+	}
+
+	filtered, remainder, err := applyShielderNoteFloor(ctx, k, notes, minNote*2, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(filtered) != 1 || filtered[0].Commitment != "NOTE_A" {
+		t.Fatalf("unexpected filtered notes: %#v", filtered)
+	}
+	if remainder != minNote {
+		t.Fatalf("expected dust note plus unallocated remainder to go to fees: %d", remainder)
+	}
+}
+
+func TestProtocolGeneratedDustNoteGoesToFeeFloor(t *testing.T) {
+	ctx := cosmos.Context{}
+	k := &shielderFloorTestKeeper{}
+	minNote := uint64(k.GetConfigInt64(ctx, constants.Shielder_NoteAmountMinSats))
+
+	remainder, err := shielderDustRemainder(ctx, k, minNote-1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if remainder != minNote-1 {
+		t.Fatalf("expected protocol dust note to go to fees: %d", remainder)
+	}
+	remainder, err = shielderDustRemainder(ctx, k, minNote)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if remainder != 0 {
+		t.Fatalf("expected minimum-sized note to remain spendable: %d", remainder)
+	}
+}
+
+func TestFeePoolWaitsUntilEveryNodeGetsMinimumNote(t *testing.T) {
+	ctx := cosmos.Context{}
+	k := &shielderFloorTestKeeper{}
+	minNote := uint64(k.GetConfigInt64(ctx, constants.Shielder_NoteAmountMinSats))
+
+	if err := setDistributedFeePool(ctx, k, types.FeePool{
+		PendingSats: minNote*3 - 1,
+		TotalSlots:  3,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if k.feePool.FeePerSlotShare != 0 || k.feePool.PendingSats != minNote*3-1 {
+		t.Fatalf("fee pool distributed before every node could claim a min note: %#v", k.feePool)
+	}
+
+	if err := setDistributedFeePool(ctx, k, types.FeePool{
+		PendingSats: minNote * 3,
+		TotalSlots:  3,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if k.feePool.FeePerSlotShare != minNote || k.feePool.PendingSats != 0 {
+		t.Fatalf("fee pool did not distribute at min note threshold: %#v", k.feePool)
 	}
 }
 

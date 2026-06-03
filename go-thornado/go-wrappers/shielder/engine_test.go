@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-func TestDeriveSplitReceiptThroughRustFFI(t *testing.T) {
-	receiptJSON, err := DeriveSplitReceipt("dep-1", 100_000_000, "client-seed")
+func TestDeriveShieldReceiptThroughRustFFI(t *testing.T) {
+	receiptJSON, err := DeriveShieldReceipt("dep-1", 100_000_000, "client-seed")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestInvalidWithdrawalReportsRustError(t *testing.T) {
 }
 
 func TestMinimumFeeDenominationSupported(t *testing.T) {
-	receiptJSON, err := DeriveSplitReceipt("fee-claim", 100_000, "operator-seed")
+	receiptJSON, err := DeriveShieldReceipt("fee-claim", 100_000, "operator-seed")
 	if err != nil {
 		t.Fatal(err)
 	}

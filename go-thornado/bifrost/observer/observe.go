@@ -235,6 +235,9 @@ func (o *Observer) handleObservedTxCommitted(tx common.ObservedTx) {
 
 	deck, ok := o.onDeck[k]
 	if !ok {
+		if isFinal {
+			o.removeFinalisedTxFromOtherDecks(tx, nil)
+		}
 		return
 	}
 
@@ -286,6 +289,9 @@ func (o *Observer) handleObservedTxCommitted(tx common.ObservedTx) {
 		o.logger.Debug().Msgf("no changes made to ondeck, size: %d", len(o.onDeck))
 		return
 	}
+	if isFinal {
+		o.removeFinalisedTxFromOtherDecks(tx, deck)
+	}
 
 	o.logger.Debug().
 		Int("ondeck_size", len(o.onDeck)).
@@ -298,6 +304,34 @@ func (o *Observer) handleObservedTxCommitted(tx common.ObservedTx) {
 		Str("gas", common.Coins(tx.Tx.Gas).String()).
 		Str("observed_vault_pubkey", tx.ObservedPubKey.String()).
 		Msg("observed tx committed to thornado")
+}
+
+func (o *Observer) removeFinalisedTxFromOtherDecks(tx common.ObservedTx, current *types.TxIn) {
+	for k, deck := range o.onDeck {
+		if deck == current {
+			continue
+		}
+		for i, txInItem := range deck.TxArray {
+			if !txInItem.EqualsObservedTx(tx) {
+				continue
+			}
+			deck.TxArray = slices.Delete(deck.TxArray, i, i+1)
+			if len(deck.TxArray) == 0 {
+				delete(o.onDeck, k)
+				if err := o.storage.RemoveTx(deck, k.height); err != nil {
+					o.logger.Error().Err(err).Msg("fail to remove stale pre-confirmation tx from storage")
+				}
+			} else {
+				if i == 0 {
+					deck.ConfirmationRequired = k.height - deck.TxArray[0].BlockHeight
+				}
+				if err := o.storage.AddOrUpdateTx(deck); err != nil {
+					o.logger.Error().Err(err).Msg("fail to update stale pre-confirmation tx storage")
+				}
+			}
+			break
+		}
+	}
 }
 
 func (o *Observer) sendDeck(ctx context.Context) {
@@ -580,12 +614,10 @@ func (o *Observer) filterObservations(chain common.Chain, items []*types.TxInIte
 		// twice, which is expected. We want to make sure we generate both
 		// a inbound and outbound txn, if we both apply.
 
-		isInternal := false
 		// check if the from address is a known vault
 		if ok, cpi := o.pubkeyMgr.IsValidVaultAddress(txInItem.Sender, chain); ok {
 			tx := txInItem.Copy()
 			tx.ObservedVaultPubKey = cpi.PubKey
-			isInternal = true
 
 			// skip the outbound observation if we signed and manually observed
 			o.signedTxOutCacheMu.Lock()
@@ -602,10 +634,9 @@ func (o *Observer) filterObservations(chain common.Chain, items []*types.TxInIte
 			continue
 		}
 
-		// check if the to address is a valid vault address
-		// for inbound message , if it is still in mempool , it will be ignored unless it is internal transaction
-		// internal tx means both from & to addresses belongs to the network. for example migrate/consolidate
-		if ok, cpi := o.pubkeyMgr.IsValidVaultAddress(txInItem.To, chain); ok && (!memPool || isInternal) {
+		// Check if the to address is a valid vault address. Mempool inbounds are
+		// observed pre-confirmation so users can see 0 / min confirmation progress.
+		if ok, cpi := o.pubkeyMgr.IsValidVaultAddress(txInItem.To, chain); ok {
 			tx := txInItem.Copy()
 			tx.ObservedVaultPubKey = cpi.PubKey
 			txs = append(txs, tx)

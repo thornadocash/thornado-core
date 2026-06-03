@@ -29,7 +29,7 @@ func main() {
 	cfg.Seal()
 
 	if len(os.Args) < 2 {
-		die("usage: shielder-e2e-helper {pubkey|receipt|commitments|protocol-bond-commitment|merkle-root|withdrawal|split-withdrawal}")
+		die("usage: shielder-e2e-helper {pubkey|receipt|commitments|protocol-bond-commitment|merkle-root|withdrawal|shield-withdrawal}")
 	}
 	switch os.Args[1] {
 	case "receipt-simple":
@@ -40,7 +40,7 @@ func main() {
 		if _, err := fmt.Sscanf(os.Args[2], "%d", &amount); err != nil {
 			die("invalid amount-sats: %v", err)
 		}
-		out, err := shielder.DeriveSplitReceipt(os.Args[3], amount, os.Args[3])
+		out, err := shielder.DeriveShieldReceipt(os.Args[3], amount, os.Args[3])
 		if err != nil {
 			die("%v", err)
 		}
@@ -108,7 +108,7 @@ func main() {
 		if _, err := fmt.Sscanf(os.Args[4], "%d", &amount); err != nil {
 			die("invalid amount-sats: %v", err)
 		}
-		out, err := shielder.DeriveSplitReceiptForDeposit(os.Args[2], pathIndex, amount, os.Args[5])
+		out, err := shielder.DeriveShieldReceiptForDeposit(os.Args[2], pathIndex, amount, os.Args[5])
 		if err != nil {
 			die("%v", err)
 		}
@@ -166,7 +166,7 @@ func main() {
 		raw := fmt.Sprintf("thornado:bond-commitment:v1|%s|%s|%s|%d|%d|%d|%s",
 			os.Args[2], os.Args[3], os.Args[4], slot, amount, 0, os.Args[7])
 		sum := sha256.Sum256([]byte(raw))
-		receiptJSON, err := shielder.DeriveSplitReceipt(strings.ToUpper(hex.EncodeToString(sum[:])), amount, strings.ToUpper(hex.EncodeToString(sum[:])))
+		receiptJSON, err := shielder.DeriveShieldReceipt(strings.ToUpper(hex.EncodeToString(sum[:])), amount, strings.ToUpper(hex.EncodeToString(sum[:])))
 		if err != nil {
 			die("%v", err)
 		}
@@ -224,9 +224,9 @@ func main() {
 			die("%v", err)
 		}
 		fmt.Println(out)
-	case "split-withdrawal":
+	case "shield-withdrawal":
 		if len(os.Args) != 4 {
-			die("usage: shielder-e2e-helper split-withdrawal [withdrawal-json] [out-prefix]")
+			die("usage: shielder-e2e-helper shield-withdrawal [withdrawal-json] [out-prefix]")
 		}
 		var pair []json.RawMessage
 		if err := json.Unmarshal([]byte(os.Args[2]), &pair); err != nil {

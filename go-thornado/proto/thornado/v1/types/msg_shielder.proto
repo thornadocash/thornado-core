@@ -21,17 +21,19 @@ message MsgDepositRequestPowResponse {
   string vault_pub_key = 2;
   uint64 deposit_path_index = 3;
   string bid_id = 4;
+  int64 expires_at_height = 5;
+  int64 purge_at_height = 6;
 }
 
-message MsgShielderSplit {
-  option (amino.name) = "thornado/MsgShielderSplit";
+message MsgShielderShield {
+  option (amino.name) = "thornado/MsgShielderShield";
 
   repeated string commitments = 1;
   string deposit_pubkey = 2;
   string signature = 3;
 }
 
-message MsgShielderSplitResponse {
+message MsgShielderShieldResponse {
   string status = 1;
 }
 
@@ -46,8 +48,8 @@ message MsgShielderRedeemResponse {
   string withdrawal_id = 1;
   string status = 2;
 }
-message MsgShielderSplitFees {
-  option (amino.name) = "thornado/MsgShielderSplitFees";
+message MsgShielderShieldFees {
+  option (amino.name) = "thornado/MsgShielderShieldFees";
 
   string node_pub_key = 1;
   bytes operator_signature = 2;
@@ -59,7 +61,7 @@ message MsgShielderSplitFees {
   ];
 }
 
-message MsgShielderSplitFeesResponse {
+message MsgShielderShieldFeesResponse {
   string deposit_id = 1;
   uint64 amount_sats = 2;
   string status = 3;
@@ -106,8 +108,8 @@ message MsgNodeSlotAuctionSelectBid {
   ];
 }
 
-message MsgNodeSlotAuctionSplit {
-  option (amino.name) = "thornado/MsgNodeSlotAuctionSplit";
+message MsgNodeSlotAuctionShield {
+  option (amino.name) = "thornado/MsgNodeSlotAuctionShield";
 
   string auction_id = 1;
   string bid_id = 2;

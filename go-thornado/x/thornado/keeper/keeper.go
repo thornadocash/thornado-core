@@ -169,6 +169,7 @@ type KeeperShielder interface {
 	GetDepositPowDifficultyState(ctx cosmos.Context) (types.DepositPowDifficultyState, error)
 	SetDepositAddress(ctx cosmos.Context, record types.DepositAddress) error
 	GetDepositAddress(ctx cosmos.Context, address common.Address) (types.DepositAddress, error)
+	DeleteDepositAddress(ctx cosmos.Context, address common.Address) error
 	GetDepositAddressIterator(ctx cosmos.Context) cosmos.Iterator
 	GetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey, pathType common.VaultDepositPathType) (uint64, error)
 	SetNextVaultDepositPathIndex(ctx cosmos.Context, vaultPubKey common.PubKey, pathType common.VaultDepositPathType, index uint64) error

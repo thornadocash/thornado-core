@@ -23,8 +23,8 @@ pub enum Error {
     InvalidProof,
     #[error("deposit amount does not produce any supported denomination notes")]
     DepositTooSmall,
-    #[error("invalid split authorization")]
-    InvalidSplitAuthorization,
+    #[error("invalid shield authorization")]
+    InvalidShieldAuthorization,
     #[error("unknown merkle root")]
     UnknownMerkleRoot,
     #[error("unknown note commitment")]
@@ -61,7 +61,7 @@ pub struct NoteCommitment {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct SplitAuthorization {
+pub struct ShieldAuthorization {
     pub deposit_pubkey: String,
     pub signature: String,
 }
@@ -90,12 +90,12 @@ fn default_deposit_index() -> u64 {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct SplitReceipt {
+pub struct ShieldReceipt {
     pub notes: Vec<NoteReceipt>,
     pub remainder_sats: u64,
 }
 
-impl SplitReceipt {
+impl ShieldReceipt {
     pub fn commitments(&self) -> Vec<NoteCommitment> {
         self.notes
             .iter()
@@ -111,8 +111,11 @@ impl SplitReceipt {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WithdrawalProof {
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub nullifier: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub secret: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub commitment: String,
     pub merkle_root: String,
     #[cfg(feature = "orchard-zcash")]
@@ -148,26 +151,47 @@ impl ShielderProofVerifier {
     }
 }
 
-pub fn derive_split_receipt(
+pub fn derive_shield_receipt(
     deposit_id: &str,
     amount_sats: u64,
     client_seed: &str,
-) -> Result<SplitReceipt> {
-    derive_split_receipt_for_deposit(deposit_id, 0, amount_sats, client_seed)
+) -> Result<ShieldReceipt> {
+    derive_shield_receipt_for_deposit(deposit_id, 0, amount_sats, client_seed)
 }
 
-pub fn derive_split_receipt_for_deposit(
+pub fn derive_shield_receipt_for_deposit(
     deposit_id: &str,
     deposit_index: u64,
     amount_sats: u64,
     client_seed: &str,
-) -> Result<SplitReceipt> {
+) -> Result<ShieldReceipt> {
+    derive_shield_receipt_for_deposit_type(
+        deposit_id,
+        "user",
+        deposit_index,
+        amount_sats,
+        client_seed,
+    )
+}
+
+pub fn derive_shield_receipt_for_deposit_type(
+    deposit_id: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+    amount_sats: u64,
+    client_seed: &str,
+) -> Result<ShieldReceipt> {
     let (denominations, remaining) = greedy_denominations(amount_sats);
     let mut notes = Vec::new();
     for (index, denomination) in denominations.iter().copied().enumerate() {
         let index = index as u64;
-        let child_secret =
-            note_child_secret_for_deposit(client_seed, deposit_index, deposit_id, index + 1);
+        let child_secret = note_child_secret_for_deposit_type(
+            client_seed,
+            deposit_type,
+            deposit_index,
+            deposit_id,
+            index + 1,
+        );
         let owner_pubkey = deposit_owner_pubkey(&child_secret);
         let nullifier = hash_parts(&[
             DOMAIN,
@@ -217,7 +241,7 @@ pub fn derive_split_receipt_for_deposit(
         return Err(Error::DepositTooSmall);
     }
 
-    Ok(SplitReceipt {
+    Ok(ShieldReceipt {
         notes,
         remainder_sats: remaining,
     })
@@ -248,56 +272,83 @@ pub fn client_pubkey_from_secret(client_seed: &str) -> String {
 }
 
 pub fn client_pubkey_for_deposit(client_seed: &str, deposit_index: u64) -> String {
+    client_pubkey_for_deposit_type(client_seed, "user", deposit_index)
+}
+
+pub fn client_pubkey_for_deposit_type(
+    client_seed: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+) -> String {
     deposit_owner_pubkey(&deposit_owner_secret_for_deposit(
         client_seed,
+        deposit_type,
         deposit_index,
     ))
 }
 
-pub fn split_authorization(
+pub fn shield_authorization(
     client_seed: &str,
     deposit_id: &str,
     amount_sats: u64,
     note_commitments: &[NoteCommitment],
-) -> SplitAuthorization {
-    split_authorization_for_deposit(client_seed, 0, deposit_id, amount_sats, note_commitments)
+) -> ShieldAuthorization {
+    shield_authorization_for_deposit(client_seed, 0, deposit_id, amount_sats, note_commitments)
 }
 
-pub fn split_authorization_for_deposit(
+pub fn shield_authorization_for_deposit(
     client_seed: &str,
     deposit_index: u64,
     deposit_id: &str,
     amount_sats: u64,
     note_commitments: &[NoteCommitment],
-) -> SplitAuthorization {
-    let deposit_pubkey = client_pubkey_for_deposit(client_seed, deposit_index);
+) -> ShieldAuthorization {
+    shield_authorization_for_deposit_type(
+        client_seed,
+        "user",
+        deposit_index,
+        deposit_id,
+        amount_sats,
+        note_commitments,
+    )
+}
+
+pub fn shield_authorization_for_deposit_type(
+    client_seed: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+    deposit_id: &str,
+    amount_sats: u64,
+    note_commitments: &[NoteCommitment],
+) -> ShieldAuthorization {
+    let deposit_pubkey = client_pubkey_for_deposit_type(client_seed, deposit_type, deposit_index);
     let secp = Secp256k1::new();
-    let secret_key = deposit_secret_key(client_seed, deposit_index);
+    let secret_key = deposit_secret_key(client_seed, deposit_type, deposit_index);
     let message =
-        split_authorization_message(&deposit_pubkey, deposit_id, amount_sats, note_commitments);
+        shield_authorization_message(&deposit_pubkey, deposit_id, amount_sats, note_commitments);
     let signature = secp.sign_ecdsa(&message, &secret_key);
-    SplitAuthorization {
+    ShieldAuthorization {
         signature: hex::encode(signature.serialize_der()),
         deposit_pubkey,
     }
 }
 
-pub fn verify_split_authorization(
+pub fn verify_shield_authorization(
     deposit_pubkey: &str,
     deposit_id: &str,
-    authorization: &SplitAuthorization,
+    authorization: &ShieldAuthorization,
     note_commitments: &[NoteCommitment],
 ) -> Result<()> {
     if deposit_pubkey.is_empty() || authorization.deposit_pubkey != deposit_pubkey {
-        return Err(Error::InvalidSplitAuthorization);
+        return Err(Error::InvalidShieldAuthorization);
     }
     let pubkey =
-        SecpPublicKey::from_str(deposit_pubkey).map_err(|_| Error::InvalidSplitAuthorization)?;
+        SecpPublicKey::from_str(deposit_pubkey).map_err(|_| Error::InvalidShieldAuthorization)?;
     let signature = hex::decode(&authorization.signature)
         .ok()
         .and_then(|bytes| SecpSignature::from_der(&bytes).ok())
-        .ok_or(Error::InvalidSplitAuthorization)?;
-    let message = split_authorization_message(
+        .ok_or(Error::InvalidShieldAuthorization)?;
+    let message = shield_authorization_message(
         deposit_pubkey,
         deposit_id,
         note_commitments
@@ -308,7 +359,7 @@ pub fn verify_split_authorization(
     );
     Secp256k1::verification_only()
         .verify_ecdsa(&message, &signature, &pubkey)
-        .map_err(|_| Error::InvalidSplitAuthorization)
+        .map_err(|_| Error::InvalidShieldAuthorization)
 }
 
 pub fn merkle_root(leaves: &[String]) -> String {
@@ -416,6 +467,24 @@ pub fn verify_withdrawal(proof: &WithdrawalProof, public: &WithdrawalPublicInput
     }
 }
 
+/// Strip note-specific fields from an Orchard withdrawal proof after verification.
+/// Orchard spends must include cmx for verification, but callers should not retain
+/// or re-broadcast those fields once authorization succeeds.
+pub fn redact_spent_commitment(proof: &mut WithdrawalProof) {
+    if let Some(orchard) = proof.orchard.as_mut() {
+        for action in &mut orchard.actions {
+            action.cmx_hex.clear();
+            action.epk_hex.clear();
+            action.enc_ciphertext_hex.clear();
+            action.out_ciphertext_hex.clear();
+        }
+    } else {
+        proof.commitment.clear();
+        proof.secret.clear();
+        proof.nullifier.clear();
+    }
+}
+
 pub fn nullifier_hash(nullifier: &str) -> String {
     hash_parts(&[DOMAIN, "nullifier-hash", nullifier])
 }
@@ -430,13 +499,26 @@ pub fn note_child_secret_for_deposit(
     _deposit_id: &str,
     index: u64,
 ) -> String {
+    note_child_secret_for_deposit_type(client_seed, "user", deposit_index, _deposit_id, index)
+}
+
+pub fn note_child_secret_for_deposit_type(
+    client_seed: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+    _deposit_id: &str,
+    index: u64,
+) -> String {
     let hardened_index = hardened_child_index(index);
+    let hardened_deposit_index = hardened_child_index(deposit_index);
+    let deposit_type = normalized_deposit_type(deposit_type);
     hash_parts(&[
         DOMAIN,
         "note-child-secret",
-        "m/tc84'/btc'/deposit'/note'",
+        "m/tc84'/btc'",
+        &deposit_type,
         client_seed,
-        &hardened_child_index(deposit_index).to_string(),
+        &hardened_deposit_index.to_string(),
         &hardened_index.to_string(),
     ])
 }
@@ -459,7 +541,7 @@ pub(crate) fn orchard_public_context(public: &WithdrawalPublicInputs) -> Vec<u8>
     ])
 }
 
-fn split_authorization_message(
+fn shield_authorization_message(
     deposit_pubkey: &str,
     deposit_id: &str,
     amount_sats: u64,
@@ -469,7 +551,7 @@ fn split_authorization_message(
         serde_json::to_string(note_commitments).expect("note commitments should serialize");
     let digest = hash_parts_bytes(&[
         DOMAIN,
-        "split-authorization",
+        "shield-authorization",
         deposit_pubkey,
         deposit_id,
         &amount_sats.to_string(),
@@ -478,12 +560,12 @@ fn split_authorization_message(
     SecpMessage::from_digest_slice(&digest).expect("sha256 digest has secp256k1 message length")
 }
 
-fn deposit_owner_secret(client_seed: &str) -> String {
-    deposit_owner_secret_for_deposit(client_seed, 0)
-}
-
-fn deposit_owner_secret_for_deposit(client_seed: &str, deposit_index: u64) -> String {
-    hex::encode(deposit_secret_key(client_seed, deposit_index).secret_bytes())
+fn deposit_owner_secret_for_deposit(
+    client_seed: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+) -> String {
+    hex::encode(deposit_secret_key(client_seed, deposit_type, deposit_index).secret_bytes())
 }
 
 fn deposit_owner_pubkey(owner_secret: &str) -> String {
@@ -514,14 +596,19 @@ fn secret_key_from_hex_material(secret_hex: &str) -> SecretKey {
     unreachable!("sha256 should produce a valid secp256k1 secret key")
 }
 
-fn deposit_secret_key(client_seed: &str, deposit_index: u64) -> SecretKey {
+fn deposit_secret_key(client_seed: &str, deposit_type: &str, deposit_index: u64) -> SecretKey {
+    let deposit_type = normalized_deposit_type(deposit_type);
+    let hardened_deposit_index = hardened_child_index(deposit_index);
+    let hardened_note_index = hardened_child_index(0);
     for counter in 0_u32..u32::MAX {
         let digest = hash_parts_bytes(&[
             DOMAIN,
             "deposit-owner-secret",
-            "m/tc84'/btc'/deposit'/0'",
+            "m/tc84'/btc'",
+            &deposit_type,
             client_seed,
-            &hardened_child_index(deposit_index).to_string(),
+            &hardened_deposit_index.to_string(),
+            &hardened_note_index.to_string(),
             &counter.to_string(),
         ]);
         if let Ok(secret_key) = SecretKey::from_slice(&digest) {
@@ -529,6 +616,13 @@ fn deposit_secret_key(client_seed: &str, deposit_index: u64) -> SecretKey {
         }
     }
     unreachable!("sha256 should produce a valid secp256k1 secret key")
+}
+
+fn normalized_deposit_type(deposit_type: &str) -> String {
+    match deposit_type.trim().to_ascii_lowercase().as_str() {
+        "node" => "node".to_string(),
+        _ => "user".to_string(),
+    }
 }
 
 #[cfg(not(feature = "orchard-zcash"))]
@@ -578,11 +672,85 @@ mod tests {
     use super::*;
 
     #[test]
-    fn split_receipt_and_authorization_roundtrip() {
-        let receipt = derive_split_receipt("dep-1", 100_000_000, "client-seed").unwrap();
+    fn redact_spent_commitment_clears_note_specific_fields() {
+        let mut proof = WithdrawalProof {
+            nullifier: "nf".to_string(),
+            secret: "secret".to_string(),
+            commitment: "cmx".to_string(),
+            merkle_root: "root".to_string(),
+            orchard: Some(orchard::OrchardWithdrawalProof {
+                proof_hex: "00".to_string(),
+                binding_signature_hex: "00".to_string(),
+                anchor_hex: "00".to_string(),
+                public_context_hex: "00".to_string(),
+                value_balance: 1,
+                actions: vec![orchard::OrchardActionPayload {
+                    nullifier_hex: "nf".to_string(),
+                    rk_hex: "00".to_string(),
+                    cmx_hex: "cmx".to_string(),
+                    cv_net_hex: "00".to_string(),
+                    epk_hex: "epk".to_string(),
+                    enc_ciphertext_hex: "enc".to_string(),
+                    out_ciphertext_hex: "out".to_string(),
+                    spend_auth_sig_hex: "sig".to_string(),
+                }],
+            }),
+        };
+        redact_spent_commitment(&mut proof);
+        let orchard = proof.orchard.as_ref().unwrap();
+        assert!(orchard.actions[0].cmx_hex.is_empty());
+        assert!(orchard.actions[0].epk_hex.is_empty());
+        assert!(orchard.actions[0].enc_ciphertext_hex.is_empty());
+        assert!(orchard.actions[0].out_ciphertext_hex.is_empty());
+        assert_eq!(orchard.actions[0].nullifier_hex, "nf");
+    }
+
+    #[test]
+    fn withdrawal_proof_serialization_omits_empty_note_fields() {
+        let proof = WithdrawalProof {
+            nullifier: String::new(),
+            secret: String::new(),
+            commitment: String::new(),
+            merkle_root: "root".to_string(),
+            orchard: None,
+        };
+        let json = serde_json::to_string(&proof).unwrap();
+        assert!(!json.contains("nullifier"));
+        assert!(!json.contains("secret"));
+        assert!(!json.contains("commitment"));
+        assert!(json.contains("merkle_root"));
+    }
+
+    #[cfg(feature = "orchard-zcash")]
+    #[test]
+    #[ignore = "expensive proof test; run when auditing withdrawal proof privacy"]
+    fn withdrawal_proof_does_not_carry_spent_commitment() {
+        let receipt = derive_shield_receipt("dep-privacy", 100_000, "client-seed").unwrap();
+        let note = receipt.notes.first().unwrap();
+        let mut tree = DenominationTree::default();
+        tree.insert(note.commitment.clone());
+
+        let (proof, public) = shielder_withdrawal_from_receipt(
+            note,
+            "client-seed",
+            &tree,
+            "bcrt1qrecipient".to_string(),
+            1_000,
+        )
+        .unwrap();
+        verify_withdrawal(&proof, &public).unwrap();
+        let orchard = proof.orchard.as_ref().unwrap();
+        for action in &orchard.actions {
+            assert_ne!(action.cmx_hex, note.commitment);
+        }
+    }
+
+    #[test]
+    fn shield_receipt_and_authorization_roundtrip() {
+        let receipt = derive_shield_receipt("dep-1", 100_000_000, "client-seed").unwrap();
         let commitments = receipt.commitments();
-        let authorization = split_authorization("client-seed", "dep-1", 100_000_000, &commitments);
-        verify_split_authorization(
+        let authorization = shield_authorization("client-seed", "dep-1", 100_000_000, &commitments);
+        verify_shield_authorization(
             &authorization.deposit_pubkey,
             "dep-1",
             &authorization,
@@ -597,7 +765,7 @@ mod tests {
         ignore = "expensive proof test; run with `cargo test -p thornado-shielder --features proof-tests`"
     )]
     fn shielder_withdrawal_proves_and_verifies() {
-        let receipt = derive_split_receipt("dep-1", 100_000_000, "client-seed").unwrap();
+        let receipt = derive_shield_receipt("dep-1", 100_000_000, "client-seed").unwrap();
         let note = receipt.notes.first().unwrap();
         let tree = DenominationTree {
             leaves: vec![note.commitment.clone()],

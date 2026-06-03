@@ -10,6 +10,7 @@ import (
 
 const (
 	TxOutTypeOut         = "out"
+	TxOutTypeRefund      = "refund"
 	TxOutTypeMigrate     = "migrate"
 	TxOutTypeSweep       = "sweep"
 	TxOutTypeConsolidate = "consolidate"
@@ -21,6 +22,8 @@ const (
 
 func NormalizeTxOutType(txType string) string {
 	switch strings.ToLower(strings.TrimSpace(txType)) {
+	case TxOutTypeRefund:
+		return TxOutTypeRefund
 	case TxOutTypeMigrate:
 		return TxOutTypeMigrate
 	case TxOutTypeSweep:
@@ -34,7 +37,7 @@ func NormalizeTxOutType(txType string) string {
 
 func IsBatchableTxOutType(txType string) bool {
 	switch NormalizeTxOutType(txType) {
-	case TxOutTypeOut:
+	case TxOutTypeOut, TxOutTypeRefund:
 		return true
 	default:
 		return false

@@ -4,10 +4,12 @@ use std::os::raw::c_char;
 
 use serde::Serialize;
 use thornado_shielder::{
-    client_pubkey_for_deposit, client_pubkey_from_secret, derive_split_receipt,
-    derive_split_receipt_for_deposit, merkle_root, shielder_withdrawal_from_receipt,
-    split_authorization, split_authorization_for_deposit, DenominationTree, NoteCommitment,
-    NoteReceipt, ShielderProofVerifier, WithdrawalProof, WithdrawalPublicInputs,
+    client_pubkey_for_deposit, client_pubkey_for_deposit_type, client_pubkey_from_secret,
+    derive_shield_receipt, derive_shield_receipt_for_deposit,
+    derive_shield_receipt_for_deposit_type, merkle_root, shield_authorization,
+    shield_authorization_for_deposit, shield_authorization_for_deposit_type,
+    shielder_withdrawal_from_receipt, DenominationTree, NoteCommitment, NoteReceipt,
+    ShielderProofVerifier, WithdrawalProof, WithdrawalPublicInputs,
 };
 
 thread_local! {
@@ -54,7 +56,24 @@ pub extern "C" fn thornado_client_pubkey_for_deposit_json(
 }
 
 #[no_mangle]
-pub extern "C" fn thornado_derive_split_receipt_json(
+pub extern "C" fn thornado_client_pubkey_for_deposit_type_json(
+    client_seed: *const c_char,
+    deposit_type: *const c_char,
+    deposit_index: u64,
+) -> *mut c_char {
+    return_string_result(|| {
+        let client_seed = c_str(client_seed, "client_seed")?;
+        let deposit_type = c_str(deposit_type, "deposit_type")?;
+        Ok(client_pubkey_for_deposit_type(
+            client_seed,
+            deposit_type,
+            deposit_index,
+        ))
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn thornado_derive_shield_receipt_json(
     deposit_id: *const c_char,
     amount_sats: u64,
     client_seed: *const c_char,
@@ -62,13 +81,13 @@ pub extern "C" fn thornado_derive_split_receipt_json(
     return_json_result(|| {
         let deposit_id = c_str(deposit_id, "deposit_id")?;
         let client_seed = c_str(client_seed, "client_seed")?;
-        derive_split_receipt(deposit_id, amount_sats, client_seed)
+        derive_shield_receipt(deposit_id, amount_sats, client_seed)
             .map_err(|error| error.to_string())
     })
 }
 
 #[no_mangle]
-pub extern "C" fn thornado_derive_split_receipt_for_deposit_json(
+pub extern "C" fn thornado_derive_shield_receipt_for_deposit_json(
     deposit_id: *const c_char,
     deposit_index: u64,
     amount_sats: u64,
@@ -77,13 +96,36 @@ pub extern "C" fn thornado_derive_split_receipt_for_deposit_json(
     return_json_result(|| {
         let deposit_id = c_str(deposit_id, "deposit_id")?;
         let client_seed = c_str(client_seed, "client_seed")?;
-        derive_split_receipt_for_deposit(deposit_id, deposit_index, amount_sats, client_seed)
+        derive_shield_receipt_for_deposit(deposit_id, deposit_index, amount_sats, client_seed)
             .map_err(|error| error.to_string())
     })
 }
 
 #[no_mangle]
-pub extern "C" fn thornado_split_authorization_json(
+pub extern "C" fn thornado_derive_shield_receipt_for_deposit_type_json(
+    deposit_id: *const c_char,
+    deposit_type: *const c_char,
+    deposit_index: u64,
+    amount_sats: u64,
+    client_seed: *const c_char,
+) -> *mut c_char {
+    return_json_result(|| {
+        let deposit_id = c_str(deposit_id, "deposit_id")?;
+        let deposit_type = c_str(deposit_type, "deposit_type")?;
+        let client_seed = c_str(client_seed, "client_seed")?;
+        derive_shield_receipt_for_deposit_type(
+            deposit_id,
+            deposit_type,
+            deposit_index,
+            amount_sats,
+            client_seed,
+        )
+        .map_err(|error| error.to_string())
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn thornado_shield_authorization_json(
     client_seed: *const c_char,
     deposit_id: *const c_char,
     amount_sats: u64,
@@ -95,7 +137,7 @@ pub extern "C" fn thornado_split_authorization_json(
         let note_commitments_json = c_str(note_commitments_json, "note_commitments_json")?;
         let note_commitments: Vec<NoteCommitment> =
             serde_json::from_str(note_commitments_json).map_err(|error| error.to_string())?;
-        Ok(split_authorization(
+        Ok(shield_authorization(
             client_seed,
             deposit_id,
             amount_sats,
@@ -105,7 +147,7 @@ pub extern "C" fn thornado_split_authorization_json(
 }
 
 #[no_mangle]
-pub extern "C" fn thornado_split_authorization_for_deposit_json(
+pub extern "C" fn thornado_shield_authorization_for_deposit_json(
     client_seed: *const c_char,
     deposit_index: u64,
     deposit_id: *const c_char,
@@ -118,8 +160,35 @@ pub extern "C" fn thornado_split_authorization_for_deposit_json(
         let note_commitments_json = c_str(note_commitments_json, "note_commitments_json")?;
         let note_commitments: Vec<NoteCommitment> =
             serde_json::from_str(note_commitments_json).map_err(|error| error.to_string())?;
-        Ok(split_authorization_for_deposit(
+        Ok(shield_authorization_for_deposit(
             client_seed,
+            deposit_index,
+            deposit_id,
+            amount_sats,
+            &note_commitments,
+        ))
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn thornado_shield_authorization_for_deposit_type_json(
+    client_seed: *const c_char,
+    deposit_type: *const c_char,
+    deposit_index: u64,
+    deposit_id: *const c_char,
+    amount_sats: u64,
+    note_commitments_json: *const c_char,
+) -> *mut c_char {
+    return_json_result(|| {
+        let client_seed = c_str(client_seed, "client_seed")?;
+        let deposit_type = c_str(deposit_type, "deposit_type")?;
+        let deposit_id = c_str(deposit_id, "deposit_id")?;
+        let note_commitments_json = c_str(note_commitments_json, "note_commitments_json")?;
+        let note_commitments: Vec<NoteCommitment> =
+            serde_json::from_str(note_commitments_json).map_err(|error| error.to_string())?;
+        Ok(shield_authorization_for_deposit_type(
+            client_seed,
+            deposit_type,
             deposit_index,
             deposit_id,
             amount_sats,
@@ -269,7 +338,7 @@ mod tests {
     fn derives_receipt_and_authorization_through_c_abi() {
         let deposit_id = c_string("dep-1");
         let seed = c_string("client-seed");
-        let receipt_json = take_string(thornado_derive_split_receipt_json(
+        let receipt_json = take_string(thornado_derive_shield_receipt_json(
             deposit_id.as_ptr(),
             100_000_000,
             seed.as_ptr(),
@@ -284,7 +353,7 @@ mod tests {
         }])
         .to_string();
         let commitments = c_string(&commitments);
-        let authorization_json = take_string(thornado_split_authorization_json(
+        let authorization_json = take_string(thornado_shield_authorization_json(
             seed.as_ptr(),
             deposit_id.as_ptr(),
             100_000_000,
@@ -299,7 +368,7 @@ mod tests {
     fn proves_and_verifies_withdrawal_through_c_abi() {
         let deposit_id = c_string("dep-1");
         let seed = c_string("client-seed");
-        let receipt_json = take_string(thornado_derive_split_receipt_json(
+        let receipt_json = take_string(thornado_derive_shield_receipt_json(
             deposit_id.as_ptr(),
             100_000_000,
             seed.as_ptr(),

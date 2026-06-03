@@ -201,6 +201,10 @@ func handleObservedTxInQuorum(
 
 	mgr.ObMgr().AppendObserver(tx.Tx.Chain, voter.Tx.GetSigners())
 
+	if err := RecordDepositObservation(ctx, k, voter.Tx, hasFinalised); err != nil {
+		ctx.Logger().Error("fail to record deposit observation", "error", err, "tx", voter.TxID)
+	}
+
 	if !hasFinalised {
 		ctx.Logger().Info("transaction pending confirmation counting", "hash", voter.TxID)
 		return nil

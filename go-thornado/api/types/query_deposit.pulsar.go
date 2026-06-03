@@ -497,20 +497,29 @@ func (x *fastReflection_QueryDepositRequest) ProtoMethods() *protoiface.Methods 
 }
 
 var (
-	md_QueryDepositResponse                    protoreflect.MessageDescriptor
-	fd_QueryDepositResponse_deposit_id         protoreflect.FieldDescriptor
-	fd_QueryDepositResponse_owner              protoreflect.FieldDescriptor
-	fd_QueryDepositResponse_amount_sats        protoreflect.FieldDescriptor
-	fd_QueryDepositResponse_deposit_address    protoreflect.FieldDescriptor
-	fd_QueryDepositResponse_vault_pub_key      protoreflect.FieldDescriptor
-	fd_QueryDepositResponse_deposit_path_index protoreflect.FieldDescriptor
-	fd_QueryDepositResponse_status             protoreflect.FieldDescriptor
-	fd_QueryDepositResponse_settlement         protoreflect.FieldDescriptor
-	fd_QueryDepositResponse_auction_id         protoreflect.FieldDescriptor
-	fd_QueryDepositResponse_node_pub_key       protoreflect.FieldDescriptor
-	fd_QueryDepositResponse_node_slot          protoreflect.FieldDescriptor
-	fd_QueryDepositResponse_bond_confirmed     protoreflect.FieldDescriptor
-	fd_QueryDepositResponse_commitment_count   protoreflect.FieldDescriptor
+	md_QueryDepositResponse                            protoreflect.MessageDescriptor
+	fd_QueryDepositResponse_deposit_id                 protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_owner                      protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_amount_sats                protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_deposit_address            protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_vault_pub_key              protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_deposit_path_index         protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_status                     protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_settlement                 protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_auction_id                 protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_node_pub_key               protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_node_slot                  protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_bond_confirmed             protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_commitment_count           protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_inbound_tx_id              protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_btc_confirmations          protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_btc_confirmations_required protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_btc_observed_height        protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_created_height             protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_expires_at_height          protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_purge_at_height            protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_refund_eligible_height     protoreflect.FieldDescriptor
+	fd_QueryDepositResponse_refund_queued_height       protoreflect.FieldDescriptor
 )
 
 func init() {
@@ -529,6 +538,15 @@ func init() {
 	fd_QueryDepositResponse_node_slot = md_QueryDepositResponse.Fields().ByName("node_slot")
 	fd_QueryDepositResponse_bond_confirmed = md_QueryDepositResponse.Fields().ByName("bond_confirmed")
 	fd_QueryDepositResponse_commitment_count = md_QueryDepositResponse.Fields().ByName("commitment_count")
+	fd_QueryDepositResponse_inbound_tx_id = md_QueryDepositResponse.Fields().ByName("inbound_tx_id")
+	fd_QueryDepositResponse_btc_confirmations = md_QueryDepositResponse.Fields().ByName("btc_confirmations")
+	fd_QueryDepositResponse_btc_confirmations_required = md_QueryDepositResponse.Fields().ByName("btc_confirmations_required")
+	fd_QueryDepositResponse_btc_observed_height = md_QueryDepositResponse.Fields().ByName("btc_observed_height")
+	fd_QueryDepositResponse_created_height = md_QueryDepositResponse.Fields().ByName("created_height")
+	fd_QueryDepositResponse_expires_at_height = md_QueryDepositResponse.Fields().ByName("expires_at_height")
+	fd_QueryDepositResponse_purge_at_height = md_QueryDepositResponse.Fields().ByName("purge_at_height")
+	fd_QueryDepositResponse_refund_eligible_height = md_QueryDepositResponse.Fields().ByName("refund_eligible_height")
+	fd_QueryDepositResponse_refund_queued_height = md_QueryDepositResponse.Fields().ByName("refund_queued_height")
 }
 
 var _ protoreflect.Message = (*fastReflection_QueryDepositResponse)(nil)
@@ -674,6 +692,60 @@ func (x *fastReflection_QueryDepositResponse) Range(f func(protoreflect.FieldDes
 			return
 		}
 	}
+	if x.InboundTxId != "" {
+		value := protoreflect.ValueOfString(x.InboundTxId)
+		if !f(fd_QueryDepositResponse_inbound_tx_id, value) {
+			return
+		}
+	}
+	if x.BtcConfirmations != int64(0) {
+		value := protoreflect.ValueOfInt64(x.BtcConfirmations)
+		if !f(fd_QueryDepositResponse_btc_confirmations, value) {
+			return
+		}
+	}
+	if x.BtcConfirmationsRequired != int64(0) {
+		value := protoreflect.ValueOfInt64(x.BtcConfirmationsRequired)
+		if !f(fd_QueryDepositResponse_btc_confirmations_required, value) {
+			return
+		}
+	}
+	if x.BtcObservedHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.BtcObservedHeight)
+		if !f(fd_QueryDepositResponse_btc_observed_height, value) {
+			return
+		}
+	}
+	if x.CreatedHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.CreatedHeight)
+		if !f(fd_QueryDepositResponse_created_height, value) {
+			return
+		}
+	}
+	if x.ExpiresAtHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.ExpiresAtHeight)
+		if !f(fd_QueryDepositResponse_expires_at_height, value) {
+			return
+		}
+	}
+	if x.PurgeAtHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.PurgeAtHeight)
+		if !f(fd_QueryDepositResponse_purge_at_height, value) {
+			return
+		}
+	}
+	if x.RefundEligibleHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.RefundEligibleHeight)
+		if !f(fd_QueryDepositResponse_refund_eligible_height, value) {
+			return
+		}
+	}
+	if x.RefundQueuedHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.RefundQueuedHeight)
+		if !f(fd_QueryDepositResponse_refund_queued_height, value) {
+			return
+		}
+	}
 }
 
 // Has reports whether a field is populated.
@@ -715,6 +787,24 @@ func (x *fastReflection_QueryDepositResponse) Has(fd protoreflect.FieldDescripto
 		return x.BondConfirmed != false
 	case "types.QueryDepositResponse.commitment_count":
 		return x.CommitmentCount != uint64(0)
+	case "types.QueryDepositResponse.inbound_tx_id":
+		return x.InboundTxId != ""
+	case "types.QueryDepositResponse.btc_confirmations":
+		return x.BtcConfirmations != int64(0)
+	case "types.QueryDepositResponse.btc_confirmations_required":
+		return x.BtcConfirmationsRequired != int64(0)
+	case "types.QueryDepositResponse.btc_observed_height":
+		return x.BtcObservedHeight != int64(0)
+	case "types.QueryDepositResponse.created_height":
+		return x.CreatedHeight != int64(0)
+	case "types.QueryDepositResponse.expires_at_height":
+		return x.ExpiresAtHeight != int64(0)
+	case "types.QueryDepositResponse.purge_at_height":
+		return x.PurgeAtHeight != int64(0)
+	case "types.QueryDepositResponse.refund_eligible_height":
+		return x.RefundEligibleHeight != int64(0)
+	case "types.QueryDepositResponse.refund_queued_height":
+		return x.RefundQueuedHeight != int64(0)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryDepositResponse"))
@@ -757,6 +847,24 @@ func (x *fastReflection_QueryDepositResponse) Clear(fd protoreflect.FieldDescrip
 		x.BondConfirmed = false
 	case "types.QueryDepositResponse.commitment_count":
 		x.CommitmentCount = uint64(0)
+	case "types.QueryDepositResponse.inbound_tx_id":
+		x.InboundTxId = ""
+	case "types.QueryDepositResponse.btc_confirmations":
+		x.BtcConfirmations = int64(0)
+	case "types.QueryDepositResponse.btc_confirmations_required":
+		x.BtcConfirmationsRequired = int64(0)
+	case "types.QueryDepositResponse.btc_observed_height":
+		x.BtcObservedHeight = int64(0)
+	case "types.QueryDepositResponse.created_height":
+		x.CreatedHeight = int64(0)
+	case "types.QueryDepositResponse.expires_at_height":
+		x.ExpiresAtHeight = int64(0)
+	case "types.QueryDepositResponse.purge_at_height":
+		x.PurgeAtHeight = int64(0)
+	case "types.QueryDepositResponse.refund_eligible_height":
+		x.RefundEligibleHeight = int64(0)
+	case "types.QueryDepositResponse.refund_queued_height":
+		x.RefundQueuedHeight = int64(0)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryDepositResponse"))
@@ -812,6 +920,33 @@ func (x *fastReflection_QueryDepositResponse) Get(descriptor protoreflect.FieldD
 	case "types.QueryDepositResponse.commitment_count":
 		value := x.CommitmentCount
 		return protoreflect.ValueOfUint64(value)
+	case "types.QueryDepositResponse.inbound_tx_id":
+		value := x.InboundTxId
+		return protoreflect.ValueOfString(value)
+	case "types.QueryDepositResponse.btc_confirmations":
+		value := x.BtcConfirmations
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryDepositResponse.btc_confirmations_required":
+		value := x.BtcConfirmationsRequired
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryDepositResponse.btc_observed_height":
+		value := x.BtcObservedHeight
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryDepositResponse.created_height":
+		value := x.CreatedHeight
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryDepositResponse.expires_at_height":
+		value := x.ExpiresAtHeight
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryDepositResponse.purge_at_height":
+		value := x.PurgeAtHeight
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryDepositResponse.refund_eligible_height":
+		value := x.RefundEligibleHeight
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryDepositResponse.refund_queued_height":
+		value := x.RefundQueuedHeight
+		return protoreflect.ValueOfInt64(value)
 	default:
 		if descriptor.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryDepositResponse"))
@@ -858,6 +993,24 @@ func (x *fastReflection_QueryDepositResponse) Set(fd protoreflect.FieldDescripto
 		x.BondConfirmed = value.Bool()
 	case "types.QueryDepositResponse.commitment_count":
 		x.CommitmentCount = value.Uint()
+	case "types.QueryDepositResponse.inbound_tx_id":
+		x.InboundTxId = value.Interface().(string)
+	case "types.QueryDepositResponse.btc_confirmations":
+		x.BtcConfirmations = value.Int()
+	case "types.QueryDepositResponse.btc_confirmations_required":
+		x.BtcConfirmationsRequired = value.Int()
+	case "types.QueryDepositResponse.btc_observed_height":
+		x.BtcObservedHeight = value.Int()
+	case "types.QueryDepositResponse.created_height":
+		x.CreatedHeight = value.Int()
+	case "types.QueryDepositResponse.expires_at_height":
+		x.ExpiresAtHeight = value.Int()
+	case "types.QueryDepositResponse.purge_at_height":
+		x.PurgeAtHeight = value.Int()
+	case "types.QueryDepositResponse.refund_eligible_height":
+		x.RefundEligibleHeight = value.Int()
+	case "types.QueryDepositResponse.refund_queued_height":
+		x.RefundQueuedHeight = value.Int()
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryDepositResponse"))
@@ -904,6 +1057,24 @@ func (x *fastReflection_QueryDepositResponse) Mutable(fd protoreflect.FieldDescr
 		panic(fmt.Errorf("field bond_confirmed of message types.QueryDepositResponse is not mutable"))
 	case "types.QueryDepositResponse.commitment_count":
 		panic(fmt.Errorf("field commitment_count of message types.QueryDepositResponse is not mutable"))
+	case "types.QueryDepositResponse.inbound_tx_id":
+		panic(fmt.Errorf("field inbound_tx_id of message types.QueryDepositResponse is not mutable"))
+	case "types.QueryDepositResponse.btc_confirmations":
+		panic(fmt.Errorf("field btc_confirmations of message types.QueryDepositResponse is not mutable"))
+	case "types.QueryDepositResponse.btc_confirmations_required":
+		panic(fmt.Errorf("field btc_confirmations_required of message types.QueryDepositResponse is not mutable"))
+	case "types.QueryDepositResponse.btc_observed_height":
+		panic(fmt.Errorf("field btc_observed_height of message types.QueryDepositResponse is not mutable"))
+	case "types.QueryDepositResponse.created_height":
+		panic(fmt.Errorf("field created_height of message types.QueryDepositResponse is not mutable"))
+	case "types.QueryDepositResponse.expires_at_height":
+		panic(fmt.Errorf("field expires_at_height of message types.QueryDepositResponse is not mutable"))
+	case "types.QueryDepositResponse.purge_at_height":
+		panic(fmt.Errorf("field purge_at_height of message types.QueryDepositResponse is not mutable"))
+	case "types.QueryDepositResponse.refund_eligible_height":
+		panic(fmt.Errorf("field refund_eligible_height of message types.QueryDepositResponse is not mutable"))
+	case "types.QueryDepositResponse.refund_queued_height":
+		panic(fmt.Errorf("field refund_queued_height of message types.QueryDepositResponse is not mutable"))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryDepositResponse"))
@@ -943,6 +1114,24 @@ func (x *fastReflection_QueryDepositResponse) NewField(fd protoreflect.FieldDesc
 		return protoreflect.ValueOfBool(false)
 	case "types.QueryDepositResponse.commitment_count":
 		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryDepositResponse.inbound_tx_id":
+		return protoreflect.ValueOfString("")
+	case "types.QueryDepositResponse.btc_confirmations":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryDepositResponse.btc_confirmations_required":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryDepositResponse.btc_observed_height":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryDepositResponse.created_height":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryDepositResponse.expires_at_height":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryDepositResponse.purge_at_height":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryDepositResponse.refund_eligible_height":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryDepositResponse.refund_queued_height":
+		return protoreflect.ValueOfInt64(int64(0))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryDepositResponse"))
@@ -1059,6 +1248,34 @@ func (x *fastReflection_QueryDepositResponse) ProtoMethods() *protoiface.Methods
 		if x.CommitmentCount != 0 {
 			n += 1 + runtime.Sov(uint64(x.CommitmentCount))
 		}
+		l = len(x.InboundTxId)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.BtcConfirmations != 0 {
+			n += 1 + runtime.Sov(uint64(x.BtcConfirmations))
+		}
+		if x.BtcConfirmationsRequired != 0 {
+			n += 2 + runtime.Sov(uint64(x.BtcConfirmationsRequired))
+		}
+		if x.BtcObservedHeight != 0 {
+			n += 2 + runtime.Sov(uint64(x.BtcObservedHeight))
+		}
+		if x.CreatedHeight != 0 {
+			n += 2 + runtime.Sov(uint64(x.CreatedHeight))
+		}
+		if x.ExpiresAtHeight != 0 {
+			n += 2 + runtime.Sov(uint64(x.ExpiresAtHeight))
+		}
+		if x.PurgeAtHeight != 0 {
+			n += 2 + runtime.Sov(uint64(x.PurgeAtHeight))
+		}
+		if x.RefundEligibleHeight != 0 {
+			n += 2 + runtime.Sov(uint64(x.RefundEligibleHeight))
+		}
+		if x.RefundQueuedHeight != 0 {
+			n += 2 + runtime.Sov(uint64(x.RefundQueuedHeight))
+		}
 		if x.unknownFields != nil {
 			n += len(x.unknownFields)
 		}
@@ -1087,6 +1304,67 @@ func (x *fastReflection_QueryDepositResponse) ProtoMethods() *protoiface.Methods
 		if x.unknownFields != nil {
 			i -= len(x.unknownFields)
 			copy(dAtA[i:], x.unknownFields)
+		}
+		if x.RefundQueuedHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.RefundQueuedHeight))
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0xb0
+		}
+		if x.RefundEligibleHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.RefundEligibleHeight))
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0xa8
+		}
+		if x.PurgeAtHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.PurgeAtHeight))
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0xa0
+		}
+		if x.ExpiresAtHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.ExpiresAtHeight))
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0x98
+		}
+		if x.CreatedHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.CreatedHeight))
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0x90
+		}
+		if x.BtcObservedHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.BtcObservedHeight))
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0x88
+		}
+		if x.BtcConfirmationsRequired != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.BtcConfirmationsRequired))
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0x80
+		}
+		if x.BtcConfirmations != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.BtcConfirmations))
+			i--
+			dAtA[i] = 0x78
+		}
+		if len(x.InboundTxId) > 0 {
+			i -= len(x.InboundTxId)
+			copy(dAtA[i:], x.InboundTxId)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.InboundTxId)))
+			i--
+			dAtA[i] = 0x72
 		}
 		if x.CommitmentCount != 0 {
 			i = runtime.EncodeVarint(dAtA, i, uint64(x.CommitmentCount))
@@ -1571,6 +1849,190 @@ func (x *fastReflection_QueryDepositResponse) ProtoMethods() *protoiface.Methods
 					b := dAtA[iNdEx]
 					iNdEx++
 					x.CommitmentCount |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 14:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field InboundTxId", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.InboundTxId = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 15:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field BtcConfirmations", wireType)
+				}
+				x.BtcConfirmations = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.BtcConfirmations |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 16:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field BtcConfirmationsRequired", wireType)
+				}
+				x.BtcConfirmationsRequired = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.BtcConfirmationsRequired |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 17:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field BtcObservedHeight", wireType)
+				}
+				x.BtcObservedHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.BtcObservedHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 18:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field CreatedHeight", wireType)
+				}
+				x.CreatedHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.CreatedHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 19:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field ExpiresAtHeight", wireType)
+				}
+				x.ExpiresAtHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.ExpiresAtHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 20:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field PurgeAtHeight", wireType)
+				}
+				x.PurgeAtHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.PurgeAtHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 21:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field RefundEligibleHeight", wireType)
+				}
+				x.RefundEligibleHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.RefundEligibleHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 22:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field RefundQueuedHeight", wireType)
+				}
+				x.RefundQueuedHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.RefundQueuedHeight |= int64(b&0x7F) << shift
 					if b < 0x80 {
 						break
 					}
@@ -2095,17 +2557,24 @@ func (x *fastReflection_QueryDepositSessionRequest) ProtoMethods() *protoiface.M
 }
 
 var (
-	md_QueryDepositSessionResponse                    protoreflect.MessageDescriptor
-	fd_QueryDepositSessionResponse_owner              protoreflect.FieldDescriptor
-	fd_QueryDepositSessionResponse_deposit_address    protoreflect.FieldDescriptor
-	fd_QueryDepositSessionResponse_vault_pub_key      protoreflect.FieldDescriptor
-	fd_QueryDepositSessionResponse_deposit_path_index protoreflect.FieldDescriptor
-	fd_QueryDepositSessionResponse_operator_pub_key   protoreflect.FieldDescriptor
-	fd_QueryDepositSessionResponse_node_pub_key       protoreflect.FieldDescriptor
-	fd_QueryDepositSessionResponse_auction_id         protoreflect.FieldDescriptor
-	fd_QueryDepositSessionResponse_created_height     protoreflect.FieldDescriptor
-	fd_QueryDepositSessionResponse_status             protoreflect.FieldDescriptor
-	fd_QueryDepositSessionResponse_deposit_id         protoreflect.FieldDescriptor
+	md_QueryDepositSessionResponse                            protoreflect.MessageDescriptor
+	fd_QueryDepositSessionResponse_owner                      protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_deposit_address            protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_vault_pub_key              protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_deposit_path_index         protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_operator_pub_key           protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_node_pub_key               protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_auction_id                 protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_created_height             protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_status                     protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_deposit_id                 protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_inbound_tx_id              protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_btc_confirmations          protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_btc_confirmations_required protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_btc_observed_height        protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_expires_at_height          protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_purge_at_height            protoreflect.FieldDescriptor
+	fd_QueryDepositSessionResponse_refund_eligible_height     protoreflect.FieldDescriptor
 )
 
 func init() {
@@ -2121,6 +2590,13 @@ func init() {
 	fd_QueryDepositSessionResponse_created_height = md_QueryDepositSessionResponse.Fields().ByName("created_height")
 	fd_QueryDepositSessionResponse_status = md_QueryDepositSessionResponse.Fields().ByName("status")
 	fd_QueryDepositSessionResponse_deposit_id = md_QueryDepositSessionResponse.Fields().ByName("deposit_id")
+	fd_QueryDepositSessionResponse_inbound_tx_id = md_QueryDepositSessionResponse.Fields().ByName("inbound_tx_id")
+	fd_QueryDepositSessionResponse_btc_confirmations = md_QueryDepositSessionResponse.Fields().ByName("btc_confirmations")
+	fd_QueryDepositSessionResponse_btc_confirmations_required = md_QueryDepositSessionResponse.Fields().ByName("btc_confirmations_required")
+	fd_QueryDepositSessionResponse_btc_observed_height = md_QueryDepositSessionResponse.Fields().ByName("btc_observed_height")
+	fd_QueryDepositSessionResponse_expires_at_height = md_QueryDepositSessionResponse.Fields().ByName("expires_at_height")
+	fd_QueryDepositSessionResponse_purge_at_height = md_QueryDepositSessionResponse.Fields().ByName("purge_at_height")
+	fd_QueryDepositSessionResponse_refund_eligible_height = md_QueryDepositSessionResponse.Fields().ByName("refund_eligible_height")
 }
 
 var _ protoreflect.Message = (*fastReflection_QueryDepositSessionResponse)(nil)
@@ -2248,6 +2724,48 @@ func (x *fastReflection_QueryDepositSessionResponse) Range(f func(protoreflect.F
 			return
 		}
 	}
+	if x.InboundTxId != "" {
+		value := protoreflect.ValueOfString(x.InboundTxId)
+		if !f(fd_QueryDepositSessionResponse_inbound_tx_id, value) {
+			return
+		}
+	}
+	if x.BtcConfirmations != int64(0) {
+		value := protoreflect.ValueOfInt64(x.BtcConfirmations)
+		if !f(fd_QueryDepositSessionResponse_btc_confirmations, value) {
+			return
+		}
+	}
+	if x.BtcConfirmationsRequired != int64(0) {
+		value := protoreflect.ValueOfInt64(x.BtcConfirmationsRequired)
+		if !f(fd_QueryDepositSessionResponse_btc_confirmations_required, value) {
+			return
+		}
+	}
+	if x.BtcObservedHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.BtcObservedHeight)
+		if !f(fd_QueryDepositSessionResponse_btc_observed_height, value) {
+			return
+		}
+	}
+	if x.ExpiresAtHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.ExpiresAtHeight)
+		if !f(fd_QueryDepositSessionResponse_expires_at_height, value) {
+			return
+		}
+	}
+	if x.PurgeAtHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.PurgeAtHeight)
+		if !f(fd_QueryDepositSessionResponse_purge_at_height, value) {
+			return
+		}
+	}
+	if x.RefundEligibleHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.RefundEligibleHeight)
+		if !f(fd_QueryDepositSessionResponse_refund_eligible_height, value) {
+			return
+		}
+	}
 }
 
 // Has reports whether a field is populated.
@@ -2283,6 +2801,20 @@ func (x *fastReflection_QueryDepositSessionResponse) Has(fd protoreflect.FieldDe
 		return x.Status != ""
 	case "types.QueryDepositSessionResponse.deposit_id":
 		return x.DepositId != ""
+	case "types.QueryDepositSessionResponse.inbound_tx_id":
+		return x.InboundTxId != ""
+	case "types.QueryDepositSessionResponse.btc_confirmations":
+		return x.BtcConfirmations != int64(0)
+	case "types.QueryDepositSessionResponse.btc_confirmations_required":
+		return x.BtcConfirmationsRequired != int64(0)
+	case "types.QueryDepositSessionResponse.btc_observed_height":
+		return x.BtcObservedHeight != int64(0)
+	case "types.QueryDepositSessionResponse.expires_at_height":
+		return x.ExpiresAtHeight != int64(0)
+	case "types.QueryDepositSessionResponse.purge_at_height":
+		return x.PurgeAtHeight != int64(0)
+	case "types.QueryDepositSessionResponse.refund_eligible_height":
+		return x.RefundEligibleHeight != int64(0)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryDepositSessionResponse"))
@@ -2319,6 +2851,20 @@ func (x *fastReflection_QueryDepositSessionResponse) Clear(fd protoreflect.Field
 		x.Status = ""
 	case "types.QueryDepositSessionResponse.deposit_id":
 		x.DepositId = ""
+	case "types.QueryDepositSessionResponse.inbound_tx_id":
+		x.InboundTxId = ""
+	case "types.QueryDepositSessionResponse.btc_confirmations":
+		x.BtcConfirmations = int64(0)
+	case "types.QueryDepositSessionResponse.btc_confirmations_required":
+		x.BtcConfirmationsRequired = int64(0)
+	case "types.QueryDepositSessionResponse.btc_observed_height":
+		x.BtcObservedHeight = int64(0)
+	case "types.QueryDepositSessionResponse.expires_at_height":
+		x.ExpiresAtHeight = int64(0)
+	case "types.QueryDepositSessionResponse.purge_at_height":
+		x.PurgeAtHeight = int64(0)
+	case "types.QueryDepositSessionResponse.refund_eligible_height":
+		x.RefundEligibleHeight = int64(0)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryDepositSessionResponse"))
@@ -2365,6 +2911,27 @@ func (x *fastReflection_QueryDepositSessionResponse) Get(descriptor protoreflect
 	case "types.QueryDepositSessionResponse.deposit_id":
 		value := x.DepositId
 		return protoreflect.ValueOfString(value)
+	case "types.QueryDepositSessionResponse.inbound_tx_id":
+		value := x.InboundTxId
+		return protoreflect.ValueOfString(value)
+	case "types.QueryDepositSessionResponse.btc_confirmations":
+		value := x.BtcConfirmations
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryDepositSessionResponse.btc_confirmations_required":
+		value := x.BtcConfirmationsRequired
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryDepositSessionResponse.btc_observed_height":
+		value := x.BtcObservedHeight
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryDepositSessionResponse.expires_at_height":
+		value := x.ExpiresAtHeight
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryDepositSessionResponse.purge_at_height":
+		value := x.PurgeAtHeight
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryDepositSessionResponse.refund_eligible_height":
+		value := x.RefundEligibleHeight
+		return protoreflect.ValueOfInt64(value)
 	default:
 		if descriptor.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryDepositSessionResponse"))
@@ -2405,6 +2972,20 @@ func (x *fastReflection_QueryDepositSessionResponse) Set(fd protoreflect.FieldDe
 		x.Status = value.Interface().(string)
 	case "types.QueryDepositSessionResponse.deposit_id":
 		x.DepositId = value.Interface().(string)
+	case "types.QueryDepositSessionResponse.inbound_tx_id":
+		x.InboundTxId = value.Interface().(string)
+	case "types.QueryDepositSessionResponse.btc_confirmations":
+		x.BtcConfirmations = value.Int()
+	case "types.QueryDepositSessionResponse.btc_confirmations_required":
+		x.BtcConfirmationsRequired = value.Int()
+	case "types.QueryDepositSessionResponse.btc_observed_height":
+		x.BtcObservedHeight = value.Int()
+	case "types.QueryDepositSessionResponse.expires_at_height":
+		x.ExpiresAtHeight = value.Int()
+	case "types.QueryDepositSessionResponse.purge_at_height":
+		x.PurgeAtHeight = value.Int()
+	case "types.QueryDepositSessionResponse.refund_eligible_height":
+		x.RefundEligibleHeight = value.Int()
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryDepositSessionResponse"))
@@ -2445,6 +3026,20 @@ func (x *fastReflection_QueryDepositSessionResponse) Mutable(fd protoreflect.Fie
 		panic(fmt.Errorf("field status of message types.QueryDepositSessionResponse is not mutable"))
 	case "types.QueryDepositSessionResponse.deposit_id":
 		panic(fmt.Errorf("field deposit_id of message types.QueryDepositSessionResponse is not mutable"))
+	case "types.QueryDepositSessionResponse.inbound_tx_id":
+		panic(fmt.Errorf("field inbound_tx_id of message types.QueryDepositSessionResponse is not mutable"))
+	case "types.QueryDepositSessionResponse.btc_confirmations":
+		panic(fmt.Errorf("field btc_confirmations of message types.QueryDepositSessionResponse is not mutable"))
+	case "types.QueryDepositSessionResponse.btc_confirmations_required":
+		panic(fmt.Errorf("field btc_confirmations_required of message types.QueryDepositSessionResponse is not mutable"))
+	case "types.QueryDepositSessionResponse.btc_observed_height":
+		panic(fmt.Errorf("field btc_observed_height of message types.QueryDepositSessionResponse is not mutable"))
+	case "types.QueryDepositSessionResponse.expires_at_height":
+		panic(fmt.Errorf("field expires_at_height of message types.QueryDepositSessionResponse is not mutable"))
+	case "types.QueryDepositSessionResponse.purge_at_height":
+		panic(fmt.Errorf("field purge_at_height of message types.QueryDepositSessionResponse is not mutable"))
+	case "types.QueryDepositSessionResponse.refund_eligible_height":
+		panic(fmt.Errorf("field refund_eligible_height of message types.QueryDepositSessionResponse is not mutable"))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryDepositSessionResponse"))
@@ -2478,6 +3073,20 @@ func (x *fastReflection_QueryDepositSessionResponse) NewField(fd protoreflect.Fi
 		return protoreflect.ValueOfString("")
 	case "types.QueryDepositSessionResponse.deposit_id":
 		return protoreflect.ValueOfString("")
+	case "types.QueryDepositSessionResponse.inbound_tx_id":
+		return protoreflect.ValueOfString("")
+	case "types.QueryDepositSessionResponse.btc_confirmations":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryDepositSessionResponse.btc_confirmations_required":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryDepositSessionResponse.btc_observed_height":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryDepositSessionResponse.expires_at_height":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryDepositSessionResponse.purge_at_height":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryDepositSessionResponse.refund_eligible_height":
+		return protoreflect.ValueOfInt64(int64(0))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryDepositSessionResponse"))
@@ -2585,6 +3194,28 @@ func (x *fastReflection_QueryDepositSessionResponse) ProtoMethods() *protoiface.
 		if l > 0 {
 			n += 1 + l + runtime.Sov(uint64(l))
 		}
+		l = len(x.InboundTxId)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.BtcConfirmations != 0 {
+			n += 1 + runtime.Sov(uint64(x.BtcConfirmations))
+		}
+		if x.BtcConfirmationsRequired != 0 {
+			n += 1 + runtime.Sov(uint64(x.BtcConfirmationsRequired))
+		}
+		if x.BtcObservedHeight != 0 {
+			n += 1 + runtime.Sov(uint64(x.BtcObservedHeight))
+		}
+		if x.ExpiresAtHeight != 0 {
+			n += 1 + runtime.Sov(uint64(x.ExpiresAtHeight))
+		}
+		if x.PurgeAtHeight != 0 {
+			n += 2 + runtime.Sov(uint64(x.PurgeAtHeight))
+		}
+		if x.RefundEligibleHeight != 0 {
+			n += 2 + runtime.Sov(uint64(x.RefundEligibleHeight))
+		}
 		if x.unknownFields != nil {
 			n += len(x.unknownFields)
 		}
@@ -2613,6 +3244,47 @@ func (x *fastReflection_QueryDepositSessionResponse) ProtoMethods() *protoiface.
 		if x.unknownFields != nil {
 			i -= len(x.unknownFields)
 			copy(dAtA[i:], x.unknownFields)
+		}
+		if x.RefundEligibleHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.RefundEligibleHeight))
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0x88
+		}
+		if x.PurgeAtHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.PurgeAtHeight))
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0x80
+		}
+		if x.ExpiresAtHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.ExpiresAtHeight))
+			i--
+			dAtA[i] = 0x78
+		}
+		if x.BtcObservedHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.BtcObservedHeight))
+			i--
+			dAtA[i] = 0x70
+		}
+		if x.BtcConfirmationsRequired != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.BtcConfirmationsRequired))
+			i--
+			dAtA[i] = 0x68
+		}
+		if x.BtcConfirmations != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.BtcConfirmations))
+			i--
+			dAtA[i] = 0x60
+		}
+		if len(x.InboundTxId) > 0 {
+			i -= len(x.InboundTxId)
+			copy(dAtA[i:], x.InboundTxId)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.InboundTxId)))
+			i--
+			dAtA[i] = 0x5a
 		}
 		if len(x.DepositId) > 0 {
 			i -= len(x.DepositId)
@@ -3023,6 +3695,152 @@ func (x *fastReflection_QueryDepositSessionResponse) ProtoMethods() *protoiface.
 				}
 				x.DepositId = string(dAtA[iNdEx:postIndex])
 				iNdEx = postIndex
+			case 11:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field InboundTxId", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.InboundTxId = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 12:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field BtcConfirmations", wireType)
+				}
+				x.BtcConfirmations = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.BtcConfirmations |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 13:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field BtcConfirmationsRequired", wireType)
+				}
+				x.BtcConfirmationsRequired = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.BtcConfirmationsRequired |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 14:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field BtcObservedHeight", wireType)
+				}
+				x.BtcObservedHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.BtcObservedHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 15:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field ExpiresAtHeight", wireType)
+				}
+				x.ExpiresAtHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.ExpiresAtHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 16:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field PurgeAtHeight", wireType)
+				}
+				x.PurgeAtHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.PurgeAtHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 17:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field RefundEligibleHeight", wireType)
+				}
+				x.RefundEligibleHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.RefundEligibleHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
 			default:
 				iNdEx = preIndex
 				skippy, err := runtime.Skip(dAtA[iNdEx:])
@@ -3543,15 +4361,17 @@ func (x *fastReflection_QueryVaultDepositAddressRequest) ProtoMethods() *protoif
 }
 
 var (
-	md_QueryVaultDepositAddressResponse                  protoreflect.MessageDescriptor
-	fd_QueryVaultDepositAddressResponse_address          protoreflect.FieldDescriptor
-	fd_QueryVaultDepositAddressResponse_vault_pub_key    protoreflect.FieldDescriptor
-	fd_QueryVaultDepositAddressResponse_path_index       protoreflect.FieldDescriptor
-	fd_QueryVaultDepositAddressResponse_owner            protoreflect.FieldDescriptor
-	fd_QueryVaultDepositAddressResponse_operator_pub_key protoreflect.FieldDescriptor
-	fd_QueryVaultDepositAddressResponse_node_pub_key     protoreflect.FieldDescriptor
-	fd_QueryVaultDepositAddressResponse_auction_id       protoreflect.FieldDescriptor
-	fd_QueryVaultDepositAddressResponse_created_height   protoreflect.FieldDescriptor
+	md_QueryVaultDepositAddressResponse                   protoreflect.MessageDescriptor
+	fd_QueryVaultDepositAddressResponse_address           protoreflect.FieldDescriptor
+	fd_QueryVaultDepositAddressResponse_vault_pub_key     protoreflect.FieldDescriptor
+	fd_QueryVaultDepositAddressResponse_path_index        protoreflect.FieldDescriptor
+	fd_QueryVaultDepositAddressResponse_owner             protoreflect.FieldDescriptor
+	fd_QueryVaultDepositAddressResponse_operator_pub_key  protoreflect.FieldDescriptor
+	fd_QueryVaultDepositAddressResponse_node_pub_key      protoreflect.FieldDescriptor
+	fd_QueryVaultDepositAddressResponse_auction_id        protoreflect.FieldDescriptor
+	fd_QueryVaultDepositAddressResponse_created_height    protoreflect.FieldDescriptor
+	fd_QueryVaultDepositAddressResponse_expires_at_height protoreflect.FieldDescriptor
+	fd_QueryVaultDepositAddressResponse_purge_at_height   protoreflect.FieldDescriptor
 )
 
 func init() {
@@ -3565,6 +4385,8 @@ func init() {
 	fd_QueryVaultDepositAddressResponse_node_pub_key = md_QueryVaultDepositAddressResponse.Fields().ByName("node_pub_key")
 	fd_QueryVaultDepositAddressResponse_auction_id = md_QueryVaultDepositAddressResponse.Fields().ByName("auction_id")
 	fd_QueryVaultDepositAddressResponse_created_height = md_QueryVaultDepositAddressResponse.Fields().ByName("created_height")
+	fd_QueryVaultDepositAddressResponse_expires_at_height = md_QueryVaultDepositAddressResponse.Fields().ByName("expires_at_height")
+	fd_QueryVaultDepositAddressResponse_purge_at_height = md_QueryVaultDepositAddressResponse.Fields().ByName("purge_at_height")
 }
 
 var _ protoreflect.Message = (*fastReflection_QueryVaultDepositAddressResponse)(nil)
@@ -3680,6 +4502,18 @@ func (x *fastReflection_QueryVaultDepositAddressResponse) Range(f func(protorefl
 			return
 		}
 	}
+	if x.ExpiresAtHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.ExpiresAtHeight)
+		if !f(fd_QueryVaultDepositAddressResponse_expires_at_height, value) {
+			return
+		}
+	}
+	if x.PurgeAtHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.PurgeAtHeight)
+		if !f(fd_QueryVaultDepositAddressResponse_purge_at_height, value) {
+			return
+		}
+	}
 }
 
 // Has reports whether a field is populated.
@@ -3711,6 +4545,10 @@ func (x *fastReflection_QueryVaultDepositAddressResponse) Has(fd protoreflect.Fi
 		return x.AuctionId != ""
 	case "types.QueryVaultDepositAddressResponse.created_height":
 		return x.CreatedHeight != int64(0)
+	case "types.QueryVaultDepositAddressResponse.expires_at_height":
+		return x.ExpiresAtHeight != int64(0)
+	case "types.QueryVaultDepositAddressResponse.purge_at_height":
+		return x.PurgeAtHeight != int64(0)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryVaultDepositAddressResponse"))
@@ -3743,6 +4581,10 @@ func (x *fastReflection_QueryVaultDepositAddressResponse) Clear(fd protoreflect.
 		x.AuctionId = ""
 	case "types.QueryVaultDepositAddressResponse.created_height":
 		x.CreatedHeight = int64(0)
+	case "types.QueryVaultDepositAddressResponse.expires_at_height":
+		x.ExpiresAtHeight = int64(0)
+	case "types.QueryVaultDepositAddressResponse.purge_at_height":
+		x.PurgeAtHeight = int64(0)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryVaultDepositAddressResponse"))
@@ -3783,6 +4625,12 @@ func (x *fastReflection_QueryVaultDepositAddressResponse) Get(descriptor protore
 	case "types.QueryVaultDepositAddressResponse.created_height":
 		value := x.CreatedHeight
 		return protoreflect.ValueOfInt64(value)
+	case "types.QueryVaultDepositAddressResponse.expires_at_height":
+		value := x.ExpiresAtHeight
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryVaultDepositAddressResponse.purge_at_height":
+		value := x.PurgeAtHeight
+		return protoreflect.ValueOfInt64(value)
 	default:
 		if descriptor.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryVaultDepositAddressResponse"))
@@ -3819,6 +4667,10 @@ func (x *fastReflection_QueryVaultDepositAddressResponse) Set(fd protoreflect.Fi
 		x.AuctionId = value.Interface().(string)
 	case "types.QueryVaultDepositAddressResponse.created_height":
 		x.CreatedHeight = value.Int()
+	case "types.QueryVaultDepositAddressResponse.expires_at_height":
+		x.ExpiresAtHeight = value.Int()
+	case "types.QueryVaultDepositAddressResponse.purge_at_height":
+		x.PurgeAtHeight = value.Int()
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryVaultDepositAddressResponse"))
@@ -3855,6 +4707,10 @@ func (x *fastReflection_QueryVaultDepositAddressResponse) Mutable(fd protoreflec
 		panic(fmt.Errorf("field auction_id of message types.QueryVaultDepositAddressResponse is not mutable"))
 	case "types.QueryVaultDepositAddressResponse.created_height":
 		panic(fmt.Errorf("field created_height of message types.QueryVaultDepositAddressResponse is not mutable"))
+	case "types.QueryVaultDepositAddressResponse.expires_at_height":
+		panic(fmt.Errorf("field expires_at_height of message types.QueryVaultDepositAddressResponse is not mutable"))
+	case "types.QueryVaultDepositAddressResponse.purge_at_height":
+		panic(fmt.Errorf("field purge_at_height of message types.QueryVaultDepositAddressResponse is not mutable"))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryVaultDepositAddressResponse"))
@@ -3883,6 +4739,10 @@ func (x *fastReflection_QueryVaultDepositAddressResponse) NewField(fd protorefle
 	case "types.QueryVaultDepositAddressResponse.auction_id":
 		return protoreflect.ValueOfString("")
 	case "types.QueryVaultDepositAddressResponse.created_height":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryVaultDepositAddressResponse.expires_at_height":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryVaultDepositAddressResponse.purge_at_height":
 		return protoreflect.ValueOfInt64(int64(0))
 	default:
 		if fd.IsExtension() {
@@ -3983,6 +4843,12 @@ func (x *fastReflection_QueryVaultDepositAddressResponse) ProtoMethods() *protoi
 		if x.CreatedHeight != 0 {
 			n += 1 + runtime.Sov(uint64(x.CreatedHeight))
 		}
+		if x.ExpiresAtHeight != 0 {
+			n += 1 + runtime.Sov(uint64(x.ExpiresAtHeight))
+		}
+		if x.PurgeAtHeight != 0 {
+			n += 1 + runtime.Sov(uint64(x.PurgeAtHeight))
+		}
 		if x.unknownFields != nil {
 			n += len(x.unknownFields)
 		}
@@ -4011,6 +4877,16 @@ func (x *fastReflection_QueryVaultDepositAddressResponse) ProtoMethods() *protoi
 		if x.unknownFields != nil {
 			i -= len(x.unknownFields)
 			copy(dAtA[i:], x.unknownFields)
+		}
+		if x.PurgeAtHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.PurgeAtHeight))
+			i--
+			dAtA[i] = 0x50
+		}
+		if x.ExpiresAtHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.ExpiresAtHeight))
+			i--
+			dAtA[i] = 0x48
 		}
 		if x.CreatedHeight != 0 {
 			i = runtime.EncodeVarint(dAtA, i, uint64(x.CreatedHeight))
@@ -4343,6 +5219,44 @@ func (x *fastReflection_QueryVaultDepositAddressResponse) ProtoMethods() *protoi
 						break
 					}
 				}
+			case 9:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field ExpiresAtHeight", wireType)
+				}
+				x.ExpiresAtHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.ExpiresAtHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 10:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field PurgeAtHeight", wireType)
+				}
+				x.PurgeAtHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.PurgeAtHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
 			default:
 				iNdEx = preIndex
 				skippy, err := runtime.Skip(dAtA[iNdEx:])
@@ -4439,19 +5353,28 @@ type QueryDepositResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	DepositId        string `protobuf:"bytes,1,opt,name=deposit_id,json=depositId,proto3" json:"deposit_id,omitempty"`
-	Owner            string `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty"`
-	AmountSats       uint64 `protobuf:"varint,3,opt,name=amount_sats,json=amountSats,proto3" json:"amount_sats,omitempty"`
-	DepositAddress   string `protobuf:"bytes,4,opt,name=deposit_address,json=depositAddress,proto3" json:"deposit_address,omitempty"`
-	VaultPubKey      string `protobuf:"bytes,5,opt,name=vault_pub_key,json=vaultPubKey,proto3" json:"vault_pub_key,omitempty"`
-	DepositPathIndex uint64 `protobuf:"varint,6,opt,name=deposit_path_index,json=depositPathIndex,proto3" json:"deposit_path_index,omitempty"`
-	Status           string `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
-	Settlement       string `protobuf:"bytes,8,opt,name=settlement,proto3" json:"settlement,omitempty"`
-	AuctionId        string `protobuf:"bytes,9,opt,name=auction_id,json=auctionId,proto3" json:"auction_id,omitempty"`
-	NodePubKey       string `protobuf:"bytes,10,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
-	NodeSlot         uint64 `protobuf:"varint,11,opt,name=node_slot,json=nodeSlot,proto3" json:"node_slot,omitempty"`
-	BondConfirmed    bool   `protobuf:"varint,12,opt,name=bond_confirmed,json=bondConfirmed,proto3" json:"bond_confirmed,omitempty"`
-	CommitmentCount  uint64 `protobuf:"varint,13,opt,name=commitment_count,json=commitmentCount,proto3" json:"commitment_count,omitempty"`
+	DepositId                string `protobuf:"bytes,1,opt,name=deposit_id,json=depositId,proto3" json:"deposit_id,omitempty"`
+	Owner                    string `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty"`
+	AmountSats               uint64 `protobuf:"varint,3,opt,name=amount_sats,json=amountSats,proto3" json:"amount_sats,omitempty"`
+	DepositAddress           string `protobuf:"bytes,4,opt,name=deposit_address,json=depositAddress,proto3" json:"deposit_address,omitempty"`
+	VaultPubKey              string `protobuf:"bytes,5,opt,name=vault_pub_key,json=vaultPubKey,proto3" json:"vault_pub_key,omitempty"`
+	DepositPathIndex         uint64 `protobuf:"varint,6,opt,name=deposit_path_index,json=depositPathIndex,proto3" json:"deposit_path_index,omitempty"`
+	Status                   string `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
+	Settlement               string `protobuf:"bytes,8,opt,name=settlement,proto3" json:"settlement,omitempty"`
+	AuctionId                string `protobuf:"bytes,9,opt,name=auction_id,json=auctionId,proto3" json:"auction_id,omitempty"`
+	NodePubKey               string `protobuf:"bytes,10,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
+	NodeSlot                 uint64 `protobuf:"varint,11,opt,name=node_slot,json=nodeSlot,proto3" json:"node_slot,omitempty"`
+	BondConfirmed            bool   `protobuf:"varint,12,opt,name=bond_confirmed,json=bondConfirmed,proto3" json:"bond_confirmed,omitempty"`
+	CommitmentCount          uint64 `protobuf:"varint,13,opt,name=commitment_count,json=commitmentCount,proto3" json:"commitment_count,omitempty"`
+	InboundTxId              string `protobuf:"bytes,14,opt,name=inbound_tx_id,json=inboundTxId,proto3" json:"inbound_tx_id,omitempty"`
+	BtcConfirmations         int64  `protobuf:"varint,15,opt,name=btc_confirmations,json=btcConfirmations,proto3" json:"btc_confirmations,omitempty"`
+	BtcConfirmationsRequired int64  `protobuf:"varint,16,opt,name=btc_confirmations_required,json=btcConfirmationsRequired,proto3" json:"btc_confirmations_required,omitempty"`
+	BtcObservedHeight        int64  `protobuf:"varint,17,opt,name=btc_observed_height,json=btcObservedHeight,proto3" json:"btc_observed_height,omitempty"`
+	CreatedHeight            int64  `protobuf:"varint,18,opt,name=created_height,json=createdHeight,proto3" json:"created_height,omitempty"`
+	ExpiresAtHeight          int64  `protobuf:"varint,19,opt,name=expires_at_height,json=expiresAtHeight,proto3" json:"expires_at_height,omitempty"`
+	PurgeAtHeight            int64  `protobuf:"varint,20,opt,name=purge_at_height,json=purgeAtHeight,proto3" json:"purge_at_height,omitempty"`
+	RefundEligibleHeight     int64  `protobuf:"varint,21,opt,name=refund_eligible_height,json=refundEligibleHeight,proto3" json:"refund_eligible_height,omitempty"`
+	RefundQueuedHeight       int64  `protobuf:"varint,22,opt,name=refund_queued_height,json=refundQueuedHeight,proto3" json:"refund_queued_height,omitempty"`
 }
 
 func (x *QueryDepositResponse) Reset() {
@@ -4565,6 +5488,69 @@ func (x *QueryDepositResponse) GetCommitmentCount() uint64 {
 	return 0
 }
 
+func (x *QueryDepositResponse) GetInboundTxId() string {
+	if x != nil {
+		return x.InboundTxId
+	}
+	return ""
+}
+
+func (x *QueryDepositResponse) GetBtcConfirmations() int64 {
+	if x != nil {
+		return x.BtcConfirmations
+	}
+	return 0
+}
+
+func (x *QueryDepositResponse) GetBtcConfirmationsRequired() int64 {
+	if x != nil {
+		return x.BtcConfirmationsRequired
+	}
+	return 0
+}
+
+func (x *QueryDepositResponse) GetBtcObservedHeight() int64 {
+	if x != nil {
+		return x.BtcObservedHeight
+	}
+	return 0
+}
+
+func (x *QueryDepositResponse) GetCreatedHeight() int64 {
+	if x != nil {
+		return x.CreatedHeight
+	}
+	return 0
+}
+
+func (x *QueryDepositResponse) GetExpiresAtHeight() int64 {
+	if x != nil {
+		return x.ExpiresAtHeight
+	}
+	return 0
+}
+
+func (x *QueryDepositResponse) GetPurgeAtHeight() int64 {
+	if x != nil {
+		return x.PurgeAtHeight
+	}
+	return 0
+}
+
+func (x *QueryDepositResponse) GetRefundEligibleHeight() int64 {
+	if x != nil {
+		return x.RefundEligibleHeight
+	}
+	return 0
+}
+
+func (x *QueryDepositResponse) GetRefundQueuedHeight() int64 {
+	if x != nil {
+		return x.RefundQueuedHeight
+	}
+	return 0
+}
+
 type QueryDepositSessionRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -4613,16 +5599,23 @@ type QueryDepositSessionResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Owner            string `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner,omitempty"`
-	DepositAddress   string `protobuf:"bytes,2,opt,name=deposit_address,json=depositAddress,proto3" json:"deposit_address,omitempty"`
-	VaultPubKey      string `protobuf:"bytes,3,opt,name=vault_pub_key,json=vaultPubKey,proto3" json:"vault_pub_key,omitempty"`
-	DepositPathIndex uint64 `protobuf:"varint,4,opt,name=deposit_path_index,json=depositPathIndex,proto3" json:"deposit_path_index,omitempty"`
-	OperatorPubKey   string `protobuf:"bytes,5,opt,name=operator_pub_key,json=operatorPubKey,proto3" json:"operator_pub_key,omitempty"`
-	NodePubKey       string `protobuf:"bytes,6,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
-	AuctionId        string `protobuf:"bytes,7,opt,name=auction_id,json=auctionId,proto3" json:"auction_id,omitempty"`
-	CreatedHeight    int64  `protobuf:"varint,8,opt,name=created_height,json=createdHeight,proto3" json:"created_height,omitempty"`
-	Status           string `protobuf:"bytes,9,opt,name=status,proto3" json:"status,omitempty"`
-	DepositId        string `protobuf:"bytes,10,opt,name=deposit_id,json=depositId,proto3" json:"deposit_id,omitempty"`
+	Owner                    string `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner,omitempty"`
+	DepositAddress           string `protobuf:"bytes,2,opt,name=deposit_address,json=depositAddress,proto3" json:"deposit_address,omitempty"`
+	VaultPubKey              string `protobuf:"bytes,3,opt,name=vault_pub_key,json=vaultPubKey,proto3" json:"vault_pub_key,omitempty"`
+	DepositPathIndex         uint64 `protobuf:"varint,4,opt,name=deposit_path_index,json=depositPathIndex,proto3" json:"deposit_path_index,omitempty"`
+	OperatorPubKey           string `protobuf:"bytes,5,opt,name=operator_pub_key,json=operatorPubKey,proto3" json:"operator_pub_key,omitempty"`
+	NodePubKey               string `protobuf:"bytes,6,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
+	AuctionId                string `protobuf:"bytes,7,opt,name=auction_id,json=auctionId,proto3" json:"auction_id,omitempty"`
+	CreatedHeight            int64  `protobuf:"varint,8,opt,name=created_height,json=createdHeight,proto3" json:"created_height,omitempty"`
+	Status                   string `protobuf:"bytes,9,opt,name=status,proto3" json:"status,omitempty"`
+	DepositId                string `protobuf:"bytes,10,opt,name=deposit_id,json=depositId,proto3" json:"deposit_id,omitempty"`
+	InboundTxId              string `protobuf:"bytes,11,opt,name=inbound_tx_id,json=inboundTxId,proto3" json:"inbound_tx_id,omitempty"`
+	BtcConfirmations         int64  `protobuf:"varint,12,opt,name=btc_confirmations,json=btcConfirmations,proto3" json:"btc_confirmations,omitempty"`
+	BtcConfirmationsRequired int64  `protobuf:"varint,13,opt,name=btc_confirmations_required,json=btcConfirmationsRequired,proto3" json:"btc_confirmations_required,omitempty"`
+	BtcObservedHeight        int64  `protobuf:"varint,14,opt,name=btc_observed_height,json=btcObservedHeight,proto3" json:"btc_observed_height,omitempty"`
+	ExpiresAtHeight          int64  `protobuf:"varint,15,opt,name=expires_at_height,json=expiresAtHeight,proto3" json:"expires_at_height,omitempty"`
+	PurgeAtHeight            int64  `protobuf:"varint,16,opt,name=purge_at_height,json=purgeAtHeight,proto3" json:"purge_at_height,omitempty"`
+	RefundEligibleHeight     int64  `protobuf:"varint,17,opt,name=refund_eligible_height,json=refundEligibleHeight,proto3" json:"refund_eligible_height,omitempty"`
 }
 
 func (x *QueryDepositSessionResponse) Reset() {
@@ -4715,6 +5708,55 @@ func (x *QueryDepositSessionResponse) GetDepositId() string {
 	return ""
 }
 
+func (x *QueryDepositSessionResponse) GetInboundTxId() string {
+	if x != nil {
+		return x.InboundTxId
+	}
+	return ""
+}
+
+func (x *QueryDepositSessionResponse) GetBtcConfirmations() int64 {
+	if x != nil {
+		return x.BtcConfirmations
+	}
+	return 0
+}
+
+func (x *QueryDepositSessionResponse) GetBtcConfirmationsRequired() int64 {
+	if x != nil {
+		return x.BtcConfirmationsRequired
+	}
+	return 0
+}
+
+func (x *QueryDepositSessionResponse) GetBtcObservedHeight() int64 {
+	if x != nil {
+		return x.BtcObservedHeight
+	}
+	return 0
+}
+
+func (x *QueryDepositSessionResponse) GetExpiresAtHeight() int64 {
+	if x != nil {
+		return x.ExpiresAtHeight
+	}
+	return 0
+}
+
+func (x *QueryDepositSessionResponse) GetPurgeAtHeight() int64 {
+	if x != nil {
+		return x.PurgeAtHeight
+	}
+	return 0
+}
+
+func (x *QueryDepositSessionResponse) GetRefundEligibleHeight() int64 {
+	if x != nil {
+		return x.RefundEligibleHeight
+	}
+	return 0
+}
+
 type QueryVaultDepositAddressRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -4763,14 +5805,16 @@ type QueryVaultDepositAddressResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Address        string `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
-	VaultPubKey    string `protobuf:"bytes,2,opt,name=vault_pub_key,json=vaultPubKey,proto3" json:"vault_pub_key,omitempty"`
-	PathIndex      uint64 `protobuf:"varint,3,opt,name=path_index,json=pathIndex,proto3" json:"path_index,omitempty"`
-	Owner          string `protobuf:"bytes,4,opt,name=owner,proto3" json:"owner,omitempty"`
-	OperatorPubKey string `protobuf:"bytes,5,opt,name=operator_pub_key,json=operatorPubKey,proto3" json:"operator_pub_key,omitempty"`
-	NodePubKey     string `protobuf:"bytes,6,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
-	AuctionId      string `protobuf:"bytes,7,opt,name=auction_id,json=auctionId,proto3" json:"auction_id,omitempty"`
-	CreatedHeight  int64  `protobuf:"varint,8,opt,name=created_height,json=createdHeight,proto3" json:"created_height,omitempty"`
+	Address         string `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
+	VaultPubKey     string `protobuf:"bytes,2,opt,name=vault_pub_key,json=vaultPubKey,proto3" json:"vault_pub_key,omitempty"`
+	PathIndex       uint64 `protobuf:"varint,3,opt,name=path_index,json=pathIndex,proto3" json:"path_index,omitempty"`
+	Owner           string `protobuf:"bytes,4,opt,name=owner,proto3" json:"owner,omitempty"`
+	OperatorPubKey  string `protobuf:"bytes,5,opt,name=operator_pub_key,json=operatorPubKey,proto3" json:"operator_pub_key,omitempty"`
+	NodePubKey      string `protobuf:"bytes,6,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
+	AuctionId       string `protobuf:"bytes,7,opt,name=auction_id,json=auctionId,proto3" json:"auction_id,omitempty"`
+	CreatedHeight   int64  `protobuf:"varint,8,opt,name=created_height,json=createdHeight,proto3" json:"created_height,omitempty"`
+	ExpiresAtHeight int64  `protobuf:"varint,9,opt,name=expires_at_height,json=expiresAtHeight,proto3" json:"expires_at_height,omitempty"`
+	PurgeAtHeight   int64  `protobuf:"varint,10,opt,name=purge_at_height,json=purgeAtHeight,proto3" json:"purge_at_height,omitempty"`
 }
 
 func (x *QueryVaultDepositAddressResponse) Reset() {
@@ -4849,6 +5893,20 @@ func (x *QueryVaultDepositAddressResponse) GetCreatedHeight() int64 {
 	return 0
 }
 
+func (x *QueryVaultDepositAddressResponse) GetExpiresAtHeight() int64 {
+	if x != nil {
+		return x.ExpiresAtHeight
+	}
+	return 0
+}
+
+func (x *QueryVaultDepositAddressResponse) GetPurgeAtHeight() int64 {
+	if x != nil {
+		return x.PurgeAtHeight
+	}
+	return 0
+}
+
 var File_types_query_deposit_proto protoreflect.FileDescriptor
 
 var file_types_query_deposit_proto_rawDesc = []byte{
@@ -4859,7 +5917,7 @@ var file_types_query_deposit_proto_rawDesc = []byte{
 	0x6f, 0x73, 0x69, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x64,
 	0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67,
 	0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74,
-	0x22, 0xcf, 0x03, 0x0a, 0x14, 0x51, 0x75, 0x65, 0x72, 0x79, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69,
+	0x22, 0xf1, 0x06, 0x0a, 0x14, 0x51, 0x75, 0x65, 0x72, 0x79, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69,
 	0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x64, 0x65, 0x70,
 	0x6f, 0x73, 0x69, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x64,
 	0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x49, 0x64, 0x12, 0x14, 0x0a, 0x05, 0x6f, 0x77, 0x6e, 0x65,
@@ -4888,68 +5946,120 @@ var file_types_query_deposit_proto_rawDesc = []byte{
 	0x6e, 0x66, 0x69, 0x72, 0x6d, 0x65, 0x64, 0x12, 0x29, 0x0a, 0x10, 0x63, 0x6f, 0x6d, 0x6d, 0x69,
 	0x74, 0x6d, 0x65, 0x6e, 0x74, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x0d, 0x20, 0x01, 0x28,
 	0x04, 0x52, 0x0f, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e, 0x74, 0x43, 0x6f, 0x75,
-	0x6e, 0x74, 0x22, 0x4a, 0x0a, 0x1a, 0x51, 0x75, 0x65, 0x72, 0x79, 0x44, 0x65, 0x70, 0x6f, 0x73,
-	0x69, 0x74, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x6e, 0x74, 0x12, 0x22, 0x0a, 0x0d, 0x69, 0x6e, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x5f, 0x74, 0x78,
+	0x5f, 0x69, 0x64, 0x18, 0x0e, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x69, 0x6e, 0x62, 0x6f, 0x75,
+	0x6e, 0x64, 0x54, 0x78, 0x49, 0x64, 0x12, 0x2b, 0x0a, 0x11, 0x62, 0x74, 0x63, 0x5f, 0x63, 0x6f,
+	0x6e, 0x66, 0x69, 0x72, 0x6d, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x0f, 0x20, 0x01, 0x28,
+	0x03, 0x52, 0x10, 0x62, 0x74, 0x63, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x72, 0x6d, 0x61, 0x74, 0x69,
+	0x6f, 0x6e, 0x73, 0x12, 0x3c, 0x0a, 0x1a, 0x62, 0x74, 0x63, 0x5f, 0x63, 0x6f, 0x6e, 0x66, 0x69,
+	0x72, 0x6d, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x5f, 0x72, 0x65, 0x71, 0x75, 0x69, 0x72, 0x65,
+	0x64, 0x18, 0x10, 0x20, 0x01, 0x28, 0x03, 0x52, 0x18, 0x62, 0x74, 0x63, 0x43, 0x6f, 0x6e, 0x66,
+	0x69, 0x72, 0x6d, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x69, 0x72, 0x65,
+	0x64, 0x12, 0x2e, 0x0a, 0x13, 0x62, 0x74, 0x63, 0x5f, 0x6f, 0x62, 0x73, 0x65, 0x72, 0x76, 0x65,
+	0x64, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x11, 0x20, 0x01, 0x28, 0x03, 0x52, 0x11,
+	0x62, 0x74, 0x63, 0x4f, 0x62, 0x73, 0x65, 0x72, 0x76, 0x65, 0x64, 0x48, 0x65, 0x69, 0x67, 0x68,
+	0x74, 0x12, 0x25, 0x0a, 0x0e, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x68, 0x65, 0x69,
+	0x67, 0x68, 0x74, 0x18, 0x12, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x63, 0x72, 0x65, 0x61, 0x74,
+	0x65, 0x64, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x2a, 0x0a, 0x11, 0x65, 0x78, 0x70, 0x69,
+	0x72, 0x65, 0x73, 0x5f, 0x61, 0x74, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x13, 0x20,
+	0x01, 0x28, 0x03, 0x52, 0x0f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x65, 0x73, 0x41, 0x74, 0x48, 0x65,
+	0x69, 0x67, 0x68, 0x74, 0x12, 0x26, 0x0a, 0x0f, 0x70, 0x75, 0x72, 0x67, 0x65, 0x5f, 0x61, 0x74,
+	0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x14, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x70,
+	0x75, 0x72, 0x67, 0x65, 0x41, 0x74, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x34, 0x0a, 0x16,
+	0x72, 0x65, 0x66, 0x75, 0x6e, 0x64, 0x5f, 0x65, 0x6c, 0x69, 0x67, 0x69, 0x62, 0x6c, 0x65, 0x5f,
+	0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x15, 0x20, 0x01, 0x28, 0x03, 0x52, 0x14, 0x72, 0x65,
+	0x66, 0x75, 0x6e, 0x64, 0x45, 0x6c, 0x69, 0x67, 0x69, 0x62, 0x6c, 0x65, 0x48, 0x65, 0x69, 0x67,
+	0x68, 0x74, 0x12, 0x30, 0x0a, 0x14, 0x72, 0x65, 0x66, 0x75, 0x6e, 0x64, 0x5f, 0x71, 0x75, 0x65,
+	0x75, 0x65, 0x64, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x16, 0x20, 0x01, 0x28, 0x03,
+	0x52, 0x12, 0x72, 0x65, 0x66, 0x75, 0x6e, 0x64, 0x51, 0x75, 0x65, 0x75, 0x65, 0x64, 0x48, 0x65,
+	0x69, 0x67, 0x68, 0x74, 0x22, 0x4a, 0x0a, 0x1a, 0x51, 0x75, 0x65, 0x72, 0x79, 0x44, 0x65, 0x70,
+	0x6f, 0x73, 0x69, 0x74, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67,
+	0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74,
+	0x22, 0xc0, 0x05, 0x0a, 0x1b, 0x51, 0x75, 0x65, 0x72, 0x79, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69,
+	0x74, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
 	0x12, 0x14, 0x0a, 0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0xf7,
-	0x02, 0x0a, 0x1b, 0x51, 0x75, 0x65, 0x72, 0x79, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x53,
-	0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14,
-	0x0a, 0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6f,
-	0x77, 0x6e, 0x65, 0x72, 0x12, 0x27, 0x0a, 0x0f, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x5f,
-	0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x64,
-	0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x22, 0x0a,
-	0x0d, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x03,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x50, 0x75, 0x62, 0x4b, 0x65,
-	0x79, 0x12, 0x2c, 0x0a, 0x12, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x5f, 0x70, 0x61, 0x74,
-	0x68, 0x5f, 0x69, 0x6e, 0x64, 0x65, 0x78, 0x18, 0x04, 0x20, 0x01, 0x28, 0x04, 0x52, 0x10, 0x64,
-	0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x50, 0x61, 0x74, 0x68, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x12,
-	0x28, 0x0a, 0x10, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x70, 0x75, 0x62, 0x5f,
-	0x6b, 0x65, 0x79, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x6f, 0x70, 0x65, 0x72, 0x61,
-	0x74, 0x6f, 0x72, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x20, 0x0a, 0x0c, 0x6e, 0x6f, 0x64,
-	0x65, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x0a, 0x6e, 0x6f, 0x64, 0x65, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x1d, 0x0a, 0x0a, 0x61,
-	0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x07, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x09, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x25, 0x0a, 0x0e, 0x63, 0x72,
-	0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x08, 0x20, 0x01,
-	0x28, 0x03, 0x52, 0x0d, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x48, 0x65, 0x69, 0x67, 0x68,
-	0x74, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x09, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x1d, 0x0a, 0x0a, 0x64, 0x65, 0x70,
-	0x6f, 0x73, 0x69, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x64,
-	0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x49, 0x64, 0x22, 0x53, 0x0a, 0x1f, 0x51, 0x75, 0x65, 0x72,
-	0x79, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x41, 0x64, 0x64,
-	0x72, 0x65, 0x73, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x61,
-	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x61, 0x64,
-	0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18,
-	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0xa7, 0x02,
-	0x0a, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x44, 0x65, 0x70, 0x6f,
-	0x73, 0x69, 0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
-	0x73, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x22, 0x0a, 0x0d,
-	0x76, 0x61, 0x75, 0x6c, 0x74, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x0b, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79,
-	0x12, 0x1d, 0x0a, 0x0a, 0x70, 0x61, 0x74, 0x68, 0x5f, 0x69, 0x6e, 0x64, 0x65, 0x78, 0x18, 0x03,
-	0x20, 0x01, 0x28, 0x04, 0x52, 0x09, 0x70, 0x61, 0x74, 0x68, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x12,
-	0x14, 0x0a, 0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05,
-	0x6f, 0x77, 0x6e, 0x65, 0x72, 0x12, 0x28, 0x0a, 0x10, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f,
-	0x72, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x0e, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12,
-	0x20, 0x0a, 0x0c, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18,
-	0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6e, 0x6f, 0x64, 0x65, 0x50, 0x75, 0x62, 0x4b, 0x65,
-	0x79, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18,
-	0x07, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64,
-	0x12, 0x25, 0x0a, 0x0e, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x68, 0x65, 0x69, 0x67,
-	0x68, 0x74, 0x18, 0x08, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65,
-	0x64, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x42, 0x81, 0x01, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e,
-	0x74, 0x79, 0x70, 0x65, 0x73, 0x42, 0x11, 0x51, 0x75, 0x65, 0x72, 0x79, 0x44, 0x65, 0x70, 0x6f,
-	0x73, 0x69, 0x74, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68,
-	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63,
-	0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f,
-	0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa,
-	0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2,
-	0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64,
-	0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x33,
+	0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x12, 0x27, 0x0a, 0x0f, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69,
+	0x74, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x0e, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12,
+	0x22, 0x0a, 0x0d, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x76, 0x61, 0x75, 0x6c, 0x74, 0x50, 0x75, 0x62,
+	0x4b, 0x65, 0x79, 0x12, 0x2c, 0x0a, 0x12, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x5f, 0x70,
+	0x61, 0x74, 0x68, 0x5f, 0x69, 0x6e, 0x64, 0x65, 0x78, 0x18, 0x04, 0x20, 0x01, 0x28, 0x04, 0x52,
+	0x10, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x50, 0x61, 0x74, 0x68, 0x49, 0x6e, 0x64, 0x65,
+	0x78, 0x12, 0x28, 0x0a, 0x10, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x70, 0x75,
+	0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x6f, 0x70, 0x65,
+	0x72, 0x61, 0x74, 0x6f, 0x72, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x20, 0x0a, 0x0c, 0x6e,
+	0x6f, 0x64, 0x65, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x06, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x0a, 0x6e, 0x6f, 0x64, 0x65, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x1d, 0x0a,
+	0x0a, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x07, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x09, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x25, 0x0a, 0x0e,
+	0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x08,
+	0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x48, 0x65, 0x69,
+	0x67, 0x68, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x09, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x1d, 0x0a, 0x0a, 0x64,
+	0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x09, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x49, 0x64, 0x12, 0x22, 0x0a, 0x0d, 0x69, 0x6e,
+	0x62, 0x6f, 0x75, 0x6e, 0x64, 0x5f, 0x74, 0x78, 0x5f, 0x69, 0x64, 0x18, 0x0b, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x0b, 0x69, 0x6e, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x54, 0x78, 0x49, 0x64, 0x12, 0x2b,
+	0x0a, 0x11, 0x62, 0x74, 0x63, 0x5f, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x72, 0x6d, 0x61, 0x74, 0x69,
+	0x6f, 0x6e, 0x73, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x03, 0x52, 0x10, 0x62, 0x74, 0x63, 0x43, 0x6f,
+	0x6e, 0x66, 0x69, 0x72, 0x6d, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x12, 0x3c, 0x0a, 0x1a, 0x62,
+	0x74, 0x63, 0x5f, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x72, 0x6d, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73,
+	0x5f, 0x72, 0x65, 0x71, 0x75, 0x69, 0x72, 0x65, 0x64, 0x18, 0x0d, 0x20, 0x01, 0x28, 0x03, 0x52,
+	0x18, 0x62, 0x74, 0x63, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x72, 0x6d, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x73, 0x52, 0x65, 0x71, 0x75, 0x69, 0x72, 0x65, 0x64, 0x12, 0x2e, 0x0a, 0x13, 0x62, 0x74, 0x63,
+	0x5f, 0x6f, 0x62, 0x73, 0x65, 0x72, 0x76, 0x65, 0x64, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74,
+	0x18, 0x0e, 0x20, 0x01, 0x28, 0x03, 0x52, 0x11, 0x62, 0x74, 0x63, 0x4f, 0x62, 0x73, 0x65, 0x72,
+	0x76, 0x65, 0x64, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x2a, 0x0a, 0x11, 0x65, 0x78, 0x70,
+	0x69, 0x72, 0x65, 0x73, 0x5f, 0x61, 0x74, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x0f,
+	0x20, 0x01, 0x28, 0x03, 0x52, 0x0f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x65, 0x73, 0x41, 0x74, 0x48,
+	0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x26, 0x0a, 0x0f, 0x70, 0x75, 0x72, 0x67, 0x65, 0x5f, 0x61,
+	0x74, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x10, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d,
+	0x70, 0x75, 0x72, 0x67, 0x65, 0x41, 0x74, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x34, 0x0a,
+	0x16, 0x72, 0x65, 0x66, 0x75, 0x6e, 0x64, 0x5f, 0x65, 0x6c, 0x69, 0x67, 0x69, 0x62, 0x6c, 0x65,
+	0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x11, 0x20, 0x01, 0x28, 0x03, 0x52, 0x14, 0x72,
+	0x65, 0x66, 0x75, 0x6e, 0x64, 0x45, 0x6c, 0x69, 0x67, 0x69, 0x62, 0x6c, 0x65, 0x48, 0x65, 0x69,
+	0x67, 0x68, 0x74, 0x22, 0x53, 0x0a, 0x1f, 0x51, 0x75, 0x65, 0x72, 0x79, 0x56, 0x61, 0x75, 0x6c,
+	0x74, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73,
+	0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73,
+	0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0xfb, 0x02, 0x0a, 0x20, 0x51, 0x75, 0x65,
+	0x72, 0x79, 0x56, 0x61, 0x75, 0x6c, 0x74, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x41, 0x64,
+	0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x18, 0x0a,
+	0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07,
+	0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x22, 0x0a, 0x0d, 0x76, 0x61, 0x75, 0x6c, 0x74,
+	0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b,
+	0x76, 0x61, 0x75, 0x6c, 0x74, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x1d, 0x0a, 0x0a, 0x70,
+	0x61, 0x74, 0x68, 0x5f, 0x69, 0x6e, 0x64, 0x65, 0x78, 0x18, 0x03, 0x20, 0x01, 0x28, 0x04, 0x52,
+	0x09, 0x70, 0x61, 0x74, 0x68, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x12, 0x14, 0x0a, 0x05, 0x6f, 0x77,
+	0x6e, 0x65, 0x72, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72,
+	0x12, 0x28, 0x0a, 0x10, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x70, 0x75, 0x62,
+	0x5f, 0x6b, 0x65, 0x79, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x6f, 0x70, 0x65, 0x72,
+	0x61, 0x74, 0x6f, 0x72, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x20, 0x0a, 0x0c, 0x6e, 0x6f,
+	0x64, 0x65, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x0a, 0x6e, 0x6f, 0x64, 0x65, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x1d, 0x0a, 0x0a,
+	0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x07, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x09, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x25, 0x0a, 0x0e, 0x63,
+	0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x08, 0x20,
+	0x01, 0x28, 0x03, 0x52, 0x0d, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x48, 0x65, 0x69, 0x67,
+	0x68, 0x74, 0x12, 0x2a, 0x0a, 0x11, 0x65, 0x78, 0x70, 0x69, 0x72, 0x65, 0x73, 0x5f, 0x61, 0x74,
+	0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x09, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0f, 0x65,
+	0x78, 0x70, 0x69, 0x72, 0x65, 0x73, 0x41, 0x74, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x26,
+	0x0a, 0x0f, 0x70, 0x75, 0x72, 0x67, 0x65, 0x5f, 0x61, 0x74, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68,
+	0x74, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x70, 0x75, 0x72, 0x67, 0x65, 0x41, 0x74,
+	0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x42, 0x81, 0x01, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74,
+	0x79, 0x70, 0x65, 0x73, 0x42, 0x11, 0x51, 0x75, 0x65, 0x72, 0x79, 0x44, 0x65, 0x70, 0x6f, 0x73,
+	0x69, 0x74, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75,
+	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61,
+	0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61,
+	0x70, 0x69, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02,
+	0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2, 0x02,
+	0x11, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61,
+	0x74, 0x61, 0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var (

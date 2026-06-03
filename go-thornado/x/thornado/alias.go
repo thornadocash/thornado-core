@@ -128,13 +128,13 @@ var (
 	NewSolvencyVoter               = types.NewSolvencyVoter
 	NewMsgSolvency                 = types.NewMsgSolvency
 	NewMsgDepositRequestPow        = types.NewMsgDepositRequestPow
-	NewMsgShielderSplit            = types.NewMsgShielderSplit
+	NewMsgShielderShield           = types.NewMsgShielderShield
 	NewMsgShielderRedeem           = types.NewMsgShielderRedeem
-	NewMsgShielderSplitFees        = types.NewMsgShielderSplitFees
+	NewMsgShielderShieldFees       = types.NewMsgShielderShieldFees
 	NewMsgNodeSlotAuctionCreate    = types.NewMsgNodeSlotAuctionCreate
 	NewMsgNodeSlotAuctionBidPow    = types.NewMsgNodeSlotAuctionBidPow
 	NewMsgNodeSlotAuctionSelectBid = types.NewMsgNodeSlotAuctionSelectBid
-	NewMsgNodeSlotAuctionSplit     = types.NewMsgNodeSlotAuctionSplit
+	NewMsgNodeSlotAuctionShield    = types.NewMsgNodeSlotAuctionShield
 )
 
 type (
@@ -163,12 +163,12 @@ type (
 	MsgSolvency                 = types.MsgSolvency
 	MsgOperatorRotate           = types.MsgOperatorRotate
 	MsgDepositRequestPow        = types.MsgDepositRequestPow
-	MsgShielderSplit            = types.MsgShielderSplit
+	MsgShielderShield           = types.MsgShielderShield
 	MsgShielderRedeem           = types.MsgShielderRedeem
 	MsgNodeSlotAuctionCreate    = types.MsgNodeSlotAuctionCreate
 	MsgNodeSlotAuctionBidPow    = types.MsgNodeSlotAuctionBidPow
 	MsgNodeSlotAuctionSelectBid = types.MsgNodeSlotAuctionSelectBid
-	MsgNodeSlotAuctionSplit     = types.MsgNodeSlotAuctionSplit
+	MsgNodeSlotAuctionShield    = types.MsgNodeSlotAuctionShield
 
 	// Keeper structs
 	ObservedTxs             = common.ObservedTxs

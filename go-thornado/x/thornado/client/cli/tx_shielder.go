@@ -17,16 +17,16 @@ import (
 func GetCmdShielder() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "shielder",
-		Short: "Shielder split and redeem transaction subcommands",
+		Short: "Shielder shield and redeem transaction subcommands",
 	}
 
-	cmd.AddCommand(GetCmdShielderSplit())
+	cmd.AddCommand(GetCmdShielderShield())
 	cmd.AddCommand(GetCmdShielderRedeem())
-	cmd.AddCommand(GetCmdShielderSplitFees())
+	cmd.AddCommand(GetCmdShielderShieldFees())
 	cmd.AddCommand(GetCmdNodeSlotAuctionCreate())
 	cmd.AddCommand(GetCmdNodeSlotAuctionBidPow())
 	cmd.AddCommand(GetCmdNodeSlotAuctionSelectBid())
-	cmd.AddCommand(GetCmdNodeSlotAuctionSplit())
+	cmd.AddCommand(GetCmdNodeSlotAuctionShield())
 	return cmd
 }
 
@@ -67,9 +67,9 @@ func GetCmdDepositRequestPow() *cobra.Command {
 	return cmd
 }
 
-func GetCmdShielderSplit() *cobra.Command {
+func GetCmdShielderShield() *cobra.Command {
 	return &cobra.Command{
-		Use:   "split [commitments-json-or-csv] [deposit-pubkey] [signature]",
+		Use:   "shield [commitments-json-or-csv] [deposit-pubkey] [signature]",
 		Short: "insert Shielder commitments for a settled Bitcoin deposit",
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -83,7 +83,7 @@ func GetCmdShielderSplit() *cobra.Command {
 				return err
 			}
 
-			msg := &types.MsgShielderSplit{
+			msg := &types.MsgShielderShield{
 				Commitments:   commitments,
 				DepositPubkey: strings.TrimSpace(args[1]),
 				Signature:     strings.TrimSpace(args[2]),
@@ -125,10 +125,10 @@ func GetCmdShielderRedeem() *cobra.Command {
 	}
 }
 
-func GetCmdShielderSplitFees() *cobra.Command {
+func GetCmdShielderShieldFees() *cobra.Command {
 	return &cobra.Command{
-		Use:   "split-fees [node-pubkey] [operator-signature-hex] [commitments-json-or-csv] [fee-note-pubkeys-json-or-csv]",
-		Short: "settle and split node fee share into private Shielder notes",
+		Use:   "shield-fees [node-pubkey] [operator-signature-hex] [commitments-json-or-csv] [fee-note-pubkeys-json-or-csv]",
+		Short: "settle and shield node fee share into private Shielder notes",
 		Args:  cobra.ExactArgs(4),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
@@ -147,7 +147,7 @@ func GetCmdShielderSplitFees() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			msg := types.NewMsgShielderSplitFees(args[0], signature, commitments, feeNotePubKeys, clientCtx.GetFromAddress())
+			msg := types.NewMsgShielderShieldFees(args[0], signature, commitments, feeNotePubKeys, clientCtx.GetFromAddress())
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
@@ -228,10 +228,10 @@ func GetCmdNodeSlotAuctionSelectBid() *cobra.Command {
 	}
 }
 
-func GetCmdNodeSlotAuctionSplit() *cobra.Command {
+func GetCmdNodeSlotAuctionShield() *cobra.Command {
 	return &cobra.Command{
-		Use:   "auction-split [auction-id] [bid-id] [seller-commitments-json-or-csv]",
-		Short: "split a winning node slot bid into seller notes and unwithdrawable bond commitments",
+		Use:   "auction-shield [auction-id] [bid-id] [seller-commitments-json-or-csv]",
+		Short: "shield a winning node slot bid into seller notes and unwithdrawable bond commitments",
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
@@ -242,7 +242,7 @@ func GetCmdNodeSlotAuctionSplit() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			msg := types.NewMsgNodeSlotAuctionSplit(args[0], args[1], commitments, clientCtx.GetFromAddress())
+			msg := types.NewMsgNodeSlotAuctionShield(args[0], args[1], commitments, clientCtx.GetFromAddress())
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}

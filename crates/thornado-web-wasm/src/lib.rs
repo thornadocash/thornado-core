@@ -50,7 +50,7 @@ pub struct NoteCommitment {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct SplitAuthorization {
+pub struct ShieldAuthorization {
     pub deposit_pubkey: String,
     pub signature: String,
 }
@@ -85,15 +85,18 @@ fn default_deposit_index() -> u64 {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct SplitReceipt {
+pub struct ShieldReceipt {
     pub notes: Vec<NoteReceipt>,
     pub remainder_sats: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WithdrawalProof {
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub nullifier: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub secret: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub commitment: String,
     pub merkle_root: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -116,26 +119,45 @@ pub struct WithdrawalPublicInputs {
 }
 
 #[wasm_bindgen]
-pub fn derive_split_receipt_json(
+pub fn derive_shield_receipt_json(
     deposit_id: &str,
     amount_sats: u64,
     client_seed: &str,
 ) -> std::result::Result<String, JsValue> {
-    let receipt = derive_split_receipt_for_deposit(deposit_id, 0, amount_sats, client_seed)
+    let receipt = derive_shield_receipt_for_deposit(deposit_id, 0, amount_sats, client_seed)
         .map_err(js_error)?;
     serde_json::to_string(&receipt).map_err(|error| JsValue::from_str(&error.to_string()))
 }
 
 #[wasm_bindgen]
-pub fn derive_split_receipt_for_deposit_json(
+pub fn derive_shield_receipt_for_deposit_json(
     deposit_id: &str,
     deposit_index: u64,
     amount_sats: u64,
     client_seed: &str,
 ) -> std::result::Result<String, JsValue> {
     let receipt =
-        derive_split_receipt_for_deposit(deposit_id, deposit_index, amount_sats, client_seed)
+        derive_shield_receipt_for_deposit(deposit_id, deposit_index, amount_sats, client_seed)
             .map_err(js_error)?;
+    serde_json::to_string(&receipt).map_err(|error| JsValue::from_str(&error.to_string()))
+}
+
+#[wasm_bindgen]
+pub fn derive_shield_receipt_for_deposit_type_json(
+    deposit_id: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+    amount_sats: u64,
+    client_seed: &str,
+) -> std::result::Result<String, JsValue> {
+    let receipt = derive_shield_receipt_for_deposit_type(
+        deposit_id,
+        deposit_type,
+        deposit_index,
+        amount_sats,
+        client_seed,
+    )
+    .map_err(js_error)?;
     serde_json::to_string(&receipt).map_err(|error| JsValue::from_str(&error.to_string()))
 }
 
@@ -153,7 +175,20 @@ pub fn client_pubkey_for_deposit_json(
 }
 
 #[wasm_bindgen]
-pub fn split_authorization_json(
+pub fn client_pubkey_for_deposit_type_json(
+    client_seed: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+) -> std::result::Result<String, JsValue> {
+    Ok(client_pubkey_for_deposit_type(
+        client_seed,
+        deposit_type,
+        deposit_index,
+    ))
+}
+
+#[wasm_bindgen]
+pub fn shield_authorization_json(
     client_seed: &str,
     deposit_id: &str,
     amount_sats: u64,
@@ -161,13 +196,18 @@ pub fn split_authorization_json(
 ) -> std::result::Result<String, JsValue> {
     let note_commitments: Vec<NoteCommitment> = serde_json::from_str(note_commitments_json)
         .map_err(|error| JsValue::from_str(&error.to_string()))?;
-    let authorization =
-        split_authorization_for_deposit(client_seed, 0, deposit_id, amount_sats, &note_commitments);
+    let authorization = shield_authorization_for_deposit(
+        client_seed,
+        0,
+        deposit_id,
+        amount_sats,
+        &note_commitments,
+    );
     serde_json::to_string(&authorization).map_err(|error| JsValue::from_str(&error.to_string()))
 }
 
 #[wasm_bindgen]
-pub fn split_authorization_for_deposit_json(
+pub fn shield_authorization_for_deposit_json(
     client_seed: &str,
     deposit_index: u64,
     deposit_id: &str,
@@ -176,8 +216,30 @@ pub fn split_authorization_for_deposit_json(
 ) -> std::result::Result<String, JsValue> {
     let note_commitments: Vec<NoteCommitment> = serde_json::from_str(note_commitments_json)
         .map_err(|error| JsValue::from_str(&error.to_string()))?;
-    let authorization = split_authorization_for_deposit(
+    let authorization = shield_authorization_for_deposit(
         client_seed,
+        deposit_index,
+        deposit_id,
+        amount_sats,
+        &note_commitments,
+    );
+    serde_json::to_string(&authorization).map_err(|error| JsValue::from_str(&error.to_string()))
+}
+
+#[wasm_bindgen]
+pub fn shield_authorization_for_deposit_type_json(
+    client_seed: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+    deposit_id: &str,
+    amount_sats: u64,
+    note_commitments_json: &str,
+) -> std::result::Result<String, JsValue> {
+    let note_commitments: Vec<NoteCommitment> = serde_json::from_str(note_commitments_json)
+        .map_err(|error| JsValue::from_str(&error.to_string()))?;
+    let authorization = shield_authorization_for_deposit_type(
+        client_seed,
+        deposit_type,
         deposit_index,
         deposit_id,
         amount_sats,
@@ -288,18 +350,39 @@ pub fn nullifier_hash_json(nullifier: &str) -> std::result::Result<String, JsVal
     Ok(hash_parts(&[DOMAIN, "nullifier-hash", nullifier]))
 }
 
-fn derive_split_receipt_for_deposit(
+fn derive_shield_receipt_for_deposit(
     deposit_id: &str,
     deposit_index: u64,
     amount_sats: u64,
     client_seed: &str,
-) -> Result<SplitReceipt> {
+) -> Result<ShieldReceipt> {
+    derive_shield_receipt_for_deposit_type(
+        deposit_id,
+        "user",
+        deposit_index,
+        amount_sats,
+        client_seed,
+    )
+}
+
+fn derive_shield_receipt_for_deposit_type(
+    deposit_id: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+    amount_sats: u64,
+    client_seed: &str,
+) -> Result<ShieldReceipt> {
     let (denominations, remaining) = greedy_denominations(amount_sats);
     let mut notes = Vec::new();
     for (index, denomination) in denominations.iter().copied().enumerate() {
         let index = index as u64;
-        let child_secret =
-            note_child_secret_for_deposit(client_seed, deposit_index, deposit_id, index + 1);
+        let child_secret = note_child_secret_for_deposit_type(
+            client_seed,
+            deposit_type,
+            deposit_index,
+            deposit_id,
+            index + 1,
+        );
         let owner_pubkey = deposit_owner_pubkey(&child_secret);
         let nullifier = hash_parts(&[
             DOMAIN,
@@ -333,7 +416,7 @@ fn derive_split_receipt_for_deposit(
     if notes.is_empty() {
         return Err(Error::DepositTooSmall);
     }
-    Ok(SplitReceipt {
+    Ok(ShieldReceipt {
         notes,
         remainder_sats: remaining,
     })
@@ -440,26 +523,52 @@ fn note_child_secret_for_deposit(
     _deposit_id: &str,
     index: u64,
 ) -> String {
+    note_child_secret_for_deposit_type(client_seed, "user", deposit_index, _deposit_id, index)
+}
+
+fn note_child_secret_for_deposit_type(
+    client_seed: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+    _deposit_id: &str,
+    index: u64,
+) -> String {
     let hardened_index = hardened_child_index(index);
+    let hardened_deposit_index = hardened_child_index(deposit_index);
+    let deposit_type = normalized_deposit_type(deposit_type);
     hash_parts(&[
         DOMAIN,
         "note-child-secret",
-        "m/tc84'/btc'/deposit'/note'",
+        "m/tc84'/btc'",
+        &deposit_type,
         client_seed,
-        &hardened_child_index(deposit_index).to_string(),
+        &hardened_deposit_index.to_string(),
         &hardened_index.to_string(),
     ])
 }
 
 fn client_pubkey_for_deposit(client_seed: &str, deposit_index: u64) -> String {
+    client_pubkey_for_deposit_type(client_seed, "user", deposit_index)
+}
+
+fn client_pubkey_for_deposit_type(
+    client_seed: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+) -> String {
     deposit_owner_pubkey(&deposit_owner_secret_for_deposit(
         client_seed,
+        deposit_type,
         deposit_index,
     ))
 }
 
-fn deposit_owner_secret_for_deposit(client_seed: &str, deposit_index: u64) -> String {
-    hex::encode(deposit_secret_key(client_seed, deposit_index).secret_bytes())
+fn deposit_owner_secret_for_deposit(
+    client_seed: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+) -> String {
+    hex::encode(deposit_secret_key(client_seed, deposit_type, deposit_index).secret_bytes())
 }
 
 fn deposit_owner_pubkey(owner_secret: &str) -> String {
@@ -490,26 +599,44 @@ fn secret_key_from_hex_material(secret_hex: &str) -> SecretKey {
     unreachable!("sha256 should produce a valid secp256k1 secret key")
 }
 
-fn split_authorization_for_deposit(
+fn shield_authorization_for_deposit(
     client_seed: &str,
     deposit_index: u64,
     deposit_id: &str,
     amount_sats: u64,
     note_commitments: &[NoteCommitment],
-) -> SplitAuthorization {
-    let deposit_pubkey = client_pubkey_for_deposit(client_seed, deposit_index);
+) -> ShieldAuthorization {
+    shield_authorization_for_deposit_type(
+        client_seed,
+        "user",
+        deposit_index,
+        deposit_id,
+        amount_sats,
+        note_commitments,
+    )
+}
+
+fn shield_authorization_for_deposit_type(
+    client_seed: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+    deposit_id: &str,
+    amount_sats: u64,
+    note_commitments: &[NoteCommitment],
+) -> ShieldAuthorization {
+    let deposit_pubkey = client_pubkey_for_deposit_type(client_seed, deposit_type, deposit_index);
     let secp = Secp256k1::new();
-    let secret_key = deposit_secret_key(client_seed, deposit_index);
+    let secret_key = deposit_secret_key(client_seed, deposit_type, deposit_index);
     let message =
-        split_authorization_message(&deposit_pubkey, deposit_id, amount_sats, note_commitments);
+        shield_authorization_message(&deposit_pubkey, deposit_id, amount_sats, note_commitments);
     let signature: SecpSignature = secp.sign_ecdsa(&message, &secret_key);
-    SplitAuthorization {
+    ShieldAuthorization {
         signature: hex::encode(signature.serialize_der()),
         deposit_pubkey,
     }
 }
 
-fn split_authorization_message(
+fn shield_authorization_message(
     deposit_pubkey: &str,
     deposit_id: &str,
     amount_sats: u64,
@@ -519,7 +646,7 @@ fn split_authorization_message(
         serde_json::to_string(note_commitments).expect("note commitments should serialize");
     let digest = hash_parts_bytes(&[
         DOMAIN,
-        "split-authorization",
+        "shield-authorization",
         deposit_pubkey,
         deposit_id,
         &amount_sats.to_string(),
@@ -548,14 +675,19 @@ fn note_authorization_for_secret(
     hex::encode(secp.sign_ecdsa(&message, &secret_key).serialize_der())
 }
 
-fn deposit_secret_key(client_seed: &str, deposit_index: u64) -> SecretKey {
+fn deposit_secret_key(client_seed: &str, deposit_type: &str, deposit_index: u64) -> SecretKey {
+    let deposit_type = normalized_deposit_type(deposit_type);
+    let hardened_deposit_index = hardened_child_index(deposit_index);
+    let hardened_note_index = hardened_child_index(0);
     for counter in 0_u32..u32::MAX {
         let digest = hash_parts_bytes(&[
             DOMAIN,
             "deposit-owner-secret",
-            "m/tc84'/btc'/deposit'/0'",
+            "m/tc84'/btc'",
+            &deposit_type,
             client_seed,
-            &hardened_child_index(deposit_index).to_string(),
+            &hardened_deposit_index.to_string(),
+            &hardened_note_index.to_string(),
             &counter.to_string(),
         ]);
         if let Ok(secret_key) = SecretKey::from_slice(&digest) {
@@ -563,6 +695,13 @@ fn deposit_secret_key(client_seed: &str, deposit_index: u64) -> SecretKey {
         }
     }
     unreachable!("sha256 should produce a valid secp256k1 secret key")
+}
+
+fn normalized_deposit_type(deposit_type: &str) -> String {
+    match deposit_type.trim().to_ascii_lowercase().as_str() {
+        "node" => "node".to_string(),
+        _ => "user".to_string(),
+    }
 }
 
 fn hardened_child_index(index: u64) -> u64 {

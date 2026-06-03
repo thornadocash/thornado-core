@@ -1,7 +1,6 @@
 package types
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -37,22 +36,29 @@ const (
 )
 
 type DepositSession struct {
-	Owner            cosmos.AccAddress `json:"owner"`
-	PowToken         string            `json:"pow_token"`
-	DepositAddress   common.Address    `json:"deposit_address"`
-	VaultPubKey      common.PubKey     `json:"vault_pub_key"`
-	DepositPathIndex uint64            `json:"deposit_path_index"`
-	DepositPath      string            `json:"deposit_path,omitempty"`
-	DepositPathType  string            `json:"deposit_path_type,omitempty"`
-	DepositNonce     uint64            `json:"deposit_nonce,omitempty"`
-	OperatorPubKey   common.PubKey     `json:"operator_pub_key,omitempty"`
-	NodePubKey       string            `json:"node_pub_key,omitempty"`
-	AuctionID        string            `json:"auction_id,omitempty"`
-	CreatedHeight    int64             `json:"created_height"`
-	PowDurationMs    uint64            `json:"pow_duration_ms,omitempty"`
-	PowDifficulty    int64             `json:"pow_difficulty,omitempty"`
-	Status           string            `json:"status"`
-	DepositID        common.TxID       `json:"deposit_id,omitempty"`
+	Owner                    cosmos.AccAddress `json:"owner"`
+	PowToken                 string            `json:"pow_token"`
+	DepositAddress           common.Address    `json:"deposit_address"`
+	VaultPubKey              common.PubKey     `json:"vault_pub_key"`
+	DepositPathIndex         uint64            `json:"deposit_path_index"`
+	DepositPath              string            `json:"deposit_path,omitempty"`
+	DepositPathType          string            `json:"deposit_path_type,omitempty"`
+	DepositNonce             uint64            `json:"deposit_nonce,omitempty"`
+	OperatorPubKey           common.PubKey     `json:"operator_pub_key,omitempty"`
+	NodePubKey               string            `json:"node_pub_key,omitempty"`
+	AuctionID                string            `json:"auction_id,omitempty"`
+	CreatedHeight            int64             `json:"created_height"`
+	ExpiresAtHeight          int64             `json:"expires_at_height,omitempty"`
+	PurgeAtHeight            int64             `json:"purge_at_height,omitempty"`
+	RefundEligibleHeight     int64             `json:"refund_eligible_height,omitempty"`
+	PowDurationMs            uint64            `json:"pow_duration_ms,omitempty"`
+	PowDifficulty            int64             `json:"pow_difficulty,omitempty"`
+	Status                   string            `json:"status"`
+	DepositID                common.TxID       `json:"deposit_id,omitempty"`
+	InboundTxID              common.TxID       `json:"inbound_tx_id,omitempty"`
+	BTCConfirmations         int64             `json:"btc_confirmations,omitempty"`
+	BTCConfirmationsRequired int64             `json:"btc_confirmations_required,omitempty"`
+	BTCObservedHeight        int64             `json:"btc_observed_height,omitempty"`
 }
 
 func (m DepositSession) Key() string {
@@ -76,30 +82,39 @@ func (m DepositSession) Valid() error {
 }
 
 type DepositRecord struct {
-	DepositID        common.TxID       `json:"deposit_id"`
-	Owner            cosmos.AccAddress `json:"owner"`
-	AmountSats       uint64            `json:"amount_sats"`
-	SplitSats        uint64            `json:"split_sats,omitempty"`
-	DepositAddress   common.Address    `json:"deposit_address"`
-	ReturnAddress    common.Address    `json:"return_address,omitempty"`
-	VaultPubKey      common.PubKey     `json:"vault_pub_key"`
-	DepositPathIndex uint64            `json:"deposit_path_index"`
-	DepositPath      string            `json:"deposit_path,omitempty"`
-	DepositPathType  string            `json:"deposit_path_type,omitempty"`
-	DepositNonce     uint64            `json:"deposit_nonce,omitempty"`
-	OperatorPubKey   common.PubKey     `json:"operator_pub_key,omitempty"`
-	NodePubKey       string            `json:"node_pub_key,omitempty"`
-	AuctionID        string            `json:"auction_id,omitempty"`
-	Settlement       string            `json:"settlement,omitempty"`
-	SellerPayoutSats uint64            `json:"seller_payout_sats,omitempty"`
-	ProtocolBondSats uint64            `json:"protocol_bond_sats,omitempty"`
-	NodeSlot         uint64            `json:"node_slot,omitempty"`
-	BondConfirmed    bool              `json:"bond_confirmed,omitempty"`
-	MatchedHeight    int64             `json:"matched_height"`
-	PowDurationMs    uint64            `json:"pow_duration_ms,omitempty"`
-	PowDifficulty    int64             `json:"pow_difficulty,omitempty"`
-	Status           string            `json:"status"`
-	Commitments      []string          `json:"commitments,omitempty"`
+	DepositID                common.TxID       `json:"deposit_id"`
+	Owner                    cosmos.AccAddress `json:"owner"`
+	AmountSats               uint64            `json:"amount_sats"`
+	ShieldedSats             uint64            `json:"shielded_sats,omitempty"`
+	DepositAddress           common.Address    `json:"deposit_address"`
+	ReturnAddress            common.Address    `json:"return_address,omitempty"`
+	VaultPubKey              common.PubKey     `json:"vault_pub_key"`
+	DepositPathIndex         uint64            `json:"deposit_path_index"`
+	DepositPath              string            `json:"deposit_path,omitempty"`
+	DepositPathType          string            `json:"deposit_path_type,omitempty"`
+	DepositNonce             uint64            `json:"deposit_nonce,omitempty"`
+	OperatorPubKey           common.PubKey     `json:"operator_pub_key,omitempty"`
+	NodePubKey               string            `json:"node_pub_key,omitempty"`
+	AuctionID                string            `json:"auction_id,omitempty"`
+	Settlement               string            `json:"settlement,omitempty"`
+	SellerPayoutSats         uint64            `json:"seller_payout_sats,omitempty"`
+	ProtocolBondSats         uint64            `json:"protocol_bond_sats,omitempty"`
+	NodeSlot                 uint64            `json:"node_slot,omitempty"`
+	BondConfirmed            bool              `json:"bond_confirmed,omitempty"`
+	MatchedHeight            int64             `json:"matched_height"`
+	CreatedHeight            int64             `json:"created_height,omitempty"`
+	ExpiresAtHeight          int64             `json:"expires_at_height,omitempty"`
+	PurgeAtHeight            int64             `json:"purge_at_height,omitempty"`
+	RefundEligibleHeight     int64             `json:"refund_eligible_height,omitempty"`
+	RefundQueuedHeight       int64             `json:"refund_queued_height,omitempty"`
+	PowDurationMs            uint64            `json:"pow_duration_ms,omitempty"`
+	PowDifficulty            int64             `json:"pow_difficulty,omitempty"`
+	Status                   string            `json:"status"`
+	InboundTxID              common.TxID       `json:"inbound_tx_id,omitempty"`
+	BTCConfirmations         int64             `json:"btc_confirmations,omitempty"`
+	BTCConfirmationsRequired int64             `json:"btc_confirmations_required,omitempty"`
+	BTCObservedHeight        int64             `json:"btc_observed_height,omitempty"`
+	Commitments              []string          `json:"commitments,omitempty"`
 }
 
 func (m DepositRecord) Key() string {
@@ -120,8 +135,8 @@ func (m DepositRecord) Valid() error {
 	if m.AmountSats == 0 {
 		return fmt.Errorf("missing deposit amount")
 	}
-	if m.SplitSats > m.AmountSats {
-		return fmt.Errorf("split amount exceeds deposit amount")
+	if m.ShieldedSats > m.AmountSats {
+		return fmt.Errorf("shielded amount exceeds deposit amount")
 	}
 	if m.DepositAddress.IsEmpty() {
 		return fmt.Errorf("missing deposit address")
@@ -133,18 +148,22 @@ func (m DepositRecord) Valid() error {
 }
 
 type DepositAddress struct {
-	Address        common.Address    `json:"address"`
-	VaultPubKey    common.PubKey     `json:"vault_pub_key"`
-	PathIndex      uint64            `json:"path_index"`
-	Path           string            `json:"path,omitempty"`
-	PathType       string            `json:"path_type,omitempty"`
-	DepositNonce   uint64            `json:"deposit_nonce,omitempty"`
-	Owner          cosmos.AccAddress `json:"owner"`
-	PowToken       string            `json:"pow_token"`
-	OperatorPubKey common.PubKey     `json:"operator_pub_key,omitempty"`
-	NodePubKey     string            `json:"node_pub_key,omitempty"`
-	AuctionID      string            `json:"auction_id,omitempty"`
-	CreatedHeight  int64             `json:"created_height"`
+	Address         common.Address    `json:"address"`
+	VaultPubKey     common.PubKey     `json:"vault_pub_key"`
+	PathIndex       uint64            `json:"path_index"`
+	Path            string            `json:"path,omitempty"`
+	PathType        string            `json:"path_type,omitempty"`
+	DepositNonce    uint64            `json:"deposit_nonce,omitempty"`
+	Owner           cosmos.AccAddress `json:"owner"`
+	PowToken        string            `json:"pow_token"`
+	OperatorPubKey  common.PubKey     `json:"operator_pub_key,omitempty"`
+	NodePubKey      string            `json:"node_pub_key,omitempty"`
+	AuctionID       string            `json:"auction_id,omitempty"`
+	CreatedHeight   int64             `json:"created_height"`
+	ExpiresAtHeight int64             `json:"expires_at_height,omitempty"`
+	PurgeAtHeight   int64             `json:"purge_at_height,omitempty"`
+	PowDurationMs   uint64            `json:"pow_duration_ms,omitempty"`
+	PowDifficulty   int64             `json:"pow_difficulty,omitempty"`
 }
 
 type DepositPowTiming struct {
@@ -349,18 +368,16 @@ func (m StoredShielderNoteRecord) Valid() error {
 }
 
 type ShielderRedeem struct {
-	WithdrawalID    string          `json:"withdrawal_id"`
-	NullifierHash   string          `json:"nullifier_hash"`
-	MerkleRoot      string          `json:"merkle_root"`
-	Recipient       common.Address  `json:"recipient"`
-	AmountSats      uint64          `json:"amount_sats"`
-	FeeSats         uint64          `json:"fee_sats"`
-	InHash          common.TxID     `json:"in_hash"`
-	VaultPubKey     common.PubKey   `json:"vault_pub_key"`
-	RequestedHeight int64           `json:"requested_height"`
-	Status          string          `json:"status"`
-	Proof           json.RawMessage `json:"proof,omitempty"`
-	Public          json.RawMessage `json:"public,omitempty"`
+	WithdrawalID    string         `json:"withdrawal_id"`
+	NullifierHash   string         `json:"nullifier_hash"`
+	MerkleRoot      string         `json:"merkle_root"`
+	Recipient       common.Address `json:"recipient"`
+	AmountSats      uint64         `json:"amount_sats"`
+	FeeSats         uint64         `json:"fee_sats"`
+	InHash          common.TxID    `json:"in_hash"`
+	VaultPubKey     common.PubKey  `json:"vault_pub_key"`
+	RequestedHeight int64          `json:"requested_height"`
+	Status          string         `json:"status"`
 }
 
 func (m ShielderRedeem) Key() string {

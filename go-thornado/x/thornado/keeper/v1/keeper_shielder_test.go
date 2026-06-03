@@ -131,7 +131,6 @@ func (KeeperTestSuit) TestShielderInvariants(c *C) {
 		Settlement:     types.DepositSettlementUser,
 		MatchedHeight:  ctx.BlockHeight(),
 		Status:         types.DepositStatusCommitted,
-		Commitments:    []string{commitment},
 	}
 	c.Assert(k.SetDepositRecord(ctx, deposit), IsNil)
 	c.Assert(k.SetShielderCommitment(ctx, commitment, depositID), IsNil)
@@ -172,7 +171,7 @@ func (KeeperTestSuit) TestShielderInvariants(c *C) {
 		c.Check(broken, Equals, false, Commentf("%s: %v", route.Route, msg))
 	}
 
-	deposit.Commitments = []string{"MISSING_INDEX"}
+	deposit.Commitments = []string{"SOURCE_LINKED_COMMITMENT"}
 	c.Assert(k.SetDepositRecord(ctx, deposit), IsNil)
 	msg, broken := DepositRecordInvariant(k)(ctx)
 	c.Check(broken, Equals, true)

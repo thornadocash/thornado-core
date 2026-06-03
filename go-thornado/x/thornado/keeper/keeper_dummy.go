@@ -540,6 +540,9 @@ func (k KVStoreDummy) SetDepositAddress(_ cosmos.Context, _ types.DepositAddress
 func (k KVStoreDummy) GetDepositAddress(_ cosmos.Context, _ common.Address) (types.DepositAddress, error) {
 	return types.DepositAddress{}, nil
 }
+func (k KVStoreDummy) DeleteDepositAddress(_ cosmos.Context, _ common.Address) error {
+	return nil
+}
 func (k KVStoreDummy) GetDepositAddressIterator(_ cosmos.Context) cosmos.Iterator {
 	return NewDummyIterator()
 }

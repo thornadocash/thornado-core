@@ -110,6 +110,14 @@ func (k KVStore) GetDepositAddress(ctx cosmos.Context, address common.Address) (
 	return record, err
 }
 
+func (k KVStore) DeleteDepositAddress(ctx cosmos.Context, address common.Address) error {
+	if address.IsEmpty() {
+		return nil
+	}
+	k.del(ctx, k.GetKey(prefixDepositAddress, address.String()))
+	return nil
+}
+
 func (k KVStore) GetDepositAddressIterator(ctx cosmos.Context) cosmos.Iterator {
 	return k.getIterator(ctx, prefixDepositAddress)
 }
@@ -183,7 +191,7 @@ func (k KVStore) SetShielderCommitment(ctx cosmos.Context, commitment string, de
 	if depositID.IsEmpty() {
 		return fmt.Errorf("missing shielder commitment deposit id")
 	}
-	return k.setShielderJSON(ctx, k.GetKey(prefixShielderCommitment, commitment), depositID.String())
+	return k.setShielderJSON(ctx, k.GetKey(prefixShielderCommitment, commitment), true)
 }
 
 func (k KVStore) ShielderCommitmentExists(ctx cosmos.Context, commitment string) bool {
@@ -212,7 +220,7 @@ func (k KVStore) SetShielderDenominationCommitment(ctx cosmos.Context, denominat
 	if depositID.IsEmpty() {
 		return fmt.Errorf("missing shielder commitment deposit id")
 	}
-	return k.setShielderJSON(ctx, shielderDenominationCommitmentKey(denominationSats, commitment), depositID.String())
+	return k.setShielderJSON(ctx, shielderDenominationCommitmentKey(denominationSats, commitment), true)
 }
 
 func (k KVStore) GetShielderDenominationCommitments(ctx cosmos.Context, denominationSats uint64) ([]string, error) {

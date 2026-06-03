@@ -62,6 +62,9 @@ func (vm *NodeMgr) BeginBlock(ctx cosmos.Context, mgr Manager, existingNodes []s
 		if err := RetargetDepositPowDifficulty(ctx, vm.k); err != nil {
 			return err
 		}
+		if err := ProcessExpiredDepositAddressReturns(ctx, mgr); err != nil {
+			return err
+		}
 	}
 
 	halt := vm.k.GetConfigInt64(ctx, constants.Halt_Churning)

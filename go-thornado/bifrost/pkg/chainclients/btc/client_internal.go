@@ -417,9 +417,6 @@ func (c *Client) getTxIn(tx *btcjson.TxRawResult, height int64, isMemPool bool, 
 	toAddr := addresses[0]
 
 	isInbound := c.isBaseAddress(toAddr)
-	if isMemPool && isInbound && !c.isBaseAddress(sender) {
-		return types.TxInItem{}, nil
-	}
 	if isInbound {
 		// only inbound UTXO need to be validated against multi-sig
 		if !c.isValidUTXO(output.ScriptPubKey.Hex) {

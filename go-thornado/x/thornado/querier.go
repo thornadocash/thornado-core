@@ -929,19 +929,28 @@ func (qs queryServer) queryDeposit(ctx cosmos.Context, req *types.QueryDepositRe
 		return nil, errors.New("deposit not found")
 	}
 	return &types.QueryDepositResponse{
-		DepositId:        deposit.DepositID.String(),
-		Owner:            deposit.Owner.String(),
-		AmountSats:       deposit.AmountSats,
-		DepositAddress:   deposit.DepositAddress.String(),
-		VaultPubKey:      deposit.VaultPubKey.String(),
-		DepositPathIndex: deposit.DepositPathIndex,
-		Status:           deposit.Status,
-		Settlement:       deposit.Settlement,
-		AuctionId:        deposit.AuctionID,
-		NodePubKey:       deposit.NodePubKey,
-		NodeSlot:         deposit.NodeSlot,
-		BondConfirmed:    deposit.BondConfirmed,
-		CommitmentCount:  uint64(len(deposit.Commitments)),
+		DepositId:                deposit.DepositID.String(),
+		Owner:                    deposit.Owner.String(),
+		AmountSats:               deposit.AmountSats,
+		DepositAddress:           deposit.DepositAddress.String(),
+		VaultPubKey:              deposit.VaultPubKey.String(),
+		DepositPathIndex:         deposit.DepositPathIndex,
+		Status:                   deposit.Status,
+		Settlement:               deposit.Settlement,
+		AuctionId:                deposit.AuctionID,
+		NodePubKey:               deposit.NodePubKey,
+		NodeSlot:                 deposit.NodeSlot,
+		BondConfirmed:            deposit.BondConfirmed,
+		CommitmentCount:          0,
+		InboundTxId:              deposit.InboundTxID.String(),
+		BtcConfirmations:         deposit.BTCConfirmations,
+		BtcConfirmationsRequired: deposit.BTCConfirmationsRequired,
+		BtcObservedHeight:        deposit.BTCObservedHeight,
+		CreatedHeight:            deposit.CreatedHeight,
+		ExpiresAtHeight:          deposit.ExpiresAtHeight,
+		PurgeAtHeight:            deposit.PurgeAtHeight,
+		RefundEligibleHeight:     deposit.RefundEligibleHeight,
+		RefundQueuedHeight:       deposit.RefundQueuedHeight,
 	}, nil
 }
 
@@ -1108,16 +1117,23 @@ func (qs queryServer) queryDepositSession(ctx cosmos.Context, req *types.QueryDe
 		return nil, errors.New("deposit session not found")
 	}
 	return &types.QueryDepositSessionResponse{
-		Owner:            session.Owner.String(),
-		DepositAddress:   session.DepositAddress.String(),
-		VaultPubKey:      session.VaultPubKey.String(),
-		DepositPathIndex: session.DepositPathIndex,
-		OperatorPubKey:   session.OperatorPubKey.String(),
-		NodePubKey:       session.NodePubKey,
-		AuctionId:        session.AuctionID,
-		CreatedHeight:    session.CreatedHeight,
-		Status:           session.Status,
-		DepositId:        session.DepositID.String(),
+		Owner:                    session.Owner.String(),
+		DepositAddress:           session.DepositAddress.String(),
+		VaultPubKey:              session.VaultPubKey.String(),
+		DepositPathIndex:         session.DepositPathIndex,
+		OperatorPubKey:           session.OperatorPubKey.String(),
+		NodePubKey:               session.NodePubKey,
+		AuctionId:                session.AuctionID,
+		CreatedHeight:            session.CreatedHeight,
+		Status:                   session.Status,
+		DepositId:                session.DepositID.String(),
+		InboundTxId:              session.InboundTxID.String(),
+		BtcConfirmations:         session.BTCConfirmations,
+		BtcConfirmationsRequired: session.BTCConfirmationsRequired,
+		BtcObservedHeight:        session.BTCObservedHeight,
+		ExpiresAtHeight:          session.ExpiresAtHeight,
+		PurgeAtHeight:            session.PurgeAtHeight,
+		RefundEligibleHeight:     session.RefundEligibleHeight,
 	}, nil
 }
 
@@ -1267,14 +1283,16 @@ func (qs queryServer) queryVaultDepositAddress(ctx cosmos.Context, req *types.Qu
 		return nil, errors.New("vault deposit address not found")
 	}
 	return &types.QueryVaultDepositAddressResponse{
-		Address:        record.Address.String(),
-		VaultPubKey:    record.VaultPubKey.String(),
-		PathIndex:      record.PathIndex,
-		Owner:          record.Owner.String(),
-		OperatorPubKey: record.OperatorPubKey.String(),
-		NodePubKey:     record.NodePubKey,
-		AuctionId:      record.AuctionID,
-		CreatedHeight:  record.CreatedHeight,
+		Address:         record.Address.String(),
+		VaultPubKey:     record.VaultPubKey.String(),
+		PathIndex:       record.PathIndex,
+		Owner:           record.Owner.String(),
+		OperatorPubKey:  record.OperatorPubKey.String(),
+		NodePubKey:      record.NodePubKey,
+		AuctionId:       record.AuctionID,
+		CreatedHeight:   record.CreatedHeight,
+		ExpiresAtHeight: record.ExpiresAtHeight,
+		PurgeAtHeight:   record.PurgeAtHeight,
 	}, nil
 }
 

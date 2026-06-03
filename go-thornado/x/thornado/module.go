@@ -228,10 +228,6 @@ func (am AppModule) EndBlock(goCtx context.Context) ([]abci.ValidatorUpdate, err
 
 	nodes := am.mgr.NodeMgr().EndBlock(ctx, am.mgr)
 
-	if err := ProcessForgottenDepositReturns(ctx, am.mgr); err != nil {
-		ctx.Logger().Error("fail to process forgotten deposit returns", "error", err)
-	}
-
 	if err := am.mgr.TxOutStore().EndBlock(ctx, am.mgr); err != nil {
 		ctx.Logger().Error("fail to process txout endblock", "error", err)
 	}
