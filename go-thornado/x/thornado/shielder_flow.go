@@ -31,12 +31,13 @@ type shielderRedeemPublicInputs struct {
 	DenominationSats uint64 `json:"denomination_sats"`
 	Recipient        string `json:"recipient"`
 	FeeSats          uint64 `json:"fee_sats"`
+	RecipientPolicy  string `json:"recipient_policy,omitempty"`
+	NodePubKey       string `json:"node_pub_key,omitempty"`
+	BidID            string `json:"bid_id,omitempty"`
 }
 
 type shielderNoteCommitment struct {
 	DenominationSats uint64 `json:"denomination_sats"`
-	OwnerPubkey      string `json:"owner_pubkey"`
-	Signature        string `json:"signature,omitempty"`
 	Commitment       string `json:"commitment"`
 }
 
@@ -246,17 +247,7 @@ func ShieldNodeSlotSale(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAd
 		}
 	}
 	allNotes := append([]shielderNoteCommitment{}, sellerNotes...)
-	if deposit.ProtocolBondSats != 0 {
-		protocolCommitment, err := nodeSlotSaleProtocolCommitment(auction, bid, deposit.ProtocolBondSats, 0)
-		if err != nil {
-			return types.DepositRecord{}, err
-		}
-		allNotes = append(allNotes, shielderNoteCommitment{
-			DenominationSats: deposit.ProtocolBondSats,
-			Commitment:       protocolCommitment,
-		})
-	}
-	if err := insertShielderCommitments(ctx, k, deposit.DepositID, allNotes); err != nil {
+	if err := insertShielderCommitments(ctx, k, allNotes); err != nil {
 		return types.DepositRecord{}, err
 	}
 	deposit.Status = types.DepositStatusCommitted
@@ -423,6 +414,66 @@ func confirmShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, deposit types.
 	return nil
 }
 
+// ShieldUserDepositIntoPool consumes a matched transparent user deposit into
+// fixed-denomination shielded pools without a separate shield transaction.
+func ShieldUserDepositIntoPool(ctx cosmos.Context, k keeper.Keeper, deposit types.DepositRecord, commitments []string) (types.DepositRecord, error) {
+	if deposit.DepositID.IsEmpty() {
+		return types.DepositRecord{}, fmt.Errorf("missing deposit id")
+	}
+	if deposit.IsNodeBond() || deposit.AuctionID != "" {
+		return types.DepositRecord{}, fmt.Errorf("only user deposits shield into the privacy pool")
+	}
+	switch deposit.Status {
+	case types.DepositStatusDepositMatched:
+		deposit.Settlement = types.DepositSettlementUser
+	case types.DepositStatusSettled:
+		if deposit.Settlement != types.DepositSettlementUser || deposit.ShieldedSats != 0 {
+			return types.DepositRecord{}, fmt.Errorf("duplicate deposit settlement")
+		}
+	case types.DepositStatusCommitted:
+		return types.DepositRecord{}, fmt.Errorf("deposit already shielded")
+	default:
+		return types.DepositRecord{}, fmt.Errorf("deposit is not matched")
+	}
+	if len(commitments) == 0 {
+		return types.DepositRecord{}, fmt.Errorf("missing shield note commitments")
+	}
+	if deposit.ShieldedSats > deposit.AmountSats {
+		return types.DepositRecord{}, fmt.Errorf("deposit shielded amount exceeds deposit amount")
+	}
+	availableSats := deposit.AmountSats - deposit.ShieldedSats
+	if availableSats == 0 {
+		return types.DepositRecord{}, fmt.Errorf("deposit already fully shielded")
+	}
+
+	noteCommitments, err := parseShielderNoteCommitments(commitments, availableSats, false)
+	if err != nil {
+		return types.DepositRecord{}, err
+	}
+	noteCommitments, floorRemainder, err := applyShielderNoteFloor(ctx, k, noteCommitments, availableSats, false)
+	if err != nil {
+		return types.DepositRecord{}, err
+	}
+	if floorRemainder > 0 {
+		availableSats -= floorRemainder
+		if err := addWithdrawalFee(ctx, k, floorRemainder); err != nil {
+			return types.DepositRecord{}, err
+		}
+	}
+	if shielderNoteCommitmentTotal(noteCommitments) != availableSats {
+		return types.DepositRecord{}, fmt.Errorf("shield note denominations must match deposit amount")
+	}
+	if err := insertShielderCommitments(ctx, k, noteCommitments); err != nil {
+		return types.DepositRecord{}, err
+	}
+	deposit.ShieldedSats += availableSats + floorRemainder
+	deposit.Status = types.DepositStatusCommitted
+	if err := k.SetDepositRecord(ctx, deposit); err != nil {
+		return types.DepositRecord{}, err
+	}
+	return deposit, nil
+}
+
 func PostShielderShield(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, depositID common.TxID, commitments []string) (types.DepositRecord, error) {
 	if owner.Empty() {
 		return types.DepositRecord{}, fmt.Errorf("missing deposit owner")
@@ -447,21 +498,17 @@ func PostShielderShield(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 	switch deposit.Status {
 	case types.DepositStatusDepositMatched:
 		if deposit.IsNodeBond() {
-			nodeSlot, err := recordPendingShielderNodeBond(ctx, k, types.DepositSession{
-				Owner:          deposit.Owner,
-				OperatorPubKey: deposit.OperatorPubKey,
-				NodePubKey:     deposit.NodePubKey,
-			}, deposit.AmountSats)
-			if err != nil {
-				return types.DepositRecord{}, err
-			}
-			deposit.NodeSlot = nodeSlot
-			deposit.Settlement = types.DepositSettlementOperatorBond
-		} else {
-			deposit.Settlement = types.DepositSettlementUser
+			return types.DepositRecord{}, fmt.Errorf("node bonds activate via MsgBondFromNotes from shielded notes")
 		}
-		deposit.Status = types.DepositStatusSettled
+		deposit.Settlement = types.DepositSettlementUser
+		return ShieldUserDepositIntoPool(ctx, k, deposit, commitments)
 	case types.DepositStatusSettled:
+		if deposit.Settlement == types.DepositSettlementUser {
+			return ShieldUserDepositIntoPool(ctx, k, deposit, commitments)
+		}
+		if deposit.Settlement == types.DepositSettlementOperatorBond {
+			return types.DepositRecord{}, fmt.Errorf("node bonds activate via MsgBondFromNotes from shielded notes")
+		}
 		if deposit.Settlement == "" || deposit.ShieldedSats != 0 {
 			return types.DepositRecord{}, fmt.Errorf("duplicate deposit settlement")
 		}
@@ -478,7 +525,7 @@ func PostShielderShield(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 		return types.DepositRecord{}, fmt.Errorf("deposit already fully shielded")
 	}
 
-	noteCommitments, err := parseShielderNoteCommitments(commitments, availableSats, deposit.Settlement == types.DepositSettlementOperatorBond)
+	noteCommitments, err := parseShielderNoteCommitments(commitments, availableSats, false)
 	if err != nil {
 		return types.DepositRecord{}, err
 	}
@@ -494,14 +541,7 @@ func PostShielderShield(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 	}
 	seen := make(map[string]struct{}, len(noteCommitments))
 	var total uint64
-	for idx, note := range noteCommitments {
-		if deposit.Settlement == types.DepositSettlementOperatorBond {
-			note.Commitment, err = shielderBondCommitment(deposit, note.DenominationSats, idx)
-			if err != nil {
-				return types.DepositRecord{}, err
-			}
-			noteCommitments[idx] = note
-		}
+	for _, note := range noteCommitments {
 		if note.Commitment == "" {
 			return types.DepositRecord{}, fmt.Errorf("empty shielder commitment")
 		}
@@ -522,22 +562,16 @@ func PostShielderShield(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 	}
 
 	deposit.ShieldedSats += total + floorRemainder
-	if deposit.Settlement == types.DepositSettlementOperatorBond {
-		if err := confirmShielderNodeBond(ctx, k, deposit); err != nil {
-			return types.DepositRecord{}, err
-		}
-		deposit.BondConfirmed = true
-	}
 	deposit.Status = types.DepositStatusCommitted
 	if err := k.SetDepositRecord(ctx, deposit); err != nil {
 		return types.DepositRecord{}, err
 	}
 	byDenomination := make(map[uint64][]string)
 	for _, note := range noteCommitments {
-		if err := k.SetShielderCommitment(ctx, note.Commitment, depositID); err != nil {
+		if err := k.SetShielderCommitment(ctx, note.Commitment); err != nil {
 			return types.DepositRecord{}, err
 		}
-		if err := k.SetShielderDenominationCommitment(ctx, note.DenominationSats, note.Commitment, depositID); err != nil {
+		if err := k.SetShielderDenominationCommitment(ctx, note.DenominationSats, note.Commitment); err != nil {
 			return types.DepositRecord{}, err
 		}
 		if err := k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
@@ -673,9 +707,6 @@ func parseShielderNoteCommitments(raw []string, depositAmountSats uint64, allowP
 			if note.Commitment == "" && !allowProtocolCommitments {
 				return nil, fmt.Errorf("missing shielder commitment")
 			}
-			if err := validateShielderNoteAuthorization(note); err != nil {
-				return nil, err
-			}
 			result = append(result, note)
 			continue
 		}
@@ -685,47 +716,6 @@ func parseShielderNoteCommitments(raw []string, depositAmountSats uint64, allowP
 		result = append(result, shielderNoteCommitment{DenominationSats: depositAmountSats, Commitment: item})
 	}
 	return result, nil
-}
-
-func validateShielderNoteAuthorization(note shielderNoteCommitment) error {
-	note.OwnerPubkey = strings.TrimSpace(note.OwnerPubkey)
-	note.Signature = strings.TrimSpace(note.Signature)
-	if note.OwnerPubkey == "" && note.Signature == "" {
-		return nil
-	}
-	if note.OwnerPubkey == "" || note.Signature == "" {
-		return fmt.Errorf("shielder note owner pubkey and signature must be provided together")
-	}
-	rawPubkey, err := secpPubkeyCandidates(note.OwnerPubkey)
-	if err != nil {
-		return fmt.Errorf("invalid shielder note owner pubkey")
-	}
-	rawSig, err := hex.DecodeString(note.Signature)
-	if err != nil {
-		return fmt.Errorf("invalid shielder note signature")
-	}
-	signature, err := btcec.ParseDERSignature(rawSig, btcec.S256())
-	if err != nil {
-		return fmt.Errorf("invalid shielder note signature: %w", err)
-	}
-	halfOrder := new(big.Int).Rsh(btcec.S256().N, 1)
-	if signature.S.Cmp(halfOrder) == 1 {
-		return fmt.Errorf("high-S shielder note signature rejected")
-	}
-	digest := hashLengthPrefixedParts([]string{
-		"thornado-shielder-v1",
-		"note-authorization",
-		note.OwnerPubkey,
-		fmt.Sprintf("%d", note.DenominationSats),
-		strings.TrimSpace(note.Commitment),
-	})
-	for _, candidate := range rawPubkey {
-		pubkey, err := btcec.ParsePubKey(candidate, btcec.S256())
-		if err == nil && signature.Verify(digest, pubkey) {
-			return nil
-		}
-	}
-	return fmt.Errorf("shielder note signature verification failed")
 }
 
 func applyShielderNoteFloor(ctx cosmos.Context, k keeper.Keeper, notes []shielderNoteCommitment, amountSats uint64, allowSpendableRemainder bool) ([]shielderNoteCommitment, uint64, error) {
@@ -785,7 +775,7 @@ func shielderBondCommitment(deposit types.DepositRecord, denominationSats uint64
 	return ComputeProtocolShielderCommitment(strings.ToUpper(hex.EncodeToString(sum[:])), denominationSats)
 }
 
-func insertShielderCommitments(ctx cosmos.Context, k keeper.Keeper, depositID common.TxID, notes []shielderNoteCommitment) error {
+func insertShielderCommitments(ctx cosmos.Context, k keeper.Keeper, notes []shielderNoteCommitment) error {
 	seen := make(map[string]struct{}, len(notes))
 	byDenomination := make(map[uint64][]string)
 	for _, note := range notes {
@@ -803,10 +793,10 @@ func insertShielderCommitments(ctx cosmos.Context, k keeper.Keeper, depositID co
 			return fmt.Errorf("shielder commitment already exists")
 		}
 		seen[note.Commitment] = struct{}{}
-		if err := k.SetShielderCommitment(ctx, note.Commitment, depositID); err != nil {
+		if err := k.SetShielderCommitment(ctx, note.Commitment); err != nil {
 			return err
 		}
-		if err := k.SetShielderDenominationCommitment(ctx, note.DenominationSats, note.Commitment, depositID); err != nil {
+		if err := k.SetShielderDenominationCommitment(ctx, note.DenominationSats, note.Commitment); err != nil {
 			return err
 		}
 		if err := k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
@@ -933,6 +923,10 @@ func AuthorizeShielderRedeem(ctx cosmos.Context, k keeper.Keeper, req ShielderRe
 	if err != nil {
 		return types.ShielderRedeem{}, err
 	}
+	policy := normalizeShielderRedeemPolicy(publicInputs.RecipientPolicy)
+	if err := validateShielderRedeemPolicy(ctx, k, policy, publicInputs); err != nil {
+		return types.ShielderRedeem{}, err
+	}
 	if err := RejectLeakyShielderRedeemProof(ctx, k, req.Proof); err != nil {
 		return types.ShielderRedeem{}, err
 	}
@@ -946,12 +940,9 @@ func AuthorizeShielderRedeem(ctx cosmos.Context, k keeper.Keeper, req ShielderRe
 		return types.ShielderRedeem{}, fmt.Errorf("unknown shielder merkle root")
 	}
 
-	recipient, err := common.NewAddress(publicInputs.Recipient)
+	recipient, err := shielderRedeemRecipient(publicInputs, policy)
 	if err != nil {
-		return types.ShielderRedeem{}, fmt.Errorf("invalid shielder redeem recipient: %w", err)
-	}
-	if !recipient.GetChain().Equals(common.BTCChain) {
-		return types.ShielderRedeem{}, fmt.Errorf("shielder redeem recipient must be bitcoin")
+		return types.ShielderRedeem{}, err
 	}
 
 	vault, _, err := currentBTCVaultAddress(ctx, k)
@@ -959,7 +950,7 @@ func AuthorizeShielderRedeem(ctx cosmos.Context, k keeper.Keeper, req ShielderRe
 		return types.ShielderRedeem{}, err
 	}
 
-	withdrawalID := shielderRedeemID(publicInputs.NullifierHash, recipient.String())
+	withdrawalID := shielderRedeemID(publicInputs.NullifierHash, recipient.String(), policy)
 	inHash, err := common.NewTxID(withdrawalID)
 	if err != nil {
 		return types.ShielderRedeem{}, err
@@ -969,6 +960,7 @@ func AuthorizeShielderRedeem(ctx cosmos.Context, k keeper.Keeper, req ShielderRe
 		NullifierHash:   publicInputs.NullifierHash,
 		MerkleRoot:      publicInputs.MerkleRoot,
 		Recipient:       recipient,
+		RecipientPolicy: policy,
 		AmountSats:      publicInputs.DenominationSats,
 		FeeSats:         publicInputs.FeeSats,
 		InHash:          inHash,
@@ -988,6 +980,168 @@ func AuthorizeShielderRedeem(ctx cosmos.Context, k keeper.Keeper, req ShielderRe
 	}
 
 	return withdrawal, nil
+}
+
+func BondFromShieldedNotes(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, nodePubKey, operatorPubKey string, req ShielderRedeemRequest) (types.ShielderNodeBond, error) {
+	if owner.Empty() {
+		return types.ShielderNodeBond{}, fmt.Errorf("missing bond owner")
+	}
+	nodePubKey = strings.TrimSpace(nodePubKey)
+	if nodePubKey == "" {
+		return types.ShielderNodeBond{}, fmt.Errorf("missing node pubkey")
+	}
+	operator, err := common.NewPubKey(operatorPubKey)
+	if err != nil {
+		return types.ShielderNodeBond{}, fmt.Errorf("invalid operator pubkey: %w", err)
+	}
+	operatorAddress, err := operator.GetThorAddress()
+	if err != nil {
+		return types.ShielderNodeBond{}, fmt.Errorf("invalid operator pubkey address: %w", err)
+	}
+	if !operatorAddress.Equals(owner) {
+		return types.ShielderNodeBond{}, fmt.Errorf("bond owner mismatch")
+	}
+	publicInputs, err := parseShielderRedeemPublicInputs(req.Public)
+	if err != nil {
+		return types.ShielderNodeBond{}, err
+	}
+	if normalizeShielderRedeemPolicy(publicInputs.RecipientPolicy) != types.ShielderRedeemPolicyBondEscrow {
+		return types.ShielderNodeBond{}, fmt.Errorf("bond notes require bond_escrow recipient policy")
+	}
+	if strings.TrimSpace(publicInputs.NodePubKey) != nodePubKey {
+		return types.ShielderNodeBond{}, fmt.Errorf("bond node pubkey mismatch")
+	}
+	if publicInputs.FeeSats != 0 {
+		return types.ShielderNodeBond{}, fmt.Errorf("bond notes must not pay withdrawal fee")
+	}
+	withdrawal, err := AuthorizeShielderRedeem(ctx, k, req)
+	if err != nil {
+		return types.ShielderNodeBond{}, err
+	}
+	return confirmBondFromNoteSpend(ctx, k, owner, nodePubKey, operator, withdrawal.AmountSats)
+}
+
+func confirmBondFromNoteSpend(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, nodePubKey string, operator common.PubKey, amountSats uint64) (types.ShielderNodeBond, error) {
+	nodeSlot, err := recordPendingShielderNodeBond(ctx, k, types.DepositSession{
+		Owner:          owner,
+		OperatorPubKey: operator,
+		NodePubKey:     nodePubKey,
+	}, amountSats)
+	if err != nil {
+		return types.ShielderNodeBond{}, err
+	}
+	deposit := types.DepositRecord{
+		Owner:          owner,
+		AmountSats:     amountSats,
+		OperatorPubKey: operator,
+		NodePubKey:     nodePubKey,
+		NodeSlot:       nodeSlot,
+		Settlement:     types.DepositSettlementOperatorBond,
+	}
+	if err := confirmShielderNodeBond(ctx, k, deposit); err != nil {
+		return types.ShielderNodeBond{}, err
+	}
+	bond, err := k.GetShielderNodeBond(ctx, nodePubKey)
+	if err != nil {
+		return types.ShielderNodeBond{}, err
+	}
+	return bond, nil
+}
+
+func FinalizeShielderRedeem(ctx cosmos.Context, k keeper.Keeper, authorization types.ShielderRedeem) (types.ShielderRedeem, error) {
+	policy := normalizeShielderRedeemPolicy(authorization.RecipientPolicy)
+	switch policy {
+	case types.ShielderRedeemPolicyBondEscrow:
+		return authorization, fmt.Errorf("bond escrow redeems finalize via MsgBondFromNotes")
+	case types.ShielderRedeemPolicyUserBTC, types.ShielderRedeemPolicyBidDeposit:
+		return QueueAuthorizedWithdrawalTxOut(ctx, k, authorization)
+	default:
+		return types.ShielderRedeem{}, fmt.Errorf("unknown shielder redeem policy: %s", policy)
+	}
+}
+
+func normalizeShielderRedeemPolicy(policy string) string {
+	switch strings.TrimSpace(policy) {
+	case "", types.ShielderRedeemPolicyUserBTC:
+		return types.ShielderRedeemPolicyUserBTC
+	case types.ShielderRedeemPolicyBondEscrow:
+		return types.ShielderRedeemPolicyBondEscrow
+	case types.ShielderRedeemPolicyBidDeposit:
+		return types.ShielderRedeemPolicyBidDeposit
+	default:
+		return strings.TrimSpace(policy)
+	}
+}
+
+func shielderRedeemRecipient(publicInputs shielderRedeemPublicInputs, policy string) (common.Address, error) {
+	recipient, err := common.NewAddress(publicInputs.Recipient)
+	if err != nil {
+		return common.NoAddress, fmt.Errorf("invalid shielder redeem recipient: %w", err)
+	}
+	switch policy {
+	case types.ShielderRedeemPolicyBondEscrow:
+		if !recipient.IsBondEscrow() {
+			return common.NoAddress, fmt.Errorf("bond redeem recipient must be bond_escrow")
+		}
+	case types.ShielderRedeemPolicyUserBTC, types.ShielderRedeemPolicyBidDeposit:
+		if !recipient.GetChain().Equals(common.BTCChain) {
+			return common.NoAddress, fmt.Errorf("shielder redeem recipient must be bitcoin")
+		}
+	default:
+		return common.NoAddress, fmt.Errorf("unknown shielder redeem policy: %s", policy)
+	}
+	return recipient, nil
+}
+
+func validateShielderRedeemPolicy(ctx cosmos.Context, k keeper.Keeper, policy string, publicInputs shielderRedeemPublicInputs) error {
+	switch policy {
+	case types.ShielderRedeemPolicyBondEscrow:
+		if publicInputs.FeeSats != 0 {
+			return fmt.Errorf("bond escrow redeems must not pay withdrawal fee")
+		}
+		if strings.TrimSpace(publicInputs.NodePubKey) == "" {
+			return fmt.Errorf("bond escrow redeems require node pubkey")
+		}
+		if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, publicInputs.NodePubKey); err != nil {
+			return fmt.Errorf("invalid bond node pubkey: %w", err)
+		}
+	case types.ShielderRedeemPolicyBidDeposit:
+		bidID := strings.TrimSpace(publicInputs.BidID)
+		if bidID == "" {
+			return fmt.Errorf("bid deposit redeems require bid id")
+		}
+		bid, err := k.GetNodeSlotBid(ctx, bidID)
+		if err != nil {
+			return err
+		}
+		if bid.BidID == "" || bid.Settled {
+			return fmt.Errorf("node slot bid is not open for deposit")
+		}
+		auction, err := k.GetNodeSlotAuction(ctx, bid.AuctionID)
+		if err != nil {
+			return err
+		}
+		if auction.AuctionID == "" || auction.Status != types.NodeSlotAuctionOpen {
+			return fmt.Errorf("node slot auction is not open")
+		}
+		if auction.ExpiryHeight <= ctx.BlockHeight() {
+			return fmt.Errorf("node slot auction expired")
+		}
+		recipient, err := common.NewAddress(publicInputs.Recipient)
+		if err != nil {
+			return err
+		}
+		if bid.DepositAddress.IsEmpty() || !bid.DepositAddress.Equals(recipient) {
+			return fmt.Errorf("bid deposit recipient mismatch")
+		}
+	case types.ShielderRedeemPolicyUserBTC:
+		if strings.TrimSpace(publicInputs.BidID) != "" || strings.TrimSpace(publicInputs.NodePubKey) != "" {
+			return fmt.Errorf("user btc redeems must not bind bid or node pubkey")
+		}
+	default:
+		return fmt.Errorf("unknown shielder redeem policy: %s", policy)
+	}
+	return nil
 }
 
 func withdrawalFeeSats(ctx cosmos.Context, k keeper.Keeper, amountSats uint64) uint64 {
@@ -1237,6 +1391,9 @@ func ShieldShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 	if pool.TotalClaimedSats > pool.TotalCollectedSats || claimSats > pool.TotalCollectedSats-pool.TotalClaimedSats {
 		return types.DepositRecord{}, fmt.Errorf("shielder fee claim exceeds available fees")
 	}
+	if claimSats <= withdrawalFeeSats(ctx, k, claimSats) {
+		return types.DepositRecord{}, fmt.Errorf("fee claim amount must be redeemable after withdrawal fee")
+	}
 	depositID, err := shielderFeeDepositID(nodePubKey, owner, accrued, ctx.BlockHeight())
 	if err != nil {
 		return types.DepositRecord{}, err
@@ -1293,13 +1450,13 @@ func ShieldShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 			return types.DepositRecord{}, fmt.Errorf("shielder fee note pubkey already used")
 		}
 		seen[note.Commitment] = struct{}{}
-		if err := k.SetShielderCommitment(ctx, note.Commitment, deposit.DepositID); err != nil {
+		if err := k.SetShielderCommitment(ctx, note.Commitment); err != nil {
 			return types.DepositRecord{}, err
 		}
-		if err := k.SetShielderDenominationCommitment(ctx, note.DenominationSats, note.Commitment, deposit.DepositID); err != nil {
+		if err := k.SetShielderDenominationCommitment(ctx, note.DenominationSats, note.Commitment); err != nil {
 			return types.DepositRecord{}, err
 		}
-		if err := k.SetShielderFeeNotePubKey(ctx, notePubKeys[idx], deposit.DepositID); err != nil {
+		if err := k.SetShielderFeeNotePubKey(ctx, notePubKeys[idx]); err != nil {
 			return types.DepositRecord{}, err
 		}
 		if err := k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
@@ -1409,21 +1566,12 @@ func verifySecp256K1SignaturePayload(pk common.PubKey, sig []byte, payload []byt
 }
 
 func parseShielderRedeemPublicInputs(raw json.RawMessage) (shielderRedeemPublicInputs, error) {
+	if err := ValidateShielderRedeemPublicJSON(raw); err != nil {
+		return shielderRedeemPublicInputs{}, err
+	}
 	var publicInputs shielderRedeemPublicInputs
 	if err := json.Unmarshal(raw, &publicInputs); err != nil {
 		return publicInputs, fmt.Errorf("invalid shielder public inputs: %w", err)
-	}
-	if strings.TrimSpace(publicInputs.NullifierHash) == "" {
-		return publicInputs, fmt.Errorf("missing shielder nullifier hash")
-	}
-	if strings.TrimSpace(publicInputs.MerkleRoot) == "" {
-		return publicInputs, fmt.Errorf("missing shielder merkle root")
-	}
-	if publicInputs.DenominationSats == 0 {
-		return publicInputs, fmt.Errorf("missing shielder denomination")
-	}
-	if publicInputs.FeeSats >= publicInputs.DenominationSats {
-		return publicInputs, fmt.Errorf("shielder fee exceeds denomination")
 	}
 	return publicInputs, nil
 }

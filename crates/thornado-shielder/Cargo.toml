@@ -5,27 +5,28 @@ edition.workspace = true
 license.workspace = true
 
 [features]
-default = ["orchard-zcash"]
-proof-tests = []
-orchard-zcash = [
-    "dep:incrementalmerkletree",
-    "dep:nonempty",
-    "dep:orchard",
-    "dep:shardtree",
-    "dep:zcash_note_encryption",
-]
+default = []
+proof-tests = ["dep:ark-circom"]
 
 [dependencies]
+ark-bn254 = "0.5"
+ark-circom = { version = "0.6", optional = true, default-features = false, features = ["ethereum"] }
+ark-ec = "0.5"
+ark-ff = "0.5"
+ark-groth16 = "0.5"
+ark-serialize = "0.5"
+ark-snark = "0.5"
 bitcoin.workspace = true
 hex.workspace = true
-incrementalmerkletree = { workspace = true, optional = true }
-nonempty = { workspace = true, optional = true }
-orchard = { workspace = true, optional = true }
+blake-hash = "0.3"
+digest = "0.10"
+digest08 = { package = "digest", version = "0.8" }
+num-bigint = { version = "0.4", features = ["std"] }
+num-traits = "0.2"
+sha3 = "0.10"
 rand_chacha.workspace = true
 rand_core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
-shardtree = { workspace = true, optional = true }
 thiserror.workspace = true
-zcash_note_encryption = { workspace = true, optional = true }

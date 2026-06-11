@@ -1,19 +1,25 @@
+use bitcoin::bip32::{ChildNumber, Xpriv};
 use bitcoin::secp256k1::ecdsa::Signature as SecpSignature;
 use bitcoin::secp256k1::{
     Message as SecpMessage, PublicKey as SecpPublicKey, Secp256k1, SecretKey,
 };
+use bitcoin::Network;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::str::FromStr;
 
-#[cfg(feature = "orchard-zcash")]
-pub mod orchard;
+pub mod engine;
+
+pub mod tornado;
+
+pub use engine::{attestation, semi_trustless_at_least_one_honest, CeremonyAttestation, ENGINE_ID};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub const DOMAIN: &str = "thornado-shielder-v1";
 pub const HARDENED_CHILD_OFFSET: u64 = 1 << 31;
+const DEPOSIT_TYPE_INDEX: u32 = 0;
 pub const DEFAULT_DENOMINATIONS_SATS: [u64; 5] =
     [1_000_000_000, 100_000_000, 10_000_000, 1_000_000, 100_000];
 
@@ -53,10 +59,6 @@ impl DenominationTree {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NoteCommitment {
     pub denomination_sats: u64,
-    #[serde(default)]
-    pub owner_pubkey: String,
-    #[serde(default)]
-    pub signature: String,
     pub commitment: String,
 }
 
@@ -73,16 +75,9 @@ pub struct NoteReceipt {
     pub deposit_index: u64,
     pub denomination_sats: u64,
     pub index: u64,
-    #[serde(default)]
-    pub owner_pubkey: String,
-    #[serde(default)]
-    pub signature: String,
     pub nullifier: String,
     pub secret: String,
     pub commitment: String,
-    #[cfg(feature = "orchard-zcash")]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub orchard: Option<orchard::OrchardNoteReceipt>,
 }
 
 fn default_deposit_index() -> u64 {
@@ -95,14 +90,18 @@ pub struct ShieldReceipt {
     pub remainder_sats: u64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct NoteRecoveryCandidate {
+    pub deposit_index: u64,
+    pub index: u64,
+}
+
 impl ShieldReceipt {
     pub fn commitments(&self) -> Vec<NoteCommitment> {
         self.notes
             .iter()
             .map(|note| NoteCommitment {
                 denomination_sats: note.denomination_sats,
-                owner_pubkey: note.owner_pubkey.clone(),
-                signature: note.signature.clone(),
                 commitment: note.commitment.clone(),
             })
             .collect()
@@ -118,9 +117,8 @@ pub struct WithdrawalProof {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub commitment: String,
     pub merkle_root: String,
-    #[cfg(feature = "orchard-zcash")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub orchard: Option<orchard::OrchardWithdrawalProof>,
+    pub tornado: Option<tornado::prove::TornadoWithdrawProof>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -165,18 +163,12 @@ pub fn derive_shield_receipt_for_deposit(
     amount_sats: u64,
     client_seed: &str,
 ) -> Result<ShieldReceipt> {
-    derive_shield_receipt_for_deposit_type(
-        deposit_id,
-        "user",
-        deposit_index,
-        amount_sats,
-        client_seed,
-    )
+    derive_shield_receipt_for_deposit_type(deposit_id, "", deposit_index, amount_sats, client_seed)
 }
 
 pub fn derive_shield_receipt_for_deposit_type(
     deposit_id: &str,
-    deposit_type: &str,
+    _deposit_type: &str,
     deposit_index: u64,
     amount_sats: u64,
     client_seed: &str,
@@ -187,53 +179,36 @@ pub fn derive_shield_receipt_for_deposit_type(
         let index = index as u64;
         let child_secret = note_child_secret_for_deposit_type(
             client_seed,
-            deposit_type,
+            "",
             deposit_index,
             deposit_id,
             index + 1,
         );
-        let owner_pubkey = deposit_owner_pubkey(&child_secret);
-        let nullifier = hash_parts(&[
+        let nullifier = hash_parts_field248(&[
             DOMAIN,
             "receipt-nullifier",
             &child_secret,
             &denomination.to_string(),
         ]);
-        let secret = hash_parts(&[
+        let secret = hash_parts_field248(&[
             DOMAIN,
             "receipt-secret",
             &child_secret,
             &denomination.to_string(),
         ]);
-        let (commitment, orchard_note) = {
-            #[cfg(feature = "orchard-zcash")]
-            {
-                let (commitment, note) =
-                    orchard::create_orchard_note(&child_secret, deposit_id, index, denomination)?;
-                (commitment, Some(note))
-            }
-            #[cfg(not(feature = "orchard-zcash"))]
-            {
-                (
-                    note_commitment(&nullifier, &secret, denomination, ""),
-                    None::<()>,
-                )
-            }
-        };
-        let signature =
-            note_authorization_for_secret(&child_secret, &owner_pubkey, denomination, &commitment);
+        let nullifier_fp = tornado::field_from_hex(&nullifier).ok_or(Error::InvalidProof)?;
+        let secret_fp = tornado::field_from_hex(&secret).ok_or(Error::InvalidProof)?;
+        let commitment = tornado::field_to_hex(
+            tornado::note_commitment(nullifier_fp, secret_fp).map_err(|_| Error::InvalidProof)?,
+        );
         notes.push(NoteReceipt {
             deposit_id: deposit_id.to_string(),
             deposit_index,
             denomination_sats: denomination,
             index,
-            owner_pubkey,
-            signature,
             nullifier,
             secret,
             commitment,
-            #[cfg(feature = "orchard-zcash")]
-            orchard: orchard_note,
         });
     }
 
@@ -247,44 +222,20 @@ pub fn derive_shield_receipt_for_deposit_type(
     })
 }
 
-fn note_authorization_for_secret(
-    child_secret: &str,
-    owner_pubkey: &str,
-    denomination_sats: u64,
-    commitment: &str,
-) -> String {
-    let secp = Secp256k1::new();
-    let secret_key = secret_key_from_hex_material(child_secret);
-    let digest = hash_parts_bytes(&[
-        DOMAIN,
-        "note-authorization",
-        owner_pubkey,
-        &denomination_sats.to_string(),
-        commitment,
-    ]);
-    let message = SecpMessage::from_digest_slice(&digest)
-        .expect("sha256 digest has secp256k1 message length");
-    hex::encode(secp.sign_ecdsa(&message, &secret_key).serialize_der())
-}
-
 pub fn client_pubkey_from_secret(client_seed: &str) -> String {
     client_pubkey_for_deposit(client_seed, 0)
 }
 
 pub fn client_pubkey_for_deposit(client_seed: &str, deposit_index: u64) -> String {
-    client_pubkey_for_deposit_type(client_seed, "user", deposit_index)
+    client_pubkey_for_deposit_type(client_seed, "", deposit_index)
 }
 
 pub fn client_pubkey_for_deposit_type(
     client_seed: &str,
-    deposit_type: &str,
+    _deposit_type: &str,
     deposit_index: u64,
 ) -> String {
-    deposit_owner_pubkey(&deposit_owner_secret_for_deposit(
-        client_seed,
-        deposit_type,
-        deposit_index,
-    ))
+    deposit_pubkey_from_secret(&deposit_root_secret_for_deposit(client_seed, deposit_index))
 }
 
 pub fn shield_authorization(
@@ -305,7 +256,7 @@ pub fn shield_authorization_for_deposit(
 ) -> ShieldAuthorization {
     shield_authorization_for_deposit_type(
         client_seed,
-        "user",
+        "",
         deposit_index,
         deposit_id,
         amount_sats,
@@ -315,15 +266,15 @@ pub fn shield_authorization_for_deposit(
 
 pub fn shield_authorization_for_deposit_type(
     client_seed: &str,
-    deposit_type: &str,
+    _deposit_type: &str,
     deposit_index: u64,
     deposit_id: &str,
     amount_sats: u64,
     note_commitments: &[NoteCommitment],
 ) -> ShieldAuthorization {
-    let deposit_pubkey = client_pubkey_for_deposit_type(client_seed, deposit_type, deposit_index);
+    let deposit_pubkey = client_pubkey_for_deposit(client_seed, deposit_index);
     let secp = Secp256k1::new();
-    let secret_key = deposit_secret_key(client_seed, deposit_type, deposit_index);
+    let secret_key = deposit_secret_key(client_seed, deposit_index);
     let message =
         shield_authorization_message(&deposit_pubkey, deposit_id, amount_sats, note_commitments);
     let signature = secp.sign_ecdsa(&message, &secret_key);
@@ -363,15 +314,7 @@ pub fn verify_shield_authorization(
 }
 
 pub fn merkle_root(leaves: &[String]) -> String {
-    #[cfg(feature = "orchard-zcash")]
-    {
-        orchard::merkle_root_hex(leaves).unwrap_or_default()
-    }
-    #[cfg(not(feature = "orchard-zcash"))]
-    {
-        let leaves = serde_json::to_string(leaves).unwrap_or_default();
-        hash_parts(&[DOMAIN, "disabled-zk-merkle-root", &leaves])
-    }
+    tornado::merkle_root_hex(leaves).unwrap_or_default()
 }
 
 pub fn shielder_withdrawal_from_receipt(
@@ -381,108 +324,108 @@ pub fn shielder_withdrawal_from_receipt(
     recipient: String,
     fee_sats: u64,
 ) -> Result<(WithdrawalProof, WithdrawalPublicInputs)> {
-    #[cfg(feature = "orchard-zcash")]
-    {
-        let orchard_note = receipt.orchard.as_ref().ok_or(Error::InvalidProof)?;
-        let anchor = orchard::merkle_root_hex(&tree.leaves)?;
-        let context_public = WithdrawalPublicInputs {
-            nullifier_hash: String::new(),
-            denomination_sats: receipt.denomination_sats,
-            recipient,
-            fee_sats,
-            merkle_root: anchor.clone(),
-            recipient_field: None,
-            relayer_field: None,
-            refund_field: None,
-        };
-        let public_context = orchard_public_context(&context_public);
-        let child_secret = note_child_secret_for_deposit(
-            client_seed,
-            receipt.deposit_index,
-            &receipt.deposit_id,
-            receipt.index + 1,
-        );
-        let (orchard_proof, nullifier_hash, merkle_root) = orchard::prove_orchard_withdrawal(
-            &child_secret,
-            orchard_note,
-            &tree.leaves,
-            &receipt.commitment,
-            &public_context,
-        )?;
-        if merkle_root != anchor {
-            return Err(Error::InvalidProof);
+    let _ = client_seed;
+    let leaf_index = tree
+        .leaves
+        .iter()
+        .position(|leaf| leaf == &receipt.commitment)
+        .ok_or(Error::UnknownCommitment)?;
+    let public = WithdrawalPublicInputs {
+        nullifier_hash: String::new(),
+        denomination_sats: receipt.denomination_sats,
+        recipient,
+        fee_sats,
+        merkle_root: tree.root(),
+        recipient_field: None,
+        relayer_field: None,
+        refund_field: None,
+    };
+    tornado::prove_withdrawal(
+        &receipt.nullifier,
+        &receipt.secret,
+        &tree.leaves,
+        leaf_index,
+        &public,
+    )
+}
+
+pub fn validate_withdrawal_public_inputs(public: &WithdrawalPublicInputs) -> Result<()> {
+    tornado::validate_public_inputs(public)
+}
+
+pub fn recipient_binding_field(
+    recipient: &str,
+    fee_sats: u64,
+    denomination_sats: u64,
+) -> Result<String> {
+    tornado::recipient_binding_decimal(recipient, fee_sats, denomination_sats)
+}
+
+pub fn note_recovery_candidates(
+    _client_seed: &str,
+    deposit_limit: u64,
+    note_limit: u64,
+) -> Vec<NoteRecoveryCandidate> {
+    let mut candidates = Vec::new();
+    for deposit_index in 0..deposit_limit {
+        for index in 1..=note_limit {
+            candidates.push(NoteRecoveryCandidate {
+                deposit_index,
+                index: index - 1,
+            });
         }
-        let public = WithdrawalPublicInputs {
-            nullifier_hash,
-            denomination_sats: receipt.denomination_sats,
-            recipient: context_public.recipient,
-            fee_sats,
-            merkle_root: merkle_root.clone(),
-            recipient_field: None,
-            relayer_field: None,
-            refund_field: None,
-        };
-        Ok((
-            WithdrawalProof {
-                nullifier: String::new(),
-                secret: String::new(),
-                commitment: String::new(),
-                merkle_root,
-                orchard: Some(orchard_proof),
-            },
-            public,
-        ))
     }
-    #[cfg(not(feature = "orchard-zcash"))]
-    {
-        let _ = (receipt, client_seed, tree, recipient, fee_sats);
-        Err(Error::InvalidProof)
+    candidates
+}
+
+pub fn recover_note_receipt(
+    client_seed: &str,
+    deposit_index: u64,
+    note_index: u64,
+    deposit_id: &str,
+    denomination_sats: u64,
+    commitment: &str,
+) -> Result<NoteReceipt> {
+    let child_secret =
+        note_child_secret_for_deposit(client_seed, deposit_index, deposit_id, note_index + 1);
+    let nullifier = hash_parts_field248(&[
+        DOMAIN,
+        "receipt-nullifier",
+        &child_secret,
+        &denomination_sats.to_string(),
+    ]);
+    let secret = hash_parts_field248(&[
+        DOMAIN,
+        "receipt-secret",
+        &child_secret,
+        &denomination_sats.to_string(),
+    ]);
+    let nullifier_fp = tornado::field_from_hex(&nullifier).ok_or(Error::InvalidProof)?;
+    let secret_fp = tornado::field_from_hex(&secret).ok_or(Error::InvalidProof)?;
+    let expected_commitment = tornado::field_to_hex(
+        tornado::note_commitment(nullifier_fp, secret_fp).map_err(|_| Error::InvalidProof)?,
+    );
+    if expected_commitment != commitment {
+        return Err(Error::UnknownCommitment);
     }
+    Ok(NoteReceipt {
+        deposit_id: deposit_id.to_string(),
+        deposit_index,
+        denomination_sats,
+        index: note_index,
+        nullifier,
+        secret,
+        commitment: commitment.to_string(),
+    })
 }
 
 pub fn verify_withdrawal(proof: &WithdrawalProof, public: &WithdrawalPublicInputs) -> Result<()> {
-    #[cfg(feature = "orchard-zcash")]
-    {
-        let orchard = proof.orchard.as_ref().ok_or(Error::InvalidProof)?;
-        if orchard.anchor_hex != public.merkle_root {
-            return Err(Error::InvalidProof);
-        }
-        let matching_nullifiers = orchard
-            .actions
-            .iter()
-            .filter(|action| action.nullifier_hex == public.nullifier_hash)
-            .count();
-        if matching_nullifiers != 1 {
-            return Err(Error::InvalidProof);
-        }
-        if orchard.value_balance.unsigned_abs() != public.denomination_sats {
-            return Err(Error::InvalidProof);
-        }
-        orchard::verify_orchard_withdrawal(orchard, &orchard_public_context(public))
-    }
-    #[cfg(not(feature = "orchard-zcash"))]
-    {
-        let _ = (proof, public);
-        Err(Error::InvalidProof)
-    }
+    tornado::verify_withdrawal(proof, public)
 }
 
-/// Strip note-specific fields from an Orchard withdrawal proof after verification.
-/// Orchard spends must include cmx for verification, but callers should not retain
-/// or re-broadcast those fields once authorization succeeds.
+/// Strip note-specific fields from a withdrawal proof after verification.
 pub fn redact_spent_commitment(proof: &mut WithdrawalProof) {
-    if let Some(orchard) = proof.orchard.as_mut() {
-        for action in &mut orchard.actions {
-            action.cmx_hex.clear();
-            action.epk_hex.clear();
-            action.enc_ciphertext_hex.clear();
-            action.out_ciphertext_hex.clear();
-        }
-    } else {
-        proof.commitment.clear();
-        proof.secret.clear();
-        proof.nullifier.clear();
-    }
+    tornado::redact_private_fields(proof);
 }
 
 pub fn nullifier_hash(nullifier: &str) -> String {
@@ -499,46 +442,23 @@ pub fn note_child_secret_for_deposit(
     _deposit_id: &str,
     index: u64,
 ) -> String {
-    note_child_secret_for_deposit_type(client_seed, "user", deposit_index, _deposit_id, index)
+    note_child_secret_for_deposit_type(client_seed, "", deposit_index, _deposit_id, index)
 }
 
 pub fn note_child_secret_for_deposit_type(
     client_seed: &str,
-    deposit_type: &str,
+    _deposit_type: &str,
     deposit_index: u64,
     _deposit_id: &str,
     index: u64,
 ) -> String {
-    let hardened_index = hardened_child_index(index);
-    let hardened_deposit_index = hardened_child_index(deposit_index);
-    let deposit_type = normalized_deposit_type(deposit_type);
-    hash_parts(&[
-        DOMAIN,
-        "note-child-secret",
-        "m/tc84'/btc'",
-        &deposit_type,
-        client_seed,
-        &hardened_deposit_index.to_string(),
-        &hardened_index.to_string(),
-    ])
+    hex::encode(derive_bip32_secret_key(client_seed, deposit_index, index).secret_bytes())
 }
 
 pub fn hardened_child_index(index: u64) -> u64 {
     HARDENED_CHILD_OFFSET
         .checked_add(index)
         .expect("hardened child index overflow")
-}
-
-#[cfg(feature = "orchard-zcash")]
-pub(crate) fn orchard_public_context(public: &WithdrawalPublicInputs) -> Vec<u8> {
-    hash_parts_bytes(&[
-        DOMAIN,
-        "orchard-withdrawal",
-        &public.recipient,
-        &public.fee_sats.to_string(),
-        &public.denomination_sats.to_string(),
-        &public.merkle_root,
-    ])
 }
 
 fn shield_authorization_message(
@@ -560,16 +480,12 @@ fn shield_authorization_message(
     SecpMessage::from_digest_slice(&digest).expect("sha256 digest has secp256k1 message length")
 }
 
-fn deposit_owner_secret_for_deposit(
-    client_seed: &str,
-    deposit_type: &str,
-    deposit_index: u64,
-) -> String {
-    hex::encode(deposit_secret_key(client_seed, deposit_type, deposit_index).secret_bytes())
+fn deposit_root_secret_for_deposit(client_seed: &str, deposit_index: u64) -> String {
+    hex::encode(derive_bip32_secret_key(client_seed, deposit_index, 0).secret_bytes())
 }
 
-fn deposit_owner_pubkey(owner_secret: &str) -> String {
-    let secret_bytes = hex::decode(owner_secret).unwrap_or_default();
+fn deposit_pubkey_from_secret(deposit_secret: &str) -> String {
+    let secret_bytes = hex::decode(deposit_secret).unwrap_or_default();
     let Ok(secret_key) = SecretKey::from_slice(&secret_bytes) else {
         return String::new();
     };
@@ -577,69 +493,48 @@ fn deposit_owner_pubkey(owner_secret: &str) -> String {
     SecpPublicKey::from_secret_key(&secp, &secret_key).to_string()
 }
 
-fn secret_key_from_hex_material(secret_hex: &str) -> SecretKey {
-    let secret_bytes = hex::decode(secret_hex).unwrap_or_default();
-    if let Ok(secret_key) = SecretKey::from_slice(&secret_bytes) {
-        return secret_key;
-    }
-    for counter in 0_u32..u32::MAX {
-        let digest = hash_parts_bytes(&[
-            DOMAIN,
-            "secp-secret-retry",
-            secret_hex,
-            &counter.to_string(),
-        ]);
-        if let Ok(secret_key) = SecretKey::from_slice(&digest) {
-            return secret_key;
+fn deposit_secret_key(client_seed: &str, deposit_index: u64) -> SecretKey {
+    derive_bip32_secret_key(client_seed, deposit_index, 0)
+}
+
+fn derive_bip32_secret_key(client_seed: &str, deposit_index: u64, note_index: u64) -> SecretKey {
+    let seed = decode_client_seed(client_seed);
+    let secp = Secp256k1::new();
+    let master = Xpriv::new_master(Network::Bitcoin, &seed)
+        .expect("BIP39 seed should derive a valid BIP32 master key");
+    let path = thornado_bip32_path(deposit_index, note_index)
+        .expect("thornado path indexes should fit BIP32 hardened indexes");
+    master
+        .derive_priv(&secp, &path)
+        .expect("thornado hardened BIP32 derivation should succeed")
+        .private_key
+}
+
+fn decode_client_seed(client_seed: &str) -> Vec<u8> {
+    let trimmed = client_seed.trim();
+    if let Ok(seed) = hex::decode(trimmed) {
+        if !seed.is_empty() {
+            return seed;
         }
     }
-    unreachable!("sha256 should produce a valid secp256k1 secret key")
+    hash_parts_bytes(&[DOMAIN, "bip39-seed-fallback", trimmed]).to_vec()
 }
 
-fn deposit_secret_key(client_seed: &str, deposit_type: &str, deposit_index: u64) -> SecretKey {
-    let deposit_type = normalized_deposit_type(deposit_type);
-    let hardened_deposit_index = hardened_child_index(deposit_index);
-    let hardened_note_index = hardened_child_index(0);
-    for counter in 0_u32..u32::MAX {
-        let digest = hash_parts_bytes(&[
-            DOMAIN,
-            "deposit-owner-secret",
-            "m/tc84'/btc'",
-            &deposit_type,
-            client_seed,
-            &hardened_deposit_index.to_string(),
-            &hardened_note_index.to_string(),
-            &counter.to_string(),
-        ]);
-        if let Ok(secret_key) = SecretKey::from_slice(&digest) {
-            return secret_key;
-        }
-    }
-    unreachable!("sha256 should produce a valid secp256k1 secret key")
-}
-
-fn normalized_deposit_type(deposit_type: &str) -> String {
-    match deposit_type.trim().to_ascii_lowercase().as_str() {
-        "node" => "node".to_string(),
-        _ => "user".to_string(),
-    }
-}
-
-#[cfg(not(feature = "orchard-zcash"))]
-fn note_commitment(
-    nullifier: &str,
-    secret: &str,
-    denomination_sats: u64,
-    owner_pubkey: &str,
-) -> String {
-    hash_parts(&[
-        DOMAIN,
-        "note-commitment",
-        nullifier,
-        secret,
-        &denomination_sats.to_string(),
-        owner_pubkey,
+fn thornado_bip32_path(deposit_index: u64, note_index: u64) -> Result<Vec<ChildNumber>> {
+    Ok(vec![
+        ChildNumber::from_hardened_idx(84).map_err(|err| Error::Shielder(err.to_string()))?,
+        ChildNumber::from_hardened_idx(0).map_err(|err| Error::Shielder(err.to_string()))?,
+        ChildNumber::from_hardened_idx(DEPOSIT_TYPE_INDEX)
+            .map_err(|err| Error::Shielder(err.to_string()))?,
+        ChildNumber::from_hardened_idx(bip32_index(deposit_index)?)
+            .map_err(|err| Error::Shielder(err.to_string()))?,
+        ChildNumber::from_hardened_idx(bip32_index(note_index)?)
+            .map_err(|err| Error::Shielder(err.to_string()))?,
     ])
+}
+
+fn bip32_index(index: u64) -> Result<u32> {
+    u32::try_from(index).map_err(|_| Error::Shielder("BIP32 index overflow".to_string()))
 }
 
 fn greedy_denominations(amount_sats: u64) -> (Vec<u64>, u64) {
@@ -658,7 +553,14 @@ fn hash_parts(parts: &[&str]) -> String {
     hex::encode(hash_parts_bytes(parts))
 }
 
-fn hash_parts_bytes(parts: &[&str]) -> Vec<u8> {
+fn hash_parts_field248(parts: &[&str]) -> String {
+    let digest = hash_parts_bytes(parts);
+    let mut field = [0_u8; 32];
+    field[1..].copy_from_slice(&digest[1..32]);
+    hex::encode(field)
+}
+
+pub(crate) fn hash_parts_bytes(parts: &[&str]) -> Vec<u8> {
     let mut hasher = Sha256::new();
     for part in parts {
         hasher.update((part.len() as u64).to_be_bytes());
@@ -678,31 +580,25 @@ mod tests {
             secret: "secret".to_string(),
             commitment: "cmx".to_string(),
             merkle_root: "root".to_string(),
-            orchard: Some(orchard::OrchardWithdrawalProof {
-                proof_hex: "00".to_string(),
-                binding_signature_hex: "00".to_string(),
-                anchor_hex: "00".to_string(),
-                public_context_hex: "00".to_string(),
-                value_balance: 1,
-                actions: vec![orchard::OrchardActionPayload {
-                    nullifier_hex: "nf".to_string(),
-                    rk_hex: "00".to_string(),
-                    cmx_hex: "cmx".to_string(),
-                    cv_net_hex: "00".to_string(),
-                    epk_hex: "epk".to_string(),
-                    enc_ciphertext_hex: "enc".to_string(),
-                    out_ciphertext_hex: "out".to_string(),
-                    spend_auth_sig_hex: "sig".to_string(),
-                }],
+            tornado: Some(tornado::TornadoWithdrawProof {
+                protocol: tornado::PROTOCOL_ID.to_string(),
+                groth16: Some(tornado::groth16::SnarkjsProof {
+                    pi_a: vec!["0".into(), "0".into(), "1".into()],
+                    pi_b: vec![
+                        vec!["0".into(), "0".into()],
+                        vec!["0".into(), "0".into()],
+                        vec!["1".into(), "0".into()],
+                    ],
+                    pi_c: vec!["0".into(), "0".into(), "1".into()],
+                    protocol: Some("groth".into()),
+                }),
             }),
         };
         redact_spent_commitment(&mut proof);
-        let orchard = proof.orchard.as_ref().unwrap();
-        assert!(orchard.actions[0].cmx_hex.is_empty());
-        assert!(orchard.actions[0].epk_hex.is_empty());
-        assert!(orchard.actions[0].enc_ciphertext_hex.is_empty());
-        assert!(orchard.actions[0].out_ciphertext_hex.is_empty());
-        assert_eq!(orchard.actions[0].nullifier_hex, "nf");
+        assert!(proof.nullifier.is_empty());
+        assert!(proof.secret.is_empty());
+        assert!(proof.commitment.is_empty());
+        assert!(proof.tornado.as_ref().unwrap().groth16.is_some());
     }
 
     #[test]
@@ -712,37 +608,13 @@ mod tests {
             secret: String::new(),
             commitment: String::new(),
             merkle_root: "root".to_string(),
-            orchard: None,
+            tornado: None,
         };
         let json = serde_json::to_string(&proof).unwrap();
         assert!(!json.contains("nullifier"));
         assert!(!json.contains("secret"));
         assert!(!json.contains("commitment"));
         assert!(json.contains("merkle_root"));
-    }
-
-    #[cfg(feature = "orchard-zcash")]
-    #[test]
-    #[ignore = "expensive proof test; run when auditing withdrawal proof privacy"]
-    fn withdrawal_proof_does_not_carry_spent_commitment() {
-        let receipt = derive_shield_receipt("dep-privacy", 100_000, "client-seed").unwrap();
-        let note = receipt.notes.first().unwrap();
-        let mut tree = DenominationTree::default();
-        tree.insert(note.commitment.clone());
-
-        let (proof, public) = shielder_withdrawal_from_receipt(
-            note,
-            "client-seed",
-            &tree,
-            "bcrt1qrecipient".to_string(),
-            1_000,
-        )
-        .unwrap();
-        verify_withdrawal(&proof, &public).unwrap();
-        let orchard = proof.orchard.as_ref().unwrap();
-        for action in &orchard.actions {
-            assert_ne!(action.cmx_hex, note.commitment);
-        }
     }
 
     #[test]
@@ -757,6 +629,26 @@ mod tests {
             &commitments,
         )
         .unwrap();
+    }
+
+    #[test]
+    fn note_derivation_uses_fixed_hardened_bip32_path() {
+        let path = thornado_bip32_path(7, 3).unwrap();
+        assert_eq!(
+            path,
+            vec![
+                ChildNumber::from_hardened_idx(84).unwrap(),
+                ChildNumber::from_hardened_idx(0).unwrap(),
+                ChildNumber::from_hardened_idx(0).unwrap(),
+                ChildNumber::from_hardened_idx(7).unwrap(),
+                ChildNumber::from_hardened_idx(3).unwrap(),
+            ]
+        );
+
+        let seed = hex::encode([42_u8; 64]);
+        let user = note_child_secret_for_deposit_type(&seed, "user", 0, "", 1);
+        let node = note_child_secret_for_deposit_type(&seed, "node", 0, "", 1);
+        assert_eq!(user, node);
     }
 
     #[test]

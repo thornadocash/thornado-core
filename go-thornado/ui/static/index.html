@@ -1508,7 +1508,7 @@
             <div>
               <span class="panel-label">Available flows</span>
               <div class="panel-list">
-                <div class="row"><span>Bond</span><strong>PoW deposit</strong></div>
+                <div class="row"><span>Bond</span><strong>notes → bond_escrow</strong></div>
                 <div class="row"><span>Voting</span><strong>gasless tx</strong></div>
                 <div class="row"><span>Request leave</span><strong>not wired</strong></div>
                 <div class="row"><span>Sales</span><strong>separate page</strong></div>
@@ -1518,10 +1518,11 @@
         </section>
 
         <section>
-          <h2>PoW Deposit</h2>
+          <h2>Operator Bond</h2>
           <div class="shield-panel">
             <div>
-              <span class="panel-label">Bond</span>
+              <span class="panel-label">Bond from shielded notes</span>
+              <p class="secret-help">Deposit as a user first, then spend notes into transparent <strong>bond_escrow</strong> via <code>MsgBondFromNotes</code>. No separate bond BTC deposit.</p>
               <label>
                 Operator pubkey
                 <input id="bondOperatorPubkey" placeholder="tthorpub1...">
@@ -1531,23 +1532,12 @@
                 <input id="bondNodePubkey" placeholder="tthorv1pub1...">
               </label>
               <div class="actions">
-                <button id="requestBondAddress" type="button">Get Bond Address</button>
+                <button id="buildBondFromNotesCommand" type="button">Build Bond Command</button>
               </div>
-              <div id="bondAddress" class="value" hidden></div>
             </div>
             <div>
-              <span class="panel-label">Bond shield</span>
-              <label>
-                Deposit path pubkey
-                <input id="bondShieldDepositPubkey" placeholder="compressed secp256k1 pubkey">
-              </label>
-              <label>
-                Commitments JSON or CSV
-                <input id="bondShieldCommitments" placeholder='["commitment"]'>
-              </label>
-              <div class="actions">
-                <button id="buildBondShieldCommand" type="button">Build Shield Command</button>
-              </div>
+              <span class="panel-label">Auction bid (shield → unshield → bid)</span>
+              <p class="secret-help">Register a bid address with <code>auction-bid-pow</code>, then redeem with <code>recipient_policy: bid_deposit</code> and the bid id. Seller settles via auction-shield; seller unshields payout notes normally.</p>
             </div>
           </div>
         </section>
@@ -1687,7 +1677,7 @@
 
     async function thornadoWasm() {
       if (!thornadoWasmReady) {
-        thornadoWasmReady = import("/thornado/ui/wasm/thornado_web_wasm.js?v=4").then(async (mod) => {
+        thornadoWasmReady = import("/thornado/ui/wasm/thornado_web_wasm.js?v=7ab3e5e2").then(async (mod) => {
           await mod.default();
           return mod;
         });
@@ -1696,13 +1686,10 @@
       return {
         clientPubkeyFromSecretJson: mod.client_pubkey_from_secret_json,
         clientPubkeyForDepositJson: mod.client_pubkey_for_deposit_json,
-        clientPubkeyForDepositTypeJson: mod.client_pubkey_for_deposit_type_json,
         shieldAuthorizationJson: mod.shield_authorization_json,
         shieldAuthorizationForDepositJson: mod.shield_authorization_for_deposit_json,
-        shieldAuthorizationForDepositTypeJson: mod.shield_authorization_for_deposit_type_json,
         deriveShieldReceiptJson: mod.derive_shield_receipt_json,
         deriveShieldReceiptForDepositJson: mod.derive_shield_receipt_for_deposit_json,
-        deriveShieldReceiptForDepositTypeJson: mod.derive_shield_receipt_for_deposit_type_json,
         noteRecoveryCandidatesJson: mod.note_recovery_candidates_json,
         recoverNoteReceiptJson: mod.recover_note_receipt_json,
         nullifierHashJson: mod.nullifier_hash_json,
@@ -1930,7 +1917,9 @@
     }
 
     function combinedReceipt() {
-      const notes = state.batches.flatMap((batch) => batch.receipt?.notes || []);
+      const notes = state.batches
+        .filter((batch) => batch.status === "committed")
+        .flatMap((batch) => batch.receipt?.notes || []);
       if (!notes.length) {
         return null;
       }
@@ -2027,6 +2016,19 @@
       note.privacy_target_later_notes = MIN_LATER_DEPOSITS;
     }
 
+    async function shielderLeavesForDenomination(denomination) {
+      const sync = await api("/thornado/shielder/sync");
+      const leaves = (sync.notes || [])
+        .filter((item) => Number(item.denomination_sats || 0) === Number(denomination || 0))
+        .map((item) => item.commitment)
+        .filter(Boolean);
+      return {
+        denomination_sats: Number(denomination || 0),
+        leaf_count: leaves.length,
+        leaves
+      };
+    }
+
     async function refreshReceiptPoolPositions() {
       const notes = state.receipt?.notes || [];
       if (!notes.length) {
@@ -2036,7 +2038,7 @@
       const responses = await Promise.all(
         denominations.map(async (denomination) => [
           denomination,
-          await api(`/thornado/shielder/leaves/${denomination}`)
+          await shielderLeavesForDenomination(denomination)
         ])
       );
       const byDenomination = new Map(responses);
@@ -2988,58 +2990,44 @@
       return bytesToHex((await sha256(hexToBytes(seedHex))).slice(0, 4));
     }
 
-    async function clientPubkeyFromSeed(seedHex, depositIndex = 0, depositType = "user") {
+    async function clientPubkeyFromSeed(seedHex, depositIndex = 0) {
       const wasm = await thornadoWasm();
-      if (wasm.clientPubkeyForDepositTypeJson) {
-        return wasm.clientPubkeyForDepositTypeJson(seedHex, depositType, BigInt(depositIndex));
-      }
       if (wasm.clientPubkeyForDepositJson) {
         return wasm.clientPubkeyForDepositJson(seedHex, BigInt(depositIndex));
       }
       return wasm.clientPubkeyFromSecretJson(seedHex);
     }
 
-    async function refreshClientPubkey(depositIndex = state.activeBatchIndex || 0, depositType = "user") {
+    async function refreshClientPubkey(depositIndex = state.activeBatchIndex || 0) {
       const seedHex = await walletRootSeedHex();
-      const pubkey = await clientPubkeyFromSeed(seedHex, depositIndex, depositType);
+      const pubkey = await clientPubkeyFromSeed(seedHex, depositIndex);
       $("clientPubkey").hidden = true;
       $("clientPubkey").textContent = `Client pubkey ${pubkey}`;
       return pubkey;
     }
 
-    function notePath(depositIndex, noteIndex, depositType = "user") {
-      return `tc84/btc/${depositType}/${depositIndex}/${noteIndex}`;
+    function notePath(depositIndex, noteIndex) {
+      return `m/84'/0'/0'/${depositIndex}'/${noteIndex}'`;
     }
 
-    async function deriveShieldReceipt(depositId, amountSats, seedHex, depositIndex = state.activeBatchIndex || 0, depositType = "user") {
+    async function deriveShieldReceipt(depositId, amountSats, seedHex, depositIndex = state.activeBatchIndex || 0) {
       const wasm = await thornadoWasm();
       const fingerprint = await rootFingerprint(seedHex);
-      const receipt = JSON.parse(wasm.deriveShieldReceiptForDepositTypeJson
-        ? wasm.deriveShieldReceiptForDepositTypeJson(depositId, depositType, BigInt(depositIndex), BigInt(amountSats), seedHex)
-        : wasm.deriveShieldReceiptForDepositJson
+      const receipt = JSON.parse(wasm.deriveShieldReceiptForDepositJson
         ? wasm.deriveShieldReceiptForDepositJson(depositId, BigInt(depositIndex), BigInt(amountSats), seedHex)
         : wasm.deriveShieldReceiptJson(depositId, BigInt(amountSats), seedHex));
       receipt.notes = receipt.notes.map((note) => ({
         ...note,
         deposit_index: depositIndex,
-        derivation_path: notePath(depositIndex, note.index + 1, depositType),
+        derivation_path: notePath(depositIndex, note.index + 1),
         root_fingerprint: fingerprint
       }));
       return receipt;
     }
 
-    async function shieldAuthorization(seedHex, depositId, amountSats, noteCommitments, depositIndex = state.activeBatchIndex || 0, depositType = "user") {
+    async function shieldAuthorization(seedHex, depositId, amountSats, noteCommitments, depositIndex = state.activeBatchIndex || 0) {
       const wasm = await thornadoWasm();
-      return JSON.parse(wasm.shieldAuthorizationForDepositTypeJson
-        ? wasm.shieldAuthorizationForDepositTypeJson(
-            seedHex,
-            depositType,
-            BigInt(depositIndex),
-            depositId,
-            BigInt(amountSats),
-            JSON.stringify(noteCommitments)
-          )
-        : wasm.shieldAuthorizationForDepositJson
+      return JSON.parse(wasm.shieldAuthorizationForDepositJson
         ? wasm.shieldAuthorizationForDepositJson(
             seedHex,
             BigInt(depositIndex),
@@ -3058,8 +3046,6 @@
     function commitments(receipt) {
       return receipt.notes.map((note) => ({
         denomination_sats: note.denomination_sats,
-        owner_pubkey: note.owner_pubkey,
-        signature: note.signature,
         commitment: note.commitment
       }));
     }
@@ -3078,7 +3064,7 @@
       }
       const feeSats = await quoteWithdrawalFee(note);
       const seedHex = await walletRootSeedHex();
-      const leavesResponse = await api(`/thornado/shielder/leaves/${note.denomination_sats}`);
+      const leavesResponse = await shielderLeavesForDenomination(note.denomination_sats);
       updateNotePoolPosition(note, leavesResponse);
       renderNotes();
       updateDashboard();
@@ -3240,7 +3226,7 @@
         throw new Error("Web Worker unavailable for note recovery");
       }
       const workerSource = `
-        const WASM_URL = "/thornado/ui/wasm/thornado_web_wasm.js?v=4";
+        const WASM_URL = "/thornado/ui/wasm/thornado_web_wasm.js?v=7ab3e5e2";
         function noteKey(note) {
           return note?.commitment || \`\${note?.deposit_index || 0}:\${note?.denomination_sats || 0}:\${note?.index || 0}\`;
         }
@@ -3273,9 +3259,7 @@
                 const depositIndex = Number(candidate.deposit_index || 0);
                 let depositPubkey = depositPubkeys.get(depositIndex);
                 if (!depositPubkey) {
-                  depositPubkey = wasm.client_pubkey_for_deposit_type_json
-                    ? wasm.client_pubkey_for_deposit_type_json(seedHex, "user", BigInt(depositIndex))
-                    : wasm.client_pubkey_for_deposit_json(seedHex, BigInt(depositIndex));
+                  depositPubkey = wasm.client_pubkey_for_deposit_json(seedHex, BigInt(depositIndex));
                   depositPubkeys.set(depositIndex, depositPubkey);
                 }
                 try {
@@ -3372,7 +3356,7 @@
       }
       let nextDepositIndex = 0;
       for (let depositIndex = 0; depositIndex < 32; depositIndex += 1) {
-        const depositPubkey = await clientPubkeyFromSeed(seedHex, depositIndex, "user");
+        const depositPubkey = await clientPubkeyFromSeed(seedHex, depositIndex);
         const owner = await ownerAddressFromCompressedPubkey(depositPubkey);
         const session = await api(`/thornado/deposit/session/${owner}`).catch(() => null);
         if (!session?.deposit_address) {
@@ -3510,7 +3494,7 @@
       log("withdraw/proof/validate", {
         nullifier_hash: publicInputs.nullifier_hash,
         merkle_root: publicInputs.merkle_root,
-        proof_bytes: proof.orchard?.proof_hex?.length ? proof.orchard.proof_hex.length / 2 : 0
+        proof_bytes: proof.tornado?.groth16 ? JSON.stringify(proof.tornado.groth16).length : 0
       });
       setMessage("Withdrawal proof validates locally.", "ok");
       updateDashboard();
@@ -3656,7 +3640,7 @@
         const depositIndex = state.nextDepositIndex;
         state.activeBatchIndex = depositIndex;
         state.shieldStageOpenedForDeposit = false;
-        const userPubkey = await refreshClientPubkey(depositIndex, "user");
+        const userPubkey = await refreshClientPubkey(depositIndex);
         const owner = await ownerAddressFromCompressedPubkey(userPubkey);
         const mined = await mineDepositPow("browser", owner, await currentPowDifficultyBits());
         $("powResult").hidden = true;
@@ -3746,12 +3730,27 @@
         deposit,
         txStatus
       });
+      const batch = activeBatch();
+      if (batch?.status === "committed" && batch.receipt?.notes?.length) {
+        upsertBatch({
+          depositIndex: state.activeBatchIndex,
+          shieldedAt: batch.shieldedAt || Date.now(),
+          maturesAt: batch.maturesAt || Date.now() + DEMO_MATURITY_MS
+        });
+        await refreshReceiptPoolPositions();
+        renderNotes();
+      }
       applyDepositExpiry(session, deposit);
       log("deposit/status", { session, deposit, txStatus, progress });
       setConfirmationProgress(progress.current, progress.required, progress.seen);
       renderDepositHistory();
       if (progress.current >= progress.required) {
-        setMessage("Deposit confirmed.", "ok");
+        const batch = activeBatch();
+        if (batch?.status === "committed") {
+          setMessage(`Deposit confirmed and shielded into ${batch.receipt?.notes?.length || 0} notes.`, "ok");
+        } else {
+          setMessage("Deposit confirmed.", "ok");
+        }
       } else if (progress.seen) {
         setMessage(`Deposit seen. Waiting for confirmations: ${progress.current} / ${progress.required}.`, "warn");
       } else {
@@ -3800,14 +3799,14 @@
         const seedHex = await walletRootSeedHex();
         $("walletRootStatus").hidden = true;
         $("walletRootStatus").textContent = `Root fingerprint ${await rootFingerprint(seedHex)}. Notes are indexed on your secret phrase.`;
-        const receipt = await deriveShieldReceipt(shieldRef, amountSats, seedHex, depositIndex, "user");
+        const receipt = await deriveShieldReceipt(shieldRef, amountSats, seedHex, depositIndex);
         const noteCommitments = commitments(receipt);
         const commitmentAmountSats = noteCommitments.reduce((sum, note) => sum + Number(note.denomination_sats || 0), 0);
-        const authorization = await shieldAuthorization(seedHex, shieldRef, commitmentAmountSats, noteCommitments, depositIndex, "user");
+        const authorization = await shieldAuthorization(seedHex, shieldRef, commitmentAmountSats, noteCommitments, depositIndex);
         const payload = await api("/thornado/shield", {
           method: "POST",
           body: {
-            note_commitments: noteCommitments,
+            commitments: noteCommitments,
             deposit_pubkey: authorization.deposit_pubkey,
             signature: authorization.signature
           }
@@ -3846,7 +3845,7 @@
       state.withdrawingNote = key;
       renderNotes();
       try {
-        setMessage("Generating Orchard withdrawal proof in this browser...", "");
+        setMessage("Generating withdrawal proof in this browser...", "");
         const { proof, public: publicInputs } = await validateGeneratedProof(noteIndex);
         const payload = await api("/thornado/withdraw", {
           method: "POST",
@@ -3931,38 +3930,15 @@
 	      log("node/tools/refresh", { metrics, auctions, height });
 	    }
 
-    async function requestBondAddress() {
-      if (!$("walletRoot").value.trim()) {
-        await generateWalletRoot();
-      }
+    function buildBondFromNotesCommand() {
       const operatorPubKey = $("bondOperatorPubkey").value.trim();
       const nodePubKey = $("bondNodePubkey").value.trim();
       if (!operatorPubKey || !nodePubKey) {
         throw new Error("operator pubkey and node consensus pubkey are required");
       }
-      const userPubkey = await refreshClientPubkey(0, "node");
-      const owner = await ownerAddressFromCompressedPubkey(userPubkey);
-      const mined = await mineDepositPow("node-bond", owner, await currentPowDifficultyBits());
-      const payload = await api("/thornado/deposit", {
-        method: "POST",
-        body: {
-          pow_token: mined.token,
-          deposit_pubkey: userPubkey,
-          pow_duration_ms: mined.elapsed_ms,
-          operator_pub_key: operatorPubKey,
-          node_pub_key: nodePubKey
-        }
-      });
-      const session = await waitForDepositSession(payload.owner);
-      $("bondAddress").hidden = false;
-      $("bondAddress").textContent = [
-        `Deposit ${session.deposit_address}`,
-        `Owner ${payload.owner}`,
-        `Path ${session.deposit_path_index || "pending"}`
-      ].join("\n");
-      log("node/bond/address", { owner, response: payload, session });
-      setMessage("Node bond address committed on-chain.", "ok");
-      await refreshNodeTools();
+      writeNodeCommand("Bond from shielded notes", thornadoTxCommand([
+        "shielder", "bond-from-notes", nodePubKey, operatorPubKey, "<proof-json>", `<public-json with recipient_policy bond_escrow, recipient bond_escrow, node_pub_key ${nodePubKey}>`
+      ], nodeKeyName()));
     }
 
     function writeNodeCommand(label, command) {
@@ -3972,17 +3948,6 @@
 
 	    function nodeKeyName() {
 	      return $("nodeKeyName").value.trim() || "node";
-	    }
-
-	    function buildBondShieldCommand() {
-	      const depositPubkey = $("bondShieldDepositPubkey").value.trim() || $("clientPubkey").textContent.trim();
-	      const commitments = $("bondShieldCommitments").value.trim();
-	      if (!depositPubkey || !commitments) {
-	        throw new Error("deposit path pubkey and commitments are required");
-	      }
-	      writeNodeCommand("Shield bond deposit", thornadoTxCommand([
-	        "shield", commitments, depositPubkey, "<signature>"
-	      ], nodeKeyName()));
 	    }
 
 	    function buildSetIpCommand() {
@@ -4267,8 +4232,7 @@
     });
     $("confirmWithdrawAddress").addEventListener("click", () => run(confirmWithdrawAddress));
 	    $("refreshNodeTools").addEventListener("click", () => run(refreshNodeTools));
-	    $("requestBondAddress").addEventListener("click", () => run(requestBondAddress));
-	    $("buildBondShieldCommand").addEventListener("click", () => run(buildBondShieldCommand));
+	    $("buildBondFromNotesCommand").addEventListener("click", () => run(buildBondFromNotesCommand));
 	    $("buildSetIpCommand").addEventListener("click", () => run(buildSetIpCommand));
 	    $("buildSetVersionCommand").addEventListener("click", () => run(buildSetVersionCommand));
 	    $("buildSetKeysCommand").addEventListener("click", () => run(buildSetKeysCommand));

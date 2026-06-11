@@ -58,6 +58,7 @@ service Msg {
   rpc NodeSlotAuctionBidPow(MsgNodeSlotAuctionBidPow) returns (MsgDepositRequestPowResponse);
   rpc NodeSlotAuctionSelectBid(MsgNodeSlotAuctionSelectBid) returns (MsgEmpty);
   rpc NodeSlotAuctionShield(MsgNodeSlotAuctionShield) returns (MsgShielderShieldResponse);
+  rpc BondFromNotes(MsgBondFromNotes) returns (MsgBondFromNotesResponse);
 }
 
 // MsgEmpty is the return type for all current Msg Server messages

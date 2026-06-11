@@ -183,13 +183,10 @@ func (k KVStore) GetDepositRecordIterator(ctx cosmos.Context) cosmos.Iterator {
 	return k.getIterator(ctx, prefixDepositRecord)
 }
 
-func (k KVStore) SetShielderCommitment(ctx cosmos.Context, commitment string, depositID common.TxID) error {
+func (k KVStore) SetShielderCommitment(ctx cosmos.Context, commitment string) error {
 	commitment = strings.TrimSpace(commitment)
 	if commitment == "" {
 		return fmt.Errorf("missing shielder commitment")
-	}
-	if depositID.IsEmpty() {
-		return fmt.Errorf("missing shielder commitment deposit id")
 	}
 	return k.setShielderJSON(ctx, k.GetKey(prefixShielderCommitment, commitment), true)
 }
@@ -209,16 +206,13 @@ func (k KVStore) GetShielderNoteRecordIterator(ctx cosmos.Context) cosmos.Iterat
 	return k.getIterator(ctx, prefixShielderNotePubKey)
 }
 
-func (k KVStore) SetShielderDenominationCommitment(ctx cosmos.Context, denominationSats uint64, commitment string, depositID common.TxID) error {
+func (k KVStore) SetShielderDenominationCommitment(ctx cosmos.Context, denominationSats uint64, commitment string) error {
 	commitment = strings.TrimSpace(commitment)
 	if denominationSats == 0 {
 		return fmt.Errorf("missing shielder commitment denomination")
 	}
 	if commitment == "" {
 		return fmt.Errorf("missing shielder commitment")
-	}
-	if depositID.IsEmpty() {
-		return fmt.Errorf("missing shielder commitment deposit id")
 	}
 	return k.setShielderJSON(ctx, shielderDenominationCommitmentKey(denominationSats, commitment), true)
 }
@@ -382,15 +376,12 @@ func (k KVStore) GetFeePool(ctx cosmos.Context) (types.FeePool, error) {
 	return pool, err
 }
 
-func (k KVStore) SetShielderFeeNotePubKey(ctx cosmos.Context, pubKey string, depositID common.TxID) error {
+func (k KVStore) SetShielderFeeNotePubKey(ctx cosmos.Context, pubKey string) error {
 	pubKey = strings.TrimSpace(pubKey)
 	if pubKey == "" {
 		return fmt.Errorf("missing shielder fee note pubkey")
 	}
-	if depositID.IsEmpty() {
-		return fmt.Errorf("missing shielder fee note deposit id")
-	}
-	return k.setShielderJSON(ctx, k.GetKey(prefixShielderFeeNotePubKey, pubKey), depositID.String())
+	return k.setShielderJSON(ctx, k.GetKey(prefixShielderFeeNotePubKey, pubKey), true)
 }
 
 func (k KVStore) ShielderFeeNotePubKeyUsed(ctx cosmos.Context, pubKey string) bool {

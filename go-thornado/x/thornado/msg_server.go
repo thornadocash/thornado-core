@@ -157,13 +157,36 @@ func (ms msgServer) ShielderRedeem(goCtx context.Context, msg *types.MsgShielder
 	if err != nil {
 		return nil, err
 	}
-	withdrawal, err := QueueAuthorizedWithdrawalTxOut(ctx, ms.mgr.Keeper(), authorization)
+	withdrawal, err := FinalizeShielderRedeem(ctx, ms.mgr.Keeper(), authorization)
 	if err != nil {
 		return nil, err
 	}
 	return &types.MsgShielderRedeemResponse{
 		WithdrawalId: withdrawal.WithdrawalID,
 		Status:       withdrawal.Status,
+	}, nil
+}
+
+func (ms msgServer) BondFromNotes(goCtx context.Context, msg *types.MsgBondFromNotes) (*types.MsgBondFromNotesResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	bond, err := BondFromShieldedNotes(ctx, ms.mgr.Keeper(), msg.Signer, msg.NodePubKey, msg.OperatorPubKey, ShielderRedeemRequest{
+		Proof:  msg.Proof,
+		Public: msg.Public,
+	})
+	if err != nil {
+		return nil, err
+	}
+	status := NodeStandby.String()
+	if bond.BondSats == 0 {
+		status = "pending"
+	}
+	return &types.MsgBondFromNotesResponse{
+		BondSats: bond.BondSats,
+		Slot:     bond.Slot,
+		Status:   status,
 	}, nil
 }
 

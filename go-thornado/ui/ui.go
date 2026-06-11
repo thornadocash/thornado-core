@@ -129,19 +129,14 @@ func depositMsg(r *http.Request) (sdk.Msg, string, error) {
 func shieldMsg(r *http.Request) (sdk.Msg, string, error) {
 	var req struct {
 		Commitments   []json.RawMessage `json:"commitments"`
-		NoteCommit    []json.RawMessage `json:"note_commitments"`
 		DepositPubkey string            `json:"deposit_pubkey"`
 		Signature     string            `json:"signature"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return nil, "", err
 	}
-	rawCommitments := req.Commitments
-	if len(rawCommitments) == 0 {
-		rawCommitments = req.NoteCommit
-	}
-	commitments := make([]string, 0, len(rawCommitments))
-	for _, raw := range rawCommitments {
+	commitments := make([]string, 0, len(req.Commitments))
+	for _, raw := range req.Commitments {
 		if len(raw) == 0 {
 			continue
 		}

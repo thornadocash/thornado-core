@@ -1028,51 +1028,6 @@ func (qs queryServer) queryShielderSync(ctx cosmos.Context, _ *types.QueryShield
 	}, nil
 }
 
-func (qs queryServer) queryShielderRoots(ctx cosmos.Context, _ *types.QueryShielderRootsRequest) (*types.QueryShielderRootsResponse, error) {
-	k := qs.mgr.Keeper()
-	iter := k.GetShielderMerkleRootIterator(ctx)
-	defer iter.Close()
-
-	roots := make([]*types.ShielderRoot, 0)
-	for ; iter.Valid(); iter.Next() {
-		denomination, root, ok := parseShielderMerkleRootKey(string(iter.Key()))
-		if !ok {
-			continue
-		}
-		leaves, err := k.GetShielderDenominationCommitments(ctx, denomination)
-		if err != nil {
-			return nil, err
-		}
-		roots = append(roots, &types.ShielderRoot{
-			DenominationSats: denomination,
-			Root:             root,
-			LeafCount:        uint64(len(leaves)),
-		})
-	}
-	sort.Slice(roots, func(i, j int) bool {
-		if roots[i].DenominationSats == roots[j].DenominationSats {
-			return roots[i].Root < roots[j].Root
-		}
-		return roots[i].DenominationSats < roots[j].DenominationSats
-	})
-	return &types.QueryShielderRootsResponse{Roots: roots}, nil
-}
-
-func (qs queryServer) queryShielderLeaves(ctx cosmos.Context, req *types.QueryShielderLeavesRequest) (*types.QueryShielderLeavesResponse, error) {
-	if req.DenominationSats == 0 {
-		return nil, fmt.Errorf("missing shielder denomination")
-	}
-	leaves, err := qs.mgr.Keeper().GetShielderDenominationCommitments(ctx, req.DenominationSats)
-	if err != nil {
-		return nil, err
-	}
-	return &types.QueryShielderLeavesResponse{
-		DenominationSats: req.DenominationSats,
-		LeafCount:        uint64(len(leaves)),
-		Leaves:           leaves,
-	}, nil
-}
-
 func (qs queryServer) queryShielderRedeemQuote(ctx cosmos.Context, req *types.QueryShielderRedeemQuoteRequest) (*types.QueryShielderRedeemQuoteResponse, error) {
 	if req.AmountSats == 0 {
 		return nil, fmt.Errorf("missing withdrawal amount")
@@ -2089,23 +2044,6 @@ func shielderRedeemResponse(withdrawal types.ShielderRedeem) *types.QueryShielde
 		RequestedHeight: withdrawal.RequestedHeight,
 		Status:          withdrawal.Status,
 	}
-}
-
-func parseShielderMerkleRootKey(key string) (uint64, string, bool) {
-	const prefix = "shielder_merkle_root/"
-	rest := strings.TrimPrefix(key, prefix)
-	if rest == key {
-		return 0, "", false
-	}
-	parts := strings.Split(rest, "/")
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return 0, "", false
-	}
-	denomination, err := strconv.ParseUint(parts[0], 10, 64)
-	if err != nil || denomination == 0 {
-		return 0, "", false
-	}
-	return denomination, parts[1], true
 }
 
 func blockEvent(e sdk.Event) *types.BlockEvent {

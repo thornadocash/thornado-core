@@ -49,27 +49,6 @@ message QueryShielderSyncResponse {
   repeated ShielderSpentNullifier nullifiers = 2;
 }
 
-message ShielderRoot {
-  uint64 denomination_sats = 1;
-  string root = 2;
-  uint64 leaf_count = 3;
-}
-
-message QueryShielderRootsRequest { string height = 1; }
-
-message QueryShielderRootsResponse { repeated ShielderRoot roots = 1; }
-
-message QueryShielderLeavesRequest {
-  uint64 denomination_sats = 1;
-  string height = 2;
-}
-
-message QueryShielderLeavesResponse {
-  uint64 denomination_sats = 1;
-  uint64 leaf_count = 2;
-  repeated string leaves = 3;
-}
-
 message QueryShielderRedeemQuoteRequest {
   uint64 amount_sats = 1;
   string height = 2;

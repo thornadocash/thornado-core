@@ -47,7 +47,7 @@ func (KeeperTestSuit) TestShielderState(c *C) {
 	c.Assert(err, IsNil)
 	c.Check(gotDeposit.AmountSats, Equals, uint64(100_000))
 
-	c.Assert(k.SetShielderCommitment(ctx, "commitment-1", txid), IsNil)
+	c.Assert(k.SetShielderCommitment(ctx, "commitment-1"), IsNil)
 	c.Check(k.ShielderCommitmentExists(ctx, "commitment-1"), Equals, true)
 
 	withdrawalID := "ABCDEF"
@@ -133,7 +133,7 @@ func (KeeperTestSuit) TestShielderInvariants(c *C) {
 		Status:         types.DepositStatusCommitted,
 	}
 	c.Assert(k.SetDepositRecord(ctx, deposit), IsNil)
-	c.Assert(k.SetShielderCommitment(ctx, commitment, depositID), IsNil)
+	c.Assert(k.SetShielderCommitment(ctx, commitment), IsNil)
 	c.Assert(k.SetNextVaultDepositPathIndex(ctx, vaultPubKey, common.VaultDepositPathUser, 2), IsNil)
 	pathIndex, err := common.VaultDepositPathIndex(common.VaultDepositPathUser, 0, common.DepositPathCommitmentRoot)
 	c.Assert(err, IsNil)
@@ -171,14 +171,8 @@ func (KeeperTestSuit) TestShielderInvariants(c *C) {
 		c.Check(broken, Equals, false, Commentf("%s: %v", route.Route, msg))
 	}
 
-	deposit.Commitments = []string{"SOURCE_LINKED_COMMITMENT"}
-	c.Assert(k.SetDepositRecord(ctx, deposit), IsNil)
-	msg, broken := DepositRecordInvariant(k)(ctx)
-	c.Check(broken, Equals, true)
-	c.Check(len(msg) > 0, Equals, true)
-
 	c.Assert(k.SetNextVaultDepositPathIndex(ctx, vaultPubKey, common.VaultDepositPathUser, 0), IsNil)
-	msg, broken = ShielderVaultAddressInvariant(k)(ctx)
+	msg, broken := ShielderVaultAddressInvariant(k)(ctx)
 	c.Check(broken, Equals, true)
 	c.Check(len(msg) > 0, Equals, true)
 }

@@ -6,10 +6,10 @@ use serde::Serialize;
 use thornado_shielder::{
     client_pubkey_for_deposit, client_pubkey_for_deposit_type, client_pubkey_from_secret,
     derive_shield_receipt, derive_shield_receipt_for_deposit,
-    derive_shield_receipt_for_deposit_type, merkle_root, shield_authorization,
-    shield_authorization_for_deposit, shield_authorization_for_deposit_type,
-    shielder_withdrawal_from_receipt, DenominationTree, NoteCommitment, NoteReceipt,
-    ShielderProofVerifier, WithdrawalProof, WithdrawalPublicInputs,
+    derive_shield_receipt_for_deposit_type, merkle_root, recipient_binding_field,
+    shield_authorization, shield_authorization_for_deposit, shield_authorization_for_deposit_type,
+    shielder_withdrawal_from_receipt, validate_withdrawal_public_inputs, DenominationTree,
+    NoteCommitment, NoteReceipt, ShielderProofVerifier, WithdrawalProof, WithdrawalPublicInputs,
 };
 
 thread_local! {
@@ -234,6 +234,38 @@ pub extern "C" fn thornado_shielder_withdrawal_from_receipt_json(
 }
 
 #[no_mangle]
+pub extern "C" fn thornado_recipient_binding_field_json(
+    recipient: *const c_char,
+    fee_sats: u64,
+    denomination_sats: u64,
+) -> *mut c_char {
+    return_string_result(|| {
+        let recipient = c_str(recipient, "recipient")?;
+        recipient_binding_field(recipient, fee_sats, denomination_sats)
+            .map_err(|error| error.to_string())
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn thornado_validate_withdrawal_public_json(public_json: *const c_char) -> bool {
+    match (|| {
+        let public_json = c_str(public_json, "public_json")?;
+        let public: WithdrawalPublicInputs =
+            serde_json::from_str(public_json).map_err(|error| error.to_string())?;
+        validate_withdrawal_public_inputs(&public).map_err(|error| error.to_string())
+    })() {
+        Ok(()) => {
+            clear_error();
+            true
+        }
+        Err(error) => {
+            set_error(error);
+            false
+        }
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn thornado_verify_withdrawal_json(
     proof_json: *const c_char,
     public_json: *const c_char,
@@ -348,7 +380,6 @@ mod tests {
 
         let commitments = serde_json::json!([{
             "denomination_sats": receipt["notes"][0]["denomination_sats"],
-            "owner_pubkey": "",
             "commitment": receipt["notes"][0]["commitment"],
         }])
         .to_string();
@@ -365,6 +396,28 @@ mod tests {
     }
 
     #[test]
+    fn withdrawal_payload_without_groth16_is_rejected() {
+        let public_json = c_string(
+            r#"{"nullifier_hash":"1","merkle_root":"2","denomination_sats":100000,"recipient":"bcrt1qrecipient","fee_sats":1000}"#,
+        );
+        assert!(thornado_validate_withdrawal_public_json(
+            public_json.as_ptr()
+        ));
+        let proof_json =
+            c_string(r#"{"merkle_root":"2","tornado":{"protocol":"tornado-cash-groth16-v2.1"}}"#);
+        assert!(!thornado_verify_withdrawal_json(
+            proof_json.as_ptr(),
+            public_json.as_ptr(),
+        ));
+        let error = take_string(thornado_last_error());
+        assert!(!error.is_empty());
+    }
+
+    #[test]
+    #[cfg_attr(
+        not(feature = "proof-tests"),
+        ignore = "requires production proving key; run with `cargo test -p thornado-ffi --features proof-tests` after `npm run download-artifacts`"
+    )]
     fn proves_and_verifies_withdrawal_through_c_abi() {
         let deposit_id = c_string("dep-1");
         let seed = c_string("client-seed");

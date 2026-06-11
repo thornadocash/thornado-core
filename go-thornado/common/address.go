@@ -16,8 +16,9 @@ import (
 type Address string
 
 const (
-	NoAddress   = Address("")
-	NoopAddress = Address("noop")
+	NoAddress         = Address("")
+	NoopAddress       = Address("noop")
+	BondEscrowAddress = Address("bond_escrow")
 )
 
 var alphaNumRegex = regexp.MustCompile("^[:_A-Za-z0-9]*$")
@@ -127,6 +128,10 @@ func (addr Address) IsEmpty() bool {
 
 func (addr Address) IsNoop() bool {
 	return addr.Equals(NoopAddress)
+}
+
+func (addr Address) IsBondEscrow() bool {
+	return addr.Equals(BondEscrowAddress)
 }
 
 func (addr Address) String() string {

@@ -8,22 +8,13 @@ license.workspace = true
 crate-type = ["cdylib"]
 
 [features]
-proof-tests = []
+proof-tests = ["thornado-shielder/proof-tests"]
 
 [dependencies]
-bitcoin.workspace = true
-hex.workspace = true
-incrementalmerkletree.workspace = true
-nonempty.workspace = true
-orchard = { version = "0.13.1", default-features = false, features = ["circuit", "std"] }
-rand_chacha.workspace = true
-rand_core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-shardtree.workspace = true
-sha2.workspace = true
+thornado-shielder = { path = "../thornado-shielder" }
 wasm-bindgen.workspace = true
-zcash_note_encryption.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }

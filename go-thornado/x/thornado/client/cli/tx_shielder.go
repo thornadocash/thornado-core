@@ -27,6 +27,7 @@ func GetCmdShielder() *cobra.Command {
 	cmd.AddCommand(GetCmdNodeSlotAuctionBidPow())
 	cmd.AddCommand(GetCmdNodeSlotAuctionSelectBid())
 	cmd.AddCommand(GetCmdNodeSlotAuctionShield())
+	cmd.AddCommand(GetCmdBondFromNotes())
 	return cmd
 }
 
@@ -117,6 +118,33 @@ func GetCmdShielderRedeem() *cobra.Command {
 			}
 
 			msg := types.NewMsgShielderRedeem(proof, public)
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+}
+
+func GetCmdBondFromNotes() *cobra.Command {
+	return &cobra.Command{
+		Use:   "bond-from-notes [node-pubkey] [operator-pubkey] [proof-json-or-file] [public-json-or-file]",
+		Short: "activate node bond by spending shielded notes into transparent bond escrow",
+		Args:  cobra.ExactArgs(4),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			proof, err := readJSONArg(args[2])
+			if err != nil {
+				return fmt.Errorf("invalid proof: %w", err)
+			}
+			public, err := readJSONArg(args[3])
+			if err != nil {
+				return fmt.Errorf("invalid public inputs: %w", err)
+			}
+			msg := types.NewMsgBondFromNotes(args[0], args[1], proof, public, clientCtx.GetFromAddress())
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}

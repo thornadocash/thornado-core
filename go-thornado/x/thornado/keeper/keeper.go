@@ -177,11 +177,11 @@ type KeeperShielder interface {
 	SetDepositRecord(ctx cosmos.Context, deposit types.DepositRecord) error
 	GetDepositRecord(ctx cosmos.Context, depositID common.TxID) (types.DepositRecord, error)
 	GetDepositRecordIterator(ctx cosmos.Context) cosmos.Iterator
-	SetShielderCommitment(ctx cosmos.Context, commitment string, depositID common.TxID) error
+	SetShielderCommitment(ctx cosmos.Context, commitment string) error
 	ShielderCommitmentExists(ctx cosmos.Context, commitment string) bool
 	SetShielderNoteRecord(ctx cosmos.Context, record types.StoredShielderNoteRecord) error
 	GetShielderNoteRecordIterator(ctx cosmos.Context) cosmos.Iterator
-	SetShielderDenominationCommitment(ctx cosmos.Context, denominationSats uint64, commitment string, depositID common.TxID) error
+	SetShielderDenominationCommitment(ctx cosmos.Context, denominationSats uint64, commitment string) error
 	GetShielderDenominationCommitments(ctx cosmos.Context, denominationSats uint64) ([]string, error)
 	SetShielderMerkleRoot(ctx cosmos.Context, denominationSats uint64, root string) error
 	ShielderMerkleRootExists(ctx cosmos.Context, denominationSats uint64, root string) bool
@@ -200,7 +200,7 @@ type KeeperShielder interface {
 	GetShielderNodeBondIterator(ctx cosmos.Context) cosmos.Iterator
 	SetFeePool(ctx cosmos.Context, pool types.FeePool) error
 	GetFeePool(ctx cosmos.Context) (types.FeePool, error)
-	SetShielderFeeNotePubKey(ctx cosmos.Context, pubKey string, depositID common.TxID) error
+	SetShielderFeeNotePubKey(ctx cosmos.Context, pubKey string) error
 	ShielderFeeNotePubKeyUsed(ctx cosmos.Context, pubKey string) bool
 	SetNodeSlotAuction(ctx cosmos.Context, auction types.NodeSlotAuction) error
 	GetNodeSlotAuction(ctx cosmos.Context, auctionID string) (types.NodeSlotAuction, error)

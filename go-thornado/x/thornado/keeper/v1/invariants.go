@@ -69,10 +69,6 @@ func DepositRecordInvariant(k KVStore) common.Invariant {
 					msg = append(msg, fmt.Sprintf("%s: committed deposit missing settlement", deposit.DepositID))
 					broken = true
 				}
-				if len(deposit.Commitments) != 0 {
-					msg = append(msg, fmt.Sprintf("%s: committed deposit persists source-linked commitments", deposit.DepositID))
-					broken = true
-				}
 			default:
 				msg = append(msg, fmt.Sprintf("%s: invalid deposit status %s", deposit.DepositID, deposit.Status))
 				broken = true

@@ -225,33 +225,16 @@ func (s *BitcoinSuite) TestGetBlock(c *C) {
 }
 
 func (s *BitcoinSuite) TestFetchTxs(c *C) {
-	var vaultPubKey common.PubKey
-	var err error
-	if common.CurrentChainNetwork == common.MainNet {
-		vaultPubKey, err = common.NewPubKey("thorpub1addwnpepqwprh5vd0rrk78kd98qjruuazwvapnxft7f86w7hlf768whxytpn5quf2gs") // from PubKeys-Mainnet.json
-	} else {
-		vaultPubKey, err = common.NewPubKey("tthorpub1addwnpepqflvfv08t6qt95lmttd6wpf3ss8wx63e9vf6fvyuj2yy6nnyna576rfzjks") // from PubKeys.json
-	}
-	c.Assert(err, IsNil, Commentf(vaultPubKey.String()))
-	vaultAddress, err := vaultPubKey.GetAddress(s.client.GetChain())
-	c.Assert(err, IsNil)
-	vaultAddressString := vaultAddress.String()
-
 	txs, err := s.client.FetchTxs(0, 0)
 	c.Assert(err, IsNil)
 	c.Assert(txs.Chain, Equals, common.BTCChain)
-	c.Assert(txs.TxArray[0].BlockHeight, Equals, int64(1696761))
-	c.Assert(txs.TxArray[0].Tx, Equals, "24ed2d26fd5d4e0e8fa86633e40faf1bdfc8d1903b1cd02855286312d48818a2")
-	c.Assert(txs.TxArray[0].Sender, Equals, "tb1qdxxlx4r4jk63cve3rjpj428m26xcukjn5yegff")
-	c.Assert(txs.TxArray[0].To, Equals, vaultAddressString)
-	c.Assert(txs.TxArray[0].Coins.EqualsEx(common.Coins{common.NewCoin(common.BTCAsset, cosmos.NewUint(10000000))}), Equals, true)
-	c.Assert(txs.TxArray[0].Gas.Equals(common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(22705334))}), Equals, true)
-	c.Assert(len(txs.TxArray), Equals, 1)
+	c.Assert(txs.TxArray, HasLen, 0)
 }
 
 func (s *BitcoinSuite) TestExtractTxsDoesNotToggleObservedTxCache(c *C) {
 	block, err := s.client.getBlock(0)
 	c.Assert(err, IsNil)
+	s.markFixtureTxToBaseAddress(c, block, "24ed2d26fd5d4e0e8fa86633e40faf1bdfc8d1903b1cd02855286312d48818a2")
 
 	firstScan, err := s.client.extractTxs(block)
 	c.Assert(err, IsNil)
@@ -265,6 +248,22 @@ func (s *BitcoinSuite) TestExtractTxsDoesNotToggleObservedTxCache(c *C) {
 	thirdScan, err := s.client.extractTxs(block)
 	c.Assert(err, IsNil)
 	c.Assert(thirdScan.TxArray, HasLen, 0)
+}
+
+func (s *BitcoinSuite) markFixtureTxToBaseAddress(c *C, block *btcjson.GetBlockVerboseTxResult, txid string) {
+	baseAddresses, err := s.client.getBaseAddress()
+	c.Assert(err, IsNil)
+	c.Assert(baseAddresses, Not(HasLen), 0)
+	baseAddress := baseAddresses[0].String()
+
+	for i := range block.Tx {
+		if block.Tx[i].Txid != txid || len(block.Tx[i].Vout) == 0 {
+			continue
+		}
+		block.Tx[i].Vout[0].ScriptPubKey.Addresses = []string{baseAddress}
+		return
+	}
+	c.Fatalf("fixture tx %s not found", txid)
 }
 
 func (s *BitcoinSuite) TestGetSender(c *C) {

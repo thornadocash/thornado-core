@@ -12,6 +12,7 @@ import (
 	apitypes "github.com/thornadocash/go-thornado/api/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
+	"github.com/thornadocash/go-thornado/go-wrappers/shielder"
 )
 
 var (
@@ -46,6 +47,10 @@ var (
 	_ sdk.Msg              = &MsgNodeSlotAuctionShield{}
 	_ sdk.HasValidateBasic = &MsgNodeSlotAuctionShield{}
 	_ sdk.LegacyMsg        = &MsgNodeSlotAuctionShield{}
+
+	_ sdk.Msg              = &MsgBondFromNotes{}
+	_ sdk.HasValidateBasic = &MsgBondFromNotes{}
+	_ sdk.LegacyMsg        = &MsgBondFromNotes{}
 )
 
 const (
@@ -90,16 +95,8 @@ func (m *MsgDepositRequestPow) ValidateBasic() error {
 	if err := validateCompressedSecpPubkey(m.DepositPubkey); err != nil {
 		return fmt.Errorf("invalid deposit pubkey: %w", err)
 	}
-	if strings.TrimSpace(m.NodePubKey) != "" {
-		if strings.TrimSpace(m.OperatorPubKey) == "" {
-			return fmt.Errorf("bond deposits require operator pubkey")
-		}
-		if _, err := common.NewPubKey(m.OperatorPubKey); err != nil {
-			return fmt.Errorf("invalid operator pubkey: %w", err)
-		}
-		if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, m.NodePubKey); err != nil {
-			return fmt.Errorf("invalid node pubkey: %w", err)
-		}
+	if strings.TrimSpace(m.NodePubKey) != "" || strings.TrimSpace(m.OperatorPubKey) != "" {
+		return fmt.Errorf("node bonds use MsgBondFromNotes; auction bids use MsgNodeSlotAuctionBidPow")
 	}
 	return nil
 }
@@ -168,6 +165,9 @@ func (m *MsgShielderRedeem) ValidateBasic() error {
 	}
 	if !json.Valid(m.Public) {
 		return fmt.Errorf("invalid shielder public json")
+	}
+	if err := shielder.ValidateRedeemPublicJSON(string(m.Public)); err != nil {
+		return err
 	}
 	return nil
 }
@@ -426,6 +426,86 @@ func MsgNodeSlotAuctionShieldCustomGetSigners(m proto.Message) ([][]byte, error)
 		return nil, fmt.Errorf("can't cast as MsgNodeSlotAuctionShield: %T", m)
 	}
 	return [][]byte{msg.Signer}, nil
+}
+
+func NewMsgBondFromNotes(nodePubKey, operatorPubKey string, proof, public []byte, signer cosmos.AccAddress) *MsgBondFromNotes {
+	return &MsgBondFromNotes{
+		NodePubKey:     strings.TrimSpace(nodePubKey),
+		OperatorPubKey: strings.TrimSpace(operatorPubKey),
+		Proof:          proof,
+		Public:         public,
+		Signer:         signer,
+	}
+}
+
+func (m *MsgBondFromNotes) ValidateBasic() error {
+	if strings.TrimSpace(m.NodePubKey) == "" {
+		return fmt.Errorf("missing node pubkey")
+	}
+	if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, m.NodePubKey); err != nil {
+		return fmt.Errorf("invalid node pubkey: %w", err)
+	}
+	if strings.TrimSpace(m.OperatorPubKey) == "" {
+		return fmt.Errorf("missing operator pubkey")
+	}
+	if _, err := common.NewPubKey(m.OperatorPubKey); err != nil {
+		return fmt.Errorf("invalid operator pubkey: %w", err)
+	}
+	if m.Signer.Empty() {
+		return fmt.Errorf("missing bond signer")
+	}
+	if err := validateShielderRedeemJSON(m.Proof, m.Public); err != nil {
+		return err
+	}
+	if !json.Valid(m.Proof) || !json.Valid(m.Public) {
+		return fmt.Errorf("invalid bond proof or public json")
+	}
+	var publicInputs struct {
+		RecipientPolicy string `json:"recipient_policy"`
+		NodePubKey      string `json:"node_pub_key"`
+		Recipient       string `json:"recipient"`
+		FeeSats         uint64 `json:"fee_sats"`
+	}
+	if err := json.Unmarshal(m.Public, &publicInputs); err != nil {
+		return fmt.Errorf("invalid bond public json: %w", err)
+	}
+	if normalizeBondPublicPolicy(publicInputs.RecipientPolicy) != ShielderRedeemPolicyBondEscrow {
+		return fmt.Errorf("bond notes require bond_escrow recipient policy")
+	}
+	if strings.TrimSpace(publicInputs.NodePubKey) != strings.TrimSpace(m.NodePubKey) {
+		return fmt.Errorf("bond public node pubkey mismatch")
+	}
+	if strings.TrimSpace(publicInputs.Recipient) != common.BondEscrowAddress.String() {
+		return fmt.Errorf("bond notes require bond_escrow recipient")
+	}
+	if publicInputs.FeeSats != 0 {
+		return fmt.Errorf("bond notes must not pay withdrawal fee")
+	}
+	if err := shielder.ValidateRedeemPublicJSON(string(m.Public)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *MsgBondFromNotes) GetSigners() []cosmos.AccAddress {
+	return []cosmos.AccAddress{m.Signer}
+}
+
+func MsgBondFromNotesCustomGetSigners(m proto.Message) ([][]byte, error) {
+	msg, ok := m.(*apitypes.MsgBondFromNotes)
+	if !ok {
+		return nil, fmt.Errorf("can't cast as MsgBondFromNotes: %T", m)
+	}
+	return [][]byte{msg.Signer}, nil
+}
+
+func normalizeBondPublicPolicy(policy string) string {
+	switch strings.TrimSpace(policy) {
+	case "", ShielderRedeemPolicyUserBTC:
+		return ShielderRedeemPolicyUserBTC
+	default:
+		return strings.TrimSpace(policy)
+	}
 }
 
 func validateShielderCommitmentList(commitments []string, label string) error {

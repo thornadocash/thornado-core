@@ -19,7 +19,9 @@ char* thornado_shield_authorization_json(const char* client_seed, const char* de
 char* thornado_shield_authorization_for_deposit_json(const char* client_seed, uint64_t deposit_index, const char* deposit_id, uint64_t amount_sats, const char* note_commitments_json);
 char* thornado_shield_authorization_for_deposit_type_json(const char* client_seed, const char* deposit_type, uint64_t deposit_index, const char* deposit_id, uint64_t amount_sats, const char* note_commitments_json);
 char* thornado_merkle_root_json(const char* leaves_json);
+char* thornado_recipient_binding_field_json(const char* recipient, uint64_t fee_sats, uint64_t denomination_sats);
 char* thornado_shielder_withdrawal_from_receipt_json(const char* note_json, const char* client_seed, const char* leaves_json, const char* recipient, uint64_t fee_sats);
+bool thornado_validate_withdrawal_public_json(const char* public_json);
 bool thornado_verify_withdrawal_json(const char* proof_json, const char* public_json);
 */
 import "C"
@@ -120,6 +122,21 @@ func MerkleRoot(leavesJSON string) (string, error) {
 	leaves := cString(leavesJSON)
 	defer C.free(unsafe.Pointer(leaves))
 	return takeString(C.thornado_merkle_root_json(leaves))
+}
+
+func RecipientBindingField(recipient string, feeSats, denominationSats uint64) (string, error) {
+	to := cString(recipient)
+	defer C.free(unsafe.Pointer(to))
+	return takeString(C.thornado_recipient_binding_field_json(to, C.uint64_t(feeSats), C.uint64_t(denominationSats)))
+}
+
+func ValidateWithdrawalPublic(publicJSON string) error {
+	public := cString(publicJSON)
+	defer C.free(unsafe.Pointer(public))
+	if C.thornado_validate_withdrawal_public_json(public) {
+		return nil
+	}
+	return lastError()
 }
 
 func ShielderWithdrawalFromReceipt(noteJSON string, clientSeed string, leavesJSON string, recipient string, feeSats uint64) (string, error) {

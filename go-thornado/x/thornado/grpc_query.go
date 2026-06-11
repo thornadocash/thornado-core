@@ -270,22 +270,6 @@ func (s *queryServer) ShielderSync(c context.Context, req *types.QueryShielderSy
 	return s.queryShielderSync(ctx, req)
 }
 
-func (s *queryServer) ShielderRoots(c context.Context, req *types.QueryShielderRootsRequest) (*types.QueryShielderRootsResponse, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	ctx := s.unwrapSdkContext(c)
-	return s.queryShielderRoots(ctx, req)
-}
-
-func (s *queryServer) ShielderLeaves(c context.Context, req *types.QueryShielderLeavesRequest) (*types.QueryShielderLeavesResponse, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	ctx := s.unwrapSdkContext(c)
-	return s.queryShielderLeaves(ctx, req)
-}
-
 func (s *queryServer) ShielderRedeemQuote(c context.Context, req *types.QueryShielderRedeemQuoteRequest) (*types.QueryShielderRedeemQuoteResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err

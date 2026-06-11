@@ -1,0 +1,32 @@
+{
+  "name": "@thornado/tornado-circuits",
+  "version": "2.1.0",
+  "private": true,
+  "description": "Vendored Tornado Cash production withdraw circuit (Groth16, depth 20)",
+  "license": "MIT",
+  "scripts": {
+    "download-artifacts": "node scripts/download-artifacts.mjs",
+    "build:circuit:compile": "circom circom/withdraw.circom --r1cs --wasm --sym -o build/ -l vendor/circomlib/circuits",
+    "build:circuit:setup": "snarkjs groth16 setup build/withdraw.r1cs artifacts/pot12_final.ptau build/withdraw_0000.zkey",
+    "build:circuit:export-vk": "snarkjs zkey export verificationkey build/withdraw_final.zkey build/withdraw_verification_key.json",
+    "build:circuit:export-solidity": "snarkjs zkey export solidityverifier build/withdraw_final.zkey build/Verifier.sol",
+    "verify:production-vk": "node scripts/check-production-vk.mjs",
+    "verify:production-artifacts": "node scripts/check-production-artifacts.mjs",
+    "audit:differential": "node scripts/differential-snarkjs-rust.mjs",
+    "gen:rust-test-vectors": "node scripts/gen-rust-test-vectors.mjs"
+  },
+  "dependencies": {
+    "circomlib": "github:tornadocash/circomlib#c372f14d324d57339c88451834bf2824e73bbdbc",
+    "snarkjs-old": "github:tornadocash/snarkjs#869181cfaf7526fe8972073d31655493a04326d5",
+    "wasmbuilder": "^0.0.3",
+    "websnark": "github:tornadocash/websnark#4c0af6a8b65aabea3c09f377f63c44e7a58afa6d"
+  },
+  "devDependencies": {
+    "circom": "0.5.46",
+    "circomlibjs": "0.1.7",
+    "snarkjs": "github:tornadocash/snarkjs#869181cfaf7526fe8972073d31655493a04326d5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

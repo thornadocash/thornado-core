@@ -1,0 +1,19 @@
+{
+  "protocol": "tornado-cash-groth16-v2.1",
+  "release": "v2.1",
+  "upstream": "https://github.com/tornadocash/tornado-core",
+  "circomlib_commit": "c372f14d324d57339c88451834bf2824e73bbdbc",
+  "withdraw_circom_sha": "54c38380a180471f43e40c92f825585c00784c52",
+  "merkle_tree_circom_sha": "3a669758c1963c590888d2792e7d393197737ce0",
+  "merkle_depth": 20,
+  "withdraw_verification_key_sha256": "3eedcf6ec6b5c24219ed19c7a33966fbfa6a03ae7c84124270589091e87cf8d3",
+  "withdraw_proving_key_sha256": "9b1b2e7aed08ab0cc0c511710331ba2941e03162800e59e39dc65cb5f6f79daf",
+  "public_inputs": [
+    "root",
+    "nullifierHash",
+    "recipient",
+    "relayer",
+    "fee",
+    "refund"
+  ]
+}

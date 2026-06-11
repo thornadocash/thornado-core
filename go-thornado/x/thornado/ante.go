@@ -196,6 +196,8 @@ func (ad AnteDecorator) anteHandleMessage(ctx sdk.Context, version semver.Versio
 		return NodeSlotAuctionSelectBidAnteHandler(ctx, ad.keeper, *m)
 	case *types.MsgNodeSlotAuctionShield:
 		return NodeSlotAuctionShieldAnteHandler(ctx, ad.keeper, *m)
+	case *types.MsgBondFromNotes:
+		return BondFromNotesAnteHandler(ctx, ad.keeper, *m)
 	default:
 		return ctx, cosmos.ErrUnknownRequest("invalid message type")
 	}
@@ -466,18 +468,18 @@ func shielderRedeemAnte(ctx cosmos.Context, k keeper.Keeper, proof, public []byt
 	if err != nil {
 		return ctx, err
 	}
+	policy := normalizeShielderRedeemPolicy(publicInputs.RecipientPolicy)
+	if err := validateShielderRedeemPolicy(ctx, k, policy, publicInputs); err != nil {
+		return ctx, err
+	}
 	if k.ShielderNullifierSpent(ctx, publicInputs.NullifierHash) {
 		return ctx, cosmos.ErrUnknownRequest("shielder nullifier already spent")
 	}
 	if !k.ShielderMerkleRootExists(ctx, publicInputs.DenominationSats, publicInputs.MerkleRoot) {
 		return ctx, cosmos.ErrUnknownRequest("unknown shielder merkle root")
 	}
-	recipient, err := common.NewAddress(publicInputs.Recipient)
-	if err != nil {
+	if _, err := shielderRedeemRecipient(publicInputs, policy); err != nil {
 		return ctx, err
-	}
-	if !recipient.GetChain().Equals(common.BTCChain) {
-		return ctx, cosmos.ErrUnknownRequest("shielder redeem recipient must be bitcoin")
 	}
 	if err := RejectLeakyShielderRedeemProof(ctx, k, proof); err != nil {
 		return ctx, err
@@ -486,12 +488,41 @@ func shielderRedeemAnte(ctx cosmos.Context, k keeper.Keeper, proof, public []byt
 		return ctx, err
 	}
 	if ctx.IsCheckTx() {
-		withdrawalID := shielderRedeemID(publicInputs.NullifierHash, recipient.String())
+		recipient, _ := shielderRedeemRecipient(publicInputs, policy)
+		withdrawalID := shielderRedeemID(publicInputs.NullifierHash, recipient.String(), policy)
 		if err := k.SetShielderNullifierSpent(ctx, publicInputs.NullifierHash, withdrawalID); err != nil {
 			return ctx, err
 		}
 	}
 	return ctx, nil
+}
+
+func BondFromNotesAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgBondFromNotes) (cosmos.Context, error) {
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	bond, err := k.GetShielderNodeBond(ctx, msg.NodePubKey)
+	if err != nil {
+		return ctx, err
+	}
+	if bond.NodePubKey != "" && bond.BondSats > 0 && bond.FeeShareActive {
+		return ctx, cosmos.ErrUnknownRequest("node bond already confirmed")
+	}
+	if !bond.NodeAddress.Empty() && !bond.NodeAddress.Equals(msg.Signer) {
+		return ctx, cosmos.ErrUnknownRequest("bond signer mismatch")
+	}
+	operator, err := common.NewPubKey(msg.OperatorPubKey)
+	if err != nil {
+		return ctx, err
+	}
+	operatorAddress, err := operator.GetThorAddress()
+	if err != nil {
+		return ctx, err
+	}
+	if !operatorAddress.Equals(msg.Signer) {
+		return ctx, cosmos.ErrUnknownRequest("bond owner mismatch")
+	}
+	return shielderRedeemAnte(ctx, k, msg.Proof, msg.Public)
 }
 
 func ShielderShieldFeesAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgShielderShieldFees) (cosmos.Context, error) {
@@ -545,7 +576,7 @@ func ShielderShieldFeesAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg type
 			return ctx, err
 		}
 		for _, pubKey := range notePubKeys {
-			if err := k.SetShielderFeeNotePubKey(ctx, pubKey, common.BlankTxID); err != nil {
+			if err := k.SetShielderFeeNotePubKey(ctx, pubKey); err != nil {
 				return ctx, err
 			}
 		}

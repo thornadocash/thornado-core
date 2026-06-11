@@ -51,6 +51,7 @@ func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(&MsgNodeSlotAuctionBidPow{}, ModuleName+"/MsgNodeSlotAuctionBidPow", nil)
 	cdc.RegisterConcrete(&MsgNodeSlotAuctionSelectBid{}, ModuleName+"/MsgNodeSlotAuctionSelectBid", nil)
 	cdc.RegisterConcrete(&MsgNodeSlotAuctionShield{}, ModuleName+"/MsgNodeSlotAuctionShield", nil)
+	cdc.RegisterConcrete(&MsgBondFromNotes{}, ModuleName+"/MsgBondFromNotes", nil)
 }
 
 // RegisterInterfaces register the types
@@ -90,6 +91,7 @@ func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		&MsgNodeSlotAuctionBidPow{},
 		&MsgNodeSlotAuctionSelectBid{},
 		&MsgNodeSlotAuctionShield{},
+		&MsgBondFromNotes{},
 	)
 
 	msgservice.RegisterMsgServiceDesc(registry, &_Msg_serviceDesc)
@@ -126,4 +128,5 @@ func DefineCustomGetSigners(signingOptions *signing.Options) {
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNodeSlotAuctionBidPow"), MsgNodeSlotAuctionBidPowCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNodeSlotAuctionSelectBid"), MsgNodeSlotAuctionSelectBidCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNodeSlotAuctionShield"), MsgNodeSlotAuctionShieldCustomGetSigners)
+	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgBondFromNotes"), MsgBondFromNotesCustomGetSigners)
 }

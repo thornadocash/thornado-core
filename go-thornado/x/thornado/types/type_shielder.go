@@ -35,6 +35,12 @@ const (
 	NodeSlotAuctionSettled  = "settled"
 )
 
+const (
+	ShielderRedeemPolicyUserBTC    = "user_btc"
+	ShielderRedeemPolicyBondEscrow = "bond_escrow"
+	ShielderRedeemPolicyBidDeposit = "bid_deposit"
+)
+
 type DepositSession struct {
 	Owner                    cosmos.AccAddress `json:"owner"`
 	PowToken                 string            `json:"pow_token"`
@@ -114,7 +120,6 @@ type DepositRecord struct {
 	BTCConfirmations         int64             `json:"btc_confirmations,omitempty"`
 	BTCConfirmationsRequired int64             `json:"btc_confirmations_required,omitempty"`
 	BTCObservedHeight        int64             `json:"btc_observed_height,omitempty"`
-	Commitments              []string          `json:"commitments,omitempty"`
 }
 
 func (m DepositRecord) Key() string {
@@ -273,6 +278,7 @@ type NodeSlotBid struct {
 	Bidder         cosmos.AccAddress `json:"bidder"`
 	OperatorPubKey common.PubKey     `json:"operator_pub_key"`
 	NodePubKey     string            `json:"node_pub_key"`
+	DepositAddress common.Address    `json:"deposit_address,omitempty"`
 	DepositID      common.TxID       `json:"deposit_id,omitempty"`
 	AmountSats     uint64            `json:"amount_sats,omitempty"`
 	Selected       bool              `json:"selected,omitempty"`
@@ -372,6 +378,7 @@ type ShielderRedeem struct {
 	NullifierHash   string         `json:"nullifier_hash"`
 	MerkleRoot      string         `json:"merkle_root"`
 	Recipient       common.Address `json:"recipient"`
+	RecipientPolicy string         `json:"recipient_policy,omitempty"`
 	AmountSats      uint64         `json:"amount_sats"`
 	FeeSats         uint64         `json:"fee_sats"`
 	InHash          common.TxID    `json:"in_hash"`
@@ -396,6 +403,9 @@ func (m ShielderRedeem) Valid() error {
 	}
 	if m.Recipient.IsEmpty() {
 		return fmt.Errorf("missing shielder redeem recipient")
+	}
+	if !m.Recipient.IsBondEscrow() && !m.Recipient.GetChain().Equals(common.BTCChain) {
+		return fmt.Errorf("shielder redeem recipient must be bitcoin or bond escrow")
 	}
 	if m.AmountSats == 0 {
 		return fmt.Errorf("missing shielder redeem amount")

@@ -22,6 +22,9 @@ func VerifyShielderRedeemJSON(proofJSON, publicJSON []byte) error {
 	if !json.Valid(publicJSON) {
 		return fmt.Errorf("invalid shielder public input json")
 	}
+	if err := ValidateShielderRedeemPublicJSON(publicJSON); err != nil {
+		return err
+	}
 	return shielder.VerifyWithdrawal(string(proofJSON), string(publicJSON))
 }
 
@@ -35,16 +38,20 @@ func VerifyShielderRedeem(withdrawal ShielderRedeemPayload) error {
 	return VerifyShielderRedeemJSON(withdrawal.Proof, withdrawal.Public)
 }
 
+func ValidateShielderRedeemPublicJSON(publicJSON []byte) error {
+	return shielder.ValidateRedeemPublicJSON(string(publicJSON))
+}
+
 func RejectLeakyShielderRedeemProof(ctx cosmos.Context, k keeper.Keeper, proofJSON []byte) error {
 	var proof struct {
 		Nullifier  string `json:"nullifier"`
 		Secret     string `json:"secret"`
 		Commitment string `json:"commitment"`
-		Orchard    *struct {
-			Actions []struct {
-				CmxHex string `json:"cmx_hex"`
-			} `json:"actions"`
-		} `json:"orchard"`
+		Tornado    *struct {
+			MerklePath *struct {
+				PathElements []string `json:"path_elements"`
+			} `json:"merkle_path"`
+		} `json:"tornado"`
 	}
 	if err := json.Unmarshal(proofJSON, &proof); err != nil {
 		return fmt.Errorf("invalid shielder proof json: %w", err)
@@ -52,18 +59,9 @@ func RejectLeakyShielderRedeemProof(ctx cosmos.Context, k keeper.Keeper, proofJS
 	if strings.TrimSpace(proof.Nullifier) != "" || strings.TrimSpace(proof.Secret) != "" || strings.TrimSpace(proof.Commitment) != "" {
 		return fmt.Errorf("shielder proof carries private note material")
 	}
-	if proof.Orchard == nil {
-		return nil
-	}
-	for _, action := range proof.Orchard.Actions {
-		cmx := strings.TrimSpace(action.CmxHex)
-		if cmx == "" {
-			continue
-		}
-		for _, candidate := range []string{cmx, strings.ToLower(cmx), strings.ToUpper(cmx)} {
-			if k.ShielderCommitmentExists(ctx, candidate) {
-				return fmt.Errorf("shielder proof carries spent commitment")
-			}
+	if proof.Tornado != nil {
+		if proof.Tornado.MerklePath != nil && len(proof.Tornado.MerklePath.PathElements) > 0 {
+			return fmt.Errorf("shielder proof carries merkle path")
 		}
 	}
 	return nil

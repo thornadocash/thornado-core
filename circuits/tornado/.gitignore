@@ -1,0 +1,11 @@
+node_modules/
+build/
+*.ptau
+!artifacts/.gitkeep
+
+# Large production artifacts — fetch with `npm run download-artifacts`
+artifacts/withdraw.json
+artifacts/withdraw_proving_key.bin
+artifacts/withdraw_proving_key.json
+artifacts/tornado.params
+artifacts/tornado_no_zeros.params

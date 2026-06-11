@@ -135,6 +135,7 @@ var (
 	NewMsgNodeSlotAuctionBidPow    = types.NewMsgNodeSlotAuctionBidPow
 	NewMsgNodeSlotAuctionSelectBid = types.NewMsgNodeSlotAuctionSelectBid
 	NewMsgNodeSlotAuctionShield    = types.NewMsgNodeSlotAuctionShield
+	NewMsgBondFromNotes            = types.NewMsgBondFromNotes
 )
 
 type (
@@ -169,6 +170,7 @@ type (
 	MsgNodeSlotAuctionBidPow    = types.MsgNodeSlotAuctionBidPow
 	MsgNodeSlotAuctionSelectBid = types.MsgNodeSlotAuctionSelectBid
 	MsgNodeSlotAuctionShield    = types.MsgNodeSlotAuctionShield
+	MsgBondFromNotes            = types.MsgBondFromNotes
 
 	// Keeper structs
 	ObservedTxs             = common.ObservedTxs

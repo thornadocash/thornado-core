@@ -2,6 +2,7 @@ package thornado
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/thornadocash/go-thornado/common/cosmos"
@@ -53,6 +54,13 @@ func TestVerifyShielderRedeemCallsWrapper(t *testing.T) {
 	}
 }
 
+func TestDepositRequestPowAllowsUserDepositsWithoutShieldNotes(t *testing.T) {
+	msg := types.NewMsgDepositRequestPow("pow-token", strings.Repeat("02", 33))
+	if err := msg.ValidateBasic(); err != nil {
+		t.Fatalf("expected user deposit without note commitments to pass: %v", err)
+	}
+}
+
 func TestRejectLeakyShielderRedeemProofRejectsPrivateFields(t *testing.T) {
 	err := RejectLeakyShielderRedeemProof(cosmos.Context{}, &shielderFloorTestKeeper{}, []byte(`{
 		"nullifier":"nf",
@@ -65,31 +73,28 @@ func TestRejectLeakyShielderRedeemProofRejectsPrivateFields(t *testing.T) {
 	}
 }
 
-func TestRejectLeakyShielderRedeemProofRejectsKnownCommitment(t *testing.T) {
-	k := &shielderFloorTestKeeper{commitments: map[string]bool{"abc": true}}
-	err := RejectLeakyShielderRedeemProof(cosmos.Context{}, k, []byte(`{
+func TestRejectLeakyShielderRedeemProofRejectsTornadoMerklePath(t *testing.T) {
+	err := RejectLeakyShielderRedeemProof(cosmos.Context{}, &shielderFloorTestKeeper{}, []byte(`{
 		"nullifier":"",
 		"secret":"",
 		"commitment":"",
 		"merkle_root":"root",
-		"orchard":{"actions":[{"cmx_hex":"ABC"}]}
+		"tornado":{"merkle_path":{"path_elements":["abc"]}}
 	}`))
 	if err == nil {
-		t.Fatal("expected proof carrying known commitment to fail")
+		t.Fatal("expected tornado merkle path leak to fail")
 	}
 }
 
-func TestRejectLeakyShielderRedeemProofAllowsUnknownActionCommitment(t *testing.T) {
-	k := &shielderFloorTestKeeper{commitments: map[string]bool{"spent": true}}
-	err := RejectLeakyShielderRedeemProof(cosmos.Context{}, k, []byte(`{
-		"nullifier":"",
-		"secret":"",
-		"commitment":"",
-		"merkle_root":"root",
-		"orchard":{"actions":[{"cmx_hex":"dummy"}]}
+func TestValidateShielderRedeemPublicJSONRejectsMissingRecipient(t *testing.T) {
+	err := ValidateShielderRedeemPublicJSON([]byte(`{
+		"nullifier_hash":"1",
+		"merkle_root":"2",
+		"denomination_sats":100000,
+		"fee_sats":1000
 	}`))
-	if err != nil {
-		t.Fatal(err)
+	if err == nil {
+		t.Fatal("expected missing recipient to fail")
 	}
 }
 

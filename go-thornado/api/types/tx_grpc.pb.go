@@ -49,6 +49,7 @@ const (
 	Msg_NodeSlotAuctionBidPow_FullMethodName    = "/types.Msg/NodeSlotAuctionBidPow"
 	Msg_NodeSlotAuctionSelectBid_FullMethodName = "/types.Msg/NodeSlotAuctionSelectBid"
 	Msg_NodeSlotAuctionShield_FullMethodName    = "/types.Msg/NodeSlotAuctionShield"
+	Msg_BondFromNotes_FullMethodName            = "/types.Msg/BondFromNotes"
 )
 
 // MsgClient is the client API for Msg service.
@@ -85,6 +86,7 @@ type MsgClient interface {
 	NodeSlotAuctionBidPow(ctx context.Context, in *MsgNodeSlotAuctionBidPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error)
 	NodeSlotAuctionSelectBid(ctx context.Context, in *MsgNodeSlotAuctionSelectBid, opts ...grpc.CallOption) (*MsgEmpty, error)
 	NodeSlotAuctionShield(ctx context.Context, in *MsgNodeSlotAuctionShield, opts ...grpc.CallOption) (*MsgShielderShieldResponse, error)
+	BondFromNotes(ctx context.Context, in *MsgBondFromNotes, opts ...grpc.CallOption) (*MsgBondFromNotesResponse, error)
 }
 
 type msgClient struct {
@@ -365,6 +367,15 @@ func (c *msgClient) NodeSlotAuctionShield(ctx context.Context, in *MsgNodeSlotAu
 	return out, nil
 }
 
+func (c *msgClient) BondFromNotes(ctx context.Context, in *MsgBondFromNotes, opts ...grpc.CallOption) (*MsgBondFromNotesResponse, error) {
+	out := new(MsgBondFromNotesResponse)
+	err := c.cc.Invoke(ctx, Msg_BondFromNotes_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MsgServer is the server API for Msg service.
 // All implementations must embed UnimplementedMsgServer
 // for forward compatibility
@@ -399,6 +410,7 @@ type MsgServer interface {
 	NodeSlotAuctionBidPow(context.Context, *MsgNodeSlotAuctionBidPow) (*MsgDepositRequestPowResponse, error)
 	NodeSlotAuctionSelectBid(context.Context, *MsgNodeSlotAuctionSelectBid) (*MsgEmpty, error)
 	NodeSlotAuctionShield(context.Context, *MsgNodeSlotAuctionShield) (*MsgShielderShieldResponse, error)
+	BondFromNotes(context.Context, *MsgBondFromNotes) (*MsgBondFromNotesResponse, error)
 	mustEmbedUnimplementedMsgServer()
 }
 
@@ -495,6 +507,9 @@ func (UnimplementedMsgServer) NodeSlotAuctionSelectBid(context.Context, *MsgNode
 }
 func (UnimplementedMsgServer) NodeSlotAuctionShield(context.Context, *MsgNodeSlotAuctionShield) (*MsgShielderShieldResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NodeSlotAuctionShield not implemented")
+}
+func (UnimplementedMsgServer) BondFromNotes(context.Context, *MsgBondFromNotes) (*MsgBondFromNotesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BondFromNotes not implemented")
 }
 func (UnimplementedMsgServer) mustEmbedUnimplementedMsgServer() {}
 
@@ -1049,6 +1064,24 @@ func _Msg_NodeSlotAuctionShield_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_BondFromNotes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgBondFromNotes)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).BondFromNotes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_BondFromNotes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).BondFromNotes(ctx, req.(*MsgBondFromNotes))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Msg_ServiceDesc is the grpc.ServiceDesc for Msg service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1175,6 +1208,10 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "NodeSlotAuctionShield",
 			Handler:    _Msg_NodeSlotAuctionShield_Handler,
+		},
+		{
+			MethodName: "BondFromNotes",
+			Handler:    _Msg_BondFromNotes_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -255,6 +255,25 @@ chain-evm:
     - yarn install --non-interactive
     - yarn hardhat test
 
+shielder-audit:
+  rules:
+    - if: $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH && $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH != $CI_MERGE_REQUEST_PROJECT_PATH
+      when: never
+    - changes:
+        paths:
+          - circuits/tornado/**/*
+          - crates/thornado-shielder/**/*
+          - crates/thornado-ffi/**/*
+  stage: test
+  image: rust:1.90.0
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends nodejs npm
+  script:
+    - cd ../circuits/tornado
+    - npm ci
+    - npm run download-artifacts
+    - npm run audit:differential
+
 pages:
   rules:
     - if: $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH && $CI_MERGE_REQUEST_SOURCE_PROJECT_PATH != $CI_MERGE_REQUEST_PROJECT_PATH

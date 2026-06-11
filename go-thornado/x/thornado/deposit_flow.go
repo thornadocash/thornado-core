@@ -42,6 +42,7 @@ func RegisterNodeSlotBidDepositPowToken(ctx cosmos.Context, k keeper.Keeper, own
 		Bidder:         owner,
 		OperatorPubKey: session.OperatorPubKey,
 		NodePubKey:     session.NodePubKey,
+		DepositAddress: session.DepositAddress,
 		CreatedHeight:  ctx.BlockHeight(),
 		UpdatedHeight:  ctx.BlockHeight(),
 	}
@@ -80,6 +81,9 @@ func registerDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.A
 		}
 		if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, nodePubKey); err != nil {
 			return types.DepositSession{}, fmt.Errorf("invalid node pubkey: %w", err)
+		}
+		if auctionID == "" {
+			return types.DepositSession{}, fmt.Errorf("node bonds activate via MsgBondFromNotes from shielded notes")
 		}
 	}
 	if auctionID != "" && nodePubKey == "" {
@@ -128,8 +132,8 @@ func registerDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.A
 		ExpiresAtHeight:  expiresAtHeight,
 		PurgeAtHeight:    purgeAtHeight,
 		PowDurationMs:    powDurationMs,
-		PowDifficulty:    powDifficulty,
-		Status:           types.DepositStatusAddressIssued,
+		PowDifficulty: powDifficulty,
+		Status:        types.DepositStatusAddressIssued,
 	}
 	mapping := types.DepositAddress{
 		Address:         address,
@@ -256,12 +260,12 @@ func MatchCoreDeposit(ctx cosmos.Context, mgr Manager, tx ObservedTx) (types.Dep
 
 	if session, err := k.GetDepositSession(ctx, mapping.Owner); err == nil && tx.Tx.ToAddress.Equals(session.DepositAddress) {
 		session.DepositID = tx.Tx.ID
-		session.Status = types.DepositStatusDepositMatched
 		session.RefundEligibleHeight = deposit.RefundEligibleHeight
 		session.InboundTxID = tx.Tx.ID
 		session.BTCConfirmations = confirmationRequired
 		session.BTCConfirmationsRequired = confirmationRequired
 		session.BTCObservedHeight = tx.BlockHeight
+		session.Status = types.DepositStatusDepositMatched
 		if err := k.SetDepositSession(ctx, session); err != nil {
 			return types.DepositRecord{}, err
 		}
@@ -361,7 +365,19 @@ func queueExpiredDepositReturn(ctx cosmos.Context, mgr Manager, deposit types.De
 	if deposit.ReturnAddress.IsEmpty() {
 		return fmt.Errorf("missing deposit return address")
 	}
-	amount := cosmos.NewUint(deposit.AmountSats)
+	feeSats := withdrawalFeeSats(ctx, mgr.Keeper(), deposit.AmountSats)
+	if feeSats >= deposit.AmountSats {
+		if err := addWithdrawalFee(ctx, mgr.Keeper(), deposit.AmountSats); err != nil {
+			return err
+		}
+		ctx.Logger().Info("expired deposit return consumed by fee",
+			"deposit_id", deposit.DepositID.String(),
+			"amount", deposit.AmountSats,
+			"fee", feeSats,
+		)
+		return nil
+	}
+	amount := cosmos.NewUint(deposit.AmountSats - feeSats)
 	maxGasCoin, err := mgr.GasMgr().GetMaxGas(ctx, common.BTCChain)
 	if err != nil {
 		return fmt.Errorf("fail to get bitcoin return max gas: %w", err)
@@ -384,6 +400,7 @@ func queueExpiredDepositReturn(ctx cosmos.Context, mgr Manager, deposit types.De
 		"deposit_id", deposit.DepositID.String(),
 		"to", deposit.ReturnAddress.String(),
 		"amount", amount.String(),
+		"fee", feeSats,
 	)
 	ok, err := mgr.TxOutStore().TryAddTxOutItem(ctx, mgr, item, cosmos.ZeroUint())
 	if err != nil {
@@ -392,7 +409,7 @@ func queueExpiredDepositReturn(ctx cosmos.Context, mgr Manager, deposit types.De
 	if !ok {
 		return fmt.Errorf("deposit return was not queued")
 	}
-	return nil
+	return addWithdrawalFee(ctx, mgr.Keeper(), feeSats)
 }
 
 func nextDepositAddressExpiryHeight(ctx cosmos.Context, k keeper.Keeper) int64 {
