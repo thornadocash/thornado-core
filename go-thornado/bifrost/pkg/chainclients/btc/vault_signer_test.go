@@ -13,8 +13,8 @@ import (
 
 	frostsessions "github.com/thornadocash/go-thornado/go-wrappers/frost/go-frost/sessions"
 
-	p2pstorage "github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/frost"
+	p2pstorage "github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/common"
 )
 

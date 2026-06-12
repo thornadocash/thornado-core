@@ -6,9 +6,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog"
+	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
-	"github.com/thornadocash/go-thornado/bifrost/frost"
 )
 
 // SignCheckpoint is used to checkpoint the built transaction before signing, for use in

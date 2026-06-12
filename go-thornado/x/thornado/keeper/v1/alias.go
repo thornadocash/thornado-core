@@ -46,7 +46,7 @@ var (
 	NewJail                    = types.NewJail
 	NewNetwork                 = types.NewNetwork
 	NewObservedTx              = common.NewObservedTx
-	NewFrostVoter                = types.NewFrostVoter
+	NewFrostVoter              = types.NewFrostVoter
 	NewErrataTxVoter           = types.NewErrataTxVoter
 	NewObservedTxVoter         = types.NewObservedTxVoter
 	NewKeygen                  = types.NewKeygen
@@ -71,7 +71,7 @@ var (
 	GetCurrentVersion          = types.GetCurrentVersion
 	NewObservedNetworkFeeVoter = types.NewObservedNetworkFeeVoter
 	NewNetworkFee              = types.NewNetworkFee
-	NewFrostKeysignFailVoter     = types.NewFrostKeysignFailVoter
+	NewFrostKeysignFailVoter   = types.NewFrostKeysignFailVoter
 	SetupConfigForTest         = types.SetupConfigForTest
 )
 
@@ -79,8 +79,8 @@ type (
 	ObservedTxs             = common.ObservedTxs
 	ObservedTxVoter         = types.ObservedTxVoter
 	ErrataTxVoter           = types.ErrataTxVoter
-	FrostVoter                = types.FrostVoter
-	FrostKeysignFailVoter     = types.FrostKeysignFailVoter
+	FrostVoter              = types.FrostVoter
+	FrostKeysignFailVoter   = types.FrostKeysignFailVoter
 	TxOutItem               = types.TxOutItem
 	TxOut                   = types.TxOut
 	KeygenBlock             = types.KeygenBlock
@@ -95,14 +95,13 @@ type (
 	VaultStatus             = types.VaultStatus
 	NetworkFee              = types.NetworkFee
 	ObservedNetworkFeeVoter = types.ObservedNetworkFeeVoter
-	FrostKeygenMetric         = types.FrostKeygenMetric
-	FrostKeysignMetric        = types.FrostKeysignMetric
+	FrostKeygenMetric       = types.FrostKeygenMetric
+	FrostKeysignMetric      = types.FrostKeysignMetric
 	SolvencyVoter           = types.SolvencyVoter
 	MinJoinLast             = types.MinJoinLast
 	NodeConfig              = types.NodeConfig
 	NodeConfigs             = types.NodeConfigs
 	OraclePrice             = types.OraclePrice
-	PriceFeed               = types.PriceFeed
 
 	ProtoInt64        = types.ProtoInt64
 	ProtoUint64       = types.ProtoUint64

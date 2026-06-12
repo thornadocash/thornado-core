@@ -25,13 +25,13 @@ import (
 
 	"github.com/thornadocash/go-thornado/app"
 	"github.com/thornadocash/go-thornado/bifrost/blockscanner"
+	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
 	"github.com/thornadocash/go-thornado/bifrost/observer"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients"
 	"github.com/thornadocash/go-thornado/bifrost/pubkeymanager"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
-	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
 	"github.com/thornadocash/go-thornado/constants"
@@ -46,25 +46,25 @@ type frostVaultChecker interface {
 
 // Signer will pull the tx out from thornado and then forward it to chain
 type Signer struct {
-	logger               zerolog.Logger
-	cfg                  config.Bifrost
-	wg                   *sync.WaitGroup
-	thornadoBridge       thornadoclient.ThornadoBridge
-	stopChan             chan struct{}
-	blockScanner         *blockscanner.BlockScanner
-	thornadoBlockScanner *ThornadoBlockScan
-	chains               map[common.Chain]chainclients.ChainClient
-	storage              SignerStorage
-	m                    *metrics.Metrics
-	errCounter           *prometheus.CounterVec
-	frostKeygen            *frost.KeyGen
-	pubkeyMgr            pubkeymanager.PubKeyValidator
-	constantsProvider    *ConstantsProvider
-	localPubKeyECDSA     common.PubKey
-	localPubKeyEDDSA     common.PubKey
-	frostKeysignMetricMgr  *metrics.FrostKeysignMetricMgr
-	observer             *observer.Observer
-	pipeline             *pipeline
+	logger                zerolog.Logger
+	cfg                   config.Bifrost
+	wg                    *sync.WaitGroup
+	thornadoBridge        thornadoclient.ThornadoBridge
+	stopChan              chan struct{}
+	blockScanner          *blockscanner.BlockScanner
+	thornadoBlockScanner  *ThornadoBlockScan
+	chains                map[common.Chain]chainclients.ChainClient
+	storage               SignerStorage
+	m                     *metrics.Metrics
+	errCounter            *prometheus.CounterVec
+	frostKeygen           *frost.KeyGen
+	pubkeyMgr             pubkeymanager.PubKeyValidator
+	constantsProvider     *ConstantsProvider
+	localPubKeyECDSA      common.PubKey
+	localPubKeyEDDSA      common.PubKey
+	frostKeysignMetricMgr *metrics.FrostKeysignMetricMgr
+	observer              *observer.Observer
+	pipeline              *pipeline
 }
 
 // NewSigner create a new instance of signer
@@ -132,24 +132,24 @@ func NewSigner(cfg config.Bifrost,
 	}
 	constantProvider := NewConstantsProvider(thornadoBridge)
 	return &Signer{
-		logger:               log.With().Str("module", "signer").Logger(),
-		cfg:                  cfg,
-		wg:                   &sync.WaitGroup{},
-		stopChan:             make(chan struct{}),
-		blockScanner:         blockScanner,
-		thornadoBlockScanner: thornadoBlockScanner,
-		chains:               chains,
-		m:                    m,
-		storage:              storage,
-		errCounter:           m.GetCounterVec(metrics.SignerError),
-		pubkeyMgr:            pubkeyMgr,
-		thornadoBridge:       thornadoBridge,
-		frostKeygen:            kg,
-		constantsProvider:    constantProvider,
-		localPubKeyECDSA:     na.PubKeySet.Secp256k1,
-		localPubKeyEDDSA:     na.PubKeySet.Ed25519,
-		frostKeysignMetricMgr:  frostKeysignMetricMgr,
-		observer:             obs,
+		logger:                log.With().Str("module", "signer").Logger(),
+		cfg:                   cfg,
+		wg:                    &sync.WaitGroup{},
+		stopChan:              make(chan struct{}),
+		blockScanner:          blockScanner,
+		thornadoBlockScanner:  thornadoBlockScanner,
+		chains:                chains,
+		m:                     m,
+		storage:               storage,
+		errCounter:            m.GetCounterVec(metrics.SignerError),
+		pubkeyMgr:             pubkeyMgr,
+		thornadoBridge:        thornadoBridge,
+		frostKeygen:           kg,
+		constantsProvider:     constantProvider,
+		localPubKeyECDSA:      na.PubKeySet.Secp256k1,
+		localPubKeyEDDSA:      na.PubKeySet.Ed25519,
+		frostKeysignMetricMgr: frostKeysignMetricMgr,
+		observer:              obs,
 	}, nil
 }
 

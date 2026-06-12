@@ -17,16 +17,16 @@ import (
 )
 
 type frostSignableBTC struct {
-	vaultPubKey   common.PubKey
+	vaultPubKey     common.PubKey
 	frostKeyManager frost.ThornadoKeyManager
-	log           zerolog.Logger
+	log             zerolog.Logger
 }
 
 func newFrostSignableBTC(vaultPubKey common.PubKey, frostKeyManager frost.ThornadoKeyManager, log zerolog.Logger) *frostSignableBTC {
 	return &frostSignableBTC{
-		vaultPubKey:   vaultPubKey,
+		vaultPubKey:     vaultPubKey,
 		frostKeyManager: frostKeyManager,
-		log:           log,
+		log:             log,
 	}
 }
 

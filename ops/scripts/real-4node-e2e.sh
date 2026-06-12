@@ -3,14 +3,16 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BUILD_DIR="${ROOT_DIR}/build"
-RUN_ROOT="${RUN_ROOT:-/tmp/thornado-real4}"
+RUN_ID="${RUN_ID:-$(date +%Y%m%d%H%M%S)-$$}"
+RUN_ROOT="${RUN_ROOT:-/tmp/thornado-real4-${RUN_ID}}"
 CHAIN_ID="${CHAIN_ID:-thornado-e2e}"
 PASS="${SIGNER_PASSWD:-passphrase123}"
-BTC_CONTAINER="${BTC_CONTAINER:-thornado-real4-bitcoind}"
+BTC_CONTAINER="${BTC_CONTAINER:-thornado-real4-${RUN_ID}-bitcoind}"
 BTC_RPC_PORT="${BTC_RPC_PORT:-18445}"
 BTC_P2P_PORT="${BTC_P2P_PORT:-18446}"
 FLOW1_SCENARIO="${FLOW1_SCENARIO:-happy}"
 FLOW1_SKIP_BIFROST_NODES="${FLOW1_SKIP_BIFROST_NODES:-}"
+KEEP_ARTIFACTS="${KEEP_ARTIFACTS:-1}"
 
 THORNADO="${BUILD_DIR}/thornado"
 BIFROST="${BUILD_DIR}/bifrost"
@@ -23,7 +25,25 @@ log() {
 
 die() {
   printf '[real4] ERROR: %s\n' "$*" >&2
+  write_run_summary "FAIL" "$*"
   exit 1
+}
+
+write_run_summary() {
+  local status="$1" message="${2:-}"
+  mkdir -p "$RUN_ROOT/meta" 2>/dev/null || true
+  jq -n \
+    --arg status "$status" \
+    --arg message "$message" \
+    --arg run_root "$RUN_ROOT" \
+    --arg btc_container "$BTC_CONTAINER" \
+    --arg btc_rpc_port "$BTC_RPC_PORT" \
+    --arg btc_p2p_port "$BTC_P2P_PORT" \
+    --arg flow_limit "${FLOW_LIMIT:-7}" \
+    --arg flow1_scenario "$FLOW1_SCENARIO" \
+    --arg completed_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    '{status:$status,message:$message,run_root:$run_root,btc_container:$btc_container,btc_rpc_port:$btc_rpc_port,btc_p2p_port:$btc_p2p_port,flow_limit:$flow_limit,flow1_scenario:$flow1_scenario,completed_at:$completed_at}' \
+    >"$RUN_ROOT/meta/run-summary.json" 2>/dev/null || true
 }
 
 json_get() {
@@ -91,8 +111,31 @@ stop_pid_file() {
   pid="$(cat "$file" 2>/dev/null || true)"
   if [[ -n "$pid" ]] && kill -0 "$pid" >/dev/null 2>&1; then
     kill "$pid" >/dev/null 2>&1 || true
+    for _ in {1..20}; do
+      kill -0 "$pid" >/dev/null 2>&1 || return 0
+      sleep 0.1
+    done
+    kill -9 "$pid" >/dev/null 2>&1 || true
   fi
 }
+
+cleanup_runtime() {
+  local exit_code=$?
+  if [[ "${KEEP_RUNNING:-0}" == "1" ]]; then
+    return "$exit_code"
+  fi
+  log "cleaning up runtime processes and bitcoind"
+  for file in "$RUN_ROOT"/pids/*.pid; do
+    stop_pid_file "$file"
+  done
+  docker rm -f "$BTC_CONTAINER" >/dev/null 2>&1 || true
+  if [[ "$KEEP_ARTIFACTS" != "1" ]]; then
+    rm -rf "$RUN_ROOT"
+  fi
+  return "$exit_code"
+}
+
+trap cleanup_runtime EXIT
 
 pty_ed25519() {
   local home="$1" name="$2" mnemonic="$3"
@@ -442,11 +485,6 @@ reset_all() {
   if [[ -n "$stale_containers" ]]; then
     docker rm $stale_containers >/dev/null 2>&1 || true
   fi
-  pkill -f "$RUN_ROOT" >/dev/null 2>&1 || true
-  pkill -f "$BIFROST --log-level" >/dev/null 2>&1 || true
-  pkill -f "$BIFROST" >/dev/null 2>&1 || true
-  pkill -f "$THORNADO" >/dev/null 2>&1 || true
-  pkill -f "$THORNADO start --home $RUN_ROOT" >/dev/null 2>&1 || true
   for port in 1317 1318 1319 1320 1321 1322 26651 26652 26653 26654 26655 26656 26657 26658 26659 26660 26661 26662 50051 50052 50053 50054 50055 50056 5041 5042 5043 5044 5045 5046 6041 6042 6043 6044 6045 6046 9001 9002 9003 9004 9005 9006; do
     while read -r pid; do
       [[ -n "$pid" ]] && kill -9 "$pid" >/dev/null 2>&1 || true
@@ -462,6 +500,7 @@ reset_all() {
   docker rm -f "$BTC_CONTAINER" >/dev/null 2>&1 || true
   rm -rf "$RUN_ROOT"
   mkdir -p "$RUN_ROOT"/{logs,pids,meta}
+  write_run_summary "RUNNING" "initialized"
 }
 
 start_bitcoind() {
@@ -790,6 +829,26 @@ start_thornado_node6() {
   done
 }
 
+wait_bifrost_health() {
+  local i="$1" timeout="${2:-120}" start
+  start="$(date +%s)"
+  while true; do
+    if curl -fsS "http://127.0.0.1:$((6040 + i))/ping" >/dev/null 2>&1; then
+      log "bifrost-${i} health ready"
+      return 0
+    fi
+    if ! kill -0 "$(cat "$RUN_ROOT/pids/bifrost-${i}.pid")" >/dev/null 2>&1; then
+      tail -n 120 "$RUN_ROOT/logs/bifrost-${i}.log" >&2 || true
+      die "bifrost-${i} exited before health was ready"
+    fi
+    if (( "$(date +%s)" - start >= timeout )); then
+      tail -n 120 "$RUN_ROOT/logs/bifrost-${i}.log" >&2 || true
+      die "timed out waiting for bifrost-${i} health"
+    fi
+    sleep 1
+  done
+}
+
 start_bifrost_nodes() {
   log "starting Bifrost signers"
   local bootstrap=""
@@ -815,11 +874,13 @@ start_bifrost_nodes() {
     CHAIN_API="127.0.0.1:$((1316 + i))" \
     CHAIN_RPC="127.0.0.1:$((26656 + i))" \
     BIFROST_METRICS_LISTEN_PORT="$((9000 + i))" \
-    BIFROST_TSS_P2P_PORT="$((5040 + i))" \
-    BIFROST_TSS_INFO_ADDRESS="127.0.0.1:$((6040 + i))" \
-    BIFROST_TSS_BOOTSTRAP_PEERS="$bootstrap" \
-    BIFROST_TSS_EXTERNAL_IP="127.0.0.1" \
-    BIFROST_TSS_ALLOW_ZERO_BOND_NODES="true" \
+    BIFROST_FROST_P2P_PORT="$((5040 + i))" \
+    BIFROST_FROST_INFO_ADDRESS="127.0.0.1:$((6040 + i))" \
+    BIFROST_FROST_BOOTSTRAP_PEERS="$bootstrap" \
+    BIFROST_FROST_EXTERNAL_IP="127.0.0.1" \
+    BIFROST_FROST_ALLOW_ZERO_BOND_NODES="true" \
+    PEER="$bootstrap" \
+    EXTERNAL_IP="127.0.0.1" \
     BIFROST_SIGNER_SIGNER_DB_PATH="$bhome/signer_db" \
     BIFROST_SIGNER_KEYGEN_TIMEOUT="5s" \
     BIFROST_SIGNER_KEYSIGN_TIMEOUT="5s" \
@@ -843,6 +904,7 @@ start_bifrost_nodes() {
     "$BIFROST" --log-level debug >"$RUN_ROOT/logs/bifrost-${i}.log" 2>&1 &
     echo "$!" >"$RUN_ROOT/pids/bifrost-${i}.pid"
     sleep 2
+    wait_bifrost_health "$i" 120
     if [[ -z "$bootstrap" ]]; then
       for _ in {1..60}; do
         if curl -fsS "http://127.0.0.1:$((6040 + i))/p2pid" >/tmp/bifrost-p2pid.txt 2>/dev/null; then
@@ -870,22 +932,7 @@ start_bifrost_nodes() {
     if [[ ",${FLOW1_SKIP_BIFROST_NODES}," == *",${i},"* ]]; then
       continue
     fi
-    local start
-    start="$(date +%s)"
-    while true; do
-      if curl -fsS "http://127.0.0.1:$((6040 + i))/ping" >/dev/null 2>&1; then
-        log "bifrost-${i} health ready"
-        break
-      fi
-      if ! kill -0 "$(cat "$RUN_ROOT/pids/bifrost-${i}.pid")" >/dev/null 2>&1; then
-        tail -n 80 "$RUN_ROOT/logs/bifrost-${i}.log" >&2 || true
-        die "bifrost-${i} exited before health was ready"
-      fi
-      if (( "$(date +%s)" - start >= 120 )); then
-        die "timed out waiting for bifrost-${i} health"
-      fi
-      sleep 1
-    done
+    wait_bifrost_health "$i" 120
   done
   local peers=()
   for i in 1 2 3 4; do
@@ -920,11 +967,13 @@ start_bifrost_node_for_flow1() {
   CHAIN_API="127.0.0.1:$((1316 + i))" \
   CHAIN_RPC="127.0.0.1:$((26656 + i))" \
   BIFROST_METRICS_LISTEN_PORT="$((9000 + i))" \
-  BIFROST_TSS_P2P_PORT="$((5040 + i))" \
-  BIFROST_TSS_INFO_ADDRESS="127.0.0.1:$((6040 + i))" \
-  BIFROST_TSS_BOOTSTRAP_PEERS="$bootstrap" \
-  BIFROST_TSS_EXTERNAL_IP="127.0.0.1" \
-  BIFROST_TSS_ALLOW_ZERO_BOND_NODES="true" \
+  BIFROST_FROST_P2P_PORT="$((5040 + i))" \
+  BIFROST_FROST_INFO_ADDRESS="127.0.0.1:$((6040 + i))" \
+  BIFROST_FROST_BOOTSTRAP_PEERS="$bootstrap" \
+  BIFROST_FROST_EXTERNAL_IP="127.0.0.1" \
+  BIFROST_FROST_ALLOW_ZERO_BOND_NODES="true" \
+  PEER="$bootstrap" \
+  EXTERNAL_IP="127.0.0.1" \
   BIFROST_SIGNER_SIGNER_DB_PATH="$bhome/signer_db" \
   BIFROST_SIGNER_KEYGEN_TIMEOUT="5s" \
   BIFROST_SIGNER_KEYSIGN_TIMEOUT="5s" \
@@ -990,11 +1039,13 @@ start_bifrost_node6() {
   CHAIN_API="127.0.0.1:1322" \
   CHAIN_RPC="127.0.0.1:26662" \
   BIFROST_METRICS_LISTEN_PORT="9006" \
-  BIFROST_TSS_P2P_PORT="5046" \
-  BIFROST_TSS_INFO_ADDRESS="127.0.0.1:6046" \
-  BIFROST_TSS_BOOTSTRAP_PEERS="$bootstrap" \
-  BIFROST_TSS_EXTERNAL_IP="127.0.0.1" \
-  BIFROST_TSS_ALLOW_ZERO_BOND_NODES="true" \
+  BIFROST_FROST_P2P_PORT="5046" \
+  BIFROST_FROST_INFO_ADDRESS="127.0.0.1:6046" \
+  BIFROST_FROST_BOOTSTRAP_PEERS="$bootstrap" \
+  BIFROST_FROST_EXTERNAL_IP="127.0.0.1" \
+  BIFROST_FROST_ALLOW_ZERO_BOND_NODES="true" \
+  PEER="$bootstrap" \
+  EXTERNAL_IP="127.0.0.1" \
   BIFROST_SIGNER_SIGNER_DB_PATH="$bhome/signer_db" \
   BIFROST_SIGNER_KEYGEN_TIMEOUT="5s" \
   BIFROST_SIGNER_KEYSIGN_TIMEOUT="5s" \
@@ -1172,10 +1223,10 @@ validate_flow1_forged_vault_state() {
   CHAIN_API="127.0.0.1:1317" \
   CHAIN_RPC="127.0.0.1:26657" \
   BIFROST_METRICS_LISTEN_PORT="9001" \
-  BIFROST_TSS_P2P_PORT="5041" \
-  BIFROST_TSS_INFO_ADDRESS="127.0.0.1:6041" \
-  BIFROST_TSS_EXTERNAL_IP="127.0.0.1" \
-  BIFROST_TSS_ALLOW_ZERO_BOND_NODES="true" \
+  BIFROST_FROST_P2P_PORT="5041" \
+  BIFROST_FROST_INFO_ADDRESS="127.0.0.1:6041" \
+  BIFROST_FROST_EXTERNAL_IP="127.0.0.1" \
+  EXTERNAL_IP="127.0.0.1" \
   BIFROST_SIGNER_SIGNER_DB_PATH="$bhome/signer_db" \
   BIFROST_FROST_SHARED_DEALER_DIR="$RUN_ROOT/frost-dealer" \
   BIFROST_CHAINS_BTC_BLOCK_SCANNER_DB_PATH="$bhome/btc_observer" \
@@ -2235,6 +2286,7 @@ main() {
   fi
   validate_flow7
   log "All 7 flows passed at ${RUN_ROOT}"
+  write_run_summary "PASS" "all requested flows passed"
   keep_running_if_requested
 }
 

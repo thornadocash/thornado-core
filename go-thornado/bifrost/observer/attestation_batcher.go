@@ -25,7 +25,6 @@ type AttestationBatcher struct {
 	networkFeeBatch []*common.AttestNetworkFee
 	solvencyBatch   []*common.AttestSolvency
 	errataTxBatch   []*common.AttestErrataTx
-	priceFeedBatch  []*common.AttestPriceFeed
 
 	batchPool sync.Pool
 
@@ -173,8 +172,7 @@ func (b *AttestationBatcher) sendBatches(ctx context.Context, force bool) {
 	hasMessages := len(b.observedTxBatch) > 0 ||
 		len(b.networkFeeBatch) > 0 ||
 		len(b.solvencyBatch) > 0 ||
-		len(b.errataTxBatch) > 0 ||
-		len(b.priceFeedBatch) > 0
+		len(b.errataTxBatch) > 0
 	timeThresholdMet := time.Since(b.lastBatchSent) >= b.batchInterval
 
 	if !hasMessages || (!timeThresholdMet && !force) {
@@ -193,7 +191,6 @@ func (b *AttestationBatcher) sendBatches(ctx context.Context, force bool) {
 			AttestNetworkFees: make([]*common.AttestNetworkFee, 0, max),
 			AttestSolvencies:  make([]*common.AttestSolvency, 0, max),
 			AttestErrataTxs:   make([]*common.AttestErrataTx, 0, max),
-			AttestPriceFeeds:  make([]*common.AttestPriceFeed, 0, max),
 		}
 	}
 
@@ -218,30 +215,21 @@ func (b *AttestationBatcher) sendBatches(ctx context.Context, force bool) {
 		clear = false
 		batchSizeErrata = max
 	}
-	batchSizePriceFeed := int64(len(b.priceFeedBatch))
-	if batchSizePriceFeed > max {
-		clear = false
-		batchSizePriceFeed = max
-	}
-
 	// Populate the batch
 	batch.AttestTxs = append(batch.AttestTxs[:0], b.observedTxBatch[:batchSizeTx]...)
 	batch.AttestNetworkFees = append(batch.AttestNetworkFees[:0], b.networkFeeBatch[:batchSizeNF]...)
 	batch.AttestSolvencies = append(batch.AttestSolvencies[:0], b.solvencyBatch[:batchSizeSolvency]...)
 	batch.AttestErrataTxs = append(batch.AttestErrataTxs[:0], b.errataTxBatch[:batchSizeErrata]...)
-	batch.AttestPriceFeeds = append(batch.AttestPriceFeeds[:0], b.priceFeedBatch[:batchSizePriceFeed]...)
 
 	txCount := len(batch.AttestTxs)
 	nfCount := len(batch.AttestNetworkFees)
 	solvencyCount := len(batch.AttestSolvencies)
 	errataCount := len(batch.AttestErrataTxs)
-	priceFeedCount := len(batch.AttestPriceFeeds)
 
 	b.observedTxBatch = b.observedTxBatch[batchSizeTx:]
 	b.networkFeeBatch = b.networkFeeBatch[batchSizeNF:]
 	b.solvencyBatch = b.solvencyBatch[batchSizeSolvency:]
 	b.errataTxBatch = b.errataTxBatch[batchSizeErrata:]
-	b.priceFeedBatch = b.priceFeedBatch[batchSizePriceFeed:]
 
 	b.mu.Unlock()
 
@@ -253,7 +241,6 @@ func (b *AttestationBatcher) sendBatches(ctx context.Context, force bool) {
 	batch.AttestNetworkFees = batch.AttestNetworkFees[:0]
 	batch.AttestSolvencies = batch.AttestSolvencies[:0]
 	batch.AttestErrataTxs = batch.AttestErrataTxs[:0]
-	batch.AttestPriceFeeds = batch.AttestPriceFeeds[:0]
 	b.batchPool.Put(batch)
 
 	batchDuration := time.Since(start)
@@ -261,7 +248,6 @@ func (b *AttestationBatcher) sendBatches(ctx context.Context, force bool) {
 	b.metrics.MessagesBatched.WithLabelValues("network_fee").Add(float64(nfCount))
 	b.metrics.MessagesBatched.WithLabelValues("solvency").Add(float64(solvencyCount))
 	b.metrics.MessagesBatched.WithLabelValues("errata_tx").Add(float64(errataCount))
-	b.metrics.MessagesBatched.WithLabelValues("price_feed").Add(float64(priceFeedCount))
 	b.metrics.BatchSendTime.Observe(batchDuration.Seconds())
 	b.metrics.BatchSends.Inc()
 
@@ -349,25 +335,6 @@ func (b *AttestationBatcher) AddErrataTx(errata common.AttestErrataTx) {
 		b.logger.Debug().
 			Int("batch_size", len(b.errataTxBatch)).
 			Msg("errata tx batch reached max size, triggering immediate send")
-
-		go b.triggerBatchSend()
-	}
-}
-
-// AddPriceFeed adds an price feed attestation to the batch
-func (b *AttestationBatcher) AddPriceFeed(priceFeed common.AttestPriceFeed) {
-	maxBatchSize := b.getMaxBatchSize()
-
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	b.priceFeedBatch = append(b.priceFeedBatch, &priceFeed)
-
-	// If we've reached the maximum batch size, trigger an immediate send
-	if int64(len(b.priceFeedBatch)) >= maxBatchSize {
-		b.logger.Debug().
-			Int("batch_size", len(b.priceFeedBatch)).
-			Msg("price feed batch reached max size, triggering immediate send")
 
 		go b.triggerBatchSend()
 	}

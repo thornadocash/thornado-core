@@ -253,7 +253,7 @@ func (k KVStoreDummy) SetObservedLink(ctx cosmos.Context, _, _ common.TxID) {}
 func (k KVStoreDummy) GetObservedLink(ctx cosmos.Context, inhash common.TxID) []common.TxID {
 	return nil
 }
-func (k KVStoreDummy) SetFrostVoter(_ cosmos.Context, _ FrostVoter)             {}
+func (k KVStoreDummy) SetFrostVoter(_ cosmos.Context, _ FrostVoter)           {}
 func (k KVStoreDummy) GetFrostVoterIterator(_ cosmos.Context) cosmos.Iterator { return nil }
 func (k KVStoreDummy) GetFrostVoter(_ cosmos.Context, _ string) (FrostVoter, error) {
 	return FrostVoter{}, kaboom

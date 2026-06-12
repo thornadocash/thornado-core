@@ -192,11 +192,10 @@ func (m *MockPrivKey) Sign(msg []byte) ([]byte, error) {
 
 type MockGRPCClient struct {
 	ebifrost.LocalhostBifrostClient
-	sendQuorumTxFunc             func(ctx context.Context, quorumTx *common.QuorumTx, opts ...grpc.CallOption) (*ebifrost.SendQuorumTxResult, error)
-	sendQuorumNetworkFeeFunc     func(ctx context.Context, quorumNetworkFee *common.QuorumNetworkFee, opts ...grpc.CallOption) (*ebifrost.SendQuorumNetworkFeeResult, error)
-	sendQuorumSolvencyFunc       func(ctx context.Context, quorumSolvency *common.QuorumSolvency, opts ...grpc.CallOption) (*ebifrost.SendQuorumSolvencyResult, error)
-	sendQuorumErrataFunc         func(ctx context.Context, quorumErrata *common.QuorumErrataTx, opts ...grpc.CallOption) (*ebifrost.SendQuorumErrataTxResult, error)
-	sendQuorumPriceFeedBatchFunc func(ctx context.Context, batch *common.QuorumPriceFeedBatch, opts ...grpc.CallOption) (*ebifrost.SendQuorumPriceFeedBatchResult, error)
+	sendQuorumTxFunc         func(ctx context.Context, quorumTx *common.QuorumTx, opts ...grpc.CallOption) (*ebifrost.SendQuorumTxResult, error)
+	sendQuorumNetworkFeeFunc func(ctx context.Context, quorumNetworkFee *common.QuorumNetworkFee, opts ...grpc.CallOption) (*ebifrost.SendQuorumNetworkFeeResult, error)
+	sendQuorumSolvencyFunc   func(ctx context.Context, quorumSolvency *common.QuorumSolvency, opts ...grpc.CallOption) (*ebifrost.SendQuorumSolvencyResult, error)
+	sendQuorumErrataFunc     func(ctx context.Context, quorumErrata *common.QuorumErrataTx, opts ...grpc.CallOption) (*ebifrost.SendQuorumErrataTxResult, error)
 }
 
 func (m *MockGRPCClient) SendQuorumTx(ctx context.Context, tx *common.QuorumTx, opts ...grpc.CallOption) (*ebifrost.SendQuorumTxResult, error) {
@@ -213,13 +212,6 @@ func (m *MockGRPCClient) SendQuorumSolvency(ctx context.Context, quorumSolvency 
 
 func (m *MockGRPCClient) SendQuorumErrataTx(ctx context.Context, quorumErrata *common.QuorumErrataTx, opts ...grpc.CallOption) (*ebifrost.SendQuorumErrataTxResult, error) {
 	return m.sendQuorumErrataFunc(ctx, quorumErrata, opts...)
-}
-
-func (m *MockGRPCClient) SendQuorumPriceFeedBatch(ctx context.Context, batch *common.QuorumPriceFeedBatch, opts ...grpc.CallOption) (*ebifrost.SendQuorumPriceFeedBatchResult, error) {
-	if m.sendQuorumPriceFeedBatchFunc != nil {
-		return m.sendQuorumPriceFeedBatchFunc(ctx, batch, opts...)
-	}
-	return &ebifrost.SendQuorumPriceFeedBatchResult{}, nil
 }
 
 type MockThornadoBridge struct {

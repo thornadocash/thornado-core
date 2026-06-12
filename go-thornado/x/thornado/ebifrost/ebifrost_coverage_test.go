@@ -70,12 +70,6 @@ func createTestErrataTx(chain common.Chain, id string, attestations []*common.At
 	}
 }
 
-func createTestPriceFeedBatch(feeds []*common.QuorumPriceFeed) *common.QuorumPriceFeedBatch {
-	return &common.QuorumPriceFeedBatch{
-		QuorumPriceFeeds: feeds,
-	}
-}
-
 // ============================================================================
 // NewEnshrinedBifrost
 // ============================================================================
@@ -253,61 +247,6 @@ func TestSendQuorumErrataTxRemovesMatchingTx(t *testing.T) {
 	require.Len(t, ebs.errataCache.items, 1)
 }
 
-// ============================================================================
-// SendQuorumPriceFeedBatch
-// ============================================================================
-
-func TestSendQuorumPriceFeedBatch(t *testing.T) {
-	ebs, _ := newTestEBS()
-
-	pk1 := []byte("pk1")
-	pk2 := []byte("pk2")
-
-	feed1 := &common.QuorumPriceFeed{
-		Attestations: []*common.Attestation{{PubKey: pk1, Signature: []byte("sig1")}},
-	}
-	batch1 := createTestPriceFeedBatch([]*common.QuorumPriceFeed{feed1})
-
-	// First batch - empty cache
-	result, err := ebs.SendQuorumPriceFeedBatch(context.Background(), batch1)
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.Len(t, ebs.priceFeedCache.items, 1)
-	require.Len(t, ebs.priceFeedCache.items[0].Item.QuorumPriceFeeds, 1)
-
-	// Second batch - new pubkey, adds to existing
-	feed2 := &common.QuorumPriceFeed{
-		Attestations: []*common.Attestation{{PubKey: pk2, Signature: []byte("sig2")}},
-	}
-	batch2 := createTestPriceFeedBatch([]*common.QuorumPriceFeed{feed2})
-
-	result, err = ebs.SendQuorumPriceFeedBatch(context.Background(), batch2)
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.Len(t, ebs.priceFeedCache.items, 1)
-	require.Len(t, ebs.priceFeedCache.items[0].Item.QuorumPriceFeeds, 2)
-
-	// Third batch - same pubkey as first, replaces
-	feed3 := &common.QuorumPriceFeed{
-		Attestations: []*common.Attestation{{PubKey: pk1, Signature: []byte("sig3")}},
-	}
-	batch3 := createTestPriceFeedBatch([]*common.QuorumPriceFeed{feed3})
-
-	result, err = ebs.SendQuorumPriceFeedBatch(context.Background(), batch3)
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.Len(t, ebs.priceFeedCache.items, 1)
-	require.Len(t, ebs.priceFeedCache.items[0].Item.QuorumPriceFeeds, 2)
-
-	// Verify pk1 was replaced
-	for _, qpf := range ebs.priceFeedCache.items[0].Item.QuorumPriceFeeds {
-		if string(qpf.Attestations[0].PubKey) == string(pk1) {
-			require.Equal(t, []byte("sig3"), qpf.Attestations[0].Signature)
-		}
-	}
-}
-
-// ============================================================================
 // Mark*AttestationsConfirmed (nil receiver)
 // ============================================================================
 
@@ -329,11 +268,6 @@ func TestMarkQuorumSolvencyAttestationsConfirmedNil(t *testing.T) {
 func TestMarkQuorumErrataTxAttestationsConfirmedNil(t *testing.T) {
 	var ebs *EnshrinedBifrost
 	ebs.MarkQuorumErrataTxAttestationsConfirmed(context.Background(), nil)
-}
-
-func TestMarkQuorumPriceFeedBatchAttestationsConfirmedNil(t *testing.T) {
-	var ebs *EnshrinedBifrost
-	ebs.MarkQuorumPriceFeedBatchAttestationsConfirmed(context.Background(), nil)
 }
 
 // ============================================================================
@@ -465,34 +399,6 @@ func TestMarkQuorumTxNotFound(t *testing.T) {
 	// No panic, just logs
 }
 
-// ============================================================================
-// MarkQuorumPriceFeedBatchAttestationsConfirmed
-// ============================================================================
-
-func TestMarkQuorumPriceFeedBatchAttestationsConfirmed(t *testing.T) {
-	ebs, _ := newTestEBS()
-
-	pk1 := []byte("pk1")
-	feed1 := &common.QuorumPriceFeed{
-		Attestations: []*common.Attestation{{PubKey: pk1, Signature: []byte("sig1")}},
-	}
-	batch := createTestPriceFeedBatch([]*common.QuorumPriceFeed{feed1})
-
-	// Add to cache first
-	_, err := ebs.SendQuorumPriceFeedBatch(context.Background(), batch)
-	require.NoError(t, err)
-	require.Len(t, ebs.priceFeedCache.items, 1)
-
-	sdkCtx := createTestSDKContext(200)
-	ctx := context.WithValue(context.Background(), sdk.SdkContextKey, sdkCtx)
-
-	ebs.MarkQuorumPriceFeedBatchAttestationsConfirmed(ctx, batch)
-
-	// Cache should be pruned (PruneExpiredItems with 0 TTL removes all)
-	require.Len(t, ebs.priceFeedCache.items, 0)
-}
-
-// ============================================================================
 // ProposalInjectTxs nil receiver
 // ============================================================================
 
@@ -530,14 +436,6 @@ func TestProposalInjectTxsAllCacheTypes(t *testing.T) {
 	// Add errata
 	e := createTestErrataTx(common.BTCChain, "err1", []*common.Attestation{att})
 	_, err = ebs.SendQuorumErrataTx(context.Background(), e)
-	require.NoError(t, err)
-
-	// Add price feed batch
-	feed := &common.QuorumPriceFeed{
-		Attestations: []*common.Attestation{att},
-	}
-	batch := createTestPriceFeedBatch([]*common.QuorumPriceFeed{feed})
-	_, err = ebs.SendQuorumPriceFeedBatch(context.Background(), batch)
 	require.NoError(t, err)
 
 	sdkCtx := createTestSDKContext(100)
@@ -965,7 +863,6 @@ func TestAnteHandleNonInjectTxWithQuorumMsg(t *testing.T) {
 		&types.MsgNetworkFeeQuorum{},
 		&types.MsgSolvencyQuorum{},
 		&types.MsgErrataTxQuorum{},
-		&types.MsgPriceFeedQuorumBatch{},
 	}
 
 	for _, msg := range quorumMsgs {

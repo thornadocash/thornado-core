@@ -18,7 +18,7 @@ func (itd InjectedTxDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate b
 	if _, ok := tx.(wInjectTx); !ok {
 		for _, m := range tx.GetMsgs() {
 			switch m.(type) {
-			case *types.MsgObservedTxQuorum, *types.MsgNetworkFeeQuorum, *types.MsgSolvencyQuorum, *types.MsgErrataTxQuorum, *types.MsgPriceFeedQuorumBatch:
+			case *types.MsgObservedTxQuorum, *types.MsgNetworkFeeQuorum, *types.MsgSolvencyQuorum, *types.MsgErrataTxQuorum:
 				// only allowed through an InjectTx, fail.
 				return ctx, cosmos.ErrUnauthorized(fmt.Sprintf("msg only allowed via proposal inject tx: %T", m))
 			default:
@@ -43,7 +43,7 @@ func (itd InjectedTxDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate b
 	// make sure entire tx is only allowed msgs
 	for _, m := range msgs {
 		switch m.(type) {
-		case *types.MsgObservedTxQuorum, *types.MsgNetworkFeeQuorum, *types.MsgSolvencyQuorum, *types.MsgErrataTxQuorum, *types.MsgPriceFeedQuorumBatch:
+		case *types.MsgObservedTxQuorum, *types.MsgNetworkFeeQuorum, *types.MsgSolvencyQuorum, *types.MsgErrataTxQuorum:
 			// allowed
 
 		default:

@@ -46,10 +46,6 @@ func checkHeightParam(height string) error {
 	return nil
 }
 
-func (s *queryServer) Export(_ context.Context, _ *types.QueryExportRequest) (*types.QueryExportResponse, error) {
-	return nil, fmt.Errorf("export query is not part of the Thornado runtime")
-}
-
 func (s *queryServer) Node(c context.Context, req *types.QueryNodeRequest) (*types.QueryNodeResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err

@@ -25,13 +25,13 @@ const (
 	MinKeysharesBackupSize      int     = 1024
 	MinFrostKeysharesBackupSize int     = 256
 	MaxKeysharesBackupSize      int     = 256 * 1024
-	MaxFrostPubKeys               int     = 100
-	MaxFrostChains                int     = 16
-	MaxFrostBlames                int     = 100
-	MaxFrostBlameDataSize         int     = 4096
-	MaxFrostBlameSignatureSize    int     = 256
-	MaxFrostTextLength            int     = 256
-	MaxFrostSignatureSize         int     = 64
+	MaxFrostPubKeys             int     = 100
+	MaxFrostChains              int     = 16
+	MaxFrostBlames              int     = 100
+	MaxFrostBlameDataSize       int     = 4096
+	MaxFrostBlameSignatureSize  int     = 256
+	MaxFrostTextLength          int     = 256
+	MaxFrostSignatureSize       int     = 64
 )
 
 // MatchMnemonic will match substrings that look like a 12+ word mnemonic.

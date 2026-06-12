@@ -734,14 +734,6 @@ func RegisterSwaggerAPI(rtr *mux.Router, swaggerEnabled bool, clientCtx ...clien
 	uiPath := fmt.Sprintf("/%s", thornado.ModuleName)
 	uiAssetsPath := fmt.Sprintf("/%s/ui/", thornado.ModuleName)
 
-	// Health Check Endpoint
-	rtr.HandleFunc(
-		fmt.Sprintf("/%s/ping", thornado.ModuleName),
-		func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, `{"ping":"pong"}`)
-		},
-	).Methods(http.MethodGet, http.MethodOptions)
-
 	// Browser client
 	if len(clientCtx) > 0 {
 		ui.RegisterBrowserAPI(rtr, thornado.ModuleName, clientCtx[0])

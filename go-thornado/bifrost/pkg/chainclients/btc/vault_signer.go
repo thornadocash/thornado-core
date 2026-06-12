@@ -10,9 +10,9 @@ import (
 
 	frostsessions "github.com/thornadocash/go-thornado/go-wrappers/frost/go-frost/sessions"
 
+	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
-	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/common"
 	ttypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )

@@ -262,12 +262,6 @@ func (m *QueryVersionResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error
 	return jsonify(m)
 }
 
-// QueryExportResponse
-// RegressionTest only
-func (m *QueryExportResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
-	return m.Content, nil
-}
-
 // Backwards compatibility for /auth/accounts/{address} endpoint
 func (m *QueryAccountResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
 	res := map[string]any{

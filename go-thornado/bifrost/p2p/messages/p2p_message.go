@@ -57,8 +57,8 @@ func (msgType ThornadoFROSTMessageType) String() string {
 // WrappedMessage is a message with type in it
 type WrappedMessage struct {
 	MessageType ThornadoFROSTMessageType `json:"message_type"`
-	MsgID       string                 `json:"message_id"`
-	Payload     []byte                 `json:"payload"`
+	MsgID       string                   `json:"message_id"`
+	Payload     []byte                   `json:"payload"`
 }
 
 // BroadcastMsgChan is the channel structure for keygen/keysign submit message to p2p network
@@ -99,10 +99,10 @@ func (m *WireMessage) GetCacheKey() string {
 }
 
 type FrostControl struct {
-	ReqHash     string                 `json:"reqest_hash"`
-	ReqKey      string                 `json:"request_key"`
+	ReqHash     string                   `json:"reqest_hash"`
+	ReqKey      string                   `json:"request_key"`
 	RequestType ThornadoFROSTMessageType `json:"request_type"`
-	Msg         *WireMessage           `json:"message_body"`
+	Msg         *WireMessage             `json:"message_body"`
 }
 
 type FrostTaskNotifier struct {

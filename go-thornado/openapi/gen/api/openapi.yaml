@@ -6,13 +6,7 @@ info:
 servers:
 - url: /
 paths:
-  /thornado/ping:
-    get:
-      responses:
-        "200":
-          description: Pong
-      summary: Ping
-  /thornado/account/{address}:
+  /auth/accounts/{address}:
     get:
       parameters:
       - explode: false
@@ -26,20 +20,6 @@ paths:
         "200":
           description: Account response
       summary: Account
-  /thornado/balances/{address}:
-    get:
-      parameters:
-      - explode: false
-        in: path
-        name: address
-        required: true
-        schema:
-          type: string
-        style: simple
-      responses:
-        "200":
-          description: Balances response
-      summary: Balances
   /thornado/node/{address}:
     get:
       parameters:
@@ -81,18 +61,96 @@ paths:
         "200":
           description: Node slot response
       summary: Node slot
-  /thornado/vaults/base:
+  /thornado/config:
     get:
       responses:
         "200":
-          description: Base vault response
-      summary: Base vaults
-  /thornado/vaults/pubkeys:
+          description: Config response
+      summary: Config values
+  /thornado/config/nodes_all:
     get:
       responses:
         "200":
-          description: Vault pubkeys response
-      summary: Vault pubkeys
+          description: All node config response
+      summary: All node config values
+  /thornado/config/nodes:
+    get:
+      responses:
+        "200":
+          description: Node config response
+      summary: Node config values
+  /thornado/config/node/{address}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: address
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Node config response
+      summary: Config values for node
+  /thornado/version:
+    get:
+      responses:
+        "200":
+          description: Version response
+      summary: Version
+  /thornado/invariant/{path}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Invariant response
+      summary: Invariant
+  /thornado/invariants:
+    get:
+      responses:
+        "200":
+          description: Invariants response
+      summary: Invariants
+  /thornado/balance/module/{name}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Module balance response
+      summary: Module balance
+  /thornado/config/defaults:
+    get:
+      responses:
+        "200":
+          description: Config defaults response
+      summary: Config defaults
+  /thornado/lastblock:
+    get:
+      responses:
+        "200":
+          description: Last block response
+      summary: Last observed blocks
+  /thornado/network_fee:
+    get:
+      responses:
+        "200":
+          description: Network fee response
+      summary: BTC network fee
   /thornado/vault/{pub_key}:
     get:
       parameters:
@@ -107,12 +165,30 @@ paths:
         "200":
           description: Vault response
       summary: Vault
-  /thornado/tx/{hash}:
+  /thornado/vaults/base:
+    get:
+      responses:
+        "200":
+          description: Base vault response
+      summary: Base vaults
+  /thornado/vaults/pubkeys:
+    get:
+      responses:
+        "200":
+          description: Vault pubkeys response
+      summary: Vault pubkeys
+  /thornado/vaults/solvency:
+    get:
+      responses:
+        "200":
+          description: Vault solvency response
+      summary: Vault solvency
+  /thornado/tx/{tx_id}:
     get:
       parameters:
       - explode: false
         in: path
-        name: hash
+        name: tx_id
         required: true
         schema:
           type: string
@@ -123,70 +199,28 @@ paths:
       summary: Transaction
   /thornado/txout:
     get:
-      parameters:
-      - explode: true
-        in: query
-        name: height
-        required: false
-        schema:
-          format: int64
-          type: integer
-        style: form
       responses:
         "200":
           description: TxOut queue response
       summary: TxOut queue
-  /thornado/config:
+  /thornado/txout/out:
     get:
       responses:
         "200":
-          description: Config response
-      summary: Config values
-  /thornado/config/defaults:
+          description: Outbound TxOut response
+      summary: Outbound TxOut queue
+  /thornado/txout/internal:
     get:
       responses:
         "200":
-          description: Config defaults response
-      summary: Config defaults
-  /thornado/version:
+          description: Internal TxOut response
+      summary: Internal TxOut queue
+  /thornado/txout/all:
     get:
       responses:
         "200":
-          description: Version response
-      summary: Version
-  /thornado/block:
-    get:
-      responses:
-        "200":
-          description: Block response
-      summary: Latest block
-  /thornado/block/{height}:
-    get:
-      parameters:
-      - explode: false
-        in: path
-        name: height
-        required: true
-        schema:
-          format: int64
-          type: integer
-        style: simple
-      responses:
-        "200":
-          description: Block response
-      summary: Block by height
-  /thornado/lastblock:
-    get:
-      responses:
-        "200":
-          description: Last block response
-      summary: Last observed blocks
-  /thornado/network_fee:
-    get:
-      responses:
-        "200":
-          description: Network fee response
-      summary: BTC network fee
+          description: All TxOut response
+      summary: All TxOut queue
   /thornado/deposit/{deposit_id}:
     get:
       parameters:
@@ -201,26 +235,6 @@ paths:
         "200":
           description: Deposit response
       summary: Deposit
-  /thornado/fees:
-    get:
-      responses:
-        "200":
-          description: Fee pool response
-      summary: Fee pool
-  /thornado/deposit/session/{owner}:
-    get:
-      parameters:
-      - explode: false
-        in: path
-        name: owner
-        required: true
-        schema:
-          type: string
-        style: simple
-      responses:
-        "200":
-          description: Session response
-      summary: Deposit session
   /thornado/shielder/redeem/{withdrawal_id}:
     get:
       parameters:
@@ -249,12 +263,12 @@ paths:
         "200":
           description: Nullifier response
       summary: Shielder nullifier
-  /thornado/shielder/roots:
+  /thornado/shielder/sync:
     get:
       responses:
         "200":
-          description: Shielder roots response
-      summary: Shielder roots
+          description: Shielder sync response
+      summary: Shielder sync
   /thornado/shielder/redeem/quote/{amount_sats}:
     get:
       parameters:
@@ -270,6 +284,26 @@ paths:
         "200":
           description: Redeem quote response
       summary: Shielder redeem quote
+  /thornado/fees:
+    get:
+      responses:
+        "200":
+          description: Fee pool response
+      summary: Fee pool
+  /thornado/deposit/session/{owner}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: owner
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Session response
+      summary: Deposit session
   /thornado/bond/{node_pub_key}:
     get:
       parameters:
@@ -366,6 +400,12 @@ paths:
         "200":
           description: Fee entitlements response
       summary: Node fee entitlements
+  /thornado/block:
+    get:
+      responses:
+        "200":
+          description: Block response
+      summary: Block
   /thornado/metric/keygen/{pub_key}:
     get:
       parameters:
@@ -378,14 +418,14 @@ paths:
         style: simple
       responses:
         "200":
-          description: Keygen metric response
-      summary: Keygen metric by vault pubkey
+          description: FROST keygen metric response
+      summary: FROST keygen metric by vault pubkey
   /thornado/metrics:
     get:
       responses:
         "200":
-          description: Metrics response
-      summary: Keygen and keysign metrics
+          description: FROST metrics response
+      summary: FROST keygen and keysign metrics
   /thornado/keysign/{height}:
     get:
       parameters:
@@ -445,5 +485,39 @@ paths:
         "200":
           description: Keygen response
       summary: Keygen block by vault pubkey
+  /thornado/upgrade_proposals:
+    get:
+      responses:
+        "200":
+          description: Upgrade proposals response
+      summary: Upgrade proposals
+  /thornado/upgrade_proposal/{name}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Upgrade proposal response
+      summary: Upgrade proposal
+  /thornado/upgrade_votes/{name}:
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          description: Upgrade votes response
+      summary: Upgrade votes
 components:
   schemas: {}

@@ -19,7 +19,7 @@ func (s *AttestationGossip) AttestObservedTx(ctx context.Context, obsTx *common.
 		return fmt.Errorf("skipping attest observed tx: not active")
 	}
 
-	signBz, err := obsTx.GetSignablePayload()
+	signBz, err := obsTx.GetSignablePayloadWithInbound(inbound)
 	if err != nil {
 		return fmt.Errorf("fail to marshal tx sign payload: %w", err)
 	}
@@ -168,40 +168,6 @@ func (s *AttestationGossip) AttestErrata(ctx context.Context, errata common.Erra
 	s.handleErrataAttestation(ctx, msg)
 
 	s.batcher.AddErrataTx(msg)
-
-	return nil
-}
-
-// AttestPriceFeed creates and broadcasts an attestation for a price feed
-func (s *AttestationGossip) AttestPriceFeed(ctx context.Context, priceFeed common.PriceFeed) error {
-	if !s.isActiveValidator(s.host.ID()) {
-		return fmt.Errorf("skipping attest price feed: not active")
-	}
-
-	signBz, err := priceFeed.GetSignablePayload()
-	if err != nil {
-		return fmt.Errorf("fail to marshal price feed sign payload: %w", err)
-	}
-
-	signature, err := s.privKey.Sign(signBz)
-	if err != nil {
-		return fmt.Errorf("fail to sign price feed sign payload: %w", err)
-	}
-
-	msg := common.AttestPriceFeed{
-		PriceFeed: &priceFeed,
-		Attestation: &common.Attestation{
-			PubKey:    s.pubKey,
-			Signature: signature,
-		},
-	}
-
-	// Handle the attestation locally first
-	s.logger.Debug().Msg("handling attestation locally")
-	s.handlePriceFeedAttestation(ctx, msg)
-
-	s.batcher.AddPriceFeed(msg)
-	s.batcher.sendBatches(ctx, true)
 
 	return nil
 }
@@ -387,15 +353,4 @@ func (s *AttestationGossip) handleStreamBatchedAttestations(stream network.Strea
 		s.handleErrataAttestation(context.Background(), *errata)
 	}
 
-	for i, priceFeed := range batch.AttestPriceFeeds {
-		if int64(i) >= max {
-			logger.Error().Msgf("price feed size %d exceeds max size %d", len(batch.AttestPriceFeeds), max)
-			break
-		}
-		if priceFeed == nil {
-			logger.Error().Msgf("price feed is nil at index %d", i)
-			continue
-		}
-		s.handlePriceFeedAttestation(context.Background(), *priceFeed)
-	}
 }

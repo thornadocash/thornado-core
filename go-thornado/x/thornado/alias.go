@@ -52,7 +52,7 @@ const (
 var (
 	NewNetwork                     = types.NewNetwork
 	NewObservedTx                  = common.NewObservedTx
-	NewFrostVoter                    = types.NewFrostVoter
+	NewFrostVoter                  = types.NewFrostVoter
 	NewErrataTxVoter               = types.NewErrataTxVoter
 	NewObservedTxVoter             = types.NewObservedTxVoter
 	NewMsgConfig                   = types.NewMsgConfig
@@ -60,7 +60,7 @@ var (
 	NewMsgDeposit                  = types.NewMsgDeposit
 	NewMsgKeygenVault              = types.NewMsgKeygenVault
 	NewMsgKeygenVaultV2            = types.NewMsgKeygenVaultV2
-	NewMsgFrostKeysignFail           = types.NewMsgFrostKeysignFail
+	NewMsgFrostKeysignFail         = types.NewMsgFrostKeysignFail
 	NewMsgObservedTxIn             = types.NewMsgObservedTxIn
 	NewMsgObservedTxOut            = types.NewMsgObservedTxOut
 	NewMsgNoOp                     = types.NewMsgNoOp
@@ -69,7 +69,6 @@ var (
 	NewKeygenBlock                 = types.NewKeygenBlock
 	NewMsgSetNodeKeys              = types.NewMsgSetNodeKeys
 	NewMsgOperatorRotate           = types.NewMsgOperatorRotate
-	NewMsgPriceFeedQuorumBatch     = types.NewMsgPriceFeedQuorumBatch
 	NewTxOut                       = types.NewTxOut
 	NewEventBond                   = types.NewEventBond
 	NewEventGas                    = types.NewEventGas
@@ -80,10 +79,10 @@ var (
 	NewEventOutbound               = types.NewEventOutbound
 	NewEventSetConfig              = types.NewEventSetConfig
 	NewEventSetNodeConfig          = types.NewEventSetNodeConfig
-	NewEventFrostKeygenSuccess       = types.NewEventFrostKeygenSuccess
-	NewEventFrostKeygenFailure       = types.NewEventFrostKeygenFailure
-	NewEventFrostKeygenMetric        = types.NewEventFrostKeygenMetric
-	NewEventFrostKeysignMetric       = types.NewEventFrostKeysignMetric
+	NewEventFrostKeygenSuccess     = types.NewEventFrostKeygenSuccess
+	NewEventFrostKeygenFailure     = types.NewEventFrostKeygenFailure
+	NewEventFrostKeygenMetric      = types.NewEventFrostKeygenMetric
+	NewEventFrostKeysignMetric     = types.NewEventFrostKeysignMetric
 	NewEventMintBurn               = types.NewEventMintBurn
 	NewEventVersion                = types.NewEventVersion
 	NewEventOperatorRotate         = types.NewEventOperatorRotate
@@ -159,7 +158,7 @@ type (
 	MsgObservedTxIn             = types.MsgObservedTxIn
 	MsgObservedTxOut            = types.MsgObservedTxOut
 	MsgKeygenVault              = types.MsgKeygenVault
-	MsgFrostKeysignFail           = types.MsgFrostKeysignFail
+	MsgFrostKeysignFail         = types.MsgFrostKeysignFail
 	MsgNetworkFee               = types.MsgNetworkFee
 	MsgSolvency                 = types.MsgSolvency
 	MsgOperatorRotate           = types.MsgOperatorRotate
@@ -178,8 +177,8 @@ type (
 	ObservedTxVoter         = types.ObservedTxVoter
 	ObservedTxVoters        = types.ObservedTxVoters
 	ErrataTxVoter           = types.ErrataTxVoter
-	FrostVoter                = types.FrostVoter
-	FrostKeysignFailVoter     = types.FrostKeysignFailVoter
+	FrostVoter              = types.FrostVoter
+	FrostKeysignFailVoter   = types.FrostKeysignFailVoter
 	TxOutItem               = types.TxOutItem
 	TxOut                   = types.TxOut
 	Keygen                  = types.Keygen
@@ -197,7 +196,6 @@ type (
 	EventFee                = types.EventFee
 	EventOutbound           = types.EventOutbound
 	NetworkFee              = types.NetworkFee
-	PriceFeed               = types.PriceFeed
 	OraclePrice             = types.OraclePrice
 	ObservedNetworkFeeVoter = types.ObservedNetworkFeeVoter
 	Jail                    = types.Jail

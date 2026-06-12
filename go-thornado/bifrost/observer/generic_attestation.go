@@ -81,11 +81,10 @@ type AttestMessage interface {
 
 // Ensure all required types implement AttestableItem
 var (
-	_ AttestableItem = &common.ObservedTx{}
+	_ AttestableItem = &attestableObservedTx{}
 	_ AttestableItem = &common.NetworkFee{}
 	_ AttestableItem = &common.Solvency{}
 	_ AttestableItem = &common.ErrataTx{}
-	_ AttestableItem = &common.PriceFeed{}
 )
 
 // ProcessAttestation processes an attestation message by checking for duplicates,

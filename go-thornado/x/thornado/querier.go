@@ -28,7 +28,7 @@ import (
 )
 
 var (
-	initManager = func(_ cosmos.Context, _ *Mgrs) {}
+	initManager        = func(_ cosmos.Context, _ *Mgrs) {}
 	tendermintClient   *tmhttp.HTTP
 	initTendermintOnce = sync.Once{}
 )

@@ -121,15 +121,6 @@ func (m *MockBifrostClient) SendQuorumErrataTx(ctx context.Context, in *common.Q
 	return args.Get(0).(*ebifrost.SendQuorumErrataTxResult), args.Error(1)
 }
 
-func (m *MockBifrostClient) SendQuorumPriceFeedBatch(ctx context.Context, in *common.QuorumPriceFeedBatch, opts ...grpc.CallOption) (*ebifrost.SendQuorumPriceFeedBatchResult, error) {
-	args := m.Called(ctx, in, opts)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	// nolint:forcetypeassert
-	return args.Get(0).(*ebifrost.SendQuorumPriceFeedBatchResult), args.Error(1)
-}
-
 func (m *MockBifrostClient) SubscribeToEvents(ctx context.Context, in *ebifrost.SubscribeRequest, opts ...grpc.CallOption) (ebifrost.LocalhostBifrost_SubscribeToEventsClient, error) {
 	args := m.Called(ctx, in, opts)
 	if args.Get(0) == nil {

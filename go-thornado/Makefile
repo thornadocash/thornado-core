@@ -7,7 +7,7 @@ ifneq ($(CHECK_ENV),)
 $(error Check environment dependencies.)
 endif
 
-.PHONY: build install test test-all test-network-specific format lint lint-ci generate go-generate proto-all proto-gen proto-format proto-format-check proto-lint openapi tools shielder-ffi
+.PHONY: build install test test-all test-network-specific format lint lint-ci generate go-generate proto-all proto-gen proto-format proto-format-check proto-lint openapi tools shielder-ffi frost-ffi
 
 COMMIT ?= $(shell git log -1 --format='%H' 2>/dev/null)
 VERSION := $(shell cat version)

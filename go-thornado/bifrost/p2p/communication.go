@@ -37,7 +37,7 @@ var (
 
 // FROSTProtocolID protocol id used for frost
 var (
-	FROSTProtocolID        protocol.ID = "/p2p/frost"
+	FROSTProtocolID      protocol.ID = "/p2p/frost"
 	ObservedTxProtocolID protocol.ID = "/p2p/observed-tx"
 )
 

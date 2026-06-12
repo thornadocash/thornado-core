@@ -15,9 +15,21 @@ func (o *ObservedTx) IsValid() bool {
 	return o != nil
 }
 
-// GetSignablePayload returns the data that is signed for verification
-func (o *ObservedTx) GetSignablePayload() ([]byte, error) {
-	return o.Tx.Marshal()
+// GetSignablePayloadWithInbound returns the data signed for observed-tx
+// attestations. It covers the full ObservedTx wrapper plus the inbound/outbound
+// classification bit so a proposer cannot mutate wrapper fields or flip the
+// message between inbound and outbound after validators sign.
+func (o *ObservedTx) GetSignablePayloadWithInbound(inbound bool) ([]byte, error) {
+	canonical := *o
+	canonical.KeysignMs = 0
+	bz, err := canonical.Marshal()
+	if err != nil {
+		return nil, err
+	}
+	if inbound {
+		return append(bz, 1), nil
+	}
+	return append(bz, 0), nil
 }
 
 // Equals compares two Attestation and returns true iff they are equal
@@ -138,52 +150,6 @@ func (e *ErrataTx) Equals(other *ErrataTx) bool {
 	return true
 }
 
-func (pf *PriceFeed) Valid() error {
-	if len(pf.Rates) == 0 {
-		return fmt.Errorf("rates is empty")
-	}
-	if pf.Time <= 0 {
-		return fmt.Errorf("invalid timestamp: %d", pf.Time)
-	}
-	if len(pf.Version) != 8 {
-		return fmt.Errorf("invalid version: %x", pf.Version)
-	}
-	return nil
-}
-
-func (pf *PriceFeed) IsValid() bool {
-	return pf != nil
-}
-
-// GetSignablePayload returns the data that is signed for verification
-func (pf *PriceFeed) GetSignablePayload() ([]byte, error) {
-	return pf.Marshal()
-}
-
-func (pf *PriceFeed) Equals(other *PriceFeed) bool {
-	if pf == nil || other == nil {
-		return false
-	}
-	if pf.Time != other.Time {
-		return false
-	}
-	if !bytes.Equal(pf.Version, other.Version) {
-		return false
-	}
-	if len(pf.Rates) != len(other.Rates) {
-		return false
-	}
-	for i, rate := range pf.Rates {
-		if rate.Amount != other.Rates[i].Amount {
-			return false
-		}
-		if rate.Decimals != other.Rates[i].Decimals {
-			return false
-		}
-	}
-	return true
-}
-
 func (qtx *QuorumTx) GetAttestations() []*Attestation {
 	return qtx.Attestations
 }
@@ -265,26 +231,6 @@ func (qe *QuorumErrataTx) Equals(other *QuorumErrataTx) bool {
 	return qe.ErrataTx.Equals(other.ErrataTx)
 }
 
-func (qpfb *QuorumPriceFeedBatch) GetAttestations() []*Attestation {
-	for _, qpf := range qpfb.QuorumPriceFeeds {
-		return qpf.Attestations
-	}
-	return nil
-}
-
-func (qpfb *QuorumPriceFeedBatch) SetAttestations(_ []*Attestation) *QuorumPriceFeedBatch {
-	return qpfb
-}
-
-// RemoveAttestations removes matching attestations from a quorum network fee, and returns true if there are no more attestations.
-func (qpfb *QuorumPriceFeedBatch) RemoveAttestations(_ []*Attestation) bool {
-	return true
-}
-
-func (qpfb *QuorumPriceFeedBatch) Equals(_ *QuorumPriceFeedBatch) bool {
-	return false
-}
-
 func removeAttestations(
 	existing []*Attestation,
 	toRemove []*Attestation,
@@ -310,7 +256,7 @@ func (a *AttestTx) GetAttestation() *Attestation {
 }
 
 func (a *AttestTx) GetSignablePayload() ([]byte, error) {
-	return a.ObsTx.Tx.Marshal()
+	return a.ObsTx.GetSignablePayloadWithInbound(a.Inbound)
 }
 
 // Implement AttestMessage for AttestNetworkFee

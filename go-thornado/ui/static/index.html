@@ -619,17 +619,56 @@
     }
 
     .deposit-batches-dropdown {
-      padding: 10px;
+      position: relative;
+      display: grid;
+      gap: 6px;
+      padding: 0;
+      border: 0;
+      background: transparent;
     }
 
-    .deposit-batches-dropdown > summary {
-      display: flex;
+    .deposit-selected {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto 20px;
       justify-content: space-between;
       gap: 12px;
-      cursor: pointer;
-      font-weight: 800;
+      align-items: center;
+      width: 100%;
+      min-height: 48px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
       color: var(--ink);
-      list-style-position: inside;
+      font: inherit;
+      font-weight: 800;
+      text-align: left;
+    }
+
+    .deposit-selected::after {
+      content: "⌄";
+      justify-self: end;
+      color: var(--muted);
+    }
+
+    .deposit-batches-dropdown.open .deposit-selected::after {
+      content: "⌃";
+    }
+
+    .deposit-menu {
+      display: none;
+      max-height: 260px;
+      overflow: auto;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(20, 28, 38, 0.12);
+    }
+
+    .deposit-batches-dropdown.open .deposit-menu {
+      display: grid;
+      gap: 4px;
     }
 
     .deposit-batch-row {
@@ -641,6 +680,40 @@
 
     .deposit-batch-row:first-of-type {
       border-top: 0;
+    }
+
+    .deposit-options {
+      display: grid;
+      gap: 6px;
+    }
+
+    .deposit-option {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-weight: 800;
+      text-align: left;
+    }
+
+    .deposit-option.active {
+      border-color: #d1ad55;
+      background: #fbf5e7;
+    }
+
+    .deposit-option span,
+    .deposit-option strong {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .batch-note-row button {
@@ -1764,7 +1837,8 @@
       lastWithdrawalFeeSats: null,
       lastWithdrawalNoteKey: null,
       shieldStageOpenedForDeposit: false,
-      pendingWithdrawNote: null
+      pendingWithdrawNote: null,
+      depositDropdownOpen: false
     };
 
     const $ = (id) => document.getElementById(id);
@@ -1987,6 +2061,15 @@
       return state.batches.find((batch) => Number(batch.depositIndex || 0) === Number(state.activeBatchIndex || 0)) || null;
     }
 
+    function supersedeOlderIssuedBatches(activeDepositIndex) {
+      const activeIndex = Number(activeDepositIndex || 0);
+      for (const batch of state.batches) {
+        if (Number(batch.depositIndex || 0) < activeIndex && batchIssuedUnexpired(batch)) {
+          batch.superseded = true;
+        }
+      }
+    }
+
     function activateDepositBatch(batch) {
       if (!batch) {
         return;
@@ -2044,12 +2127,42 @@
         && state.latestBlockHeight >= height;
     }
 
+    function batchAgeSinceHeight(height) {
+      if (!height || state.latestBlockHeight === null) {
+        return "unknown";
+      }
+      return formatExpiryHuman(blocksToMs(Math.max(0, state.latestBlockHeight - height)));
+    }
+
+    function batchIssuedAge(batch) {
+      return batchAgeSinceHeight(Number(batch?.session?.created_height || batch?.deposit?.created_height || 0));
+    }
+
+    function batchExpiredAge(batch) {
+      return batchAgeSinceHeight(Number(batch?.session?.expires_at_height || batch?.deposit?.expires_at_height || 0));
+    }
+
+    function batchStatusText(batch) {
+      const progress = batchConfirmationProgress(batch);
+      if (batch.superseded && !batchHasDepositValue(batch)) {
+        return `Expired (${batchIssuedAge(batch)})`;
+      }
+      if (batchExpired(batch) && !batchHasDepositValue(batch)) {
+        return `Expired (${batchExpiredAge(batch)})`;
+      }
+      if (batchIssuedUnexpired(batch)) {
+        return `Issued (${batchIssuedAge(batch)})`;
+      }
+      return `${progress.current} / ${progress.required}`;
+    }
+
     function batchIssuedUnexpired(batch) {
       const status = String(batch?.status || batch?.session?.status || "").toLowerCase();
       return Boolean(
         batch?.depositAddress
           && !batchExpired(batch)
           && !batchHasDepositValue(batch)
+          && !batch.superseded
           && (!status || status === "address_issued")
       );
     }
@@ -2342,6 +2455,7 @@
       state.shieldPending = false;
       state.withdrawingNote = null;
       state.withdrawnNotes = {};
+      state.depositDropdownOpen = false;
       ["stageDeposit", "stageDepositTrack", "stageShield", "stageWait", "stageWithdraw"].forEach((id) => {
         $(id).dataset.expanded = "0";
       });
@@ -2364,31 +2478,54 @@
       if (!batches.length) {
         return;
       }
-      const dropdown = document.createElement("details");
+      const orderedBatches = [...batches].sort((a, b) => Number(b.depositIndex || 0) - Number(a.depositIndex || 0));
+      if (!orderedBatches.some((batch) => Number(batch.depositIndex || 0) === Number(state.activeBatchIndex || 0))) {
+        activateDepositBatch(orderedBatches[0]);
+      }
+      const selectedBatch = orderedBatches.find((batch) => Number(batch.depositIndex || 0) === Number(state.activeBatchIndex || 0)) || orderedBatches[0];
+      const dropdown = document.createElement("div");
       dropdown.className = "batch-card deposit-batches-dropdown";
-      dropdown.open = true;
-      const issuedCount = batches.filter((batch) => batchIssuedUnexpired(batch)).length;
-      const summary = document.createElement("summary");
-      summary.innerHTML = `<span>Deposits (${batches.length})</span><strong>${issuedCount ? `${issuedCount} issued` : "History"}</strong>`;
-      const body = document.createElement("div");
-      body.className = "batch-meta";
-      batches.forEach((batch, index) => {
-        const progress = batchConfirmationProgress(batch);
-        const txid = batch.inboundTxId || batch.depositId || "";
-        const amount = Number(batch.amountSats || 0);
-        const expired = batchExpired(batch);
-        const row = document.createElement("div");
-        row.className = "deposit-batch-row";
-        row.innerHTML = `
-          <div class="batch-title"><span>${batchDisplayLabel(batch, index)} (${btcAmount(amount)})</span><strong>${expired ? "Expired" : batchIssuedUnexpired(batch) ? "Issued" : `${progress.current} / ${progress.required}`}</strong></div>
-          <div class="row"><span>Address</span><strong title="${batch.depositAddress || ""}">${batch.depositAddress ? short(batch.depositAddress, 12, 12) : "none"}</strong></div>
-          <div class="row"><span>Tx ID</span><strong title="${txid}">${txid ? short(txid, 12, 12) : "none"}</strong></div>
-          <div class="row"><span>${expired && !batchHasDepositValue(batch) ? "Refund tracking" : "Confirmations"}</span><strong>${expired && !batchHasDepositValue(batch) ? "Expired address" : `${progress.current} / ${progress.required}`}</strong></div>
-        `;
-        body.append(row);
+      dropdown.classList.toggle("open", state.depositDropdownOpen);
+      const selected = document.createElement("button");
+      selected.type = "button";
+      selected.className = "deposit-selected";
+      selected.innerHTML = `<span>${batchLabel(selectedBatch)} (${btcAmount(Number(selectedBatch.amountSats || 0))})</span><strong>${batchStatusText(selectedBatch)}</strong>`;
+      selected.addEventListener("click", () => {
+        state.depositDropdownOpen = !state.depositDropdownOpen;
+        renderDepositHistory();
       });
-      dropdown.append(summary, body);
-      el.append(dropdown);
+      const options = document.createElement("div");
+      options.className = "deposit-menu";
+      orderedBatches.forEach((batch) => {
+        const option = document.createElement("button");
+        option.type = "button";
+        option.className = "deposit-option";
+        option.classList.toggle("active", Number(batch.depositIndex || 0) === Number(selectedBatch.depositIndex || 0));
+        const amount = Number(batch.amountSats || 0);
+        option.innerHTML = `<span>${batchLabel(batch)} (${btcAmount(amount)})</span><strong>${batchStatusText(batch)}</strong>`;
+        option.addEventListener("click", () => {
+          activateDepositBatch(batch);
+          state.depositDropdownOpen = false;
+          updateDashboard();
+        });
+        options.append(option);
+      });
+      const progress = batchConfirmationProgress(selectedBatch);
+      const txid = selectedBatch.inboundTxId || selectedBatch.depositId || "";
+      const detail = document.createElement("div");
+      detail.className = "deposit-batch-row";
+      const detailRows = [
+        `<div class="row"><span>Address</span><strong title="${selectedBatch.depositAddress || ""}">${selectedBatch.depositAddress ? short(selectedBatch.depositAddress, 12, 12) : "none"}</strong></div>`
+      ];
+      if (txid) {
+        detailRows.push(`<div class="row"><span>Tx ID</span><strong title="${txid}">${short(txid, 12, 12)}</strong></div>`);
+      }
+      if (!batchExpired(selectedBatch) || batchHasDepositValue(selectedBatch)) {
+        detailRows.push(`<div class="row"><span>Confirmations</span><strong>${progress.current} / ${progress.required}</strong></div>`);
+      }
+      detail.innerHTML = detailRows.join("");
+      dropdown.append(selected, options);
+      el.append(dropdown, detail);
     }
 
     function renderDenominations() {
@@ -3505,6 +3642,7 @@
       const latestBatch = state.batches[state.batches.length - 1];
       if (openIssuedBatch) {
         state.nextDepositIndex = Number(openIssuedBatch.depositIndex || 0);
+        supersedeOlderIssuedBatches(openIssuedBatch.depositIndex);
         activateDepositBatch(openIssuedBatch);
         $("stageDeposit").dataset.expanded = "1";
         $("stageDepositTrack").dataset.expanded = "1";
@@ -3762,7 +3900,7 @@
         state.depositOwner = payload.owner;
         applyChurnWindow(churnWindow);
         applyDepositExpiry(session);
-        upsertBatch({
+        const newBatch = {
           depositIndex,
           owner: payload.owner,
           pubkey: userPubkey,
@@ -3773,12 +3911,14 @@
           amountSats: Number(session.amount_sats || 0),
           status: session.status || "address_issued",
           session
-        });
+        };
+        upsertBatch(newBatch);
+        supersedeOlderIssuedBatches(depositIndex);
+        activateDepositBatch(newBatch);
+        state.depositDropdownOpen = true;
         state.waitStartedAt = null;
         state.waitMaturesAt = null;
-        $("intentId").value = state.activeIntentId;
         $("depositAddress").hidden = false;
-        $("depositAddress").textContent = session.deposit_address;
         $("stageDeposit").dataset.expanded = "1";
         $("stageDepositTrack").dataset.expanded = "1";
         setConfirmationProgress(0, MIN_CONFS, false);

@@ -128,7 +128,6 @@ message QuorumState {
   repeated QuorumNetworkFee quoNetworkFees = 2;
   repeated QuorumSolvency quoSolvencies = 3;
   repeated QuorumErrataTx quoErrataTxs = 4;
-  repeated QuorumPriceFeed quoPriceFeeds = 5;
 }
 
 message NetworkFee {
@@ -200,35 +199,6 @@ message QuorumErrataTx {
   repeated Attestation attestations = 2;
 }
 
-message PriceFeed {
-  option (gogoproto.stringer) = true;
-  // time of sending node in milliseconds, only used to check
-  // which price feed is more recent
-  bytes version = 1;
-  int64 time = 2;
-  repeated OraclePrice rates = 3;
-}
-
-message AttestPriceFeed {
-  option (gogoproto.stringer) = true;
-
-  PriceFeed price_feed = 1;
-  Attestation attestation = 2;
-}
-
-message QuorumPriceFeed {
-  option (gogoproto.stringer) = true;
-
-  PriceFeed price_feed = 1;
-  repeated Attestation attestations = 2;
-}
-
-message QuorumPriceFeedBatch {
-  option (gogoproto.stringer) = true;
-
-  repeated QuorumPriceFeed quorum_price_feeds = 1;
-}
-
 message OraclePrice {
   option (gogoproto.stringer) = true;
 
@@ -243,5 +213,4 @@ message AttestationBatch {
   repeated AttestNetworkFee attest_network_fees = 2;
   repeated AttestSolvency attest_solvencies = 3;
   repeated AttestErrataTx attest_errata_txs = 4;
-  repeated AttestPriceFeed attest_price_feeds = 5;
 }

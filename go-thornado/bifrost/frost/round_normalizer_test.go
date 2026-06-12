@@ -18,7 +18,7 @@ func TestCanonicalFrostRoundSecp256k1(t *testing.T) {
 		"thornado.frostlib.ecdsa.signing.SignRound2Message":  frostMessages.KEYSIGN2Unicast,
 		frostMessages.KEYSIGN7:                               frostMessages.KEYSIGN7,
 		"thornado.frostlib.ecdsa.signing.SignRound7Message":  frostMessages.KEYSIGN7,
-		"unrelated-round":                                  "unrelated-round",
+		"unrelated-round": "unrelated-round",
 	}
 
 	for in, want := range tests {
@@ -37,7 +37,7 @@ func TestCanonicalFrostRoundEd25519(t *testing.T) {
 		"thornado.frostlib.eddsa.signing.SignRound1Message": frostMessages.EDDSAKEYSIGN1,
 		"thornado.frostlib.eddsa.signing.SignRound3Message": frostMessages.EDDSAKEYSIGN3,
 		frostMessages.EDDSAKEYSIGN2:                         frostMessages.EDDSAKEYSIGN2,
-		"unrelated-round":                                 "unrelated-round",
+		"unrelated-round":                                   "unrelated-round",
 	}
 
 	for in, want := range tests {

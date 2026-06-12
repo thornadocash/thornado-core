@@ -64,7 +64,7 @@ type Observer struct {
 	errCounter            *prometheus.CounterVec
 	thornadoBridge        thornadoclient.ThornadoBridge
 	storage               *ObserverStorage
-	frostKeysignMetricMgr   *metrics.FrostKeysignMetricMgr
+	frostKeysignMetricMgr *metrics.FrostKeysignMetricMgr
 
 	// signedTxOutCache is a cache to keep track of observations for outbounds which were
 	// manually observed after completion of signing and should be filtered from future
@@ -132,7 +132,7 @@ func NewObserver(pubkeyMgr *pubkeymanager.PubKeyManager,
 		errCounter:            m.GetCounterVec(metrics.ObserverError),
 		thornadoBridge:        thornadoBridge,
 		storage:               storage,
-		frostKeysignMetricMgr:   frostKeysignMetricMgr,
+		frostKeysignMetricMgr: frostKeysignMetricMgr,
 		signedTxOutCache:      signedTxOutCache,
 		attestationGossip:     attestationGossip,
 		observerWorkers:       observerWorkers,

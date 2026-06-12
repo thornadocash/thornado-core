@@ -75,24 +75,17 @@ func TestRegisterSwaggerAPIDisabled(t *testing.T) {
 	err := RegisterSwaggerAPI(rtr, false)
 	require.NoError(t, err)
 
-	// ping endpoint should still be registered
-	req := httptest.NewRequest(http.MethodGet, "/thornado/ping", nil)
-	rr := httptest.NewRecorder()
-	rtr.ServeHTTP(rr, req)
-	require.Equal(t, http.StatusOK, rr.Code)
-	require.Contains(t, rr.Body.String(), "pong")
-
 	for _, path := range []string{"/thornado", "/thornado/", "/thornado/ui/manifest.json"} {
-		req = httptest.NewRequest(http.MethodGet, path, nil)
-		rr = httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rr := httptest.NewRecorder()
 		rtr.ServeHTTP(rr, req)
 		require.Equal(t, http.StatusOK, rr.Code, "expected UI route %s when swagger disabled", path)
 	}
 
 	// swagger doc routes should NOT be registered when disabled
 	for _, path := range []string{"/thornado/doc", "/thornado/doc/openapi.yaml", "/thornado/doc/openapi.json"} {
-		req = httptest.NewRequest(http.MethodGet, path, nil)
-		rr = httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rr := httptest.NewRecorder()
 		rtr.ServeHTTP(rr, req)
 		require.Equal(t, http.StatusNotFound, rr.Code, "expected 404 for %s when swagger disabled", path)
 	}
@@ -103,23 +96,17 @@ func TestRegisterSwaggerAPIEnabled(t *testing.T) {
 	err := RegisterSwaggerAPI(rtr, true)
 	require.NoError(t, err)
 
-	// ping endpoint
-	req := httptest.NewRequest(http.MethodGet, "/thornado/ping", nil)
-	rr := httptest.NewRecorder()
-	rtr.ServeHTTP(rr, req)
-	require.Equal(t, http.StatusOK, rr.Code)
-
 	for _, path := range []string{"/thornado", "/thornado/", "/thornado/ui/manifest.json"} {
-		req = httptest.NewRequest(http.MethodGet, path, nil)
-		rr = httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rr := httptest.NewRecorder()
 		rtr.ServeHTTP(rr, req)
 		require.Equal(t, http.StatusOK, rr.Code, "expected UI route %s when swagger enabled", path)
 	}
 
 	// swagger doc routes should be registered when enabled
 	for _, path := range []string{"/thornado/doc", "/thornado/doc/openapi.yaml", "/thornado/doc/openapi.json"} {
-		req = httptest.NewRequest(http.MethodGet, path, nil)
-		rr = httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rr := httptest.NewRecorder()
 		rtr.ServeHTTP(rr, req)
 		require.Equal(t, http.StatusOK, rr.Code, "expected 200 for %s when swagger enabled", path)
 	}

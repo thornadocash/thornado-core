@@ -72,7 +72,7 @@ func (h ObservedTxQuorumHandler) handle(ctx cosmos.Context, msg types.MsgObserve
 		}
 	}
 
-	signBz, err := obsTx.GetSignablePayload()
+	signBz, err := obsTx.GetSignablePayloadWithInbound(inbound)
 	if err != nil {
 		ctx.Logger().Error("fail to marshal tx sign payload", "error", err)
 		return &cosmos.Result{}, nil

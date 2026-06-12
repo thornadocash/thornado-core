@@ -2,14 +2,10 @@ package observer
 
 import (
 	"context"
-	"encoding/hex"
-	"time"
 
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
-
-const priceFeedsUpdateDelay = time.Millisecond * 100
 
 // handleObservedTxAttestation processes attestations for observed transactions
 func (s *AttestationGossip) handleObservedTxAttestation(ctx context.Context, tx common.AttestTx) {
@@ -27,7 +23,10 @@ func (s *AttestationGossip) handleObservedTxAttestation(ctx context.Context, tx 
 	s.mu.Lock()
 	state, ok := s.observedTxs[k]
 	if !ok {
-		state = s.observedTxsPool.NewAttestationState(&obsTx)
+		state = s.observedTxsPool.NewAttestationState(&attestableObservedTx{
+			ObservedTx: &obsTx,
+			inbound:    tx.Inbound,
+		})
 		s.observedTxs[k] = state
 	}
 
@@ -74,7 +73,7 @@ func (s *AttestationGossip) handleObservedTxAttestation(ctx context.Context, tx 
 func (s *AttestationGossip) sendObservedTxAttestationsToThornado(
 	ctx context.Context,
 	tx common.ObservedTx,
-	state *AttestationState[*common.ObservedTx],
+	state *AttestationState[*attestableObservedTx],
 	inbound, allowFutureObservation, isQuorum bool,
 ) {
 	unsent := state.UnsentAttestations()
@@ -290,100 +289,4 @@ func (s *AttestationGossip) sendErrataAttestationsToThornado(ctx context.Context
 
 	// Mark attestations as sent
 	state.MarkAttestationsSent(isQuorum)
-}
-
-// handlePriceFeedAttestation processes attestations for price feeds
-func (s *AttestationGossip) handlePriceFeedAttestation(ctx context.Context, apf common.AttestPriceFeed) {
-	// Use the pubkey as key
-	k := hex.EncodeToString(apf.Attestation.PubKey)
-
-	// Get the marshaled data for signature verification
-	signBz, err := apf.PriceFeed.GetSignablePayload()
-	if err != nil {
-		s.logger.Error().Err(err).Msg("fail to get signable payload")
-		return
-	}
-
-	// Verify the signature
-	att := apf.Attestation
-	err = verifySignature(signBz, att.Signature, att.PubKey)
-	if err != nil {
-		s.logger.Error().Err(err).Msgf("signature verification failed for %x", att.PubKey)
-		return
-	}
-
-	// We don't collect multiple attestations for price feeds, rather want
-	// to store the most recent price we received for every node
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	state, ok := s.priceFeeds[k]
-	if !ok || state.Item.Time < apf.PriceFeed.Time {
-		// Set new attestation state
-		state = s.priceFeedsPool.NewAttestationState(apf.PriceFeed)
-		state.attestations = []attestationSentState{
-			{attestation: apf.Attestation, sent: false},
-		}
-		s.priceFeeds[k] = state
-
-		// we received an updated price feed, start delay to maybe collect
-		// more updated values before sending them to thornado
-		if s.priceFeedsDelay.IsRunning() {
-			return
-		}
-
-		s.priceFeedsDelay.Start()
-		go func() {
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(priceFeedsUpdateDelay):
-				s.sendPriceFeedAttestationsToThornado(ctx)
-				s.priceFeedsDelay.Done()
-			}
-		}()
-	}
-}
-
-// sendPriceFeedAttestationsToThornado sends price feed attestations
-// to thornado via gRPC
-//
-// To avoid calling the endpoint hundred times per update, all
-// (quorum) price feeds are batched into a single request
-func (s *AttestationGossip) sendPriceFeedAttestationsToThornado(
-	ctx context.Context,
-) {
-	qpfb := common.QuorumPriceFeedBatch{
-		QuorumPriceFeeds: []*common.QuorumPriceFeed{},
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for _, state := range s.priceFeeds {
-		state.mu.Lock()
-		defer state.mu.Unlock()
-
-		qpfb.QuorumPriceFeeds = append(qpfb.QuorumPriceFeeds, &common.QuorumPriceFeed{
-			PriceFeed:    state.Item,
-			Attestations: []*common.Attestation{state.attestations[0].attestation},
-		})
-	}
-
-	if len(qpfb.QuorumPriceFeeds) == 0 {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-
-	_, err := s.grpcClient.SendQuorumPriceFeedBatch(ctx, &qpfb)
-	if err != nil {
-		s.logger.Error().Err(err).Msg("fail to send price feed")
-		return
-	}
-
-	// delete price feeds
-	for k := range s.priceFeeds {
-		delete(s.priceFeeds, k)
-	}
 }

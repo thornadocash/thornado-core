@@ -20,6 +20,7 @@ import (
 
 	"github.com/thornadocash/go-thornado/bifrost/blockscanner"
 	btypes "github.com/thornadocash/go-thornado/bifrost/blockscanner/types"
+	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
 	p2pstorage "github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/btc/rpc"
@@ -27,7 +28,6 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/signercache"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
-	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/config"
@@ -54,7 +54,7 @@ type Client struct {
 	// ---------- signing ----------
 	nodePubKey         common.PubKey
 	nodePrivKey        *btcec.PrivateKey
-	frostKeySigner       frost.ThornadoKeyManager
+	frostKeySigner     frost.ThornadoKeyManager
 	signerCacheManager *signercache.CacheManager
 
 	// ---------- sync ----------
@@ -151,7 +151,7 @@ func NewClient(
 		rpc:                       rpcClient,
 		nodePubKey:                nodePubKey,
 		nodePrivKey:               nodePrivKey,
-		frostKeySigner:              frostKeysign,
+		frostKeySigner:            frostKeysign,
 		wg:                        &sync.WaitGroup{},
 		signerLock:                &sync.Mutex{},
 		vaultLocks:                make(map[string]*sync.Mutex),

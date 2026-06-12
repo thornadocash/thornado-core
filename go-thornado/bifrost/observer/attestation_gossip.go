@@ -88,6 +88,19 @@ type txKey struct {
 	Inbound                bool
 }
 
+type attestableObservedTx struct {
+	*common.ObservedTx
+	inbound bool
+}
+
+func (a *attestableObservedTx) GetSignablePayload() ([]byte, error) {
+	return a.ObservedTx.GetSignablePayloadWithInbound(a.inbound)
+}
+
+func (a *attestableObservedTx) IsValid() bool {
+	return a != nil && a.ObservedTx != nil
+}
+
 type KeysInterface interface {
 	GetPrivateKey() (*secp256k1.PrivKey, error)
 }
@@ -113,20 +126,16 @@ type AttestationGossip struct {
 	config config.BifrostAttestationGossipConfig
 
 	// Generic maps for different attestation types
-	observedTxs map[txKey]*AttestationState[*common.ObservedTx]
+	observedTxs map[txKey]*AttestationState[*attestableObservedTx]
 	networkFees map[common.NetworkFee]*AttestationState[*common.NetworkFee]
 	solvencies  map[common.TxID]*AttestationState[*common.Solvency]
 	errataTxs   map[common.ErrataTx]*AttestationState[*common.ErrataTx]
-	priceFeeds  map[string]*AttestationState[*common.PriceFeed]
 	mu          sync.Mutex
 
-	observedTxsPool *AttestationStatePool[*common.ObservedTx]
+	observedTxsPool *AttestationStatePool[*attestableObservedTx]
 	networkFeesPool *AttestationStatePool[*common.NetworkFee]
 	solvenciesPool  *AttestationStatePool[*common.Solvency]
 	errataTxsPool   *AttestationStatePool[*common.ErrataTx]
-	priceFeedsPool  *AttestationStatePool[*common.PriceFeed]
-
-	priceFeedsDelay *Delay
 
 	activeVals map[peer.ID]bool // active val peer IDs
 	avMu       sync.Mutex
@@ -197,21 +206,17 @@ func NewAttestationGossip(
 		eventClient: eventClient,
 
 		// Initialize generic maps
-		observedTxs: make(map[txKey]*AttestationState[*common.ObservedTx]),
+		observedTxs: make(map[txKey]*AttestationState[*attestableObservedTx]),
 		networkFees: make(map[common.NetworkFee]*AttestationState[*common.NetworkFee]),
 		solvencies:  make(map[common.TxID]*AttestationState[*common.Solvency]),
 		errataTxs:   make(map[common.ErrataTx]*AttestationState[*common.ErrataTx]),
-		priceFeeds:  make(map[string]*AttestationState[*common.PriceFeed]),
 
 		peerMgr: newPeerManager(logger, config.PeerConcurrentReceives),
 
-		observedTxsPool: NewAttestationStatePool[*common.ObservedTx](),
+		observedTxsPool: NewAttestationStatePool[*attestableObservedTx](),
 		networkFeesPool: NewAttestationStatePool[*common.NetworkFee](),
 		solvenciesPool:  NewAttestationStatePool[*common.Solvency](),
 		errataTxsPool:   NewAttestationStatePool[*common.ErrataTx](),
-		priceFeedsPool:  NewAttestationStatePool[*common.PriceFeed](),
-
-		priceFeedsDelay: NewDelay(),
 
 		cachedKeySignParties: make(map[common.PubKey]cachedKeySignParty),
 
@@ -499,8 +504,7 @@ func (s *AttestationGossip) Start(ctx context.Context) {
 				} else if state.ShouldSendLate(s.config.MinTimeBetweenAttestations) {
 					s.logger.Debug().Msg("sending late observed tx attestations")
 
-					obsTx := state.Item
-					s.sendObservedTxAttestationsToThornado(ctx, *obsTx, state, k.Inbound, k.AllowFutureObservation, false)
+					s.sendObservedTxAttestationsToThornado(ctx, *state.Item.ObservedTx, state, k.Inbound, k.AllowFutureObservation, false)
 				}
 				state.mu.Unlock()
 			}
@@ -543,9 +547,6 @@ func (s *AttestationGossip) Start(ctx context.Context) {
 				}
 				state.mu.Unlock()
 			}
-
-			// Prune price feeds
-			s.priceFeeds = make(map[string]*AttestationState[*common.PriceFeed])
 
 			s.mu.Unlock()
 

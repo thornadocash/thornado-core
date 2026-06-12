@@ -427,9 +427,9 @@ type Bifrost struct {
 	Chains            struct {
 		BTC BifrostChainConfiguration `mapstructure:"btc"`
 	} `mapstructure:"chains"`
-	FROST             BifrostFROSTConfiguration `mapstructure:"frost"`
-	ObserverLevelDB LevelDBOptions          `mapstructure:"observer_leveldb"`
-	ObserverWorkers int                     `mapstructure:"observer_workers"`
+	FROST           BifrostFROSTConfiguration `mapstructure:"frost"`
+	ObserverLevelDB LevelDBOptions            `mapstructure:"observer_leveldb"`
+	ObserverWorkers int                       `mapstructure:"observer_workers"`
 }
 
 func (b Bifrost) GetChains() map[common.Chain]BifrostChainConfiguration {
