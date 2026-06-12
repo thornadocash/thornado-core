@@ -290,14 +290,14 @@ func (b *thornadoBridge) PostKeysignFailure(blame stypes.Blame, height int64, co
 	}()
 
 	if blame.IsEmpty() {
-		// MsgTssKeysignFail will fail validation if having no FailReason.
+		// MsgFrostKeysignFail will fail validation if having no FailReason.
 		blame.FailReason = "no fail reason available"
 	}
 	signerAddr, err := b.keys.GetSignerInfo().GetAddress()
 	if err != nil {
 		return common.BlankTxID, fmt.Errorf("failed to get signer address: %w", err)
 	}
-	msg, err := stypes.NewMsgTssKeysignFail(height, blame, coins, signerAddr, pubkey)
+	msg, err := stypes.NewMsgFrostKeysignFail(height, blame, coins, signerAddr, pubkey)
 	if err != nil {
 		return common.BlankTxID, fmt.Errorf("fail to create keysign fail message: %w", err)
 	}

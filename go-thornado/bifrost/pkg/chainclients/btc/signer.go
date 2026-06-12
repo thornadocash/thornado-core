@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
-	"github.com/thornadocash/go-thornado/bifrost/tss"
+	"github.com/thornadocash/go-thornado/bifrost/frost"
 )
 
 // SignCheckpoint is used to checkpoint the built transaction before signing, for use in
@@ -26,10 +26,10 @@ func PostKeysignFailure(
 	utxoErr error,
 ) error {
 	// PostKeysignFailure only once per SignTx, to not broadcast duplicate messages.
-	var keysignError tss.KeysignError
+	var keysignError frost.KeysignError
 	if errors.As(utxoErr, &keysignError) {
 		if len(keysignError.Blame.BlameNodes) == 0 {
-			// TSS doesn't know which node to blame
+			// FROST doesn't know which node to blame
 			utxoErr = multierror.Append(utxoErr, fmt.Errorf("fail to sign UTXO"))
 			return fmt.Errorf("fail to sign the message: %w", utxoErr)
 		}

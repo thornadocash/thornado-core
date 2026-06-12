@@ -21,12 +21,12 @@ func (CommunicationTestSuite) TestBasicCommunication(c *C) {
 	comm, err := NewCommunication(&Config{Port: 6688, RendezvousString: "rendezvous"}, nil, nil)
 	c.Assert(err, IsNil)
 	c.Assert(comm, NotNil)
-	comm.SetSubscribe(messages.TSSKeyGenMsg, "hello", make(chan *Message))
-	c.Assert(comm.getSubscriber(messages.TSSKeySignMsg, "hello"), IsNil)
-	c.Assert(comm.getSubscriber(messages.TSSKeyGenMsg, "hello"), NotNil)
-	comm.CancelSubscribe(messages.TSSKeyGenMsg, "hello")
-	comm.CancelSubscribe(messages.TSSKeyGenMsg, "whatever")
-	comm.CancelSubscribe(messages.TSSKeySignMsg, "asdsdf")
+	comm.SetSubscribe(messages.FROSTKeyGenMsg, "hello", make(chan *Message))
+	c.Assert(comm.getSubscriber(messages.FROSTKeySignMsg, "hello"), IsNil)
+	c.Assert(comm.getSubscriber(messages.FROSTKeyGenMsg, "hello"), NotNil)
+	comm.CancelSubscribe(messages.FROSTKeyGenMsg, "hello")
+	comm.CancelSubscribe(messages.FROSTKeyGenMsg, "whatever")
+	comm.CancelSubscribe(messages.FROSTKeySignMsg, "asdsdf")
 }
 
 func checkExist(a []maddr.Multiaddr, b string) bool {

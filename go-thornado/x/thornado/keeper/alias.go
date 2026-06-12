@@ -31,10 +31,10 @@ var (
 type (
 	ObservedTxVoter         = types.ObservedTxVoter
 	ErrataTxVoter           = types.ErrataTxVoter
-	TssVoter                = types.TssVoter
-	TssKeysignFailVoter     = types.TssKeysignFailVoter
-	TssKeygenMetric         = types.TssKeygenMetric
-	TssKeysignMetric        = types.TssKeysignMetric
+	FrostVoter                = types.FrostVoter
+	FrostKeysignFailVoter     = types.FrostKeysignFailVoter
+	FrostKeygenMetric         = types.FrostKeygenMetric
+	FrostKeysignMetric        = types.FrostKeysignMetric
 	TxOutItem               = types.TxOutItem
 	TxOut                   = types.TxOut
 	KeygenBlock             = types.KeygenBlock

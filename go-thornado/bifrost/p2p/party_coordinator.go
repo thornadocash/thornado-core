@@ -355,7 +355,7 @@ func (pc *PartyCoordinator) joinPartyMember(msgID string, peerGroup *peerStatus,
 	}
 
 	onlineNodes := peerGroup.getLeaderResponse().PeerIDs
-	// we trust the returned nodes returned by the leader, if tss fail, the leader
+	// we trust the returned nodes returned by the leader, if frost fail, the leader
 	// also will get blamed.
 	pIDs, err := pc.getPeerIDs(onlineNodes)
 	if err != nil {
@@ -401,15 +401,15 @@ func (pc *PartyCoordinator) joinPartyLeader(msgID string, peerGroup *peerStatus,
 	onlinePeers, _ := peerGroup.getPeersStatus()
 	onlinePeers = append(onlinePeers, pc.host.ID())
 
-	tssNodes := make([]string, len(onlinePeers))
+	frostNodes := make([]string, len(onlinePeers))
 	for i, el := range onlinePeers {
-		tssNodes[i] = el.String()
+		frostNodes[i] = el.String()
 	}
 
 	msg := messages.JoinPartyLeaderComm{
 		ID:      msgID,
 		Type:    messages.JoinPartyLeaderComm_Success,
-		PeerIDs: tssNodes,
+		PeerIDs: frostNodes,
 	}
 	// we put ourselves(leader) in the online list, so need threshold +1
 	if len(onlinePeers) < peerGroup.threshold+1 {
@@ -420,7 +420,7 @@ func (pc *PartyCoordinator) joinPartyLeader(msgID string, peerGroup *peerStatus,
 		return onlinePeers, ErrJoinPartyTimeout
 	}
 	// we notify all the peers who to run keygen/keysign
-	// if a nodes is not in the list, it means he is not selected by the leader to run the tss
+	// if a nodes is not in the list, it means he is not selected by the leader to run the frost
 	pc.logger.Debug().Msgf("sending success response to %d all peers", len(allPeers))
 	pc.sendResponseToAll(&msg, allPeers)
 	return onlinePeers, nil
@@ -495,7 +495,7 @@ func (pc *PartyCoordinator) JoinPartyWithRetry(msgID string, peers []string) ([]
 			time.Sleep(time.Second)
 		}
 	}()
-	// this is the total time TSS will wait for the party to form
+	// this is the total time FROST will wait for the party to form
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

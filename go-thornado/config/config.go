@@ -104,8 +104,8 @@ func Init() {
 		"thornado.tendermint.consensus.timeout_commit",
 		"THORNADO_BLOCK_TIME",
 	))
-	assert(viper.BindEnv("bifrost.tss.bootstrap_peers", "PEER"))
-	assert(viper.BindEnv("bifrost.tss.external_ip", "EXTERNAL_IP"))
+	assert(viper.BindEnv("bifrost.frost.bootstrap_peers", "PEER"))
+	assert(viper.BindEnv("bifrost.frost.external_ip", "EXTERNAL_IP"))
 	assert(viper.BindEnv("bifrost.thornado.chain_id", "CHAIN_ID"))
 	assert(viper.BindEnv("bifrost.thornado.chain_host", "CHAIN_API"))
 	assert(viper.BindEnv(
@@ -186,8 +186,8 @@ func InitBifrost() {
 	config.Bifrost.Thornado.SignerPasswd = os.Getenv("SIGNER_PASSWD")
 
 	// set bootstrap peers from seeds endpoint if unset
-	if len(config.Bifrost.TSS.BootstrapPeers) == 0 {
-		config.Bifrost.TSS.BootstrapPeers = resolveAddrs(getSeedAddrs())
+	if len(config.Bifrost.FROST.BootstrapPeers) == 0 {
+		config.Bifrost.FROST.BootstrapPeers = resolveAddrs(getSeedAddrs())
 	}
 }
 
@@ -427,7 +427,7 @@ type Bifrost struct {
 	Chains            struct {
 		BTC BifrostChainConfiguration `mapstructure:"btc"`
 	} `mapstructure:"chains"`
-	TSS             BifrostTSSConfiguration `mapstructure:"tss"`
+	FROST             BifrostFROSTConfiguration `mapstructure:"frost"`
 	ObserverLevelDB LevelDBOptions          `mapstructure:"observer_leveldb"`
 	ObserverWorkers int                     `mapstructure:"observer_workers"`
 }
@@ -493,7 +493,7 @@ type BifrostSignerConfiguration struct {
 	// they are signed - regardless of broadcast success.
 	AutoObserve bool `mapstructure:"auto_observe"`
 
-	// -------------------- tss timeouts --------------------
+	// -------------------- frost timeouts --------------------
 
 	KeygenTimeout   time.Duration `mapstructure:"keygen_timeout"`
 	KeysignTimeout  time.Duration `mapstructure:"keysign_timeout"`
@@ -763,7 +763,7 @@ type BifrostMetricsConfiguration struct {
 	Chains       []common.Chain `mapstructure:"chains"`
 }
 
-type BifrostTSSConfiguration struct {
+type BifrostFROSTConfiguration struct {
 	BootstrapPeers               []string `mapstructure:"bootstrap_peers"`
 	Rendezvous                   string   `mapstructure:"rendezvous"`
 	P2PPort                      int      `mapstructure:"p2p_port"`
@@ -772,15 +772,15 @@ type BifrostTSSConfiguration struct {
 	MaxKeyshareRecoverScanBlocks int64    `mapstructure:"max_keyshare_recover_scan_blocks"`
 }
 
-func (c BifrostTSSConfiguration) GetP2PPort() int {
+func (c BifrostFROSTConfiguration) GetP2PPort() int {
 	return c.P2PPort
 }
 
-func (c BifrostTSSConfiguration) GetRendezvous() string {
+func (c BifrostFROSTConfiguration) GetRendezvous() string {
 	return c.Rendezvous
 }
 
-func (c BifrostTSSConfiguration) GetExternalIP() string {
+func (c BifrostFROSTConfiguration) GetExternalIP() string {
 	return c.ExternalIP
 }
 
@@ -791,7 +791,7 @@ type WhitelistCosmosAsset struct {
 }
 
 // GetBootstrapPeers return the internal bootstrap peers in a slice of maddr.Multiaddr
-func (c BifrostTSSConfiguration) GetBootstrapPeers() ([]maddr.Multiaddr, error) {
+func (c BifrostFROSTConfiguration) GetBootstrapPeers() ([]maddr.Multiaddr, error) {
 	var addrs []maddr.Multiaddr
 
 	for _, bootstrapPeer := range c.BootstrapPeers {

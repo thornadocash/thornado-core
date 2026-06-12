@@ -49,31 +49,31 @@ func TestSetSubscribeAndCancel(t *testing.T) {
 	assert.NoError(t, err)
 
 	ch := make(chan *Message)
-	comm.SetSubscribe(messages.TSSKeyGenMsg, "msg1", ch)
-	comm.SetSubscribe(messages.TSSKeyGenMsg, "msg2", make(chan *Message))
+	comm.SetSubscribe(messages.FROSTKeyGenMsg, "msg1", ch)
+	comm.SetSubscribe(messages.FROSTKeyGenMsg, "msg2", make(chan *Message))
 
 	// Getting existing subscriber
-	sub := comm.getSubscriber(messages.TSSKeyGenMsg, "msg1")
+	sub := comm.getSubscriber(messages.FROSTKeyGenMsg, "msg1")
 	assert.NotNil(t, sub)
 
 	// Getting non-existing topic
-	sub = comm.getSubscriber(messages.TSSKeySignMsg, "msg1")
+	sub = comm.getSubscriber(messages.FROSTKeySignMsg, "msg1")
 	assert.Nil(t, sub)
 
 	// Getting non-existing msgID
-	sub = comm.getSubscriber(messages.TSSKeyGenMsg, "nonexistent")
+	sub = comm.getSubscriber(messages.FROSTKeyGenMsg, "nonexistent")
 	assert.Nil(t, sub)
 
 	// Cancel one subscription
-	comm.CancelSubscribe(messages.TSSKeyGenMsg, "msg1")
-	sub = comm.getSubscriber(messages.TSSKeyGenMsg, "msg1")
+	comm.CancelSubscribe(messages.FROSTKeyGenMsg, "msg1")
+	sub = comm.getSubscriber(messages.FROSTKeyGenMsg, "msg1")
 	assert.Nil(t, sub)
 
 	// Cancel last subscription should remove topic
-	comm.CancelSubscribe(messages.TSSKeyGenMsg, "msg2")
+	comm.CancelSubscribe(messages.FROSTKeyGenMsg, "msg2")
 
 	// Cancel on non-existing topic
-	comm.CancelSubscribe(messages.TSSKeySignMsg, "msg1")
+	comm.CancelSubscribe(messages.FROSTKeySignMsg, "msg1")
 }
 
 func TestBroadcastEmptyPeers(t *testing.T) {

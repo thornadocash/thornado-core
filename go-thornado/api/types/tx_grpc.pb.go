@@ -34,21 +34,20 @@ const (
 	Msg_SetNodeKeys_FullMethodName              = "/types.Msg/SetNodeKeys"
 	Msg_Solvency_FullMethodName                 = "/types.Msg/Solvency"
 	Msg_SolvencyQuorum_FullMethodName           = "/types.Msg/SolvencyQuorum"
-	Msg_TssKeysignFail_FullMethodName           = "/types.Msg/TssKeysignFail"
+	Msg_FrostKeysignFail_FullMethodName         = "/types.Msg/FrostKeysignFail"
 	Msg_KeygenVault_FullMethodName              = "/types.Msg/KeygenVault"
 	Msg_SetVersion_FullMethodName               = "/types.Msg/SetVersion"
 	Msg_ProposeUpgrade_FullMethodName           = "/types.Msg/ProposeUpgrade"
 	Msg_ApproveUpgrade_FullMethodName           = "/types.Msg/ApproveUpgrade"
 	Msg_RejectUpgrade_FullMethodName            = "/types.Msg/RejectUpgrade"
-	Msg_PriceFeedQuorumBatch_FullMethodName     = "/types.Msg/PriceFeedQuorumBatch"
 	Msg_DepositRequestPow_FullMethodName        = "/types.Msg/DepositRequestPow"
 	Msg_ShielderShield_FullMethodName           = "/types.Msg/ShielderShield"
 	Msg_ShielderRedeem_FullMethodName           = "/types.Msg/ShielderRedeem"
 	Msg_ShielderShieldFees_FullMethodName       = "/types.Msg/ShielderShieldFees"
 	Msg_NodeSlotAuctionCreate_FullMethodName    = "/types.Msg/NodeSlotAuctionCreate"
-	Msg_NodeSlotAuctionBidPow_FullMethodName    = "/types.Msg/NodeSlotAuctionBidPow"
+	Msg_NodeSlotAuctionBidCreate_FullMethodName = "/types.Msg/NodeSlotAuctionBidCreate"
 	Msg_NodeSlotAuctionSelectBid_FullMethodName = "/types.Msg/NodeSlotAuctionSelectBid"
-	Msg_NodeSlotAuctionShield_FullMethodName    = "/types.Msg/NodeSlotAuctionShield"
+	Msg_NodeSaleShield_FullMethodName           = "/types.Msg/NodeSaleShield"
 	Msg_BondFromNotes_FullMethodName            = "/types.Msg/BondFromNotes"
 )
 
@@ -71,21 +70,20 @@ type MsgClient interface {
 	SetNodeKeys(ctx context.Context, in *MsgSetNodeKeys, opts ...grpc.CallOption) (*MsgEmpty, error)
 	Solvency(ctx context.Context, in *MsgSolvency, opts ...grpc.CallOption) (*MsgEmpty, error)
 	SolvencyQuorum(ctx context.Context, in *MsgSolvencyQuorum, opts ...grpc.CallOption) (*MsgEmpty, error)
-	TssKeysignFail(ctx context.Context, in *MsgTssKeysignFail, opts ...grpc.CallOption) (*MsgEmpty, error)
+	FrostKeysignFail(ctx context.Context, in *MsgFrostKeysignFail, opts ...grpc.CallOption) (*MsgEmpty, error)
 	KeygenVault(ctx context.Context, in *MsgKeygenVault, opts ...grpc.CallOption) (*MsgEmpty, error)
 	SetVersion(ctx context.Context, in *MsgSetVersion, opts ...grpc.CallOption) (*MsgEmpty, error)
 	ProposeUpgrade(ctx context.Context, in *MsgProposeUpgrade, opts ...grpc.CallOption) (*MsgEmpty, error)
 	ApproveUpgrade(ctx context.Context, in *MsgApproveUpgrade, opts ...grpc.CallOption) (*MsgEmpty, error)
 	RejectUpgrade(ctx context.Context, in *MsgRejectUpgrade, opts ...grpc.CallOption) (*MsgEmpty, error)
-	PriceFeedQuorumBatch(ctx context.Context, in *MsgPriceFeedQuorumBatch, opts ...grpc.CallOption) (*MsgEmpty, error)
 	DepositRequestPow(ctx context.Context, in *MsgDepositRequestPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error)
 	ShielderShield(ctx context.Context, in *MsgShielderShield, opts ...grpc.CallOption) (*MsgShielderShieldResponse, error)
 	ShielderRedeem(ctx context.Context, in *MsgShielderRedeem, opts ...grpc.CallOption) (*MsgShielderRedeemResponse, error)
 	ShielderShieldFees(ctx context.Context, in *MsgShielderShieldFees, opts ...grpc.CallOption) (*MsgShielderShieldFeesResponse, error)
 	NodeSlotAuctionCreate(ctx context.Context, in *MsgNodeSlotAuctionCreate, opts ...grpc.CallOption) (*MsgNodeSlotAuctionCreateResponse, error)
-	NodeSlotAuctionBidPow(ctx context.Context, in *MsgNodeSlotAuctionBidPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error)
+	NodeSlotAuctionBidCreate(ctx context.Context, in *MsgNodeSlotAuctionBidCreate, opts ...grpc.CallOption) (*MsgNodeSlotAuctionBidCreateResponse, error)
 	NodeSlotAuctionSelectBid(ctx context.Context, in *MsgNodeSlotAuctionSelectBid, opts ...grpc.CallOption) (*MsgEmpty, error)
-	NodeSlotAuctionShield(ctx context.Context, in *MsgNodeSlotAuctionShield, opts ...grpc.CallOption) (*MsgShielderShieldResponse, error)
+	NodeSaleShield(ctx context.Context, in *MsgNodeSaleShield, opts ...grpc.CallOption) (*MsgShielderShieldResponse, error)
 	BondFromNotes(ctx context.Context, in *MsgBondFromNotes, opts ...grpc.CallOption) (*MsgBondFromNotesResponse, error)
 }
 
@@ -232,9 +230,9 @@ func (c *msgClient) SolvencyQuorum(ctx context.Context, in *MsgSolvencyQuorum, o
 	return out, nil
 }
 
-func (c *msgClient) TssKeysignFail(ctx context.Context, in *MsgTssKeysignFail, opts ...grpc.CallOption) (*MsgEmpty, error) {
+func (c *msgClient) FrostKeysignFail(ctx context.Context, in *MsgFrostKeysignFail, opts ...grpc.CallOption) (*MsgEmpty, error) {
 	out := new(MsgEmpty)
-	err := c.cc.Invoke(ctx, Msg_TssKeysignFail_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Msg_FrostKeysignFail_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -286,15 +284,6 @@ func (c *msgClient) RejectUpgrade(ctx context.Context, in *MsgRejectUpgrade, opt
 	return out, nil
 }
 
-func (c *msgClient) PriceFeedQuorumBatch(ctx context.Context, in *MsgPriceFeedQuorumBatch, opts ...grpc.CallOption) (*MsgEmpty, error) {
-	out := new(MsgEmpty)
-	err := c.cc.Invoke(ctx, Msg_PriceFeedQuorumBatch_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *msgClient) DepositRequestPow(ctx context.Context, in *MsgDepositRequestPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error) {
 	out := new(MsgDepositRequestPowResponse)
 	err := c.cc.Invoke(ctx, Msg_DepositRequestPow_FullMethodName, in, out, opts...)
@@ -340,9 +329,9 @@ func (c *msgClient) NodeSlotAuctionCreate(ctx context.Context, in *MsgNodeSlotAu
 	return out, nil
 }
 
-func (c *msgClient) NodeSlotAuctionBidPow(ctx context.Context, in *MsgNodeSlotAuctionBidPow, opts ...grpc.CallOption) (*MsgDepositRequestPowResponse, error) {
-	out := new(MsgDepositRequestPowResponse)
-	err := c.cc.Invoke(ctx, Msg_NodeSlotAuctionBidPow_FullMethodName, in, out, opts...)
+func (c *msgClient) NodeSlotAuctionBidCreate(ctx context.Context, in *MsgNodeSlotAuctionBidCreate, opts ...grpc.CallOption) (*MsgNodeSlotAuctionBidCreateResponse, error) {
+	out := new(MsgNodeSlotAuctionBidCreateResponse)
+	err := c.cc.Invoke(ctx, Msg_NodeSlotAuctionBidCreate_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -358,9 +347,9 @@ func (c *msgClient) NodeSlotAuctionSelectBid(ctx context.Context, in *MsgNodeSlo
 	return out, nil
 }
 
-func (c *msgClient) NodeSlotAuctionShield(ctx context.Context, in *MsgNodeSlotAuctionShield, opts ...grpc.CallOption) (*MsgShielderShieldResponse, error) {
+func (c *msgClient) NodeSaleShield(ctx context.Context, in *MsgNodeSaleShield, opts ...grpc.CallOption) (*MsgShielderShieldResponse, error) {
 	out := new(MsgShielderShieldResponse)
-	err := c.cc.Invoke(ctx, Msg_NodeSlotAuctionShield_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Msg_NodeSaleShield_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -395,21 +384,20 @@ type MsgServer interface {
 	SetNodeKeys(context.Context, *MsgSetNodeKeys) (*MsgEmpty, error)
 	Solvency(context.Context, *MsgSolvency) (*MsgEmpty, error)
 	SolvencyQuorum(context.Context, *MsgSolvencyQuorum) (*MsgEmpty, error)
-	TssKeysignFail(context.Context, *MsgTssKeysignFail) (*MsgEmpty, error)
+	FrostKeysignFail(context.Context, *MsgFrostKeysignFail) (*MsgEmpty, error)
 	KeygenVault(context.Context, *MsgKeygenVault) (*MsgEmpty, error)
 	SetVersion(context.Context, *MsgSetVersion) (*MsgEmpty, error)
 	ProposeUpgrade(context.Context, *MsgProposeUpgrade) (*MsgEmpty, error)
 	ApproveUpgrade(context.Context, *MsgApproveUpgrade) (*MsgEmpty, error)
 	RejectUpgrade(context.Context, *MsgRejectUpgrade) (*MsgEmpty, error)
-	PriceFeedQuorumBatch(context.Context, *MsgPriceFeedQuorumBatch) (*MsgEmpty, error)
 	DepositRequestPow(context.Context, *MsgDepositRequestPow) (*MsgDepositRequestPowResponse, error)
 	ShielderShield(context.Context, *MsgShielderShield) (*MsgShielderShieldResponse, error)
 	ShielderRedeem(context.Context, *MsgShielderRedeem) (*MsgShielderRedeemResponse, error)
 	ShielderShieldFees(context.Context, *MsgShielderShieldFees) (*MsgShielderShieldFeesResponse, error)
 	NodeSlotAuctionCreate(context.Context, *MsgNodeSlotAuctionCreate) (*MsgNodeSlotAuctionCreateResponse, error)
-	NodeSlotAuctionBidPow(context.Context, *MsgNodeSlotAuctionBidPow) (*MsgDepositRequestPowResponse, error)
+	NodeSlotAuctionBidCreate(context.Context, *MsgNodeSlotAuctionBidCreate) (*MsgNodeSlotAuctionBidCreateResponse, error)
 	NodeSlotAuctionSelectBid(context.Context, *MsgNodeSlotAuctionSelectBid) (*MsgEmpty, error)
-	NodeSlotAuctionShield(context.Context, *MsgNodeSlotAuctionShield) (*MsgShielderShieldResponse, error)
+	NodeSaleShield(context.Context, *MsgNodeSaleShield) (*MsgShielderShieldResponse, error)
 	BondFromNotes(context.Context, *MsgBondFromNotes) (*MsgBondFromNotesResponse, error)
 	mustEmbedUnimplementedMsgServer()
 }
@@ -463,8 +451,8 @@ func (UnimplementedMsgServer) Solvency(context.Context, *MsgSolvency) (*MsgEmpty
 func (UnimplementedMsgServer) SolvencyQuorum(context.Context, *MsgSolvencyQuorum) (*MsgEmpty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SolvencyQuorum not implemented")
 }
-func (UnimplementedMsgServer) TssKeysignFail(context.Context, *MsgTssKeysignFail) (*MsgEmpty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TssKeysignFail not implemented")
+func (UnimplementedMsgServer) FrostKeysignFail(context.Context, *MsgFrostKeysignFail) (*MsgEmpty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FrostKeysignFail not implemented")
 }
 func (UnimplementedMsgServer) KeygenVault(context.Context, *MsgKeygenVault) (*MsgEmpty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method KeygenVault not implemented")
@@ -481,9 +469,6 @@ func (UnimplementedMsgServer) ApproveUpgrade(context.Context, *MsgApproveUpgrade
 func (UnimplementedMsgServer) RejectUpgrade(context.Context, *MsgRejectUpgrade) (*MsgEmpty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RejectUpgrade not implemented")
 }
-func (UnimplementedMsgServer) PriceFeedQuorumBatch(context.Context, *MsgPriceFeedQuorumBatch) (*MsgEmpty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PriceFeedQuorumBatch not implemented")
-}
 func (UnimplementedMsgServer) DepositRequestPow(context.Context, *MsgDepositRequestPow) (*MsgDepositRequestPowResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DepositRequestPow not implemented")
 }
@@ -499,14 +484,14 @@ func (UnimplementedMsgServer) ShielderShieldFees(context.Context, *MsgShielderSh
 func (UnimplementedMsgServer) NodeSlotAuctionCreate(context.Context, *MsgNodeSlotAuctionCreate) (*MsgNodeSlotAuctionCreateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NodeSlotAuctionCreate not implemented")
 }
-func (UnimplementedMsgServer) NodeSlotAuctionBidPow(context.Context, *MsgNodeSlotAuctionBidPow) (*MsgDepositRequestPowResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method NodeSlotAuctionBidPow not implemented")
+func (UnimplementedMsgServer) NodeSlotAuctionBidCreate(context.Context, *MsgNodeSlotAuctionBidCreate) (*MsgNodeSlotAuctionBidCreateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NodeSlotAuctionBidCreate not implemented")
 }
 func (UnimplementedMsgServer) NodeSlotAuctionSelectBid(context.Context, *MsgNodeSlotAuctionSelectBid) (*MsgEmpty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NodeSlotAuctionSelectBid not implemented")
 }
-func (UnimplementedMsgServer) NodeSlotAuctionShield(context.Context, *MsgNodeSlotAuctionShield) (*MsgShielderShieldResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method NodeSlotAuctionShield not implemented")
+func (UnimplementedMsgServer) NodeSaleShield(context.Context, *MsgNodeSaleShield) (*MsgShielderShieldResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NodeSaleShield not implemented")
 }
 func (UnimplementedMsgServer) BondFromNotes(context.Context, *MsgBondFromNotes) (*MsgBondFromNotesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BondFromNotes not implemented")
@@ -794,20 +779,20 @@ func _Msg_SolvencyQuorum_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Msg_TssKeysignFail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgTssKeysignFail)
+func _Msg_FrostKeysignFail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgFrostKeysignFail)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MsgServer).TssKeysignFail(ctx, in)
+		return srv.(MsgServer).FrostKeysignFail(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Msg_TssKeysignFail_FullMethodName,
+		FullMethod: Msg_FrostKeysignFail_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).TssKeysignFail(ctx, req.(*MsgTssKeysignFail))
+		return srv.(MsgServer).FrostKeysignFail(ctx, req.(*MsgFrostKeysignFail))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -902,24 +887,6 @@ func _Msg_RejectUpgrade_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Msg_PriceFeedQuorumBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgPriceFeedQuorumBatch)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MsgServer).PriceFeedQuorumBatch(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Msg_PriceFeedQuorumBatch_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).PriceFeedQuorumBatch(ctx, req.(*MsgPriceFeedQuorumBatch))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Msg_DepositRequestPow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MsgDepositRequestPow)
 	if err := dec(in); err != nil {
@@ -1010,20 +977,20 @@ func _Msg_NodeSlotAuctionCreate_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Msg_NodeSlotAuctionBidPow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgNodeSlotAuctionBidPow)
+func _Msg_NodeSlotAuctionBidCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgNodeSlotAuctionBidCreate)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MsgServer).NodeSlotAuctionBidPow(ctx, in)
+		return srv.(MsgServer).NodeSlotAuctionBidCreate(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Msg_NodeSlotAuctionBidPow_FullMethodName,
+		FullMethod: Msg_NodeSlotAuctionBidCreate_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).NodeSlotAuctionBidPow(ctx, req.(*MsgNodeSlotAuctionBidPow))
+		return srv.(MsgServer).NodeSlotAuctionBidCreate(ctx, req.(*MsgNodeSlotAuctionBidCreate))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1046,20 +1013,20 @@ func _Msg_NodeSlotAuctionSelectBid_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Msg_NodeSlotAuctionShield_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgNodeSlotAuctionShield)
+func _Msg_NodeSaleShield_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgNodeSaleShield)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MsgServer).NodeSlotAuctionShield(ctx, in)
+		return srv.(MsgServer).NodeSaleShield(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Msg_NodeSlotAuctionShield_FullMethodName,
+		FullMethod: Msg_NodeSaleShield_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MsgServer).NodeSlotAuctionShield(ctx, req.(*MsgNodeSlotAuctionShield))
+		return srv.(MsgServer).NodeSaleShield(ctx, req.(*MsgNodeSaleShield))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1150,8 +1117,8 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Msg_SolvencyQuorum_Handler,
 		},
 		{
-			MethodName: "TssKeysignFail",
-			Handler:    _Msg_TssKeysignFail_Handler,
+			MethodName: "FrostKeysignFail",
+			Handler:    _Msg_FrostKeysignFail_Handler,
 		},
 		{
 			MethodName: "KeygenVault",
@@ -1174,10 +1141,6 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Msg_RejectUpgrade_Handler,
 		},
 		{
-			MethodName: "PriceFeedQuorumBatch",
-			Handler:    _Msg_PriceFeedQuorumBatch_Handler,
-		},
-		{
 			MethodName: "DepositRequestPow",
 			Handler:    _Msg_DepositRequestPow_Handler,
 		},
@@ -1198,16 +1161,16 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Msg_NodeSlotAuctionCreate_Handler,
 		},
 		{
-			MethodName: "NodeSlotAuctionBidPow",
-			Handler:    _Msg_NodeSlotAuctionBidPow_Handler,
+			MethodName: "NodeSlotAuctionBidCreate",
+			Handler:    _Msg_NodeSlotAuctionBidCreate_Handler,
 		},
 		{
 			MethodName: "NodeSlotAuctionSelectBid",
 			Handler:    _Msg_NodeSlotAuctionSelectBid_Handler,
 		},
 		{
-			MethodName: "NodeSlotAuctionShield",
-			Handler:    _Msg_NodeSlotAuctionShield_Handler,
+			MethodName: "NodeSaleShield",
+			Handler:    _Msg_NodeSaleShield_Handler,
 		},
 		{
 			MethodName: "BondFromNotes",

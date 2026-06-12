@@ -618,6 +618,31 @@
       border-top: 0;
     }
 
+    .deposit-batches-dropdown {
+      padding: 10px;
+    }
+
+    .deposit-batches-dropdown > summary {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      font-weight: 800;
+      color: var(--ink);
+      list-style-position: inside;
+    }
+
+    .deposit-batch-row {
+      display: grid;
+      gap: 8px;
+      padding: 12px 0;
+      border-top: 1px solid #e8edf2;
+    }
+
+    .deposit-batch-row:first-of-type {
+      border-top: 0;
+    }
+
     .batch-note-row button {
       min-height: 32px;
       padding: 0 10px;
@@ -1537,7 +1562,7 @@
             </div>
             <div>
               <span class="panel-label">Auction bid (shield → unshield → bid)</span>
-              <p class="secret-help">Register a bid address with <code>auction-bid-pow</code>, then redeem with <code>recipient_policy: bid_deposit</code> and the bid id. Seller settles via auction-shield; seller unshields payout notes normally.</p>
+              <p class="secret-help">Create a bid, then redeem shielded notes with <code>recipient_policy: bid_deposit</code> to the protocol escrow and the bid id. Seller settles the auction, shields the sale entitlement, then unshields payout notes normally.</p>
             </div>
           </div>
         </section>
@@ -1677,7 +1702,8 @@
 
     async function thornadoWasm() {
       if (!thornadoWasmReady) {
-        thornadoWasmReady = import("/thornado/ui/wasm/thornado_web_wasm.js?v=7ab3e5e2").then(async (mod) => {
+        const wasmUrl = new URL("/thornado/ui/wasm/thornado_web_wasm.js?v=7ab3e5e2", window.location.origin).href;
+        thornadoWasmReady = import(wasmUrl).then(async (mod) => {
           await mod.default();
           return mod;
         });
@@ -1843,13 +1869,16 @@
     }
 
     function depositRemainingMs() {
-      if (state.depositExpiresAtHeight && state.latestBlockHeight !== null) {
-        return blocksToMs(Math.max(0, state.depositExpiresAtHeight - state.latestBlockHeight));
-      }
       if (!state.depositExpiresAt && !state.depositExpiresAtHeight) {
         return null;
       }
-      return Math.max(0, state.depositExpiresAt - Date.now());
+      if (state.depositExpiresAt) {
+        return Math.max(0, state.depositExpiresAt - Date.now());
+      }
+      if (state.depositExpiresAtHeight && state.latestBlockHeight !== null) {
+        return blocksToMs(Math.max(0, state.depositExpiresAtHeight - state.latestBlockHeight));
+      }
+      return null;
     }
 
     function depositExpired() {
@@ -1861,8 +1890,9 @@
         .map((record) => Number(record?.expires_at_height || 0))
         .find((height) => Number.isFinite(height) && height > 0);
       if (expiryHeight) {
+        const heightChanged = state.depositExpiresAtHeight !== expiryHeight;
         state.depositExpiresAtHeight = expiryHeight;
-        if (state.latestBlockHeight !== null) {
+        if (state.latestBlockHeight !== null && (heightChanged || !state.depositExpiresAt)) {
           state.depositExpiresAt = Date.now() + blocksToMs(Math.max(0, expiryHeight - state.latestBlockHeight));
         }
       }
@@ -1957,6 +1987,21 @@
       return state.batches.find((batch) => Number(batch.depositIndex || 0) === Number(state.activeBatchIndex || 0)) || null;
     }
 
+    function activateDepositBatch(batch) {
+      if (!batch) {
+        return;
+      }
+      state.activeBatchIndex = Number(batch.depositIndex || 0);
+      state.depositOwner = batch.owner || null;
+      state.activeIntentId = batch.pubkey || batch.depositId || null;
+      $("intentId").value = state.activeIntentId || "";
+      $("amountSats").value = String(batch.amountSats || 0);
+      $("depositAddress").textContent = batch.depositAddress || "";
+      applyDepositExpiry(batch.session, batch.deposit);
+      const progress = depositConfirmationProgress(batch.session, batch.deposit, batch.txStatus);
+      setConfirmationProgress(progress.current, progress.required, progress.seen);
+    }
+
     function batchConfirmationProgress(batch) {
       return depositConfirmationProgress(batch?.session, batch?.deposit, batch?.txStatus);
     }
@@ -1999,8 +2044,22 @@
         && state.latestBlockHeight >= height;
     }
 
-    function visibleDepositBatches({ includeExpired = false } = {}) {
-      return state.batches.filter((batch) => batchHasDepositValue(batch) || (includeExpired && batchExpired(batch)));
+    function batchIssuedUnexpired(batch) {
+      const status = String(batch?.status || batch?.session?.status || "").toLowerCase();
+      return Boolean(
+        batch?.depositAddress
+          && !batchExpired(batch)
+          && !batchHasDepositValue(batch)
+          && (!status || status === "address_issued")
+      );
+    }
+
+    function visibleDepositBatches({ includeExpired = false, includeIssued = false } = {}) {
+      return state.batches.filter((batch) =>
+        batchHasDepositValue(batch)
+          || (includeExpired && batchExpired(batch))
+          || (includeIssued && batchIssuedUnexpired(batch))
+      );
     }
 
     function btcExplorerUrl(txHash) {
@@ -2136,6 +2195,26 @@
       return `${days}:${hours}:${minutes}:${seconds}`;
     }
 
+    function formatExpiryHuman(ms) {
+      if (ms === null) {
+        return "not scheduled";
+      }
+      const totalSeconds = Math.ceil(Math.max(0, ms) / 1000);
+      if (totalSeconds < 60) {
+        return `${totalSeconds} sec`;
+      }
+      const totalMinutes = Math.ceil(totalSeconds / 60);
+      if (totalMinutes < 60) {
+        return `${totalMinutes} min`;
+      }
+      const totalHours = Math.ceil(totalMinutes / 60);
+      if (totalHours < 24) {
+        return `${totalHours} ${totalHours === 1 ? "hour" : "hours"}`;
+      }
+      const totalDays = Math.ceil(totalHours / 24);
+      return `${totalDays} ${totalDays === 1 ? "day" : "days"}`;
+    }
+
     function applyChurnWindow(window) {
       state.churnCycleMs = window.cycle_ms || DEFAULT_CHURN_CYCLE_MS;
       state.churnServerDeltaMs = Date.now() - window.server_now_ms;
@@ -2223,7 +2302,7 @@
         el.innerHTML = `<strong>Deposit address expired</strong><span>Request a new address.</span>`;
         return;
       }
-      el.innerHTML = `<strong>Address expires in ${formatChurnCountdown(remaining)}</strong>`;
+      el.innerHTML = `<strong>Address expires in ${formatExpiryHuman(remaining)}</strong>`;
     }
 
     function renderSecret() {
@@ -2281,26 +2360,35 @@
         return;
       }
       el.textContent = "";
-      const batches = visibleDepositBatches({ includeExpired: true });
+      const batches = visibleDepositBatches({ includeExpired: true, includeIssued: true });
       if (!batches.length) {
         return;
       }
+      const dropdown = document.createElement("details");
+      dropdown.className = "batch-card deposit-batches-dropdown";
+      dropdown.open = true;
+      const issuedCount = batches.filter((batch) => batchIssuedUnexpired(batch)).length;
+      const summary = document.createElement("summary");
+      summary.innerHTML = `<span>Deposits (${batches.length})</span><strong>${issuedCount ? `${issuedCount} issued` : "History"}</strong>`;
+      const body = document.createElement("div");
+      body.className = "batch-meta";
       batches.forEach((batch, index) => {
         const progress = batchConfirmationProgress(batch);
         const txid = batch.inboundTxId || batch.depositId || "";
         const amount = Number(batch.amountSats || 0);
         const expired = batchExpired(batch);
-        const card = document.createElement("div");
-        card.className = "batch-card";
-        card.innerHTML = `
-          <div class="batch-title"><span>${batchDisplayLabel(batch, index)}</span><strong>${btcAmount(amount)}</strong></div>
-          <div class="batch-meta">
-            <div class="row"><span>Tx ID</span><strong title="${txid}">${txid ? short(txid, 12, 12) : "none"}</strong></div>
-            <div class="row"><span>${expired && !batchHasDepositValue(batch) ? "Refund tracking" : "Confirmations"}</span><strong>${expired && !batchHasDepositValue(batch) ? "Expired address" : `${progress.current} / ${progress.required}`}</strong></div>
-          </div>
+        const row = document.createElement("div");
+        row.className = "deposit-batch-row";
+        row.innerHTML = `
+          <div class="batch-title"><span>${batchDisplayLabel(batch, index)} (${btcAmount(amount)})</span><strong>${expired ? "Expired" : batchIssuedUnexpired(batch) ? "Issued" : `${progress.current} / ${progress.required}`}</strong></div>
+          <div class="row"><span>Address</span><strong title="${batch.depositAddress || ""}">${batch.depositAddress ? short(batch.depositAddress, 12, 12) : "none"}</strong></div>
+          <div class="row"><span>Tx ID</span><strong title="${txid}">${txid ? short(txid, 12, 12) : "none"}</strong></div>
+          <div class="row"><span>${expired && !batchHasDepositValue(batch) ? "Refund tracking" : "Confirmations"}</span><strong>${expired && !batchHasDepositValue(batch) ? "Expired address" : `${progress.current} / ${progress.required}`}</strong></div>
         `;
-        el.append(card);
+        body.append(row);
       });
+      dropdown.append(summary, body);
+      el.append(dropdown);
     }
 
     function renderDenominations() {
@@ -2366,7 +2454,7 @@
       setReceiptFromBatches();
       renderDepositHistory();
       const notes = state.receipt?.notes || [];
-      const displayBatches = visibleDepositBatches();
+      const displayBatches = visibleDepositBatches({ includeIssued: true });
       const batch = activeBatch();
       const hasWallet = Boolean($("walletRoot").value.trim());
       const hasDeposit = Boolean(
@@ -2395,7 +2483,11 @@
         const progress = batchConfirmationProgress(item);
         return progress.seen && progress.current < progress.required;
       });
-      const showDepositTracking = hasTrackedDeposits || hasUnconfirmedSeenDeposit;
+      const showDepositTracking = hasDeposit || hasTrackedDeposits || hasUnconfirmedSeenDeposit;
+      if (hasDeposit && !hasSeenDeposit && !anyConfirmed && !isDepositExpired) {
+        $("stageDeposit").dataset.expanded = "1";
+        $("stageDepositTrack").dataset.expanded = "1";
+      }
       const hasProof = Boolean(state.lastWithdrawalProof && state.lastWithdrawalPublic);
       const note = selectedReceiptNote();
       const laterNoteCount = note?.later_note_count;
@@ -2420,7 +2512,7 @@
       setStep("stepDeposit", hasObservableDeposit || anyConfirmed ? "done" : hasWallet ? "active" : "");
       setStep("stepShield", hasShielded ? "done" : anyConfirmed || hasSeenDeposit ? "active" : "");
       setStep("stepWithdraw", hasShielded ? "active" : "");
-      setStage("stageDeposit", hasDeposit ? "done" : "active");
+      setStage("stageDeposit", hasDeposit && (hasSeenDeposit || anyConfirmed) ? "done" : "active");
       setStage("stageDepositTrack", showDepositTracking ? (anyConfirmed ? "done" : "active") : "locked");
       setStage("stageShield", hasShielded ? "done" : anyConfirmed || hasSeenDeposit ? "active" : "locked");
       const waitWrapper = $("stageWait")?.closest(".flow-stage");
@@ -2480,6 +2572,8 @@
         ? `${displayBatches.length} deposits tracked`
         : hasUnconfirmedSeenDeposit
           ? "Deposit seen"
+          : hasDeposit
+            ? "Watching current address"
           : "No deposits tracked";
       $("shieldSummary").textContent = hasShielded
         ? `${notes.length} notes minted`
@@ -3226,7 +3320,7 @@
         throw new Error("Web Worker unavailable for note recovery");
       }
       const workerSource = `
-        const WASM_URL = "/thornado/ui/wasm/thornado_web_wasm.js?v=7ab3e5e2";
+        const WASM_URL = new URL("/thornado/ui/wasm/thornado_web_wasm.js?v=7ab3e5e2", self.location.origin).href;
         function noteKey(note) {
           return note?.commitment || \`\${note?.deposit_index || 0}:\${note?.denomination_sats || 0}:\${note?.index || 0}\`;
         }
@@ -3407,17 +3501,15 @@
         nextDepositIndex = depositIndex + 1;
       }
       state.nextDepositIndex = nextDepositIndex;
+      const openIssuedBatch = [...state.batches].reverse().find((batch) => batchIssuedUnexpired(batch));
       const latestBatch = state.batches[state.batches.length - 1];
-      if (latestBatch) {
-        state.activeBatchIndex = Number(latestBatch.depositIndex || 0);
-        state.depositOwner = latestBatch.owner || null;
-        state.activeIntentId = latestBatch.depositId || latestBatch.pubkey || null;
-        $("intentId").value = state.activeIntentId || "";
-        $("amountSats").value = String(latestBatch.amountSats || 0);
-        $("depositAddress").textContent = latestBatch.depositAddress || "";
-        applyDepositExpiry(latestBatch.session, latestBatch.deposit);
-        const progress = depositConfirmationProgress(latestBatch.session, latestBatch.deposit, latestBatch.txStatus);
-        setConfirmationProgress(progress.current, progress.required, progress.seen);
+      if (openIssuedBatch) {
+        state.nextDepositIndex = Number(openIssuedBatch.depositIndex || 0);
+        activateDepositBatch(openIssuedBatch);
+        $("stageDeposit").dataset.expanded = "1";
+        $("stageDepositTrack").dataset.expanded = "1";
+      } else if (latestBatch) {
+        activateDepositBatch(latestBatch);
       }
       const sync = await api("/thornado/shielder/sync");
       const knownDepositIndexes = new Set(state.batches.map((batch) => Number(batch.depositIndex || 0)));
@@ -3636,6 +3728,17 @@
           setMessage(`Deposit scan skipped: ${error.message}`, "warn");
           return state.batches;
         });
+        const reusableBatch = activeBatch();
+        if (batchIssuedUnexpired(reusableBatch)) {
+          activateDepositBatch(reusableBatch);
+          $("depositAddress").hidden = false;
+          $("stageDeposit").dataset.expanded = "1";
+          $("stageDepositTrack").dataset.expanded = "1";
+          renderDepositHistory();
+          setMessage("Using existing unexpired deposit address.", "ok");
+          autoConfirmDeposit();
+          return;
+        }
         startPowVisual();
         const depositIndex = state.nextDepositIndex;
         state.activeBatchIndex = depositIndex;
@@ -3676,6 +3779,8 @@
         $("intentId").value = state.activeIntentId;
         $("depositAddress").hidden = false;
         $("depositAddress").textContent = session.deposit_address;
+        $("stageDeposit").dataset.expanded = "1";
+        $("stageDepositTrack").dataset.expanded = "1";
         setConfirmationProgress(0, MIN_CONFS, false);
         renderDepositHistory();
         log("deposit/request", { batch: batchLabel({ depositIndex }), user_pubkey: userPubkey, owner, pow: mined, response: payload, session });
@@ -4267,14 +4372,24 @@
     }
 
     (async () => {
-      if (!(await restoreWalletSecret())) {
+      const restoredSecret = await restoreWalletSecret();
+      if (!restoredSecret) {
         await generateWalletRoot();
       }
       renderNodeEndpoint();
       await refreshChurnWindow().catch((error) => log("churn/window", { error: error.message }));
+      if (restoredSecret) {
+        setMessage("Scanning previous deposits...", "");
+        await discoverDepositBatches().catch((error) => {
+          log("deposit/scan", { error: error.message });
+          setMessage(`Deposit scan skipped: ${error.message}`, "warn");
+        });
+      }
       renderNotes();
       updateDashboard();
-      setMessage("Ready. Click Get Address to scan deposits and request the next address.", "");
+      setMessage(restoredSecret && state.batches.length
+        ? "Previous deposits loaded."
+        : "Ready. Click Get Address to scan deposits and request the next address.", restoredSecret && state.batches.length ? "ok" : "");
     })().catch((error) => setMessage(error.message, "error"));
     setInterval(() => {
       if (state.waitMaturesAt || state.depositExpiresAt || state.batches.some((batch) => batch.receipt?.notes?.length && batchMaturityMs(batch) > 0)) {

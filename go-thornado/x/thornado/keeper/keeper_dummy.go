@@ -253,10 +253,10 @@ func (k KVStoreDummy) SetObservedLink(ctx cosmos.Context, _, _ common.TxID) {}
 func (k KVStoreDummy) GetObservedLink(ctx cosmos.Context, inhash common.TxID) []common.TxID {
 	return nil
 }
-func (k KVStoreDummy) SetTssVoter(_ cosmos.Context, _ TssVoter)             {}
-func (k KVStoreDummy) GetTssVoterIterator(_ cosmos.Context) cosmos.Iterator { return nil }
-func (k KVStoreDummy) GetTssVoter(_ cosmos.Context, _ string) (TssVoter, error) {
-	return TssVoter{}, kaboom
+func (k KVStoreDummy) SetFrostVoter(_ cosmos.Context, _ FrostVoter)             {}
+func (k KVStoreDummy) GetFrostVoterIterator(_ cosmos.Context) cosmos.Iterator { return nil }
+func (k KVStoreDummy) GetFrostVoter(_ cosmos.Context, _ string) (FrostVoter, error) {
+	return FrostVoter{}, kaboom
 }
 
 func (k KVStoreDummy) GetKeygenBlock(_ cosmos.Context, _ int64) (KeygenBlock, error) {
@@ -361,15 +361,15 @@ func (k KVStoreDummy) DeleteVault(_ cosmos.Context, _ common.PubKey) error { ret
 func (k KVStoreDummy) GetNetwork(_ cosmos.Context) (Network, error) { return Network{}, kaboom }
 func (k KVStoreDummy) SetNetwork(_ cosmos.Context, _ Network) error { return kaboom }
 
-func (k KVStoreDummy) SetTssKeysignFailVoter(_ cosmos.Context, tss TssKeysignFailVoter) {
+func (k KVStoreDummy) SetFrostKeysignFailVoter(_ cosmos.Context, frost FrostKeysignFailVoter) {
 }
 
-func (k KVStoreDummy) GetTssKeysignFailVoterIterator(_ cosmos.Context) cosmos.Iterator {
+func (k KVStoreDummy) GetFrostKeysignFailVoterIterator(_ cosmos.Context) cosmos.Iterator {
 	return nil
 }
 
-func (k KVStoreDummy) GetTssKeysignFailVoter(_ cosmos.Context, _ string) (TssKeysignFailVoter, error) {
-	return TssKeysignFailVoter{}, kaboom
+func (k KVStoreDummy) GetFrostKeysignFailVoter(_ cosmos.Context, _ string) (FrostKeysignFailVoter, error) {
+	return FrostKeysignFailVoter{}, kaboom
 }
 
 func (k KVStoreDummy) GetGas(_ cosmos.Context, _ common.Asset) ([]cosmos.Uint, error) {
@@ -444,21 +444,21 @@ func (k KVStoreDummy) GetLastObserveHeight(ctx cosmos.Context, address cosmos.Ac
 	return nil, kaboom
 }
 
-func (k KVStoreDummy) SetTssKeygenMetric(_ cosmos.Context, metric *TssKeygenMetric) {
+func (k KVStoreDummy) SetFrostKeygenMetric(_ cosmos.Context, metric *FrostKeygenMetric) {
 }
 
-func (k KVStoreDummy) GetTssKeygenMetric(_ cosmos.Context, key common.PubKey) (*TssKeygenMetric, error) {
+func (k KVStoreDummy) GetFrostKeygenMetric(_ cosmos.Context, key common.PubKey) (*FrostKeygenMetric, error) {
 	return nil, kaboom
 }
 
-func (k KVStoreDummy) SetTssKeysignMetric(_ cosmos.Context, metric *TssKeysignMetric) {
+func (k KVStoreDummy) SetFrostKeysignMetric(_ cosmos.Context, metric *FrostKeysignMetric) {
 }
 
-func (k KVStoreDummy) GetTssKeysignMetric(_ cosmos.Context, txID common.TxID) (*TssKeysignMetric, error) {
+func (k KVStoreDummy) GetFrostKeysignMetric(_ cosmos.Context, txID common.TxID) (*FrostKeysignMetric, error) {
 	return nil, kaboom
 }
 
-func (k KVStoreDummy) GetLatestTssKeysignMetric(_ cosmos.Context) (*TssKeysignMetric, error) {
+func (k KVStoreDummy) GetLatestFrostKeysignMetric(_ cosmos.Context) (*FrostKeysignMetric, error) {
 	return nil, kaboom
 }
 func (k KVStoreDummy) SetSolvencyVoter(_ cosmos.Context, _ SolvencyVoter) {}

@@ -64,7 +64,7 @@ type Observer struct {
 	errCounter            *prometheus.CounterVec
 	thornadoBridge        thornadoclient.ThornadoBridge
 	storage               *ObserverStorage
-	tssKeysignMetricMgr   *metrics.TssKeysignMetricMgr
+	frostKeysignMetricMgr   *metrics.FrostKeysignMetricMgr
 
 	// signedTxOutCache is a cache to keep track of observations for outbounds which were
 	// manually observed after completion of signing and should be filtered from future
@@ -86,7 +86,7 @@ func NewObserver(pubkeyMgr *pubkeymanager.PubKeyManager,
 	chains map[common.Chain]chainclients.ChainClient,
 	thornadoBridge thornadoclient.ThornadoBridge,
 	m *metrics.Metrics, dataPath string,
-	tssKeysignMetricMgr *metrics.TssKeysignMetricMgr,
+	frostKeysignMetricMgr *metrics.FrostKeysignMetricMgr,
 	attestationGossip *AttestationGossip,
 	deckDumpFile string,
 ) (*Observer, error) {
@@ -107,8 +107,8 @@ func NewObserver(pubkeyMgr *pubkeymanager.PubKeyManager,
 		return nil, fmt.Errorf("failed to create observer storage: %w", err)
 	}
 
-	if tssKeysignMetricMgr == nil {
-		return nil, fmt.Errorf("tss keysign manager is nil")
+	if frostKeysignMetricMgr == nil {
+		return nil, fmt.Errorf("frost keysign manager is nil")
 	}
 
 	signedTxOutCache, err := lru.New(signedTxOutCacheSize)
@@ -132,7 +132,7 @@ func NewObserver(pubkeyMgr *pubkeymanager.PubKeyManager,
 		errCounter:            m.GetCounterVec(metrics.ObserverError),
 		thornadoBridge:        thornadoBridge,
 		storage:               storage,
-		tssKeysignMetricMgr:   tssKeysignMetricMgr,
+		frostKeysignMetricMgr:   frostKeysignMetricMgr,
 		signedTxOutCache:      signedTxOutCache,
 		attestationGossip:     attestationGossip,
 		observerWorkers:       observerWorkers,
@@ -773,7 +773,7 @@ func (o *Observer) getThornadoTxIns(txIn *types.TxIn, finalized bool, finaliseHe
 		// Strip out any empty Coin from Coins and Gas, as even one empty Coin will make a MsgObservedTxIn for instance fail validation.
 		tx := common.NewTx(txID, sender, to, item.Coins.NoneEmpty(), item.Gas.NoneEmpty())
 		obsTx := common.NewObservedTx(tx, height, item.ObservedVaultPubKey, finaliseHeight)
-		obsTx.KeysignMs = o.tssKeysignMetricMgr.GetTssKeysignMetric(item.Tx)
+		obsTx.KeysignMs = o.frostKeysignMetricMgr.GetFrostKeysignMetric(item.Tx)
 		obsTx.Aggregator = item.Aggregator
 		obsTx.AggregatorTarget = item.AggregatorTarget
 		obsTx.AggregatorTargetLimit = item.AggregatorTargetLimit

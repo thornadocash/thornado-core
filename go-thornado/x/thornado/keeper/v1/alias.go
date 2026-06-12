@@ -46,7 +46,7 @@ var (
 	NewJail                    = types.NewJail
 	NewNetwork                 = types.NewNetwork
 	NewObservedTx              = common.NewObservedTx
-	NewTssVoter                = types.NewTssVoter
+	NewFrostVoter                = types.NewFrostVoter
 	NewErrataTxVoter           = types.NewErrataTxVoter
 	NewObservedTxVoter         = types.NewObservedTxVoter
 	NewKeygen                  = types.NewKeygen
@@ -71,7 +71,7 @@ var (
 	GetCurrentVersion          = types.GetCurrentVersion
 	NewObservedNetworkFeeVoter = types.NewObservedNetworkFeeVoter
 	NewNetworkFee              = types.NewNetworkFee
-	NewTssKeysignFailVoter     = types.NewTssKeysignFailVoter
+	NewFrostKeysignFailVoter     = types.NewFrostKeysignFailVoter
 	SetupConfigForTest         = types.SetupConfigForTest
 )
 
@@ -79,8 +79,8 @@ type (
 	ObservedTxs             = common.ObservedTxs
 	ObservedTxVoter         = types.ObservedTxVoter
 	ErrataTxVoter           = types.ErrataTxVoter
-	TssVoter                = types.TssVoter
-	TssKeysignFailVoter     = types.TssKeysignFailVoter
+	FrostVoter                = types.FrostVoter
+	FrostKeysignFailVoter     = types.FrostKeysignFailVoter
 	TxOutItem               = types.TxOutItem
 	TxOut                   = types.TxOut
 	KeygenBlock             = types.KeygenBlock
@@ -95,8 +95,8 @@ type (
 	VaultStatus             = types.VaultStatus
 	NetworkFee              = types.NetworkFee
 	ObservedNetworkFeeVoter = types.ObservedNetworkFeeVoter
-	TssKeygenMetric         = types.TssKeygenMetric
-	TssKeysignMetric        = types.TssKeysignMetric
+	FrostKeygenMetric         = types.FrostKeygenMetric
+	FrostKeysignMetric        = types.FrostKeysignMetric
 	SolvencyVoter           = types.SolvencyVoter
 	MinJoinLast             = types.MinJoinLast
 	NodeConfig              = types.NodeConfig

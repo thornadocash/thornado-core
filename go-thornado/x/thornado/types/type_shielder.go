@@ -19,6 +19,7 @@ const (
 
 const (
 	ShielderRedeemStatusAuthorized = "authorized"
+	ShielderRedeemStatusSettled    = "settled"
 )
 
 const (
@@ -379,6 +380,8 @@ type ShielderRedeem struct {
 	MerkleRoot      string         `json:"merkle_root"`
 	Recipient       common.Address `json:"recipient"`
 	RecipientPolicy string         `json:"recipient_policy,omitempty"`
+	BidID           string         `json:"bid_id,omitempty"`
+	NodePubKey      string         `json:"node_pub_key,omitempty"`
 	AmountSats      uint64         `json:"amount_sats"`
 	FeeSats         uint64         `json:"fee_sats"`
 	InHash          common.TxID    `json:"in_hash"`

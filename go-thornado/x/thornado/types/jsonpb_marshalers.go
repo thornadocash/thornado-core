@@ -34,8 +34,8 @@ var (
 	_ jsonpb.JSONPBMarshaler = &QueryNodeResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryNodesResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryObservedTxVoter{}
-	_ jsonpb.JSONPBMarshaler = &QueryTssKeygenMetricResponse{}
-	_ jsonpb.JSONPBMarshaler = &QueryTssMetricResponse{}
+	_ jsonpb.JSONPBMarshaler = &QueryFrostKeygenMetricResponse{}
+	_ jsonpb.JSONPBMarshaler = &QueryFrostMetricResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryTxResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryTxStagesResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryTxStatusResponse{}
@@ -182,12 +182,12 @@ func (m *QueryObservedTxVoter) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error
 	return jsonify(m)
 }
 
-func (m *QueryTssKeygenMetricResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
+func (m *QueryFrostKeygenMetricResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
 	return jsonify(m.Metrics)
 }
 
-// QueryTssMetricResponse
-func (m *QueryTssMetricResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
+// QueryFrostMetricResponse
+func (m *QueryFrostMetricResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
 	return jsonify(m)
 }
 

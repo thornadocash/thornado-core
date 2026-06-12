@@ -11,18 +11,15 @@ message MsgDepositRequestPow {
 
   string pow_token = 1;
   string deposit_pubkey = 2;
-  string operator_pub_key = 3;
-  string node_pub_key = 4;
-  uint64 pow_duration_ms = 5;
+  uint64 pow_duration_ms = 3;
 }
 
 message MsgDepositRequestPowResponse {
   string deposit_address = 1;
   string vault_pub_key = 2;
   uint64 deposit_path_index = 3;
-  string bid_id = 4;
-  int64 expires_at_height = 5;
-  int64 purge_at_height = 6;
+  int64 expires_at_height = 4;
+  int64 purge_at_height = 5;
 }
 
 message MsgShielderShield {
@@ -83,18 +80,20 @@ message MsgNodeSlotAuctionCreateResponse {
   string auction_id = 1;
 }
 
-message MsgNodeSlotAuctionBidPow {
-  option (amino.name) = "thornado/MsgNodeSlotAuctionBidPow";
+message MsgNodeSlotAuctionBidCreate {
+  option (amino.name) = "thornado/MsgNodeSlotAuctionBidCreate";
 
   string auction_id = 1;
-  string pow_token = 2;
-  string operator_pub_key = 3;
-  string node_pub_key = 4;
-  bytes signer = 5 [
+  string operator_pub_key = 2;
+  string node_pub_key = 3;
+  bytes signer = 4 [
     (gogoproto.casttype) = "github.com/cosmos/cosmos-sdk/types.AccAddress",
     (amino.encoding) = "bech32"
   ];
-  uint64 pow_duration_ms = 6;
+}
+
+message MsgNodeSlotAuctionBidCreateResponse {
+  string bid_id = 1;
 }
 
 message MsgNodeSlotAuctionSelectBid {
@@ -108,13 +107,15 @@ message MsgNodeSlotAuctionSelectBid {
   ];
 }
 
-message MsgNodeSlotAuctionShield {
-  option (amino.name) = "thornado/MsgNodeSlotAuctionShield";
+message MsgNodeSaleShield {
+  option (amino.name) = "thornado/MsgNodeSaleShield";
 
   string auction_id = 1;
   string bid_id = 2;
   repeated string commitments = 3;
-  bytes signer = 4 [
+  string deposit_pubkey = 4;
+  string signature = 5;
+  bytes signer = 6 [
     (gogoproto.casttype) = "github.com/cosmos/cosmos-sdk/types.AccAddress",
     (amino.encoding) = "bech32"
   ];

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	tssMessages "github.com/thornadocash/go-thornado/bifrost/p2p/messages"
+	frostMessages "github.com/thornadocash/go-thornado/bifrost/p2p/messages"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 )
@@ -22,14 +22,14 @@ func TestSolvencyValidateBasicRejectsMultipleCoins(t *testing.T) {
 	require.ErrorContains(t, msg.ValidateBasic(), "too many solvency coins")
 }
 
-func TestTssKeysignFailValidateBasicRejectsMultipleCoins(t *testing.T) {
+func TestFrostKeysignFailValidateBasicRejectsMultipleCoins(t *testing.T) {
 	SetupConfigForTest()
 
-	msg, err := NewMsgTssKeysignFail(
+	msg, err := NewMsgFrostKeysignFail(
 		1,
 		Blame{
 			FailReason: "failed",
-			Round:      tssMessages.KEYSIGN1aUnicast,
+			Round:      frostMessages.KEYSIGN1aUnicast,
 			BlameNodes: []Node{{Pubkey: GetRandomPubKey().String()}},
 		},
 		common.Coins{

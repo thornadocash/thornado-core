@@ -24,10 +24,10 @@ const (
 	PenaltyPointEventType           = "penalty_points"
 	MintBurnType                    = "mint_burn"
 	OperatorRotateEventType         = "operator_rotate"
-	TSSKeygenSuccess                = "tss_keygen_success"
-	TSSKeygenFailure                = "tss_keygen_failure"
-	TSSKeygenMetricEventType        = "tss_keygen"
-	TSSKeysignMetricEventType       = "tss_keysign"
+	FROSTKeygenSuccess                = "frost_keygen_success"
+	FROSTKeygenFailure                = "frost_keygen_failure"
+	FROSTKeygenMetricEventType        = "frost_keygen"
+	FROSTKeysignMetricEventType       = "frost_keysign"
 	VersionEventType                = "version"
 	OraclePriceEvent                = "oracle_price"
 	FailedOutboundRecoveryEventType = "failed_outbound_recovery"
@@ -195,9 +195,9 @@ func (m *EventOutbound) Events() (cosmos.Events, error) {
 	return cosmos.Events{evt}, nil
 }
 
-// NewEventTssKeygenSuccess create a new EventTssKeygenSuccess
-func NewEventTssKeygenSuccess(pubkey common.PubKey, height int64, members []string) *EventTssKeygenSuccess {
-	return &EventTssKeygenSuccess{
+// NewEventFrostKeygenSuccess create a new EventFrostKeygenSuccess
+func NewEventFrostKeygenSuccess(pubkey common.PubKey, height int64, members []string) *EventFrostKeygenSuccess {
+	return &EventFrostKeygenSuccess{
 		PubKey:  pubkey,
 		Height:  height,
 		Members: members,
@@ -205,12 +205,12 @@ func NewEventTssKeygenSuccess(pubkey common.PubKey, height int64, members []stri
 }
 
 // Type  return a string which represent the type of this event
-func (m *EventTssKeygenSuccess) Type() string {
-	return TSSKeygenSuccess
+func (m *EventFrostKeygenSuccess) Type() string {
+	return FROSTKeygenSuccess
 }
 
 // Events return cosmos sdk events
-func (m *EventTssKeygenSuccess) Events() (cosmos.Events, error) {
+func (m *EventFrostKeygenSuccess) Events() (cosmos.Events, error) {
 	evt := cosmos.NewEvent(m.Type(),
 		cosmos.NewAttribute("pubkey", m.PubKey.String()),
 		cosmos.NewAttribute("height", strconv.FormatInt(m.Height, 10)),
@@ -219,9 +219,9 @@ func (m *EventTssKeygenSuccess) Events() (cosmos.Events, error) {
 	return cosmos.Events{evt}, nil
 }
 
-// NewEventTssKeygenFailure create a new EventTssKeygenFailure
-func NewEventTssKeygenFailure(reason, round string, unicast bool, height int64, blame []string) *EventTssKeygenFailure {
-	return &EventTssKeygenFailure{
+// NewEventFrostKeygenFailure create a new EventFrostKeygenFailure
+func NewEventFrostKeygenFailure(reason, round string, unicast bool, height int64, blame []string) *EventFrostKeygenFailure {
+	return &EventFrostKeygenFailure{
 		FailReason: reason,
 		IsUnicast:  unicast,
 		Round:      round,
@@ -231,12 +231,12 @@ func NewEventTssKeygenFailure(reason, round string, unicast bool, height int64, 
 }
 
 // Type  return a string which represent the type of this event
-func (m *EventTssKeygenFailure) Type() string {
-	return TSSKeygenFailure
+func (m *EventFrostKeygenFailure) Type() string {
+	return FROSTKeygenFailure
 }
 
 // Events return cosmos sdk events
-func (m *EventTssKeygenFailure) Events() (cosmos.Events, error) {
+func (m *EventFrostKeygenFailure) Events() (cosmos.Events, error) {
 	evt := cosmos.NewEvent(m.Type(),
 		cosmos.NewAttribute("reason", m.FailReason),
 		cosmos.NewAttribute("round", m.Round),
@@ -247,42 +247,42 @@ func (m *EventTssKeygenFailure) Events() (cosmos.Events, error) {
 	return cosmos.Events{evt}, nil
 }
 
-// NewEventTssKeygenMetric create a new EventTssMetric
-func NewEventTssKeygenMetric(pubkey common.PubKey, medianDurationMS int64) *EventTssKeygenMetric {
-	return &EventTssKeygenMetric{
+// NewEventFrostKeygenMetric create a new EventFrostMetric
+func NewEventFrostKeygenMetric(pubkey common.PubKey, medianDurationMS int64) *EventFrostKeygenMetric {
+	return &EventFrostKeygenMetric{
 		PubKey:           pubkey,
 		MedianDurationMs: medianDurationMS,
 	}
 }
 
 // Type  return a string which represent the type of this event
-func (m *EventTssKeygenMetric) Type() string {
-	return TSSKeygenMetricEventType
+func (m *EventFrostKeygenMetric) Type() string {
+	return FROSTKeygenMetricEventType
 }
 
 // Events return cosmos sdk events
-func (m *EventTssKeygenMetric) Events() (cosmos.Events, error) {
+func (m *EventFrostKeygenMetric) Events() (cosmos.Events, error) {
 	evt := cosmos.NewEvent(m.Type(),
 		cosmos.NewAttribute("pubkey", m.PubKey.String()),
 		cosmos.NewAttribute("median_duration_ms", strconv.FormatInt(m.MedianDurationMs, 10)))
 	return cosmos.Events{evt}, nil
 }
 
-// NewEventTssKeysignMetric create a new EventTssMetric
-func NewEventTssKeysignMetric(txID common.TxID, medianDurationMS int64) *EventTssKeysignMetric {
-	return &EventTssKeysignMetric{
+// NewEventFrostKeysignMetric create a new EventFrostMetric
+func NewEventFrostKeysignMetric(txID common.TxID, medianDurationMS int64) *EventFrostKeysignMetric {
+	return &EventFrostKeysignMetric{
 		TxID:             txID,
 		MedianDurationMs: medianDurationMS,
 	}
 }
 
 // Type  return a string which represent the type of this event
-func (m *EventTssKeysignMetric) Type() string {
-	return TSSKeysignMetricEventType
+func (m *EventFrostKeysignMetric) Type() string {
+	return FROSTKeysignMetricEventType
 }
 
 // Events return cosmos sdk events
-func (m *EventTssKeysignMetric) Events() (cosmos.Events, error) {
+func (m *EventFrostKeysignMetric) Events() (cosmos.Events, error) {
 	evt := cosmos.NewEvent(m.Type(),
 		cosmos.NewAttribute("txid", m.TxID.String()),
 		cosmos.NewAttribute("median_duration_ms", strconv.FormatInt(m.MedianDurationMs, 10)))

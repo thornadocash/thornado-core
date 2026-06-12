@@ -17,7 +17,7 @@ import (
 // NodeKeygenMetric struct for NodeKeygenMetric
 type NodeKeygenMetric struct {
 	Address *string `json:"address,omitempty"`
-	TssTime *string `json:"tss_time,omitempty"`
+	FrostTime *string `json:"frost_time,omitempty"`
 }
 
 // NewNodeKeygenMetric instantiates a new NodeKeygenMetric object
@@ -69,36 +69,36 @@ func (o *NodeKeygenMetric) SetAddress(v string) {
 	o.Address = &v
 }
 
-// GetTssTime returns the TssTime field value if set, zero value otherwise.
-func (o *NodeKeygenMetric) GetTssTime() string {
-	if o == nil || o.TssTime == nil {
+// GetFrostTime returns the FrostTime field value if set, zero value otherwise.
+func (o *NodeKeygenMetric) GetFrostTime() string {
+	if o == nil || o.FrostTime == nil {
 		var ret string
 		return ret
 	}
-	return *o.TssTime
+	return *o.FrostTime
 }
 
-// GetTssTimeOk returns a tuple with the TssTime field value if set, nil otherwise
+// GetFrostTimeOk returns a tuple with the FrostTime field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *NodeKeygenMetric) GetTssTimeOk() (*string, bool) {
-	if o == nil || o.TssTime == nil {
+func (o *NodeKeygenMetric) GetFrostTimeOk() (*string, bool) {
+	if o == nil || o.FrostTime == nil {
 		return nil, false
 	}
-	return o.TssTime, true
+	return o.FrostTime, true
 }
 
-// HasTssTime returns a boolean if a field has been set.
-func (o *NodeKeygenMetric) HasTssTime() bool {
-	if o != nil && o.TssTime != nil {
+// HasFrostTime returns a boolean if a field has been set.
+func (o *NodeKeygenMetric) HasFrostTime() bool {
+	if o != nil && o.FrostTime != nil {
 		return true
 	}
 
 	return false
 }
 
-// SetTssTime gets a reference to the given string and assigns it to the TssTime field.
-func (o *NodeKeygenMetric) SetTssTime(v string) {
-	o.TssTime = &v
+// SetFrostTime gets a reference to the given string and assigns it to the FrostTime field.
+func (o *NodeKeygenMetric) SetFrostTime(v string) {
+	o.FrostTime = &v
 }
 
 func (o NodeKeygenMetric) MarshalJSON_deprecated() ([]byte, error) {
@@ -106,8 +106,8 @@ func (o NodeKeygenMetric) MarshalJSON_deprecated() ([]byte, error) {
 	if o.Address != nil {
 		toSerialize["address"] = o.Address
 	}
-	if o.TssTime != nil {
-		toSerialize["tss_time"] = o.TssTime
+	if o.FrostTime != nil {
+		toSerialize["frost_time"] = o.FrostTime
 	}
 	return json.Marshal(toSerialize)
 }

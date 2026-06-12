@@ -5,7 +5,7 @@ option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
 
 import "gogoproto/gogo.proto";
 import "types/query_vault.proto";
-import "types/type_tss_metric.proto";
+import "types/type_frost_metric.proto";
 import "types/type_tx_out.proto";
 import "types/type_observed_tx.proto";
 import "common/common.proto";
@@ -59,7 +59,7 @@ message QueryTxResponse {
   int64 finalised_height = 3;
   // the thornado height for which the outbound was scheduled
   int64 outbound_height = 4;
-  TssKeysignMetric keysign_metric = 5
+  FrostKeysignMetric keysign_metric = 5
       [ (gogoproto.jsontag) = "keysign_metric" ];
   repeated PlannedOutTx planned_out_txs = 6;
   repeated common.Tx out_txs = 7 [

@@ -25,13 +25,13 @@ const (
 	MinKeysharesBackupSize      int     = 1024
 	MinFrostKeysharesBackupSize int     = 256
 	MaxKeysharesBackupSize      int     = 256 * 1024
-	MaxTssPubKeys               int     = 100
-	MaxTssChains                int     = 16
-	MaxTssBlames                int     = 100
-	MaxTssBlameDataSize         int     = 4096
-	MaxTssBlameSignatureSize    int     = 256
-	MaxTssTextLength            int     = 256
-	MaxTssSignatureSize         int     = 64
+	MaxFrostPubKeys               int     = 100
+	MaxFrostChains                int     = 16
+	MaxFrostBlames                int     = 100
+	MaxFrostBlameDataSize         int     = 4096
+	MaxFrostBlameSignatureSize    int     = 256
+	MaxFrostTextLength            int     = 256
+	MaxFrostSignatureSize         int     = 64
 )
 
 // MatchMnemonic will match substrings that look like a 12+ word mnemonic.
@@ -45,9 +45,9 @@ var (
 
 // NewMsgKeygenVault is a constructor function for MsgKeygenVault
 func NewMsgKeygenVault(pks []string, vaultpk common.PubKey, secp256k1Signature, keysharesBackup []byte, keygenType KeygenType, height int64, bl []Blame, chains []string, signer cosmos.AccAddress, keygenTime int64) (*MsgKeygenVault, error) {
-	id, err := getTssID(pks, vaultpk, height, bl)
+	id, err := getFrostID(pks, vaultpk, height, bl)
 	if err != nil {
-		return nil, fmt.Errorf("fail to get tss id: %w", err)
+		return nil, fmt.Errorf("fail to get frost id: %w", err)
 	}
 	return &MsgKeygenVault{
 		ID:                 id,
@@ -64,8 +64,8 @@ func NewMsgKeygenVault(pks []string, vaultpk common.PubKey, secp256k1Signature, 
 	}, nil
 }
 
-// getTssID
-func getTssID(members []string, vaultPk common.PubKey, height int64, bl []Blame) (string, error) {
+// getFrostID
+func getFrostID(members []string, vaultPk common.PubKey, height int64, bl []Blame) (string, error) {
 	// ensure input pubkeys list is deterministically sorted
 	sort.SliceStable(members, func(i, j int) bool {
 		return members[i] < members[j]
@@ -93,7 +93,7 @@ func getTssID(members []string, vaultPk common.PubKey, height int64, bl []Blame)
 	hash := sha256.New()
 	_, err := hash.Write([]byte(sb.String()))
 	if err != nil {
-		return "", fmt.Errorf("fail to get tss id: %w", err)
+		return "", fmt.Errorf("fail to get frost id: %w", err)
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
@@ -112,13 +112,13 @@ func (m *MsgKeygenVault) ValidateBasic() error {
 	if len(m.PubKeys) < 2 {
 		return cosmos.ErrUnknownRequest("Must have at least 2 pub keys")
 	}
-	if len(m.PubKeys) > MaxTssPubKeys {
+	if len(m.PubKeys) > MaxFrostPubKeys {
 		return cosmos.ErrUnknownRequest("Must have no more then 100 pub keys")
 	}
-	if len(m.Blame) > MaxTssBlames {
-		return cosmos.ErrUnknownRequest("too many tss blame records")
+	if len(m.Blame) > MaxFrostBlames {
+		return cosmos.ErrUnknownRequest("too many frost blame records")
 	}
-	if len(m.Secp256K1Signature) > MaxTssSignatureSize {
+	if len(m.Secp256K1Signature) > MaxFrostSignatureSize {
 		return cosmos.ErrUnknownRequest("secp256k1 signature too large")
 	}
 	// Validate blame nodes: all blamed pubkeys must be keygen participants and no duplicates.
@@ -129,18 +129,18 @@ func (m *MsgKeygenVault) ValidateBasic() error {
 	}
 	seenBlameNodes := make(map[string]struct{})
 	for _, b := range m.Blame {
-		if len(b.FailReason) > MaxTssTextLength {
-			return cosmos.ErrUnknownRequest("tss blame reason too long")
+		if len(b.FailReason) > MaxFrostTextLength {
+			return cosmos.ErrUnknownRequest("frost blame reason too long")
 		}
-		if len(b.Round) > MaxTssTextLength {
-			return cosmos.ErrUnknownRequest("tss blame round too long")
+		if len(b.Round) > MaxFrostTextLength {
+			return cosmos.ErrUnknownRequest("frost blame round too long")
 		}
 		for _, node := range b.BlameNodes {
-			if len(node.BlameData) > MaxTssBlameDataSize {
-				return cosmos.ErrUnknownRequest("tss blame data too large")
+			if len(node.BlameData) > MaxFrostBlameDataSize {
+				return cosmos.ErrUnknownRequest("frost blame data too large")
 			}
-			if len(node.BlameSignature) > MaxTssBlameSignatureSize {
-				return cosmos.ErrUnknownRequest("tss blame signature too large")
+			if len(node.BlameSignature) > MaxFrostBlameSignatureSize {
+				return cosmos.ErrUnknownRequest("frost blame signature too large")
 			}
 			if _, exists := pubKeySet[node.Pubkey]; !exists {
 				return cosmos.ErrUnknownRequest("blame node not in keygen participants")
@@ -185,8 +185,8 @@ func (m *MsgKeygenVault) ValidateBasic() error {
 	if len(chains) != len(m.Chains) {
 		return cosmos.ErrUnknownRequest("One or more chains were not valid")
 	}
-	if len(m.Chains) > MaxTssChains {
-		return cosmos.ErrUnknownRequest("too many tss chains")
+	if len(m.Chains) > MaxFrostChains {
+		return cosmos.ErrUnknownRequest("too many frost chains")
 	}
 	if !chains.Has(common.BTCAsset.Chain) {
 		return cosmos.ErrUnknownRequest("must support rune asset chain")

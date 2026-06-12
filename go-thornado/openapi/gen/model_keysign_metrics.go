@@ -17,7 +17,7 @@ import (
 // KeysignMetrics struct for KeysignMetrics
 type KeysignMetrics struct {
 	TxId         *string     `json:"tx_id,omitempty"`
-	NodeTssTimes []TssMetric `json:"node_tss_times,omitempty"`
+	NodeFrostTimes []FrostMetric `json:"node_frost_times,omitempty"`
 }
 
 // NewKeysignMetrics instantiates a new KeysignMetrics object
@@ -69,36 +69,36 @@ func (o *KeysignMetrics) SetTxId(v string) {
 	o.TxId = &v
 }
 
-// GetNodeTssTimes returns the NodeTssTimes field value if set, zero value otherwise.
-func (o *KeysignMetrics) GetNodeTssTimes() []TssMetric {
-	if o == nil || o.NodeTssTimes == nil {
-		var ret []TssMetric
+// GetNodeFrostTimes returns the NodeFrostTimes field value if set, zero value otherwise.
+func (o *KeysignMetrics) GetNodeFrostTimes() []FrostMetric {
+	if o == nil || o.NodeFrostTimes == nil {
+		var ret []FrostMetric
 		return ret
 	}
-	return o.NodeTssTimes
+	return o.NodeFrostTimes
 }
 
-// GetNodeTssTimesOk returns a tuple with the NodeTssTimes field value if set, nil otherwise
+// GetNodeFrostTimesOk returns a tuple with the NodeFrostTimes field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *KeysignMetrics) GetNodeTssTimesOk() ([]TssMetric, bool) {
-	if o == nil || o.NodeTssTimes == nil {
+func (o *KeysignMetrics) GetNodeFrostTimesOk() ([]FrostMetric, bool) {
+	if o == nil || o.NodeFrostTimes == nil {
 		return nil, false
 	}
-	return o.NodeTssTimes, true
+	return o.NodeFrostTimes, true
 }
 
-// HasNodeTssTimes returns a boolean if a field has been set.
-func (o *KeysignMetrics) HasNodeTssTimes() bool {
-	if o != nil && o.NodeTssTimes != nil {
+// HasNodeFrostTimes returns a boolean if a field has been set.
+func (o *KeysignMetrics) HasNodeFrostTimes() bool {
+	if o != nil && o.NodeFrostTimes != nil {
 		return true
 	}
 
 	return false
 }
 
-// SetNodeTssTimes gets a reference to the given []TssMetric and assigns it to the NodeTssTimes field.
-func (o *KeysignMetrics) SetNodeTssTimes(v []TssMetric) {
-	o.NodeTssTimes = v
+// SetNodeFrostTimes gets a reference to the given []FrostMetric and assigns it to the NodeFrostTimes field.
+func (o *KeysignMetrics) SetNodeFrostTimes(v []FrostMetric) {
+	o.NodeFrostTimes = v
 }
 
 func (o KeysignMetrics) MarshalJSON_deprecated() ([]byte, error) {
@@ -106,8 +106,8 @@ func (o KeysignMetrics) MarshalJSON_deprecated() ([]byte, error) {
 	if o.TxId != nil {
 		toSerialize["tx_id"] = o.TxId
 	}
-	if o.NodeTssTimes != nil {
-		toSerialize["node_tss_times"] = o.NodeTssTimes
+	if o.NodeFrostTimes != nil {
+		toSerialize["node_frost_times"] = o.NodeFrostTimes
 	}
 	return json.Marshal(toSerialize)
 }

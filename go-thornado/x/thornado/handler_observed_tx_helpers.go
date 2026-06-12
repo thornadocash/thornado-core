@@ -498,14 +498,14 @@ func ensureVaultAndGetTxOutVoter(ctx cosmos.Context, k keeper.Keeper, vaultPubKe
 	}
 
 	if keysignMs > 0 {
-		keysignMetric, err := k.GetTssKeysignMetric(ctx, txID)
+		keysignMetric, err := k.GetFrostKeysignMetric(ctx, txID)
 		if err != nil {
 			ctx.Logger().Error("fail to get keysign metric", "error", err)
 		} else {
 			for _, o := range observers {
-				keysignMetric.AddNodeTssTime(o, keysignMs)
+				keysignMetric.AddNodeFrostTime(o, keysignMs)
 			}
-			k.SetTssKeysignMetric(ctx, keysignMetric)
+			k.SetFrostKeysignMetric(ctx, keysignMetric)
 		}
 	}
 
@@ -569,13 +569,13 @@ func handleObservedTxOutQuorum(
 			mgr.ObMgr().AppendObserver(tx.Tx.Chain, txOut.GetSigners())
 
 			if tx.KeysignMs > 0 {
-				keysignMetric, kmErr := k.GetTssKeysignMetric(ctx, tx.Tx.ID)
+				keysignMetric, kmErr := k.GetFrostKeysignMetric(ctx, tx.Tx.ID)
 				if kmErr != nil {
-					ctx.Logger().Error("fail to get tss keysign metric", "error", kmErr, "hash", tx.Tx.ID)
+					ctx.Logger().Error("fail to get frost keysign metric", "error", kmErr, "hash", tx.Tx.ID)
 				} else {
-					evt := NewEventTssKeysignMetric(keysignMetric.TxID, keysignMetric.GetMedianTime())
+					evt := NewEventFrostKeysignMetric(keysignMetric.TxID, keysignMetric.GetMedianTime())
 					if emitErr := mgr.EventMgr().EmitEvent(ctx, evt); emitErr != nil {
-						ctx.Logger().Error("fail to emit tss metric event", "error", emitErr)
+						ctx.Logger().Error("fail to emit frost metric event", "error", emitErr)
 					}
 				}
 			}

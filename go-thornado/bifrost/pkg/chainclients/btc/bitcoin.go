@@ -52,7 +52,7 @@ func (c *Client) isFrostVault(pubkey common.PubKey) bool {
 	if c.cfg.ChainID != common.BTCChain {
 		return false
 	}
-	reader, ok := c.tssKeySigner.(frostEngineReader)
+	reader, ok := c.frostKeySigner.(frostEngineReader)
 	if !ok {
 		return false
 	}
@@ -106,7 +106,7 @@ func (c *Client) signUTXOBTC(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, amoun
 	if tx.VaultPubKey.Equals(c.nodePubKey) {
 		signable = btctxscript.NewPrivateKeySignable(c.nodePrivKey)
 	} else {
-		signable = newTssSignableBTC(tx.VaultPubKey, c.tssKeySigner, c.log)
+		signable = newFrostSignableBTC(tx.VaultPubKey, c.frostKeySigner, c.log)
 	}
 
 	witness, err := btctxscript.WitnessSignature(redeemTx, sigHashes, idx, amount, sourceScript, btctxscript.SigHashAll, signable, true)
@@ -122,7 +122,7 @@ func (c *Client) signUTXOBTC(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, amoun
 	}
 	if err = engine.Execute(); err != nil {
 		// SECURITY FIX (Layer 4 - NULLFAIL Failsafe): This should NEVER happen after Layers 1-3.
-		// If it does occur, it indicates a serious issue: cryptographic failure, TSS corruption, or unknown edge case.
+		// If it does occur, it indicates a serious issue: cryptographic failure, FROST corruption, or unknown edge case.
 		// We log and treat as success to prevent retry loops, allowing manual investigation.
 		if btctxscript.IsErrorCode(err, btctxscript.ErrNullFail) {
 			c.log.Error().
@@ -151,15 +151,15 @@ func (c *Client) signTaprootUTXOBTC(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem
 		}
 		sig = signature.Serialize()
 	} else {
-		if signer, ok := c.tssKeySigner.(interface {
+		if signer, ok := c.frostKeySigner.(interface {
 			RemoteSignWithPath([]byte, common.SigningAlgo, string, uint64) ([]byte, []byte, error)
 		}); ok {
 			sig, _, err = signer.RemoteSignWithPath(sigHash, common.SigningAlgoSecp256k1, tx.VaultPubKey.String(), tx.VaultPathIndex)
 		} else {
-			sig, _, err = c.tssKeySigner.RemoteSign(sigHash, common.SigningAlgoSecp256k1, tx.VaultPubKey.String())
+			sig, _, err = c.frostKeySigner.RemoteSign(sigHash, common.SigningAlgoSecp256k1, tx.VaultPubKey.String())
 		}
 		if err != nil {
-			return fmt.Errorf("fail to tss schnorr sign: %w", err)
+			return fmt.Errorf("fail to frost schnorr sign: %w", err)
 		}
 	}
 	if len(sig) != btcschnorr.SignatureSize {

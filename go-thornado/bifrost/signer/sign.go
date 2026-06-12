@@ -31,7 +31,7 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/pubkeymanager"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
-	"github.com/thornadocash/go-thornado/bifrost/tss"
+	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
 	"github.com/thornadocash/go-thornado/constants"
@@ -57,12 +57,12 @@ type Signer struct {
 	storage              SignerStorage
 	m                    *metrics.Metrics
 	errCounter           *prometheus.CounterVec
-	tssKeygen            *tss.KeyGen
+	frostKeygen            *frost.KeyGen
 	pubkeyMgr            pubkeymanager.PubKeyValidator
 	constantsProvider    *ConstantsProvider
 	localPubKeyECDSA     common.PubKey
 	localPubKeyEDDSA     common.PubKey
-	tssKeysignMetricMgr  *metrics.TssKeysignMetricMgr
+	frostKeysignMetricMgr  *metrics.FrostKeysignMetricMgr
 	observer             *observer.Observer
 	pipeline             *pipeline
 }
@@ -75,15 +75,15 @@ func NewSigner(cfg config.Bifrost,
 	pubkeyMgr pubkeymanager.PubKeyValidator,
 	chains map[common.Chain]chainclients.ChainClient,
 	m *metrics.Metrics,
-	tssKeysignMetricMgr *metrics.TssKeysignMetricMgr,
+	frostKeysignMetricMgr *metrics.FrostKeysignMetricMgr,
 	obs *observer.Observer,
 ) (*Signer, error) {
 	storage, err := NewSignerStore(cfg.Signer.SignerDbPath, cfg.Signer.LevelDB, thornadoBridge.GetConfig().SignerPasswd)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create thornado scan storage: %w", err)
 	}
-	if tssKeysignMetricMgr == nil {
-		return nil, fmt.Errorf("fail to create signer , tss keysign metric manager is nil")
+	if frostKeysignMetricMgr == nil {
+		return nil, fmt.Errorf("fail to create signer , frost keysign metric manager is nil")
 	}
 	var na *ttypes.NodeAccount
 	for i := 0; i < 300; i++ { // wait for 5 min before timing out
@@ -126,9 +126,9 @@ func NewSigner(cfg config.Bifrost,
 		return nil, fmt.Errorf("fail to create block scanner: %w", err)
 	}
 
-	kg, err := tss.NewTssKeyGen(thorKeys, localState, thornadoBridge)
+	kg, err := frost.NewFrostKeyGen(thorKeys, localState, thornadoBridge)
 	if err != nil {
-		return nil, fmt.Errorf("fail to create Tss Key gen,err:%w", err)
+		return nil, fmt.Errorf("fail to create Frost Key gen,err:%w", err)
 	}
 	constantProvider := NewConstantsProvider(thornadoBridge)
 	return &Signer{
@@ -144,11 +144,11 @@ func NewSigner(cfg config.Bifrost,
 		errCounter:           m.GetCounterVec(metrics.SignerError),
 		pubkeyMgr:            pubkeyMgr,
 		thornadoBridge:       thornadoBridge,
-		tssKeygen:            kg,
+		frostKeygen:            kg,
 		constantsProvider:    constantProvider,
 		localPubKeyECDSA:     na.PubKeySet.Secp256k1,
 		localPubKeyEDDSA:     na.PubKeySet.Ed25519,
-		tssKeysignMetricMgr:  tssKeysignMetricMgr,
+		frostKeysignMetricMgr:  frostKeysignMetricMgr,
 		observer:             obs,
 	}, nil
 }
@@ -496,7 +496,7 @@ func (s *Signer) processKeygenBlock(keygenBlock ttypes.KeygenBlock) {
 	// NOTE: in practice there is only one keygen in the keygen block
 	for _, keygenReq := range keygenBlock.Keygens {
 		keygenStart := time.Now()
-		pubKey, blame, err := s.tssKeygen.GenerateNewKey(keygenBlock.Height, keygenReq.GetMembers(), common.Chains{common.BTCChain})
+		pubKey, blame, err := s.frostKeygen.GenerateNewKey(keygenBlock.Height, keygenReq.GetMembers(), common.Chains{common.BTCChain})
 		if len(blame) > 0 {
 			for _, b := range blame {
 				s.logger.Error().
@@ -569,19 +569,19 @@ func (s *Signer) sendKeygenToThornado(height int64, vaultPk common.PubKey, secp2
 			case readErr != nil:
 				s.logger.Error().Err(readErr).Msg("fail to read keyshares")
 			case isFrost:
-				keysharesFrost, err = tss.EncryptRawKeyshares(frostRaw, os.Getenv("SIGNER_SEED_PHRASE"))
+				keysharesFrost, err = frost.EncryptRawKeyshares(frostRaw, os.Getenv("SIGNER_SEED_PHRASE"))
 				if err != nil {
 					s.logger.Error().Err(err).Msg("fail to encrypt frost keyshares")
 				}
 			default:
-				keyshares, err = tss.EncryptKeyshares(keysharePath, os.Getenv("SIGNER_SEED_PHRASE"))
+				keyshares, err = frost.EncryptKeyshares(keysharePath, os.Getenv("SIGNER_SEED_PHRASE"))
 				if err != nil {
 					s.logger.Error().Err(err).Msg("fail to encrypt secp256k1 keyshares")
 				}
 			}
 		}
 		if !vaultPubKeyEddsa.IsEmpty() {
-			keysharesEddsa, err = tss.EncryptKeyshares(
+			keysharesEddsa, err = frost.EncryptKeyshares(
 				filepath.Join(app.DefaultNodeHome, fmt.Sprintf("localstate-%s.json", vaultPubKeyEddsa)),
 				os.Getenv("SIGNER_SEED_PHRASE"),
 			)
@@ -859,14 +859,14 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 		Str("txid", hash).
 		Msg("broadcasted tx to chain")
 
-	if s.isTssKeysign(tx.VaultPubKey) || s.isTssKeysign(tx.VaultPubKeyEddsa) {
-		s.tssKeysignMetricMgr.SetTssKeysignMetric(hash, elapse.Milliseconds())
+	if s.isFrostKeysign(tx.VaultPubKey) || s.isFrostKeysign(tx.VaultPubKeyEddsa) {
+		s.frostKeysignMetricMgr.SetFrostKeysignMetric(hash, elapse.Milliseconds())
 	}
 
 	return nil, observation, nil
 }
 
-func (s *Signer) isTssKeysign(pubKey common.PubKey) bool {
+func (s *Signer) isFrostKeysign(pubKey common.PubKey) bool {
 	return !s.localPubKeyECDSA.Equals(pubKey) && !s.localPubKeyEDDSA.Equals(pubKey)
 }
 
@@ -931,7 +931,7 @@ func (s *Signer) processTransaction(item TxOutStoreItem) {
 		Interface("tx", item.TxOutItem).
 		Msg("Signing transaction")
 
-	// a single keysign should not take longer than 5 minutes , regardless TSS or local
+	// a single keysign should not take longer than 5 minutes , regardless FROST or local
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	checkpoint, obs, err := runWithContext(ctx, func() ([]byte, *types.TxInItem, error) {
 		return s.signAndBroadcast(item)
@@ -949,7 +949,7 @@ func (s *Signer) processTransaction(item TxOutStoreItem) {
 		item.Checkpoint = checkpoint
 
 		// mark the txout on round 7 failure to block other txs for the chain / pubkey
-		ksErr := tss.KeysignError{}
+		ksErr := frost.KeysignError{}
 		if errors.As(err, &ksErr) && ksErr.IsRound7() {
 			s.logger.Error().Err(err).Interface("tx", item.TxOutItem).Msg("round 7 signing error")
 			item.Round7Retry = true

@@ -29,9 +29,6 @@ import (
 
 var (
 	initManager = func(_ cosmos.Context, _ *Mgrs) {}
-	queryExport = func(_ sdk.Context, _ *Mgrs) ([]byte, error) {
-		return nil, fmt.Errorf("export query not supported")
-	}
 	tendermintClient   *tmhttp.HTTP
 	initTendermintOnce = sync.Once{}
 )
@@ -804,7 +801,7 @@ func (qs queryServer) queryTx(ctx cosmos.Context, req *types.QueryTxRequest) (*t
 	if err != nil {
 		return nil, fmt.Errorf("fail to get node accounts: %w", err)
 	}
-	keysignMetric, err := qs.mgr.Keeper().GetTssKeysignMetric(ctx, hash)
+	keysignMetric, err := qs.mgr.Keeper().GetFrostKeysignMetric(ctx, hash)
 	if err != nil {
 		ctx.Logger().Error("fail to get keysign metrics", "error", err)
 	}
@@ -1802,7 +1799,7 @@ func (qs queryServer) queryConfigNodeValues(ctx cosmos.Context, req *types.Query
 	return &resp, nil
 }
 
-func (qs queryServer) queryTssKeygenMetric(ctx cosmos.Context, req *types.QueryTssKeygenMetricRequest) (*types.QueryTssKeygenMetricResponse, error) {
+func (qs queryServer) queryFrostKeygenMetric(ctx cosmos.Context, req *types.QueryFrostKeygenMetricRequest) (*types.QueryFrostKeygenMetricResponse, error) {
 	if len(req.PubKey) == 0 {
 		return nil, fmt.Errorf("missing pub_key parameter")
 	}
@@ -1811,17 +1808,17 @@ func (qs queryServer) queryTssKeygenMetric(ctx cosmos.Context, req *types.QueryT
 		return nil, fmt.Errorf("fail to parse pubkey(%s) err:%w", req.PubKey, err)
 	}
 
-	var result []*types.TssKeygenMetric
-	m, err := qs.mgr.Keeper().GetTssKeygenMetric(ctx, pkey)
+	var result []*types.FrostKeygenMetric
+	m, err := qs.mgr.Keeper().GetFrostKeygenMetric(ctx, pkey)
 	if err != nil {
-		return nil, fmt.Errorf("fail to get tss keygen metric for pubkey(%s):%w", pkey, err)
+		return nil, fmt.Errorf("fail to get frost keygen metric for pubkey(%s):%w", pkey, err)
 	}
 	result = append(result, m)
 
-	return &types.QueryTssKeygenMetricResponse{Metrics: result}, nil
+	return &types.QueryFrostKeygenMetricResponse{Metrics: result}, nil
 }
 
-func (qs queryServer) queryTssMetric(ctx cosmos.Context, _ *types.QueryTssMetricRequest) (*types.QueryTssMetricResponse, error) {
+func (qs queryServer) queryFrostMetric(ctx cosmos.Context, _ *types.QueryFrostMetricRequest) (*types.QueryFrostMetricResponse, error) {
 	var pubKeys common.PubKeys
 	// get all active base
 	vaults, err := qs.mgr.Keeper().GetBaseVaultsByStatus(ctx, ActiveVault)
@@ -1831,24 +1828,24 @@ func (qs queryServer) queryTssMetric(ctx cosmos.Context, _ *types.QueryTssMetric
 	for _, v := range vaults {
 		pubKeys = append(pubKeys, v.PubKey)
 	}
-	var keygenMetrics []*types.TssKeygenMetric
+	var keygenMetrics []*types.FrostKeygenMetric
 	for _, pkey := range pubKeys {
-		var m *types.TssKeygenMetric
-		m, err = qs.mgr.Keeper().GetTssKeygenMetric(ctx, pkey)
+		var m *types.FrostKeygenMetric
+		m, err = qs.mgr.Keeper().GetFrostKeygenMetric(ctx, pkey)
 		if err != nil {
-			return nil, fmt.Errorf("fail to get tss keygen metric for pubkey(%s):%w", pkey, err)
+			return nil, fmt.Errorf("fail to get frost keygen metric for pubkey(%s):%w", pkey, err)
 		}
-		if len(m.NodeTssTimes) == 0 {
+		if len(m.NodeFrostTimes) == 0 {
 			continue
 		}
 		keygenMetrics = append(keygenMetrics, m)
 	}
-	keysignMetric, err := qs.mgr.Keeper().GetLatestTssKeysignMetric(ctx)
+	keysignMetric, err := qs.mgr.Keeper().GetLatestFrostKeysignMetric(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get keysign metric:%w", err)
 	}
 
-	return &types.QueryTssMetricResponse{
+	return &types.QueryFrostMetricResponse{
 		Keygen:  keygenMetrics,
 		Keysign: keysignMetric,
 	}, nil

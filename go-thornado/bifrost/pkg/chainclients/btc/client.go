@@ -27,7 +27,7 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/signercache"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
-	"github.com/thornadocash/go-thornado/bifrost/tss"
+	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/config"
@@ -54,7 +54,7 @@ type Client struct {
 	// ---------- signing ----------
 	nodePubKey         common.PubKey
 	nodePrivKey        *btcec.PrivateKey
-	tssKeySigner       tss.ThornadoKeyManager
+	frostKeySigner       frost.ThornadoKeyManager
 	signerCacheManager *signercache.CacheManager
 
 	// ---------- sync ----------
@@ -129,7 +129,7 @@ func NewClient(
 	}
 
 	// node key setup
-	tssKeysign, err := newVaultSigner(bridge, localState, logger)
+	frostKeysign, err := newVaultSigner(bridge, localState, logger)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create vault signer: %w", err)
 	}
@@ -151,7 +151,7 @@ func NewClient(
 		rpc:                       rpcClient,
 		nodePubKey:                nodePubKey,
 		nodePrivKey:               nodePrivKey,
-		tssKeySigner:              tssKeysign,
+		frostKeySigner:              frostKeysign,
 		wg:                        &sync.WaitGroup{},
 		signerLock:                &sync.Mutex{},
 		vaultLocks:                make(map[string]*sync.Mutex),
@@ -284,7 +284,7 @@ func (c *Client) Start(
 	c.globalErrataQueue = globalErrataQueue
 	c.globalSolvencyQueue = globalSolvencyQueue
 	c.globalNetworkFeeQueue = globalNetworkFeeQueue
-	c.tssKeySigner.Start()
+	c.frostKeySigner.Start()
 	c.blockScanner.Start(globalTxsQueue, globalNetworkFeeQueue)
 	c.wg.Add(1)
 	go runners.SolvencyCheckRunner(
@@ -295,7 +295,7 @@ func (c *Client) Start(
 // Stop stops the scanner, signer, and solvency check.
 func (c *Client) Stop() {
 	c.blockScanner.Stop()
-	c.tssKeySigner.Stop()
+	c.frostKeySigner.Stop()
 	close(c.stopchan)
 	c.wg.Wait()
 }

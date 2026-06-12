@@ -23,9 +23,9 @@ func NewMsgKeygenVaultV2(
 	keysharesBackupEddsa []byte,
 	keysharesBackupFrost ...[]byte,
 ) (*MsgKeygenVault, error) {
-	id, err := getTssID(pks, vaultpk, height, bl)
+	id, err := getFrostID(pks, vaultpk, height, bl)
 	if err != nil {
-		return nil, fmt.Errorf("fail to get tss id: %w", err)
+		return nil, fmt.Errorf("fail to get frost id: %w", err)
 	}
 	msg := &MsgKeygenVault{
 		ID:                   id,

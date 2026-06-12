@@ -211,7 +211,7 @@ func (vm *NodeMgr) splitNext(ctx cosmos.Context, nas NodeAccounts, baseVaultMemb
 	}
 
 	// we want to ensure that a single node operator (designated by bond
-	// address) doesn't get too many tss shares for a single Base vault. So we
+	// address) doesn't get too many frost shares for a single Base vault. So we
 	// first break out our node accounts into two groups. First, duplicate bond
 	// addresses (multi-node operators), and second non-duplicate (single node
 	// operators). Then we sort the duplicate group by bond address, then by
@@ -221,7 +221,7 @@ func (vm *NodeMgr) splitNext(ctx cosmos.Context, nas NodeAccounts, baseVaultMemb
 	// against as many base vaults as possible. This also makes it more
 	// difficult for a malicious actor to acquire enough spots in a single
 	// base to steal as enough are taken by "good actors" that they can't
-	// acquire enough tss shares.
+	// acquire enough frost shares.
 
 	// Check for duplicates
 	bondAddrMap := make(map[string]int)

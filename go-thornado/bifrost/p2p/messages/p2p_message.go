@@ -6,49 +6,49 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
-// ThornadoTSSMessageType  represent the message type used in Thornado TSS
-type ThornadoTSSMessageType uint8
+// ThornadoFROSTMessageType  represent the message type used in Thornado FROST
+type ThornadoFROSTMessageType uint8
 
 const (
-	// TSSKeyGenMsg is a keygen protocol message.
-	TSSKeyGenMsg ThornadoTSSMessageType = iota
-	// TSSKeySignMsg is a keysign protocol message.
-	TSSKeySignMsg
-	// TSSKeyGenVerMsg is the message we create on top to make sure everyone received the same message
-	TSSKeyGenVerMsg
-	// TSSKeySignVerMsg is the message we create to make sure every party receive the same broadcast message
-	TSSKeySignVerMsg
-	// TSSControlMsg is the message we create to exchange Tss share
-	TSSControlMsg
-	// TSSTaskDone is the message of Tss process notification
-	TSSTaskDone
-	// TSSFrostKeyGenMsg is a FROST keygen protocol message.
-	TSSFrostKeyGenMsg
-	// TSSFrostKeySignMsg is a FROST keysign protocol message.
-	TSSFrostKeySignMsg
-	// TSSFrostKeySignResultMsg is a FROST keysign result message.
-	TSSFrostKeySignResultMsg
+	// FROSTKeyGenMsg is a keygen protocol message.
+	FROSTKeyGenMsg ThornadoFROSTMessageType = iota
+	// FROSTKeySignMsg is a keysign protocol message.
+	FROSTKeySignMsg
+	// FROSTKeyGenVerMsg is the message we create on top to make sure everyone received the same message
+	FROSTKeyGenVerMsg
+	// FROSTKeySignVerMsg is the message we create to make sure every party receive the same broadcast message
+	FROSTKeySignVerMsg
+	// FROSTControlMsg is the message we create to exchange Frost share
+	FROSTControlMsg
+	// FROSTTaskDone is the message of Frost process notification
+	FROSTTaskDone
+	// FROSTFrostKeyGenMsg is a FROST keygen protocol message.
+	FROSTFrostKeyGenMsg
+	// FROSTFrostKeySignMsg is a FROST keysign protocol message.
+	FROSTFrostKeySignMsg
+	// FROSTFrostKeySignResultMsg is a FROST keysign result message.
+	FROSTFrostKeySignResultMsg
 	// Unknown is the message indicates the undefined message type
 	Unknown
 )
 
 // String implement fmt.Stringer
-func (msgType ThornadoTSSMessageType) String() string {
+func (msgType ThornadoFROSTMessageType) String() string {
 	switch msgType {
-	case TSSKeyGenMsg:
-		return "TSSKeyGenMsg"
-	case TSSKeySignMsg:
-		return "TSSKeySignMsg"
-	case TSSKeyGenVerMsg:
-		return "TSSKeyGenVerMsg"
-	case TSSKeySignVerMsg:
-		return "TSSKeySignVerMsg"
-	case TSSFrostKeyGenMsg:
-		return "TSSFrostKeyGenMsg"
-	case TSSFrostKeySignMsg:
-		return "TSSFrostKeySignMsg"
-	case TSSFrostKeySignResultMsg:
-		return "TSSFrostKeySignResultMsg"
+	case FROSTKeyGenMsg:
+		return "FROSTKeyGenMsg"
+	case FROSTKeySignMsg:
+		return "FROSTKeySignMsg"
+	case FROSTKeyGenVerMsg:
+		return "FROSTKeyGenVerMsg"
+	case FROSTKeySignVerMsg:
+		return "FROSTKeySignVerMsg"
+	case FROSTFrostKeyGenMsg:
+		return "FROSTFrostKeyGenMsg"
+	case FROSTFrostKeySignMsg:
+		return "FROSTFrostKeySignMsg"
+	case FROSTFrostKeySignResultMsg:
+		return "FROSTFrostKeySignResultMsg"
 	default:
 		return "Unknown"
 	}
@@ -56,7 +56,7 @@ func (msgType ThornadoTSSMessageType) String() string {
 
 // WrappedMessage is a message with type in it
 type WrappedMessage struct {
-	MessageType ThornadoTSSMessageType `json:"message_type"`
+	MessageType ThornadoFROSTMessageType `json:"message_type"`
 	MsgID       string                 `json:"message_id"`
 	Payload     []byte                 `json:"payload"`
 }
@@ -98,13 +98,13 @@ func (m *WireMessage) GetCacheKey() string {
 	return fmt.Sprintf("%s-%s", m.Routing.From.ID, m.RoundInfo)
 }
 
-type TssControl struct {
+type FrostControl struct {
 	ReqHash     string                 `json:"reqest_hash"`
 	ReqKey      string                 `json:"request_key"`
-	RequestType ThornadoTSSMessageType `json:"request_type"`
+	RequestType ThornadoFROSTMessageType `json:"request_type"`
 	Msg         *WireMessage           `json:"message_body"`
 }
 
-type TssTaskNotifier struct {
+type FrostTaskNotifier struct {
 	TaskDone bool `json:"task_done"`
 }

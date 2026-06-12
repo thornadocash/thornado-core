@@ -33,6 +33,7 @@ type shielderFlowTestKeeper struct {
 	nodeAccounts  map[string]NodeAccount
 	auctions      map[string]types.NodeSlotAuction
 	bids          map[string]types.NodeSlotBid
+	baseVaults    Vaults
 	feeNotePubKey map[string]bool
 	txOuts        []TxOutItem
 	nextSlot      uint64
@@ -159,6 +160,15 @@ func (k *shielderFlowTestKeeper) GetNodeSlotBid(_ cosmos.Context, bidID string) 
 	return k.bids[bidID], nil
 }
 
+func (k *shielderFlowTestKeeper) GetNodeSlotBidIterator(_ cosmos.Context) cosmos.Iterator {
+	iter := keeper.NewDummyIterator()
+	for id, bid := range k.bids {
+		value, _ := json.Marshal(bid)
+		iter.AddItem([]byte(id), value)
+	}
+	return iter
+}
+
 func (k *shielderFlowTestKeeper) SetShielderFeeNotePubKey(_ cosmos.Context, pubKey string) error {
 	k.feeNotePubKey[pubKey] = true
 	return nil
@@ -171,6 +181,16 @@ func (k *shielderFlowTestKeeper) ShielderFeeNotePubKeyUsed(_ cosmos.Context, pub
 
 func (k *shielderFlowTestKeeper) GetNetworkFee(_ cosmos.Context, _ common.Chain) (NetworkFee, error) {
 	return NetworkFee{}, nil
+}
+
+func (k *shielderFlowTestKeeper) GetBaseVaultsByStatus(_ cosmos.Context, status VaultStatus) (Vaults, error) {
+	var vaults Vaults
+	for _, vault := range k.baseVaults {
+		if vault.Status == status {
+			vaults = append(vaults, vault)
+		}
+	}
+	return vaults, nil
 }
 
 type shielderFlowTestManager struct {
@@ -335,6 +355,14 @@ func TestBondFromNotesConfirmsStandbyNode(t *testing.T) {
 	if nodeAccount.NodeConsPubKey != nodePubKey || nodeAccount.Bond.Uint64() != amount {
 		t.Fatalf("node account was not created: %#v", nodeAccount)
 	}
+
+	bond, err = confirmBondFromNoteSpend(ctx, k, owner, nodePubKey, operator, amount)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bond.BondSats != amount*2 || bond.PendingSats != 0 || !bond.FeeShareActive || k.feePool.TotalSlots != 1 {
+		t.Fatalf("unexpected node bond top-up state: %#v fee=%#v", bond, k.feePool)
+	}
 }
 
 func TestNodeBondDepositPathRejected(t *testing.T) {
@@ -415,6 +443,84 @@ func TestNodeFeeShieldAndUnshieldFlow(t *testing.T) {
 	}
 }
 
+func TestBidDepositRedeemCreditsBidWithoutOutbound(t *testing.T) {
+	SetupConfigForTest()
+	ctx := flowTestContext()
+	k := newShielderFlowTestKeeper()
+	seller := GetRandomBech32Addr()
+	bidder := GetRandomBech32Addr()
+	oldNodePubKey := GetRandomBech32ConsensusPubKey()
+	newNodePubKey := GetRandomBech32ConsensusPubKey()
+	oldOperator := GetRandomPubKey()
+	newOperator := GetRandomPubKey()
+	auctionID := "auction-bid-redeem"
+	bidID := "bid-redeem"
+	amount := uint64(k.GetConfigInt64(ctx, constants.NodeSale_BidAmountMinSats))
+	k.baseVaults = Vaults{{
+		PubKey: GetRandomPubKey(),
+		Status: ActiveVault,
+		Type:   BaseVault,
+	}}
+	k.auctions[auctionID] = types.NodeSlotAuction{
+		AuctionID:            auctionID,
+		Seller:               seller,
+		SellerOperatorPubKey: oldOperator,
+		SellerNodePubKey:     oldNodePubKey,
+		Slot:                 7,
+		OriginalBondSats:     amount,
+		ReserveSats:          amount,
+		ExpiryHeight:         100,
+		Status:               types.NodeSlotAuctionOpen,
+	}
+	k.nodeBonds[oldNodePubKey] = types.ShielderNodeBond{
+		NodePubKey:     oldNodePubKey,
+		OperatorPubKey: oldOperator,
+		NodeAddress:    seller,
+		Slot:           7,
+		BondSats:       amount,
+		FeeShareActive: true,
+	}
+	k.nodeAccounts[seller.String()] = NewNodeAccount(seller, NodeStandby, common.EmptyPubKeySet, oldNodePubKey, cosmos.NewUint(amount), common.Address(seller.String()), 1)
+	k.bids[bidID] = types.NodeSlotBid{
+		BidID:          bidID,
+		AuctionID:      auctionID,
+		Bidder:         bidder,
+		OperatorPubKey: newOperator,
+		NodePubKey:     newNodePubKey,
+		DepositAddress: common.BondEscrowAddress,
+	}
+	redeem := types.ShielderRedeem{
+		WithdrawalID:    "redeem-bid",
+		NullifierHash:   "nullifier-bid",
+		MerkleRoot:      "root-bid",
+		Recipient:       common.BondEscrowAddress,
+		RecipientPolicy: types.ShielderRedeemPolicyBidDeposit,
+		BidID:           bidID,
+		AmountSats:      amount,
+		InHash:          GetRandomTxHash(),
+		VaultPubKey:     GetRandomPubKey(),
+		Status:          types.ShielderRedeemStatusAuthorized,
+	}
+
+	settled, err := FinalizeBidDepositFromNoteSpend(ctx, k, redeem)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settled.Status != types.ShielderRedeemStatusSettled {
+		t.Fatalf("unexpected bid redeem status: %#v", settled)
+	}
+	if len(k.txOuts) != 0 {
+		t.Fatalf("bid redeem should not create an outbound txout: %#v", k.txOuts)
+	}
+	bid := k.bids[bidID]
+	if bid.AmountSats != amount || !bid.DepositID.IsEmpty() {
+		t.Fatalf("bid was not credited: %#v", bid)
+	}
+	if _, _, err := SelectNodeSlotBid(ctx, k, seller, auctionID, bidID); err != nil {
+		t.Fatalf("credited bid was not selectable: %v", err)
+	}
+}
+
 func TestNodeBidDepositAndSaleShieldThenSellerUnshield(t *testing.T) {
 	SetupConfigForTest()
 	ctx := flowTestContext()
@@ -425,11 +531,20 @@ func TestNodeBidDepositAndSaleShieldThenSellerUnshield(t *testing.T) {
 	newNodePubKey := GetRandomBech32ConsensusPubKey()
 	oldOperator := GetRandomPubKey()
 	newOperator := GetRandomPubKey()
+	shieldPriv, err := btcec.NewPrivateKey(btcec.S256())
+	if err != nil {
+		t.Fatal(err)
+	}
+	depositPubkey := hex.EncodeToString(shieldPriv.PubKey().SerializeCompressed())
 	originalBond := uint64(1_000_000)
 	bidAmount := uint64(1_500_000)
 	auctionID := "auction-1"
 	bidID := "bid-1"
-	depositID := GetRandomTxHash()
+	k.baseVaults = Vaults{{
+		PubKey: GetRandomPubKey(),
+		Status: ActiveVault,
+		Type:   BaseVault,
+	}}
 	k.nodeBonds[oldNodePubKey] = types.ShielderNodeBond{
 		NodePubKey:     oldNodePubKey,
 		OperatorPubKey: oldOperator,
@@ -456,25 +571,24 @@ func TestNodeBidDepositAndSaleShieldThenSellerUnshield(t *testing.T) {
 		Bidder:         bidder,
 		OperatorPubKey: newOperator,
 		NodePubKey:     newNodePubKey,
-		DepositID:      depositID,
 		AmountSats:     bidAmount,
-	}
-	k.deposits[depositID.String()] = types.DepositRecord{
-		DepositID:      depositID,
-		Owner:          bidder,
-		AmountSats:     bidAmount,
-		DepositAddress: GetRandomBTCAddress(),
-		VaultPubKey:    GetRandomPubKey(),
-		OperatorPubKey: newOperator,
-		NodePubKey:     newNodePubKey,
-		AuctionID:      auctionID,
-		Status:         types.DepositStatusDepositMatched,
+		DepositAddress: common.BondEscrowAddress,
 	}
 
 	if _, _, err := SelectNodeSlotBid(ctx, k, seller, auctionID, bidID); err != nil {
 		t.Fatal(err)
 	}
-	deposit, err := ShieldNodeSlotSale(ctx, k, seller, auctionID, bidID, []string{flowNote(t, originalBond, "SELLER_NOTE")})
+	entitlementID, err := nodeSlotSaleEntitlementID(auctionID, bidID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entitlement := k.deposits[entitlementID.String()]
+	if entitlement.Status != types.DepositStatusSettled || entitlement.SellerPayoutSats != originalBond {
+		t.Fatalf("seller entitlement was not created: %#v", entitlement)
+	}
+	commitments := []string{flowNote(t, originalBond, "SELLER_NOTE")}
+	signature := flowShieldAuthorization(t, shieldPriv, depositPubkey, originalBond, commitments)
+	deposit, err := ShieldNodeSlotSaleEntitlement(ctx, k, seller, auctionID, bidID, depositPubkey, signature, commitments)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -546,6 +660,42 @@ func flowNote(t *testing.T, amount uint64, commitment string) string {
 		t.Fatal(err)
 	}
 	return string(raw)
+}
+
+func flowShieldAuthorization(t *testing.T, priv *btcec.PrivateKey, depositPubkey string, amount uint64, commitments []string) string {
+	t.Helper()
+	notes := make([]shielderNoteCommitment, 0, len(commitments))
+	for _, raw := range commitments {
+		var note shielderNoteCommitment
+		if err := json.Unmarshal([]byte(strings.TrimSpace(raw)), &note); err != nil {
+			t.Fatal(err)
+		}
+		note.Commitment = strings.TrimSpace(note.Commitment)
+		notes = append(notes, note)
+	}
+	commitmentsJSON, err := json.Marshal(notes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := hashLengthPrefixedParts([]string{
+		"thornado-shielder-v1",
+		"shield-authorization",
+		strings.TrimSpace(depositPubkey),
+		strings.TrimSpace(depositPubkey),
+		fmt.Sprintf("%d", amount),
+		string(commitmentsJSON),
+	})
+	signature, err := priv.Sign(digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := new(big.Int).Set(signature.S)
+	halfOrder := new(big.Int).Rsh(btcec.S256().N, 1)
+	if s.Cmp(halfOrder) == 1 {
+		s.Sub(btcec.S256().N, s)
+		signature.S = s
+	}
+	return hex.EncodeToString(signature.Serialize())
 }
 
 func flowTestContext() cosmos.Context {

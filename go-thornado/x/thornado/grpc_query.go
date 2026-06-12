@@ -46,6 +46,10 @@ func checkHeightParam(height string) error {
 	return nil
 }
 
+func (s *queryServer) Export(_ context.Context, _ *types.QueryExportRequest) (*types.QueryExportResponse, error) {
+	return nil, fmt.Errorf("export query is not part of the Thornado runtime")
+}
+
 func (s *queryServer) Node(c context.Context, req *types.QueryNodeRequest) (*types.QueryNodeResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
@@ -366,20 +370,20 @@ func (s *queryServer) Block(c context.Context, req *types.QueryBlockRequest) (*t
 	return s.queryBlock(ctx, req)
 }
 
-func (s *queryServer) TssKeygenMetric(c context.Context, req *types.QueryTssKeygenMetricRequest) (*types.QueryTssKeygenMetricResponse, error) {
+func (s *queryServer) FrostKeygenMetric(c context.Context, req *types.QueryFrostKeygenMetricRequest) (*types.QueryFrostKeygenMetricResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryTssKeygenMetric(ctx, req)
+	return s.queryFrostKeygenMetric(ctx, req)
 }
 
-func (s *queryServer) TssMetric(c context.Context, req *types.QueryTssMetricRequest) (*types.QueryTssMetricResponse, error) {
+func (s *queryServer) FrostMetric(c context.Context, req *types.QueryFrostMetricRequest) (*types.QueryFrostMetricResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err
 	}
 	ctx := s.unwrapSdkContext(c)
-	return s.queryTssMetric(ctx, req)
+	return s.queryFrostMetric(ctx, req)
 }
 
 func (s *queryServer) Keysign(c context.Context, req *types.QueryKeysignRequest) (*types.QueryKeysignResponse, error) {
@@ -419,21 +423,6 @@ func (s *queryServer) UpgradeVotes(c context.Context, req *types.QueryUpgradeVot
 	}
 	ctx := s.unwrapSdkContext(c)
 	return s.queryUpgradeVotes(ctx, req)
-}
-
-func (s *queryServer) Export(c context.Context, req *types.QueryExportRequest) (*types.QueryExportResponse, error) {
-	if err := checkHeightParam(req.Height); err != nil {
-		return nil, err
-	}
-	ctx := s.unwrapSdkContext(c)
-	contentBz, err := queryExport(ctx, s.mgr)
-	if err != nil {
-		return nil, err
-	}
-
-	return &types.QueryExportResponse{
-		Content: contentBz,
-	}, nil
 }
 
 func (s *queryServer) Account(c context.Context, req *types.QueryAccountRequest) (*types.QueryAccountResponse, error) {

@@ -52,7 +52,7 @@ const (
 var (
 	NewNetwork                     = types.NewNetwork
 	NewObservedTx                  = common.NewObservedTx
-	NewTssVoter                    = types.NewTssVoter
+	NewFrostVoter                    = types.NewFrostVoter
 	NewErrataTxVoter               = types.NewErrataTxVoter
 	NewObservedTxVoter             = types.NewObservedTxVoter
 	NewMsgConfig                   = types.NewMsgConfig
@@ -60,7 +60,7 @@ var (
 	NewMsgDeposit                  = types.NewMsgDeposit
 	NewMsgKeygenVault              = types.NewMsgKeygenVault
 	NewMsgKeygenVaultV2            = types.NewMsgKeygenVaultV2
-	NewMsgTssKeysignFail           = types.NewMsgTssKeysignFail
+	NewMsgFrostKeysignFail           = types.NewMsgFrostKeysignFail
 	NewMsgObservedTxIn             = types.NewMsgObservedTxIn
 	NewMsgObservedTxOut            = types.NewMsgObservedTxOut
 	NewMsgNoOp                     = types.NewMsgNoOp
@@ -80,10 +80,10 @@ var (
 	NewEventOutbound               = types.NewEventOutbound
 	NewEventSetConfig              = types.NewEventSetConfig
 	NewEventSetNodeConfig          = types.NewEventSetNodeConfig
-	NewEventTssKeygenSuccess       = types.NewEventTssKeygenSuccess
-	NewEventTssKeygenFailure       = types.NewEventTssKeygenFailure
-	NewEventTssKeygenMetric        = types.NewEventTssKeygenMetric
-	NewEventTssKeysignMetric       = types.NewEventTssKeysignMetric
+	NewEventFrostKeygenSuccess       = types.NewEventFrostKeygenSuccess
+	NewEventFrostKeygenFailure       = types.NewEventFrostKeygenFailure
+	NewEventFrostKeygenMetric        = types.NewEventFrostKeygenMetric
+	NewEventFrostKeysignMetric       = types.NewEventFrostKeysignMetric
 	NewEventMintBurn               = types.NewEventMintBurn
 	NewEventVersion                = types.NewEventVersion
 	NewEventOperatorRotate         = types.NewEventOperatorRotate
@@ -132,9 +132,9 @@ var (
 	NewMsgShielderRedeem           = types.NewMsgShielderRedeem
 	NewMsgShielderShieldFees       = types.NewMsgShielderShieldFees
 	NewMsgNodeSlotAuctionCreate    = types.NewMsgNodeSlotAuctionCreate
-	NewMsgNodeSlotAuctionBidPow    = types.NewMsgNodeSlotAuctionBidPow
+	NewMsgNodeSlotAuctionBidCreate = types.NewMsgNodeSlotAuctionBidCreate
 	NewMsgNodeSlotAuctionSelectBid = types.NewMsgNodeSlotAuctionSelectBid
-	NewMsgNodeSlotAuctionShield    = types.NewMsgNodeSlotAuctionShield
+	NewMsgNodeSaleShield           = types.NewMsgNodeSaleShield
 	NewMsgBondFromNotes            = types.NewMsgBondFromNotes
 )
 
@@ -159,7 +159,7 @@ type (
 	MsgObservedTxIn             = types.MsgObservedTxIn
 	MsgObservedTxOut            = types.MsgObservedTxOut
 	MsgKeygenVault              = types.MsgKeygenVault
-	MsgTssKeysignFail           = types.MsgTssKeysignFail
+	MsgFrostKeysignFail           = types.MsgFrostKeysignFail
 	MsgNetworkFee               = types.MsgNetworkFee
 	MsgSolvency                 = types.MsgSolvency
 	MsgOperatorRotate           = types.MsgOperatorRotate
@@ -167,9 +167,9 @@ type (
 	MsgShielderShield           = types.MsgShielderShield
 	MsgShielderRedeem           = types.MsgShielderRedeem
 	MsgNodeSlotAuctionCreate    = types.MsgNodeSlotAuctionCreate
-	MsgNodeSlotAuctionBidPow    = types.MsgNodeSlotAuctionBidPow
+	MsgNodeSlotAuctionBidCreate = types.MsgNodeSlotAuctionBidCreate
 	MsgNodeSlotAuctionSelectBid = types.MsgNodeSlotAuctionSelectBid
-	MsgNodeSlotAuctionShield    = types.MsgNodeSlotAuctionShield
+	MsgNodeSaleShield           = types.MsgNodeSaleShield
 	MsgBondFromNotes            = types.MsgBondFromNotes
 
 	// Keeper structs
@@ -178,8 +178,8 @@ type (
 	ObservedTxVoter         = types.ObservedTxVoter
 	ObservedTxVoters        = types.ObservedTxVoters
 	ErrataTxVoter           = types.ErrataTxVoter
-	TssVoter                = types.TssVoter
-	TssKeysignFailVoter     = types.TssKeysignFailVoter
+	FrostVoter                = types.FrostVoter
+	FrostKeysignFailVoter     = types.FrostKeysignFailVoter
 	TxOutItem               = types.TxOutItem
 	TxOut                   = types.TxOut
 	Keygen                  = types.Keygen

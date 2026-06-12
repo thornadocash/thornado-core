@@ -35,9 +35,9 @@ var (
 	joinPartyProtocolWithLeader protocol.ID = "/p2p/join-party-leader"
 )
 
-// TSSProtocolID protocol id used for tss
+// FROSTProtocolID protocol id used for frost
 var (
-	TSSProtocolID        protocol.ID = "/p2p/tss"
+	FROSTProtocolID        protocol.ID = "/p2p/frost"
 	ObservedTxProtocolID protocol.ID = "/p2p/observed-tx"
 )
 
@@ -55,7 +55,7 @@ type Message struct {
 	Payload []byte
 }
 
-// Communication use p2p to broadcast messages among all the TSS nodes
+// Communication use p2p to broadcast messages among all the FROST nodes
 type Communication struct {
 	config           P2PConfig
 	stateManager     *storage.FileStateMgr
@@ -64,7 +64,7 @@ type Communication struct {
 	host             host.Host
 	wg               *sync.WaitGroup
 	stopChan         chan struct{} // channel to indicate whether we should stop
-	subscribers      map[messages.ThornadoTSSMessageType]*MessageIDSubscriber
+	subscribers      map[messages.ThornadoFROSTMessageType]*MessageIDSubscriber
 	subscriberLocker *sync.Mutex
 	streamCount      int64
 	BroadcastMsgChan chan *messages.BroadcastMsgChan
@@ -139,7 +139,7 @@ func NewCommunication(cfg P2PConfig, stateManager *storage.FileStateMgr, bridge 
 		listenAddr:       addr,
 		wg:               &sync.WaitGroup{},
 		stopChan:         make(chan struct{}),
-		subscribers:      make(map[messages.ThornadoTSSMessageType]*MessageIDSubscriber),
+		subscribers:      make(map[messages.ThornadoFROSTMessageType]*MessageIDSubscriber),
 		subscriberLocker: &sync.Mutex{},
 		streamCount:      0,
 		BroadcastMsgChan: make(chan *messages.BroadcastMsgChan, 1024),
@@ -217,9 +217,9 @@ func (c *Communication) writeToStream(pID peer.ID, msg []byte, msgID string) err
 	return WriteStreamWithBuffer(msg, stream)
 }
 
-func (c *Communication) handleStreamTss(stream network.Stream) {
+func (c *Communication) handleStreamFrost(stream network.Stream) {
 	peerID := stream.Conn().RemotePeer().String()
-	c.logger.Debug().Msgf("reading from tss stream of peer: %s", peerID)
+	c.logger.Debug().Msgf("reading from frost stream of peer: %s", peerID)
 
 	select {
 	case <-c.stopChan:
@@ -355,7 +355,7 @@ func (c *Communication) startChannel(privKeyBytes []byte) error {
 	}
 	c.host = h
 	c.logger.Info().Msgf("Host created, we are: %s, at: %s", h.ID(), h.Addrs())
-	h.SetStreamHandler(TSSProtocolID, c.handleStreamTss)
+	h.SetStreamHandler(FROSTProtocolID, c.handleStreamFrost)
 	// Start a DHT, for use in peer discovery. We can't just make a new DHT
 	// client because we want each peer to maintain its own local copy of the
 	// DHT, so that the bootstrapping node of the DHT can go down without
@@ -404,7 +404,7 @@ func (c *Communication) connectToOnePeer(pID peer.ID) (network.Stream, error) {
 	c.logger.Debug().Msgf("connect to peer : %s", pID.String())
 	ctx, cancel := context.WithTimeout(context.Background(), TimeoutConnecting)
 	defer cancel()
-	stream, err := c.host.NewStream(ctx, pID, TSSProtocolID)
+	stream, err := c.host.NewStream(ctx, pID, FROSTProtocolID)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create new stream to peer: %s, %w", pID, err)
 	}
@@ -488,7 +488,7 @@ func (c *Communication) Stop() error {
 	return nil
 }
 
-func (c *Communication) SetSubscribe(topic messages.ThornadoTSSMessageType, msgID string, channel chan *Message) {
+func (c *Communication) SetSubscribe(topic messages.ThornadoFROSTMessageType, msgID string, channel chan *Message) {
 	c.subscriberLocker.Lock()
 	defer c.subscriberLocker.Unlock()
 
@@ -500,7 +500,7 @@ func (c *Communication) SetSubscribe(topic messages.ThornadoTSSMessageType, msgI
 	messageIDSubscribers.Subscribe(msgID, channel)
 }
 
-func (c *Communication) getSubscriber(topic messages.ThornadoTSSMessageType, msgID string) chan *Message {
+func (c *Communication) getSubscriber(topic messages.ThornadoFROSTMessageType, msgID string) chan *Message {
 	c.subscriberLocker.Lock()
 	defer c.subscriberLocker.Unlock()
 	messageIDSubscribers, ok := c.subscribers[topic]
@@ -511,7 +511,7 @@ func (c *Communication) getSubscriber(topic messages.ThornadoTSSMessageType, msg
 	return messageIDSubscribers.GetSubscriber(msgID)
 }
 
-func (c *Communication) CancelSubscribe(topic messages.ThornadoTSSMessageType, msgID string) {
+func (c *Communication) CancelSubscribe(topic messages.ThornadoFROSTMessageType, msgID string) {
 	c.subscriberLocker.Lock()
 	defer c.subscriberLocker.Unlock()
 

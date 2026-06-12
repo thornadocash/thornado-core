@@ -58,8 +58,8 @@ type Keeper interface {
 	KeeperOutboundFees
 	KeeperVault
 	KeeperNetwork
-	KeeperTss
-	KeeperTssKeysignFail
+	KeeperFrost
+	KeeperFrostKeysignFail
 	KeeperKeygen
 	KeeperErrataTx
 	KeeperConfigStore
@@ -236,21 +236,21 @@ type KeeperNetwork interface {
 	SetNetwork(ctx cosmos.Context, data Network) error
 }
 
-type KeeperTss interface {
-	SetTssVoter(_ cosmos.Context, tss TssVoter)
-	GetTssVoterIterator(_ cosmos.Context) cosmos.Iterator
-	GetTssVoter(_ cosmos.Context, _ string) (TssVoter, error)
-	SetTssKeygenMetric(_ cosmos.Context, metric *TssKeygenMetric)
-	GetTssKeygenMetric(_ cosmos.Context, key common.PubKey) (*TssKeygenMetric, error)
-	SetTssKeysignMetric(_ cosmos.Context, metric *TssKeysignMetric)
-	GetTssKeysignMetric(_ cosmos.Context, txID common.TxID) (*TssKeysignMetric, error)
-	GetLatestTssKeysignMetric(_ cosmos.Context) (*TssKeysignMetric, error)
+type KeeperFrost interface {
+	SetFrostVoter(_ cosmos.Context, frost FrostVoter)
+	GetFrostVoterIterator(_ cosmos.Context) cosmos.Iterator
+	GetFrostVoter(_ cosmos.Context, _ string) (FrostVoter, error)
+	SetFrostKeygenMetric(_ cosmos.Context, metric *FrostKeygenMetric)
+	GetFrostKeygenMetric(_ cosmos.Context, key common.PubKey) (*FrostKeygenMetric, error)
+	SetFrostKeysignMetric(_ cosmos.Context, metric *FrostKeysignMetric)
+	GetFrostKeysignMetric(_ cosmos.Context, txID common.TxID) (*FrostKeysignMetric, error)
+	GetLatestFrostKeysignMetric(_ cosmos.Context) (*FrostKeysignMetric, error)
 }
 
-type KeeperTssKeysignFail interface {
-	SetTssKeysignFailVoter(_ cosmos.Context, tss TssKeysignFailVoter)
-	GetTssKeysignFailVoterIterator(_ cosmos.Context) cosmos.Iterator
-	GetTssKeysignFailVoter(_ cosmos.Context, _ string) (TssKeysignFailVoter, error)
+type KeeperFrostKeysignFail interface {
+	SetFrostKeysignFailVoter(_ cosmos.Context, frost FrostKeysignFailVoter)
+	GetFrostKeysignFailVoterIterator(_ cosmos.Context) cosmos.Iterator
+	GetFrostKeysignFailVoter(_ cosmos.Context, _ string) (FrostKeysignFailVoter, error)
 }
 
 type KeeperKeygen interface {

@@ -70,14 +70,14 @@ message EventOutbound {
   common.Tx tx = 2 [ (gogoproto.nullable) = false ];
 }
 
-message EventTssKeygenSuccess {
+message EventFrostKeygenSuccess {
   string pub_key = 1 [ (gogoproto.casttype) =
                            "github.com/thornadocash/go-thornado/common.PubKey" ];
   repeated string members = 2;
   int64 height = 3;
 }
 
-message EventTssKeygenFailure {
+message EventFrostKeygenFailure {
   string fail_reason = 1;
   bool is_unicast = 2;
   repeated string blame_nodes = 3;
@@ -85,13 +85,13 @@ message EventTssKeygenFailure {
   int64 height = 5;
 }
 
-message EventTssKeygenMetric {
+message EventFrostKeygenMetric {
   string pub_key = 1 [ (gogoproto.casttype) =
                            "github.com/thornadocash/go-thornado/common.PubKey" ];
   int64 median_duration_ms = 2;
 }
 
-message EventTssKeysignMetric {
+message EventFrostKeysignMetric {
   string tx_id = 1 [
     (gogoproto.casttype) = "github.com/thornadocash/go-thornado/common.TxID",
     (gogoproto.customname) = "TxID"

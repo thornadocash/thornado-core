@@ -3666,76 +3666,76 @@ func (x *fastReflection_EventOutbound) ProtoMethods() *protoiface.Methods {
 	}
 }
 
-var _ protoreflect.List = (*_EventTssKeygenSuccess_2_list)(nil)
+var _ protoreflect.List = (*_EventFrostKeygenSuccess_2_list)(nil)
 
-type _EventTssKeygenSuccess_2_list struct {
+type _EventFrostKeygenSuccess_2_list struct {
 	list *[]string
 }
 
-func (x *_EventTssKeygenSuccess_2_list) Len() int {
+func (x *_EventFrostKeygenSuccess_2_list) Len() int {
 	if x.list == nil {
 		return 0
 	}
 	return len(*x.list)
 }
 
-func (x *_EventTssKeygenSuccess_2_list) Get(i int) protoreflect.Value {
+func (x *_EventFrostKeygenSuccess_2_list) Get(i int) protoreflect.Value {
 	return protoreflect.ValueOfString((*x.list)[i])
 }
 
-func (x *_EventTssKeygenSuccess_2_list) Set(i int, value protoreflect.Value) {
+func (x *_EventFrostKeygenSuccess_2_list) Set(i int, value protoreflect.Value) {
 	valueUnwrapped := value.String()
 	concreteValue := valueUnwrapped
 	(*x.list)[i] = concreteValue
 }
 
-func (x *_EventTssKeygenSuccess_2_list) Append(value protoreflect.Value) {
+func (x *_EventFrostKeygenSuccess_2_list) Append(value protoreflect.Value) {
 	valueUnwrapped := value.String()
 	concreteValue := valueUnwrapped
 	*x.list = append(*x.list, concreteValue)
 }
 
-func (x *_EventTssKeygenSuccess_2_list) AppendMutable() protoreflect.Value {
-	panic(fmt.Errorf("AppendMutable can not be called on message EventTssKeygenSuccess at list field Members as it is not of Message kind"))
+func (x *_EventFrostKeygenSuccess_2_list) AppendMutable() protoreflect.Value {
+	panic(fmt.Errorf("AppendMutable can not be called on message EventFrostKeygenSuccess at list field Members as it is not of Message kind"))
 }
 
-func (x *_EventTssKeygenSuccess_2_list) Truncate(n int) {
+func (x *_EventFrostKeygenSuccess_2_list) Truncate(n int) {
 	*x.list = (*x.list)[:n]
 }
 
-func (x *_EventTssKeygenSuccess_2_list) NewElement() protoreflect.Value {
+func (x *_EventFrostKeygenSuccess_2_list) NewElement() protoreflect.Value {
 	v := ""
 	return protoreflect.ValueOfString(v)
 }
 
-func (x *_EventTssKeygenSuccess_2_list) IsValid() bool {
+func (x *_EventFrostKeygenSuccess_2_list) IsValid() bool {
 	return x.list != nil
 }
 
 var (
-	md_EventTssKeygenSuccess         protoreflect.MessageDescriptor
-	fd_EventTssKeygenSuccess_pub_key protoreflect.FieldDescriptor
-	fd_EventTssKeygenSuccess_members protoreflect.FieldDescriptor
-	fd_EventTssKeygenSuccess_height  protoreflect.FieldDescriptor
+	md_EventFrostKeygenSuccess         protoreflect.MessageDescriptor
+	fd_EventFrostKeygenSuccess_pub_key protoreflect.FieldDescriptor
+	fd_EventFrostKeygenSuccess_members protoreflect.FieldDescriptor
+	fd_EventFrostKeygenSuccess_height  protoreflect.FieldDescriptor
 )
 
 func init() {
 	file_types_type_events_proto_init()
-	md_EventTssKeygenSuccess = File_types_type_events_proto.Messages().ByName("EventTssKeygenSuccess")
-	fd_EventTssKeygenSuccess_pub_key = md_EventTssKeygenSuccess.Fields().ByName("pub_key")
-	fd_EventTssKeygenSuccess_members = md_EventTssKeygenSuccess.Fields().ByName("members")
-	fd_EventTssKeygenSuccess_height = md_EventTssKeygenSuccess.Fields().ByName("height")
+	md_EventFrostKeygenSuccess = File_types_type_events_proto.Messages().ByName("EventFrostKeygenSuccess")
+	fd_EventFrostKeygenSuccess_pub_key = md_EventFrostKeygenSuccess.Fields().ByName("pub_key")
+	fd_EventFrostKeygenSuccess_members = md_EventFrostKeygenSuccess.Fields().ByName("members")
+	fd_EventFrostKeygenSuccess_height = md_EventFrostKeygenSuccess.Fields().ByName("height")
 }
 
-var _ protoreflect.Message = (*fastReflection_EventTssKeygenSuccess)(nil)
+var _ protoreflect.Message = (*fastReflection_EventFrostKeygenSuccess)(nil)
 
-type fastReflection_EventTssKeygenSuccess EventTssKeygenSuccess
+type fastReflection_EventFrostKeygenSuccess EventFrostKeygenSuccess
 
-func (x *EventTssKeygenSuccess) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_EventTssKeygenSuccess)(x)
+func (x *EventFrostKeygenSuccess) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_EventFrostKeygenSuccess)(x)
 }
 
-func (x *EventTssKeygenSuccess) slowProtoReflect() protoreflect.Message {
+func (x *EventFrostKeygenSuccess) slowProtoReflect() protoreflect.Message {
 	mi := &file_types_type_events_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -3747,43 +3747,43 @@ func (x *EventTssKeygenSuccess) slowProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-var _fastReflection_EventTssKeygenSuccess_messageType fastReflection_EventTssKeygenSuccess_messageType
-var _ protoreflect.MessageType = fastReflection_EventTssKeygenSuccess_messageType{}
+var _fastReflection_EventFrostKeygenSuccess_messageType fastReflection_EventFrostKeygenSuccess_messageType
+var _ protoreflect.MessageType = fastReflection_EventFrostKeygenSuccess_messageType{}
 
-type fastReflection_EventTssKeygenSuccess_messageType struct{}
+type fastReflection_EventFrostKeygenSuccess_messageType struct{}
 
-func (x fastReflection_EventTssKeygenSuccess_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_EventTssKeygenSuccess)(nil)
+func (x fastReflection_EventFrostKeygenSuccess_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_EventFrostKeygenSuccess)(nil)
 }
-func (x fastReflection_EventTssKeygenSuccess_messageType) New() protoreflect.Message {
-	return new(fastReflection_EventTssKeygenSuccess)
+func (x fastReflection_EventFrostKeygenSuccess_messageType) New() protoreflect.Message {
+	return new(fastReflection_EventFrostKeygenSuccess)
 }
-func (x fastReflection_EventTssKeygenSuccess_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_EventTssKeygenSuccess
+func (x fastReflection_EventFrostKeygenSuccess_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_EventFrostKeygenSuccess
 }
 
 // Descriptor returns message descriptor, which contains only the protobuf
 // type information for the message.
-func (x *fastReflection_EventTssKeygenSuccess) Descriptor() protoreflect.MessageDescriptor {
-	return md_EventTssKeygenSuccess
+func (x *fastReflection_EventFrostKeygenSuccess) Descriptor() protoreflect.MessageDescriptor {
+	return md_EventFrostKeygenSuccess
 }
 
 // Type returns the message type, which encapsulates both Go and protobuf
 // type information. If the Go type information is not needed,
 // it is recommended that the message descriptor be used instead.
-func (x *fastReflection_EventTssKeygenSuccess) Type() protoreflect.MessageType {
-	return _fastReflection_EventTssKeygenSuccess_messageType
+func (x *fastReflection_EventFrostKeygenSuccess) Type() protoreflect.MessageType {
+	return _fastReflection_EventFrostKeygenSuccess_messageType
 }
 
 // New returns a newly allocated and mutable empty message.
-func (x *fastReflection_EventTssKeygenSuccess) New() protoreflect.Message {
-	return new(fastReflection_EventTssKeygenSuccess)
+func (x *fastReflection_EventFrostKeygenSuccess) New() protoreflect.Message {
+	return new(fastReflection_EventFrostKeygenSuccess)
 }
 
 // Interface unwraps the message reflection interface and
 // returns the underlying ProtoMessage interface.
-func (x *fastReflection_EventTssKeygenSuccess) Interface() protoreflect.ProtoMessage {
-	return (*EventTssKeygenSuccess)(x)
+func (x *fastReflection_EventFrostKeygenSuccess) Interface() protoreflect.ProtoMessage {
+	return (*EventFrostKeygenSuccess)(x)
 }
 
 // Range iterates over every populated field in an undefined order,
@@ -3791,22 +3791,22 @@ func (x *fastReflection_EventTssKeygenSuccess) Interface() protoreflect.ProtoMes
 // Range returns immediately if f returns false.
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
-func (x *fastReflection_EventTssKeygenSuccess) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+func (x *fastReflection_EventFrostKeygenSuccess) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
 	if x.PubKey != "" {
 		value := protoreflect.ValueOfString(x.PubKey)
-		if !f(fd_EventTssKeygenSuccess_pub_key, value) {
+		if !f(fd_EventFrostKeygenSuccess_pub_key, value) {
 			return
 		}
 	}
 	if len(x.Members) != 0 {
-		value := protoreflect.ValueOfList(&_EventTssKeygenSuccess_2_list{list: &x.Members})
-		if !f(fd_EventTssKeygenSuccess_members, value) {
+		value := protoreflect.ValueOfList(&_EventFrostKeygenSuccess_2_list{list: &x.Members})
+		if !f(fd_EventFrostKeygenSuccess_members, value) {
 			return
 		}
 	}
 	if x.Height != int64(0) {
 		value := protoreflect.ValueOfInt64(x.Height)
-		if !f(fd_EventTssKeygenSuccess_height, value) {
+		if !f(fd_EventFrostKeygenSuccess_height, value) {
 			return
 		}
 	}
@@ -3823,19 +3823,19 @@ func (x *fastReflection_EventTssKeygenSuccess) Range(f func(protoreflect.FieldDe
 // In other cases (aside from the nullable cases above),
 // a proto3 scalar field is populated if it contains a non-zero value, and
 // a repeated field is populated if it is non-empty.
-func (x *fastReflection_EventTssKeygenSuccess) Has(fd protoreflect.FieldDescriptor) bool {
+func (x *fastReflection_EventFrostKeygenSuccess) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.EventTssKeygenSuccess.pub_key":
+	case "types.EventFrostKeygenSuccess.pub_key":
 		return x.PubKey != ""
-	case "types.EventTssKeygenSuccess.members":
+	case "types.EventFrostKeygenSuccess.members":
 		return len(x.Members) != 0
-	case "types.EventTssKeygenSuccess.height":
+	case "types.EventFrostKeygenSuccess.height":
 		return x.Height != int64(0)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenSuccess"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenSuccess"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenSuccess does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenSuccess does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -3845,19 +3845,19 @@ func (x *fastReflection_EventTssKeygenSuccess) Has(fd protoreflect.FieldDescript
 // associated with the given field number.
 //
 // Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeygenSuccess) Clear(fd protoreflect.FieldDescriptor) {
+func (x *fastReflection_EventFrostKeygenSuccess) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.EventTssKeygenSuccess.pub_key":
+	case "types.EventFrostKeygenSuccess.pub_key":
 		x.PubKey = ""
-	case "types.EventTssKeygenSuccess.members":
+	case "types.EventFrostKeygenSuccess.members":
 		x.Members = nil
-	case "types.EventTssKeygenSuccess.height":
+	case "types.EventFrostKeygenSuccess.height":
 		x.Height = int64(0)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenSuccess"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenSuccess"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenSuccess does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenSuccess does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -3867,25 +3867,25 @@ func (x *fastReflection_EventTssKeygenSuccess) Clear(fd protoreflect.FieldDescri
 // the default value of a bytes scalar is guaranteed to be a copy.
 // For unpopulated composite types, it returns an empty, read-only view
 // of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_EventTssKeygenSuccess) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_EventFrostKeygenSuccess) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.EventTssKeygenSuccess.pub_key":
+	case "types.EventFrostKeygenSuccess.pub_key":
 		value := x.PubKey
 		return protoreflect.ValueOfString(value)
-	case "types.EventTssKeygenSuccess.members":
+	case "types.EventFrostKeygenSuccess.members":
 		if len(x.Members) == 0 {
-			return protoreflect.ValueOfList(&_EventTssKeygenSuccess_2_list{})
+			return protoreflect.ValueOfList(&_EventFrostKeygenSuccess_2_list{})
 		}
-		listValue := &_EventTssKeygenSuccess_2_list{list: &x.Members}
+		listValue := &_EventFrostKeygenSuccess_2_list{list: &x.Members}
 		return protoreflect.ValueOfList(listValue)
-	case "types.EventTssKeygenSuccess.height":
+	case "types.EventFrostKeygenSuccess.height":
 		value := x.Height
 		return protoreflect.ValueOfInt64(value)
 	default:
 		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenSuccess"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenSuccess"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenSuccess does not contain field %s", descriptor.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenSuccess does not contain field %s", descriptor.FullName()))
 	}
 }
 
@@ -3899,21 +3899,21 @@ func (x *fastReflection_EventTssKeygenSuccess) Get(descriptor protoreflect.Field
 // empty, read-only value, then it panics.
 //
 // Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeygenSuccess) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+func (x *fastReflection_EventFrostKeygenSuccess) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.EventTssKeygenSuccess.pub_key":
+	case "types.EventFrostKeygenSuccess.pub_key":
 		x.PubKey = value.Interface().(string)
-	case "types.EventTssKeygenSuccess.members":
+	case "types.EventFrostKeygenSuccess.members":
 		lv := value.List()
-		clv := lv.(*_EventTssKeygenSuccess_2_list)
+		clv := lv.(*_EventFrostKeygenSuccess_2_list)
 		x.Members = *clv.list
-	case "types.EventTssKeygenSuccess.height":
+	case "types.EventFrostKeygenSuccess.height":
 		x.Height = value.Int()
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenSuccess"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenSuccess"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenSuccess does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenSuccess does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -3927,53 +3927,53 @@ func (x *fastReflection_EventTssKeygenSuccess) Set(fd protoreflect.FieldDescript
 // It panics if the field does not contain a composite type.
 //
 // Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeygenSuccess) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_EventFrostKeygenSuccess) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.EventTssKeygenSuccess.members":
+	case "types.EventFrostKeygenSuccess.members":
 		if x.Members == nil {
 			x.Members = []string{}
 		}
-		value := &_EventTssKeygenSuccess_2_list{list: &x.Members}
+		value := &_EventFrostKeygenSuccess_2_list{list: &x.Members}
 		return protoreflect.ValueOfList(value)
-	case "types.EventTssKeygenSuccess.pub_key":
-		panic(fmt.Errorf("field pub_key of message types.EventTssKeygenSuccess is not mutable"))
-	case "types.EventTssKeygenSuccess.height":
-		panic(fmt.Errorf("field height of message types.EventTssKeygenSuccess is not mutable"))
+	case "types.EventFrostKeygenSuccess.pub_key":
+		panic(fmt.Errorf("field pub_key of message types.EventFrostKeygenSuccess is not mutable"))
+	case "types.EventFrostKeygenSuccess.height":
+		panic(fmt.Errorf("field height of message types.EventFrostKeygenSuccess is not mutable"))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenSuccess"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenSuccess"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenSuccess does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenSuccess does not contain field %s", fd.FullName()))
 	}
 }
 
 // NewField returns a new value that is assignable to the field
 // for the given descriptor. For scalars, this returns the default value.
 // For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_EventTssKeygenSuccess) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_EventFrostKeygenSuccess) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.EventTssKeygenSuccess.pub_key":
+	case "types.EventFrostKeygenSuccess.pub_key":
 		return protoreflect.ValueOfString("")
-	case "types.EventTssKeygenSuccess.members":
+	case "types.EventFrostKeygenSuccess.members":
 		list := []string{}
-		return protoreflect.ValueOfList(&_EventTssKeygenSuccess_2_list{list: &list})
-	case "types.EventTssKeygenSuccess.height":
+		return protoreflect.ValueOfList(&_EventFrostKeygenSuccess_2_list{list: &list})
+	case "types.EventFrostKeygenSuccess.height":
 		return protoreflect.ValueOfInt64(int64(0))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenSuccess"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenSuccess"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenSuccess does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenSuccess does not contain field %s", fd.FullName()))
 	}
 }
 
 // WhichOneof reports which field within the oneof is populated,
 // returning nil if none are populated.
 // It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_EventTssKeygenSuccess) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+func (x *fastReflection_EventFrostKeygenSuccess) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
 	switch d.FullName() {
 	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.EventTssKeygenSuccess", d.FullName()))
+		panic(fmt.Errorf("%s is not a oneof field in types.EventFrostKeygenSuccess", d.FullName()))
 	}
 	panic("unreachable")
 }
@@ -3981,7 +3981,7 @@ func (x *fastReflection_EventTssKeygenSuccess) WhichOneof(d protoreflect.OneofDe
 // GetUnknown retrieves the entire list of unknown fields.
 // The caller may only mutate the contents of the RawFields
 // if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_EventTssKeygenSuccess) GetUnknown() protoreflect.RawFields {
+func (x *fastReflection_EventFrostKeygenSuccess) GetUnknown() protoreflect.RawFields {
 	return x.unknownFields
 }
 
@@ -3992,7 +3992,7 @@ func (x *fastReflection_EventTssKeygenSuccess) GetUnknown() protoreflect.RawFiel
 // An empty RawFields may be passed to clear the fields.
 //
 // SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeygenSuccess) SetUnknown(fields protoreflect.RawFields) {
+func (x *fastReflection_EventFrostKeygenSuccess) SetUnknown(fields protoreflect.RawFields) {
 	x.unknownFields = fields
 }
 
@@ -4004,7 +4004,7 @@ func (x *fastReflection_EventTssKeygenSuccess) SetUnknown(fields protoreflect.Ra
 // message type, but the details are implementation dependent.
 // Validity is not part of the protobuf data model, and may not
 // be preserved in marshaling or other operations.
-func (x *fastReflection_EventTssKeygenSuccess) IsValid() bool {
+func (x *fastReflection_EventFrostKeygenSuccess) IsValid() bool {
 	return x != nil
 }
 
@@ -4014,9 +4014,9 @@ func (x *fastReflection_EventTssKeygenSuccess) IsValid() bool {
 // The returned methods type is identical to
 // "google.golang.org/protobuf/runtime/protoiface".Methods.
 // Consult the protoiface package documentation for details.
-func (x *fastReflection_EventTssKeygenSuccess) ProtoMethods() *protoiface.Methods {
+func (x *fastReflection_EventFrostKeygenSuccess) ProtoMethods() *protoiface.Methods {
 	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*EventTssKeygenSuccess)
+		x := input.Message.Interface().(*EventFrostKeygenSuccess)
 		if x == nil {
 			return protoiface.SizeOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -4051,7 +4051,7 @@ func (x *fastReflection_EventTssKeygenSuccess) ProtoMethods() *protoiface.Method
 	}
 
 	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*EventTssKeygenSuccess)
+		x := input.Message.Interface().(*EventFrostKeygenSuccess)
 		if x == nil {
 			return protoiface.MarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -4102,7 +4102,7 @@ func (x *fastReflection_EventTssKeygenSuccess) ProtoMethods() *protoiface.Method
 		}, nil
 	}
 	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*EventTssKeygenSuccess)
+		x := input.Message.Interface().(*EventFrostKeygenSuccess)
 		if x == nil {
 			return protoiface.UnmarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -4134,10 +4134,10 @@ func (x *fastReflection_EventTssKeygenSuccess) ProtoMethods() *protoiface.Method
 			fieldNum := int32(wire >> 3)
 			wireType := int(wire & 0x7)
 			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventTssKeygenSuccess: wiretype end group for non-group")
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventFrostKeygenSuccess: wiretype end group for non-group")
 			}
 			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventTssKeygenSuccess: illegal tag %d (wire type %d)", fieldNum, wire)
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventFrostKeygenSuccess: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
 			case 1:
@@ -4258,80 +4258,80 @@ func (x *fastReflection_EventTssKeygenSuccess) ProtoMethods() *protoiface.Method
 	}
 }
 
-var _ protoreflect.List = (*_EventTssKeygenFailure_3_list)(nil)
+var _ protoreflect.List = (*_EventFrostKeygenFailure_3_list)(nil)
 
-type _EventTssKeygenFailure_3_list struct {
+type _EventFrostKeygenFailure_3_list struct {
 	list *[]string
 }
 
-func (x *_EventTssKeygenFailure_3_list) Len() int {
+func (x *_EventFrostKeygenFailure_3_list) Len() int {
 	if x.list == nil {
 		return 0
 	}
 	return len(*x.list)
 }
 
-func (x *_EventTssKeygenFailure_3_list) Get(i int) protoreflect.Value {
+func (x *_EventFrostKeygenFailure_3_list) Get(i int) protoreflect.Value {
 	return protoreflect.ValueOfString((*x.list)[i])
 }
 
-func (x *_EventTssKeygenFailure_3_list) Set(i int, value protoreflect.Value) {
+func (x *_EventFrostKeygenFailure_3_list) Set(i int, value protoreflect.Value) {
 	valueUnwrapped := value.String()
 	concreteValue := valueUnwrapped
 	(*x.list)[i] = concreteValue
 }
 
-func (x *_EventTssKeygenFailure_3_list) Append(value protoreflect.Value) {
+func (x *_EventFrostKeygenFailure_3_list) Append(value protoreflect.Value) {
 	valueUnwrapped := value.String()
 	concreteValue := valueUnwrapped
 	*x.list = append(*x.list, concreteValue)
 }
 
-func (x *_EventTssKeygenFailure_3_list) AppendMutable() protoreflect.Value {
-	panic(fmt.Errorf("AppendMutable can not be called on message EventTssKeygenFailure at list field BlameNodes as it is not of Message kind"))
+func (x *_EventFrostKeygenFailure_3_list) AppendMutable() protoreflect.Value {
+	panic(fmt.Errorf("AppendMutable can not be called on message EventFrostKeygenFailure at list field BlameNodes as it is not of Message kind"))
 }
 
-func (x *_EventTssKeygenFailure_3_list) Truncate(n int) {
+func (x *_EventFrostKeygenFailure_3_list) Truncate(n int) {
 	*x.list = (*x.list)[:n]
 }
 
-func (x *_EventTssKeygenFailure_3_list) NewElement() protoreflect.Value {
+func (x *_EventFrostKeygenFailure_3_list) NewElement() protoreflect.Value {
 	v := ""
 	return protoreflect.ValueOfString(v)
 }
 
-func (x *_EventTssKeygenFailure_3_list) IsValid() bool {
+func (x *_EventFrostKeygenFailure_3_list) IsValid() bool {
 	return x.list != nil
 }
 
 var (
-	md_EventTssKeygenFailure             protoreflect.MessageDescriptor
-	fd_EventTssKeygenFailure_fail_reason protoreflect.FieldDescriptor
-	fd_EventTssKeygenFailure_is_unicast  protoreflect.FieldDescriptor
-	fd_EventTssKeygenFailure_blame_nodes protoreflect.FieldDescriptor
-	fd_EventTssKeygenFailure_round       protoreflect.FieldDescriptor
-	fd_EventTssKeygenFailure_height      protoreflect.FieldDescriptor
+	md_EventFrostKeygenFailure             protoreflect.MessageDescriptor
+	fd_EventFrostKeygenFailure_fail_reason protoreflect.FieldDescriptor
+	fd_EventFrostKeygenFailure_is_unicast  protoreflect.FieldDescriptor
+	fd_EventFrostKeygenFailure_blame_nodes protoreflect.FieldDescriptor
+	fd_EventFrostKeygenFailure_round       protoreflect.FieldDescriptor
+	fd_EventFrostKeygenFailure_height      protoreflect.FieldDescriptor
 )
 
 func init() {
 	file_types_type_events_proto_init()
-	md_EventTssKeygenFailure = File_types_type_events_proto.Messages().ByName("EventTssKeygenFailure")
-	fd_EventTssKeygenFailure_fail_reason = md_EventTssKeygenFailure.Fields().ByName("fail_reason")
-	fd_EventTssKeygenFailure_is_unicast = md_EventTssKeygenFailure.Fields().ByName("is_unicast")
-	fd_EventTssKeygenFailure_blame_nodes = md_EventTssKeygenFailure.Fields().ByName("blame_nodes")
-	fd_EventTssKeygenFailure_round = md_EventTssKeygenFailure.Fields().ByName("round")
-	fd_EventTssKeygenFailure_height = md_EventTssKeygenFailure.Fields().ByName("height")
+	md_EventFrostKeygenFailure = File_types_type_events_proto.Messages().ByName("EventFrostKeygenFailure")
+	fd_EventFrostKeygenFailure_fail_reason = md_EventFrostKeygenFailure.Fields().ByName("fail_reason")
+	fd_EventFrostKeygenFailure_is_unicast = md_EventFrostKeygenFailure.Fields().ByName("is_unicast")
+	fd_EventFrostKeygenFailure_blame_nodes = md_EventFrostKeygenFailure.Fields().ByName("blame_nodes")
+	fd_EventFrostKeygenFailure_round = md_EventFrostKeygenFailure.Fields().ByName("round")
+	fd_EventFrostKeygenFailure_height = md_EventFrostKeygenFailure.Fields().ByName("height")
 }
 
-var _ protoreflect.Message = (*fastReflection_EventTssKeygenFailure)(nil)
+var _ protoreflect.Message = (*fastReflection_EventFrostKeygenFailure)(nil)
 
-type fastReflection_EventTssKeygenFailure EventTssKeygenFailure
+type fastReflection_EventFrostKeygenFailure EventFrostKeygenFailure
 
-func (x *EventTssKeygenFailure) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_EventTssKeygenFailure)(x)
+func (x *EventFrostKeygenFailure) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_EventFrostKeygenFailure)(x)
 }
 
-func (x *EventTssKeygenFailure) slowProtoReflect() protoreflect.Message {
+func (x *EventFrostKeygenFailure) slowProtoReflect() protoreflect.Message {
 	mi := &file_types_type_events_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -4343,43 +4343,43 @@ func (x *EventTssKeygenFailure) slowProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-var _fastReflection_EventTssKeygenFailure_messageType fastReflection_EventTssKeygenFailure_messageType
-var _ protoreflect.MessageType = fastReflection_EventTssKeygenFailure_messageType{}
+var _fastReflection_EventFrostKeygenFailure_messageType fastReflection_EventFrostKeygenFailure_messageType
+var _ protoreflect.MessageType = fastReflection_EventFrostKeygenFailure_messageType{}
 
-type fastReflection_EventTssKeygenFailure_messageType struct{}
+type fastReflection_EventFrostKeygenFailure_messageType struct{}
 
-func (x fastReflection_EventTssKeygenFailure_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_EventTssKeygenFailure)(nil)
+func (x fastReflection_EventFrostKeygenFailure_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_EventFrostKeygenFailure)(nil)
 }
-func (x fastReflection_EventTssKeygenFailure_messageType) New() protoreflect.Message {
-	return new(fastReflection_EventTssKeygenFailure)
+func (x fastReflection_EventFrostKeygenFailure_messageType) New() protoreflect.Message {
+	return new(fastReflection_EventFrostKeygenFailure)
 }
-func (x fastReflection_EventTssKeygenFailure_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_EventTssKeygenFailure
+func (x fastReflection_EventFrostKeygenFailure_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_EventFrostKeygenFailure
 }
 
 // Descriptor returns message descriptor, which contains only the protobuf
 // type information for the message.
-func (x *fastReflection_EventTssKeygenFailure) Descriptor() protoreflect.MessageDescriptor {
-	return md_EventTssKeygenFailure
+func (x *fastReflection_EventFrostKeygenFailure) Descriptor() protoreflect.MessageDescriptor {
+	return md_EventFrostKeygenFailure
 }
 
 // Type returns the message type, which encapsulates both Go and protobuf
 // type information. If the Go type information is not needed,
 // it is recommended that the message descriptor be used instead.
-func (x *fastReflection_EventTssKeygenFailure) Type() protoreflect.MessageType {
-	return _fastReflection_EventTssKeygenFailure_messageType
+func (x *fastReflection_EventFrostKeygenFailure) Type() protoreflect.MessageType {
+	return _fastReflection_EventFrostKeygenFailure_messageType
 }
 
 // New returns a newly allocated and mutable empty message.
-func (x *fastReflection_EventTssKeygenFailure) New() protoreflect.Message {
-	return new(fastReflection_EventTssKeygenFailure)
+func (x *fastReflection_EventFrostKeygenFailure) New() protoreflect.Message {
+	return new(fastReflection_EventFrostKeygenFailure)
 }
 
 // Interface unwraps the message reflection interface and
 // returns the underlying ProtoMessage interface.
-func (x *fastReflection_EventTssKeygenFailure) Interface() protoreflect.ProtoMessage {
-	return (*EventTssKeygenFailure)(x)
+func (x *fastReflection_EventFrostKeygenFailure) Interface() protoreflect.ProtoMessage {
+	return (*EventFrostKeygenFailure)(x)
 }
 
 // Range iterates over every populated field in an undefined order,
@@ -4387,34 +4387,34 @@ func (x *fastReflection_EventTssKeygenFailure) Interface() protoreflect.ProtoMes
 // Range returns immediately if f returns false.
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
-func (x *fastReflection_EventTssKeygenFailure) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+func (x *fastReflection_EventFrostKeygenFailure) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
 	if x.FailReason != "" {
 		value := protoreflect.ValueOfString(x.FailReason)
-		if !f(fd_EventTssKeygenFailure_fail_reason, value) {
+		if !f(fd_EventFrostKeygenFailure_fail_reason, value) {
 			return
 		}
 	}
 	if x.IsUnicast != false {
 		value := protoreflect.ValueOfBool(x.IsUnicast)
-		if !f(fd_EventTssKeygenFailure_is_unicast, value) {
+		if !f(fd_EventFrostKeygenFailure_is_unicast, value) {
 			return
 		}
 	}
 	if len(x.BlameNodes) != 0 {
-		value := protoreflect.ValueOfList(&_EventTssKeygenFailure_3_list{list: &x.BlameNodes})
-		if !f(fd_EventTssKeygenFailure_blame_nodes, value) {
+		value := protoreflect.ValueOfList(&_EventFrostKeygenFailure_3_list{list: &x.BlameNodes})
+		if !f(fd_EventFrostKeygenFailure_blame_nodes, value) {
 			return
 		}
 	}
 	if x.Round != "" {
 		value := protoreflect.ValueOfString(x.Round)
-		if !f(fd_EventTssKeygenFailure_round, value) {
+		if !f(fd_EventFrostKeygenFailure_round, value) {
 			return
 		}
 	}
 	if x.Height != int64(0) {
 		value := protoreflect.ValueOfInt64(x.Height)
-		if !f(fd_EventTssKeygenFailure_height, value) {
+		if !f(fd_EventFrostKeygenFailure_height, value) {
 			return
 		}
 	}
@@ -4431,23 +4431,23 @@ func (x *fastReflection_EventTssKeygenFailure) Range(f func(protoreflect.FieldDe
 // In other cases (aside from the nullable cases above),
 // a proto3 scalar field is populated if it contains a non-zero value, and
 // a repeated field is populated if it is non-empty.
-func (x *fastReflection_EventTssKeygenFailure) Has(fd protoreflect.FieldDescriptor) bool {
+func (x *fastReflection_EventFrostKeygenFailure) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.EventTssKeygenFailure.fail_reason":
+	case "types.EventFrostKeygenFailure.fail_reason":
 		return x.FailReason != ""
-	case "types.EventTssKeygenFailure.is_unicast":
+	case "types.EventFrostKeygenFailure.is_unicast":
 		return x.IsUnicast != false
-	case "types.EventTssKeygenFailure.blame_nodes":
+	case "types.EventFrostKeygenFailure.blame_nodes":
 		return len(x.BlameNodes) != 0
-	case "types.EventTssKeygenFailure.round":
+	case "types.EventFrostKeygenFailure.round":
 		return x.Round != ""
-	case "types.EventTssKeygenFailure.height":
+	case "types.EventFrostKeygenFailure.height":
 		return x.Height != int64(0)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenFailure"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenFailure"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenFailure does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenFailure does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -4457,23 +4457,23 @@ func (x *fastReflection_EventTssKeygenFailure) Has(fd protoreflect.FieldDescript
 // associated with the given field number.
 //
 // Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeygenFailure) Clear(fd protoreflect.FieldDescriptor) {
+func (x *fastReflection_EventFrostKeygenFailure) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.EventTssKeygenFailure.fail_reason":
+	case "types.EventFrostKeygenFailure.fail_reason":
 		x.FailReason = ""
-	case "types.EventTssKeygenFailure.is_unicast":
+	case "types.EventFrostKeygenFailure.is_unicast":
 		x.IsUnicast = false
-	case "types.EventTssKeygenFailure.blame_nodes":
+	case "types.EventFrostKeygenFailure.blame_nodes":
 		x.BlameNodes = nil
-	case "types.EventTssKeygenFailure.round":
+	case "types.EventFrostKeygenFailure.round":
 		x.Round = ""
-	case "types.EventTssKeygenFailure.height":
+	case "types.EventFrostKeygenFailure.height":
 		x.Height = int64(0)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenFailure"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenFailure"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenFailure does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenFailure does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -4483,31 +4483,31 @@ func (x *fastReflection_EventTssKeygenFailure) Clear(fd protoreflect.FieldDescri
 // the default value of a bytes scalar is guaranteed to be a copy.
 // For unpopulated composite types, it returns an empty, read-only view
 // of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_EventTssKeygenFailure) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_EventFrostKeygenFailure) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.EventTssKeygenFailure.fail_reason":
+	case "types.EventFrostKeygenFailure.fail_reason":
 		value := x.FailReason
 		return protoreflect.ValueOfString(value)
-	case "types.EventTssKeygenFailure.is_unicast":
+	case "types.EventFrostKeygenFailure.is_unicast":
 		value := x.IsUnicast
 		return protoreflect.ValueOfBool(value)
-	case "types.EventTssKeygenFailure.blame_nodes":
+	case "types.EventFrostKeygenFailure.blame_nodes":
 		if len(x.BlameNodes) == 0 {
-			return protoreflect.ValueOfList(&_EventTssKeygenFailure_3_list{})
+			return protoreflect.ValueOfList(&_EventFrostKeygenFailure_3_list{})
 		}
-		listValue := &_EventTssKeygenFailure_3_list{list: &x.BlameNodes}
+		listValue := &_EventFrostKeygenFailure_3_list{list: &x.BlameNodes}
 		return protoreflect.ValueOfList(listValue)
-	case "types.EventTssKeygenFailure.round":
+	case "types.EventFrostKeygenFailure.round":
 		value := x.Round
 		return protoreflect.ValueOfString(value)
-	case "types.EventTssKeygenFailure.height":
+	case "types.EventFrostKeygenFailure.height":
 		value := x.Height
 		return protoreflect.ValueOfInt64(value)
 	default:
 		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenFailure"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenFailure"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenFailure does not contain field %s", descriptor.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenFailure does not contain field %s", descriptor.FullName()))
 	}
 }
 
@@ -4521,25 +4521,25 @@ func (x *fastReflection_EventTssKeygenFailure) Get(descriptor protoreflect.Field
 // empty, read-only value, then it panics.
 //
 // Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeygenFailure) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+func (x *fastReflection_EventFrostKeygenFailure) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.EventTssKeygenFailure.fail_reason":
+	case "types.EventFrostKeygenFailure.fail_reason":
 		x.FailReason = value.Interface().(string)
-	case "types.EventTssKeygenFailure.is_unicast":
+	case "types.EventFrostKeygenFailure.is_unicast":
 		x.IsUnicast = value.Bool()
-	case "types.EventTssKeygenFailure.blame_nodes":
+	case "types.EventFrostKeygenFailure.blame_nodes":
 		lv := value.List()
-		clv := lv.(*_EventTssKeygenFailure_3_list)
+		clv := lv.(*_EventFrostKeygenFailure_3_list)
 		x.BlameNodes = *clv.list
-	case "types.EventTssKeygenFailure.round":
+	case "types.EventFrostKeygenFailure.round":
 		x.Round = value.Interface().(string)
-	case "types.EventTssKeygenFailure.height":
+	case "types.EventFrostKeygenFailure.height":
 		x.Height = value.Int()
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenFailure"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenFailure"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenFailure does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenFailure does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -4553,61 +4553,61 @@ func (x *fastReflection_EventTssKeygenFailure) Set(fd protoreflect.FieldDescript
 // It panics if the field does not contain a composite type.
 //
 // Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeygenFailure) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_EventFrostKeygenFailure) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.EventTssKeygenFailure.blame_nodes":
+	case "types.EventFrostKeygenFailure.blame_nodes":
 		if x.BlameNodes == nil {
 			x.BlameNodes = []string{}
 		}
-		value := &_EventTssKeygenFailure_3_list{list: &x.BlameNodes}
+		value := &_EventFrostKeygenFailure_3_list{list: &x.BlameNodes}
 		return protoreflect.ValueOfList(value)
-	case "types.EventTssKeygenFailure.fail_reason":
-		panic(fmt.Errorf("field fail_reason of message types.EventTssKeygenFailure is not mutable"))
-	case "types.EventTssKeygenFailure.is_unicast":
-		panic(fmt.Errorf("field is_unicast of message types.EventTssKeygenFailure is not mutable"))
-	case "types.EventTssKeygenFailure.round":
-		panic(fmt.Errorf("field round of message types.EventTssKeygenFailure is not mutable"))
-	case "types.EventTssKeygenFailure.height":
-		panic(fmt.Errorf("field height of message types.EventTssKeygenFailure is not mutable"))
+	case "types.EventFrostKeygenFailure.fail_reason":
+		panic(fmt.Errorf("field fail_reason of message types.EventFrostKeygenFailure is not mutable"))
+	case "types.EventFrostKeygenFailure.is_unicast":
+		panic(fmt.Errorf("field is_unicast of message types.EventFrostKeygenFailure is not mutable"))
+	case "types.EventFrostKeygenFailure.round":
+		panic(fmt.Errorf("field round of message types.EventFrostKeygenFailure is not mutable"))
+	case "types.EventFrostKeygenFailure.height":
+		panic(fmt.Errorf("field height of message types.EventFrostKeygenFailure is not mutable"))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenFailure"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenFailure"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenFailure does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenFailure does not contain field %s", fd.FullName()))
 	}
 }
 
 // NewField returns a new value that is assignable to the field
 // for the given descriptor. For scalars, this returns the default value.
 // For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_EventTssKeygenFailure) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_EventFrostKeygenFailure) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.EventTssKeygenFailure.fail_reason":
+	case "types.EventFrostKeygenFailure.fail_reason":
 		return protoreflect.ValueOfString("")
-	case "types.EventTssKeygenFailure.is_unicast":
+	case "types.EventFrostKeygenFailure.is_unicast":
 		return protoreflect.ValueOfBool(false)
-	case "types.EventTssKeygenFailure.blame_nodes":
+	case "types.EventFrostKeygenFailure.blame_nodes":
 		list := []string{}
-		return protoreflect.ValueOfList(&_EventTssKeygenFailure_3_list{list: &list})
-	case "types.EventTssKeygenFailure.round":
+		return protoreflect.ValueOfList(&_EventFrostKeygenFailure_3_list{list: &list})
+	case "types.EventFrostKeygenFailure.round":
 		return protoreflect.ValueOfString("")
-	case "types.EventTssKeygenFailure.height":
+	case "types.EventFrostKeygenFailure.height":
 		return protoreflect.ValueOfInt64(int64(0))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenFailure"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenFailure"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenFailure does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenFailure does not contain field %s", fd.FullName()))
 	}
 }
 
 // WhichOneof reports which field within the oneof is populated,
 // returning nil if none are populated.
 // It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_EventTssKeygenFailure) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+func (x *fastReflection_EventFrostKeygenFailure) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
 	switch d.FullName() {
 	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.EventTssKeygenFailure", d.FullName()))
+		panic(fmt.Errorf("%s is not a oneof field in types.EventFrostKeygenFailure", d.FullName()))
 	}
 	panic("unreachable")
 }
@@ -4615,7 +4615,7 @@ func (x *fastReflection_EventTssKeygenFailure) WhichOneof(d protoreflect.OneofDe
 // GetUnknown retrieves the entire list of unknown fields.
 // The caller may only mutate the contents of the RawFields
 // if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_EventTssKeygenFailure) GetUnknown() protoreflect.RawFields {
+func (x *fastReflection_EventFrostKeygenFailure) GetUnknown() protoreflect.RawFields {
 	return x.unknownFields
 }
 
@@ -4626,7 +4626,7 @@ func (x *fastReflection_EventTssKeygenFailure) GetUnknown() protoreflect.RawFiel
 // An empty RawFields may be passed to clear the fields.
 //
 // SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeygenFailure) SetUnknown(fields protoreflect.RawFields) {
+func (x *fastReflection_EventFrostKeygenFailure) SetUnknown(fields protoreflect.RawFields) {
 	x.unknownFields = fields
 }
 
@@ -4638,7 +4638,7 @@ func (x *fastReflection_EventTssKeygenFailure) SetUnknown(fields protoreflect.Ra
 // message type, but the details are implementation dependent.
 // Validity is not part of the protobuf data model, and may not
 // be preserved in marshaling or other operations.
-func (x *fastReflection_EventTssKeygenFailure) IsValid() bool {
+func (x *fastReflection_EventFrostKeygenFailure) IsValid() bool {
 	return x != nil
 }
 
@@ -4648,9 +4648,9 @@ func (x *fastReflection_EventTssKeygenFailure) IsValid() bool {
 // The returned methods type is identical to
 // "google.golang.org/protobuf/runtime/protoiface".Methods.
 // Consult the protoiface package documentation for details.
-func (x *fastReflection_EventTssKeygenFailure) ProtoMethods() *protoiface.Methods {
+func (x *fastReflection_EventFrostKeygenFailure) ProtoMethods() *protoiface.Methods {
 	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*EventTssKeygenFailure)
+		x := input.Message.Interface().(*EventFrostKeygenFailure)
 		if x == nil {
 			return protoiface.SizeOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -4692,7 +4692,7 @@ func (x *fastReflection_EventTssKeygenFailure) ProtoMethods() *protoiface.Method
 	}
 
 	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*EventTssKeygenFailure)
+		x := input.Message.Interface().(*EventFrostKeygenFailure)
 		if x == nil {
 			return protoiface.MarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -4760,7 +4760,7 @@ func (x *fastReflection_EventTssKeygenFailure) ProtoMethods() *protoiface.Method
 		}, nil
 	}
 	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*EventTssKeygenFailure)
+		x := input.Message.Interface().(*EventFrostKeygenFailure)
 		if x == nil {
 			return protoiface.UnmarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -4792,10 +4792,10 @@ func (x *fastReflection_EventTssKeygenFailure) ProtoMethods() *protoiface.Method
 			fieldNum := int32(wire >> 3)
 			wireType := int(wire & 0x7)
 			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventTssKeygenFailure: wiretype end group for non-group")
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventFrostKeygenFailure: wiretype end group for non-group")
 			}
 			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventTssKeygenFailure: illegal tag %d (wire type %d)", fieldNum, wire)
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventFrostKeygenFailure: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
 			case 1:
@@ -4969,27 +4969,27 @@ func (x *fastReflection_EventTssKeygenFailure) ProtoMethods() *protoiface.Method
 }
 
 var (
-	md_EventTssKeygenMetric                    protoreflect.MessageDescriptor
-	fd_EventTssKeygenMetric_pub_key            protoreflect.FieldDescriptor
-	fd_EventTssKeygenMetric_median_duration_ms protoreflect.FieldDescriptor
+	md_EventFrostKeygenMetric                    protoreflect.MessageDescriptor
+	fd_EventFrostKeygenMetric_pub_key            protoreflect.FieldDescriptor
+	fd_EventFrostKeygenMetric_median_duration_ms protoreflect.FieldDescriptor
 )
 
 func init() {
 	file_types_type_events_proto_init()
-	md_EventTssKeygenMetric = File_types_type_events_proto.Messages().ByName("EventTssKeygenMetric")
-	fd_EventTssKeygenMetric_pub_key = md_EventTssKeygenMetric.Fields().ByName("pub_key")
-	fd_EventTssKeygenMetric_median_duration_ms = md_EventTssKeygenMetric.Fields().ByName("median_duration_ms")
+	md_EventFrostKeygenMetric = File_types_type_events_proto.Messages().ByName("EventFrostKeygenMetric")
+	fd_EventFrostKeygenMetric_pub_key = md_EventFrostKeygenMetric.Fields().ByName("pub_key")
+	fd_EventFrostKeygenMetric_median_duration_ms = md_EventFrostKeygenMetric.Fields().ByName("median_duration_ms")
 }
 
-var _ protoreflect.Message = (*fastReflection_EventTssKeygenMetric)(nil)
+var _ protoreflect.Message = (*fastReflection_EventFrostKeygenMetric)(nil)
 
-type fastReflection_EventTssKeygenMetric EventTssKeygenMetric
+type fastReflection_EventFrostKeygenMetric EventFrostKeygenMetric
 
-func (x *EventTssKeygenMetric) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_EventTssKeygenMetric)(x)
+func (x *EventFrostKeygenMetric) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_EventFrostKeygenMetric)(x)
 }
 
-func (x *EventTssKeygenMetric) slowProtoReflect() protoreflect.Message {
+func (x *EventFrostKeygenMetric) slowProtoReflect() protoreflect.Message {
 	mi := &file_types_type_events_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -5001,43 +5001,43 @@ func (x *EventTssKeygenMetric) slowProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-var _fastReflection_EventTssKeygenMetric_messageType fastReflection_EventTssKeygenMetric_messageType
-var _ protoreflect.MessageType = fastReflection_EventTssKeygenMetric_messageType{}
+var _fastReflection_EventFrostKeygenMetric_messageType fastReflection_EventFrostKeygenMetric_messageType
+var _ protoreflect.MessageType = fastReflection_EventFrostKeygenMetric_messageType{}
 
-type fastReflection_EventTssKeygenMetric_messageType struct{}
+type fastReflection_EventFrostKeygenMetric_messageType struct{}
 
-func (x fastReflection_EventTssKeygenMetric_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_EventTssKeygenMetric)(nil)
+func (x fastReflection_EventFrostKeygenMetric_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_EventFrostKeygenMetric)(nil)
 }
-func (x fastReflection_EventTssKeygenMetric_messageType) New() protoreflect.Message {
-	return new(fastReflection_EventTssKeygenMetric)
+func (x fastReflection_EventFrostKeygenMetric_messageType) New() protoreflect.Message {
+	return new(fastReflection_EventFrostKeygenMetric)
 }
-func (x fastReflection_EventTssKeygenMetric_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_EventTssKeygenMetric
+func (x fastReflection_EventFrostKeygenMetric_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_EventFrostKeygenMetric
 }
 
 // Descriptor returns message descriptor, which contains only the protobuf
 // type information for the message.
-func (x *fastReflection_EventTssKeygenMetric) Descriptor() protoreflect.MessageDescriptor {
-	return md_EventTssKeygenMetric
+func (x *fastReflection_EventFrostKeygenMetric) Descriptor() protoreflect.MessageDescriptor {
+	return md_EventFrostKeygenMetric
 }
 
 // Type returns the message type, which encapsulates both Go and protobuf
 // type information. If the Go type information is not needed,
 // it is recommended that the message descriptor be used instead.
-func (x *fastReflection_EventTssKeygenMetric) Type() protoreflect.MessageType {
-	return _fastReflection_EventTssKeygenMetric_messageType
+func (x *fastReflection_EventFrostKeygenMetric) Type() protoreflect.MessageType {
+	return _fastReflection_EventFrostKeygenMetric_messageType
 }
 
 // New returns a newly allocated and mutable empty message.
-func (x *fastReflection_EventTssKeygenMetric) New() protoreflect.Message {
-	return new(fastReflection_EventTssKeygenMetric)
+func (x *fastReflection_EventFrostKeygenMetric) New() protoreflect.Message {
+	return new(fastReflection_EventFrostKeygenMetric)
 }
 
 // Interface unwraps the message reflection interface and
 // returns the underlying ProtoMessage interface.
-func (x *fastReflection_EventTssKeygenMetric) Interface() protoreflect.ProtoMessage {
-	return (*EventTssKeygenMetric)(x)
+func (x *fastReflection_EventFrostKeygenMetric) Interface() protoreflect.ProtoMessage {
+	return (*EventFrostKeygenMetric)(x)
 }
 
 // Range iterates over every populated field in an undefined order,
@@ -5045,16 +5045,16 @@ func (x *fastReflection_EventTssKeygenMetric) Interface() protoreflect.ProtoMess
 // Range returns immediately if f returns false.
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
-func (x *fastReflection_EventTssKeygenMetric) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+func (x *fastReflection_EventFrostKeygenMetric) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
 	if x.PubKey != "" {
 		value := protoreflect.ValueOfString(x.PubKey)
-		if !f(fd_EventTssKeygenMetric_pub_key, value) {
+		if !f(fd_EventFrostKeygenMetric_pub_key, value) {
 			return
 		}
 	}
 	if x.MedianDurationMs != int64(0) {
 		value := protoreflect.ValueOfInt64(x.MedianDurationMs)
-		if !f(fd_EventTssKeygenMetric_median_duration_ms, value) {
+		if !f(fd_EventFrostKeygenMetric_median_duration_ms, value) {
 			return
 		}
 	}
@@ -5071,17 +5071,17 @@ func (x *fastReflection_EventTssKeygenMetric) Range(f func(protoreflect.FieldDes
 // In other cases (aside from the nullable cases above),
 // a proto3 scalar field is populated if it contains a non-zero value, and
 // a repeated field is populated if it is non-empty.
-func (x *fastReflection_EventTssKeygenMetric) Has(fd protoreflect.FieldDescriptor) bool {
+func (x *fastReflection_EventFrostKeygenMetric) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.EventTssKeygenMetric.pub_key":
+	case "types.EventFrostKeygenMetric.pub_key":
 		return x.PubKey != ""
-	case "types.EventTssKeygenMetric.median_duration_ms":
+	case "types.EventFrostKeygenMetric.median_duration_ms":
 		return x.MedianDurationMs != int64(0)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenMetric"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenMetric"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenMetric does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenMetric does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -5091,17 +5091,17 @@ func (x *fastReflection_EventTssKeygenMetric) Has(fd protoreflect.FieldDescripto
 // associated with the given field number.
 //
 // Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeygenMetric) Clear(fd protoreflect.FieldDescriptor) {
+func (x *fastReflection_EventFrostKeygenMetric) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.EventTssKeygenMetric.pub_key":
+	case "types.EventFrostKeygenMetric.pub_key":
 		x.PubKey = ""
-	case "types.EventTssKeygenMetric.median_duration_ms":
+	case "types.EventFrostKeygenMetric.median_duration_ms":
 		x.MedianDurationMs = int64(0)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenMetric"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenMetric"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenMetric does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenMetric does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -5111,19 +5111,19 @@ func (x *fastReflection_EventTssKeygenMetric) Clear(fd protoreflect.FieldDescrip
 // the default value of a bytes scalar is guaranteed to be a copy.
 // For unpopulated composite types, it returns an empty, read-only view
 // of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_EventTssKeygenMetric) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_EventFrostKeygenMetric) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.EventTssKeygenMetric.pub_key":
+	case "types.EventFrostKeygenMetric.pub_key":
 		value := x.PubKey
 		return protoreflect.ValueOfString(value)
-	case "types.EventTssKeygenMetric.median_duration_ms":
+	case "types.EventFrostKeygenMetric.median_duration_ms":
 		value := x.MedianDurationMs
 		return protoreflect.ValueOfInt64(value)
 	default:
 		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenMetric"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenMetric"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenMetric does not contain field %s", descriptor.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenMetric does not contain field %s", descriptor.FullName()))
 	}
 }
 
@@ -5137,17 +5137,17 @@ func (x *fastReflection_EventTssKeygenMetric) Get(descriptor protoreflect.FieldD
 // empty, read-only value, then it panics.
 //
 // Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeygenMetric) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+func (x *fastReflection_EventFrostKeygenMetric) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.EventTssKeygenMetric.pub_key":
+	case "types.EventFrostKeygenMetric.pub_key":
 		x.PubKey = value.Interface().(string)
-	case "types.EventTssKeygenMetric.median_duration_ms":
+	case "types.EventFrostKeygenMetric.median_duration_ms":
 		x.MedianDurationMs = value.Int()
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenMetric"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenMetric"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenMetric does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenMetric does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -5161,44 +5161,44 @@ func (x *fastReflection_EventTssKeygenMetric) Set(fd protoreflect.FieldDescripto
 // It panics if the field does not contain a composite type.
 //
 // Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeygenMetric) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_EventFrostKeygenMetric) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.EventTssKeygenMetric.pub_key":
-		panic(fmt.Errorf("field pub_key of message types.EventTssKeygenMetric is not mutable"))
-	case "types.EventTssKeygenMetric.median_duration_ms":
-		panic(fmt.Errorf("field median_duration_ms of message types.EventTssKeygenMetric is not mutable"))
+	case "types.EventFrostKeygenMetric.pub_key":
+		panic(fmt.Errorf("field pub_key of message types.EventFrostKeygenMetric is not mutable"))
+	case "types.EventFrostKeygenMetric.median_duration_ms":
+		panic(fmt.Errorf("field median_duration_ms of message types.EventFrostKeygenMetric is not mutable"))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenMetric"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenMetric"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenMetric does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenMetric does not contain field %s", fd.FullName()))
 	}
 }
 
 // NewField returns a new value that is assignable to the field
 // for the given descriptor. For scalars, this returns the default value.
 // For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_EventTssKeygenMetric) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_EventFrostKeygenMetric) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.EventTssKeygenMetric.pub_key":
+	case "types.EventFrostKeygenMetric.pub_key":
 		return protoreflect.ValueOfString("")
-	case "types.EventTssKeygenMetric.median_duration_ms":
+	case "types.EventFrostKeygenMetric.median_duration_ms":
 		return protoreflect.ValueOfInt64(int64(0))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeygenMetric"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeygenMetric"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeygenMetric does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeygenMetric does not contain field %s", fd.FullName()))
 	}
 }
 
 // WhichOneof reports which field within the oneof is populated,
 // returning nil if none are populated.
 // It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_EventTssKeygenMetric) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+func (x *fastReflection_EventFrostKeygenMetric) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
 	switch d.FullName() {
 	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.EventTssKeygenMetric", d.FullName()))
+		panic(fmt.Errorf("%s is not a oneof field in types.EventFrostKeygenMetric", d.FullName()))
 	}
 	panic("unreachable")
 }
@@ -5206,7 +5206,7 @@ func (x *fastReflection_EventTssKeygenMetric) WhichOneof(d protoreflect.OneofDes
 // GetUnknown retrieves the entire list of unknown fields.
 // The caller may only mutate the contents of the RawFields
 // if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_EventTssKeygenMetric) GetUnknown() protoreflect.RawFields {
+func (x *fastReflection_EventFrostKeygenMetric) GetUnknown() protoreflect.RawFields {
 	return x.unknownFields
 }
 
@@ -5217,7 +5217,7 @@ func (x *fastReflection_EventTssKeygenMetric) GetUnknown() protoreflect.RawField
 // An empty RawFields may be passed to clear the fields.
 //
 // SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeygenMetric) SetUnknown(fields protoreflect.RawFields) {
+func (x *fastReflection_EventFrostKeygenMetric) SetUnknown(fields protoreflect.RawFields) {
 	x.unknownFields = fields
 }
 
@@ -5229,7 +5229,7 @@ func (x *fastReflection_EventTssKeygenMetric) SetUnknown(fields protoreflect.Raw
 // message type, but the details are implementation dependent.
 // Validity is not part of the protobuf data model, and may not
 // be preserved in marshaling or other operations.
-func (x *fastReflection_EventTssKeygenMetric) IsValid() bool {
+func (x *fastReflection_EventFrostKeygenMetric) IsValid() bool {
 	return x != nil
 }
 
@@ -5239,9 +5239,9 @@ func (x *fastReflection_EventTssKeygenMetric) IsValid() bool {
 // The returned methods type is identical to
 // "google.golang.org/protobuf/runtime/protoiface".Methods.
 // Consult the protoiface package documentation for details.
-func (x *fastReflection_EventTssKeygenMetric) ProtoMethods() *protoiface.Methods {
+func (x *fastReflection_EventFrostKeygenMetric) ProtoMethods() *protoiface.Methods {
 	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*EventTssKeygenMetric)
+		x := input.Message.Interface().(*EventFrostKeygenMetric)
 		if x == nil {
 			return protoiface.SizeOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -5270,7 +5270,7 @@ func (x *fastReflection_EventTssKeygenMetric) ProtoMethods() *protoiface.Methods
 	}
 
 	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*EventTssKeygenMetric)
+		x := input.Message.Interface().(*EventFrostKeygenMetric)
 		if x == nil {
 			return protoiface.MarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -5312,7 +5312,7 @@ func (x *fastReflection_EventTssKeygenMetric) ProtoMethods() *protoiface.Methods
 		}, nil
 	}
 	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*EventTssKeygenMetric)
+		x := input.Message.Interface().(*EventFrostKeygenMetric)
 		if x == nil {
 			return protoiface.UnmarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -5344,10 +5344,10 @@ func (x *fastReflection_EventTssKeygenMetric) ProtoMethods() *protoiface.Methods
 			fieldNum := int32(wire >> 3)
 			wireType := int(wire & 0x7)
 			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventTssKeygenMetric: wiretype end group for non-group")
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventFrostKeygenMetric: wiretype end group for non-group")
 			}
 			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventTssKeygenMetric: illegal tag %d (wire type %d)", fieldNum, wire)
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventFrostKeygenMetric: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
 			case 1:
@@ -5437,27 +5437,27 @@ func (x *fastReflection_EventTssKeygenMetric) ProtoMethods() *protoiface.Methods
 }
 
 var (
-	md_EventTssKeysignMetric                    protoreflect.MessageDescriptor
-	fd_EventTssKeysignMetric_tx_id              protoreflect.FieldDescriptor
-	fd_EventTssKeysignMetric_median_duration_ms protoreflect.FieldDescriptor
+	md_EventFrostKeysignMetric                    protoreflect.MessageDescriptor
+	fd_EventFrostKeysignMetric_tx_id              protoreflect.FieldDescriptor
+	fd_EventFrostKeysignMetric_median_duration_ms protoreflect.FieldDescriptor
 )
 
 func init() {
 	file_types_type_events_proto_init()
-	md_EventTssKeysignMetric = File_types_type_events_proto.Messages().ByName("EventTssKeysignMetric")
-	fd_EventTssKeysignMetric_tx_id = md_EventTssKeysignMetric.Fields().ByName("tx_id")
-	fd_EventTssKeysignMetric_median_duration_ms = md_EventTssKeysignMetric.Fields().ByName("median_duration_ms")
+	md_EventFrostKeysignMetric = File_types_type_events_proto.Messages().ByName("EventFrostKeysignMetric")
+	fd_EventFrostKeysignMetric_tx_id = md_EventFrostKeysignMetric.Fields().ByName("tx_id")
+	fd_EventFrostKeysignMetric_median_duration_ms = md_EventFrostKeysignMetric.Fields().ByName("median_duration_ms")
 }
 
-var _ protoreflect.Message = (*fastReflection_EventTssKeysignMetric)(nil)
+var _ protoreflect.Message = (*fastReflection_EventFrostKeysignMetric)(nil)
 
-type fastReflection_EventTssKeysignMetric EventTssKeysignMetric
+type fastReflection_EventFrostKeysignMetric EventFrostKeysignMetric
 
-func (x *EventTssKeysignMetric) ProtoReflect() protoreflect.Message {
-	return (*fastReflection_EventTssKeysignMetric)(x)
+func (x *EventFrostKeysignMetric) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_EventFrostKeysignMetric)(x)
 }
 
-func (x *EventTssKeysignMetric) slowProtoReflect() protoreflect.Message {
+func (x *EventFrostKeysignMetric) slowProtoReflect() protoreflect.Message {
 	mi := &file_types_type_events_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -5469,43 +5469,43 @@ func (x *EventTssKeysignMetric) slowProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-var _fastReflection_EventTssKeysignMetric_messageType fastReflection_EventTssKeysignMetric_messageType
-var _ protoreflect.MessageType = fastReflection_EventTssKeysignMetric_messageType{}
+var _fastReflection_EventFrostKeysignMetric_messageType fastReflection_EventFrostKeysignMetric_messageType
+var _ protoreflect.MessageType = fastReflection_EventFrostKeysignMetric_messageType{}
 
-type fastReflection_EventTssKeysignMetric_messageType struct{}
+type fastReflection_EventFrostKeysignMetric_messageType struct{}
 
-func (x fastReflection_EventTssKeysignMetric_messageType) Zero() protoreflect.Message {
-	return (*fastReflection_EventTssKeysignMetric)(nil)
+func (x fastReflection_EventFrostKeysignMetric_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_EventFrostKeysignMetric)(nil)
 }
-func (x fastReflection_EventTssKeysignMetric_messageType) New() protoreflect.Message {
-	return new(fastReflection_EventTssKeysignMetric)
+func (x fastReflection_EventFrostKeysignMetric_messageType) New() protoreflect.Message {
+	return new(fastReflection_EventFrostKeysignMetric)
 }
-func (x fastReflection_EventTssKeysignMetric_messageType) Descriptor() protoreflect.MessageDescriptor {
-	return md_EventTssKeysignMetric
+func (x fastReflection_EventFrostKeysignMetric_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_EventFrostKeysignMetric
 }
 
 // Descriptor returns message descriptor, which contains only the protobuf
 // type information for the message.
-func (x *fastReflection_EventTssKeysignMetric) Descriptor() protoreflect.MessageDescriptor {
-	return md_EventTssKeysignMetric
+func (x *fastReflection_EventFrostKeysignMetric) Descriptor() protoreflect.MessageDescriptor {
+	return md_EventFrostKeysignMetric
 }
 
 // Type returns the message type, which encapsulates both Go and protobuf
 // type information. If the Go type information is not needed,
 // it is recommended that the message descriptor be used instead.
-func (x *fastReflection_EventTssKeysignMetric) Type() protoreflect.MessageType {
-	return _fastReflection_EventTssKeysignMetric_messageType
+func (x *fastReflection_EventFrostKeysignMetric) Type() protoreflect.MessageType {
+	return _fastReflection_EventFrostKeysignMetric_messageType
 }
 
 // New returns a newly allocated and mutable empty message.
-func (x *fastReflection_EventTssKeysignMetric) New() protoreflect.Message {
-	return new(fastReflection_EventTssKeysignMetric)
+func (x *fastReflection_EventFrostKeysignMetric) New() protoreflect.Message {
+	return new(fastReflection_EventFrostKeysignMetric)
 }
 
 // Interface unwraps the message reflection interface and
 // returns the underlying ProtoMessage interface.
-func (x *fastReflection_EventTssKeysignMetric) Interface() protoreflect.ProtoMessage {
-	return (*EventTssKeysignMetric)(x)
+func (x *fastReflection_EventFrostKeysignMetric) Interface() protoreflect.ProtoMessage {
+	return (*EventFrostKeysignMetric)(x)
 }
 
 // Range iterates over every populated field in an undefined order,
@@ -5513,16 +5513,16 @@ func (x *fastReflection_EventTssKeysignMetric) Interface() protoreflect.ProtoMes
 // Range returns immediately if f returns false.
 // While iterating, mutating operations may only be performed
 // on the current field descriptor.
-func (x *fastReflection_EventTssKeysignMetric) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+func (x *fastReflection_EventFrostKeysignMetric) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
 	if x.TxId != "" {
 		value := protoreflect.ValueOfString(x.TxId)
-		if !f(fd_EventTssKeysignMetric_tx_id, value) {
+		if !f(fd_EventFrostKeysignMetric_tx_id, value) {
 			return
 		}
 	}
 	if x.MedianDurationMs != int64(0) {
 		value := protoreflect.ValueOfInt64(x.MedianDurationMs)
-		if !f(fd_EventTssKeysignMetric_median_duration_ms, value) {
+		if !f(fd_EventFrostKeysignMetric_median_duration_ms, value) {
 			return
 		}
 	}
@@ -5539,17 +5539,17 @@ func (x *fastReflection_EventTssKeysignMetric) Range(f func(protoreflect.FieldDe
 // In other cases (aside from the nullable cases above),
 // a proto3 scalar field is populated if it contains a non-zero value, and
 // a repeated field is populated if it is non-empty.
-func (x *fastReflection_EventTssKeysignMetric) Has(fd protoreflect.FieldDescriptor) bool {
+func (x *fastReflection_EventFrostKeysignMetric) Has(fd protoreflect.FieldDescriptor) bool {
 	switch fd.FullName() {
-	case "types.EventTssKeysignMetric.tx_id":
+	case "types.EventFrostKeysignMetric.tx_id":
 		return x.TxId != ""
-	case "types.EventTssKeysignMetric.median_duration_ms":
+	case "types.EventFrostKeysignMetric.median_duration_ms":
 		return x.MedianDurationMs != int64(0)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeysignMetric"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeysignMetric"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeysignMetric does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeysignMetric does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -5559,17 +5559,17 @@ func (x *fastReflection_EventTssKeysignMetric) Has(fd protoreflect.FieldDescript
 // associated with the given field number.
 //
 // Clear is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeysignMetric) Clear(fd protoreflect.FieldDescriptor) {
+func (x *fastReflection_EventFrostKeysignMetric) Clear(fd protoreflect.FieldDescriptor) {
 	switch fd.FullName() {
-	case "types.EventTssKeysignMetric.tx_id":
+	case "types.EventFrostKeysignMetric.tx_id":
 		x.TxId = ""
-	case "types.EventTssKeysignMetric.median_duration_ms":
+	case "types.EventFrostKeysignMetric.median_duration_ms":
 		x.MedianDurationMs = int64(0)
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeysignMetric"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeysignMetric"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeysignMetric does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeysignMetric does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -5579,19 +5579,19 @@ func (x *fastReflection_EventTssKeysignMetric) Clear(fd protoreflect.FieldDescri
 // the default value of a bytes scalar is guaranteed to be a copy.
 // For unpopulated composite types, it returns an empty, read-only view
 // of the value; to obtain a mutable reference, use Mutable.
-func (x *fastReflection_EventTssKeysignMetric) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_EventFrostKeysignMetric) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
 	switch descriptor.FullName() {
-	case "types.EventTssKeysignMetric.tx_id":
+	case "types.EventFrostKeysignMetric.tx_id":
 		value := x.TxId
 		return protoreflect.ValueOfString(value)
-	case "types.EventTssKeysignMetric.median_duration_ms":
+	case "types.EventFrostKeysignMetric.median_duration_ms":
 		value := x.MedianDurationMs
 		return protoreflect.ValueOfInt64(value)
 	default:
 		if descriptor.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeysignMetric"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeysignMetric"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeysignMetric does not contain field %s", descriptor.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeysignMetric does not contain field %s", descriptor.FullName()))
 	}
 }
 
@@ -5605,17 +5605,17 @@ func (x *fastReflection_EventTssKeysignMetric) Get(descriptor protoreflect.Field
 // empty, read-only value, then it panics.
 //
 // Set is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeysignMetric) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+func (x *fastReflection_EventFrostKeysignMetric) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
 	switch fd.FullName() {
-	case "types.EventTssKeysignMetric.tx_id":
+	case "types.EventFrostKeysignMetric.tx_id":
 		x.TxId = value.Interface().(string)
-	case "types.EventTssKeysignMetric.median_duration_ms":
+	case "types.EventFrostKeysignMetric.median_duration_ms":
 		x.MedianDurationMs = value.Int()
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeysignMetric"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeysignMetric"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeysignMetric does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeysignMetric does not contain field %s", fd.FullName()))
 	}
 }
 
@@ -5629,44 +5629,44 @@ func (x *fastReflection_EventTssKeysignMetric) Set(fd protoreflect.FieldDescript
 // It panics if the field does not contain a composite type.
 //
 // Mutable is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeysignMetric) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_EventFrostKeysignMetric) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.EventTssKeysignMetric.tx_id":
-		panic(fmt.Errorf("field tx_id of message types.EventTssKeysignMetric is not mutable"))
-	case "types.EventTssKeysignMetric.median_duration_ms":
-		panic(fmt.Errorf("field median_duration_ms of message types.EventTssKeysignMetric is not mutable"))
+	case "types.EventFrostKeysignMetric.tx_id":
+		panic(fmt.Errorf("field tx_id of message types.EventFrostKeysignMetric is not mutable"))
+	case "types.EventFrostKeysignMetric.median_duration_ms":
+		panic(fmt.Errorf("field median_duration_ms of message types.EventFrostKeysignMetric is not mutable"))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeysignMetric"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeysignMetric"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeysignMetric does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeysignMetric does not contain field %s", fd.FullName()))
 	}
 }
 
 // NewField returns a new value that is assignable to the field
 // for the given descriptor. For scalars, this returns the default value.
 // For lists, maps, and messages, this returns a new, empty, mutable value.
-func (x *fastReflection_EventTssKeysignMetric) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+func (x *fastReflection_EventFrostKeysignMetric) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
-	case "types.EventTssKeysignMetric.tx_id":
+	case "types.EventFrostKeysignMetric.tx_id":
 		return protoreflect.ValueOfString("")
-	case "types.EventTssKeysignMetric.median_duration_ms":
+	case "types.EventFrostKeysignMetric.median_duration_ms":
 		return protoreflect.ValueOfInt64(int64(0))
 	default:
 		if fd.IsExtension() {
-			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventTssKeysignMetric"))
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.EventFrostKeysignMetric"))
 		}
-		panic(fmt.Errorf("message types.EventTssKeysignMetric does not contain field %s", fd.FullName()))
+		panic(fmt.Errorf("message types.EventFrostKeysignMetric does not contain field %s", fd.FullName()))
 	}
 }
 
 // WhichOneof reports which field within the oneof is populated,
 // returning nil if none are populated.
 // It panics if the oneof descriptor does not belong to this message.
-func (x *fastReflection_EventTssKeysignMetric) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+func (x *fastReflection_EventFrostKeysignMetric) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
 	switch d.FullName() {
 	default:
-		panic(fmt.Errorf("%s is not a oneof field in types.EventTssKeysignMetric", d.FullName()))
+		panic(fmt.Errorf("%s is not a oneof field in types.EventFrostKeysignMetric", d.FullName()))
 	}
 	panic("unreachable")
 }
@@ -5674,7 +5674,7 @@ func (x *fastReflection_EventTssKeysignMetric) WhichOneof(d protoreflect.OneofDe
 // GetUnknown retrieves the entire list of unknown fields.
 // The caller may only mutate the contents of the RawFields
 // if the mutated bytes are stored back into the message with SetUnknown.
-func (x *fastReflection_EventTssKeysignMetric) GetUnknown() protoreflect.RawFields {
+func (x *fastReflection_EventFrostKeysignMetric) GetUnknown() protoreflect.RawFields {
 	return x.unknownFields
 }
 
@@ -5685,7 +5685,7 @@ func (x *fastReflection_EventTssKeysignMetric) GetUnknown() protoreflect.RawFiel
 // An empty RawFields may be passed to clear the fields.
 //
 // SetUnknown is a mutating operation and unsafe for concurrent use.
-func (x *fastReflection_EventTssKeysignMetric) SetUnknown(fields protoreflect.RawFields) {
+func (x *fastReflection_EventFrostKeysignMetric) SetUnknown(fields protoreflect.RawFields) {
 	x.unknownFields = fields
 }
 
@@ -5697,7 +5697,7 @@ func (x *fastReflection_EventTssKeysignMetric) SetUnknown(fields protoreflect.Ra
 // message type, but the details are implementation dependent.
 // Validity is not part of the protobuf data model, and may not
 // be preserved in marshaling or other operations.
-func (x *fastReflection_EventTssKeysignMetric) IsValid() bool {
+func (x *fastReflection_EventFrostKeysignMetric) IsValid() bool {
 	return x != nil
 }
 
@@ -5707,9 +5707,9 @@ func (x *fastReflection_EventTssKeysignMetric) IsValid() bool {
 // The returned methods type is identical to
 // "google.golang.org/protobuf/runtime/protoiface".Methods.
 // Consult the protoiface package documentation for details.
-func (x *fastReflection_EventTssKeysignMetric) ProtoMethods() *protoiface.Methods {
+func (x *fastReflection_EventFrostKeysignMetric) ProtoMethods() *protoiface.Methods {
 	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
-		x := input.Message.Interface().(*EventTssKeysignMetric)
+		x := input.Message.Interface().(*EventFrostKeysignMetric)
 		if x == nil {
 			return protoiface.SizeOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -5738,7 +5738,7 @@ func (x *fastReflection_EventTssKeysignMetric) ProtoMethods() *protoiface.Method
 	}
 
 	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
-		x := input.Message.Interface().(*EventTssKeysignMetric)
+		x := input.Message.Interface().(*EventFrostKeysignMetric)
 		if x == nil {
 			return protoiface.MarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -5780,7 +5780,7 @@ func (x *fastReflection_EventTssKeysignMetric) ProtoMethods() *protoiface.Method
 		}, nil
 	}
 	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
-		x := input.Message.Interface().(*EventTssKeysignMetric)
+		x := input.Message.Interface().(*EventFrostKeysignMetric)
 		if x == nil {
 			return protoiface.UnmarshalOutput{
 				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
@@ -5812,10 +5812,10 @@ func (x *fastReflection_EventTssKeysignMetric) ProtoMethods() *protoiface.Method
 			fieldNum := int32(wire >> 3)
 			wireType := int(wire & 0x7)
 			if wireType == 4 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventTssKeysignMetric: wiretype end group for non-group")
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventFrostKeysignMetric: wiretype end group for non-group")
 			}
 			if fieldNum <= 0 {
-				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventTssKeysignMetric: illegal tag %d (wire type %d)", fieldNum, wire)
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: EventFrostKeysignMetric: illegal tag %d (wire type %d)", fieldNum, wire)
 			}
 			switch fieldNum {
 			case 1:
@@ -10573,7 +10573,7 @@ func (x *EventOutbound) GetTx() *common.Tx {
 	return nil
 }
 
-type EventTssKeygenSuccess struct {
+type EventFrostKeygenSuccess struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -10583,8 +10583,8 @@ type EventTssKeygenSuccess struct {
 	Height  int64    `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
 }
 
-func (x *EventTssKeygenSuccess) Reset() {
-	*x = EventTssKeygenSuccess{}
+func (x *EventFrostKeygenSuccess) Reset() {
+	*x = EventFrostKeygenSuccess{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_type_events_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -10592,39 +10592,39 @@ func (x *EventTssKeygenSuccess) Reset() {
 	}
 }
 
-func (x *EventTssKeygenSuccess) String() string {
+func (x *EventFrostKeygenSuccess) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*EventTssKeygenSuccess) ProtoMessage() {}
+func (*EventFrostKeygenSuccess) ProtoMessage() {}
 
-// Deprecated: Use EventTssKeygenSuccess.ProtoReflect.Descriptor instead.
-func (*EventTssKeygenSuccess) Descriptor() ([]byte, []int) {
+// Deprecated: Use EventFrostKeygenSuccess.ProtoReflect.Descriptor instead.
+func (*EventFrostKeygenSuccess) Descriptor() ([]byte, []int) {
 	return file_types_type_events_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *EventTssKeygenSuccess) GetPubKey() string {
+func (x *EventFrostKeygenSuccess) GetPubKey() string {
 	if x != nil {
 		return x.PubKey
 	}
 	return ""
 }
 
-func (x *EventTssKeygenSuccess) GetMembers() []string {
+func (x *EventFrostKeygenSuccess) GetMembers() []string {
 	if x != nil {
 		return x.Members
 	}
 	return nil
 }
 
-func (x *EventTssKeygenSuccess) GetHeight() int64 {
+func (x *EventFrostKeygenSuccess) GetHeight() int64 {
 	if x != nil {
 		return x.Height
 	}
 	return 0
 }
 
-type EventTssKeygenFailure struct {
+type EventFrostKeygenFailure struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -10636,8 +10636,8 @@ type EventTssKeygenFailure struct {
 	Height     int64    `protobuf:"varint,5,opt,name=height,proto3" json:"height,omitempty"`
 }
 
-func (x *EventTssKeygenFailure) Reset() {
-	*x = EventTssKeygenFailure{}
+func (x *EventFrostKeygenFailure) Reset() {
+	*x = EventFrostKeygenFailure{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_type_events_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -10645,53 +10645,53 @@ func (x *EventTssKeygenFailure) Reset() {
 	}
 }
 
-func (x *EventTssKeygenFailure) String() string {
+func (x *EventFrostKeygenFailure) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*EventTssKeygenFailure) ProtoMessage() {}
+func (*EventFrostKeygenFailure) ProtoMessage() {}
 
-// Deprecated: Use EventTssKeygenFailure.ProtoReflect.Descriptor instead.
-func (*EventTssKeygenFailure) Descriptor() ([]byte, []int) {
+// Deprecated: Use EventFrostKeygenFailure.ProtoReflect.Descriptor instead.
+func (*EventFrostKeygenFailure) Descriptor() ([]byte, []int) {
 	return file_types_type_events_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *EventTssKeygenFailure) GetFailReason() string {
+func (x *EventFrostKeygenFailure) GetFailReason() string {
 	if x != nil {
 		return x.FailReason
 	}
 	return ""
 }
 
-func (x *EventTssKeygenFailure) GetIsUnicast() bool {
+func (x *EventFrostKeygenFailure) GetIsUnicast() bool {
 	if x != nil {
 		return x.IsUnicast
 	}
 	return false
 }
 
-func (x *EventTssKeygenFailure) GetBlameNodes() []string {
+func (x *EventFrostKeygenFailure) GetBlameNodes() []string {
 	if x != nil {
 		return x.BlameNodes
 	}
 	return nil
 }
 
-func (x *EventTssKeygenFailure) GetRound() string {
+func (x *EventFrostKeygenFailure) GetRound() string {
 	if x != nil {
 		return x.Round
 	}
 	return ""
 }
 
-func (x *EventTssKeygenFailure) GetHeight() int64 {
+func (x *EventFrostKeygenFailure) GetHeight() int64 {
 	if x != nil {
 		return x.Height
 	}
 	return 0
 }
 
-type EventTssKeygenMetric struct {
+type EventFrostKeygenMetric struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -10700,8 +10700,8 @@ type EventTssKeygenMetric struct {
 	MedianDurationMs int64  `protobuf:"varint,2,opt,name=median_duration_ms,json=medianDurationMs,proto3" json:"median_duration_ms,omitempty"`
 }
 
-func (x *EventTssKeygenMetric) Reset() {
-	*x = EventTssKeygenMetric{}
+func (x *EventFrostKeygenMetric) Reset() {
+	*x = EventFrostKeygenMetric{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_type_events_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -10709,32 +10709,32 @@ func (x *EventTssKeygenMetric) Reset() {
 	}
 }
 
-func (x *EventTssKeygenMetric) String() string {
+func (x *EventFrostKeygenMetric) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*EventTssKeygenMetric) ProtoMessage() {}
+func (*EventFrostKeygenMetric) ProtoMessage() {}
 
-// Deprecated: Use EventTssKeygenMetric.ProtoReflect.Descriptor instead.
-func (*EventTssKeygenMetric) Descriptor() ([]byte, []int) {
+// Deprecated: Use EventFrostKeygenMetric.ProtoReflect.Descriptor instead.
+func (*EventFrostKeygenMetric) Descriptor() ([]byte, []int) {
 	return file_types_type_events_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *EventTssKeygenMetric) GetPubKey() string {
+func (x *EventFrostKeygenMetric) GetPubKey() string {
 	if x != nil {
 		return x.PubKey
 	}
 	return ""
 }
 
-func (x *EventTssKeygenMetric) GetMedianDurationMs() int64 {
+func (x *EventFrostKeygenMetric) GetMedianDurationMs() int64 {
 	if x != nil {
 		return x.MedianDurationMs
 	}
 	return 0
 }
 
-type EventTssKeysignMetric struct {
+type EventFrostKeysignMetric struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -10743,8 +10743,8 @@ type EventTssKeysignMetric struct {
 	MedianDurationMs int64  `protobuf:"varint,2,opt,name=median_duration_ms,json=medianDurationMs,proto3" json:"median_duration_ms,omitempty"`
 }
 
-func (x *EventTssKeysignMetric) Reset() {
-	*x = EventTssKeysignMetric{}
+func (x *EventFrostKeysignMetric) Reset() {
+	*x = EventFrostKeysignMetric{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_types_type_events_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -10752,25 +10752,25 @@ func (x *EventTssKeysignMetric) Reset() {
 	}
 }
 
-func (x *EventTssKeysignMetric) String() string {
+func (x *EventFrostKeysignMetric) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*EventTssKeysignMetric) ProtoMessage() {}
+func (*EventFrostKeysignMetric) ProtoMessage() {}
 
-// Deprecated: Use EventTssKeysignMetric.ProtoReflect.Descriptor instead.
-func (*EventTssKeysignMetric) Descriptor() ([]byte, []int) {
+// Deprecated: Use EventFrostKeysignMetric.ProtoReflect.Descriptor instead.
+func (*EventFrostKeysignMetric) Descriptor() ([]byte, []int) {
 	return file_types_type_events_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *EventTssKeysignMetric) GetTxId() string {
+func (x *EventFrostKeysignMetric) GetTxId() string {
 	if x != nil {
 		return x.TxId
 	}
 	return ""
 }
 
-func (x *EventTssKeysignMetric) GetMedianDurationMs() int64 {
+func (x *EventFrostKeysignMetric) GetMedianDurationMs() int64 {
 	if x != nil {
 		return x.MedianDurationMs
 	}
@@ -11240,133 +11240,133 @@ var file_types_type_events_proto_rawDesc = []byte{
 	0x6e, 0x2e, 0x54, 0x78, 0x49, 0x44, 0x52, 0x06, 0x69, 0x6e, 0x54, 0x78, 0x49, 0x64, 0x12, 0x20,
 	0x0a, 0x02, 0x74, 0x78, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0a, 0x2e, 0x63, 0x6f, 0x6d,
 	0x6d, 0x6f, 0x6e, 0x2e, 0x54, 0x78, 0x42, 0x04, 0xc8, 0xde, 0x1f, 0x00, 0x52, 0x02, 0x74, 0x78,
-	0x22, 0x99, 0x01, 0x0a, 0x15, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x73, 0x73, 0x4b, 0x65, 0x79,
-	0x67, 0x65, 0x6e, 0x53, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x12, 0x4e, 0x0a, 0x07, 0x70, 0x75,
-	0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x35, 0xfa, 0xde, 0x1f,
-	0x31, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72,
-	0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72,
-	0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x50, 0x75, 0x62, 0x4b,
-	0x65, 0x79, 0x52, 0x06, 0x70, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x18, 0x0a, 0x07, 0x6d, 0x65,
-	0x6d, 0x62, 0x65, 0x72, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x07, 0x6d, 0x65, 0x6d,
-	0x62, 0x65, 0x72, 0x73, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x03,
-	0x20, 0x01, 0x28, 0x03, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0xa6, 0x01, 0x0a,
-	0x15, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x73, 0x73, 0x4b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x46,
-	0x61, 0x69, 0x6c, 0x75, 0x72, 0x65, 0x12, 0x1f, 0x0a, 0x0b, 0x66, 0x61, 0x69, 0x6c, 0x5f, 0x72,
-	0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x66, 0x61, 0x69,
-	0x6c, 0x52, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x12, 0x1d, 0x0a, 0x0a, 0x69, 0x73, 0x5f, 0x75, 0x6e,
-	0x69, 0x63, 0x61, 0x73, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08, 0x52, 0x09, 0x69, 0x73, 0x55,
-	0x6e, 0x69, 0x63, 0x61, 0x73, 0x74, 0x12, 0x1f, 0x0a, 0x0b, 0x62, 0x6c, 0x61, 0x6d, 0x65, 0x5f,
-	0x6e, 0x6f, 0x64, 0x65, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0a, 0x62, 0x6c, 0x61,
-	0x6d, 0x65, 0x4e, 0x6f, 0x64, 0x65, 0x73, 0x12, 0x14, 0x0a, 0x05, 0x72, 0x6f, 0x75, 0x6e, 0x64,
-	0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x72, 0x6f, 0x75, 0x6e, 0x64, 0x12, 0x16, 0x0a,
-	0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x05, 0x20, 0x01, 0x28, 0x03, 0x52, 0x06, 0x68,
-	0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x94, 0x01, 0x0a, 0x14, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54,
-	0x73, 0x73, 0x4b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x12, 0x4e,
-	0x0a, 0x07, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42,
-	0x35, 0xfa, 0xde, 0x1f, 0x31, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f,
-	0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d,
-	0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e,
-	0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x52, 0x06, 0x70, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x2c,
-	0x0a, 0x12, 0x6d, 0x65, 0x64, 0x69, 0x61, 0x6e, 0x5f, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x5f, 0x6d, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x10, 0x6d, 0x65, 0x64, 0x69,
-	0x61, 0x6e, 0x44, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x4d, 0x73, 0x22, 0x97, 0x01, 0x0a,
-	0x15, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x73, 0x73, 0x4b, 0x65, 0x79, 0x73, 0x69, 0x67, 0x6e,
-	0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x12, 0x50, 0x0a, 0x05, 0x74, 0x78, 0x5f, 0x69, 0x64, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x3b, 0xe2, 0xde, 0x1f, 0x04, 0x54, 0x78, 0x49, 0x44, 0xfa,
-	0xde, 0x1f, 0x2f, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68,
+	0x22, 0x9b, 0x01, 0x0a, 0x17, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x46, 0x72, 0x6f, 0x73, 0x74, 0x4b,
+	0x65, 0x79, 0x67, 0x65, 0x6e, 0x53, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x12, 0x4e, 0x0a, 0x07,
+	0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x35, 0xfa,
+	0xde, 0x1f, 0x31, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68,
 	0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68,
-	0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x54, 0x78,
-	0x49, 0x44, 0x52, 0x04, 0x74, 0x78, 0x49, 0x64, 0x12, 0x2c, 0x0a, 0x12, 0x6d, 0x65, 0x64, 0x69,
-	0x61, 0x6e, 0x5f, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x6d, 0x73, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x03, 0x52, 0x10, 0x6d, 0x65, 0x64, 0x69, 0x61, 0x6e, 0x44, 0x75, 0x72, 0x61,
-	0x74, 0x69, 0x6f, 0x6e, 0x4d, 0x73, 0x22, 0xa8, 0x01, 0x0a, 0x11, 0x45, 0x76, 0x65, 0x6e, 0x74,
-	0x50, 0x65, 0x6e, 0x61, 0x6c, 0x74, 0x79, 0x50, 0x6f, 0x69, 0x6e, 0x74, 0x12, 0x54, 0x0a, 0x0c,
-	0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x0c, 0x42, 0x31, 0xfa, 0xde, 0x1f, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
-	0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73,
-	0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64,
-	0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x0b, 0x6e, 0x6f, 0x64, 0x65, 0x41, 0x64, 0x64, 0x72, 0x65,
-	0x73, 0x73, 0x12, 0x25, 0x0a, 0x0e, 0x70, 0x65, 0x6e, 0x61, 0x6c, 0x74, 0x79, 0x5f, 0x70, 0x6f,
-	0x69, 0x6e, 0x74, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x70, 0x65, 0x6e, 0x61,
-	0x6c, 0x74, 0x79, 0x50, 0x6f, 0x69, 0x6e, 0x74, 0x73, 0x12, 0x16, 0x0a, 0x06, 0x72, 0x65, 0x61,
-	0x73, 0x6f, 0x6e, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f,
-	0x6e, 0x22, 0xa8, 0x01, 0x0a, 0x0d, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x4d, 0x69, 0x6e, 0x74, 0x42,
-	0x75, 0x72, 0x6e, 0x12, 0x31, 0x0a, 0x06, 0x73, 0x75, 0x70, 0x70, 0x6c, 0x79, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x0e, 0x32, 0x19, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x4d, 0x69, 0x6e, 0x74,
-	0x42, 0x75, 0x72, 0x6e, 0x53, 0x75, 0x70, 0x70, 0x6c, 0x79, 0x54, 0x79, 0x70, 0x65, 0x52, 0x06,
-	0x73, 0x75, 0x70, 0x70, 0x6c, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x64, 0x65, 0x6e, 0x6f, 0x6d, 0x18,
-	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x64, 0x65, 0x6e, 0x6f, 0x6d, 0x12, 0x36, 0x0a, 0x06,
-	0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x42, 0x1e, 0xc8, 0xde,
-	0x1f, 0x00, 0xda, 0xde, 0x1f, 0x16, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x73, 0x64, 0x6b, 0x2e,
-	0x69, 0x6f, 0x2f, 0x6d, 0x61, 0x74, 0x68, 0x2e, 0x55, 0x69, 0x6e, 0x74, 0x52, 0x06, 0x61, 0x6d,
-	0x6f, 0x75, 0x6e, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x04,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x22, 0x38, 0x0a, 0x0e,
-	0x45, 0x76, 0x65, 0x6e, 0x74, 0x53, 0x65, 0x74, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12, 0x10,
-	0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79,
-	0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x56, 0x0a, 0x12, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x53,
-	0x65, 0x74, 0x4e, 0x6f, 0x64, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12, 0x10, 0x0a, 0x03,
-	0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14,
-	0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76,
-	0x61, 0x6c, 0x75, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18,
-	0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x22, 0x28,
-	0x0a, 0x0c, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x18,
-	0x0a, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x22, 0x94, 0x02, 0x0a, 0x13, 0x45, 0x76, 0x65,
-	0x6e, 0x74, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x52, 0x6f, 0x74, 0x61, 0x74, 0x65,
-	0x12, 0x49, 0x0a, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c,
-	0x42, 0x31, 0xfa, 0xde, 0x1f, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d,
-	0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73,
-	0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64, 0x72,
-	0x65, 0x73, 0x73, 0x52, 0x06, 0x73, 0x69, 0x67, 0x6e, 0x65, 0x72, 0x12, 0x54, 0x0a, 0x0c, 0x6e,
-	0x6f, 0x64, 0x65, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x0c, 0x42, 0x31, 0xfa, 0xde, 0x1f, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
-	0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d,
-	0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64,
-	0x72, 0x65, 0x73, 0x73, 0x52, 0x0b, 0x6e, 0x6f, 0x64, 0x65, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73,
-	0x73, 0x12, 0x5c, 0x0a, 0x10, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x61, 0x64,
-	0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x31, 0xfa, 0xde, 0x1f,
-	0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d,
-	0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79,
-	0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x0f,
-	0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x22,
-	0x40, 0x0a, 0x10, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x4f, 0x72, 0x61, 0x63, 0x6c, 0x65, 0x50, 0x72,
-	0x69, 0x63, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x79, 0x6d, 0x62, 0x6f, 0x6c, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x79, 0x6d, 0x62, 0x6f, 0x6c, 0x12, 0x14, 0x0a, 0x05, 0x70,
-	0x72, 0x69, 0x63, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x70, 0x72, 0x69, 0x63,
-	0x65, 0x22, 0x9d, 0x02, 0x0a, 0x1b, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x46, 0x61, 0x69, 0x6c, 0x65,
-	0x64, 0x4f, 0x75, 0x74, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x52, 0x65, 0x63, 0x6f, 0x76, 0x65, 0x72,
-	0x79, 0x12, 0x57, 0x0a, 0x08, 0x69, 0x6e, 0x5f, 0x74, 0x78, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x42, 0x3d, 0xe2, 0xde, 0x1f, 0x06, 0x49, 0x6e, 0x54, 0x78, 0x49, 0x44, 0xfa,
-	0xde, 0x1f, 0x2f, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68,
-	0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68,
-	0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x54, 0x78,
-	0x49, 0x44, 0x52, 0x06, 0x69, 0x6e, 0x54, 0x78, 0x49, 0x64, 0x12, 0x26, 0x0a, 0x04, 0x63, 0x6f,
-	0x69, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f,
-	0x6e, 0x2e, 0x43, 0x6f, 0x69, 0x6e, 0x42, 0x04, 0xc8, 0xde, 0x1f, 0x00, 0x52, 0x04, 0x63, 0x6f,
-	0x69, 0x6e, 0x12, 0x23, 0x0a, 0x0d, 0x72, 0x65, 0x63, 0x6f, 0x76, 0x65, 0x72, 0x79, 0x5f, 0x74,
-	0x79, 0x70, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x72, 0x65, 0x63, 0x6f, 0x76,
-	0x65, 0x72, 0x79, 0x54, 0x79, 0x70, 0x65, 0x12, 0x58, 0x0a, 0x0b, 0x64, 0x65, 0x73, 0x74, 0x69,
-	0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x42, 0x36, 0xfa, 0xde,
-	0x1f, 0x32, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f,
-	0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f,
-	0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x41, 0x64, 0x64,
-	0x72, 0x65, 0x73, 0x73, 0x52, 0x0b, 0x64, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x2a, 0x32, 0x0a, 0x08, 0x42, 0x6f, 0x6e, 0x64, 0x54, 0x79, 0x70, 0x65, 0x12, 0x0d, 0x0a,
-	0x09, 0x62, 0x6f, 0x6e, 0x64, 0x5f, 0x70, 0x61, 0x69, 0x64, 0x10, 0x00, 0x12, 0x11, 0x0a, 0x0d,
-	0x62, 0x6f, 0x6e, 0x64, 0x5f, 0x72, 0x65, 0x74, 0x75, 0x72, 0x6e, 0x65, 0x64, 0x10, 0x01, 0x22,
-	0x04, 0x08, 0x02, 0x10, 0x02, 0x2a, 0x28, 0x0a, 0x12, 0x4d, 0x69, 0x6e, 0x74, 0x42, 0x75, 0x72,
-	0x6e, 0x53, 0x75, 0x70, 0x70, 0x6c, 0x79, 0x54, 0x79, 0x70, 0x65, 0x12, 0x08, 0x0a, 0x04, 0x6d,
-	0x69, 0x6e, 0x74, 0x10, 0x00, 0x12, 0x08, 0x0a, 0x04, 0x62, 0x75, 0x72, 0x6e, 0x10, 0x01, 0x42,
-	0x7f, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x42, 0x0f, 0x54, 0x79,
-	0x70, 0x65, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a,
-	0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72,
-	0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72,
-	0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2, 0x02,
-	0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05, 0x54,
-	0x79, 0x70, 0x65, 0x73, 0xe2, 0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50, 0x42,
-	0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x50, 0x75,
+	0x62, 0x4b, 0x65, 0x79, 0x52, 0x06, 0x70, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x18, 0x0a, 0x07,
+	0x6d, 0x65, 0x6d, 0x62, 0x65, 0x72, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x07, 0x6d,
+	0x65, 0x6d, 0x62, 0x65, 0x72, 0x73, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0xa8,
+	0x01, 0x0a, 0x17, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x46, 0x72, 0x6f, 0x73, 0x74, 0x4b, 0x65, 0x79,
+	0x67, 0x65, 0x6e, 0x46, 0x61, 0x69, 0x6c, 0x75, 0x72, 0x65, 0x12, 0x1f, 0x0a, 0x0b, 0x66, 0x61,
+	0x69, 0x6c, 0x5f, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x0a, 0x66, 0x61, 0x69, 0x6c, 0x52, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x12, 0x1d, 0x0a, 0x0a, 0x69,
+	0x73, 0x5f, 0x75, 0x6e, 0x69, 0x63, 0x61, 0x73, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08, 0x52,
+	0x09, 0x69, 0x73, 0x55, 0x6e, 0x69, 0x63, 0x61, 0x73, 0x74, 0x12, 0x1f, 0x0a, 0x0b, 0x62, 0x6c,
+	0x61, 0x6d, 0x65, 0x5f, 0x6e, 0x6f, 0x64, 0x65, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x09, 0x52,
+	0x0a, 0x62, 0x6c, 0x61, 0x6d, 0x65, 0x4e, 0x6f, 0x64, 0x65, 0x73, 0x12, 0x14, 0x0a, 0x05, 0x72,
+	0x6f, 0x75, 0x6e, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x72, 0x6f, 0x75, 0x6e,
+	0x64, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x05, 0x20, 0x01, 0x28,
+	0x03, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x96, 0x01, 0x0a, 0x16, 0x45, 0x76,
+	0x65, 0x6e, 0x74, 0x46, 0x72, 0x6f, 0x73, 0x74, 0x4b, 0x65, 0x79, 0x67, 0x65, 0x6e, 0x4d, 0x65,
+	0x74, 0x72, 0x69, 0x63, 0x12, 0x4e, 0x0a, 0x07, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x35, 0xfa, 0xde, 0x1f, 0x31, 0x67, 0x69, 0x74, 0x68, 0x75,
+	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61,
+	0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63,
+	0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x52, 0x06, 0x70, 0x75,
+	0x62, 0x4b, 0x65, 0x79, 0x12, 0x2c, 0x0a, 0x12, 0x6d, 0x65, 0x64, 0x69, 0x61, 0x6e, 0x5f, 0x64,
+	0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x6d, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03,
+	0x52, 0x10, 0x6d, 0x65, 0x64, 0x69, 0x61, 0x6e, 0x44, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x4d, 0x73, 0x22, 0x99, 0x01, 0x0a, 0x17, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x46, 0x72, 0x6f, 0x73,
+	0x74, 0x4b, 0x65, 0x79, 0x73, 0x69, 0x67, 0x6e, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x12, 0x50,
+	0x0a, 0x05, 0x74, 0x78, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x3b, 0xe2,
+	0xde, 0x1f, 0x04, 0x54, 0x78, 0x49, 0x44, 0xfa, 0xde, 0x1f, 0x2f, 0x67, 0x69, 0x74, 0x68, 0x75,
+	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61,
+	0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63,
+	0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x54, 0x78, 0x49, 0x44, 0x52, 0x04, 0x74, 0x78, 0x49, 0x64,
+	0x12, 0x2c, 0x0a, 0x12, 0x6d, 0x65, 0x64, 0x69, 0x61, 0x6e, 0x5f, 0x64, 0x75, 0x72, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x5f, 0x6d, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x10, 0x6d, 0x65,
+	0x64, 0x69, 0x61, 0x6e, 0x44, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x4d, 0x73, 0x22, 0xa8,
+	0x01, 0x0a, 0x11, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x50, 0x65, 0x6e, 0x61, 0x6c, 0x74, 0x79, 0x50,
+	0x6f, 0x69, 0x6e, 0x74, 0x12, 0x54, 0x0a, 0x0c, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x61, 0x64, 0x64,
+	0x72, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x31, 0xfa, 0xde, 0x1f, 0x2d,
+	0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f,
+	0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70,
+	0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x0b, 0x6e,
+	0x6f, 0x64, 0x65, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x25, 0x0a, 0x0e, 0x70, 0x65,
+	0x6e, 0x61, 0x6c, 0x74, 0x79, 0x5f, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x73, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x03, 0x52, 0x0d, 0x70, 0x65, 0x6e, 0x61, 0x6c, 0x74, 0x79, 0x50, 0x6f, 0x69, 0x6e, 0x74,
+	0x73, 0x12, 0x16, 0x0a, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x22, 0xa8, 0x01, 0x0a, 0x0d, 0x45, 0x76,
+	0x65, 0x6e, 0x74, 0x4d, 0x69, 0x6e, 0x74, 0x42, 0x75, 0x72, 0x6e, 0x12, 0x31, 0x0a, 0x06, 0x73,
+	0x75, 0x70, 0x70, 0x6c, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x19, 0x2e, 0x74, 0x79,
+	0x70, 0x65, 0x73, 0x2e, 0x4d, 0x69, 0x6e, 0x74, 0x42, 0x75, 0x72, 0x6e, 0x53, 0x75, 0x70, 0x70,
+	0x6c, 0x79, 0x54, 0x79, 0x70, 0x65, 0x52, 0x06, 0x73, 0x75, 0x70, 0x70, 0x6c, 0x79, 0x12, 0x14,
+	0x0a, 0x05, 0x64, 0x65, 0x6e, 0x6f, 0x6d, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x64,
+	0x65, 0x6e, 0x6f, 0x6d, 0x12, 0x36, 0x0a, 0x06, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x03,
+	0x20, 0x01, 0x28, 0x09, 0x42, 0x1e, 0xc8, 0xde, 0x1f, 0x00, 0xda, 0xde, 0x1f, 0x16, 0x63, 0x6f,
+	0x73, 0x6d, 0x6f, 0x73, 0x73, 0x64, 0x6b, 0x2e, 0x69, 0x6f, 0x2f, 0x6d, 0x61, 0x74, 0x68, 0x2e,
+	0x55, 0x69, 0x6e, 0x74, 0x52, 0x06, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x12, 0x16, 0x0a, 0x06,
+	0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x72, 0x65,
+	0x61, 0x73, 0x6f, 0x6e, 0x22, 0x38, 0x0a, 0x0e, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x53, 0x65, 0x74,
+	0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75,
+	0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x56,
+	0x0a, 0x12, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x53, 0x65, 0x74, 0x4e, 0x6f, 0x64, 0x65, 0x43, 0x6f,
+	0x6e, 0x66, 0x69, 0x67, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x18, 0x0a, 0x07,
+	0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x61,
+	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x22, 0x28, 0x0a, 0x0c, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x56,
+	0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x18, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f,
+	0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e,
+	0x22, 0x94, 0x02, 0x0a, 0x13, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74,
+	0x6f, 0x72, 0x52, 0x6f, 0x74, 0x61, 0x74, 0x65, 0x12, 0x49, 0x0a, 0x06, 0x73, 0x69, 0x67, 0x6e,
+	0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x31, 0xfa, 0xde, 0x1f, 0x2d, 0x67, 0x69,
+	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f,
+	0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73,
+	0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x06, 0x73, 0x69, 0x67,
+	0x6e, 0x65, 0x72, 0x12, 0x54, 0x0a, 0x0c, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x61, 0x64, 0x64, 0x72,
+	0x65, 0x73, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x31, 0xfa, 0xde, 0x1f, 0x2d, 0x67,
+	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73,
+	0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65,
+	0x73, 0x2e, 0x41, 0x63, 0x63, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x0b, 0x6e, 0x6f,
+	0x64, 0x65, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x5c, 0x0a, 0x10, 0x6f, 0x70, 0x65,
+	0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x0c, 0x42, 0x31, 0xfa, 0xde, 0x1f, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
+	0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f,
+	0x73, 0x2d, 0x73, 0x64, 0x6b, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x41,
+	0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x0f, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72,
+	0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x22, 0x40, 0x0a, 0x10, 0x45, 0x76, 0x65, 0x6e, 0x74,
+	0x4f, 0x72, 0x61, 0x63, 0x6c, 0x65, 0x50, 0x72, 0x69, 0x63, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x73,
+	0x79, 0x6d, 0x62, 0x6f, 0x6c, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x79, 0x6d,
+	0x62, 0x6f, 0x6c, 0x12, 0x14, 0x0a, 0x05, 0x70, 0x72, 0x69, 0x63, 0x65, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x05, 0x70, 0x72, 0x69, 0x63, 0x65, 0x22, 0x9d, 0x02, 0x0a, 0x1b, 0x45, 0x76,
+	0x65, 0x6e, 0x74, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64, 0x4f, 0x75, 0x74, 0x62, 0x6f, 0x75, 0x6e,
+	0x64, 0x52, 0x65, 0x63, 0x6f, 0x76, 0x65, 0x72, 0x79, 0x12, 0x57, 0x0a, 0x08, 0x69, 0x6e, 0x5f,
+	0x74, 0x78, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x3d, 0xe2, 0xde, 0x1f,
+	0x06, 0x49, 0x6e, 0x54, 0x78, 0x49, 0x44, 0xfa, 0xde, 0x1f, 0x2f, 0x67, 0x69, 0x74, 0x68, 0x75,
+	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61,
+	0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63,
+	0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x54, 0x78, 0x49, 0x44, 0x52, 0x06, 0x69, 0x6e, 0x54, 0x78,
+	0x49, 0x64, 0x12, 0x26, 0x0a, 0x04, 0x63, 0x6f, 0x69, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x0c, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x43, 0x6f, 0x69, 0x6e, 0x42, 0x04,
+	0xc8, 0xde, 0x1f, 0x00, 0x52, 0x04, 0x63, 0x6f, 0x69, 0x6e, 0x12, 0x23, 0x0a, 0x0d, 0x72, 0x65,
+	0x63, 0x6f, 0x76, 0x65, 0x72, 0x79, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x0c, 0x72, 0x65, 0x63, 0x6f, 0x76, 0x65, 0x72, 0x79, 0x54, 0x79, 0x70, 0x65, 0x12,
+	0x58, 0x0a, 0x0b, 0x64, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x04,
+	0x20, 0x01, 0x28, 0x09, 0x42, 0x36, 0xfa, 0xde, 0x1f, 0x32, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
+	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73,
+	0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x63, 0x6f,
+	0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x52, 0x0b, 0x64, 0x65,
+	0x73, 0x74, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2a, 0x32, 0x0a, 0x08, 0x42, 0x6f, 0x6e,
+	0x64, 0x54, 0x79, 0x70, 0x65, 0x12, 0x0d, 0x0a, 0x09, 0x62, 0x6f, 0x6e, 0x64, 0x5f, 0x70, 0x61,
+	0x69, 0x64, 0x10, 0x00, 0x12, 0x11, 0x0a, 0x0d, 0x62, 0x6f, 0x6e, 0x64, 0x5f, 0x72, 0x65, 0x74,
+	0x75, 0x72, 0x6e, 0x65, 0x64, 0x10, 0x01, 0x22, 0x04, 0x08, 0x02, 0x10, 0x02, 0x2a, 0x28, 0x0a,
+	0x12, 0x4d, 0x69, 0x6e, 0x74, 0x42, 0x75, 0x72, 0x6e, 0x53, 0x75, 0x70, 0x70, 0x6c, 0x79, 0x54,
+	0x79, 0x70, 0x65, 0x12, 0x08, 0x0a, 0x04, 0x6d, 0x69, 0x6e, 0x74, 0x10, 0x00, 0x12, 0x08, 0x0a,
+	0x04, 0x62, 0x75, 0x72, 0x6e, 0x10, 0x01, 0x42, 0x7f, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74,
+	0x79, 0x70, 0x65, 0x73, 0x42, 0x0f, 0x54, 0x79, 0x70, 0x65, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73,
+	0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
+	0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68,
+	0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70, 0x69,
+	0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x05, 0x54,
+	0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2, 0x02, 0x11, 0x54,
+	0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
+	0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -11393,10 +11393,10 @@ var file_types_type_events_proto_goTypes = []interface{}{
 	(*EventSecurity)(nil),               // 6: types.EventSecurity
 	(*EventFee)(nil),                    // 7: types.EventFee
 	(*EventOutbound)(nil),               // 8: types.EventOutbound
-	(*EventTssKeygenSuccess)(nil),       // 9: types.EventTssKeygenSuccess
-	(*EventTssKeygenFailure)(nil),       // 10: types.EventTssKeygenFailure
-	(*EventTssKeygenMetric)(nil),        // 11: types.EventTssKeygenMetric
-	(*EventTssKeysignMetric)(nil),       // 12: types.EventTssKeysignMetric
+	(*EventFrostKeygenSuccess)(nil),     // 9: types.EventFrostKeygenSuccess
+	(*EventFrostKeygenFailure)(nil),     // 10: types.EventFrostKeygenFailure
+	(*EventFrostKeygenMetric)(nil),      // 11: types.EventFrostKeygenMetric
+	(*EventFrostKeysignMetric)(nil),     // 12: types.EventFrostKeysignMetric
 	(*EventPenaltyPoint)(nil),           // 13: types.EventPenaltyPoint
 	(*EventMintBurn)(nil),               // 14: types.EventMintBurn
 	(*EventSetConfig)(nil),              // 15: types.EventSetConfig
@@ -11521,7 +11521,7 @@ func file_types_type_events_proto_init() {
 			}
 		}
 		file_types_type_events_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*EventTssKeygenSuccess); i {
+			switch v := v.(*EventFrostKeygenSuccess); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11533,7 +11533,7 @@ func file_types_type_events_proto_init() {
 			}
 		}
 		file_types_type_events_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*EventTssKeygenFailure); i {
+			switch v := v.(*EventFrostKeygenFailure); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11545,7 +11545,7 @@ func file_types_type_events_proto_init() {
 			}
 		}
 		file_types_type_events_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*EventTssKeygenMetric); i {
+			switch v := v.(*EventFrostKeygenMetric); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -11557,7 +11557,7 @@ func file_types_type_events_proto_init() {
 			}
 		}
 		file_types_type_events_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*EventTssKeysignMetric); i {
+			switch v := v.(*EventFrostKeysignMetric); i {
 			case 0:
 				return &v.state
 			case 1:

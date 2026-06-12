@@ -14,7 +14,7 @@ import (
 	frostsessions "github.com/thornadocash/go-thornado/go-wrappers/frost/go-frost/sessions"
 
 	p2pstorage "github.com/thornadocash/go-thornado/bifrost/p2p/storage"
-	"github.com/thornadocash/go-thornado/bifrost/tss"
+	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/common"
 )
 
@@ -55,7 +55,7 @@ func TestFrostVaultSignerRemoteSignMissingState(t *testing.T) {
 
 	_, _, err := signer.RemoteSign(make([]byte, 32), common.SigningAlgoSecp256k1, "missing")
 	require.Error(t, err)
-	var keysignErr tss.KeysignError
+	var keysignErr frost.KeysignError
 	require.ErrorAs(t, err, &keysignErr)
 }
 

@@ -11,7 +11,7 @@ import (
 
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
-	"github.com/thornadocash/go-thornado/bifrost/tss"
+	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
@@ -163,7 +163,7 @@ func (s *PostKeysignFailureSuite) TestPostKeysignFailure_NonKeysignError(c *C) {
 func (s *PostKeysignFailureSuite) TestPostKeysignFailure_KeysignError_EmptyBlameNodes(c *C) {
 	bridge := &mockBridge{}
 	tx := stypes.TxOutItem{}
-	keysignErr := tss.NewKeysignError(types.Blame{
+	keysignErr := frost.NewKeysignError(types.Blame{
 		FailReason: "some failure",
 		BlameNodes: []types.Node{}, // empty
 	})
@@ -177,14 +177,14 @@ func (s *PostKeysignFailureSuite) TestPostKeysignFailure_KeysignError_PostSucces
 		postKeysignTxID: common.TxID("ABCDEF"),
 	}
 	tx := stypes.TxOutItem{}
-	keysignErr := tss.NewKeysignError(types.Blame{
+	keysignErr := frost.NewKeysignError(types.Blame{
 		FailReason: "some failure",
 		BlameNodes: []types.Node{{Pubkey: "blame-node"}},
 	})
 	err := PostKeysignFailure(bridge, tx, zerolog.Nop(), 100, keysignErr)
 	// After successful post, the original keysign error is returned (not nil)
 	c.Assert(err, NotNil)
-	var keysignErr2 tss.KeysignError
+	var keysignErr2 frost.KeysignError
 	c.Assert(errors.As(err, &keysignErr2), Equals, true)
 }
 
@@ -193,7 +193,7 @@ func (s *PostKeysignFailureSuite) TestPostKeysignFailure_KeysignError_PostError(
 		postKeysignErr: errors.New("post failed"),
 	}
 	tx := stypes.TxOutItem{}
-	keysignErr := tss.NewKeysignError(types.Blame{
+	keysignErr := frost.NewKeysignError(types.Blame{
 		FailReason: "some failure",
 		BlameNodes: []types.Node{{Pubkey: "blame-node"}},
 	})

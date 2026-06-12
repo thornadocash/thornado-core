@@ -11,28 +11,28 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/rs/zerolog"
 
-	"github.com/thornadocash/go-thornado/bifrost/tss"
+	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 )
 
-type tssSignableBTC struct {
+type frostSignableBTC struct {
 	vaultPubKey   common.PubKey
-	tssKeyManager tss.ThornadoKeyManager
+	frostKeyManager frost.ThornadoKeyManager
 	log           zerolog.Logger
 }
 
-func newTssSignableBTC(vaultPubKey common.PubKey, tssKeyManager tss.ThornadoKeyManager, log zerolog.Logger) *tssSignableBTC {
-	return &tssSignableBTC{
+func newFrostSignableBTC(vaultPubKey common.PubKey, frostKeyManager frost.ThornadoKeyManager, log zerolog.Logger) *frostSignableBTC {
+	return &frostSignableBTC{
 		vaultPubKey:   vaultPubKey,
-		tssKeyManager: tssKeyManager,
+		frostKeyManager: frostKeyManager,
 		log:           log,
 	}
 }
 
-func (ts *tssSignableBTC) Sign(payload []byte) (*btcec.Signature, error) {
+func (ts *frostSignableBTC) Sign(payload []byte) (*btcec.Signature, error) {
 	ts.log.Info().Msgf("msg to sign: %s", base64.StdEncoding.EncodeToString(payload))
-	result, _, err := ts.tssKeyManager.RemoteSign(payload, common.SigningAlgoSecp256k1, ts.vaultPubKey.String())
+	result, _, err := ts.frostKeyManager.RemoteSign(payload, common.SigningAlgoSecp256k1, ts.vaultPubKey.String())
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (ts *tssSignableBTC) Sign(payload []byte) (*btcec.Signature, error) {
 	return &sig, nil
 }
 
-func (ts *tssSignableBTC) GetPubKey() *btcec.PublicKey {
+func (ts *frostSignableBTC) GetPubKey() *btcec.PublicKey {
 	cpk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, ts.vaultPubKey.String())
 	if err != nil {
 		ts.log.Err(err).Str("pubkey", ts.vaultPubKey.String()).Msg("fail to get public key from the bech32 vault public key string")

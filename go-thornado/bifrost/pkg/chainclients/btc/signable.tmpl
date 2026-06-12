@@ -11,34 +11,34 @@ import (
   {{ $chain }}ec "{{ $pkg }}"
   {{- end }}
 
-	"github.com/thornadocash/go-thornado/bifrost/tss"
+	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 )
 
 {{- range $chain, $pkg := . }}
 
-type tssSignable{{ ToUpper $chain }} struct {
+type frostSignable{{ ToUpper $chain }} struct {
 	vaultPubKey    common.PubKey
-	tssKeyManager tss.ThornadoKeyManager
+	frostKeyManager frost.ThornadoKeyManager
 	log           zerolog.Logger
 }
 
-func newTssSignable{{ ToUpper $chain }}(vaultPubKey common.PubKey, tssKeyManager tss.ThornadoKeyManager, log zerolog.Logger) *tssSignable{{ ToUpper $chain }} {
-	return &tssSignable{{ ToUpper $chain }}{
+func newFrostSignable{{ ToUpper $chain }}(vaultPubKey common.PubKey, frostKeyManager frost.ThornadoKeyManager, log zerolog.Logger) *frostSignable{{ ToUpper $chain }} {
+	return &frostSignable{{ ToUpper $chain }}{
 		vaultPubKey:    vaultPubKey,
-		tssKeyManager: tssKeyManager,
+		frostKeyManager: frostKeyManager,
 		log:           log,
 	}
 }
 
 {{- if eq $chain "bch" }}
-func (ts *tssSignable{{ ToUpper $chain }}) SignECDSA(payload []byte) (*{{ $chain }}ec.Signature, error) {
+func (ts *frostSignable{{ ToUpper $chain }}) SignECDSA(payload []byte) (*{{ $chain }}ec.Signature, error) {
 {{- else }}
-func (ts *tssSignable{{ ToUpper $chain }}) Sign(payload []byte) (*{{ $chain }}ec.Signature, error) {
+func (ts *frostSignable{{ ToUpper $chain }}) Sign(payload []byte) (*{{ $chain }}ec.Signature, error) {
 {{- end }}
 	ts.log.Info().Msgf("msg to sign: %s", base64.StdEncoding.EncodeToString(payload))
-	result, _, err := ts.tssKeyManager.RemoteSign(payload, common.SigningAlgoSecp256k1, ts.vaultPubKey.String())
+	result, _, err := ts.frostKeyManager.RemoteSign(payload, common.SigningAlgoSecp256k1, ts.vaultPubKey.String())
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (ts *tssSignable{{ ToUpper $chain }}) Sign(payload []byte) (*{{ $chain }}ec
 	return &sig, nil
 }
 
-func (ts *tssSignable{{ ToUpper $chain }}) GetPubKey() *{{ $chain }}ec.PublicKey {
+func (ts *frostSignable{{ ToUpper $chain }}) GetPubKey() *{{ $chain }}ec.PublicKey {
 	cpk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, ts.vaultPubKey.String())
 	if err != nil {
 		ts.log.Err(err).Str("pubkey", ts.vaultPubKey.String()).Msg("fail to get pubic key from the bech32 vault public key string")

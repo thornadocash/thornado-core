@@ -74,10 +74,6 @@ func (ms msgServer) ObservedTxQuorum(goCtx context.Context, msg *types.MsgObserv
 	return externalHandler(goCtx, handler, msg)
 }
 
-func (ms msgServer) PriceFeedQuorumBatch(goCtx context.Context, msg *types.MsgPriceFeedQuorumBatch) (*types.MsgEmpty, error) {
-	return nil, fmt.Errorf("price feed quorum is not part of the Thornado custody fork")
-}
-
 func (ms msgServer) DepositRequestPow(goCtx context.Context, msg *types.MsgDepositRequestPow) (*types.MsgDepositRequestPowResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 	if err := msg.ValidateBasic(); err != nil {
@@ -87,7 +83,7 @@ func (ms msgServer) DepositRequestPow(goCtx context.Context, msg *types.MsgDepos
 	if err != nil {
 		return nil, err
 	}
-	session, err := RegisterDepositPowToken(ctx, ms.mgr.Keeper(), owner, msg.PowToken, msg.OperatorPubKey, msg.NodePubKey, msg.PowDurationMs)
+	session, err := RegisterDepositPowToken(ctx, ms.mgr.Keeper(), owner, msg.PowToken, msg.PowDurationMs)
 	if err != nil {
 		return nil, err
 	}
@@ -218,20 +214,17 @@ func (ms msgServer) NodeSlotAuctionCreate(goCtx context.Context, msg *types.MsgN
 	return &types.MsgNodeSlotAuctionCreateResponse{AuctionId: auction.AuctionID}, nil
 }
 
-func (ms msgServer) NodeSlotAuctionBidPow(goCtx context.Context, msg *types.MsgNodeSlotAuctionBidPow) (*types.MsgDepositRequestPowResponse, error) {
+func (ms msgServer) NodeSlotAuctionBidCreate(goCtx context.Context, msg *types.MsgNodeSlotAuctionBidCreate) (*types.MsgNodeSlotAuctionBidCreateResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 	if err := msg.ValidateBasic(); err != nil {
 		return nil, err
 	}
-	session, bid, err := RegisterNodeSlotBidDepositPowToken(ctx, ms.mgr.Keeper(), msg.Signer, msg.PowToken, msg.AuctionId, msg.OperatorPubKey, msg.NodePubKey, msg.PowDurationMs)
+	bid, err := CreateNodeSlotBid(ctx, ms.mgr.Keeper(), msg.Signer, msg.AuctionId, msg.OperatorPubKey, msg.NodePubKey)
 	if err != nil {
 		return nil, err
 	}
-	return &types.MsgDepositRequestPowResponse{
-		DepositAddress:   session.DepositAddress.String(),
-		VaultPubKey:      session.VaultPubKey.String(),
-		DepositPathIndex: session.DepositPathIndex,
-		BidId:            bid.BidID,
+	return &types.MsgNodeSlotAuctionBidCreateResponse{
+		BidId: bid.BidID,
 	}, nil
 }
 
@@ -246,12 +239,12 @@ func (ms msgServer) NodeSlotAuctionSelectBid(goCtx context.Context, msg *types.M
 	return &types.MsgEmpty{}, nil
 }
 
-func (ms msgServer) NodeSlotAuctionShield(goCtx context.Context, msg *types.MsgNodeSlotAuctionShield) (*types.MsgShielderShieldResponse, error) {
+func (ms msgServer) NodeSaleShield(goCtx context.Context, msg *types.MsgNodeSaleShield) (*types.MsgShielderShieldResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 	if err := msg.ValidateBasic(); err != nil {
 		return nil, err
 	}
-	deposit, err := ShieldNodeSlotSale(ctx, ms.mgr.Keeper(), msg.Signer, msg.AuctionId, msg.BidId, msg.Commitments)
+	deposit, err := ShieldNodeSlotSaleEntitlement(ctx, ms.mgr.Keeper(), msg.Signer, msg.AuctionId, msg.BidId, msg.DepositPubkey, msg.Signature, msg.Commitments)
 	if err != nil {
 		return nil, err
 	}
@@ -283,13 +276,13 @@ func (ms msgServer) SolvencyQuorum(goCtx context.Context, msg *types.MsgSolvency
 	return externalHandler(goCtx, handler, msg)
 }
 
-func (ms msgServer) TssKeysignFail(goCtx context.Context, msg *types.MsgTssKeysignFail) (*types.MsgEmpty, error) {
-	handler := NewTssKeysignHandler(ms.mgr)
+func (ms msgServer) FrostKeysignFail(goCtx context.Context, msg *types.MsgFrostKeysignFail) (*types.MsgEmpty, error) {
+	handler := NewFrostKeysignHandler(ms.mgr)
 	return externalHandler(goCtx, handler, msg)
 }
 
 func (ms msgServer) KeygenVault(goCtx context.Context, msg *types.MsgKeygenVault) (*types.MsgEmpty, error) {
-	handler := NewTssHandler(ms.mgr)
+	handler := NewFrostHandler(ms.mgr)
 	return externalHandler(goCtx, handler, msg)
 }
 

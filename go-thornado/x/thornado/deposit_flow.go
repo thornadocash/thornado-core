@@ -12,47 +12,7 @@ import (
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
-func RegisterDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, powToken, operatorPubKey, nodePubKey string, powDurationMs uint64) (types.DepositSession, error) {
-	return registerDepositPowToken(ctx, k, owner, powToken, operatorPubKey, nodePubKey, "", powDurationMs)
-}
-
-func RegisterNodeSlotBidDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, powToken, auctionID, operatorPubKey, nodePubKey string, powDurationMs uint64) (types.DepositSession, types.NodeSlotBid, error) {
-	auctionID = strings.TrimSpace(auctionID)
-	if auctionID == "" {
-		return types.DepositSession{}, types.NodeSlotBid{}, fmt.Errorf("missing node slot auction id")
-	}
-	auction, err := k.GetNodeSlotAuction(ctx, auctionID)
-	if err != nil {
-		return types.DepositSession{}, types.NodeSlotBid{}, err
-	}
-	if auction.AuctionID == "" || auction.Status != types.NodeSlotAuctionOpen {
-		return types.DepositSession{}, types.NodeSlotBid{}, fmt.Errorf("node slot auction is not open")
-	}
-	if auction.ExpiryHeight <= ctx.BlockHeight() {
-		return types.DepositSession{}, types.NodeSlotBid{}, fmt.Errorf("node slot auction expired")
-	}
-	session, err := registerDepositPowToken(ctx, k, owner, powToken, operatorPubKey, nodePubKey, auctionID, powDurationMs)
-	if err != nil {
-		return types.DepositSession{}, types.NodeSlotBid{}, err
-	}
-	bidID := nodeSlotBidID(auctionID, owner, session.DepositPathIndex)
-	bid := types.NodeSlotBid{
-		BidID:          bidID,
-		AuctionID:      auctionID,
-		Bidder:         owner,
-		OperatorPubKey: session.OperatorPubKey,
-		NodePubKey:     session.NodePubKey,
-		DepositAddress: session.DepositAddress,
-		CreatedHeight:  ctx.BlockHeight(),
-		UpdatedHeight:  ctx.BlockHeight(),
-	}
-	if err := k.SetNodeSlotBid(ctx, bid); err != nil {
-		return types.DepositSession{}, types.NodeSlotBid{}, err
-	}
-	return session, bid, nil
-}
-
-func registerDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, powToken, operatorPubKey, nodePubKey, auctionID string, powDurationMs uint64) (types.DepositSession, error) {
+func RegisterDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, powToken string, powDurationMs uint64) (types.DepositSession, error) {
 	if owner.Empty() {
 		return types.DepositSession{}, fmt.Errorf("missing deposit owner")
 	}
@@ -63,31 +23,6 @@ func registerDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.A
 	powDifficulty := currentDepositPowDifficulty(ctx, k)
 	if err := validateDepositPowToken(ctx, k, owner, powToken); err != nil {
 		return types.DepositSession{}, err
-	}
-	operatorPubKey = strings.TrimSpace(operatorPubKey)
-	nodePubKey = strings.TrimSpace(nodePubKey)
-	auctionID = strings.TrimSpace(auctionID)
-	var operator common.PubKey
-	if operatorPubKey != "" {
-		var err error
-		operator, err = common.NewPubKey(operatorPubKey)
-		if err != nil {
-			return types.DepositSession{}, fmt.Errorf("invalid operator pubkey: %w", err)
-		}
-	}
-	if nodePubKey != "" {
-		if operator.IsEmpty() {
-			return types.DepositSession{}, fmt.Errorf("bond deposits require operator pubkey")
-		}
-		if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, nodePubKey); err != nil {
-			return types.DepositSession{}, fmt.Errorf("invalid node pubkey: %w", err)
-		}
-		if auctionID == "" {
-			return types.DepositSession{}, fmt.Errorf("node bonds activate via MsgBondFromNotes from shielded notes")
-		}
-	}
-	if auctionID != "" && nodePubKey == "" {
-		return types.DepositSession{}, fmt.Errorf("node slot auction bids require node pubkey")
 	}
 	if existing, err := k.GetDepositSessionByPowToken(ctx, powToken); err == nil && !existing.DepositAddress.IsEmpty() {
 		expiry := getConfigDurationBlocks(ctx, k, constants.Deposit_PowExpiryMinutes)
@@ -101,9 +36,6 @@ func registerDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.A
 		return types.DepositSession{}, err
 	}
 	pathType := common.VaultDepositPathUser
-	if nodePubKey != "" {
-		pathType = common.VaultDepositPathNode
-	}
 	depositNonce, pathIndex, err := k.AllocateVaultDepositPathIndex(ctx, vault.PubKey, pathType)
 	if err != nil {
 		return types.DepositSession{}, err
@@ -125,15 +57,12 @@ func registerDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.A
 		DepositPath:      path,
 		DepositPathType:  string(pathType),
 		DepositNonce:     depositNonce,
-		OperatorPubKey:   operator,
-		NodePubKey:       nodePubKey,
-		AuctionID:        auctionID,
 		CreatedHeight:    ctx.BlockHeight(),
 		ExpiresAtHeight:  expiresAtHeight,
 		PurgeAtHeight:    purgeAtHeight,
 		PowDurationMs:    powDurationMs,
-		PowDifficulty: powDifficulty,
-		Status:        types.DepositStatusAddressIssued,
+		PowDifficulty:    powDifficulty,
+		Status:           types.DepositStatusAddressIssued,
 	}
 	mapping := types.DepositAddress{
 		Address:         address,
@@ -144,9 +73,6 @@ func registerDepositPowToken(ctx cosmos.Context, k keeper.Keeper, owner cosmos.A
 		DepositNonce:    depositNonce,
 		Owner:           owner,
 		PowToken:        powToken,
-		OperatorPubKey:  operator,
-		NodePubKey:      nodePubKey,
-		AuctionID:       auctionID,
 		CreatedHeight:   ctx.BlockHeight(),
 		ExpiresAtHeight: expiresAtHeight,
 		PurgeAtHeight:   purgeAtHeight,
@@ -228,22 +154,6 @@ func MatchCoreDeposit(ctx cosmos.Context, mgr Manager, tx ObservedTx) (types.Dep
 		BTCConfirmations:         confirmationRequired,
 		BTCConfirmationsRequired: confirmationRequired,
 		BTCObservedHeight:        tx.BlockHeight,
-	}
-	if mapping.AuctionID != "" {
-		bidID := nodeSlotBidID(mapping.AuctionID, mapping.Owner, mapping.PathIndex)
-		bid, err := k.GetNodeSlotBid(ctx, bidID)
-		if err != nil {
-			return types.DepositRecord{}, err
-		}
-		if bid.BidID == "" {
-			return types.DepositRecord{}, fmt.Errorf("node slot bid not found")
-		}
-		bid.DepositID = tx.Tx.ID
-		bid.AmountSats = coin.Amount.Uint64()
-		bid.UpdatedHeight = ctx.BlockHeight()
-		if err := k.SetNodeSlotBid(ctx, bid); err != nil {
-			return types.DepositRecord{}, err
-		}
 	}
 	if err := k.SetDepositRecord(ctx, deposit); err != nil {
 		return types.DepositRecord{}, err

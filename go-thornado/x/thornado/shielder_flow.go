@@ -116,39 +116,20 @@ func validateNodeSlotAuctionCreate(ctx cosmos.Context, k keeper.Keeper, seller c
 	return bond, nil
 }
 
-func validateNodeSlotBidPow(ctx cosmos.Context, k keeper.Keeper, bidder cosmos.AccAddress, powToken, auctionID string) error {
-	auction, err := k.GetNodeSlotAuction(ctx, auctionID)
-	if err != nil {
-		return err
-	}
-	if auction.AuctionID == "" || auction.Status != types.NodeSlotAuctionOpen {
-		return fmt.Errorf("node slot auction is not open")
-	}
-	if auction.ExpiryHeight <= ctx.BlockHeight() {
-		return fmt.Errorf("node slot auction expired")
-	}
-	if err := validateDepositPowToken(ctx, k, bidder, powToken); err != nil {
-		return err
-	}
-	if existing, err := k.GetDepositSessionByPowToken(ctx, strings.TrimSpace(powToken)); err == nil && !existing.DepositAddress.IsEmpty() {
-		expiry := getConfigDurationBlocks(ctx, k, constants.Deposit_PowExpiryMinutes)
-		if expiry <= 0 || existing.CreatedHeight+expiry >= ctx.BlockHeight() {
-			return fmt.Errorf("deposit pow token already used")
-		}
-	}
-	return nil
-}
-
 func SelectNodeSlotBid(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAddress, auctionID, bidID string) (types.NodeSlotAuction, types.NodeSlotBid, error) {
 	auction, bid, err := validateNodeSlotBidSelection(ctx, k, seller, auctionID, bidID)
 	if err != nil {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, err
 	}
 	auction.SelectedBidID = bid.BidID
-	auction.Status = types.NodeSlotAuctionSelected
+	auction.Status = types.NodeSlotAuctionSettled
 	auction.UpdatedHeight = ctx.BlockHeight()
 	bid.Selected = true
+	bid.Settled = true
 	bid.UpdatedHeight = ctx.BlockHeight()
+	if err := settleNodeSlotSale(ctx, k, auction, bid); err != nil {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, err
+	}
 	if err := k.SetNodeSlotAuction(ctx, auction); err != nil {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, err
 	}
@@ -182,7 +163,7 @@ func validateNodeSlotBidSelection(ctx cosmos.Context, k keeper.Keeper, seller co
 	if bid.BidID == "" || bid.AuctionID != auction.AuctionID {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, fmt.Errorf("node slot bid not found for auction")
 	}
-	if bid.DepositID.IsEmpty() || bid.AmountSats == 0 {
+	if bid.AmountSats == 0 {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, fmt.Errorf("node slot bid deposit not matched")
 	}
 	if minBid := uint64(k.GetConfigInt64(ctx, constants.NodeSale_BidAmountMinSats)); bid.AmountSats < minBid {
@@ -191,96 +172,156 @@ func validateNodeSlotBidSelection(ctx cosmos.Context, k keeper.Keeper, seller co
 	if bid.AmountSats < auction.ReserveSats {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, fmt.Errorf("node slot bid below reserve")
 	}
-	deposit, err := k.GetDepositRecord(ctx, bid.DepositID)
-	if err != nil {
-		return types.NodeSlotAuction{}, types.NodeSlotBid{}, err
-	}
-	if deposit.DepositID.IsEmpty() || deposit.Status != types.DepositStatusDepositMatched {
-		return types.NodeSlotAuction{}, types.NodeSlotBid{}, fmt.Errorf("node slot bid deposit is not settleable")
+	if !bid.DepositID.IsEmpty() {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, fmt.Errorf("legacy node slot bid deposits are not supported")
 	}
 	return auction, bid, nil
 }
 
-func ShieldNodeSlotSale(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAddress, auctionID, bidID string, sellerCommitments []string) (types.DepositRecord, error) {
-	auction, bid, deposit, err := validateNodeSlotAuctionShield(ctx, k, seller, auctionID, bidID, sellerCommitments)
+func CreateNodeSlotBid(ctx cosmos.Context, k keeper.Keeper, bidder cosmos.AccAddress, auctionID, operatorPubKey, nodePubKey string) (types.NodeSlotBid, error) {
+	if bidder.Empty() {
+		return types.NodeSlotBid{}, fmt.Errorf("missing node slot bidder")
+	}
+	auction, err := k.GetNodeSlotAuction(ctx, strings.TrimSpace(auctionID))
 	if err != nil {
-		return types.DepositRecord{}, err
+		return types.NodeSlotBid{}, err
+	}
+	if auction.AuctionID == "" || auction.Status != types.NodeSlotAuctionOpen {
+		return types.NodeSlotBid{}, fmt.Errorf("node slot auction is not open")
+	}
+	if auction.ExpiryHeight <= ctx.BlockHeight() {
+		return types.NodeSlotBid{}, fmt.Errorf("node slot auction expired")
+	}
+	operatorPubKey = strings.TrimSpace(operatorPubKey)
+	nodePubKey = strings.TrimSpace(nodePubKey)
+	operator, err := common.NewPubKey(operatorPubKey)
+	if err != nil {
+		return types.NodeSlotBid{}, fmt.Errorf("invalid bidder operator pubkey: %w", err)
+	}
+	if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, nodePubKey); err != nil {
+		return types.NodeSlotBid{}, fmt.Errorf("invalid bidder node pubkey: %w", err)
+	}
+	bidID := nodeSlotBidIDForNode(auction.AuctionID, bidder, nodePubKey)
+	existing, err := k.GetNodeSlotBid(ctx, bidID)
+	if err != nil {
+		return types.NodeSlotBid{}, err
+	}
+	if existing.BidID != "" {
+		return existing, nil
+	}
+	bid := types.NodeSlotBid{
+		BidID:          bidID,
+		AuctionID:      auction.AuctionID,
+		Bidder:         bidder,
+		OperatorPubKey: operator,
+		NodePubKey:     nodePubKey,
+		DepositAddress: common.BondEscrowAddress,
+		CreatedHeight:  ctx.BlockHeight(),
+		UpdatedHeight:  ctx.BlockHeight(),
+	}
+	return bid, k.SetNodeSlotBid(ctx, bid)
+}
+
+func settleNodeSlotSale(ctx cosmos.Context, k keeper.Keeper, auction types.NodeSlotAuction, bid types.NodeSlotBid) error {
+	if bid.AmountSats == 0 {
+		return fmt.Errorf("node slot bid has no shielded amount")
 	}
 	sellerPayout := auction.OriginalBondSats
 	if bid.AmountSats < sellerPayout {
 		sellerPayout = bid.AmountSats
 	}
-	deposit.Owner = seller
-	deposit.Settlement = types.DepositSettlementOperatorSale
-	deposit.SellerPayoutSats = sellerPayout
-	deposit.ProtocolBondSats = bid.AmountSats - sellerPayout
-	deposit.Status = types.DepositStatusSettled
-	sellerNotes, err := parseShielderNoteCommitments(sellerCommitments, deposit.SellerPayoutSats, false)
+	protocolBondSats := bid.AmountSats - sellerPayout
+	if protocolBondDust, err := shielderDustRemainder(ctx, k, protocolBondSats); err != nil {
+		return err
+	} else if protocolBondDust > 0 {
+		protocolBondSats -= protocolBondDust
+		if err := addWithdrawalFee(ctx, k, protocolBondDust); err != nil {
+			return err
+		}
+	}
+	if err := transferNodeSlotSaleBond(ctx, k, auction, bid, bid.AmountSats); err != nil {
+		return err
+	}
+	entitlementID, err := nodeSlotSaleEntitlementID(auction.AuctionID, bid.BidID)
+	if err != nil {
+		return err
+	}
+	vault, _, err := currentBTCVaultAddress(ctx, k)
+	if err != nil {
+		return err
+	}
+	deposit := types.DepositRecord{
+		DepositID:          entitlementID,
+		Owner:              auction.Seller,
+		AmountSats:         sellerPayout,
+		DepositAddress:     common.NoopAddress,
+		VaultPubKey:        vault.PubKey,
+		Settlement:         types.DepositSettlementOperatorSale,
+		SellerPayoutSats:   sellerPayout,
+		ProtocolBondSats:   protocolBondSats,
+		NodeSlot:           auction.Slot,
+		BondConfirmed:      true,
+		MatchedHeight:      ctx.BlockHeight(),
+		CreatedHeight:      ctx.BlockHeight(),
+		Status:             types.DepositStatusSettled,
+		OperatorPubKey:     auction.SellerOperatorPubKey,
+		NodePubKey:         auction.SellerNodePubKey,
+		AuctionID:          auction.AuctionID,
+		RefundQueuedHeight: 0,
+	}
+	return k.SetDepositRecord(ctx, deposit)
+}
+
+func ShieldNodeSlotSaleEntitlement(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAddress, auctionID, bidID, depositPubkey, signature string, sellerCommitments []string) (types.DepositRecord, error) {
+	auction, bid, deposit, err := validateNodeSlotSaleEntitlementShield(ctx, k, seller, auctionID, bidID, sellerCommitments)
 	if err != nil {
 		return types.DepositRecord{}, err
 	}
-	sellerNotes, floorRemainder, err := applyShielderNoteFloor(ctx, k, sellerNotes, deposit.SellerPayoutSats, false)
+	if auction.SelectedBidID != bid.BidID {
+		return types.DepositRecord{}, fmt.Errorf("node slot auction selected bid mismatch")
+	}
+	if deposit.AmountSats == 0 {
+		return types.DepositRecord{}, fmt.Errorf("node sale has no seller payout")
+	}
+	noteCommitments, err := parseShielderNoteCommitments(sellerCommitments, deposit.AmountSats, false)
+	if err != nil {
+		return types.DepositRecord{}, err
+	}
+	authorizedAmountSats := shielderNoteCommitmentTotal(noteCommitments)
+	if err := VerifyShieldAuthorization(depositPubkey, signature, depositPubkey, authorizedAmountSats, sellerCommitments); err != nil {
+		return types.DepositRecord{}, err
+	}
+	noteCommitments, floorRemainder, err := applyShielderNoteFloor(ctx, k, noteCommitments, deposit.AmountSats, false)
 	if err != nil {
 		return types.DepositRecord{}, err
 	}
 	if floorRemainder > 0 {
+		deposit.AmountSats -= floorRemainder
 		deposit.SellerPayoutSats -= floorRemainder
 		if err := addWithdrawalFee(ctx, k, floorRemainder); err != nil {
 			return types.DepositRecord{}, err
 		}
 	}
-	var sellerTotal uint64
-	for _, note := range sellerNotes {
-		sellerTotal += note.DenominationSats
+	if shielderNoteCommitmentTotal(noteCommitments) != deposit.AmountSats {
+		return types.DepositRecord{}, fmt.Errorf("node sale seller commitments do not match payout amount")
 	}
-	if sellerTotal != deposit.SellerPayoutSats {
-		return types.DepositRecord{}, fmt.Errorf("node slot seller commitments do not match payout amount")
-	}
-	protocolBondDust, err := shielderDustRemainder(ctx, k, deposit.ProtocolBondSats)
-	if err != nil {
-		return types.DepositRecord{}, err
-	}
-	if protocolBondDust > 0 {
-		deposit.ProtocolBondSats -= protocolBondDust
-		if err := addWithdrawalFee(ctx, k, protocolBondDust); err != nil {
-			return types.DepositRecord{}, err
-		}
-	}
-	allNotes := append([]shielderNoteCommitment{}, sellerNotes...)
-	if err := insertShielderCommitments(ctx, k, allNotes); err != nil {
+	if err := insertShielderCommitments(ctx, k, noteCommitments); err != nil {
 		return types.DepositRecord{}, err
 	}
 	deposit.Status = types.DepositStatusCommitted
-	deposit.BondConfirmed = true
-	if err := transferNodeSlotSaleBond(ctx, k, auction, bid, deposit.ProtocolBondSats); err != nil {
-		return types.DepositRecord{}, err
-	}
-	auction.Status = types.NodeSlotAuctionSettled
-	auction.UpdatedHeight = ctx.BlockHeight()
-	bid.Settled = true
-	bid.UpdatedHeight = ctx.BlockHeight()
 	if err := k.SetDepositRecord(ctx, deposit); err != nil {
-		return types.DepositRecord{}, err
-	}
-	if err := k.SetNodeSlotAuction(ctx, auction); err != nil {
-		return types.DepositRecord{}, err
-	}
-	if err := k.SetNodeSlotBid(ctx, bid); err != nil {
 		return types.DepositRecord{}, err
 	}
 	return deposit, nil
 }
 
-func validateNodeSlotAuctionShield(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAddress, auctionID, bidID string, sellerCommitments []string) (types.NodeSlotAuction, types.NodeSlotBid, types.DepositRecord, error) {
+func validateNodeSlotSaleEntitlementShield(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAddress, auctionID, bidID string, sellerCommitments []string) (types.NodeSlotAuction, types.NodeSlotBid, types.DepositRecord, error) {
 	auction, err := k.GetNodeSlotAuction(ctx, auctionID)
 	if err != nil {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, err
 	}
-	if auction.AuctionID == "" || auction.Status != types.NodeSlotAuctionSelected || auction.SelectedBidID != strings.TrimSpace(bidID) {
-		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot auction bid not selected")
-	}
-	if auction.ExpiryHeight <= ctx.BlockHeight() {
-		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot auction expired")
+	if auction.AuctionID == "" || auction.Status != types.NodeSlotAuctionSettled || auction.SelectedBidID != strings.TrimSpace(bidID) {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot auction sale is not settled")
 	}
 	if !auction.Seller.Equals(seller) {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot auction seller mismatch")
@@ -290,27 +331,26 @@ func validateNodeSlotAuctionShield(ctx cosmos.Context, k keeper.Keeper, seller c
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, err
 	}
 	if bid.BidID == "" || bid.Settled {
-		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot bid is not settleable")
+		if bid.BidID == "" {
+			return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot bid not found")
+		}
 	}
-	deposit, err := k.GetDepositRecord(ctx, bid.DepositID)
+	entitlementID, err := nodeSlotSaleEntitlementID(auction.AuctionID, bid.BidID)
 	if err != nil {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, err
 	}
-	if deposit.DepositID.IsEmpty() {
-		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot sale deposit is not shieldable")
-	}
-	if deposit.Status != types.DepositStatusDepositMatched {
-		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot sale deposit is not matched")
-	}
-	sellerPayout := auction.OriginalBondSats
-	if bid.AmountSats < sellerPayout {
-		sellerPayout = bid.AmountSats
-	}
-	notes, err := parseShielderNoteCommitments(sellerCommitments, sellerPayout, false)
+	deposit, err := k.GetDepositRecord(ctx, entitlementID)
 	if err != nil {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, err
 	}
-	if _, _, err := applyShielderNoteFloor(ctx, k, notes, sellerPayout, false); err != nil {
+	if deposit.DepositID.IsEmpty() || deposit.Status != types.DepositStatusSettled || deposit.Settlement != types.DepositSettlementOperatorSale {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node sale entitlement is not shieldable")
+	}
+	notes, err := parseShielderNoteCommitments(sellerCommitments, deposit.AmountSats, false)
+	if err != nil {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, err
+	}
+	if _, _, err := applyShielderNoteFloor(ctx, k, notes, deposit.AmountSats, false); err != nil {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, err
 	}
 	return auction, bid, deposit, nil
@@ -491,9 +531,6 @@ func PostShielderShield(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 	}
 	if !deposit.Owner.Equals(owner) {
 		return types.DepositRecord{}, fmt.Errorf("deposit owner mismatch")
-	}
-	if deposit.AuctionID != "" {
-		return types.DepositRecord{}, fmt.Errorf("node sale bid deposits shield through auction-shield")
 	}
 	switch deposit.Status {
 	case types.DepositStatusDepositMatched:
@@ -836,9 +873,14 @@ func nodeSlotAuctionID(nodePubKey string, slot uint64, height int64) string {
 	return strings.ToUpper(hex.EncodeToString(sum[:]))
 }
 
-func nodeSlotBidID(auctionID string, bidder cosmos.AccAddress, pathIndex uint64) string {
-	sum := sha256.Sum256([]byte(fmt.Sprintf("thornado:node-slot-bid:v1|%s|%s|%d", auctionID, bidder.String(), pathIndex)))
+func nodeSlotBidIDForNode(auctionID string, bidder cosmos.AccAddress, nodePubKey string) string {
+	sum := sha256.Sum256([]byte(fmt.Sprintf("thornado:node-slot-bid:v2|%s|%s|%s", auctionID, bidder.String(), strings.TrimSpace(nodePubKey))))
 	return strings.ToUpper(hex.EncodeToString(sum[:]))
+}
+
+func nodeSlotSaleEntitlementID(auctionID, bidID string) (common.TxID, error) {
+	sum := sha256.Sum256([]byte(fmt.Sprintf("thornado:node-sale-entitlement:v1|%s|%s", strings.TrimSpace(auctionID), strings.TrimSpace(bidID))))
+	return common.NewTxID(strings.ToUpper(hex.EncodeToString(sum[:])))
 }
 
 func nodeSlotSaleProtocolCommitment(auction types.NodeSlotAuction, bid types.NodeSlotBid, denominationSats uint64, index int) (string, error) {
@@ -853,7 +895,7 @@ func nodeSlotSaleProtocolCommitment(auction types.NodeSlotAuction, bid types.Nod
 	return ComputeProtocolShielderCommitment(strings.ToUpper(hex.EncodeToString(sum[:])), denominationSats)
 }
 
-func transferNodeSlotSaleBond(ctx cosmos.Context, k keeper.Keeper, auction types.NodeSlotAuction, bid types.NodeSlotBid, extraBondSats uint64) error {
+func transferNodeSlotSaleBond(ctx cosmos.Context, k keeper.Keeper, auction types.NodeSlotAuction, bid types.NodeSlotBid, newBondSats uint64) error {
 	if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, bid.NodePubKey); err != nil {
 		return fmt.Errorf("invalid winning node pubkey: %w", err)
 	}
@@ -880,7 +922,7 @@ func transferNodeSlotSaleBond(ctx cosmos.Context, k keeper.Keeper, auction types
 		OperatorPubKey: bid.OperatorPubKey,
 		NodeAddress:    newNodeAddress,
 		Slot:           auction.Slot,
-		BondSats:       auction.OriginalBondSats + extraBondSats,
+		BondSats:       newBondSats,
 		CreatedHeight:  ctx.BlockHeight(),
 		UpdatedHeight:  ctx.BlockHeight(),
 	}
@@ -961,6 +1003,8 @@ func AuthorizeShielderRedeem(ctx cosmos.Context, k keeper.Keeper, req ShielderRe
 		MerkleRoot:      publicInputs.MerkleRoot,
 		Recipient:       recipient,
 		RecipientPolicy: policy,
+		BidID:           strings.TrimSpace(publicInputs.BidID),
+		NodePubKey:      strings.TrimSpace(publicInputs.NodePubKey),
 		AmountSats:      publicInputs.DenominationSats,
 		FeeSats:         publicInputs.FeeSats,
 		InHash:          inHash,
@@ -1053,11 +1097,63 @@ func FinalizeShielderRedeem(ctx cosmos.Context, k keeper.Keeper, authorization t
 	switch policy {
 	case types.ShielderRedeemPolicyBondEscrow:
 		return authorization, fmt.Errorf("bond escrow redeems finalize via MsgBondFromNotes")
-	case types.ShielderRedeemPolicyUserBTC, types.ShielderRedeemPolicyBidDeposit:
+	case types.ShielderRedeemPolicyBidDeposit:
+		return FinalizeBidDepositFromNoteSpend(ctx, k, authorization)
+	case types.ShielderRedeemPolicyUserBTC:
 		return QueueAuthorizedWithdrawalTxOut(ctx, k, authorization)
 	default:
 		return types.ShielderRedeem{}, fmt.Errorf("unknown shielder redeem policy: %s", policy)
 	}
+}
+
+func FinalizeBidDepositFromNoteSpend(ctx cosmos.Context, k keeper.Keeper, authorization types.ShielderRedeem) (types.ShielderRedeem, error) {
+	if err := authorization.Valid(); err != nil {
+		return types.ShielderRedeem{}, err
+	}
+	if normalizeShielderRedeemPolicy(authorization.RecipientPolicy) != types.ShielderRedeemPolicyBidDeposit {
+		return types.ShielderRedeem{}, fmt.Errorf("shielder redeem is not a bid deposit")
+	}
+	if authorization.FeeSats != 0 {
+		return types.ShielderRedeem{}, fmt.Errorf("bid deposits must not pay withdrawal fee")
+	}
+	bid, err := openNodeSlotBidForRedeem(ctx, k, authorization.BidID, authorization.Recipient)
+	if err != nil {
+		return types.ShielderRedeem{}, err
+	}
+	bid.AmountSats += authorization.AmountSats
+	bid.UpdatedHeight = ctx.BlockHeight()
+	if err := k.SetNodeSlotBid(ctx, bid); err != nil {
+		return types.ShielderRedeem{}, err
+	}
+	authorization.Status = types.ShielderRedeemStatusSettled
+	if err := k.SetShielderRedeem(ctx, authorization); err != nil {
+		return types.ShielderRedeem{}, err
+	}
+	return authorization, nil
+}
+
+func openNodeSlotBidForRedeem(ctx cosmos.Context, k keeper.Keeper, bidID string, recipient common.Address) (types.NodeSlotBid, error) {
+	if !recipient.IsBondEscrow() {
+		return types.NodeSlotBid{}, fmt.Errorf("bid deposit redeem recipient must be bond_escrow")
+	}
+	bid, err := k.GetNodeSlotBid(ctx, strings.TrimSpace(bidID))
+	if err != nil {
+		return types.NodeSlotBid{}, err
+	}
+	if bid.BidID == "" || bid.Settled {
+		return types.NodeSlotBid{}, fmt.Errorf("node slot bid is not open for deposit")
+	}
+	auction, err := k.GetNodeSlotAuction(ctx, bid.AuctionID)
+	if err != nil {
+		return types.NodeSlotBid{}, err
+	}
+	if auction.AuctionID == "" || auction.Status != types.NodeSlotAuctionOpen {
+		return types.NodeSlotBid{}, fmt.Errorf("node slot auction is not open")
+	}
+	if auction.ExpiryHeight <= ctx.BlockHeight() {
+		return types.NodeSlotBid{}, fmt.Errorf("node slot auction expired")
+	}
+	return bid, nil
 }
 
 func normalizeShielderRedeemPolicy(policy string) string {
@@ -1083,9 +1179,13 @@ func shielderRedeemRecipient(publicInputs shielderRedeemPublicInputs, policy str
 		if !recipient.IsBondEscrow() {
 			return common.NoAddress, fmt.Errorf("bond redeem recipient must be bond_escrow")
 		}
-	case types.ShielderRedeemPolicyUserBTC, types.ShielderRedeemPolicyBidDeposit:
+	case types.ShielderRedeemPolicyUserBTC:
 		if !recipient.GetChain().Equals(common.BTCChain) {
 			return common.NoAddress, fmt.Errorf("shielder redeem recipient must be bitcoin")
+		}
+	case types.ShielderRedeemPolicyBidDeposit:
+		if !recipient.IsBondEscrow() {
+			return common.NoAddress, fmt.Errorf("bid deposit redeem recipient must be bond_escrow")
 		}
 	default:
 		return common.NoAddress, fmt.Errorf("unknown shielder redeem policy: %s", policy)
@@ -1106,33 +1206,19 @@ func validateShielderRedeemPolicy(ctx cosmos.Context, k keeper.Keeper, policy st
 			return fmt.Errorf("invalid bond node pubkey: %w", err)
 		}
 	case types.ShielderRedeemPolicyBidDeposit:
+		if publicInputs.FeeSats != 0 {
+			return fmt.Errorf("bid deposit redeems must not pay withdrawal fee")
+		}
 		bidID := strings.TrimSpace(publicInputs.BidID)
 		if bidID == "" {
 			return fmt.Errorf("bid deposit redeems require bid id")
-		}
-		bid, err := k.GetNodeSlotBid(ctx, bidID)
-		if err != nil {
-			return err
-		}
-		if bid.BidID == "" || bid.Settled {
-			return fmt.Errorf("node slot bid is not open for deposit")
-		}
-		auction, err := k.GetNodeSlotAuction(ctx, bid.AuctionID)
-		if err != nil {
-			return err
-		}
-		if auction.AuctionID == "" || auction.Status != types.NodeSlotAuctionOpen {
-			return fmt.Errorf("node slot auction is not open")
-		}
-		if auction.ExpiryHeight <= ctx.BlockHeight() {
-			return fmt.Errorf("node slot auction expired")
 		}
 		recipient, err := common.NewAddress(publicInputs.Recipient)
 		if err != nil {
 			return err
 		}
-		if bid.DepositAddress.IsEmpty() || !bid.DepositAddress.Equals(recipient) {
-			return fmt.Errorf("bid deposit recipient mismatch")
+		if _, err := openNodeSlotBidForRedeem(ctx, k, bidID, recipient); err != nil {
+			return err
 		}
 	case types.ShielderRedeemPolicyUserBTC:
 		if strings.TrimSpace(publicInputs.BidID) != "" || strings.TrimSpace(publicInputs.NodePubKey) != "" {

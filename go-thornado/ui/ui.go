@@ -108,11 +108,9 @@ func browserHandler(clientCtx client.Context, build func(*http.Request) (sdk.Msg
 
 func depositMsg(r *http.Request) (sdk.Msg, string, error) {
 	var req struct {
-		PowToken       string `json:"pow_token"`
-		DepositPubkey  string `json:"deposit_pubkey"`
-		OperatorPubKey string `json:"operator_pub_key"`
-		NodePubKey     string `json:"node_pub_key"`
-		PowDurationMs  uint64 `json:"pow_duration_ms"`
+		PowToken      string `json:"pow_token"`
+		DepositPubkey string `json:"deposit_pubkey"`
+		PowDurationMs uint64 `json:"pow_duration_ms"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return nil, "", err
@@ -121,7 +119,7 @@ func depositMsg(r *http.Request) (sdk.Msg, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	msg := types.NewMsgDepositRequestPow(req.PowToken, req.DepositPubkey, req.OperatorPubKey, req.NodePubKey)
+	msg := types.NewMsgDepositRequestPow(req.PowToken, req.DepositPubkey)
 	msg.PowDurationMs = req.PowDurationMs
 	return msg, owner, nil
 }

@@ -133,7 +133,7 @@ func (c *Client) getUtxoToSpendAtPath(pubkey common.PubKey, pathIndex uint64, to
 		toSpend += amt
 
 		// in the scenario that there are too many unspent utxos available, make sure it
-		// doesn't spend too much as too much UTXO will cause huge pressure on TSS, also
+		// doesn't spend too much as too much UTXO will cause huge pressure on FROST, also
 		// make sure it will spend at least maxUTXOsToSpend so the UTXOs will be
 		// consolidated
 		if int64(len(result)) >= utxosToSpend && toSpend >= total {

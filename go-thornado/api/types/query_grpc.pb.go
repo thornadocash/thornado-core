@@ -20,7 +20,6 @@ const _ = grpc.SupportPackageIsVersion7
 
 const (
 	Query_Account_FullMethodName              = "/types.Query/Account"
-	Query_Export_FullMethodName               = "/types.Query/Export"
 	Query_Node_FullMethodName                 = "/types.Query/Node"
 	Query_Nodes_FullMethodName                = "/types.Query/Nodes"
 	Query_NodeMetrics_FullMethodName          = "/types.Query/NodeMetrics"
@@ -61,8 +60,8 @@ const (
 	Query_NodeFeeEntitlement_FullMethodName   = "/types.Query/NodeFeeEntitlement"
 	Query_NodeFeeEntitlements_FullMethodName  = "/types.Query/NodeFeeEntitlements"
 	Query_Block_FullMethodName                = "/types.Query/Block"
-	Query_TssKeygenMetric_FullMethodName      = "/types.Query/TssKeygenMetric"
-	Query_TssMetric_FullMethodName            = "/types.Query/TssMetric"
+	Query_FrostKeygenMetric_FullMethodName    = "/types.Query/FrostKeygenMetric"
+	Query_FrostMetric_FullMethodName          = "/types.Query/FrostMetric"
 	Query_Keysign_FullMethodName              = "/types.Query/Keysign"
 	Query_KeysignPubkey_FullMethodName        = "/types.Query/KeysignPubkey"
 	Query_Keygen_FullMethodName               = "/types.Query/Keygen"
@@ -76,7 +75,6 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type QueryClient interface {
 	Account(ctx context.Context, in *QueryAccountRequest, opts ...grpc.CallOption) (*QueryAccountResponse, error)
-	Export(ctx context.Context, in *QueryExportRequest, opts ...grpc.CallOption) (*QueryExportResponse, error)
 	Node(ctx context.Context, in *QueryNodeRequest, opts ...grpc.CallOption) (*QueryNodeResponse, error)
 	Nodes(ctx context.Context, in *QueryNodesRequest, opts ...grpc.CallOption) (*QueryNodesResponse, error)
 	NodeMetrics(ctx context.Context, in *QueryNodeMetricsRequest, opts ...grpc.CallOption) (*QueryNodeMetricsResponse, error)
@@ -117,8 +115,8 @@ type QueryClient interface {
 	NodeFeeEntitlement(ctx context.Context, in *QueryNodeFeeEntitlementRequest, opts ...grpc.CallOption) (*QueryNodeFeeEntitlementResponse, error)
 	NodeFeeEntitlements(ctx context.Context, in *QueryNodeFeeEntitlementsRequest, opts ...grpc.CallOption) (*QueryNodeFeeEntitlementsResponse, error)
 	Block(ctx context.Context, in *QueryBlockRequest, opts ...grpc.CallOption) (*QueryBlockResponse, error)
-	TssKeygenMetric(ctx context.Context, in *QueryTssKeygenMetricRequest, opts ...grpc.CallOption) (*QueryTssKeygenMetricResponse, error)
-	TssMetric(ctx context.Context, in *QueryTssMetricRequest, opts ...grpc.CallOption) (*QueryTssMetricResponse, error)
+	FrostKeygenMetric(ctx context.Context, in *QueryFrostKeygenMetricRequest, opts ...grpc.CallOption) (*QueryFrostKeygenMetricResponse, error)
+	FrostMetric(ctx context.Context, in *QueryFrostMetricRequest, opts ...grpc.CallOption) (*QueryFrostMetricResponse, error)
 	Keysign(ctx context.Context, in *QueryKeysignRequest, opts ...grpc.CallOption) (*QueryKeysignResponse, error)
 	KeysignPubkey(ctx context.Context, in *QueryKeysignPubkeyRequest, opts ...grpc.CallOption) (*QueryKeysignResponse, error)
 	Keygen(ctx context.Context, in *QueryKeygenRequest, opts ...grpc.CallOption) (*QueryKeygenResponse, error)
@@ -138,15 +136,6 @@ func NewQueryClient(cc grpc.ClientConnInterface) QueryClient {
 func (c *queryClient) Account(ctx context.Context, in *QueryAccountRequest, opts ...grpc.CallOption) (*QueryAccountResponse, error) {
 	out := new(QueryAccountResponse)
 	err := c.cc.Invoke(ctx, Query_Account_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *queryClient) Export(ctx context.Context, in *QueryExportRequest, opts ...grpc.CallOption) (*QueryExportResponse, error) {
-	out := new(QueryExportResponse)
-	err := c.cc.Invoke(ctx, Query_Export_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -513,18 +502,18 @@ func (c *queryClient) Block(ctx context.Context, in *QueryBlockRequest, opts ...
 	return out, nil
 }
 
-func (c *queryClient) TssKeygenMetric(ctx context.Context, in *QueryTssKeygenMetricRequest, opts ...grpc.CallOption) (*QueryTssKeygenMetricResponse, error) {
-	out := new(QueryTssKeygenMetricResponse)
-	err := c.cc.Invoke(ctx, Query_TssKeygenMetric_FullMethodName, in, out, opts...)
+func (c *queryClient) FrostKeygenMetric(ctx context.Context, in *QueryFrostKeygenMetricRequest, opts ...grpc.CallOption) (*QueryFrostKeygenMetricResponse, error) {
+	out := new(QueryFrostKeygenMetricResponse)
+	err := c.cc.Invoke(ctx, Query_FrostKeygenMetric_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *queryClient) TssMetric(ctx context.Context, in *QueryTssMetricRequest, opts ...grpc.CallOption) (*QueryTssMetricResponse, error) {
-	out := new(QueryTssMetricResponse)
-	err := c.cc.Invoke(ctx, Query_TssMetric_FullMethodName, in, out, opts...)
+func (c *queryClient) FrostMetric(ctx context.Context, in *QueryFrostMetricRequest, opts ...grpc.CallOption) (*QueryFrostMetricResponse, error) {
+	out := new(QueryFrostMetricResponse)
+	err := c.cc.Invoke(ctx, Query_FrostMetric_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -590,7 +579,6 @@ func (c *queryClient) UpgradeVotes(ctx context.Context, in *QueryUpgradeVotesReq
 // for forward compatibility
 type QueryServer interface {
 	Account(context.Context, *QueryAccountRequest) (*QueryAccountResponse, error)
-	Export(context.Context, *QueryExportRequest) (*QueryExportResponse, error)
 	Node(context.Context, *QueryNodeRequest) (*QueryNodeResponse, error)
 	Nodes(context.Context, *QueryNodesRequest) (*QueryNodesResponse, error)
 	NodeMetrics(context.Context, *QueryNodeMetricsRequest) (*QueryNodeMetricsResponse, error)
@@ -631,8 +619,8 @@ type QueryServer interface {
 	NodeFeeEntitlement(context.Context, *QueryNodeFeeEntitlementRequest) (*QueryNodeFeeEntitlementResponse, error)
 	NodeFeeEntitlements(context.Context, *QueryNodeFeeEntitlementsRequest) (*QueryNodeFeeEntitlementsResponse, error)
 	Block(context.Context, *QueryBlockRequest) (*QueryBlockResponse, error)
-	TssKeygenMetric(context.Context, *QueryTssKeygenMetricRequest) (*QueryTssKeygenMetricResponse, error)
-	TssMetric(context.Context, *QueryTssMetricRequest) (*QueryTssMetricResponse, error)
+	FrostKeygenMetric(context.Context, *QueryFrostKeygenMetricRequest) (*QueryFrostKeygenMetricResponse, error)
+	FrostMetric(context.Context, *QueryFrostMetricRequest) (*QueryFrostMetricResponse, error)
 	Keysign(context.Context, *QueryKeysignRequest) (*QueryKeysignResponse, error)
 	KeysignPubkey(context.Context, *QueryKeysignPubkeyRequest) (*QueryKeysignResponse, error)
 	Keygen(context.Context, *QueryKeygenRequest) (*QueryKeygenResponse, error)
@@ -648,9 +636,6 @@ type UnimplementedQueryServer struct {
 
 func (UnimplementedQueryServer) Account(context.Context, *QueryAccountRequest) (*QueryAccountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Account not implemented")
-}
-func (UnimplementedQueryServer) Export(context.Context, *QueryExportRequest) (*QueryExportResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Export not implemented")
 }
 func (UnimplementedQueryServer) Node(context.Context, *QueryNodeRequest) (*QueryNodeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Node not implemented")
@@ -772,11 +757,11 @@ func (UnimplementedQueryServer) NodeFeeEntitlements(context.Context, *QueryNodeF
 func (UnimplementedQueryServer) Block(context.Context, *QueryBlockRequest) (*QueryBlockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Block not implemented")
 }
-func (UnimplementedQueryServer) TssKeygenMetric(context.Context, *QueryTssKeygenMetricRequest) (*QueryTssKeygenMetricResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TssKeygenMetric not implemented")
+func (UnimplementedQueryServer) FrostKeygenMetric(context.Context, *QueryFrostKeygenMetricRequest) (*QueryFrostKeygenMetricResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FrostKeygenMetric not implemented")
 }
-func (UnimplementedQueryServer) TssMetric(context.Context, *QueryTssMetricRequest) (*QueryTssMetricResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method TssMetric not implemented")
+func (UnimplementedQueryServer) FrostMetric(context.Context, *QueryFrostMetricRequest) (*QueryFrostMetricResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FrostMetric not implemented")
 }
 func (UnimplementedQueryServer) Keysign(context.Context, *QueryKeysignRequest) (*QueryKeysignResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Keysign not implemented")
@@ -823,24 +808,6 @@ func _Query_Account_Handler(srv interface{}, ctx context.Context, dec func(inter
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(QueryServer).Account(ctx, req.(*QueryAccountRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Query_Export_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryExportRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(QueryServer).Export(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Query_Export_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).Export(ctx, req.(*QueryExportRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1565,38 +1532,38 @@ func _Query_Block_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_TssKeygenMetric_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryTssKeygenMetricRequest)
+func _Query_FrostKeygenMetric_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryFrostKeygenMetricRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).TssKeygenMetric(ctx, in)
+		return srv.(QueryServer).FrostKeygenMetric(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_TssKeygenMetric_FullMethodName,
+		FullMethod: Query_FrostKeygenMetric_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).TssKeygenMetric(ctx, req.(*QueryTssKeygenMetricRequest))
+		return srv.(QueryServer).FrostKeygenMetric(ctx, req.(*QueryFrostKeygenMetricRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_TssMetric_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(QueryTssMetricRequest)
+func _Query_FrostMetric_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryFrostMetricRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).TssMetric(ctx, in)
+		return srv.(QueryServer).FrostMetric(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Query_TssMetric_FullMethodName,
+		FullMethod: Query_FrostMetric_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).TssMetric(ctx, req.(*QueryTssMetricRequest))
+		return srv.(QueryServer).FrostMetric(ctx, req.(*QueryFrostMetricRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1719,10 +1686,6 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Account",
 			Handler:    _Query_Account_Handler,
-		},
-		{
-			MethodName: "Export",
-			Handler:    _Query_Export_Handler,
 		},
 		{
 			MethodName: "Node",
@@ -1885,12 +1848,12 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Query_Block_Handler,
 		},
 		{
-			MethodName: "TssKeygenMetric",
-			Handler:    _Query_TssKeygenMetric_Handler,
+			MethodName: "FrostKeygenMetric",
+			Handler:    _Query_FrostKeygenMetric_Handler,
 		},
 		{
-			MethodName: "TssMetric",
-			Handler:    _Query_TssMetric_Handler,
+			MethodName: "FrostMetric",
+			Handler:    _Query_FrostMetric_Handler,
 		},
 		{
 			MethodName: "Keysign",

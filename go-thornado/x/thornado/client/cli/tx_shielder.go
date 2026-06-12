@@ -24,9 +24,9 @@ func GetCmdShielder() *cobra.Command {
 	cmd.AddCommand(GetCmdShielderRedeem())
 	cmd.AddCommand(GetCmdShielderShieldFees())
 	cmd.AddCommand(GetCmdNodeSlotAuctionCreate())
-	cmd.AddCommand(GetCmdNodeSlotAuctionBidPow())
+	cmd.AddCommand(GetCmdNodeSlotAuctionBidCreate())
 	cmd.AddCommand(GetCmdNodeSlotAuctionSelectBid())
-	cmd.AddCommand(GetCmdNodeSlotAuctionShield())
+	cmd.AddCommand(GetCmdNodeSaleShield())
 	cmd.AddCommand(GetCmdBondFromNotes())
 	return cmd
 }
@@ -42,19 +42,11 @@ func GetCmdDepositRequestPow() *cobra.Command {
 				return err
 			}
 
-			operatorPubKey, err := cmd.Flags().GetString("operator-pubkey")
-			if err != nil {
-				return err
-			}
-			nodePubKey, err := cmd.Flags().GetString("node-pubkey")
-			if err != nil {
-				return err
-			}
 			powDurationMs, err := cmd.Flags().GetUint64("pow-duration-ms")
 			if err != nil {
 				return err
 			}
-			msg := types.NewMsgDepositRequestPow(args[0], args[1], operatorPubKey, nodePubKey)
+			msg := types.NewMsgDepositRequestPow(args[0], args[1])
 			msg.PowDurationMs = powDurationMs
 			if err = msg.ValidateBasic(); err != nil {
 				return err
@@ -62,8 +54,6 @@ func GetCmdDepositRequestPow() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	cmd.Flags().String("operator-pubkey", "", "operator mnemonic root pubkey for node bond deposits")
-	cmd.Flags().String("node-pubkey", "", "node consensus pubkey to bond for")
 	cmd.Flags().Uint64("pow-duration-ms", 0, "local proof-of-work solve time in milliseconds")
 	return cmd
 }
@@ -211,30 +201,23 @@ func GetCmdNodeSlotAuctionCreate() *cobra.Command {
 	}
 }
 
-func GetCmdNodeSlotAuctionBidPow() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "auction-bid-pow [auction-id] [pow-token] [operator-pubkey] [node-pubkey]",
-		Short: "request a Bitcoin deposit address for a node slot auction bid",
-		Args:  cobra.ExactArgs(4),
+func GetCmdNodeSlotAuctionBidCreate() *cobra.Command {
+	return &cobra.Command{
+		Use:   "auction-bid-create [auction-id] [operator-pubkey] [node-pubkey]",
+		Short: "create a node slot auction bid record funded by shielded notes",
+		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
 			}
-			powDurationMs, err := cmd.Flags().GetUint64("pow-duration-ms")
-			if err != nil {
-				return err
-			}
-			msg := types.NewMsgNodeSlotAuctionBidPow(args[0], args[1], args[2], args[3], clientCtx.GetFromAddress())
-			msg.PowDurationMs = powDurationMs
+			msg := types.NewMsgNodeSlotAuctionBidCreate(args[0], args[1], args[2], clientCtx.GetFromAddress())
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	cmd.Flags().Uint64("pow-duration-ms", 0, "local proof-of-work solve time in milliseconds")
-	return cmd
 }
 
 func GetCmdNodeSlotAuctionSelectBid() *cobra.Command {
@@ -256,11 +239,11 @@ func GetCmdNodeSlotAuctionSelectBid() *cobra.Command {
 	}
 }
 
-func GetCmdNodeSlotAuctionShield() *cobra.Command {
+func GetCmdNodeSaleShield() *cobra.Command {
 	return &cobra.Command{
-		Use:   "auction-shield [auction-id] [bid-id] [seller-commitments-json-or-csv]",
-		Short: "shield a winning node slot bid into seller notes and unwithdrawable bond commitments",
-		Args:  cobra.ExactArgs(3),
+		Use:   "node-sale-shield [auction-id] [bid-id] [seller-commitments-json-or-csv] [deposit-pubkey] [signature]",
+		Short: "shield a settled node sale seller entitlement",
+		Args:  cobra.ExactArgs(5),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
@@ -270,7 +253,7 @@ func GetCmdNodeSlotAuctionShield() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			msg := types.NewMsgNodeSlotAuctionShield(args[0], args[1], commitments, clientCtx.GetFromAddress())
+			msg := types.NewMsgNodeSaleShield(args[0], args[1], commitments, args[3], args[4], clientCtx.GetFromAddress())
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}

@@ -10,7 +10,6 @@ import "types/query_balance_module.proto";
 import "types/query_block.proto";
 import "types/query_constant_values.proto";
 import "types/query_deposit.proto";
-import "types/query_export.proto";
 import "types/query_invariants.proto";
 import "types/query_keystore.proto";
 import "types/query_last_block.proto";
@@ -19,23 +18,19 @@ import "types/query_fee.proto";
 import "types/query_config.proto";
 import "types/query_node.proto";
 import "types/query_shielder.proto";
-import "types/query_tss.proto";
+import "types/query_frost.proto";
 import "types/query_tx.proto";
 import "types/query_upgrade.proto";
 import "types/query_vault.proto";
 import "types/query_version.proto";
 import "types/type_network_fee.proto";
-import "types/type_tss_metric.proto";
+import "types/type_frost_metric.proto";
 
 option (gogoproto.marshaler_all) = true;
 
 service Query {
   rpc Account(QueryAccountRequest) returns (QueryAccountResponse) {
     option (google.api.http).get = "/auth/accounts/{address}";
-  }
-
-  rpc Export(QueryExportRequest) returns (QueryExportResponse) {
-    option (google.api.http).get = "/thornado/export";
   }
 
   rpc Node(QueryNodeRequest) returns (QueryNodeResponse) {
@@ -198,11 +193,11 @@ service Query {
     option (google.api.http).get = "/thornado/block";
   }
 
-  rpc TssKeygenMetric(QueryTssKeygenMetricRequest) returns (QueryTssKeygenMetricResponse) {
+  rpc FrostKeygenMetric(QueryFrostKeygenMetricRequest) returns (QueryFrostKeygenMetricResponse) {
     option (google.api.http).get = "/thornado/metric/keygen/{pub_key}";
   }
 
-  rpc TssMetric(QueryTssMetricRequest) returns (QueryTssMetricResponse) {
+  rpc FrostMetric(QueryFrostMetricRequest) returns (QueryFrostMetricResponse) {
     option (google.api.http).get = "/thornado/metrics";
   }
 

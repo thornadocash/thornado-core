@@ -43,10 +43,10 @@ func (Test) TestJSONSpec(c *C) {
 	// if or when the Thornado node struct includes its (scheduled) Height field.
 	// assertJSONStructTagsMatch(c, types.TxOutItem{}, gen.TxOutItem{})
 
-	// tss
-	assertJSONStructTagsMatch(c, types.NodeTssTime{}, gen.NodeKeygenMetric{})
-	assertJSONStructTagsMatch(c, types.TssKeygenMetric{}, gen.KeygenMetric{})
-	assertJSONStructTagsMatch(c, types.TssKeysignMetric{}, gen.TssKeysignMetric{})
+	// frost
+	assertJSONStructTagsMatch(c, types.NodeFrostTime{}, gen.NodeKeygenMetric{})
+	assertJSONStructTagsMatch(c, types.FrostKeygenMetric{}, gen.KeygenMetric{})
+	assertJSONStructTagsMatch(c, types.FrostKeysignMetric{}, gen.FrostKeysignMetric{})
 }
 
 // -------------------------------------------------------------------------------------

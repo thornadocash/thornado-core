@@ -36,17 +36,17 @@ var (
 	_ sdk.HasValidateBasic = &MsgNodeSlotAuctionCreate{}
 	_ sdk.LegacyMsg        = &MsgNodeSlotAuctionCreate{}
 
-	_ sdk.Msg              = &MsgNodeSlotAuctionBidPow{}
-	_ sdk.HasValidateBasic = &MsgNodeSlotAuctionBidPow{}
-	_ sdk.LegacyMsg        = &MsgNodeSlotAuctionBidPow{}
+	_ sdk.Msg              = &MsgNodeSlotAuctionBidCreate{}
+	_ sdk.HasValidateBasic = &MsgNodeSlotAuctionBidCreate{}
+	_ sdk.LegacyMsg        = &MsgNodeSlotAuctionBidCreate{}
 
 	_ sdk.Msg              = &MsgNodeSlotAuctionSelectBid{}
 	_ sdk.HasValidateBasic = &MsgNodeSlotAuctionSelectBid{}
 	_ sdk.LegacyMsg        = &MsgNodeSlotAuctionSelectBid{}
 
-	_ sdk.Msg              = &MsgNodeSlotAuctionShield{}
-	_ sdk.HasValidateBasic = &MsgNodeSlotAuctionShield{}
-	_ sdk.LegacyMsg        = &MsgNodeSlotAuctionShield{}
+	_ sdk.Msg              = &MsgNodeSaleShield{}
+	_ sdk.HasValidateBasic = &MsgNodeSaleShield{}
+	_ sdk.LegacyMsg        = &MsgNodeSaleShield{}
 
 	_ sdk.Msg              = &MsgBondFromNotes{}
 	_ sdk.HasValidateBasic = &MsgBondFromNotes{}
@@ -65,20 +65,10 @@ const (
 	MaxPowDurationMs                  = 24 * 60 * 60 * 1000
 )
 
-func NewMsgDepositRequestPow(powToken, depositPubkey string, extra ...string) *MsgDepositRequestPow {
-	operatorPubKey := ""
-	nodePubKey := ""
-	if len(extra) > 0 {
-		operatorPubKey = strings.TrimSpace(extra[0])
-	}
-	if len(extra) > 1 {
-		nodePubKey = strings.TrimSpace(extra[1])
-	}
+func NewMsgDepositRequestPow(powToken, depositPubkey string) *MsgDepositRequestPow {
 	return &MsgDepositRequestPow{
-		PowToken:       strings.TrimSpace(powToken),
-		DepositPubkey:  strings.TrimSpace(depositPubkey),
-		OperatorPubKey: operatorPubKey,
-		NodePubKey:     nodePubKey,
+		PowToken:      strings.TrimSpace(powToken),
+		DepositPubkey: strings.TrimSpace(depositPubkey),
 	}
 }
 
@@ -94,9 +84,6 @@ func (m *MsgDepositRequestPow) ValidateBasic() error {
 	}
 	if err := validateCompressedSecpPubkey(m.DepositPubkey); err != nil {
 		return fmt.Errorf("invalid deposit pubkey: %w", err)
-	}
-	if strings.TrimSpace(m.NodePubKey) != "" || strings.TrimSpace(m.OperatorPubKey) != "" {
-		return fmt.Errorf("node bonds use MsgBondFromNotes; auction bids use MsgNodeSlotAuctionBidPow")
 	}
 	return nil
 }
@@ -293,17 +280,16 @@ func MsgNodeSlotAuctionCreateCustomGetSigners(m proto.Message) ([][]byte, error)
 	return [][]byte{msg.Signer}, nil
 }
 
-func NewMsgNodeSlotAuctionBidPow(auctionID, powToken, operatorPubKey, nodePubKey string, signer cosmos.AccAddress) *MsgNodeSlotAuctionBidPow {
-	return &MsgNodeSlotAuctionBidPow{
+func NewMsgNodeSlotAuctionBidCreate(auctionID, operatorPubKey, nodePubKey string, signer cosmos.AccAddress) *MsgNodeSlotAuctionBidCreate {
+	return &MsgNodeSlotAuctionBidCreate{
 		AuctionId:      strings.TrimSpace(auctionID),
-		PowToken:       strings.TrimSpace(powToken),
 		OperatorPubKey: strings.TrimSpace(operatorPubKey),
 		NodePubKey:     strings.TrimSpace(nodePubKey),
 		Signer:         signer,
 	}
 }
 
-func (m *MsgNodeSlotAuctionBidPow) ValidateBasic() error {
+func (m *MsgNodeSlotAuctionBidCreate) ValidateBasic() error {
 	if m.Signer.Empty() {
 		return cosmos.ErrInvalidAddress(m.Signer.String())
 	}
@@ -312,15 +298,6 @@ func (m *MsgNodeSlotAuctionBidPow) ValidateBasic() error {
 	}
 	if len(strings.TrimSpace(m.AuctionId)) > MaxShielderIDLength {
 		return fmt.Errorf("node slot auction id too long")
-	}
-	if strings.TrimSpace(m.PowToken) == "" {
-		return fmt.Errorf("missing deposit pow token")
-	}
-	if len(strings.TrimSpace(m.PowToken)) > MaxPowTokenLength {
-		return fmt.Errorf("deposit pow token too long")
-	}
-	if m.PowDurationMs > MaxPowDurationMs {
-		return fmt.Errorf("deposit pow duration too long")
 	}
 	if _, err := common.NewPubKey(m.OperatorPubKey); err != nil {
 		return fmt.Errorf("invalid bidder operator pubkey: %w", err)
@@ -331,14 +308,14 @@ func (m *MsgNodeSlotAuctionBidPow) ValidateBasic() error {
 	return nil
 }
 
-func (m *MsgNodeSlotAuctionBidPow) GetSigners() []cosmos.AccAddress {
+func (m *MsgNodeSlotAuctionBidCreate) GetSigners() []cosmos.AccAddress {
 	return []cosmos.AccAddress{m.Signer}
 }
 
-func MsgNodeSlotAuctionBidPowCustomGetSigners(m proto.Message) ([][]byte, error) {
-	msg, ok := m.(*apitypes.MsgNodeSlotAuctionBidPow)
+func MsgNodeSlotAuctionBidCreateCustomGetSigners(m proto.Message) ([][]byte, error) {
+	msg, ok := m.(*apitypes.MsgNodeSlotAuctionBidCreate)
 	if !ok {
-		return nil, fmt.Errorf("can't cast as MsgNodeSlotAuctionBidPow: %T", m)
+		return nil, fmt.Errorf("can't cast as MsgNodeSlotAuctionBidCreate: %T", m)
 	}
 	return [][]byte{msg.Signer}, nil
 }
@@ -382,16 +359,18 @@ func MsgNodeSlotAuctionSelectBidCustomGetSigners(m proto.Message) ([][]byte, err
 	return [][]byte{msg.Signer}, nil
 }
 
-func NewMsgNodeSlotAuctionShield(auctionID, bidID string, commitments []string, signer cosmos.AccAddress) *MsgNodeSlotAuctionShield {
-	return &MsgNodeSlotAuctionShield{
-		AuctionId:   strings.TrimSpace(auctionID),
-		BidId:       strings.TrimSpace(bidID),
-		Commitments: commitments,
-		Signer:      signer,
+func NewMsgNodeSaleShield(auctionID, bidID string, commitments []string, depositPubkey, signature string, signer cosmos.AccAddress) *MsgNodeSaleShield {
+	return &MsgNodeSaleShield{
+		AuctionId:     strings.TrimSpace(auctionID),
+		BidId:         strings.TrimSpace(bidID),
+		Commitments:   commitments,
+		DepositPubkey: strings.TrimSpace(depositPubkey),
+		Signature:     strings.TrimSpace(signature),
+		Signer:        signer,
 	}
 }
 
-func (m *MsgNodeSlotAuctionShield) ValidateBasic() error {
+func (m *MsgNodeSaleShield) ValidateBasic() error {
 	if m.Signer.Empty() {
 		return cosmos.ErrInvalidAddress(m.Signer.String())
 	}
@@ -413,17 +392,26 @@ func (m *MsgNodeSlotAuctionShield) ValidateBasic() error {
 	if err := validateShielderCommitmentList(m.Commitments, "node slot seller commitment"); err != nil {
 		return err
 	}
+	if err := validateCompressedSecpPubkey(m.DepositPubkey); err != nil {
+		return fmt.Errorf("invalid deposit pubkey: %w", err)
+	}
+	if len(strings.TrimSpace(m.Signature)) > MaxShieldSignatureHexLength {
+		return fmt.Errorf("node sale shield authorization signature too long")
+	}
+	if _, err := hex.DecodeString(strings.TrimSpace(m.Signature)); err != nil {
+		return fmt.Errorf("invalid node sale shield authorization signature")
+	}
 	return nil
 }
 
-func (m *MsgNodeSlotAuctionShield) GetSigners() []cosmos.AccAddress {
+func (m *MsgNodeSaleShield) GetSigners() []cosmos.AccAddress {
 	return []cosmos.AccAddress{m.Signer}
 }
 
-func MsgNodeSlotAuctionShieldCustomGetSigners(m proto.Message) ([][]byte, error) {
-	msg, ok := m.(*apitypes.MsgNodeSlotAuctionShield)
+func MsgNodeSaleShieldCustomGetSigners(m proto.Message) ([][]byte, error) {
+	msg, ok := m.(*apitypes.MsgNodeSaleShield)
 	if !ok {
-		return nil, fmt.Errorf("can't cast as MsgNodeSlotAuctionShield: %T", m)
+		return nil, fmt.Errorf("can't cast as MsgNodeSaleShield: %T", m)
 	}
 	return [][]byte{msg.Signer}, nil
 }

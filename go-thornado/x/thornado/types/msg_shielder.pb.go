@@ -26,11 +26,9 @@ var _ = math.Inf
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type MsgDepositRequestPow struct {
-	PowToken       string `protobuf:"bytes,1,opt,name=pow_token,json=powToken,proto3" json:"pow_token,omitempty"`
-	DepositPubkey  string `protobuf:"bytes,2,opt,name=deposit_pubkey,json=depositPubkey,proto3" json:"deposit_pubkey,omitempty"`
-	OperatorPubKey string `protobuf:"bytes,3,opt,name=operator_pub_key,json=operatorPubKey,proto3" json:"operator_pub_key,omitempty"`
-	NodePubKey     string `protobuf:"bytes,4,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
-	PowDurationMs  uint64 `protobuf:"varint,5,opt,name=pow_duration_ms,json=powDurationMs,proto3" json:"pow_duration_ms,omitempty"`
+	PowToken      string `protobuf:"bytes,1,opt,name=pow_token,json=powToken,proto3" json:"pow_token,omitempty"`
+	DepositPubkey string `protobuf:"bytes,2,opt,name=deposit_pubkey,json=depositPubkey,proto3" json:"deposit_pubkey,omitempty"`
+	PowDurationMs uint64 `protobuf:"varint,3,opt,name=pow_duration_ms,json=powDurationMs,proto3" json:"pow_duration_ms,omitempty"`
 }
 
 func (m *MsgDepositRequestPow) Reset()         { *m = MsgDepositRequestPow{} }
@@ -80,20 +78,6 @@ func (m *MsgDepositRequestPow) GetDepositPubkey() string {
 	return ""
 }
 
-func (m *MsgDepositRequestPow) GetOperatorPubKey() string {
-	if m != nil {
-		return m.OperatorPubKey
-	}
-	return ""
-}
-
-func (m *MsgDepositRequestPow) GetNodePubKey() string {
-	if m != nil {
-		return m.NodePubKey
-	}
-	return ""
-}
-
 func (m *MsgDepositRequestPow) GetPowDurationMs() uint64 {
 	if m != nil {
 		return m.PowDurationMs
@@ -105,9 +89,8 @@ type MsgDepositRequestPowResponse struct {
 	DepositAddress   string `protobuf:"bytes,1,opt,name=deposit_address,json=depositAddress,proto3" json:"deposit_address,omitempty"`
 	VaultPubKey      string `protobuf:"bytes,2,opt,name=vault_pub_key,json=vaultPubKey,proto3" json:"vault_pub_key,omitempty"`
 	DepositPathIndex uint64 `protobuf:"varint,3,opt,name=deposit_path_index,json=depositPathIndex,proto3" json:"deposit_path_index,omitempty"`
-	BidId            string `protobuf:"bytes,4,opt,name=bid_id,json=bidId,proto3" json:"bid_id,omitempty"`
-	ExpiresAtHeight  int64  `protobuf:"varint,5,opt,name=expires_at_height,json=expiresAtHeight,proto3" json:"expires_at_height,omitempty"`
-	PurgeAtHeight    int64  `protobuf:"varint,6,opt,name=purge_at_height,json=purgeAtHeight,proto3" json:"purge_at_height,omitempty"`
+	ExpiresAtHeight  int64  `protobuf:"varint,4,opt,name=expires_at_height,json=expiresAtHeight,proto3" json:"expires_at_height,omitempty"`
+	PurgeAtHeight    int64  `protobuf:"varint,5,opt,name=purge_at_height,json=purgeAtHeight,proto3" json:"purge_at_height,omitempty"`
 }
 
 func (m *MsgDepositRequestPowResponse) Reset()         { *m = MsgDepositRequestPowResponse{} }
@@ -162,13 +145,6 @@ func (m *MsgDepositRequestPowResponse) GetDepositPathIndex() uint64 {
 		return m.DepositPathIndex
 	}
 	return 0
-}
-
-func (m *MsgDepositRequestPowResponse) GetBidId() string {
-	if m != nil {
-		return m.BidId
-	}
-	return ""
 }
 
 func (m *MsgDepositRequestPowResponse) GetExpiresAtHeight() int64 {
@@ -641,27 +617,25 @@ func (m *MsgNodeSlotAuctionCreateResponse) GetAuctionId() string {
 	return ""
 }
 
-type MsgNodeSlotAuctionBidPow struct {
+type MsgNodeSlotAuctionBidCreate struct {
 	AuctionId      string                                        `protobuf:"bytes,1,opt,name=auction_id,json=auctionId,proto3" json:"auction_id,omitempty"`
-	PowToken       string                                        `protobuf:"bytes,2,opt,name=pow_token,json=powToken,proto3" json:"pow_token,omitempty"`
-	OperatorPubKey string                                        `protobuf:"bytes,3,opt,name=operator_pub_key,json=operatorPubKey,proto3" json:"operator_pub_key,omitempty"`
-	NodePubKey     string                                        `protobuf:"bytes,4,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
-	Signer         github_com_cosmos_cosmos_sdk_types.AccAddress `protobuf:"bytes,5,opt,name=signer,proto3,casttype=github.com/cosmos/cosmos-sdk/types.AccAddress" json:"signer,omitempty"`
-	PowDurationMs  uint64                                        `protobuf:"varint,6,opt,name=pow_duration_ms,json=powDurationMs,proto3" json:"pow_duration_ms,omitempty"`
+	OperatorPubKey string                                        `protobuf:"bytes,2,opt,name=operator_pub_key,json=operatorPubKey,proto3" json:"operator_pub_key,omitempty"`
+	NodePubKey     string                                        `protobuf:"bytes,3,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
+	Signer         github_com_cosmos_cosmos_sdk_types.AccAddress `protobuf:"bytes,4,opt,name=signer,proto3,casttype=github.com/cosmos/cosmos-sdk/types.AccAddress" json:"signer,omitempty"`
 }
 
-func (m *MsgNodeSlotAuctionBidPow) Reset()         { *m = MsgNodeSlotAuctionBidPow{} }
-func (m *MsgNodeSlotAuctionBidPow) String() string { return proto.CompactTextString(m) }
-func (*MsgNodeSlotAuctionBidPow) ProtoMessage()    {}
-func (*MsgNodeSlotAuctionBidPow) Descriptor() ([]byte, []int) {
+func (m *MsgNodeSlotAuctionBidCreate) Reset()         { *m = MsgNodeSlotAuctionBidCreate{} }
+func (m *MsgNodeSlotAuctionBidCreate) String() string { return proto.CompactTextString(m) }
+func (*MsgNodeSlotAuctionBidCreate) ProtoMessage()    {}
+func (*MsgNodeSlotAuctionBidCreate) Descriptor() ([]byte, []int) {
 	return fileDescriptor_75588396e42c8ea6, []int{10}
 }
-func (m *MsgNodeSlotAuctionBidPow) XXX_Unmarshal(b []byte) error {
+func (m *MsgNodeSlotAuctionBidCreate) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *MsgNodeSlotAuctionBidPow) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *MsgNodeSlotAuctionBidCreate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_MsgNodeSlotAuctionBidPow.Marshal(b, m, deterministic)
+		return xxx_messageInfo_MsgNodeSlotAuctionBidCreate.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -671,58 +645,88 @@ func (m *MsgNodeSlotAuctionBidPow) XXX_Marshal(b []byte, deterministic bool) ([]
 		return b[:n], nil
 	}
 }
-func (m *MsgNodeSlotAuctionBidPow) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgNodeSlotAuctionBidPow.Merge(m, src)
+func (m *MsgNodeSlotAuctionBidCreate) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgNodeSlotAuctionBidCreate.Merge(m, src)
 }
-func (m *MsgNodeSlotAuctionBidPow) XXX_Size() int {
+func (m *MsgNodeSlotAuctionBidCreate) XXX_Size() int {
 	return m.Size()
 }
-func (m *MsgNodeSlotAuctionBidPow) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgNodeSlotAuctionBidPow.DiscardUnknown(m)
+func (m *MsgNodeSlotAuctionBidCreate) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgNodeSlotAuctionBidCreate.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MsgNodeSlotAuctionBidPow proto.InternalMessageInfo
+var xxx_messageInfo_MsgNodeSlotAuctionBidCreate proto.InternalMessageInfo
 
-func (m *MsgNodeSlotAuctionBidPow) GetAuctionId() string {
+func (m *MsgNodeSlotAuctionBidCreate) GetAuctionId() string {
 	if m != nil {
 		return m.AuctionId
 	}
 	return ""
 }
 
-func (m *MsgNodeSlotAuctionBidPow) GetPowToken() string {
-	if m != nil {
-		return m.PowToken
-	}
-	return ""
-}
-
-func (m *MsgNodeSlotAuctionBidPow) GetOperatorPubKey() string {
+func (m *MsgNodeSlotAuctionBidCreate) GetOperatorPubKey() string {
 	if m != nil {
 		return m.OperatorPubKey
 	}
 	return ""
 }
 
-func (m *MsgNodeSlotAuctionBidPow) GetNodePubKey() string {
+func (m *MsgNodeSlotAuctionBidCreate) GetNodePubKey() string {
 	if m != nil {
 		return m.NodePubKey
 	}
 	return ""
 }
 
-func (m *MsgNodeSlotAuctionBidPow) GetSigner() github_com_cosmos_cosmos_sdk_types.AccAddress {
+func (m *MsgNodeSlotAuctionBidCreate) GetSigner() github_com_cosmos_cosmos_sdk_types.AccAddress {
 	if m != nil {
 		return m.Signer
 	}
 	return nil
 }
 
-func (m *MsgNodeSlotAuctionBidPow) GetPowDurationMs() uint64 {
-	if m != nil {
-		return m.PowDurationMs
+type MsgNodeSlotAuctionBidCreateResponse struct {
+	BidId string `protobuf:"bytes,1,opt,name=bid_id,json=bidId,proto3" json:"bid_id,omitempty"`
+}
+
+func (m *MsgNodeSlotAuctionBidCreateResponse) Reset()         { *m = MsgNodeSlotAuctionBidCreateResponse{} }
+func (m *MsgNodeSlotAuctionBidCreateResponse) String() string { return proto.CompactTextString(m) }
+func (*MsgNodeSlotAuctionBidCreateResponse) ProtoMessage()    {}
+func (*MsgNodeSlotAuctionBidCreateResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_75588396e42c8ea6, []int{11}
+}
+func (m *MsgNodeSlotAuctionBidCreateResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgNodeSlotAuctionBidCreateResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgNodeSlotAuctionBidCreateResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
 	}
-	return 0
+}
+func (m *MsgNodeSlotAuctionBidCreateResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgNodeSlotAuctionBidCreateResponse.Merge(m, src)
+}
+func (m *MsgNodeSlotAuctionBidCreateResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgNodeSlotAuctionBidCreateResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgNodeSlotAuctionBidCreateResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgNodeSlotAuctionBidCreateResponse proto.InternalMessageInfo
+
+func (m *MsgNodeSlotAuctionBidCreateResponse) GetBidId() string {
+	if m != nil {
+		return m.BidId
+	}
+	return ""
 }
 
 type MsgNodeSlotAuctionSelectBid struct {
@@ -735,7 +739,7 @@ func (m *MsgNodeSlotAuctionSelectBid) Reset()         { *m = MsgNodeSlotAuctionS
 func (m *MsgNodeSlotAuctionSelectBid) String() string { return proto.CompactTextString(m) }
 func (*MsgNodeSlotAuctionSelectBid) ProtoMessage()    {}
 func (*MsgNodeSlotAuctionSelectBid) Descriptor() ([]byte, []int) {
-	return fileDescriptor_75588396e42c8ea6, []int{11}
+	return fileDescriptor_75588396e42c8ea6, []int{12}
 }
 func (m *MsgNodeSlotAuctionSelectBid) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -785,25 +789,27 @@ func (m *MsgNodeSlotAuctionSelectBid) GetSigner() github_com_cosmos_cosmos_sdk_t
 	return nil
 }
 
-type MsgNodeSlotAuctionShield struct {
-	AuctionId   string                                        `protobuf:"bytes,1,opt,name=auction_id,json=auctionId,proto3" json:"auction_id,omitempty"`
-	BidId       string                                        `protobuf:"bytes,2,opt,name=bid_id,json=bidId,proto3" json:"bid_id,omitempty"`
-	Commitments []string                                      `protobuf:"bytes,3,rep,name=commitments,proto3" json:"commitments,omitempty"`
-	Signer      github_com_cosmos_cosmos_sdk_types.AccAddress `protobuf:"bytes,4,opt,name=signer,proto3,casttype=github.com/cosmos/cosmos-sdk/types.AccAddress" json:"signer,omitempty"`
+type MsgNodeSaleShield struct {
+	AuctionId     string                                        `protobuf:"bytes,1,opt,name=auction_id,json=auctionId,proto3" json:"auction_id,omitempty"`
+	BidId         string                                        `protobuf:"bytes,2,opt,name=bid_id,json=bidId,proto3" json:"bid_id,omitempty"`
+	Commitments   []string                                      `protobuf:"bytes,3,rep,name=commitments,proto3" json:"commitments,omitempty"`
+	DepositPubkey string                                        `protobuf:"bytes,4,opt,name=deposit_pubkey,json=depositPubkey,proto3" json:"deposit_pubkey,omitempty"`
+	Signature     string                                        `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
+	Signer        github_com_cosmos_cosmos_sdk_types.AccAddress `protobuf:"bytes,6,opt,name=signer,proto3,casttype=github.com/cosmos/cosmos-sdk/types.AccAddress" json:"signer,omitempty"`
 }
 
-func (m *MsgNodeSlotAuctionShield) Reset()         { *m = MsgNodeSlotAuctionShield{} }
-func (m *MsgNodeSlotAuctionShield) String() string { return proto.CompactTextString(m) }
-func (*MsgNodeSlotAuctionShield) ProtoMessage()    {}
-func (*MsgNodeSlotAuctionShield) Descriptor() ([]byte, []int) {
-	return fileDescriptor_75588396e42c8ea6, []int{12}
+func (m *MsgNodeSaleShield) Reset()         { *m = MsgNodeSaleShield{} }
+func (m *MsgNodeSaleShield) String() string { return proto.CompactTextString(m) }
+func (*MsgNodeSaleShield) ProtoMessage()    {}
+func (*MsgNodeSaleShield) Descriptor() ([]byte, []int) {
+	return fileDescriptor_75588396e42c8ea6, []int{13}
 }
-func (m *MsgNodeSlotAuctionShield) XXX_Unmarshal(b []byte) error {
+func (m *MsgNodeSaleShield) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *MsgNodeSlotAuctionShield) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *MsgNodeSaleShield) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_MsgNodeSlotAuctionShield.Marshal(b, m, deterministic)
+		return xxx_messageInfo_MsgNodeSaleShield.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -813,40 +819,54 @@ func (m *MsgNodeSlotAuctionShield) XXX_Marshal(b []byte, deterministic bool) ([]
 		return b[:n], nil
 	}
 }
-func (m *MsgNodeSlotAuctionShield) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MsgNodeSlotAuctionShield.Merge(m, src)
+func (m *MsgNodeSaleShield) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgNodeSaleShield.Merge(m, src)
 }
-func (m *MsgNodeSlotAuctionShield) XXX_Size() int {
+func (m *MsgNodeSaleShield) XXX_Size() int {
 	return m.Size()
 }
-func (m *MsgNodeSlotAuctionShield) XXX_DiscardUnknown() {
-	xxx_messageInfo_MsgNodeSlotAuctionShield.DiscardUnknown(m)
+func (m *MsgNodeSaleShield) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgNodeSaleShield.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_MsgNodeSlotAuctionShield proto.InternalMessageInfo
+var xxx_messageInfo_MsgNodeSaleShield proto.InternalMessageInfo
 
-func (m *MsgNodeSlotAuctionShield) GetAuctionId() string {
+func (m *MsgNodeSaleShield) GetAuctionId() string {
 	if m != nil {
 		return m.AuctionId
 	}
 	return ""
 }
 
-func (m *MsgNodeSlotAuctionShield) GetBidId() string {
+func (m *MsgNodeSaleShield) GetBidId() string {
 	if m != nil {
 		return m.BidId
 	}
 	return ""
 }
 
-func (m *MsgNodeSlotAuctionShield) GetCommitments() []string {
+func (m *MsgNodeSaleShield) GetCommitments() []string {
 	if m != nil {
 		return m.Commitments
 	}
 	return nil
 }
 
-func (m *MsgNodeSlotAuctionShield) GetSigner() github_com_cosmos_cosmos_sdk_types.AccAddress {
+func (m *MsgNodeSaleShield) GetDepositPubkey() string {
+	if m != nil {
+		return m.DepositPubkey
+	}
+	return ""
+}
+
+func (m *MsgNodeSaleShield) GetSignature() string {
+	if m != nil {
+		return m.Signature
+	}
+	return ""
+}
+
+func (m *MsgNodeSaleShield) GetSigner() github_com_cosmos_cosmos_sdk_types.AccAddress {
 	if m != nil {
 		return m.Signer
 	}
@@ -865,7 +885,7 @@ func (m *MsgBondFromNotes) Reset()         { *m = MsgBondFromNotes{} }
 func (m *MsgBondFromNotes) String() string { return proto.CompactTextString(m) }
 func (*MsgBondFromNotes) ProtoMessage()    {}
 func (*MsgBondFromNotes) Descriptor() ([]byte, []int) {
-	return fileDescriptor_75588396e42c8ea6, []int{13}
+	return fileDescriptor_75588396e42c8ea6, []int{14}
 }
 func (m *MsgBondFromNotes) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -939,7 +959,7 @@ func (m *MsgBondFromNotesResponse) Reset()         { *m = MsgBondFromNotesRespon
 func (m *MsgBondFromNotesResponse) String() string { return proto.CompactTextString(m) }
 func (*MsgBondFromNotesResponse) ProtoMessage()    {}
 func (*MsgBondFromNotesResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_75588396e42c8ea6, []int{14}
+	return fileDescriptor_75588396e42c8ea6, []int{15}
 }
 func (m *MsgBondFromNotesResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -1000,9 +1020,10 @@ func init() {
 	proto.RegisterType((*MsgShielderShieldFeesResponse)(nil), "types.MsgShielderShieldFeesResponse")
 	proto.RegisterType((*MsgNodeSlotAuctionCreate)(nil), "types.MsgNodeSlotAuctionCreate")
 	proto.RegisterType((*MsgNodeSlotAuctionCreateResponse)(nil), "types.MsgNodeSlotAuctionCreateResponse")
-	proto.RegisterType((*MsgNodeSlotAuctionBidPow)(nil), "types.MsgNodeSlotAuctionBidPow")
+	proto.RegisterType((*MsgNodeSlotAuctionBidCreate)(nil), "types.MsgNodeSlotAuctionBidCreate")
+	proto.RegisterType((*MsgNodeSlotAuctionBidCreateResponse)(nil), "types.MsgNodeSlotAuctionBidCreateResponse")
 	proto.RegisterType((*MsgNodeSlotAuctionSelectBid)(nil), "types.MsgNodeSlotAuctionSelectBid")
-	proto.RegisterType((*MsgNodeSlotAuctionShield)(nil), "types.MsgNodeSlotAuctionShield")
+	proto.RegisterType((*MsgNodeSaleShield)(nil), "types.MsgNodeSaleShield")
 	proto.RegisterType((*MsgBondFromNotes)(nil), "types.MsgBondFromNotes")
 	proto.RegisterType((*MsgBondFromNotesResponse)(nil), "types.MsgBondFromNotesResponse")
 }
@@ -1010,71 +1031,71 @@ func init() {
 func init() { proto.RegisterFile("types/msg_shielder.proto", fileDescriptor_75588396e42c8ea6) }
 
 var fileDescriptor_75588396e42c8ea6 = []byte{
-	// 1009 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xc4, 0x56, 0xbf, 0x6f, 0xdb, 0x46,
-	0x14, 0x36, 0x25, 0x59, 0x88, 0xce, 0x92, 0x6d, 0x11, 0x4e, 0xa1, 0xd8, 0xb1, 0xac, 0xd0, 0x6d,
-	0xea, 0x18, 0xb5, 0x05, 0xd4, 0x9d, 0x8c, 0x2e, 0x52, 0x83, 0xa0, 0x42, 0x21, 0xc3, 0xa0, 0x32,
-	0x14, 0x5d, 0x08, 0x92, 0xf7, 0x4c, 0x12, 0x16, 0x79, 0x2c, 0xef, 0x18, 0xd9, 0x6b, 0xd0, 0xa9,
-	0x53, 0xe7, 0xf6, 0x9f, 0xf0, 0x9f, 0x91, 0x31, 0x43, 0x87, 0x4e, 0x45, 0x61, 0x0f, 0x59, 0x8b,
-	0x8e, 0x9d, 0x8a, 0x3b, 0x1e, 0x29, 0x2a, 0xa2, 0x7f, 0xa0, 0x70, 0x90, 0xc5, 0xe2, 0x7d, 0xef,
-	0x91, 0xf7, 0xde, 0xf7, 0xbd, 0x1f, 0x46, 0x2d, 0x76, 0x1e, 0x02, 0xed, 0xfa, 0xd4, 0x31, 0xa8,
-	0xeb, 0xc1, 0x18, 0x43, 0xb4, 0x1f, 0x46, 0x84, 0x11, 0x75, 0x51, 0x58, 0xd6, 0x9b, 0xa6, 0xef,
-	0x05, 0xa4, 0x2b, 0xfe, 0x26, 0x96, 0xf5, 0x35, 0x87, 0x38, 0x44, 0x3c, 0x76, 0xf9, 0x53, 0x82,
-	0x6a, 0xff, 0x28, 0x68, 0x6d, 0x48, 0x9d, 0xe7, 0x10, 0x12, 0xea, 0x31, 0x1d, 0x7e, 0x8c, 0x81,
-	0xb2, 0x63, 0x32, 0x51, 0x37, 0x50, 0x2d, 0x24, 0x13, 0x83, 0x91, 0x53, 0x08, 0x5a, 0x4a, 0x47,
-	0xd9, 0xa9, 0xe9, 0x0f, 0x42, 0x32, 0x79, 0xc9, 0xcf, 0xea, 0x67, 0x68, 0x19, 0x27, 0x6f, 0x18,
-	0x61, 0x6c, 0x9d, 0xc2, 0x79, 0xab, 0x24, 0x3c, 0x1a, 0x12, 0x3d, 0x16, 0xa0, 0xba, 0x83, 0x56,
-	0x49, 0x08, 0x91, 0xc9, 0x48, 0xc4, 0xfd, 0x0c, 0xee, 0x58, 0x16, 0x8e, 0xcb, 0x29, 0x7e, 0x1c,
-	0x5b, 0xdf, 0xc1, 0xb9, 0xda, 0x41, 0xf5, 0x80, 0x60, 0xc8, 0xbc, 0x2a, 0xc2, 0x0b, 0x71, 0x4c,
-	0x7a, 0x3c, 0x45, 0x2b, 0x3c, 0x1e, 0x1c, 0x47, 0x26, 0xf3, 0x48, 0x60, 0xf8, 0xb4, 0xb5, 0xd8,
-	0x51, 0x76, 0x2a, 0x7a, 0x23, 0x24, 0x93, 0xe7, 0x12, 0x1d, 0xd2, 0x43, 0xed, 0xe7, 0x77, 0x17,
-	0xbb, 0x9b, 0xcc, 0x25, 0x51, 0x60, 0x62, 0xd2, 0x2d, 0xca, 0x4d, 0xfb, 0xa9, 0x84, 0x1e, 0x17,
-	0x19, 0x74, 0xa0, 0x21, 0x09, 0x28, 0xa8, 0x9f, 0xa3, 0x95, 0x34, 0x3f, 0x13, 0xe3, 0x08, 0x28,
-	0x95, 0x14, 0xa4, 0x69, 0xf7, 0x12, 0x54, 0xd5, 0x50, 0xe3, 0x95, 0x19, 0x8f, 0x59, 0x16, 0x78,
-	0xc2, 0xc3, 0x92, 0x00, 0x65, 0xe4, 0x5f, 0x20, 0x35, 0x23, 0xcb, 0x64, 0xae, 0xe1, 0x05, 0x18,
-	0xce, 0x04, 0x0f, 0x15, 0x7d, 0x35, 0x25, 0xcc, 0x64, 0xee, 0x80, 0xe3, 0xea, 0x43, 0x54, 0xb5,
-	0x3c, 0x6c, 0x78, 0x58, 0x72, 0xb0, 0x68, 0x79, 0x78, 0x80, 0xd5, 0x5d, 0xd4, 0x84, 0xb3, 0xd0,
-	0x8b, 0x80, 0x1a, 0x26, 0x33, 0x5c, 0xf0, 0x1c, 0x97, 0x09, 0x02, 0xca, 0xfa, 0x8a, 0x34, 0xf4,
-	0xd8, 0xb7, 0x02, 0x16, 0x54, 0xc5, 0x91, 0x03, 0x39, 0xcf, 0xaa, 0xf0, 0x6c, 0x08, 0x38, 0xf5,
-	0xd3, 0x7e, 0x53, 0x50, 0x73, 0x48, 0x9d, 0x91, 0xac, 0xa0, 0xe4, 0x57, 0xed, 0xa0, 0x25, 0x9b,
-	0xf8, 0xbe, 0xc7, 0x7c, 0x08, 0x18, 0xcf, 0xbb, 0xcc, 0x13, 0xca, 0x41, 0x77, 0x55, 0xff, 0x31,
-	0xaa, 0x51, 0xcf, 0x09, 0x4c, 0x16, 0x47, 0x20, 0x65, 0x9f, 0x02, 0x87, 0x5b, 0x5c, 0xa7, 0xf5,
-	0xbc, 0x4e, 0xb3, 0x71, 0x68, 0x07, 0xe8, 0xd1, 0x1c, 0x98, 0x09, 0xf4, 0x09, 0xaa, 0x52, 0x66,
-	0xb2, 0x38, 0xd5, 0x45, 0x9e, 0x34, 0x6b, 0x26, 0x23, 0x1d, 0x30, 0x80, 0xaf, 0xae, 0xa1, 0xc5,
-	0x30, 0x22, 0xe4, 0x44, 0xf8, 0xd6, 0xf5, 0xe4, 0xc0, 0x3f, 0x11, 0xc6, 0xd6, 0xd8, 0xb3, 0x45,
-	0xf4, 0x75, 0x5d, 0x9e, 0x6e, 0x08, 0x2c, 0xf9, 0x9c, 0xf6, 0xfd, 0x4c, 0x60, 0x09, 0x98, 0x05,
-	0xb6, 0x8d, 0x1a, 0x13, 0x8f, 0xb9, 0x38, 0x32, 0x27, 0xe6, 0x98, 0xab, 0x98, 0xc4, 0x57, 0x9f,
-	0x82, 0x03, 0x9c, 0x8b, 0xbe, 0x34, 0x13, 0xfd, 0x45, 0x09, 0x3d, 0x9c, 0xcb, 0xf9, 0x05, 0x00,
-	0x9d, 0xeb, 0x0f, 0x65, 0xae, 0x3f, 0xf6, 0x90, 0x9a, 0xf5, 0xda, 0x94, 0xf6, 0x24, 0xb5, 0x66,
-	0x6a, 0x19, 0xa5, 0x86, 0xf7, 0x55, 0x2e, 0xcf, 0xab, 0xfc, 0x0c, 0x35, 0x4f, 0x00, 0x8c, 0x80,
-	0xb0, 0xec, 0x5a, 0xda, 0xaa, 0x08, 0xbf, 0xe5, 0x13, 0x80, 0x23, 0xc2, 0xe4, 0xd5, 0x54, 0x7d,
-	0x89, 0xaa, 0xfc, 0x4a, 0x88, 0x44, 0x45, 0xd6, 0xfb, 0x5f, 0xff, 0xfb, 0xe7, 0xd6, 0x9e, 0xe3,
-	0x31, 0x37, 0xb6, 0xf6, 0x6d, 0xe2, 0x77, 0x6d, 0x42, 0x7d, 0x42, 0xe5, 0xcf, 0x1e, 0xc5, 0xa7,
-	0x5d, 0x31, 0xa5, 0xf6, 0x7b, 0xb6, 0x2d, 0x1b, 0xe9, 0xd7, 0x77, 0x17, 0xbb, 0x55, 0x0b, 0x6c,
-	0xf7, 0xe0, 0x4b, 0x5d, 0x7e, 0xeb, 0x70, 0x9b, 0x0b, 0xd1, 0xbe, 0xbe, 0x42, 0x38, 0x31, 0xda,
-	0x04, 0x6d, 0x16, 0x1a, 0x32, 0x41, 0x36, 0x11, 0x4a, 0x8b, 0x35, 0x53, 0xa3, 0x26, 0x91, 0x01,
-	0x56, 0xb7, 0xd0, 0x92, 0xe9, 0x93, 0x38, 0x60, 0x06, 0x35, 0x59, 0xa2, 0x47, 0x45, 0x47, 0x09,
-	0x34, 0x32, 0x19, 0xcd, 0x69, 0x55, 0x9e, 0xd1, 0xea, 0x75, 0x09, 0xb5, 0x86, 0xd4, 0x39, 0x22,
-	0x18, 0x46, 0x63, 0xc2, 0x7a, 0xb1, 0xcd, 0x07, 0xd0, 0x37, 0x11, 0x98, 0x0c, 0xee, 0x20, 0xd7,
-	0x13, 0x54, 0x8f, 0x80, 0x42, 0xf4, 0x0a, 0xf2, 0x17, 0x2f, 0x49, 0x4c, 0xdc, 0xbc, 0x8d, 0x1a,
-	0xa2, 0xb3, 0xcf, 0xd3, 0x26, 0x2e, 0x8b, 0x26, 0xae, 0x27, 0xa0, 0xec, 0xf5, 0x29, 0xf5, 0x95,
-	0x7b, 0xa4, 0xfe, 0x29, 0xa7, 0xfe, 0x49, 0x9e, 0xfa, 0xc2, 0x3c, 0xb5, 0x1e, 0xea, 0x5c, 0x67,
-	0xcb, 0x0b, 0x60, 0x26, 0x86, 0x9c, 0x00, 0x12, 0x19, 0x60, 0xed, 0x4d, 0x21, 0x8f, 0x7d, 0x0f,
-	0xf3, 0x25, 0x74, 0xf3, 0xbb, 0xb3, 0x3b, 0xaa, 0xf4, 0xde, 0x8e, 0xba, 0xcf, 0xe5, 0xf3, 0x41,
-	0x0a, 0xbc, 0x68, 0xa5, 0x55, 0x8b, 0x56, 0xda, 0xad, 0x6a, 0x24, 0x6c, 0x69, 0xbf, 0x2b, 0x68,
-	0x63, 0xde, 0x38, 0x82, 0x31, 0xd8, 0xac, 0xef, 0xe1, 0xdb, 0xd8, 0x9c, 0x6e, 0x9e, 0x52, 0x7e,
-	0xf3, 0x4c, 0x73, 0x2f, 0xdf, 0x63, 0x85, 0x3d, 0xe3, 0x39, 0x7d, 0x7a, 0x43, 0x4e, 0x59, 0xd8,
-	0xda, 0xdf, 0x4a, 0x51, 0x85, 0xc8, 0x6d, 0xf5, 0xff, 0x72, 0xba, 0x7d, 0xfa, 0x7d, 0xa4, 0xbe,
-	0x92, 0xbb, 0xef, 0x75, 0x09, 0xad, 0x0e, 0xa9, 0xd3, 0x27, 0x01, 0x7e, 0x11, 0x11, 0x9f, 0xcf,
-	0xda, 0xbb, 0xec, 0x80, 0xa2, 0x92, 0x2f, 0x15, 0x96, 0x7c, 0xb6, 0x12, 0xcb, 0xc5, 0x2b, 0xb1,
-	0x92, 0x5f, 0x89, 0x1f, 0x68, 0xbe, 0xb7, 0x39, 0x19, 0x8f, 0xf2, 0x64, 0xcc, 0xe4, 0xab, 0xd9,
-	0x42, 0xf6, 0x19, 0x2c, 0x1b, 0x2a, 0x1b, 0xa8, 0x66, 0x91, 0x00, 0x27, 0xb3, 0x53, 0x11, 0x4d,
-	0xf3, 0x80, 0x03, 0x62, 0x70, 0xaa, 0xa8, 0x42, 0xc7, 0x84, 0xc9, 0x99, 0x2a, 0x9e, 0xaf, 0x1b,
-	0xe3, 0xfd, 0xa3, 0x37, 0x97, 0x6d, 0xe5, 0xed, 0x65, 0x5b, 0xf9, 0xeb, 0xb2, 0xad, 0xfc, 0x72,
-	0xd5, 0x5e, 0x78, 0x7b, 0xd5, 0x5e, 0xf8, 0xe3, 0xaa, 0xbd, 0xf0, 0xc3, 0x57, 0xb9, 0x04, 0xd3,
-	0x20, 0x6d, 0x93, 0xba, 0x5d, 0x87, 0xec, 0x65, 0x41, 0x9f, 0x65, 0xa6, 0x24, 0x65, 0xab, 0x2a,
-	0xfe, 0xad, 0x3e, 0xf8, 0x2f, 0x00, 0x00, 0xff, 0xff, 0xea, 0x37, 0xbf, 0x52, 0xa2, 0x0b, 0x00,
-	0x00,
+	// 1013 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x56, 0xbf, 0x6f, 0xdb, 0x46,
+	0x14, 0x36, 0x25, 0x59, 0x88, 0xce, 0x92, 0x7f, 0x10, 0x4e, 0xa1, 0xd8, 0xb1, 0xac, 0xd0, 0x6d,
+	0xea, 0x18, 0xb5, 0x05, 0xd4, 0x9d, 0x8c, 0x2c, 0x56, 0x83, 0xa0, 0x42, 0x21, 0xc3, 0xa0, 0x32,
+	0x14, 0x5d, 0x88, 0x23, 0xef, 0x99, 0x24, 0x2c, 0xf2, 0x58, 0xde, 0x31, 0xb2, 0xd7, 0x6e, 0xed,
+	0xd4, 0xb9, 0xdd, 0xdb, 0xd5, 0x7f, 0x46, 0xc7, 0x0c, 0x1d, 0x3a, 0x15, 0x85, 0x3d, 0x64, 0xea,
+	0x3f, 0xd0, 0xa9, 0xb8, 0xe3, 0x91, 0xa2, 0x2c, 0xf9, 0x07, 0x8a, 0x24, 0x8b, 0x45, 0x7e, 0xef,
+	0xf8, 0xee, 0x7b, 0xdf, 0x77, 0xf7, 0x9e, 0x51, 0x93, 0x9f, 0x47, 0xc0, 0x3a, 0x01, 0x73, 0x2d,
+	0xe6, 0xf9, 0x30, 0x24, 0x10, 0xef, 0x45, 0x31, 0xe5, 0x54, 0x9f, 0x97, 0x91, 0xb5, 0x15, 0x1c,
+	0xf8, 0x21, 0xed, 0xc8, 0xbf, 0x69, 0x64, 0x6d, 0xd5, 0xa5, 0x2e, 0x95, 0x8f, 0x1d, 0xf1, 0x94,
+	0xa2, 0xc6, 0xaf, 0x1a, 0x5a, 0xed, 0x33, 0xf7, 0x05, 0x44, 0x94, 0xf9, 0xdc, 0x84, 0xef, 0x12,
+	0x60, 0xfc, 0x98, 0x8e, 0xf4, 0x75, 0x54, 0x8b, 0xe8, 0xc8, 0xe2, 0xf4, 0x14, 0xc2, 0xa6, 0xd6,
+	0xd6, 0xb6, 0x6b, 0xe6, 0x83, 0x88, 0x8e, 0x5e, 0x89, 0x77, 0xfd, 0x13, 0xb4, 0x48, 0xd2, 0x2f,
+	0xac, 0x28, 0xb1, 0x4f, 0xe1, 0xbc, 0x59, 0x92, 0x2b, 0x1a, 0x0a, 0x3d, 0x96, 0xa0, 0xfe, 0x14,
+	0x2d, 0x89, 0x1c, 0x24, 0x89, 0x31, 0xf7, 0x69, 0x68, 0x05, 0xac, 0x59, 0x6e, 0x6b, 0xdb, 0x15,
+	0xb3, 0x11, 0xd1, 0xd1, 0x0b, 0x85, 0xf6, 0xd9, 0x81, 0xf1, 0xe3, 0xdb, 0x8b, 0x9d, 0x0d, 0xee,
+	0xd1, 0x38, 0xc4, 0x84, 0x76, 0x66, 0xf1, 0x31, 0xfe, 0xd1, 0xd0, 0xe3, 0x59, 0x01, 0x13, 0x58,
+	0x44, 0x43, 0x06, 0xfa, 0xa7, 0x68, 0x29, 0xe3, 0x84, 0x09, 0x89, 0x81, 0x31, 0x45, 0x3b, 0xa3,
+	0x7a, 0x98, 0xa2, 0xba, 0x81, 0x1a, 0xaf, 0x71, 0x32, 0x94, 0xd4, 0xad, 0x31, 0xf7, 0x05, 0x09,
+	0x1e, 0x27, 0xf6, 0xd7, 0x70, 0xae, 0x7f, 0x86, 0xf4, 0xbc, 0x40, 0xcc, 0x3d, 0xcb, 0x0f, 0x09,
+	0x9c, 0x29, 0xf2, 0xcb, 0x59, 0x91, 0x98, 0x7b, 0x3d, 0x81, 0xeb, 0x3b, 0x68, 0x05, 0xce, 0x22,
+	0x3f, 0x06, 0x66, 0x61, 0x6e, 0x79, 0xe0, 0xbb, 0x1e, 0x6f, 0x56, 0xda, 0xda, 0x76, 0xd9, 0x5c,
+	0x52, 0x81, 0x43, 0xfe, 0x95, 0x84, 0xa5, 0x26, 0x49, 0xec, 0x42, 0x61, 0xe5, 0xbc, 0x5c, 0xd9,
+	0x90, 0x70, 0xb6, 0xce, 0xf8, 0x45, 0x43, 0x2b, 0x7d, 0xe6, 0x0e, 0x94, 0xbd, 0xe9, 0xaf, 0xde,
+	0x46, 0x0b, 0x0e, 0x0d, 0x02, 0x9f, 0x07, 0x10, 0x72, 0x51, 0x60, 0x59, 0x30, 0x2f, 0x40, 0xf7,
+	0xb5, 0xe6, 0x31, 0xaa, 0x31, 0xdf, 0x0d, 0x31, 0x4f, 0x62, 0x90, 0x75, 0xd5, 0xcc, 0x31, 0x70,
+	0xb0, 0x29, 0x0c, 0x59, 0x2b, 0x1a, 0x32, 0xc9, 0xc3, 0xd8, 0x47, 0x8f, 0xa6, 0xc0, 0xdc, 0x89,
+	0x8f, 0x50, 0x95, 0x71, 0xcc, 0x93, 0xcc, 0x00, 0xf5, 0x66, 0xd8, 0x13, 0x15, 0x99, 0x40, 0x00,
+	0x02, 0x7d, 0x15, 0xcd, 0x47, 0x31, 0xa5, 0x27, 0x72, 0x6d, 0xdd, 0x4c, 0x5f, 0x44, 0x8a, 0x28,
+	0xb1, 0x87, 0xbe, 0x23, 0xd9, 0xd7, 0x4d, 0xf5, 0x76, 0x0b, 0xb1, 0x34, 0x9d, 0xf1, 0xcd, 0x04,
+	0xb1, 0x14, 0xcc, 0x89, 0x6d, 0xa1, 0xc6, 0xc8, 0xe7, 0x1e, 0x89, 0xf1, 0x08, 0x0f, 0x2d, 0x9f,
+	0x28, 0x7e, 0xf5, 0x31, 0xd8, 0x23, 0x05, 0xf6, 0xa5, 0x09, 0xf6, 0x17, 0x25, 0xf4, 0x70, 0xaa,
+	0xe6, 0x97, 0x00, 0x4c, 0x6f, 0xa3, 0x7a, 0x48, 0x09, 0xe4, 0xe7, 0x29, 0xcd, 0x8a, 0x04, 0xa6,
+	0x8e, 0xd3, 0x2e, 0xd2, 0x69, 0x04, 0x31, 0xe6, 0x34, 0xb6, 0xc6, 0xb2, 0xa7, 0xa5, 0xad, 0x64,
+	0x91, 0x41, 0x16, 0xb8, 0xee, 0x72, 0x79, 0xda, 0xe5, 0x67, 0x68, 0xe5, 0x04, 0xc0, 0x0a, 0x29,
+	0xcf, 0xb7, 0x65, 0xcd, 0x8a, 0x5c, 0xb7, 0x78, 0x02, 0x70, 0x44, 0xb9, 0xda, 0x9a, 0xe9, 0xaf,
+	0x50, 0x55, 0x6c, 0x09, 0xb1, 0x3c, 0x67, 0xf5, 0xee, 0xf3, 0x7f, 0xff, 0xda, 0xdc, 0x75, 0x7d,
+	0xee, 0x25, 0xf6, 0x9e, 0x43, 0x83, 0x8e, 0x43, 0x59, 0x40, 0x99, 0xfa, 0xd9, 0x65, 0xe4, 0xb4,
+	0x23, 0x5b, 0xc8, 0xde, 0xa1, 0xe3, 0xa8, 0x1b, 0xf3, 0xf3, 0xdb, 0x8b, 0x9d, 0xaa, 0x0d, 0x8e,
+	0xb7, 0xff, 0xb9, 0xa9, 0x72, 0x1d, 0x6c, 0x09, 0x23, 0x5a, 0x37, 0x9f, 0x10, 0x21, 0x8c, 0x31,
+	0x42, 0x1b, 0x33, 0x03, 0xb9, 0x21, 0x1b, 0x08, 0x65, 0x87, 0x35, 0x77, 0xa3, 0xa6, 0x90, 0x1e,
+	0xd1, 0x37, 0xd1, 0x02, 0x0e, 0x68, 0x12, 0x72, 0x8b, 0x61, 0x9e, 0xfa, 0x51, 0x31, 0x51, 0x0a,
+	0x0d, 0x30, 0x67, 0x05, 0xaf, 0xca, 0x13, 0x5e, 0x7d, 0x5f, 0x42, 0xcd, 0x3e, 0x73, 0x8f, 0x28,
+	0x81, 0xc1, 0x90, 0xf2, 0xc3, 0xc4, 0x11, 0x9d, 0xe6, 0xcb, 0x18, 0x30, 0x87, 0x7b, 0xd8, 0xf5,
+	0x04, 0xd5, 0x63, 0x60, 0x10, 0xbf, 0x86, 0xe2, 0xc6, 0x0b, 0x0a, 0x93, 0x3b, 0x6f, 0xa1, 0x86,
+	0xbc, 0xd9, 0xe7, 0xd9, 0x25, 0x2e, 0xcb, 0x4b, 0x5c, 0x4f, 0x41, 0x75, 0xd7, 0xc7, 0xd2, 0x57,
+	0xde, 0xa1, 0xf4, 0x4f, 0x85, 0xf4, 0x4f, 0x8a, 0xd2, 0xcf, 0xac, 0xd3, 0x38, 0x44, 0xed, 0x9b,
+	0x62, 0x45, 0x03, 0x70, 0x1a, 0x28, 0x18, 0xa0, 0x90, 0x1e, 0x31, 0x7e, 0x28, 0xa1, 0xf5, 0xe9,
+	0x1c, 0x5d, 0x9f, 0x28, 0x29, 0x6f, 0xff, 0x5c, 0xdf, 0x46, 0xcb, 0xf9, 0xb1, 0x9f, 0x6c, 0xb6,
+	0x8b, 0x19, 0xae, 0x14, 0xbf, 0xee, 0x49, 0x79, 0xca, 0x93, 0xf7, 0xa3, 0xe5, 0x33, 0xa1, 0xe5,
+	0xc7, 0xb7, 0x68, 0x99, 0xd7, 0x6a, 0x3c, 0x47, 0x5b, 0xb7, 0x84, 0x73, 0x45, 0x1f, 0xa2, 0xaa,
+	0xed, 0x93, 0xb1, 0x1c, 0xf3, 0xb6, 0x4f, 0x7a, 0xc4, 0xf8, 0x43, 0x9b, 0xa5, 0xe4, 0x00, 0x86,
+	0xe0, 0xf0, 0xae, 0x4f, 0xee, 0x52, 0x72, 0x9c, 0xb5, 0x54, 0xc8, 0x5a, 0x10, 0xa5, 0xfc, 0x21,
+	0x45, 0xc9, 0x69, 0x1b, 0xbf, 0x95, 0x64, 0x4f, 0x97, 0x71, 0x3c, 0x04, 0x35, 0xa5, 0xfe, 0x5f,
+	0x31, 0x77, 0x77, 0xbd, 0xe9, 0xd9, 0x56, 0xb9, 0x73, 0xb6, 0xcd, 0x5f, 0x9b, 0x6d, 0x05, 0xcd,
+	0xaa, 0xef, 0x50, 0xb3, 0xe9, 0xc1, 0x34, 0xa9, 0x89, 0x68, 0x49, 0xcb, 0x7d, 0xe6, 0x76, 0x69,
+	0x48, 0x5e, 0xc6, 0x34, 0x10, 0x1d, 0xfa, 0x3e, 0x93, 0xe3, 0xfe, 0x57, 0x28, 0x1f, 0xa4, 0xe5,
+	0xd9, 0x83, 0xb4, 0x52, 0x1c, 0xa4, 0xef, 0x69, 0x2a, 0xb4, 0x84, 0x0a, 0x8f, 0x8a, 0x2a, 0x4c,
+	0xd4, 0x6b, 0x38, 0xb2, 0x2d, 0x4f, 0x60, 0xf9, 0xc5, 0x59, 0x47, 0x35, 0x9b, 0x86, 0x24, 0xed,
+	0xb8, 0x9a, 0xec, 0xb8, 0x0f, 0x04, 0x20, 0xdb, 0xad, 0x8e, 0x2a, 0x6c, 0x48, 0xb9, 0xea, 0xc4,
+	0xf2, 0xf9, 0xa6, 0xe6, 0xdf, 0x3d, 0xfa, 0xfd, 0xb2, 0xa5, 0xbd, 0xb9, 0x6c, 0x69, 0x7f, 0x5f,
+	0xb6, 0xb4, 0x9f, 0xae, 0x5a, 0x73, 0x6f, 0xae, 0x5a, 0x73, 0x7f, 0x5e, 0xb5, 0xe6, 0xbe, 0xfd,
+	0xa2, 0x50, 0x60, 0x46, 0xd2, 0xc1, 0xcc, 0xeb, 0xb8, 0x74, 0x37, 0x27, 0x7d, 0x96, 0x87, 0xd2,
+	0x92, 0xed, 0xaa, 0xfc, 0x4f, 0x79, 0xff, 0xbf, 0x00, 0x00, 0x00, 0xff, 0xff, 0x0b, 0x99, 0xad,
+	0x32, 0x75, 0x0b, 0x00, 0x00,
 }
 
 func (m *MsgDepositRequestPow) Marshal() (dAtA []byte, err error) {
@@ -1100,21 +1121,7 @@ func (m *MsgDepositRequestPow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	if m.PowDurationMs != 0 {
 		i = encodeVarintMsgShielder(dAtA, i, uint64(m.PowDurationMs))
 		i--
-		dAtA[i] = 0x28
-	}
-	if len(m.NodePubKey) > 0 {
-		i -= len(m.NodePubKey)
-		copy(dAtA[i:], m.NodePubKey)
-		i = encodeVarintMsgShielder(dAtA, i, uint64(len(m.NodePubKey)))
-		i--
-		dAtA[i] = 0x22
-	}
-	if len(m.OperatorPubKey) > 0 {
-		i -= len(m.OperatorPubKey)
-		copy(dAtA[i:], m.OperatorPubKey)
-		i = encodeVarintMsgShielder(dAtA, i, uint64(len(m.OperatorPubKey)))
-		i--
-		dAtA[i] = 0x1a
+		dAtA[i] = 0x18
 	}
 	if len(m.DepositPubkey) > 0 {
 		i -= len(m.DepositPubkey)
@@ -1156,19 +1163,12 @@ func (m *MsgDepositRequestPowResponse) MarshalToSizedBuffer(dAtA []byte) (int, e
 	if m.PurgeAtHeight != 0 {
 		i = encodeVarintMsgShielder(dAtA, i, uint64(m.PurgeAtHeight))
 		i--
-		dAtA[i] = 0x30
+		dAtA[i] = 0x28
 	}
 	if m.ExpiresAtHeight != 0 {
 		i = encodeVarintMsgShielder(dAtA, i, uint64(m.ExpiresAtHeight))
 		i--
-		dAtA[i] = 0x28
-	}
-	if len(m.BidId) > 0 {
-		i -= len(m.BidId)
-		copy(dAtA[i:], m.BidId)
-		i = encodeVarintMsgShielder(dAtA, i, uint64(len(m.BidId)))
-		i--
-		dAtA[i] = 0x22
+		dAtA[i] = 0x20
 	}
 	if m.DepositPathIndex != 0 {
 		i = encodeVarintMsgShielder(dAtA, i, uint64(m.DepositPathIndex))
@@ -1523,7 +1523,7 @@ func (m *MsgNodeSlotAuctionCreateResponse) MarshalToSizedBuffer(dAtA []byte) (in
 	return len(dAtA) - i, nil
 }
 
-func (m *MsgNodeSlotAuctionBidPow) Marshal() (dAtA []byte, err error) {
+func (m *MsgNodeSlotAuctionBidCreate) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1533,46 +1533,34 @@ func (m *MsgNodeSlotAuctionBidPow) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *MsgNodeSlotAuctionBidPow) MarshalTo(dAtA []byte) (int, error) {
+func (m *MsgNodeSlotAuctionBidCreate) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *MsgNodeSlotAuctionBidPow) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *MsgNodeSlotAuctionBidCreate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.PowDurationMs != 0 {
-		i = encodeVarintMsgShielder(dAtA, i, uint64(m.PowDurationMs))
-		i--
-		dAtA[i] = 0x30
-	}
 	if len(m.Signer) > 0 {
 		i -= len(m.Signer)
 		copy(dAtA[i:], m.Signer)
 		i = encodeVarintMsgShielder(dAtA, i, uint64(len(m.Signer)))
 		i--
-		dAtA[i] = 0x2a
+		dAtA[i] = 0x22
 	}
 	if len(m.NodePubKey) > 0 {
 		i -= len(m.NodePubKey)
 		copy(dAtA[i:], m.NodePubKey)
 		i = encodeVarintMsgShielder(dAtA, i, uint64(len(m.NodePubKey)))
 		i--
-		dAtA[i] = 0x22
+		dAtA[i] = 0x1a
 	}
 	if len(m.OperatorPubKey) > 0 {
 		i -= len(m.OperatorPubKey)
 		copy(dAtA[i:], m.OperatorPubKey)
 		i = encodeVarintMsgShielder(dAtA, i, uint64(len(m.OperatorPubKey)))
-		i--
-		dAtA[i] = 0x1a
-	}
-	if len(m.PowToken) > 0 {
-		i -= len(m.PowToken)
-		copy(dAtA[i:], m.PowToken)
-		i = encodeVarintMsgShielder(dAtA, i, uint64(len(m.PowToken)))
 		i--
 		dAtA[i] = 0x12
 	}
@@ -1580,6 +1568,36 @@ func (m *MsgNodeSlotAuctionBidPow) MarshalToSizedBuffer(dAtA []byte) (int, error
 		i -= len(m.AuctionId)
 		copy(dAtA[i:], m.AuctionId)
 		i = encodeVarintMsgShielder(dAtA, i, uint64(len(m.AuctionId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgNodeSlotAuctionBidCreateResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgNodeSlotAuctionBidCreateResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgNodeSlotAuctionBidCreateResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.BidId) > 0 {
+		i -= len(m.BidId)
+		copy(dAtA[i:], m.BidId)
+		i = encodeVarintMsgShielder(dAtA, i, uint64(len(m.BidId)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -1630,7 +1648,7 @@ func (m *MsgNodeSlotAuctionSelectBid) MarshalToSizedBuffer(dAtA []byte) (int, er
 	return len(dAtA) - i, nil
 }
 
-func (m *MsgNodeSlotAuctionShield) Marshal() (dAtA []byte, err error) {
+func (m *MsgNodeSaleShield) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1640,12 +1658,12 @@ func (m *MsgNodeSlotAuctionShield) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *MsgNodeSlotAuctionShield) MarshalTo(dAtA []byte) (int, error) {
+func (m *MsgNodeSaleShield) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *MsgNodeSlotAuctionShield) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *MsgNodeSaleShield) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1654,6 +1672,20 @@ func (m *MsgNodeSlotAuctionShield) MarshalToSizedBuffer(dAtA []byte) (int, error
 		i -= len(m.Signer)
 		copy(dAtA[i:], m.Signer)
 		i = encodeVarintMsgShielder(dAtA, i, uint64(len(m.Signer)))
+		i--
+		dAtA[i] = 0x32
+	}
+	if len(m.Signature) > 0 {
+		i -= len(m.Signature)
+		copy(dAtA[i:], m.Signature)
+		i = encodeVarintMsgShielder(dAtA, i, uint64(len(m.Signature)))
+		i--
+		dAtA[i] = 0x2a
+	}
+	if len(m.DepositPubkey) > 0 {
+		i -= len(m.DepositPubkey)
+		copy(dAtA[i:], m.DepositPubkey)
+		i = encodeVarintMsgShielder(dAtA, i, uint64(len(m.DepositPubkey)))
 		i--
 		dAtA[i] = 0x22
 	}
@@ -1806,14 +1838,6 @@ func (m *MsgDepositRequestPow) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovMsgShielder(uint64(l))
 	}
-	l = len(m.OperatorPubKey)
-	if l > 0 {
-		n += 1 + l + sovMsgShielder(uint64(l))
-	}
-	l = len(m.NodePubKey)
-	if l > 0 {
-		n += 1 + l + sovMsgShielder(uint64(l))
-	}
 	if m.PowDurationMs != 0 {
 		n += 1 + sovMsgShielder(uint64(m.PowDurationMs))
 	}
@@ -1836,10 +1860,6 @@ func (m *MsgDepositRequestPowResponse) Size() (n int) {
 	}
 	if m.DepositPathIndex != 0 {
 		n += 1 + sovMsgShielder(uint64(m.DepositPathIndex))
-	}
-	l = len(m.BidId)
-	if l > 0 {
-		n += 1 + l + sovMsgShielder(uint64(l))
 	}
 	if m.ExpiresAtHeight != 0 {
 		n += 1 + sovMsgShielder(uint64(m.ExpiresAtHeight))
@@ -2009,17 +2029,13 @@ func (m *MsgNodeSlotAuctionCreateResponse) Size() (n int) {
 	return n
 }
 
-func (m *MsgNodeSlotAuctionBidPow) Size() (n int) {
+func (m *MsgNodeSlotAuctionBidCreate) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
 	l = len(m.AuctionId)
-	if l > 0 {
-		n += 1 + l + sovMsgShielder(uint64(l))
-	}
-	l = len(m.PowToken)
 	if l > 0 {
 		n += 1 + l + sovMsgShielder(uint64(l))
 	}
@@ -2035,8 +2051,18 @@ func (m *MsgNodeSlotAuctionBidPow) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovMsgShielder(uint64(l))
 	}
-	if m.PowDurationMs != 0 {
-		n += 1 + sovMsgShielder(uint64(m.PowDurationMs))
+	return n
+}
+
+func (m *MsgNodeSlotAuctionBidCreateResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.BidId)
+	if l > 0 {
+		n += 1 + l + sovMsgShielder(uint64(l))
 	}
 	return n
 }
@@ -2062,7 +2088,7 @@ func (m *MsgNodeSlotAuctionSelectBid) Size() (n int) {
 	return n
 }
 
-func (m *MsgNodeSlotAuctionShield) Size() (n int) {
+func (m *MsgNodeSaleShield) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2081,6 +2107,14 @@ func (m *MsgNodeSlotAuctionShield) Size() (n int) {
 			l = len(s)
 			n += 1 + l + sovMsgShielder(uint64(l))
 		}
+	}
+	l = len(m.DepositPubkey)
+	if l > 0 {
+		n += 1 + l + sovMsgShielder(uint64(l))
+	}
+	l = len(m.Signature)
+	if l > 0 {
+		n += 1 + l + sovMsgShielder(uint64(l))
 	}
 	l = len(m.Signer)
 	if l > 0 {
@@ -2237,70 +2271,6 @@ func (m *MsgDepositRequestPow) Unmarshal(dAtA []byte) error {
 			m.DepositPubkey = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field OperatorPubKey", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowMsgShielder
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthMsgShielder
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthMsgShielder
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.OperatorPubKey = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NodePubKey", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowMsgShielder
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthMsgShielder
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthMsgShielder
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.NodePubKey = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PowDurationMs", wireType)
 			}
@@ -2453,38 +2423,6 @@ func (m *MsgDepositRequestPowResponse) Unmarshal(dAtA []byte) error {
 				}
 			}
 		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BidId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowMsgShielder
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthMsgShielder
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthMsgShielder
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BidId = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ExpiresAtHeight", wireType)
 			}
@@ -2503,7 +2441,7 @@ func (m *MsgDepositRequestPowResponse) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 6:
+		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PurgeAtHeight", wireType)
 			}
@@ -3586,7 +3524,7 @@ func (m *MsgNodeSlotAuctionCreateResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *MsgNodeSlotAuctionBidPow) Unmarshal(dAtA []byte) error {
+func (m *MsgNodeSlotAuctionBidCreate) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3609,10 +3547,10 @@ func (m *MsgNodeSlotAuctionBidPow) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MsgNodeSlotAuctionBidPow: wiretype end group for non-group")
+			return fmt.Errorf("proto: MsgNodeSlotAuctionBidCreate: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgNodeSlotAuctionBidPow: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MsgNodeSlotAuctionBidCreate: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -3649,38 +3587,6 @@ func (m *MsgNodeSlotAuctionBidPow) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PowToken", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowMsgShielder
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthMsgShielder
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthMsgShielder
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.PowToken = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field OperatorPubKey", wireType)
 			}
 			var stringLen uint64
@@ -3711,7 +3617,7 @@ func (m *MsgNodeSlotAuctionBidPow) Unmarshal(dAtA []byte) error {
 			}
 			m.OperatorPubKey = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 4:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NodePubKey", wireType)
 			}
@@ -3743,7 +3649,7 @@ func (m *MsgNodeSlotAuctionBidPow) Unmarshal(dAtA []byte) error {
 			}
 			m.NodePubKey = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 5:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Signer", wireType)
 			}
@@ -3777,11 +3683,61 @@ func (m *MsgNodeSlotAuctionBidPow) Unmarshal(dAtA []byte) error {
 				m.Signer = []byte{}
 			}
 			iNdEx = postIndex
-		case 6:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PowDurationMs", wireType)
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMsgShielder(dAtA[iNdEx:])
+			if err != nil {
+				return err
 			}
-			m.PowDurationMs = 0
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthMsgShielder
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgNodeSlotAuctionBidCreateResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMsgShielder
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgNodeSlotAuctionBidCreateResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgNodeSlotAuctionBidCreateResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BidId", wireType)
+			}
+			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowMsgShielder
@@ -3791,11 +3747,24 @@ func (m *MsgNodeSlotAuctionBidPow) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.PowDurationMs |= uint64(b&0x7F) << shift
+				stringLen |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMsgShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMsgShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BidId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipMsgShielder(dAtA[iNdEx:])
@@ -3965,7 +3934,7 @@ func (m *MsgNodeSlotAuctionSelectBid) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *MsgNodeSlotAuctionShield) Unmarshal(dAtA []byte) error {
+func (m *MsgNodeSaleShield) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3988,10 +3957,10 @@ func (m *MsgNodeSlotAuctionShield) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: MsgNodeSlotAuctionShield: wiretype end group for non-group")
+			return fmt.Errorf("proto: MsgNodeSaleShield: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: MsgNodeSlotAuctionShield: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MsgNodeSaleShield: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -4091,6 +4060,70 @@ func (m *MsgNodeSlotAuctionShield) Unmarshal(dAtA []byte) error {
 			m.Commitments = append(m.Commitments, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DepositPubkey", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMsgShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMsgShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMsgShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DepositPubkey = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Signature", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMsgShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMsgShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMsgShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Signature = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Signer", wireType)
 			}

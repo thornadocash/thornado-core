@@ -17,16 +17,16 @@ import (
 // KeygenMetric struct for KeygenMetric
 type KeygenMetric struct {
 	PubKey       *string            `json:"pub_key,omitempty"`
-	NodeTssTimes []NodeKeygenMetric `json:"node_tss_times"`
+	NodeFrostTimes []NodeKeygenMetric `json:"node_frost_times"`
 }
 
 // NewKeygenMetric instantiates a new KeygenMetric object
 // This constructor will assign default values to properties that have it defined,
 // and makes sure properties required by API are set, but the set of arguments
 // will change when the set of required properties is changed
-func NewKeygenMetric(nodeTssTimes []NodeKeygenMetric) *KeygenMetric {
+func NewKeygenMetric(nodeFrostTimes []NodeKeygenMetric) *KeygenMetric {
 	this := KeygenMetric{}
-	this.NodeTssTimes = nodeTssTimes
+	this.NodeFrostTimes = nodeFrostTimes
 	return &this
 }
 
@@ -70,28 +70,28 @@ func (o *KeygenMetric) SetPubKey(v string) {
 	o.PubKey = &v
 }
 
-// GetNodeTssTimes returns the NodeTssTimes field value
-func (o *KeygenMetric) GetNodeTssTimes() []NodeKeygenMetric {
+// GetNodeFrostTimes returns the NodeFrostTimes field value
+func (o *KeygenMetric) GetNodeFrostTimes() []NodeKeygenMetric {
 	if o == nil {
 		var ret []NodeKeygenMetric
 		return ret
 	}
 
-	return o.NodeTssTimes
+	return o.NodeFrostTimes
 }
 
-// GetNodeTssTimesOk returns a tuple with the NodeTssTimes field value
+// GetNodeFrostTimesOk returns a tuple with the NodeFrostTimes field value
 // and a boolean to check if the value has been set.
-func (o *KeygenMetric) GetNodeTssTimesOk() ([]NodeKeygenMetric, bool) {
+func (o *KeygenMetric) GetNodeFrostTimesOk() ([]NodeKeygenMetric, bool) {
 	if o == nil {
 		return nil, false
 	}
-	return o.NodeTssTimes, true
+	return o.NodeFrostTimes, true
 }
 
-// SetNodeTssTimes sets field value
-func (o *KeygenMetric) SetNodeTssTimes(v []NodeKeygenMetric) {
-	o.NodeTssTimes = v
+// SetNodeFrostTimes sets field value
+func (o *KeygenMetric) SetNodeFrostTimes(v []NodeKeygenMetric) {
+	o.NodeFrostTimes = v
 }
 
 func (o KeygenMetric) MarshalJSON_deprecated() ([]byte, error) {
@@ -100,7 +100,7 @@ func (o KeygenMetric) MarshalJSON_deprecated() ([]byte, error) {
 		toSerialize["pub_key"] = o.PubKey
 	}
 	if true {
-		toSerialize["node_tss_times"] = o.NodeTssTimes
+		toSerialize["node_frost_times"] = o.NodeFrostTimes
 	}
 	return json.Marshal(toSerialize)
 }

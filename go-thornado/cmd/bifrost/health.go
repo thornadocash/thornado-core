@@ -437,7 +437,7 @@ func (s *HealthServer) Stop() error {
 	defer cancel()
 	err := s.s.Shutdown(c)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to shutdown the Tss server gracefully")
+		log.Error().Err(err).Msg("Failed to shutdown the Frost server gracefully")
 	}
 	return err
 }

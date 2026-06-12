@@ -153,9 +153,9 @@ func (ad AnteDecorator) anteHandleMessage(ctx sdk.Context, version semver.Versio
 	case *types.MsgSolvencyQuorum:
 		return SolvencyQuorumAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgKeygenVault:
-		return TssAnteHandler(ctx, version, ad.keeper, *m)
-	case *types.MsgTssKeysignFail:
-		return TssKeysignFailAnteHandler(ctx, version, ad.keeper, *m)
+		return FrostAnteHandler(ctx, version, ad.keeper, *m)
+	case *types.MsgFrostKeysignFail:
+		return FrostKeysignFailAnteHandler(ctx, version, ad.keeper, *m)
 
 	// cli handlers (non-consensus)
 	case *types.MsgSetIPAddress:
@@ -190,12 +190,12 @@ func (ad AnteDecorator) anteHandleMessage(ctx sdk.Context, version semver.Versio
 		return ShielderShieldFeesAnteHandler(ctx, ad.keeper, *m)
 	case *types.MsgNodeSlotAuctionCreate:
 		return NodeSlotAuctionCreateAnteHandler(ctx, ad.keeper, *m)
-	case *types.MsgNodeSlotAuctionBidPow:
-		return NodeSlotAuctionBidPowAnteHandler(ctx, ad.keeper, *m)
+	case *types.MsgNodeSlotAuctionBidCreate:
+		return NodeSlotAuctionBidCreateAnteHandler(ctx, ad.keeper, *m)
 	case *types.MsgNodeSlotAuctionSelectBid:
 		return NodeSlotAuctionSelectBidAnteHandler(ctx, ad.keeper, *m)
-	case *types.MsgNodeSlotAuctionShield:
-		return NodeSlotAuctionShieldAnteHandler(ctx, ad.keeper, *m)
+	case *types.MsgNodeSaleShield:
+		return NodeSaleShieldAnteHandler(ctx, ad.keeper, *m)
 	case *types.MsgBondFromNotes:
 		return BondFromNotesAnteHandler(ctx, ad.keeper, *m)
 	default:
@@ -351,10 +351,10 @@ func DepositRequestPowAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types
 	if err != nil {
 		return ctx, err
 	}
-	return depositPowAnte(ctx, k, owner, msg.PowToken, msg.OperatorPubKey, msg.NodePubKey, msg.PowDurationMs)
+	return depositPowAnte(ctx, k, owner, msg.PowToken, msg.PowDurationMs)
 }
 
-func depositPowAnte(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, powToken, operatorPubKey, nodePubKey string, powDurationMs uint64) (cosmos.Context, error) {
+func depositPowAnte(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress, powToken string, powDurationMs uint64) (cosmos.Context, error) {
 	if err := validateDepositPowToken(ctx, k, owner, powToken); err != nil {
 		return ctx, err
 	}
@@ -365,7 +365,7 @@ func depositPowAnte(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress
 		}
 	}
 	if ctx.IsCheckTx() {
-		if _, err := RegisterDepositPowToken(ctx, k, owner, powToken, operatorPubKey, nodePubKey, powDurationMs); err != nil {
+		if _, err := RegisterDepositPowToken(ctx, k, owner, powToken, powDurationMs); err != nil {
 			return ctx, err
 		}
 	}
@@ -403,7 +403,7 @@ func shielderShieldAnte(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 		return ctx, cosmos.ErrUnknownRequest("deposit owner mismatch")
 	}
 	if deposit.AuctionID != "" {
-		return ctx, cosmos.ErrUnknownRequest("node sale bid deposits shield through auction-shield")
+		return ctx, cosmos.ErrUnknownRequest("node sale bids are funded by Shielder redeem bid_deposit")
 	}
 	switch deposit.Status {
 	case types.DepositStatusDepositMatched:
@@ -505,9 +505,6 @@ func BondFromNotesAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.Msg
 	if err != nil {
 		return ctx, err
 	}
-	if bond.NodePubKey != "" && bond.BondSats > 0 && bond.FeeShareActive {
-		return ctx, cosmos.ErrUnknownRequest("node bond already confirmed")
-	}
 	if !bond.NodeAddress.Empty() && !bond.NodeAddress.Equals(msg.Signer) {
 		return ctx, cosmos.ErrUnknownRequest("bond signer mismatch")
 	}
@@ -599,15 +596,12 @@ func NodeSlotAuctionCreateAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg t
 	return ctx, nil
 }
 
-func NodeSlotAuctionBidPowAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgNodeSlotAuctionBidPow) (cosmos.Context, error) {
+func NodeSlotAuctionBidCreateAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgNodeSlotAuctionBidCreate) (cosmos.Context, error) {
 	if err := msg.ValidateBasic(); err != nil {
 		return ctx, err
 	}
-	if err := validateNodeSlotBidPow(ctx, k, msg.Signer, msg.PowToken, msg.AuctionId); err != nil {
-		return ctx, err
-	}
 	if ctx.IsCheckTx() {
-		if _, _, err := RegisterNodeSlotBidDepositPowToken(ctx, k, msg.Signer, msg.PowToken, msg.AuctionId, msg.OperatorPubKey, msg.NodePubKey, msg.PowDurationMs); err != nil {
+		if _, err := CreateNodeSlotBid(ctx, k, msg.Signer, msg.AuctionId, msg.OperatorPubKey, msg.NodePubKey); err != nil {
 			return ctx, err
 		}
 	}
@@ -636,24 +630,24 @@ func NodeSlotAuctionSelectBidAnteHandler(ctx cosmos.Context, k keeper.Keeper, ms
 	return ctx, nil
 }
 
-func NodeSlotAuctionShieldAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgNodeSlotAuctionShield) (cosmos.Context, error) {
+func NodeSaleShieldAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgNodeSaleShield) (cosmos.Context, error) {
 	if err := msg.ValidateBasic(); err != nil {
 		return ctx, err
 	}
-	auction, bid, deposit, err := validateNodeSlotAuctionShield(ctx, k, msg.Signer, msg.AuctionId, msg.BidId, msg.Commitments)
+	_, _, deposit, err := validateNodeSlotSaleEntitlementShield(ctx, k, msg.Signer, msg.AuctionId, msg.BidId, msg.Commitments)
 	if err != nil {
 		return ctx, err
 	}
+	noteCommitments, err := parseShielderNoteCommitments(msg.Commitments, deposit.AmountSats, false)
+	if err != nil {
+		return ctx, err
+	}
+	authorizedAmountSats := shielderNoteCommitmentTotal(noteCommitments)
+	if err := VerifyShieldAuthorization(msg.DepositPubkey, msg.Signature, msg.DepositPubkey, authorizedAmountSats, msg.Commitments); err != nil {
+		return ctx, err
+	}
 	if ctx.IsCheckTx() {
-		auction.Status = types.NodeSlotAuctionSettled
-		bid.Settled = true
-		deposit.Status = types.DepositStatusSettled
-		if err := k.SetNodeSlotAuction(ctx, auction); err != nil {
-			return ctx, err
-		}
-		if err := k.SetNodeSlotBid(ctx, bid); err != nil {
-			return ctx, err
-		}
+		deposit.Status = types.DepositStatusCommitted
 		if err := k.SetDepositRecord(ctx, deposit); err != nil {
 			return ctx, err
 		}

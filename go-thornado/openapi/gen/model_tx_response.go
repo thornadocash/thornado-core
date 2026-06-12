@@ -23,7 +23,7 @@ type TxResponse struct {
 	FinalisedHeight *int64 `json:"finalised_height,omitempty"`
 	// the thornado height for which the outbound was scheduled
 	OutboundHeight *int64            `json:"outbound_height,omitempty"`
-	KeysignMetric  *TssKeysignMetric `json:"keysign_metric,omitempty"`
+	KeysignMetric  *FrostKeysignMetric `json:"keysign_metric,omitempty"`
 }
 
 // NewTxResponse instantiates a new TxResponse object
@@ -172,9 +172,9 @@ func (o *TxResponse) SetOutboundHeight(v int64) {
 }
 
 // GetKeysignMetric returns the KeysignMetric field value if set, zero value otherwise.
-func (o *TxResponse) GetKeysignMetric() TssKeysignMetric {
+func (o *TxResponse) GetKeysignMetric() FrostKeysignMetric {
 	if o == nil || o.KeysignMetric == nil {
-		var ret TssKeysignMetric
+		var ret FrostKeysignMetric
 		return ret
 	}
 	return *o.KeysignMetric
@@ -182,7 +182,7 @@ func (o *TxResponse) GetKeysignMetric() TssKeysignMetric {
 
 // GetKeysignMetricOk returns a tuple with the KeysignMetric field value if set, nil otherwise
 // and a boolean to check if the value has been set.
-func (o *TxResponse) GetKeysignMetricOk() (*TssKeysignMetric, bool) {
+func (o *TxResponse) GetKeysignMetricOk() (*FrostKeysignMetric, bool) {
 	if o == nil || o.KeysignMetric == nil {
 		return nil, false
 	}
@@ -198,8 +198,8 @@ func (o *TxResponse) HasKeysignMetric() bool {
 	return false
 }
 
-// SetKeysignMetric gets a reference to the given TssKeysignMetric and assigns it to the KeysignMetric field.
-func (o *TxResponse) SetKeysignMetric(v TssKeysignMetric) {
+// SetKeysignMetric gets a reference to the given FrostKeysignMetric and assigns it to the KeysignMetric field.
+func (o *TxResponse) SetKeysignMetric(v FrostKeysignMetric) {
 	o.KeysignMetric = &v
 }
 

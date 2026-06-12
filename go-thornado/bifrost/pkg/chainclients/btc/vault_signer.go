@@ -12,7 +12,7 @@ import (
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
-	"github.com/thornadocash/go-thornado/bifrost/tss"
+	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/common"
 	ttypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
@@ -22,7 +22,7 @@ type frostVaultSigner struct {
 	log        zerolog.Logger
 }
 
-func newVaultSigner(_ thornadoclient.ThornadoBridge, localState storage.LocalStateManager, log zerolog.Logger) (tss.ThornadoKeyManager, error) {
+func newVaultSigner(_ thornadoclient.ThornadoBridge, localState storage.LocalStateManager, log zerolog.Logger) (frost.ThornadoKeyManager, error) {
 	if localState == nil {
 		return nil, fmt.Errorf("FROST local state manager is required")
 	}
@@ -38,21 +38,21 @@ func (s *frostVaultSigner) RemoteSign(msg []byte, algo common.SigningAlgo, vault
 
 func (s *frostVaultSigner) RemoteSignWithPath(msg []byte, algo common.SigningAlgo, vaultPubKey string, pathIndex uint64) ([]byte, []byte, error) {
 	if algo != common.SigningAlgoSecp256k1 {
-		return nil, nil, tss.NewKeysignError(ttypes.Blame{
+		return nil, nil, frost.NewKeysignError(ttypes.Blame{
 			FailReason: fmt.Sprintf("FROST signer only supports secp256k1, got %s", algo),
 		})
 	}
 	state, err := s.localState.GetLocalState(vaultPubKey)
 	if err != nil {
-		return nil, nil, tss.NewKeysignError(ttypes.Blame{FailReason: err.Error()})
+		return nil, nil, frost.NewKeysignError(ttypes.Blame{FailReason: err.Error()})
 	}
 	if state.Engine() != storage.SigningEngineFrost {
-		return nil, nil, tss.NewKeysignError(ttypes.Blame{
+		return nil, nil, frost.NewKeysignError(ttypes.Blame{
 			FailReason: fmt.Sprintf("vault %s is not a FROST keyshare", vaultPubKey),
 		})
 	}
 	if len(state.LocalData) == 0 {
-		return nil, nil, tss.NewKeysignError(ttypes.Blame{
+		return nil, nil, frost.NewKeysignError(ttypes.Blame{
 			FailReason: fmt.Sprintf("vault %s has empty FROST keyshare data", vaultPubKey),
 		})
 	}
@@ -70,7 +70,7 @@ func (s *frostVaultSigner) RemoteSignWithPath(msg []byte, algo common.SigningAlg
 	}
 	signature, err := frostsessions.SignTaprootChildTweak(state.LocalData, msg, childTweak, []byte{})
 	if err != nil {
-		return nil, nil, tss.NewKeysignError(ttypes.Blame{FailReason: err.Error()})
+		return nil, nil, frost.NewKeysignError(ttypes.Blame{FailReason: err.Error()})
 	}
 	if err := verifyTaprootSignature(pubKey, pathIndex, msg, signature); err != nil {
 		return nil, nil, err
@@ -123,7 +123,7 @@ func (s *frostVaultSigner) ExportAsPrivateKey() (string, error) {
 	return "", fmt.Errorf("FROST vault signer does not expose private key export")
 }
 
-func (s *frostVaultSigner) ExportAsKeyStore(password string) (*tss.EncryptedKeyJSON, error) {
+func (s *frostVaultSigner) ExportAsKeyStore(password string) (*frost.EncryptedKeyJSON, error) {
 	return nil, fmt.Errorf("FROST vault signer does not expose keystore export")
 }
 

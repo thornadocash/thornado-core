@@ -126,7 +126,7 @@ func main() {
 
 	// Start P2P with bonded node gating enabled
 	comm, stateManager, err := p2p.StartP2PWithBridge(
-		cfg.TSS,
+		cfg.FROST,
 		tmPrivateKey,
 		localStateFolder,
 		thornadoBridge,
@@ -154,8 +154,8 @@ func main() {
 	if len(chains) == 0 {
 		log.Fatal().Msg("fail to load any chains")
 	}
-	tssKeysignMetricMgr := metrics.NewTssKeysignMetricMgr()
-	healthServer := NewHealthServer(cfg.TSS.InfoAddress, comm.GetHost().ID().String(), chains)
+	frostKeysignMetricMgr := metrics.NewFrostKeysignMetricMgr()
+	healthServer := NewHealthServer(cfg.FROST.InfoAddress, comm.GetHost().ID().String(), chains)
 	go func() {
 		defer log.Info().Msg("health server exit")
 		if err = healthServer.Start(); err != nil {
@@ -169,7 +169,7 @@ func main() {
 	ag, err := observer.NewAttestationGossip(comm.GetHost(), k, cfg.Thornado.ChainEBifrost, thornadoBridge, m, cfg.AttestationGossip)
 
 	// start observer
-	obs, err := observer.NewObserver(pubkeyMgr, chains, thornadoBridge, m, cfgChains[tcommon.BTCChain].BlockScanner.DBPath, tssKeysignMetricMgr, ag, *deckDump)
+	obs, err := observer.NewObserver(pubkeyMgr, chains, thornadoBridge, m, cfgChains[tcommon.BTCChain].BlockScanner.DBPath, frostKeysignMetricMgr, ag, *deckDump)
 	if err != nil {
 		log.Fatal().Err(err).Msg("fail to create observer")
 	}
@@ -182,7 +182,7 @@ func main() {
 	ag.SetObserverHandleObservedTxCommitted(obs)
 
 	// start signer
-	sign, err := signer.NewSigner(cfg, thornadoBridge, k, stateManager, pubkeyMgr, chains, m, tssKeysignMetricMgr, obs)
+	sign, err := signer.NewSigner(cfg, thornadoBridge, k, stateManager, pubkeyMgr, chains, m, frostKeysignMetricMgr, obs)
 	if err != nil {
 		log.Fatal().Err(err).Msg("fail to create instance of signer")
 	}

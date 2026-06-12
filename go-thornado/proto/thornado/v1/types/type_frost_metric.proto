@@ -1,0 +1,26 @@
+syntax = "proto3";
+package types;
+
+option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
+
+import "gogoproto/gogo.proto";
+
+message NodeFrostTime {
+  bytes address = 1 [ (gogoproto.casttype) =
+                          "github.com/cosmos/cosmos-sdk/types.AccAddress" ];
+  int64 frost_time = 2;
+}
+
+message FrostKeygenMetric {
+  string pub_key = 1 [ (gogoproto.casttype) =
+                           "github.com/thornadocash/go-thornado/common.PubKey" ];
+  repeated NodeFrostTime node_frost_times = 2 [ (gogoproto.nullable) = false ];
+}
+
+message FrostKeysignMetric {
+  string tx_id = 1 [
+    (gogoproto.casttype) = "github.com/thornadocash/go-thornado/common.TxID",
+    (gogoproto.customname) = "TxID"
+  ];
+  repeated NodeFrostTime node_frost_times = 2 [ (gogoproto.nullable) = false ];
+}

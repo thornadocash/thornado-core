@@ -266,7 +266,7 @@
       },
       {
         "chain": "BTC",
-        "address": "tb1qxwtqdrfs7czy0l8uztss5szv3t7hr7ltq9dqv8"
+        "address": "tb1qxwtqdrfs7czy0l8uzfrost5szv3t7hr7ltq9dqv8"
       },
       {
         "chain": "ETH",
@@ -278,11 +278,11 @@
       },
       {
         "chain": "LTC",
-        "address": "tltc1qxwtqdrfs7czy0l8uztss5szv3t7hr7lted07uw"
+        "address": "tltc1qxwtqdrfs7czy0l8uzfrost5szv3t7hr7lted07uw"
       },
       {
         "chain": "BTC",
-        "address": "tthor1xwtqdrfs7czy0l8uztss5szv3t7hr7lt7fqnlr"
+        "address": "tthor1xwtqdrfs7czy0l8uzfrost5szv3t7hr7lt7fqnlr"
       }
     ]
   }
