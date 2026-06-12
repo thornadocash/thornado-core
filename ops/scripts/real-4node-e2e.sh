@@ -10,6 +10,14 @@ PASS="${SIGNER_PASSWD:-passphrase123}"
 BTC_CONTAINER="${BTC_CONTAINER:-thornado-real4-${RUN_ID}-bitcoind}"
 BTC_RPC_PORT="${BTC_RPC_PORT:-18445}"
 BTC_P2P_PORT="${BTC_P2P_PORT:-18446}"
+API_BASE="${API_BASE:-1316}"
+GRPC_BASE="${GRPC_BASE:-9090}"
+RPC_BASE="${RPC_BASE:-26656}"
+P2P_BASE="${P2P_BASE:-26650}"
+EBIFROST_BASE="${EBIFROST_BASE:-50050}"
+FROST_P2P_BASE="${FROST_P2P_BASE:-5040}"
+FROST_INFO_BASE="${FROST_INFO_BASE:-6040}"
+METRICS_BASE="${METRICS_BASE:-9000}"
 FLOW1_SCENARIO="${FLOW1_SCENARIO:-happy}"
 FLOW1_SKIP_BIFROST_NODES="${FLOW1_SKIP_BIFROST_NODES:-}"
 KEEP_ARTIFACTS="${KEEP_ARTIFACTS:-1}"
@@ -49,6 +57,18 @@ write_run_summary() {
 json_get() {
   jq -r "$1"
 }
+
+api_port() { echo $((API_BASE + $1)); }
+grpc_port() { echo $((GRPC_BASE + $1)); }
+rpc_port() { echo $((RPC_BASE + $1)); }
+p2p_port() { echo $((P2P_BASE + $1)); }
+ebifrost_port() { echo $((EBIFROST_BASE + $1)); }
+frost_p2p_port() { echo $((FROST_P2P_BASE + $1)); }
+frost_info_port() { echo $((FROST_INFO_BASE + $1)); }
+metrics_port() { echo $((METRICS_BASE + $1)); }
+
+api_url() { echo "http://127.0.0.1:$(api_port "$1")"; }
+rpc_url() { echo "http://127.0.0.1:$(rpc_port "$1")"; }
 
 wait_tcp() {
   local host="$1" port="$2" label="$3" timeout="${4:-120}" start
