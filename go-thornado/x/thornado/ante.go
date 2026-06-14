@@ -380,14 +380,10 @@ func ShielderShieldAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.Ms
 	if err != nil {
 		return ctx, err
 	}
-	session, err := k.GetDepositSession(ctx, owner)
+	depositID, err := common.NewTxID(strings.TrimSpace(msg.DepositId))
 	if err != nil {
 		return ctx, err
 	}
-	if session.DepositID.IsEmpty() {
-		return ctx, cosmos.ErrUnknownRequest("deposit not matched")
-	}
-	depositID := session.DepositID
 	return shielderShieldAnte(ctx, k, owner, depositID, msg.Commitments, msg.DepositPubkey, msg.Signature)
 }
 
@@ -443,7 +439,7 @@ func shielderShieldAnte(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 		return ctx, cosmos.ErrUnknownRequest("shielder commitment denominations must match deposit amount")
 	}
 	if strings.TrimSpace(depositPubkey) != "" || strings.TrimSpace(signature) != "" {
-		if err := VerifyShieldAuthorization(depositPubkey, signature, depositPubkey, authorizedAmountSats, commitments); err != nil {
+		if err := VerifyShieldAuthorization(depositPubkey, signature, depositID.String(), authorizedAmountSats, commitments); err != nil {
 			return ctx, err
 		}
 	}

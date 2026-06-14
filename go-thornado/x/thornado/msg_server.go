@@ -9,6 +9,7 @@ import (
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
+	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
@@ -105,20 +106,19 @@ func (ms msgServer) ShielderShield(goCtx context.Context, msg *types.MsgShielder
 	if err != nil {
 		return nil, err
 	}
-	session, err := ms.mgr.Keeper().GetDepositSession(ctx, owner)
+	depositID, err := common.NewTxID(strings.TrimSpace(msg.DepositId))
 	if err != nil {
 		return nil, err
 	}
-	if session.DepositID.IsEmpty() {
-		return nil, fmt.Errorf("deposit not matched")
-	}
-	depositID := session.DepositID
 	deposit, err := ms.mgr.Keeper().GetDepositRecord(ctx, depositID)
 	if err != nil {
 		return nil, err
 	}
 	if deposit.DepositID.IsEmpty() {
 		return nil, fmt.Errorf("deposit not found")
+	}
+	if !deposit.Owner.Equals(owner) {
+		return nil, fmt.Errorf("deposit owner mismatch")
 	}
 	noteCommitments, err := parseShielderNoteCommitments(msg.Commitments, deposit.AmountSats, deposit.IsNodeBond())
 	if err != nil {
@@ -128,7 +128,7 @@ func (ms msgServer) ShielderShield(goCtx context.Context, msg *types.MsgShielder
 	if amountSats == 0 {
 		return nil, fmt.Errorf("missing shielder commitment amount")
 	}
-	shieldRef := strings.TrimSpace(msg.DepositPubkey)
+	shieldRef := strings.TrimSpace(msg.DepositId)
 	if err := VerifyShieldAuthorization(msg.DepositPubkey, msg.Signature, shieldRef, amountSats, msg.Commitments); err != nil {
 		return nil, err
 	}

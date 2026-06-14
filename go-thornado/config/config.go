@@ -141,7 +141,7 @@ func Init() {
 
 	// dynamically set rpc listen address
 	if config.Thornado.Tendermint.RPC.ListenAddress == "" {
-		config.Thornado.Tendermint.RPC.ListenAddress = fmt.Sprintf("tcp://0.0.0.0:%d", rpcPort)
+		config.Thornado.Tendermint.RPC.ListenAddress = fmt.Sprintf("tcp://127.0.0.1:%d", rpcPort)
 	}
 	if config.Thornado.Tendermint.P2P.ListenAddress == "" {
 		config.Thornado.Tendermint.P2P.ListenAddress = fmt.Sprintf("tcp://0.0.0.0:%d", p2pPort)

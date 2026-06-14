@@ -188,12 +188,14 @@ pub fn derive_shield_receipt_for_deposit_type(
             DOMAIN,
             "receipt-nullifier",
             &child_secret,
+            deposit_id,
             &denomination.to_string(),
         ]);
         let secret = hash_parts_field248(&[
             DOMAIN,
             "receipt-secret",
             &child_secret,
+            deposit_id,
             &denomination.to_string(),
         ]);
         let nullifier_fp = tornado::field_from_hex(&nullifier).ok_or(Error::InvalidProof)?;
@@ -349,6 +351,36 @@ pub fn shielder_withdrawal_from_receipt(
     )
 }
 
+pub fn withdrawal_witness_from_receipt(
+    receipt: &NoteReceipt,
+    tree: &DenominationTree,
+    recipient: String,
+    fee_sats: u64,
+) -> Result<serde_json::Value> {
+    let leaf_index = tree
+        .leaves
+        .iter()
+        .position(|leaf| leaf == &receipt.commitment)
+        .ok_or(Error::UnknownCommitment)?;
+    let public = WithdrawalPublicInputs {
+        nullifier_hash: String::new(),
+        denomination_sats: receipt.denomination_sats,
+        recipient,
+        fee_sats,
+        merkle_root: tree.root(),
+        recipient_field: None,
+        relayer_field: None,
+        refund_field: None,
+    };
+    tornado::withdrawal_witness_json(
+        &receipt.nullifier,
+        &receipt.secret,
+        &tree.leaves,
+        leaf_index,
+        &public,
+    )
+}
+
 pub fn validate_withdrawal_public_inputs(public: &WithdrawalPublicInputs) -> Result<()> {
     tornado::validate_public_inputs(public)
 }
@@ -392,12 +424,14 @@ pub fn recover_note_receipt(
         DOMAIN,
         "receipt-nullifier",
         &child_secret,
+        deposit_id,
         &denomination_sats.to_string(),
     ]);
     let secret = hash_parts_field248(&[
         DOMAIN,
         "receipt-secret",
         &child_secret,
+        deposit_id,
         &denomination_sats.to_string(),
     ]);
     let nullifier_fp = tornado::field_from_hex(&nullifier).ok_or(Error::InvalidProof)?;
@@ -429,7 +463,13 @@ pub fn redact_spent_commitment(proof: &mut WithdrawalProof) {
 }
 
 pub fn nullifier_hash(nullifier: &str) -> String {
-    hash_parts(&[DOMAIN, "nullifier-hash", nullifier])
+    let Some(nullifier) = tornado::field_from_hex(nullifier) else {
+        return String::new();
+    };
+    let Ok(hash) = tornado::nullifier_hash(nullifier) else {
+        return String::new();
+    };
+    tornado::field::fr_to_decimal(hash)
 }
 
 pub fn note_child_secret(client_seed: &str, deposit_id: &str, index: u64) -> String {

@@ -129,6 +129,7 @@ func shieldMsg(r *http.Request) (sdk.Msg, string, error) {
 		Commitments   []json.RawMessage `json:"commitments"`
 		DepositPubkey string            `json:"deposit_pubkey"`
 		Signature     string            `json:"signature"`
+		DepositID     string            `json:"deposit_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return nil, "", err
@@ -149,6 +150,7 @@ func shieldMsg(r *http.Request) (sdk.Msg, string, error) {
 		Commitments:   commitments,
 		DepositPubkey: strings.TrimSpace(req.DepositPubkey),
 		Signature:     strings.TrimSpace(req.Signature),
+		DepositId:     strings.TrimSpace(req.DepositID),
 	}
 	owner, err := ownerFromCompressedPubkey(req.DepositPubkey)
 	if err != nil {

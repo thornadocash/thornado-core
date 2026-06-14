@@ -238,7 +238,7 @@ thornado_tx() {
     --keyring-backend file \
     --keyring-dir "$home" \
     --chain-id "$CHAIN_ID" \
-    --node tcp://127.0.0.1:26657 \
+    --node tcp://127.0.0.1:$(rpc_port 1) \
     --gas 2500000 \
     --fees 0stake \
     --broadcast-mode sync \
@@ -253,7 +253,7 @@ assert_tx_success() {
   [[ -n "$txhash" ]] || return 0
   start="$(date +%s)"
   while (( $(date +%s) - start < 60 )); do
-    res="$(curl -fsS "http://127.0.0.1:26657/tx?hash=0x${txhash}" 2>/dev/null || true)"
+    res="$(curl -fsS "$(rpc_url 1)/tx?hash=0x${txhash}" 2>/dev/null || true)"
     if [[ -n "$res" ]] && jq -e '.result.tx_result' <<<"$res" >/dev/null 2>&1; then
       code="$(jq -r '.result.tx_result.code // 0' <<<"$res")"
       if [[ "$code" == "0" ]]; then
@@ -286,7 +286,7 @@ assert_tx_rejected() {
   [[ -n "$txhash" ]] || die "$label unexpectedly had no txhash and no error"
   start="$(date +%s)"
   while (( $(date +%s) - start < 60 )); do
-    res="$(curl -fsS "http://127.0.0.1:26657/tx?hash=0x${txhash}" 2>/dev/null || true)"
+    res="$(curl -fsS "$(rpc_url 1)/tx?hash=0x${txhash}" 2>/dev/null || true)"
     if [[ -n "$res" ]] && jq -e '.result.tx_result' <<<"$res" >/dev/null 2>&1; then
       printf '%s\n' "$res" >"$RUN_ROOT/meta/${safe}-delivertx.json"
       code="$(jq -r '.result.tx_result.code // 0' <<<"$res")"
@@ -327,9 +327,9 @@ assert_tx_or_cli_rejected() {
 
 wait_blocks() {
   local count="$1" start latest
-  start="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
+  start="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
   while true; do
-    latest="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
+    latest="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
     (( latest >= start + count )) && return 0
     sleep 1
   done
@@ -367,12 +367,12 @@ wait_deposit_matched() {
   local deposit_id="$1" timeout="${2:-180}" start
   start="$(date +%s)"
   while true; do
-    if curl -fsS "http://127.0.0.1:1317/thornado/deposit/${deposit_id}" | jq -e '.status == "deposit_matched"' >/dev/null 2>&1; then
-      curl -fsS "http://127.0.0.1:1317/thornado/deposit/${deposit_id}"
+    if curl -fsS "$(api_url 1)/thornado/deposit/${deposit_id}" | jq -e '.status == "deposit_matched"' >/dev/null 2>&1; then
+      curl -fsS "$(api_url 1)/thornado/deposit/${deposit_id}"
       return 0
     fi
     if (( "$(date +%s)" - start >= timeout )); then
-      curl -fsS "http://127.0.0.1:1317/thornado/deposit/${deposit_id}" >&2 || true
+      curl -fsS "$(api_url 1)/thornado/deposit/${deposit_id}" >&2 || true
       die "deposit ${deposit_id} did not match"
     fi
     if [[ -n "${BTC_CONTAINER:-}" ]] && docker ps --format '{{.Names}}' | grep -qx "$BTC_CONTAINER"; then
@@ -386,12 +386,12 @@ wait_deposit_committed() {
   local deposit_id="$1" timeout="${2:-120}" start
   start="$(date +%s)"
   while true; do
-    if curl -fsS "http://127.0.0.1:1317/thornado/deposit/${deposit_id}" | jq -e '.status == "committed"' >/dev/null 2>&1; then
-      curl -fsS "http://127.0.0.1:1317/thornado/deposit/${deposit_id}"
+    if curl -fsS "$(api_url 1)/thornado/deposit/${deposit_id}" | jq -e '.status == "committed"' >/dev/null 2>&1; then
+      curl -fsS "$(api_url 1)/thornado/deposit/${deposit_id}"
       return 0
     fi
     if (( "$(date +%s)" - start >= timeout )); then
-      curl -fsS "http://127.0.0.1:1317/thornado/deposit/${deposit_id}" >&2 || true
+      curl -fsS "$(api_url 1)/thornado/deposit/${deposit_id}" >&2 || true
       die "deposit ${deposit_id} did not commit"
     fi
     sleep 2
@@ -400,12 +400,12 @@ wait_deposit_committed() {
 
 deposit_session() {
   local owner_addr="$1"
-  curl -fsS "http://127.0.0.1:1317/thornado/deposit/session/${owner_addr}"
+  curl -fsS "$(api_url 1)/thornado/deposit/session/${owner_addr}"
 }
 
 node_query() {
   local node_addr="$1"
-  curl -fsS "http://127.0.0.1:1317/thornado/node/address/${node_addr}"
+  curl -fsS "$(api_url 1)/thornado/node/address/${node_addr}"
 }
 
 wait_new_deposit_session() {
@@ -479,7 +479,7 @@ shielder_leaves() {
 kv_json_value() {
   local key="$1" file="$2" hex
   hex="$(printf '%s' "$key" | xxd -p -c 256 | tr '[:lower:]' '[:upper:]')"
-  curl -fsS "http://127.0.0.1:26657/abci_query?path=%22/store/thornado/key%22&data=0x${hex}" >"$file"
+  curl -fsS "$(rpc_url 1)/abci_query?path=%22/store/thornado/key%22&data=0x${hex}" >"$file"
   jq -r '.result.response.value // ""' "$file" | base64 -d | jq -r '.'
 }
 
@@ -496,20 +496,6 @@ build_binaries() {
 
 reset_all() {
   log "tearing down previous real4 state"
-  docker compose --env-file "$ROOT_DIR/ops/env.localnet.example" \
-    -f "$ROOT_DIR/ops/docker-compose.localnet.yml" \
-    -f "$ROOT_DIR/ops/docker-compose.mock.yml" \
-    --profile mock --profile three-node --profile client down -v >/dev/null 2>&1 || true
-  local stale_containers
-  stale_containers="$(docker ps -aq --filter 'name=^/thornado-.*bitcoind$' --filter status=exited 2>/dev/null || true)"
-  if [[ -n "$stale_containers" ]]; then
-    docker rm $stale_containers >/dev/null 2>&1 || true
-  fi
-  for port in 1317 1318 1319 1320 1321 1322 26651 26652 26653 26654 26655 26656 26657 26658 26659 26660 26661 26662 50051 50052 50053 50054 50055 50056 5041 5042 5043 5044 5045 5046 6041 6042 6043 6044 6045 6046 9001 9002 9003 9004 9005 9006; do
-    while read -r pid; do
-      [[ -n "$pid" ]] && kill -9 "$pid" >/dev/null 2>&1 || true
-    done < <(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)
-  done
   for file in "$RUN_ROOT"/pids/*.pid; do
     stop_pid_file "$file"
   done
@@ -575,7 +561,7 @@ init_genesis() {
     cons[$i]="$(cons_pub_bech "$home")"
     cons_raw[$i]="$(jq -r '.pub_key.value' "$home/config/priv_validator_key.json")"
     ids[$i]="$(node_id "$home")"
-    peers[$i]="${ids[$i]}@127.0.0.1:$((26650 + i))"
+    peers[$i]="${ids[$i]}@127.0.0.1:$(p2p_port "$i")"
     "$THORNADO" genesis add-genesis-account "${addrs[$i]}" 100000000000000stake --home "$home" >/dev/null
     if [[ "$i" != "1" ]]; then
       "$THORNADO" genesis add-genesis-account "${addrs[$i]}" 100000000000000stake --home "$RUN_ROOT/node1" >/dev/null
@@ -681,6 +667,7 @@ init_genesis() {
         {"key":"Node_BondSlotIncrementSats","value":100000000},
         {"key":"Churn_IntervalBlocks","value":20},
         {"key":"Churn_RetryIntervalBlocks","value":720},
+        {"key":"Deposit_SessionExpiryMinutes","value":10},
         {"key":"Keysign_PeriodBlocks","value":300},
         {"key":"HaltSigningBTC","value":0},
         {"key":"Withdrawal_FeeMinSats","value":100000},
@@ -758,23 +745,23 @@ start_thornado_nodes() {
     "$THORNADO" start \
       --home "$home" \
       --api.enable=true \
-      --api.address "tcp://127.0.0.1:$((1316 + i))" \
+      --api.address "tcp://127.0.0.1:$(api_port "$i")" \
       --grpc.enable=true \
-      --grpc.address "127.0.0.1:$((9090 + i))" \
-      --rpc.laddr "tcp://127.0.0.1:$((26656 + i))" \
-      --p2p.laddr "tcp://127.0.0.1:$((26650 + i))" \
+      --grpc.address "127.0.0.1:$(grpc_port "$i")" \
+      --rpc.laddr "tcp://127.0.0.1:$(rpc_port "$i")" \
+      --p2p.laddr "tcp://127.0.0.1:$(p2p_port "$i")" \
       --p2p.persistent_peers "$peers" \
       --p2p.pex=false \
       --ebifrost.enable=true \
-      --ebifrost.address "127.0.0.1:$((50050 + i))" \
+      --ebifrost.address "127.0.0.1:$(ebifrost_port "$i")" \
       --minimum-gas-prices "0stake" \
       --log_level "info" \
       >"$RUN_ROOT/logs/thornado-${i}.log" 2>&1 &
     echo "$!" >"$RUN_ROOT/pids/thornado-${i}.pid"
   done
-  wait_json "http://127.0.0.1:26657/status" "thornado-1 rpc" 120
+  wait_json "$(rpc_url 1)/status" "thornado-1 rpc" 120
   for i in 1 2 3 4; do
-    wait_json "http://127.0.0.1:$((26656 + i))/status" "thornado-${i} rpc" 120
+    wait_json "http://127.0.0.1:$(rpc_port "$i")/status" "thornado-${i} rpc" 120
   done
 }
 
@@ -794,20 +781,20 @@ restart_thornado_node() {
   "$THORNADO" start \
     --home "$home" \
     --api.enable=true \
-    --api.address "tcp://127.0.0.1:$((1316 + i))" \
+    --api.address "tcp://127.0.0.1:$(api_port "$i")" \
     --grpc.enable=true \
-    --grpc.address "127.0.0.1:$((9090 + i))" \
-    --rpc.laddr "tcp://127.0.0.1:$((26656 + i))" \
-    --p2p.laddr "tcp://127.0.0.1:$((26650 + i))" \
+    --grpc.address "127.0.0.1:$(grpc_port "$i")" \
+    --rpc.laddr "tcp://127.0.0.1:$(rpc_port "$i")" \
+    --p2p.laddr "tcp://127.0.0.1:$(p2p_port "$i")" \
     --p2p.persistent_peers "$peers" \
     --p2p.pex=false \
     --ebifrost.enable=true \
-    --ebifrost.address "127.0.0.1:$((50050 + i))" \
+    --ebifrost.address "127.0.0.1:$(ebifrost_port "$i")" \
     --minimum-gas-prices "0stake" \
     --log_level "info" \
     >"$RUN_ROOT/logs/thornado-${i}-restart.log" 2>&1 &
   echo "$!" >"$RUN_ROOT/pids/thornado-${i}.pid"
-  wait_json "http://127.0.0.1:$((26656 + i))/status" "thornado-${i} restart rpc" 120
+  wait_json "http://127.0.0.1:$(rpc_port "$i")/status" "thornado-${i} restart rpc" 120
 }
 
 start_thornado_node6() {
@@ -820,25 +807,25 @@ start_thornado_node6() {
   "$THORNADO" start \
     --home "$home" \
     --api.enable=true \
-    --api.address "tcp://127.0.0.1:1322" \
+    --api.address "tcp://127.0.0.1:$(api_port 6)" \
     --grpc.enable=true \
-    --grpc.address "127.0.0.1:9096" \
-    --rpc.laddr "tcp://127.0.0.1:26662" \
-    --p2p.laddr "tcp://127.0.0.1:26656" \
+    --grpc.address "127.0.0.1:$(grpc_port 6)" \
+    --rpc.laddr "tcp://127.0.0.1:$(rpc_port 6)" \
+    --p2p.laddr "tcp://127.0.0.1:$(p2p_port 6)" \
     --p2p.persistent_peers "$peers" \
     --p2p.pex=false \
     --ebifrost.enable=true \
-    --ebifrost.address "127.0.0.1:50056" \
+    --ebifrost.address "127.0.0.1:$(ebifrost_port 6)" \
     --minimum-gas-prices "0stake" \
     --log_level "info" \
     >"$RUN_ROOT/logs/thornado-${i}.log" 2>&1 &
   echo "$!" >"$RUN_ROOT/pids/thornado-${i}.pid"
-  wait_json "http://127.0.0.1:26662/status" "thornado-6 rpc" 120
+  wait_json "$(rpc_url 6)/status" "thornado-6 rpc" 120
   local target height start
   start="$(date +%s)"
   while true; do
-    target="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
-    height="$(curl -fsS http://127.0.0.1:26662/status | jq -r '.result.sync_info.latest_block_height')"
+    target="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
+    height="$(curl -fsS "$(rpc_url 6)/status" | jq -r '.result.sync_info.latest_block_height')"
     if (( height + 1 >= target )); then
       break
     fi
@@ -853,7 +840,7 @@ wait_bifrost_health() {
   local i="$1" timeout="${2:-120}" start
   start="$(date +%s)"
   while true; do
-    if curl -fsS "http://127.0.0.1:$((6040 + i))/ping" >/dev/null 2>&1; then
+    if curl -fsS "http://127.0.0.1:$(frost_info_port "$i")/ping" >/dev/null 2>&1; then
       log "bifrost-${i} health ready"
       return 0
     fi
@@ -883,19 +870,20 @@ start_bifrost_nodes() {
     SIGNER_NAME="validator${i}" \
     SIGNER_PASSWD="$PASS" \
     BIFROST_THORNADO_CHAIN_ID="$CHAIN_ID" \
-    BIFROST_THORNADO_CHAIN_HOST="127.0.0.1:$((1316 + i))" \
-    BIFROST_THORNADO_CHAIN_RPC="127.0.0.1:$((26656 + i))" \
-    BIFROST_THORNADO_CHAIN_EBIFROST="127.0.0.1:$((50050 + i))" \
+    BIFROST_THORNADO_CHAIN_HOST="127.0.0.1:$(api_port "$i")" \
+    BIFROST_THORNADO_CHAIN_RPC="127.0.0.1:$(rpc_port "$i")" \
+    BIFROST_THORNADO_CHAIN_EBIFROST="127.0.0.1:$(ebifrost_port "$i")" \
     BIFROST_THORNADO_CHAIN_HOME_FOLDER="$home" \
     BIFROST_THORNADO_SIGNER_NAME="validator${i}" \
     THOR_BLOCK_TIME="100ms" \
     BLOCK_SCANNER_BACKOFF="100ms" \
     CHAIN_ID="$CHAIN_ID" \
-    CHAIN_API="127.0.0.1:$((1316 + i))" \
-    CHAIN_RPC="127.0.0.1:$((26656 + i))" \
-    BIFROST_METRICS_LISTEN_PORT="$((9000 + i))" \
-    BIFROST_FROST_P2P_PORT="$((5040 + i))" \
-    BIFROST_FROST_INFO_ADDRESS="127.0.0.1:$((6040 + i))" \
+    CHAIN_API="127.0.0.1:$(api_port "$i")" \
+    CHAIN_RPC="127.0.0.1:$(rpc_port "$i")" \
+    BIFROST_METRICS_LISTEN_PORT="$(metrics_port "$i")" \
+    BIFROST_FROST_P2P_PORT="$(frost_p2p_port "$i")" \
+    BIFROST_FROST_INFO_ADDRESS="127.0.0.1:$(frost_info_port "$i")" \
+    BIFROST_TSS_INFO_ADDRESS="127.0.0.1:$(frost_info_port "$i")" \
     BIFROST_FROST_BOOTSTRAP_PEERS="$bootstrap" \
     BIFROST_FROST_EXTERNAL_IP="127.0.0.1" \
     BIFROST_FROST_ALLOW_ZERO_BOND_NODES="true" \
@@ -927,11 +915,11 @@ start_bifrost_nodes() {
     wait_bifrost_health "$i" 120
     if [[ -z "$bootstrap" ]]; then
       for _ in {1..60}; do
-        if curl -fsS "http://127.0.0.1:$((6040 + i))/p2pid" >/tmp/bifrost-p2pid.txt 2>/dev/null; then
+        if curl -fsS "http://127.0.0.1:$(frost_info_port "$i")/p2pid" >/tmp/bifrost-p2pid.txt 2>/dev/null; then
           local peer
           peer="$(tr -d '[:space:]' </tmp/bifrost-p2pid.txt)"
           if [[ -n "$peer" ]]; then
-            bootstrap="/ip4/127.0.0.1/tcp/$((5040 + i))/p2p/${peer}"
+            bootstrap="/ip4/127.0.0.1/tcp/$(frost_p2p_port "$i")/p2p/${peer}"
             printf '%s\n' "$bootstrap" >"$RUN_ROOT/meta/bifrost-bootstrap"
             break
           fi
@@ -956,11 +944,11 @@ start_bifrost_nodes() {
   done
   local peers=()
   for i in 1 2 3 4; do
-    if curl -fsS "http://127.0.0.1:$((6040 + i))/p2pid" >/tmp/bifrost-p2pid.txt 2>/dev/null; then
+    if curl -fsS "http://127.0.0.1:$(frost_info_port "$i")/p2pid" >/tmp/bifrost-p2pid.txt 2>/dev/null; then
       local peer
       peer="$(tr -d '[:space:]' </tmp/bifrost-p2pid.txt)"
       if [[ -n "$peer" ]]; then
-        peers+=("/ip4/127.0.0.1/tcp/$((5040 + i))/p2p/${peer}")
+        peers+=("/ip4/127.0.0.1/tcp/$(frost_p2p_port "$i")/p2p/${peer}")
       fi
     fi
   done
@@ -976,19 +964,20 @@ start_bifrost_node_for_flow1() {
   SIGNER_NAME="validator${i}" \
   SIGNER_PASSWD="$PASS" \
   BIFROST_THORNADO_CHAIN_ID="$CHAIN_ID" \
-  BIFROST_THORNADO_CHAIN_HOST="127.0.0.1:$((1316 + i))" \
-  BIFROST_THORNADO_CHAIN_RPC="127.0.0.1:$((26656 + i))" \
-  BIFROST_THORNADO_CHAIN_EBIFROST="127.0.0.1:$((50050 + i))" \
+  BIFROST_THORNADO_CHAIN_HOST="127.0.0.1:$(api_port "$i")" \
+  BIFROST_THORNADO_CHAIN_RPC="127.0.0.1:$(rpc_port "$i")" \
+  BIFROST_THORNADO_CHAIN_EBIFROST="127.0.0.1:$(ebifrost_port "$i")" \
   BIFROST_THORNADO_CHAIN_HOME_FOLDER="$home" \
   BIFROST_THORNADO_SIGNER_NAME="validator${i}" \
   THOR_BLOCK_TIME="100ms" \
   BLOCK_SCANNER_BACKOFF="100ms" \
   CHAIN_ID="$CHAIN_ID" \
-  CHAIN_API="127.0.0.1:$((1316 + i))" \
-  CHAIN_RPC="127.0.0.1:$((26656 + i))" \
-  BIFROST_METRICS_LISTEN_PORT="$((9000 + i))" \
-  BIFROST_FROST_P2P_PORT="$((5040 + i))" \
-  BIFROST_FROST_INFO_ADDRESS="127.0.0.1:$((6040 + i))" \
+  CHAIN_API="127.0.0.1:$(api_port "$i")" \
+  CHAIN_RPC="127.0.0.1:$(rpc_port "$i")" \
+  BIFROST_METRICS_LISTEN_PORT="$(metrics_port "$i")" \
+  BIFROST_FROST_P2P_PORT="$(frost_p2p_port "$i")" \
+  BIFROST_FROST_INFO_ADDRESS="127.0.0.1:$(frost_info_port "$i")" \
+  BIFROST_TSS_INFO_ADDRESS="127.0.0.1:$(frost_info_port "$i")" \
   BIFROST_FROST_BOOTSTRAP_PEERS="$bootstrap" \
   BIFROST_FROST_EXTERNAL_IP="127.0.0.1" \
   BIFROST_FROST_ALLOW_ZERO_BOND_NODES="true" \
@@ -1019,7 +1008,7 @@ start_bifrost_node_for_flow1() {
   local start
   start="$(date +%s)"
   while true; do
-    if curl -fsS "http://127.0.0.1:$((6040 + i))/ping" >/dev/null 2>&1; then
+    if curl -fsS "http://127.0.0.1:$(frost_info_port "$i")/ping" >/dev/null 2>&1; then
       log "bifrost-${i} health ready"
       return 0
     fi
@@ -1038,7 +1027,7 @@ start_bifrost_node6() {
   log "starting Bifrost signer for node6"
   local i=6 home="$RUN_ROOT/node6" bhome="$RUN_ROOT/bifrost6" bootstrap start_block
   bootstrap="$(cat "$RUN_ROOT/meta/bifrost-bootstrap-all" 2>/dev/null || cat "$RUN_ROOT/meta/bifrost-bootstrap")"
-  start_block="$(curl -fsS http://127.0.0.1:26662/status | jq -r '.result.sync_info.latest_block_height')"
+  start_block="$(curl -fsS "$(rpc_url 6)/status" | jq -r '.result.sync_info.latest_block_height')"
   start_block=$((start_block - 10))
   if (( start_block < 1 )); then
     start_block=1
@@ -1048,19 +1037,20 @@ start_bifrost_node6() {
   SIGNER_NAME="validator6" \
   SIGNER_PASSWD="$PASS" \
   BIFROST_THORNADO_CHAIN_ID="$CHAIN_ID" \
-  BIFROST_THORNADO_CHAIN_HOST="127.0.0.1:1322" \
-  BIFROST_THORNADO_CHAIN_RPC="127.0.0.1:26662" \
-  BIFROST_THORNADO_CHAIN_EBIFROST="127.0.0.1:50056" \
+  BIFROST_THORNADO_CHAIN_HOST="127.0.0.1:$(api_port 6)" \
+  BIFROST_THORNADO_CHAIN_RPC="127.0.0.1:$(rpc_port 6)" \
+  BIFROST_THORNADO_CHAIN_EBIFROST="127.0.0.1:$(ebifrost_port 6)" \
   BIFROST_THORNADO_CHAIN_HOME_FOLDER="$home" \
   BIFROST_THORNADO_SIGNER_NAME="validator6" \
   THOR_BLOCK_TIME="100ms" \
   BLOCK_SCANNER_BACKOFF="100ms" \
   CHAIN_ID="$CHAIN_ID" \
-  CHAIN_API="127.0.0.1:1322" \
-  CHAIN_RPC="127.0.0.1:26662" \
-  BIFROST_METRICS_LISTEN_PORT="9006" \
-  BIFROST_FROST_P2P_PORT="5046" \
-  BIFROST_FROST_INFO_ADDRESS="127.0.0.1:6046" \
+  CHAIN_API="127.0.0.1:$(api_port 6)" \
+  CHAIN_RPC="127.0.0.1:$(rpc_port 6)" \
+  BIFROST_METRICS_LISTEN_PORT="$(metrics_port 6)" \
+  BIFROST_FROST_P2P_PORT="$(frost_p2p_port 6)" \
+  BIFROST_FROST_INFO_ADDRESS="127.0.0.1:$(frost_info_port 6)" \
+  BIFROST_TSS_INFO_ADDRESS="127.0.0.1:$(frost_info_port 6)" \
   BIFROST_FROST_BOOTSTRAP_PEERS="$bootstrap" \
   BIFROST_FROST_EXTERNAL_IP="127.0.0.1" \
   BIFROST_FROST_ALLOW_ZERO_BOND_NODES="true" \
@@ -1091,7 +1081,7 @@ start_bifrost_node6() {
   local start
   start="$(date +%s)"
   while true; do
-    if curl -fsS "http://127.0.0.1:6046/ping" >/dev/null 2>&1; then
+    if curl -fsS "http://127.0.0.1:$(frost_info_port 6)/ping" >/dev/null 2>&1; then
       log "bifrost-6 health ready"
       break
     fi
@@ -1131,7 +1121,7 @@ validate_flow1() {
   log "Flow 1: validating genesis, auto keygen request, and FROST vault"
   local height latest found=0
   for _ in {1..120}; do
-    latest="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
+    latest="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
     if (( latest > 1 )); then
       break
     fi
@@ -1139,13 +1129,13 @@ validate_flow1() {
   done
 
   local active
-  active="$(curl -fsS http://127.0.0.1:1317/thornado/nodes | jq '[((if type == "array" then . else .nodes end)[]?) | select((.status | ascii_downcase) == "active")] | length')"
+  active="$(curl -fsS $(api_url 1)/thornado/nodes | jq '[((if type == "array" then . else .nodes end)[]?) | select((.status | ascii_downcase) == "active")] | length')"
   [[ "$active" == "4" ]] || die "expected 4 active nodes, got ${active}"
 
   for _ in {1..180}; do
-    latest="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
+    latest="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
     for ((height=1; height<=latest; height++)); do
-      if curl -fsS "http://127.0.0.1:1317/thornado/keygen/${height}/$(source "$RUN_ROOT/meta/node1.env"; echo "$secp")" \
+      if curl -fsS "$(api_url 1)/thornado/keygen/${height}/$(source "$RUN_ROOT/meta/node1.env"; echo "$secp")" \
         | jq -e '.keygen_block.keygens | length > 0' >/dev/null 2>&1; then
         echo "$height" >"$RUN_ROOT/meta/keygen-height"
         found=1
@@ -1158,8 +1148,8 @@ validate_flow1() {
   [[ "$found" == "1" ]] || die "no automatic keygen block observed"
 
   for _ in {1..180}; do
-    if curl -fsS http://127.0.0.1:1317/thornado/vaults/base | jq -e 'if type == "array" then length > 0 else (.vaults | length > 0) end' >/dev/null 2>&1; then
-      curl -fsS http://127.0.0.1:1317/thornado/vaults/base >"$RUN_ROOT/meta/base-vaults.json"
+    if curl -fsS $(api_url 1)/thornado/vaults/base | jq -e 'if type == "array" then length > 0 else (.vaults | length > 0) end' >/dev/null 2>&1; then
+      curl -fsS $(api_url 1)/thornado/vaults/base >"$RUN_ROOT/meta/base-vaults.json"
       log "RESULTS Flow 1: PASS"
       return 0
     fi
@@ -1169,13 +1159,13 @@ validate_flow1() {
 }
 
 base_vault_count() {
-  curl -fsS http://127.0.0.1:1317/thornado/vaults/base | jq 'if type == "array" then length else (.vaults | length) end'
+  curl -fsS $(api_url 1)/thornado/vaults/base | jq 'if type == "array" then length else (.vaults | length) end'
 }
 
 wait_flow1_blocks() {
   local min_height="$1" latest
   for _ in {1..120}; do
-    latest="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
+    latest="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
     if (( latest >= min_height )); then
       return 0
     fi
@@ -1190,8 +1180,8 @@ validate_flow1_no_vault() {
   wait_flow1_blocks 10
   count="$(base_vault_count)"
   [[ "$count" == "0" ]] || die "expected no base vault for ${label}, got ${count}"
-  curl -fsS http://127.0.0.1:1317/thornado/nodes >"$RUN_ROOT/meta/${label}-nodes.json"
-  curl -fsS http://127.0.0.1:1317/thornado/vaults/base >"$RUN_ROOT/meta/${label}-base-vaults.json"
+  curl -fsS $(api_url 1)/thornado/nodes >"$RUN_ROOT/meta/${label}-nodes.json"
+  curl -fsS $(api_url 1)/thornado/vaults/base >"$RUN_ROOT/meta/${label}-base-vaults.json"
   log "RESULTS Flow 1 ${label}: PASS"
 }
 
@@ -1201,7 +1191,7 @@ validate_flow1_offline_node() {
   wait_flow1_blocks 10
   count="$(base_vault_count)"
   [[ "$count" == "0" ]] || die "offline bifrost-${offline_i}: base vault was created before all signer shares existed"
-  curl -fsS http://127.0.0.1:1317/thornado/vaults/base >"$RUN_ROOT/meta/offline-bifrost-base-vault-before.json"
+  curl -fsS $(api_url 1)/thornado/vaults/base >"$RUN_ROOT/meta/offline-bifrost-base-vault-before.json"
 
   start_bifrost_node_for_flow1 "$offline_i" 1
   for _ in {1..180}; do
@@ -1212,7 +1202,7 @@ validate_flow1_offline_node() {
     sleep 2
   done
   [[ "$count" == "1" ]] || die "offline bifrost-${offline_i}: base vault was not created after late signer joined"
-  curl -fsS http://127.0.0.1:1317/thornado/vaults/base >"$RUN_ROOT/meta/offline-bifrost-base-vault-after.json"
+  curl -fsS $(api_url 1)/thornado/vaults/base >"$RUN_ROOT/meta/offline-bifrost-base-vault-after.json"
   vault="$(jq -r '.[0].pub_key' "$RUN_ROOT/meta/offline-bifrost-base-vault-after.json")"
   jq -e 'length == 1 and .[0].status == "ActiveVault" and (.[0].membership | length) == 4' "$RUN_ROOT/meta/offline-bifrost-base-vault-after.json" >/dev/null \
     || die "offline bifrost-${offline_i}: active vault did not retain full membership"
@@ -1234,17 +1224,18 @@ validate_flow1_forged_vault_state() {
   SIGNER_NAME="validator1" \
   SIGNER_PASSWD="$PASS" \
   BIFROST_THORNADO_CHAIN_ID="$CHAIN_ID" \
-  BIFROST_THORNADO_CHAIN_HOST="127.0.0.1:1317" \
-  BIFROST_THORNADO_CHAIN_RPC="127.0.0.1:26657" \
-  BIFROST_THORNADO_CHAIN_EBIFROST="127.0.0.1:50051" \
+  BIFROST_THORNADO_CHAIN_HOST="127.0.0.1:$(api_port 1)" \
+  BIFROST_THORNADO_CHAIN_RPC="127.0.0.1:$(rpc_port 1)" \
+  BIFROST_THORNADO_CHAIN_EBIFROST="127.0.0.1:$(ebifrost_port 1)" \
   BIFROST_THORNADO_CHAIN_HOME_FOLDER="$home" \
   BIFROST_THORNADO_SIGNER_NAME="validator1" \
   CHAIN_ID="$CHAIN_ID" \
-  CHAIN_API="127.0.0.1:1317" \
-  CHAIN_RPC="127.0.0.1:26657" \
-  BIFROST_METRICS_LISTEN_PORT="9001" \
-  BIFROST_FROST_P2P_PORT="5041" \
-  BIFROST_FROST_INFO_ADDRESS="127.0.0.1:6041" \
+  CHAIN_API="127.0.0.1:$(api_port 1)" \
+  CHAIN_RPC="127.0.0.1:$(rpc_port 1)" \
+  BIFROST_METRICS_LISTEN_PORT="$(metrics_port 1)" \
+  BIFROST_FROST_P2P_PORT="$(frost_p2p_port 1)" \
+  BIFROST_FROST_INFO_ADDRESS="127.0.0.1:$(frost_info_port 1)" \
+  BIFROST_TSS_INFO_ADDRESS="127.0.0.1:$(frost_info_port 1)" \
   BIFROST_FROST_EXTERNAL_IP="127.0.0.1" \
   EXTERNAL_IP="127.0.0.1" \
   BIFROST_SIGNER_SIGNER_DB_PATH="$bhome/signer_db" \
@@ -1262,7 +1253,7 @@ validate_flow1_forged_vault_state() {
     if ! kill -0 "$(cat "$RUN_ROOT/pids/bifrost-${i}.pid")" >/dev/null 2>&1; then
       break
     fi
-    if curl -fsS http://127.0.0.1:6041/ping >/dev/null 2>&1; then
+    if curl -fsS "http://127.0.0.1:$(frost_info_port 1)/ping" >/dev/null 2>&1; then
       die "forged vault state: Bifrost became healthy with malformed vault pubkey"
     fi
     sleep 1
@@ -1276,7 +1267,7 @@ validate_flow2() {
   log "Flow 2: validating bonded standby node via POW deposit and protocol commitment"
   source "$RUN_ROOT/meta/node5.env"
   local owner_addr="$address" operator_pubkey="$secp" node_pubkey="$cons"
-  curl -fsS "http://127.0.0.1:1317/thornado/node/metrics" >"$RUN_ROOT/meta/flow2-node-metrics-before.json"
+  curl -fsS "$(api_url 1)/thornado/node/metrics" >"$RUN_ROOT/meta/flow2-node-metrics-before.json"
   jq -e '(.next_slot | tonumber) == 1 and (.next_slot_bond_required_sats | tonumber) == 100000000 and (.bond_start_amount_sats | tonumber) == 0 and (.bond_slot_increment_sats | tonumber) == 100000000' \
     "$RUN_ROOT/meta/flow2-node-metrics-before.json" >/dev/null || die "flow2 next slot bond requirement is not 1 BTC"
   request_deposit "$RUN_ROOT/node5" "validator5" "bond-flow-2" --operator-pubkey "$operator_pubkey" --node-pubkey "$node_pubkey" >"$RUN_ROOT/meta/flow2-request-deposit.json"
@@ -1301,7 +1292,7 @@ validate_flow2() {
   wait_confirmed_btc_output "$out_hash" "$root_addr" "$root_received" "$RUN_ROOT/meta/flow2-btc-sweep-tx-confirmed.json" 180
   btc_cli -rpcwallet=bifrost1 listunspent 0 9999999 "[\"${deposit_address}\"]" >"$RUN_ROOT/meta/flow2-child-utxo-after-sweep.json"
   jq -e 'length == 0' "$RUN_ROOT/meta/flow2-child-utxo-after-sweep.json" >/dev/null || die "flow2 child deposit UTXO remained spendable after sweep"
-  amount_sats="$(curl -fsS "http://127.0.0.1:1317/thornado/deposit/${deposit_id}" | jq -r '.amount_sats')"
+  amount_sats="$(curl -fsS "$(api_url 1)/thornado/deposit/${deposit_id}" | jq -r '.amount_sats')"
   [[ "$amount_sats" == "100000000" ]] || die "flow2 observed bond amount was not 1 BTC"
   receipt="$("$SHIELDER_HELPER" receipt "$deposit_id" "$(jq -r '.deposit_path_index' <<<"$session")" "$amount_sats" "operator5-seed")"
   commitments="$("$SHIELDER_HELPER" protocol-commitments "$amount_sats")"
@@ -1320,13 +1311,13 @@ validate_flow2() {
   assert_tx_success "$out" "flow2 set-node-keys"
   wait_blocks 2
   node_query "$owner_addr" >"$RUN_ROOT/meta/flow2-node.json"
-  curl -fsS "http://127.0.0.1:1317/thornado/bond/${node_pubkey}" >"$RUN_ROOT/meta/flow2-bond.json"
+  curl -fsS "$(api_url 1)/thornado/bond/${node_pubkey}" >"$RUN_ROOT/meta/flow2-bond.json"
   jq -e '((.node.total_bond // .total_bond // .node.bond // .bond) == "'"${amount_sats}"'") and (((.node.status // .status) | ascii_downcase) == "standby" or ((.node.status // .status) | ascii_downcase) == "active")' "$RUN_ROOT/meta/flow2-node.json" >/dev/null \
     || die "flow2 node account not bonded standby/active"
   jq -e --arg op "$operator_pubkey" --arg node "$node_pubkey" \
     '.node_pub_key == $node and .operator_pub_key == $op and (.bond_sats | tonumber) == 100000000 and (.pending_sats | tonumber) == 0 and .fee_share_active == true' \
     "$RUN_ROOT/meta/flow2-bond.json" >/dev/null || die "flow2 bond query did not match committed state"
-  curl -fsS "http://127.0.0.1:1317/thornado/node/metrics" >"$RUN_ROOT/meta/flow2-node-metrics-after.json"
+  curl -fsS "$(api_url 1)/thornado/node/metrics" >"$RUN_ROOT/meta/flow2-node-metrics-after.json"
   log "RESULTS Flow 2: PASS"
 }
 
@@ -1354,7 +1345,7 @@ validate_flow3() {
   printf '%s\n' "$sweep_txout" >"$RUN_ROOT/meta/flow3-sweep-txout.json"
   btc_cli -rpcwallet=bifrost1 listunspent 0 9999999 "[\"${deposit_address}\"]" >"$RUN_ROOT/meta/flow3-child-utxo-after-sweep.json"
   jq -e 'length == 0' "$RUN_ROOT/meta/flow3-child-utxo-after-sweep.json" >/dev/null || die "flow3 child deposit UTXO remained spendable after sweep"
-  amount_sats="$(curl -fsS "http://127.0.0.1:1317/thornado/deposit/${deposit_id}" | jq -r '.amount_sats')"
+  amount_sats="$(curl -fsS "$(api_url 1)/thornado/deposit/${deposit_id}" | jq -r '.amount_sats')"
   [[ "$amount_sats" == "20000000" ]] || die "flow3 observed deposit amount was not the actual BTC amount"
   receipt="$("$SHIELDER_HELPER" receipt "$deposit_id" "$path_index" "$amount_sats" "user-flow-3-seed")"
   printf '%s\n' "$receipt" >"$RUN_ROOT/meta/flow3-receipt.json"
@@ -1368,19 +1359,19 @@ validate_flow3() {
   printf '%s\n' "$committed" >"$RUN_ROOT/meta/flow3-deposit.json"
   jq -e '.settlement == "user" and ((.commitment_count | tonumber) > 0)' <<<"$committed" >/dev/null || die "flow3 user split not committed"
   record_shielder_notes "$receipt"
-  curl -fsS "http://127.0.0.1:1317/thornado/shielder/sync" >"$RUN_ROOT/meta/flow3-shielder-sync-after-split.json"
+  curl -fsS "$(api_url 1)/thornado/shielder/sync" >"$RUN_ROOT/meta/flow3-shielder-sync-after-split.json"
   jq -e '(.notes | length) >= 2 and ([.notes[] | select((.owner_pubkey // "") != "" and (.commitment // "") != "" and (.deposit_id // "") != "")] | length) >= 2' \
     "$RUN_ROOT/meta/flow3-shielder-sync-after-split.json" >/dev/null || die "flow3 shielder sync did not expose public note records"
 
   local root root_key root_value denom commitment commitment_key commitment_value denom_key denom_value
-  curl -fsS "http://127.0.0.1:1317/thornado/shielder/roots" >"$RUN_ROOT/meta/flow3-shielder-roots.json"
+  curl -fsS "$(api_url 1)/thornado/shielder/roots" >"$RUN_ROOT/meta/flow3-shielder-roots.json"
   while IFS= read -r commitment; do
     commitment_key="$(printf 'shielder_commitment//%s' "$(printf '%s' "$commitment" | tr '[:lower:]' '[:upper:]')" | xxd -p -c 256 | tr '[:lower:]' '[:upper:]')"
-    curl -fsS "http://127.0.0.1:26657/abci_query?path=%22/store/thornado/key%22&data=0x${commitment_key}" >"$RUN_ROOT/meta/flow3-commitment-${commitment}.kv.json"
+    curl -fsS "$(rpc_url 1)/abci_query?path=%22/store/thornado/key%22&data=0x${commitment_key}" >"$RUN_ROOT/meta/flow3-commitment-${commitment}.kv.json"
     commitment_value="$(jq -r '.result.response.value // ""' "$RUN_ROOT/meta/flow3-commitment-${commitment}.kv.json" | base64 -d | jq -r '.')"
     [[ "$commitment_value" == "$deposit_id" ]] || die "flow3 commitment KV did not point at deposit"
     denom_key="$(printf 'shielder_denom_commitment/%020d/%s' "$(jq -r '.notes[0].denomination_sats' "$RUN_ROOT/meta/flow3-receipt.json")" "$commitment" | xxd -p -c 256 | tr '[:lower:]' '[:upper:]')"
-    curl -fsS "http://127.0.0.1:26657/abci_query?path=%22/store/thornado/key%22&data=0x${denom_key}" >"$RUN_ROOT/meta/flow3-denom-commitment-${commitment}.kv.json"
+    curl -fsS "$(rpc_url 1)/abci_query?path=%22/store/thornado/key%22&data=0x${denom_key}" >"$RUN_ROOT/meta/flow3-denom-commitment-${commitment}.kv.json"
     denom_value="$(jq -r '.result.response.value // ""' "$RUN_ROOT/meta/flow3-denom-commitment-${commitment}.kv.json" | base64 -d | jq -r '.')"
     [[ "$denom_value" == "$deposit_id" ]] || die "flow3 denomination commitment KV did not point at deposit"
   done < <(jq -r '.notes[].commitment' "$RUN_ROOT/meta/flow3-receipt.json")
@@ -1391,8 +1382,8 @@ validate_flow3() {
   printf '%s\n' "$leaves" >"$RUN_ROOT/meta/flow3-proof-leaves.json"
   recipient="$(btc_cli -rpcwallet=miner getnewaddress)"
   printf '%s\n' "$recipient" >"$RUN_ROOT/meta/flow3-recipient-address.txt"
-  curl -fsS "http://127.0.0.1:1317/thornado/fee/entitlements" >"$RUN_ROOT/meta/flow3-fee-entitlements-before.json"
-  curl -fsS "http://127.0.0.1:1317/thornado/shielder/redeem/quote/$(jq -r '.denomination_sats' <<<"$note")" >"$RUN_ROOT/meta/flow3-redeem-quote.json"
+  curl -fsS "$(api_url 1)/thornado/fee/entitlements" >"$RUN_ROOT/meta/flow3-fee-entitlements-before.json"
+  curl -fsS "$(api_url 1)/thornado/shielder/redeem/quote/$(jq -r '.denomination_sats' <<<"$note")" >"$RUN_ROOT/meta/flow3-redeem-quote.json"
   fee="$(jq -r '.fee_sats' "$RUN_ROOT/meta/flow3-redeem-quote.json")"
   (( fee > 0 )) || die "flow3 redeem quote returned zero fee"
   withdrawal="$("$SHIELDER_HELPER" withdrawal "$note" "user-flow-3-seed" "$leaves" "$recipient" "$fee")"
@@ -1405,7 +1396,7 @@ validate_flow3() {
     '.roots[] | select(.root == $root and (.denomination_sats | tonumber) == $denom and (.leaf_count | tonumber) >= 2)' \
     "$RUN_ROOT/meta/flow3-shielder-roots.json" >/dev/null || die "flow3 proof root missing from roots API"
   root_key="$(printf 'shielder_merkle_root/%020d/%s' "$denom" "$root" | xxd -p -c 256 | tr '[:lower:]' '[:upper:]')"
-  curl -fsS "http://127.0.0.1:26657/abci_query?path=%22/store/thornado/key%22&data=0x${root_key}" >"$RUN_ROOT/meta/flow3-merkle-root.kv.json"
+  curl -fsS "$(rpc_url 1)/abci_query?path=%22/store/thornado/key%22&data=0x${root_key}" >"$RUN_ROOT/meta/flow3-merkle-root.kv.json"
   root_value="$(jq -r '.result.response.value // ""' "$RUN_ROOT/meta/flow3-merkle-root.kv.json" | base64 -d | jq -r '.')"
   [[ "$root_value" == "true" ]] || die "flow3 proof root missing from KV store"
   out="$(thornado_tx "$RUN_ROOT/node1" "user" shielder redeem "${prefix}.proof.json" "${prefix}.public.json")"
@@ -1416,11 +1407,11 @@ validate_flow3() {
     withdrawal_id="$(printf '%s' "$(jq -r '.[1].nullifier_hash + "|" + .[1].recipient' <<<"$withdrawal")" | shasum -a 256 | awk '{print toupper($1)}')"
   fi
   printf '%s\n' "$withdrawal_id" >"$RUN_ROOT/meta/flow3-withdrawal-id.txt"
-  withdraw_query="$(curl -fsS "http://127.0.0.1:1317/thornado/shielder/redeem/${withdrawal_id}")"
+  withdraw_query="$(curl -fsS "$(api_url 1)/thornado/shielder/redeem/${withdrawal_id}")"
   printf '%s\n' "$withdraw_query" >"$RUN_ROOT/meta/flow3-withdrawal-query.json"
   jq -e '.status == "keysign_queued" and ((.fee_sats | tonumber) == '"$fee"')' <<<"$withdraw_query" >/dev/null || die "flow3 withdrawal not queued with expected fee"
   nullifier="$(jq -r '.[1].nullifier_hash' <<<"$withdrawal")"
-  curl -fsS "http://127.0.0.1:1317/thornado/shielder/nullifier/${nullifier}" >"$RUN_ROOT/meta/flow3-nullifier-query.json"
+  curl -fsS "$(api_url 1)/thornado/shielder/nullifier/${nullifier}" >"$RUN_ROOT/meta/flow3-nullifier-query.json"
   jq -e '.spent == true and .withdrawal_id == "'"${withdrawal_id}"'"' "$RUN_ROOT/meta/flow3-nullifier-query.json" >/dev/null \
     || die "flow3 nullifier was not marked spent"
   outbound_txout="$(wait_txout_signed_by_in_hash "$withdrawal_id" "out" 1200)"
@@ -1440,7 +1431,7 @@ validate_flow3() {
   jq -e --arg txid "$(printf '%s' "$out_hash" | tr '[:upper:]' '[:lower:]')" --argjson payout "$expected_payout" \
     'length == 1 and .[0].txid == $txid and (((.[0].amount * 100000000) | floor) == $payout)' \
     "$RUN_ROOT/meta/flow3-recipient-utxos.json" >/dev/null || die "flow3 recipient had duplicate or unexpected BTC payout UTXOs"
-  curl -fsS "http://127.0.0.1:1317/thornado/fee/entitlements" >"$RUN_ROOT/meta/flow3-fee-entitlements-after.json"
+  curl -fsS "$(api_url 1)/thornado/fee/entitlements" >"$RUN_ROOT/meta/flow3-fee-entitlements-after.json"
   jq -e --argjson fee "$fee" '([.entitlements[]? | (.claimable_sats | tonumber)] | add // 0) >= $fee' "$RUN_ROOT/meta/flow3-fee-entitlements-after.json" >/dev/null \
     || die "flow3 fee entitlement did not increase enough to explain withdrawal fee"
 
@@ -1465,7 +1456,7 @@ validate_flow3() {
   "$SHIELDER_HELPER" split-withdrawal "$second_withdrawal" "${bad_prefix}-low-fee"
   assert_tx_or_cli_rejected "flow3 low fee redeem" "invalid withdrawal fee authorization" thornado_tx "$RUN_ROOT/node1" "user" shielder redeem "${bad_prefix}-low-fee.proof.json" "${bad_prefix}-low-fee.public.json"
   nullifier="$(jq -r '.nullifier_hash' "${bad_prefix}-low-fee.public.json")"
-  curl -fsS "http://127.0.0.1:1317/thornado/shielder/nullifier/${nullifier}" >"$RUN_ROOT/meta/flow3-low-fee-nullifier-query.json"
+  curl -fsS "$(api_url 1)/thornado/shielder/nullifier/${nullifier}" >"$RUN_ROOT/meta/flow3-low-fee-nullifier-query.json"
   jq -e '.spent == false' "$RUN_ROOT/meta/flow3-low-fee-nullifier-query.json" >/dev/null || die "flow3 rejected low-fee redeem consumed nullifier"
 
   fake_receipt="$("$SHIELDER_HELPER" receipt-simple "$(jq -r '.denomination_sats' <<<"$note")" "flow3-unknown-root-seed")"
@@ -1492,7 +1483,7 @@ validate_flow3() {
   out="$(thornado_tx "$RUN_ROOT/node1" "user" shielder split "$neg_id" "$short_commitments")"
   printf '%s\n' "$out" >"$RUN_ROOT/meta/flow3-partial-split-a.json"
   assert_tx_success "$out" "flow3 partial split A"
-  curl -fsS "http://127.0.0.1:1317/thornado/deposit/${neg_id}" >"$RUN_ROOT/meta/flow3-neg-deposit-after-partial-a.json"
+  curl -fsS "$(api_url 1)/thornado/deposit/${neg_id}" >"$RUN_ROOT/meta/flow3-neg-deposit-after-partial-a.json"
   jq -e '.status == "committed" and ((.commitment_count // "0" | tonumber) == 1)' "$RUN_ROOT/meta/flow3-neg-deposit-after-partial-a.json" >/dev/null \
     || die "flow3 partial split A did not store exactly one commitment"
   alt_receipt="$("$SHIELDER_HELPER" receipt-simple "10000000" "flow3-alt-owner-seed")"
@@ -1526,10 +1517,10 @@ validate_flow4() {
   source "$RUN_ROOT/meta/node5.env"
   local node_pubkey="$cons" owner_addr="$address" entitlement claim accrued fee_share receipt commitments note_pubkeys payload priv sig out deposit_id committed note_count
   local expected_fee pool_before pool_after pool_claimed_before pool_claimed_after bond_before bond_after txhash txres txheight
-  entitlement="$(curl -fsS "http://127.0.0.1:1317/thornado/fee/entitlement/${node_pubkey}")"
+  entitlement="$(curl -fsS "$(api_url 1)/thornado/fee/entitlement/${node_pubkey}")"
   printf '%s\n' "$entitlement" >"$RUN_ROOT/meta/flow4-entitlement-before.json"
-  curl -fsS "http://127.0.0.1:1317/thornado/fees" >"$RUN_ROOT/meta/flow4-fee-pool-before.json"
-  curl -fsS "http://127.0.0.1:1317/thornado/bond/${node_pubkey}" >"$RUN_ROOT/meta/flow4-bond-before.json"
+  curl -fsS "$(api_url 1)/thornado/fees" >"$RUN_ROOT/meta/flow4-fee-pool-before.json"
+  curl -fsS "$(api_url 1)/thornado/bond/${node_pubkey}" >"$RUN_ROOT/meta/flow4-bond-before.json"
   claim="$(jq -r '.claimable_sats' <<<"$entitlement")"
   accrued="$(jq -r '.accrued_sats' <<<"$entitlement")"
   fee_share="$(jq -r '.fee_per_slot_share' <<<"$entitlement")"
@@ -1579,17 +1570,17 @@ validate_flow4() {
   assert_tx_success "$out" "flow4 split-fees"
   txhash="$(jq -r '.txhash // empty' <<<"$out")"
   [[ -n "$txhash" ]] || die "flow4 split-fees txhash missing"
-  txres="$(curl -fsS "http://127.0.0.1:26657/tx?hash=0x${txhash}")"
+  txres="$(curl -fsS "$(rpc_url 1)/tx?hash=0x${txhash}")"
   printf '%s\n' "$txres" >"$RUN_ROOT/meta/flow4-split-fees-delivertx.json"
   txheight="$(jq -r '.result.height' <<<"$txres")"
   [[ -n "$txheight" && "$txheight" != "null" ]] || die "flow4 split-fees deliver height missing"
   deposit_id="$(printf 'thornado:fee-split:v1|%s|%s|%s|%s' "$node_pubkey" "$owner_addr" "$accrued" "$txheight" | shasum -a 256 | awk '{print toupper($1)}')"
   printf '%s\n' "$deposit_id" >"$RUN_ROOT/meta/flow4-fee-deposit-id.txt"
   wait_blocks 2
-  entitlement="$(curl -fsS "http://127.0.0.1:1317/thornado/fee/entitlement/${node_pubkey}")"
+  entitlement="$(curl -fsS "$(api_url 1)/thornado/fee/entitlement/${node_pubkey}")"
   printf '%s\n' "$entitlement" >"$RUN_ROOT/meta/flow4-entitlement-after.json"
-  curl -fsS "http://127.0.0.1:1317/thornado/fees" >"$RUN_ROOT/meta/flow4-fee-pool-after.json"
-  curl -fsS "http://127.0.0.1:1317/thornado/bond/${node_pubkey}" >"$RUN_ROOT/meta/flow4-bond-after.json"
+  curl -fsS "$(api_url 1)/thornado/fees" >"$RUN_ROOT/meta/flow4-fee-pool-after.json"
+  curl -fsS "$(api_url 1)/thornado/bond/${node_pubkey}" >"$RUN_ROOT/meta/flow4-bond-after.json"
   jq -e --argjson accrued "$accrued" '(.claimable_sats | tonumber) == 0 and (.fee_debt_sats | tonumber) == $accrued and (.pending_fee_deposit_id == "")' \
     "$RUN_ROOT/meta/flow4-entitlement-after.json" >/dev/null || die "flow4 fee entitlement not claimed"
   jq -e --argjson accrued "$accrued" --argjson bond "$(jq -r '.bond_sats' "$RUN_ROOT/meta/flow4-bond-before.json")" \
@@ -1598,28 +1589,28 @@ validate_flow4() {
   pool_claimed_before="$(jq -r '.total_claimed_sats' "$RUN_ROOT/meta/flow4-fee-pool-before.json")"
   pool_claimed_after="$(jq -r '.total_claimed_sats' "$RUN_ROOT/meta/flow4-fee-pool-after.json")"
   [[ "$pool_claimed_after" == "$((pool_claimed_before + claim))" ]] || die "flow4 fee pool claimed total did not increase by claim"
-  committed="$(curl -fsS "http://127.0.0.1:1317/thornado/deposit/${deposit_id}" 2>/dev/null || true)"
+  committed="$(curl -fsS "$(api_url 1)/thornado/deposit/${deposit_id}" 2>/dev/null || true)"
   printf '%s\n' "$committed" >"$RUN_ROOT/meta/flow4-fee-deposit.json"
   jq -e --arg owner "$owner_addr" --argjson claim "$claim" --argjson count "$note_count" \
     '.owner == $owner and .settlement == "operator_fee" and .status == "committed" and (.amount_sats | tonumber) == $claim and (.commitment_count | tonumber) == $count' \
     "$RUN_ROOT/meta/flow4-fee-deposit.json" >/dev/null || die "flow4 fee deposit record invalid"
   record_shielder_notes "$receipt"
   local root denom commitment commitment_key commitment_value denom_key denom_value pubkey pubkey_key pubkey_value fee_note leaves quote_status quote_body root_key root_value
-  curl -fsS "http://127.0.0.1:1317/thornado/shielder/roots" >"$RUN_ROOT/meta/flow4-shielder-roots.json"
+  curl -fsS "$(api_url 1)/thornado/shielder/roots" >"$RUN_ROOT/meta/flow4-shielder-roots.json"
   while IFS= read -r commitment; do
     denom="$(jq -r --arg c "$commitment" '.notes[] | select(.commitment == $c) | .denomination_sats' "$RUN_ROOT/meta/flow4-receipt.json")"
     commitment_key="$(printf 'shielder_commitment//%s' "$(printf '%s' "$commitment" | tr '[:lower:]' '[:upper:]')" | xxd -p -c 256 | tr '[:lower:]' '[:upper:]')"
-    curl -fsS "http://127.0.0.1:26657/abci_query?path=%22/store/thornado/key%22&data=0x${commitment_key}" >"$RUN_ROOT/meta/flow4-commitment-${commitment}.kv.json"
+    curl -fsS "$(rpc_url 1)/abci_query?path=%22/store/thornado/key%22&data=0x${commitment_key}" >"$RUN_ROOT/meta/flow4-commitment-${commitment}.kv.json"
     commitment_value="$(jq -r '.result.response.value // ""' "$RUN_ROOT/meta/flow4-commitment-${commitment}.kv.json" | base64 -d | jq -r '.')"
     [[ "$commitment_value" == "$deposit_id" ]] || die "flow4 commitment KV did not point at fee deposit"
     denom_key="$(printf 'shielder_denom_commitment/%020d/%s' "$denom" "$commitment" | xxd -p -c 256 | tr '[:lower:]' '[:upper:]')"
-    curl -fsS "http://127.0.0.1:26657/abci_query?path=%22/store/thornado/key%22&data=0x${denom_key}" >"$RUN_ROOT/meta/flow4-denom-commitment-${commitment}.kv.json"
+    curl -fsS "$(rpc_url 1)/abci_query?path=%22/store/thornado/key%22&data=0x${denom_key}" >"$RUN_ROOT/meta/flow4-denom-commitment-${commitment}.kv.json"
     denom_value="$(jq -r '.result.response.value // ""' "$RUN_ROOT/meta/flow4-denom-commitment-${commitment}.kv.json" | base64 -d | jq -r '.')"
     [[ "$denom_value" == "$deposit_id" ]] || die "flow4 denomination commitment KV did not point at fee deposit"
   done < <(jq -r '.notes[].commitment' "$RUN_ROOT/meta/flow4-receipt.json")
   jq -r '.[]' "$RUN_ROOT/meta/flow4-fee-note-pubkeys.json" | while IFS= read -r pubkey; do
     pubkey_key="$(printf 'shielder_fee_note_pubkey//%s' "$(printf '%s' "$pubkey" | tr '[:lower:]' '[:upper:]')" | xxd -p -c 256 | tr '[:lower:]' '[:upper:]')"
-    curl -fsS "http://127.0.0.1:26657/abci_query?path=%22/store/thornado/key%22&data=0x${pubkey_key}" >"$RUN_ROOT/meta/flow4-fee-note-pubkey-${pubkey}.kv.json"
+    curl -fsS "$(rpc_url 1)/abci_query?path=%22/store/thornado/key%22&data=0x${pubkey_key}" >"$RUN_ROOT/meta/flow4-fee-note-pubkey-${pubkey}.kv.json"
     pubkey_value="$(jq -r '.result.response.value // ""' "$RUN_ROOT/meta/flow4-fee-note-pubkey-${pubkey}.kv.json" | base64 -d | jq -r '.')"
     [[ "$pubkey_value" == "$deposit_id" ]] || die "flow4 fee note pubkey KV did not point at fee deposit"
   done
@@ -1631,11 +1622,11 @@ validate_flow4() {
   jq -e --arg root "$root" --argjson denom "$denom" '.roots[] | select(.root == $root and (.denomination_sats | tonumber) == $denom)' \
     "$RUN_ROOT/meta/flow4-shielder-roots.json" >/dev/null || die "flow4 fee note root missing from roots API"
   root_key="$(printf 'shielder_merkle_root/%020d/%s' "$denom" "$root" | xxd -p -c 256 | tr '[:lower:]' '[:upper:]')"
-  curl -fsS "http://127.0.0.1:26657/abci_query?path=%22/store/thornado/key%22&data=0x${root_key}" >"$RUN_ROOT/meta/flow4-merkle-root.kv.json"
+  curl -fsS "$(rpc_url 1)/abci_query?path=%22/store/thornado/key%22&data=0x${root_key}" >"$RUN_ROOT/meta/flow4-merkle-root.kv.json"
   root_value="$(jq -r '.result.response.value // ""' "$RUN_ROOT/meta/flow4-merkle-root.kv.json" | base64 -d | jq -r '.')"
   [[ "$root_value" == "true" ]] || die "flow4 fee note root missing from KV store"
   quote_body="$RUN_ROOT/meta/flow4-fee-note-redeem-quote-error.json"
-  quote_status="$(curl -sS -o "$quote_body" -w "%{http_code}" "http://127.0.0.1:1317/thornado/shielder/redeem/quote/${denom}" || true)"
+  quote_status="$(curl -sS -o "$quote_body" -w "%{http_code}" "$(api_url 1)/thornado/shielder/redeem/quote/${denom}" || true)"
   printf '%s\n' "$quote_status" >"$RUN_ROOT/meta/flow4-fee-note-redeem-quote-status.txt"
   [[ "$quote_status" != "200" ]] || die "flow4 100k fee note unexpectedly had a standalone redeem quote"
   grep -q "withdrawal fee exceeds amount" "$quote_body" || die "flow4 100k fee note quote rejected for unexpected reason"
@@ -1654,7 +1645,7 @@ validate_flow5() {
   local height expiry out auction_id auction_key auction_kv bid_key bid_kv deposit_key deposit_kv session deposit_address txid deposit_id bid_id receipt commitments committed
   local seller_bond new_bond seller_node bidder_node seller_slot note_count sweep_txout root_addr root_received out_hash matched selected_auction selected_bid
   node_query "$seller_addr" >"$RUN_ROOT/meta/flow5-seller-node-before.json"
-  curl -fsS "http://127.0.0.1:1317/thornado/bond/${seller_node_pubkey}" >"$RUN_ROOT/meta/flow5-seller-bond-before.json"
+  curl -fsS "$(api_url 1)/thornado/bond/${seller_node_pubkey}" >"$RUN_ROOT/meta/flow5-seller-bond-before.json"
   jq -e '((.node.status // .status) | ascii_downcase) == "standby"' "$RUN_ROOT/meta/flow5-seller-node-before.json" >/dev/null \
     || die "flow5 seller is not standby before auction"
   jq -e --arg node "$seller_node_pubkey" --arg op "$seller_operator_pubkey" \
@@ -1662,7 +1653,7 @@ validate_flow5() {
     "$RUN_ROOT/meta/flow5-seller-bond-before.json" >/dev/null || die "flow5 seller bond is not eligible"
   seller_slot="$(jq -r '.slot' "$RUN_ROOT/meta/flow5-seller-bond-before.json")"
 
-  height="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
+  height="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
   expiry=$((height + 300))
   out="$(thornado_tx "$RUN_ROOT/node6" "validator6" shielder auction-create "$bidder_node_pubkey" 100000000 "$expiry")"
   assert_tx_rejected "$out" "flow5 unbonded auction create" "node has no bonded slot"
@@ -1670,10 +1661,10 @@ validate_flow5() {
   printf '%s\n' "$out" >"$RUN_ROOT/meta/flow5-auction-create.json"
   assert_tx_success "$out" "flow5 auction-create"
   wait_blocks 2
-  auction_id="$(curl -fsS http://127.0.0.1:1317/thornado/node/auctions | jq -r --arg seller "$seller_node_pubkey" '.auctions | sort_by(.created_height) | reverse[] | select(.seller_node_pub_key == $seller and .status == "open") | .auction_id' | head -n1)"
+  auction_id="$(curl -fsS $(api_url 1)/thornado/node/auctions | jq -r --arg seller "$seller_node_pubkey" '.auctions | sort_by(.created_height) | reverse[] | select(.seller_node_pub_key == $seller and .status == "open") | .auction_id' | head -n1)"
   [[ -n "$auction_id" ]] || die "flow5 auction not found"
   printf '%s\n' "$auction_id" >"$RUN_ROOT/meta/flow5-auction-id.txt"
-  curl -fsS "http://127.0.0.1:1317/thornado/node/auction/${auction_id}" >"$RUN_ROOT/meta/flow5-auction-open.json"
+  curl -fsS "$(api_url 1)/thornado/node/auction/${auction_id}" >"$RUN_ROOT/meta/flow5-auction-open.json"
   jq -e --arg seller "$seller_addr" --arg op "$seller_operator_pubkey" --arg node "$seller_node_pubkey" --argjson slot "$seller_slot" --argjson expiry "$expiry" \
     '.seller == $seller and .seller_operator_pub_key == $op and .seller_node_pub_key == $node and (.slot | tonumber) == $slot and (.original_bond_sats | tonumber) == 100000000 and (.reserve_sats | tonumber) == 100000000 and (.expiry_height | tonumber) == $expiry and .status == "open"' \
     "$RUN_ROOT/meta/flow5-auction-open.json" >/dev/null || die "flow5 open auction query is invalid"
@@ -1693,10 +1684,10 @@ validate_flow5() {
   jq -e --arg owner "$bidder_addr" --arg auction "$auction_id" --arg op "$bidder_operator_pubkey" --arg node "$bidder_node_pubkey" \
     '.owner == $owner and .auction_id == $auction and .operator_pub_key == $op and .node_pub_key == $node and (.deposit_path_index | tonumber) > 0 and (.deposit_address | length) > 0 and (.vault_pub_key | length) > 0' \
     "$RUN_ROOT/meta/flow5-bid-session.json" >/dev/null || die "flow5 bid deposit session is invalid"
-  bid_id="$(curl -fsS "http://127.0.0.1:1317/thornado/node/auction/${auction_id}/bids" | jq -r '.bids[0].bid_id')"
+  bid_id="$(curl -fsS "$(api_url 1)/thornado/node/auction/${auction_id}/bids" | jq -r '.bids[0].bid_id')"
   [[ -n "$bid_id" && "$bid_id" != "null" ]] || die "flow5 bid not found before deposit"
   printf '%s\n' "$bid_id" >"$RUN_ROOT/meta/flow5-bid-id.txt"
-  curl -fsS "http://127.0.0.1:1317/thornado/node/bid/${bid_id}" >"$RUN_ROOT/meta/flow5-bid-before-deposit.json"
+  curl -fsS "$(api_url 1)/thornado/node/bid/${bid_id}" >"$RUN_ROOT/meta/flow5-bid-before-deposit.json"
   jq -e --arg bid "$bid_id" --arg auction "$auction_id" --arg bidder "$bidder_addr" --arg op "$bidder_operator_pubkey" --arg node "$bidder_node_pubkey" \
     '.bid_id == $bid and .auction_id == $auction and .bidder == $bidder and .operator_pub_key == $op and .node_pub_key == $node and ((.deposit_id // "") == "") and ((.amount_sats // 0 | tonumber) == 0) and .selected == false and .settled == false' \
     "$RUN_ROOT/meta/flow5-bid-before-deposit.json" >/dev/null || die "flow5 bid state before deposit is invalid"
@@ -1713,10 +1704,10 @@ validate_flow5() {
   jq -e --arg auction "$auction_id" --arg node "$bidder_node_pubkey" \
     '.status == "deposit_matched" and .auction_id == $auction and .node_pub_key == $node and (.amount_sats | tonumber) == 100000000' \
     "$RUN_ROOT/meta/flow5-deposit-matched.json" >/dev/null || die "flow5 matched bid deposit is invalid"
-  curl -fsS "http://127.0.0.1:1317/thornado/tx/${deposit_id}" >"$RUN_ROOT/meta/flow5-observed-tx.json"
+  curl -fsS "$(api_url 1)/thornado/tx/${deposit_id}" >"$RUN_ROOT/meta/flow5-observed-tx.json"
   jq -e --arg id "$deposit_id" '.. | strings | ascii_upcase | select(. == $id)' "$RUN_ROOT/meta/flow5-observed-tx.json" >/dev/null \
     || die "flow5 observed tx query did not contain auction deposit id"
-  curl -fsS "http://127.0.0.1:1317/thornado/node/bid/${bid_id}" >"$RUN_ROOT/meta/flow5-bid-after-deposit.json"
+  curl -fsS "$(api_url 1)/thornado/node/bid/${bid_id}" >"$RUN_ROOT/meta/flow5-bid-after-deposit.json"
   jq -e --arg bid "$bid_id" --arg auction "$auction_id" --arg deposit "$deposit_id" \
     '.bid_id == $bid and .auction_id == $auction and .deposit_id == $deposit and (.amount_sats | tonumber) == 100000000 and .selected == false and .settled == false' \
     "$RUN_ROOT/meta/flow5-bid-after-deposit.json" >/dev/null || die "flow5 bid was not updated by deposit match"
@@ -1735,8 +1726,8 @@ validate_flow5() {
   printf '%s\n' "$out" >"$RUN_ROOT/meta/flow5-auction-select-bid.json"
   assert_tx_success "$out" "flow5 auction-select-bid"
   wait_blocks 2
-  curl -fsS "http://127.0.0.1:1317/thornado/node/auction/${auction_id}" >"$RUN_ROOT/meta/flow5-auction-selected.json"
-  curl -fsS "http://127.0.0.1:1317/thornado/node/bid/${bid_id}" >"$RUN_ROOT/meta/flow5-bid-selected.json"
+  curl -fsS "$(api_url 1)/thornado/node/auction/${auction_id}" >"$RUN_ROOT/meta/flow5-auction-selected.json"
+  curl -fsS "$(api_url 1)/thornado/node/bid/${bid_id}" >"$RUN_ROOT/meta/flow5-bid-selected.json"
   jq -e --arg bid "$bid_id" '.status == "selected" and .selected_bid_id == $bid' "$RUN_ROOT/meta/flow5-auction-selected.json" >/dev/null \
     || die "flow5 auction did not enter selected state"
   jq -e '.selected == true and .settled == false' "$RUN_ROOT/meta/flow5-bid-selected.json" >/dev/null || die "flow5 bid was not selected"
@@ -1756,7 +1747,7 @@ validate_flow5() {
   bad_commitments="$(jq -c 'map(tostring)' <<<"$bad_commitments")"
   out="$(thornado_tx "$RUN_ROOT/node5" "validator5" shielder auction-split "$auction_id" "$bid_id" "$bad_commitments")"
   assert_tx_rejected "$out" "flow5 bad seller payout split" "spendable remainder"
-  curl -fsS "http://127.0.0.1:1317/thornado/node/bid/${bid_id}" >"$RUN_ROOT/meta/flow5-bid-after-rejected-splits.json"
+  curl -fsS "$(api_url 1)/thornado/node/bid/${bid_id}" >"$RUN_ROOT/meta/flow5-bid-after-rejected-splits.json"
   jq -e '.selected == true and .settled == false' "$RUN_ROOT/meta/flow5-bid-after-rejected-splits.json" >/dev/null \
     || die "flow5 rejected auction split mutated selected bid"
 
@@ -1773,8 +1764,8 @@ validate_flow5() {
   jq -e --arg owner "$seller_addr" --arg auction "$auction_id" --argjson count "$note_count" \
     '.owner == $owner and .auction_id == $auction and .settlement == "operator_sale" and .status == "committed" and .bond_confirmed == true and (.amount_sats | tonumber) == 100000000 and (.seller_payout_sats | tonumber) == 100000000 and ((.protocol_bond_sats // 0) | tonumber) == 0 and (.commitments | length) == $count' \
     <<<"$deposit_kv" >/dev/null || die "flow5 auction deposit KV not settled correctly"
-  curl -fsS "http://127.0.0.1:1317/thornado/node/auction/${auction_id}" >"$RUN_ROOT/meta/flow5-auction-settled.json"
-  curl -fsS "http://127.0.0.1:1317/thornado/node/bid/${bid_id}" >"$RUN_ROOT/meta/flow5-bid-settled.json"
+  curl -fsS "$(api_url 1)/thornado/node/auction/${auction_id}" >"$RUN_ROOT/meta/flow5-auction-settled.json"
+  curl -fsS "$(api_url 1)/thornado/node/bid/${bid_id}" >"$RUN_ROOT/meta/flow5-bid-settled.json"
   jq -e --arg bid "$bid_id" '.status == "settled" and .selected_bid_id == $bid' "$RUN_ROOT/meta/flow5-auction-settled.json" >/dev/null \
     || die "flow5 auction did not settle"
   jq -e --arg deposit "$deposit_id" '.deposit_id == $deposit and .selected == true and .settled == true' "$RUN_ROOT/meta/flow5-bid-settled.json" >/dev/null \
@@ -1787,8 +1778,8 @@ validate_flow5() {
   jq -e --arg bid "$bid_id" --arg deposit "$deposit_id" '.bid_id == $bid and .deposit_id == $deposit and .selected == true and .settled == true' <<<"$bid_kv" >/dev/null \
     || die "flow5 bid KV did not settle"
 
-  seller_bond="$(curl -fsS "http://127.0.0.1:1317/thornado/bond/${seller_node_pubkey}")"
-  new_bond="$(curl -fsS "http://127.0.0.1:1317/thornado/bond/${bidder_node_pubkey}")"
+  seller_bond="$(curl -fsS "$(api_url 1)/thornado/bond/${seller_node_pubkey}")"
+  new_bond="$(curl -fsS "$(api_url 1)/thornado/bond/${bidder_node_pubkey}")"
   printf '%s\n' "$seller_bond" >"$RUN_ROOT/meta/flow5-seller-bond-after.json"
   printf '%s\n' "$new_bond" >"$RUN_ROOT/meta/flow5-buyer-bond-after.json"
   jq -e --arg auction "$auction_id" '.sold == true and .sold_auction_id == $auction and (.bond_sats | tonumber) == 0 and .fee_share_active == false' \
@@ -1802,7 +1793,7 @@ validate_flow5() {
     || die "flow5 buyer node account is not standby"
 
   record_shielder_notes "$receipt"
-  curl -fsS "http://127.0.0.1:1317/thornado/shielder/roots" >"$RUN_ROOT/meta/flow5-shielder-roots.json"
+  curl -fsS "$(api_url 1)/thornado/shielder/roots" >"$RUN_ROOT/meta/flow5-shielder-roots.json"
   local root denom commitment commitment_key commitment_value denom_key denom_value leaves root_key root_value
   while IFS= read -r commitment; do
     denom="$(jq -r --arg c "$commitment" '.notes[] | select(.commitment == $c) | .denomination_sats' "$RUN_ROOT/meta/flow5-seller-receipt.json")"
@@ -1825,7 +1816,7 @@ validate_flow5() {
 
   out="$(thornado_tx "$RUN_ROOT/node5" "validator5" shielder auction-split "$auction_id" "$bid_id" "$commitments")"
   assert_tx_rejected "$out" "flow5 duplicate auction split" "node slot auction bid not selected"
-  height="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
+  height="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
   out="$(thornado_tx "$RUN_ROOT/node5" "validator5" shielder auction-create "$seller_node_pubkey" 100000000 "$((height + 300))")"
   assert_tx_rejected "$out" "flow5 sold node second auction" "node has no bonded slot"
   log "RESULTS Flow 5: PASS"
@@ -1835,7 +1826,7 @@ validate_flow6() {
   log "Flow 6: validating node6 churn-in and base-vault migration"
   local old_vault old_addr new_vault new_addr node5_secp node6_addr node6_secp node6_ed node6_cons out status active_vaults start latest
   local flow6_start keygen_height keygen_json migrate_txout out_hash raw_tx old_prevouts after_vaults post_session config h current_height
-  curl -fsS http://127.0.0.1:1317/thornado/vaults/base >"$RUN_ROOT/meta/flow6-base-vaults-before.json"
+  curl -fsS $(api_url 1)/thornado/vaults/base >"$RUN_ROOT/meta/flow6-base-vaults-before.json"
   old_vault="$(jq -r '[.[] | select(.status == "ActiveVault")][0].pub_key' "$RUN_ROOT/meta/flow6-base-vaults-before.json")"
   old_addr="$(jq -r --arg old "$old_vault" '.[] | select(.pub_key == $old) | .addresses[]? | select(.chain == "BTC") | .address' "$RUN_ROOT/meta/flow6-base-vaults-before.json" | head -n1)"
   if [[ -z "$old_addr" || "$old_addr" == "null" ]]; then
@@ -1853,7 +1844,7 @@ validate_flow6() {
   set_config_from_active_nodes Churn_RetryIntervalBlocks 20
   set_config_from_active_nodes Vault_MigrationIntervalBlocks 20
   set_config_from_active_nodes Vault_MigrationRounds 1
-  curl -fsS "http://127.0.0.1:1317/thornado/config" >"$RUN_ROOT/meta/flow6-config-after-migration-tuning.json"
+  curl -fsS "$(api_url 1)/thornado/config" >"$RUN_ROOT/meta/flow6-config-after-migration-tuning.json"
   config="$(jq -r '(.NODE_SETDESIRED.value // (.configs[]? | select(.key == "Node_SetDesired") | .value) // empty)' "$RUN_ROOT/meta/flow6-config-after-migration-tuning.json" | tail -n1)"
   [[ "$config" == "5" ]] || die "flow6 node desired config was not applied"
   config="$(jq -r '(.VAULT_MIGRATIONINTERVALBLOCKS.value // (.configs[]? | select(.key == "Vault_MigrationIntervalBlocks") | .value) // empty)' "$RUN_ROOT/meta/flow6-config-after-migration-tuning.json" | tail -n1)"
@@ -1861,7 +1852,7 @@ validate_flow6() {
   config="$(jq -r '(.CHURN_RETRYINTERVALBLOCKS.value // (.configs[]? | select(.key == "Churn_RetryIntervalBlocks") | .value) // empty)' "$RUN_ROOT/meta/flow6-config-after-migration-tuning.json" | tail -n1)"
   [[ "$config" == "20" ]] || die "flow6 churn retry config was not applied"
 
-  curl -fsS "http://127.0.0.1:1317/thornado/bond/${node6_cons}" >"$RUN_ROOT/meta/flow6-node6-bond-before.json"
+  curl -fsS "$(api_url 1)/thornado/bond/${node6_cons}" >"$RUN_ROOT/meta/flow6-node6-bond-before.json"
   jq -e '(.bond_sats | tonumber) == 100000000 and .node_status == "Standby"' "$RUN_ROOT/meta/flow6-node6-bond-before.json" >/dev/null \
     || die "flow6 node6 does not have standby auction bond"
   out="$(thornado_tx "$RUN_ROOT/node6" "validator6" set-ip-address "127.0.0.1")"
@@ -1879,9 +1870,9 @@ validate_flow6() {
   start_thornado_node6
   start_bifrost_node6
   wait_bifrost6_ready_for_keygen
-  curl -fsS "http://127.0.0.1:6046/status/p2p" >"$RUN_ROOT/meta/flow6-bifrost6-p2p.json"
-  curl -fsS "http://127.0.0.1:6046/status/scanner" >"$RUN_ROOT/meta/flow6-bifrost6-scanner.json"
-  curl -fsS "http://127.0.0.1:6046/status/signing" >"$RUN_ROOT/meta/flow6-bifrost6-signing-before-churn.json"
+  curl -fsS "http://127.0.0.1:$(frost_info_port 6)/status/p2p" >"$RUN_ROOT/meta/flow6-bifrost6-p2p.json"
+  curl -fsS "http://127.0.0.1:$(frost_info_port 6)/status/scanner" >"$RUN_ROOT/meta/flow6-bifrost6-scanner.json"
+  curl -fsS "http://127.0.0.1:$(frost_info_port 6)/status/signing" >"$RUN_ROOT/meta/flow6-bifrost6-signing-before-churn.json"
   out="$(thornado_tx "$RUN_ROOT/node6" "validator6" set-version)"
   assert_tx_success "$out" "flow6 node6 set-version"
   wait_blocks 2
@@ -1889,13 +1880,13 @@ validate_flow6() {
   jq -e '(((.node.status // .status) | ascii_downcase) as $status | ($status == "standby" or $status == "selected")) and ((.node.version // .version) | length) > 0' \
     "$RUN_ROOT/meta/flow6-node6-pre-churn.json" >/dev/null || die "flow6 node6 pre-churn status/version invalid"
 
-  flow6_start="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
+  flow6_start="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
   : >"$RUN_ROOT/meta/flow6-node6-status-history.tsv"
   start="$(date +%s)"
   while true; do
     status="$(node_query "$node6_addr" | jq -r '(.node.status // .status) | ascii_downcase')"
-    active_vaults="$(curl -fsS http://127.0.0.1:1317/thornado/vaults/base)"
-    latest="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
+    active_vaults="$(curl -fsS $(api_url 1)/thornado/vaults/base)"
+    latest="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
     printf '%s\t%s\n' "$latest" "$status" >>"$RUN_ROOT/meta/flow6-node6-status-history.tsv"
     if [[ "$status" == "active" ]] && jq -e --arg old "$old_vault" --arg member "$node6_secp" '
       [.[]? | select(.status == "ActiveVault" and .pub_key != $old and ((.membership // []) | index($member)))] | length > 0
@@ -1929,13 +1920,13 @@ validate_flow6() {
   keygen_height=""
   h="$flow6_start"
   while true; do
-    keygen_json="$(curl -fsS "http://127.0.0.1:1317/thornado/keygen/${h}/${node6_secp}" 2>/dev/null || true)"
+    keygen_json="$(curl -fsS "$(api_url 1)/thornado/keygen/${h}/${node6_secp}" 2>/dev/null || true)"
     if [[ -n "$keygen_json" ]] && jq -e --arg member "$node6_secp" --arg seller "$node5_secp" '.keygen_block.keygens[]? | select((.members | index($member)) and ((.members | index($seller)) == null))' <<<"$keygen_json" >/dev/null 2>&1; then
       keygen_height="$h"
       printf '%s\n' "$keygen_json" >"$RUN_ROOT/meta/flow6-keygen-node6.json"
       break
     fi
-    current_height="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
+    current_height="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
     if (( h >= flow6_start + 900 )); then
       break
     fi
@@ -1986,7 +1977,7 @@ validate_flow6() {
 
   out_hash="$(printf '%s' "$out_hash" | tr '[:lower:]' '[:upper:]')"
   for _ in {1..90}; do
-    if curl -fsS "http://127.0.0.1:1317/thornado/tx/${out_hash}" >"$RUN_ROOT/meta/flow6-migrate-observed-tx.json" 2>/dev/null &&
+    if curl -fsS "$(api_url 1)/thornado/tx/${out_hash}" >"$RUN_ROOT/meta/flow6-migrate-observed-tx.json" 2>/dev/null &&
       jq -e --arg id "$out_hash" '.. | strings | ascii_upcase | select(. == $id)' "$RUN_ROOT/meta/flow6-migrate-observed-tx.json" >/dev/null; then
       break
     fi
@@ -1996,9 +1987,9 @@ validate_flow6() {
   done
   jq -e --arg id "$out_hash" '.. | strings | ascii_upcase | select(. == $id)' "$RUN_ROOT/meta/flow6-migrate-observed-tx.json" >/dev/null \
     || die "flow6 migration outbound was not observable through tx query"
-  after_vaults="$(curl -fsS http://127.0.0.1:1317/thornado/vaults/base)"
+  after_vaults="$(curl -fsS $(api_url 1)/thornado/vaults/base)"
   printf '%s\n' "$after_vaults" >"$RUN_ROOT/meta/flow6-base-vaults-after-migration.json"
-  curl -fsS "http://127.0.0.1:1317/thornado/vault/${old_vault}" >"$RUN_ROOT/meta/flow6-old-vault-after-migration.json"
+  curl -fsS "$(api_url 1)/thornado/vault/${old_vault}" >"$RUN_ROOT/meta/flow6-old-vault-after-migration.json"
   jq -e --arg old "$old_vault" '.pub_key == $old and (.status == "RetiringVault" or .status == "InactiveVault")' "$RUN_ROOT/meta/flow6-old-vault-after-migration.json" >/dev/null \
     || die "flow6 old vault status invalid after migration"
   jq -e --arg old "$old_vault" '[.[] | select(.pub_key == $old and .status == "ActiveVault")] | length == 0' "$RUN_ROOT/meta/flow6-base-vaults-after-migration.json" >/dev/null \
@@ -2010,10 +2001,10 @@ validate_flow6() {
 
 find_signed_migrate_txout() {
   local from_height="$1" old_vault="${2:-}" to_address="${3:-}" now h txout
-  now="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
+  now="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
   (( from_height < 1 )) && from_height=1
   for ((h=from_height; h<=now; h++)); do
-    txout="$(curl -fsS "http://127.0.0.1:1317/thornado/keysign/${h}" 2>/dev/null | jq -c '{height:'"$h"', txout:.keysign}' 2>/dev/null || true)"
+    txout="$(curl -fsS "$(api_url 1)/thornado/keysign/${h}" 2>/dev/null | jq -c '{height:'"$h"', txout:.keysign}' 2>/dev/null || true)"
     if [[ -n "$txout" ]] && jq -e --arg old "$old_vault" --arg to "$to_address" '
       .txout.tx_array[]? |
       select(.tx_type == "migrate" and (.out_hash // "") != "" and (($old == "") or (.vault_pub_key == $old)) and (($to == "") or (.to_address == $to)))
@@ -2044,11 +2035,11 @@ wait_migrate_signed() {
 
 find_consolidate_txout() {
   local now from h txout to_address amount_sats received_sats
-  now="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
+  now="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
   from=$((now - 80))
   (( from < 1 )) && from=1
   for ((h=from; h<=now; h++)); do
-    txout="$(curl -fsS "http://127.0.0.1:1317/thornado/keysign/${h}" 2>/dev/null | jq -c '{txout:.keysign}' 2>/dev/null || true)"
+    txout="$(curl -fsS "$(api_url 1)/thornado/keysign/${h}" 2>/dev/null | jq -c '{txout:.keysign}' 2>/dev/null || true)"
     if [[ -n "$txout" ]] && jq -e '.txout.tx_array[]? | select(.tx_type == "consolidate" and (.out_hash // "") != "")' <<<"$txout" >/dev/null 2>&1; then
       printf '%s\n' "$txout"
       return 0
@@ -2068,11 +2059,11 @@ find_consolidate_txout() {
 
 find_signed_sweep_txout() {
   local in_hash="$1" now from h txout
-  now="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
+  now="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
   from=$((now - 120))
   (( from < 1 )) && from=1
   for ((h=from; h<=now; h++)); do
-    txout="$(curl -fsS "http://127.0.0.1:1317/thornado/keysign/${h}" 2>/dev/null | jq -c '{txout:.keysign}' 2>/dev/null || true)"
+    txout="$(curl -fsS "$(api_url 1)/thornado/keysign/${h}" 2>/dev/null | jq -c '{txout:.keysign}' 2>/dev/null || true)"
     if [[ -n "$txout" ]] && jq -e --arg in_hash "$in_hash" '.txout.tx_array[]? | select(.tx_type == "sweep" and .in_hash == $in_hash and (.out_hash // "") != "")' <<<"$txout" >/dev/null 2>&1; then
       printf '%s\n' "$txout"
       return 0
@@ -2083,11 +2074,11 @@ find_signed_sweep_txout() {
 
 find_signed_txout_by_in_hash() {
   local in_hash="$1" tx_type="${2:-}" now from h txout
-  now="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
+  now="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
   from=$((now - 160))
   (( from < 1 )) && from=1
   for ((h=from; h<=now; h++)); do
-    txout="$(curl -fsS "http://127.0.0.1:1317/thornado/keysign/${h}" 2>/dev/null | jq -c '{height:'"$h"', txout:.keysign}' 2>/dev/null || true)"
+    txout="$(curl -fsS "$(api_url 1)/thornado/keysign/${h}" 2>/dev/null | jq -c '{height:'"$h"', txout:.keysign}' 2>/dev/null || true)"
     if [[ -z "$txout" ]]; then
       continue
     fi
@@ -2123,11 +2114,11 @@ wait_txout_signed_by_in_hash() {
 
 sweep_reached_root_vault() {
   local in_hash="$1" now from h txout to_address amount_sats received_sats
-  now="$(curl -fsS http://127.0.0.1:26657/status | jq -r '.result.sync_info.latest_block_height')"
+  now="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
   from=$((now - 120))
   (( from < 1 )) && from=1
   for ((h=from; h<=now; h++)); do
-    txout="$(curl -fsS "http://127.0.0.1:1317/thornado/keysign/${h}" 2>/dev/null | jq -c '{txout:.keysign}' 2>/dev/null || true)"
+    txout="$(curl -fsS "$(api_url 1)/thornado/keysign/${h}" 2>/dev/null | jq -c '{txout:.keysign}' 2>/dev/null || true)"
     if [[ -z "$txout" ]]; then
       continue
     fi

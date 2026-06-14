@@ -5,6 +5,7 @@ use thornado_shielder::{
     recipient_binding_field, recover_note_receipt, shield_authorization,
     shield_authorization_for_deposit, shield_authorization_for_deposit_type,
     shielder_withdrawal_from_receipt, validate_withdrawal_public_inputs, DenominationTree,
+    withdrawal_witness_from_receipt,
     NoteCommitment, NoteReceipt, ShielderProofVerifier, WithdrawalProof, WithdrawalPublicInputs,
 };
 use wasm_bindgen::prelude::*;
@@ -168,6 +169,27 @@ pub fn zk_withdrawal_from_receipt_json(
     fee_sats: u64,
 ) -> Result<String, JsValue> {
     shielder_withdrawal_from_receipt_json(note_json, client_seed, leaves_json, recipient, fee_sats)
+}
+
+#[wasm_bindgen]
+pub fn withdrawal_witness_from_receipt_json(
+    note_json: &str,
+    leaves_json: &str,
+    recipient: &str,
+    fee_sats: u64,
+) -> Result<String, JsValue> {
+    let note: NoteReceipt = parse_json(note_json)?;
+    let leaves = decode_leaves(leaves_json)?;
+    let tree = DenominationTree {
+        leaves,
+        known_roots: Default::default(),
+    };
+    json(withdrawal_witness_from_receipt(
+        &note,
+        &tree,
+        recipient.to_string(),
+        fee_sats,
+    ))
 }
 
 #[wasm_bindgen]

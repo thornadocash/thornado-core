@@ -1,0 +1,14 @@
+# Thornado public ingress. Run thornado-ui and the chain public endpoints on
+# loopback; publish only these onion services.
+
+HiddenServiceDir /var/lib/tor/thornado-ui/
+HiddenServiceVersion 3
+HiddenServicePort 80 127.0.0.1:1316
+
+HiddenServiceDir /var/lib/tor/thornado-api/
+HiddenServiceVersion 3
+HiddenServicePort 80 127.0.0.1:1317
+
+HiddenServiceDir /var/lib/tor/thornado-rpc/
+HiddenServiceVersion 3
+HiddenServicePort 80 127.0.0.1:26657

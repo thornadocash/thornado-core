@@ -1,8 +1,10 @@
 package thornado
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/thornadocash/go-thornado/common/cosmos"
@@ -72,7 +74,20 @@ func ComputeShielderMerkleRoot(commitments []string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return shielder.MerkleRoot(string(buf))
+	rootHex, err := shielder.MerkleRoot(string(buf))
+	if err != nil {
+		return "", err
+	}
+	root := strings.TrimPrefix(strings.TrimSpace(rootHex), "0x")
+	raw, err := hex.DecodeString(root)
+	if err != nil {
+		return "", fmt.Errorf("invalid shielder merkle root: %s", rootHex)
+	}
+	for left, right := 0, len(raw)-1; left < right; left, right = left+1, right-1 {
+		raw[left], raw[right] = raw[right], raw[left]
+	}
+	value := new(big.Int).SetBytes(raw)
+	return value.String(), nil
 }
 
 func ComputeProtocolShielderCommitment(seed string, denominationSats uint64) (string, error) {

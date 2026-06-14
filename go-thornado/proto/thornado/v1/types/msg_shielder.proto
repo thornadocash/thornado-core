@@ -28,6 +28,7 @@ message MsgShielderShield {
   repeated string commitments = 1;
   string deposit_pubkey = 2;
   string signature = 3;
+  string deposit_id = 4;
 }
 
 message MsgShielderShieldResponse {

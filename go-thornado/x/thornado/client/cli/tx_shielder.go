@@ -60,9 +60,9 @@ func GetCmdDepositRequestPow() *cobra.Command {
 
 func GetCmdShielderShield() *cobra.Command {
 	return &cobra.Command{
-		Use:   "shield [commitments-json-or-csv] [deposit-pubkey] [signature]",
+		Use:   "shield [commitments-json-or-csv] [deposit-pubkey] [signature] [deposit-id]",
 		Short: "insert Shielder commitments for a settled Bitcoin deposit",
-		Args:  cobra.ExactArgs(3),
+		Args:  cobra.ExactArgs(4),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
@@ -78,6 +78,7 @@ func GetCmdShielderShield() *cobra.Command {
 				Commitments:   commitments,
 				DepositPubkey: strings.TrimSpace(args[1]),
 				Signature:     strings.TrimSpace(args[2]),
+				DepositId:     strings.TrimSpace(args[3]),
 			}
 			if err = msg.ValidateBasic(); err != nil {
 				return err

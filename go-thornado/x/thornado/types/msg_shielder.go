@@ -97,11 +97,12 @@ func MsgDepositRequestPowCustomGetSigners(m proto.Message) ([][]byte, error) {
 	return nil, nil
 }
 
-func NewMsgShielderShield(commitments []string, depositPubkey, signature string) *MsgShielderShield {
+func NewMsgShielderShield(commitments []string, depositPubkey, signature, depositID string) *MsgShielderShield {
 	return &MsgShielderShield{
 		Commitments:   commitments,
 		DepositPubkey: strings.TrimSpace(depositPubkey),
 		Signature:     strings.TrimSpace(signature),
+		DepositId:     strings.TrimSpace(depositID),
 	}
 }
 
@@ -123,6 +124,9 @@ func (m *MsgShielderShield) ValidateBasic() error {
 	}
 	if _, err := hex.DecodeString(strings.TrimSpace(m.Signature)); err != nil {
 		return fmt.Errorf("invalid shield authorization signature")
+	}
+	if strings.TrimSpace(m.DepositId) == "" {
+		return fmt.Errorf("missing deposit id")
 	}
 	return nil
 }

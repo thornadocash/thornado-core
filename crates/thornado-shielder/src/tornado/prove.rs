@@ -136,6 +136,45 @@ pub fn prove_withdrawal(
     Ok((proof, public_out))
 }
 
+pub fn withdrawal_witness_json(
+    nullifier_hex: &str,
+    secret_hex: &str,
+    leaves: &[String],
+    leaf_index: usize,
+    public: &WithdrawalPublicInputs,
+) -> Result<serde_json::Value> {
+    let nullifier = field_from_hex(nullifier_hex).ok_or(crate::Error::InvalidProof)?;
+    let secret = field_from_hex(secret_hex).ok_or(crate::Error::InvalidProof)?;
+    let commitment = note_commitment(nullifier, secret)?;
+    let nf_hash = nullifier_hash(nullifier)?;
+    let parsed_leaves: Result<Vec<Fr>> = leaves
+        .iter()
+        .map(|leaf| fr_from_field_hex(leaf).ok_or(crate::Error::InvalidProof))
+        .collect();
+    let parsed_leaves = parsed_leaves?;
+    if leaf_index >= parsed_leaves.len() || parsed_leaves[leaf_index] != commitment {
+        return Err(crate::Error::InvalidProof);
+    }
+    let root = incremental_root(&parsed_leaves)?;
+    let path = merkle_path(&parsed_leaves, leaf_index)?;
+    verify_merkle_path(&field_to_hex(root), &field_to_hex(commitment), &path)?;
+
+    validate_public_inputs(public)?;
+    let recipient = expected_recipient_binding(public)?;
+    Ok(serde_json::json!({
+        "nullifier": fr_to_decimal(nullifier),
+        "secret": fr_to_decimal(secret),
+        "pathElements": path.path_elements,
+        "pathIndices": path.path_indices,
+        "root": fr_to_decimal(root),
+        "nullifierHash": fr_to_decimal(nf_hash),
+        "recipient": fr_to_decimal(recipient),
+        "relayer": "0",
+        "fee": public.fee_sats.to_string(),
+        "refund": "0"
+    }))
+}
+
 pub fn verify_withdrawal(proof: &WithdrawalProof, public: &WithdrawalPublicInputs) -> Result<()> {
     validate_public_inputs(public)?;
     let tornado = proof.tornado.as_ref().ok_or(crate::Error::InvalidProof)?;

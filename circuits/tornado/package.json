@@ -13,7 +13,8 @@
     "verify:production-vk": "node scripts/check-production-vk.mjs",
     "verify:production-artifacts": "node scripts/check-production-artifacts.mjs",
     "audit:differential": "node scripts/differential-snarkjs-rust.mjs",
-    "gen:rust-test-vectors": "node scripts/gen-rust-test-vectors.mjs"
+    "gen:rust-test-vectors": "node scripts/gen-rust-test-vectors.mjs",
+    "build:browser-prover": "node scripts/build-browser-prover.mjs"
   },
   "dependencies": {
     "circomlib": "github:tornadocash/circomlib#c372f14d324d57339c88451834bf2824e73bbdbc",

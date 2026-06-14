@@ -193,10 +193,12 @@ thornado:
       enable: true
       enabled_unsafe_cors: true
       enabled_swagger: true
-      address: tcp://0.0.0.0:1317
+      # Public API exposure should be through a Tor onion service or a local
+      # reverse proxy. Validator internals stay on direct low-latency links.
+      address: tcp://127.0.0.1:1317
     grpc:
       enable: false
-      address: 0.0.0.0:9090
+      address: 127.0.0.1:9090
     ebifrost:
       enable: true
       address: 127.0.0.1:50051
@@ -209,7 +211,7 @@ thornado:
       level: info
       format: plain
     rpc:
-      listen_address: "" # set dynamically
+      listen_address: "" # set dynamically to loopback; expose through Tor
       cors_allowed_origin: "*"
       experimental_subscription_buffer_size: 200
       experimental_websocket_write_buffer_size: 200

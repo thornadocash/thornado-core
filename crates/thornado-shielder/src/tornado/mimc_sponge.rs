@@ -107,31 +107,30 @@ pub fn merkle_path(leaves: &[Fr], target_index: usize) -> Result<super::merkle::
         return Err(crate::Error::InvalidProof);
     }
     let depth = super::merkle::MERKLE_TREE_DEPTH;
-    let mut filled = vec![Fr::zero(); depth];
     let mut path_elements = Vec::with_capacity(depth);
     let mut path_indices = Vec::with_capacity(depth);
-    for (index, leaf) in leaves.iter().enumerate() {
-        let mut current_index = index;
-        let mut current = *leaf;
-        for level in 0..depth {
-            if current_index % 2 == 0 {
-                let sibling = zero_subtree(level)?;
-                if index == target_index {
-                    path_elements.push(fr_to_decimal(sibling));
-                    path_indices.push(0);
-                }
-                filled[level] = current;
-                current = hash_left_right(current, sibling)?;
-            } else {
-                let sibling = filled[level];
-                if index == target_index {
-                    path_elements.push(fr_to_decimal(sibling));
-                    path_indices.push(1);
-                }
-                current = hash_left_right(sibling, current)?;
-            }
-            current_index /= 2;
+    let mut level_nodes = leaves.to_vec();
+    let mut current_index = target_index;
+    for level in 0..depth {
+        let sibling_index = current_index ^ 1;
+        let sibling = level_nodes
+            .get(sibling_index)
+            .copied()
+            .unwrap_or(zero_subtree(level)?);
+        path_elements.push(fr_to_decimal(sibling));
+        path_indices.push((current_index & 1) as u8);
+
+        let mut next_level = Vec::with_capacity((level_nodes.len() + 1) / 2);
+        for pair_index in (0..level_nodes.len()).step_by(2) {
+            let left = level_nodes[pair_index];
+            let right = level_nodes
+                .get(pair_index + 1)
+                .copied()
+                .unwrap_or(zero_subtree(level)?);
+            next_level.push(hash_left_right(left, right)?);
         }
+        level_nodes = next_level;
+        current_index /= 2;
     }
     Ok(super::merkle::MerklePath {
         leaf_index: target_index as u64,
