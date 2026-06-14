@@ -2,11 +2,63 @@
   "assets": [
     {
       "path": "index.html",
-      "sha256": "7277a3d79c1f1d7dc1b9ad37defdfc00927d17f4dde3e415aace59d9207a054f"
+      "sha256": "cfd8111d2c8137b3bc306ec2ba61c376aab97f9fc8056053e68c63349e214ba5"
+    },
+    {
+      "path": "styles.css",
+      "sha256": "f21f63c5f2f5649769cf1372ca908d6e6f34a1efa593497ab8ed274ca658d23a"
+    },
+    {
+      "path": "app.js",
+      "sha256": "2fb2b4b1d16921515cd481fb4fb83861fcd5e9df4bfd785cc54e9c04e8c86c42"
+    },
+    {
+      "path": "modules/api.js",
+      "sha256": "734c4beeb1f7d57db2fd8762fb8de74ac7dbf52ee0172143988d7690953e439f"
+    },
+    {
+      "path": "modules/forms.js",
+      "sha256": "64cf8860e18d419173de8f035287cbea23a1f76f9ed13e9d0b0c8729d4a8a03c"
     },
     {
       "path": "vendor/qrcode.min.js",
       "sha256": "d87972a8317479e697189cc5b663bfaac0ea9a76861cda1ca881716be44ed3f7"
+    },
+    {
+      "path": "how-it-works/bond-increments.png",
+      "sha256": "c85ee577b392e89956bf9382250550d4639089fc0632f67001fe721775c2d434"
+    },
+    {
+      "path": "how-it-works/collecting-fees.png",
+      "sha256": "83040389357b01440b0910d214520fc587a3515120e03d044b8c47d1515b279f"
+    },
+    {
+      "path": "how-it-works/deposit.png",
+      "sha256": "eb59dfe515cf33f63722d30a8a5249d14626922634ee09ac7ef6a34e84280b1a"
+    },
+    {
+      "path": "how-it-works/get-address.png",
+      "sha256": "e3488a1a706321c84a58dbd0a8352161f514f08d28115f385665c44aad4d842b"
+    },
+    {
+      "path": "how-it-works/node-bonding.png",
+      "sha256": "95f9a4c7c5f3cfa24f7bac5e5484e779ac16965842a7cbd7507370e92ecc8124"
+    },
+    {
+      "path": "how-it-works/node-churning.png",
+      "sha256": "1849126ab6e2d73627bcb71f4ce04fb061eb9ba258ef64f26fb78418138f95a1"
+    },
+    {
+      "path": "how-it-works/node-sales.png",
+      "sha256": "c9618dddcfcfd9aa6954ea00711e7ab2f0652bc1d3ddc3792e17c031c901065b"
+    },
+    {
+      "path": "how-it-works/shield.png",
+      "sha256": "4a6a5c390c105ae354a3809cab88fde07569cc8a3b57a54ef51dedebf5f5b66a"
+    },
+    {
+      "path": "how-it-works/withdraw.png",
+      "sha256": "62249b6ba19be666b8467132b9da611b300c8104e95a19ff185ea9d4cd9745f3"
     },
     {
       "path": "wasm/thornado_web_wasm.js",

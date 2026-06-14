@@ -83,7 +83,7 @@ func NewConfigValue() *ConfigVals {
 
 			// Shielder
 			Shielder_FeeShareScale:     1_000_000_000_000,
-			Shielder_NoteAmountMinSats: 546,
+			Shielder_NoteAmountMinSats: 100_000,
 
 			// Signing
 			Signer_Concurrency: 10,
