@@ -69,7 +69,10 @@ func TestDeriveBTCTaprootAddress(t *testing.T) {
 	if !path1.Equals(nodePath) {
 		t.Fatalf("same vault child index should derive the same address regardless of deposit type: %s != %s", path1, nodePath)
 	}
-	if got := UserSecretPath(VaultDepositPathUser, 0, 1); got != "tc84/btc/user/0'/1'" {
+	if got := UserSecretPath(VaultDepositPathUser, 0, 1); got != "tc84'/btc'/user'/0'/1'" {
 		t.Fatalf("unexpected user secret path: %s", got)
+	}
+	if got := UserSecretPath(VaultDepositPathNode, 2, 3); got != "tc84'/btc'/node'/2'/3'" {
+		t.Fatalf("unexpected node secret path: %s", got)
 	}
 }

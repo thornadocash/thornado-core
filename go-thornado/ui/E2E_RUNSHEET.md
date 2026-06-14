@@ -111,8 +111,8 @@ Passing evidence:
   - Deposit pane showed latest first: `User Deposit 2 (0.12 BTC) - 1 / 1`, then `User Deposit 1 (0.12 BTC) - 1 / 1`.
 
 UI improvements executed in this run:
-- Startup with a restored secret now begins a background deposit/note/nullifier sync, so returning users see prior deposits without another address request.
-- Deposit pane owns selected-batch tracking and shows a compact native dropdown, latest first.
+- Startup with a restored secret now scans deposit addresses only, so returning users see prior deposits without kicking off note/nullifier recovery.
+- Deposit pane owns selected-batch tracking and shows a compact dropdown, latest first.
 - Selected deposit detail now shows QR/address for an unexpired issued address, hides Tx ID when none exists, and keeps confirmations only where useful.
 - Deposit expiry is calculated per selected batch instead of leaking stale global expiry across addresses.
 - Debug derivation path labels now use `tc84'/btc'/${depositType}'/${depositIndex}'/${noteIndex}'`.

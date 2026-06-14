@@ -2,11 +2,11 @@ use thornado_shielder::{
     client_pubkey_for_deposit, client_pubkey_for_deposit_type, client_pubkey_from_secret,
     derive_shield_receipt, derive_shield_receipt_for_deposit,
     derive_shield_receipt_for_deposit_type, merkle_root, note_recovery_candidates, nullifier_hash,
-    recipient_binding_field, recover_note_receipt, shield_authorization,
-    shield_authorization_for_deposit, shield_authorization_for_deposit_type,
-    shielder_withdrawal_from_receipt, validate_withdrawal_public_inputs, DenominationTree,
-    withdrawal_witness_from_receipt,
-    NoteCommitment, NoteReceipt, ShielderProofVerifier, WithdrawalProof, WithdrawalPublicInputs,
+    recipient_binding_field, recover_note_receipt, recover_note_receipt_for_deposit_type,
+    shield_authorization, shield_authorization_for_deposit, shield_authorization_for_deposit_type,
+    shielder_withdrawal_from_receipt, validate_withdrawal_public_inputs,
+    withdrawal_witness_from_receipt, DenominationTree, NoteCommitment, NoteReceipt,
+    ShielderProofVerifier, WithdrawalProof, WithdrawalPublicInputs,
 };
 use wasm_bindgen::prelude::*;
 
@@ -240,6 +240,27 @@ pub fn recover_note_receipt_json(
 ) -> Result<String, JsValue> {
     json(recover_note_receipt(
         client_seed,
+        deposit_index,
+        note_index,
+        deposit_id,
+        denomination_sats,
+        commitment,
+    ))
+}
+
+#[wasm_bindgen]
+pub fn recover_note_receipt_for_deposit_type_json(
+    client_seed: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+    note_index: u64,
+    deposit_id: &str,
+    denomination_sats: u64,
+    commitment: &str,
+) -> Result<String, JsValue> {
+    json(recover_note_receipt_for_deposit_type(
+        client_seed,
+        deposit_type,
         deposit_index,
         note_index,
         deposit_id,

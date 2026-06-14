@@ -1,1 +1,20 @@
-{"assets":[{"path":"index.html","sha256":"34354e421985f830baf1b815896c67879136bcf5353b391c17f833eb178b55f5"},{"path":"vendor/qrcode.min.js","sha256":"d87972a8317479e697189cc5b663bfaac0ea9a76861cda1ca881716be44ed3f7"},{"path":"wasm/thornado_web_wasm.js","sha256":"7570374bf4a06c0b80b8b95e4af245547c6234df2ff4a4c6da329603e7fb21b8"},{"path":"wasm/thornado_web_wasm_bg.wasm","sha256":"237885626458623767d3de2f3feac158403323fd52cc53387f7029b9d0130f2a"}]}
+{
+  "assets": [
+    {
+      "path": "index.html",
+      "sha256": "7277a3d79c1f1d7dc1b9ad37defdfc00927d17f4dde3e415aace59d9207a054f"
+    },
+    {
+      "path": "vendor/qrcode.min.js",
+      "sha256": "d87972a8317479e697189cc5b663bfaac0ea9a76861cda1ca881716be44ed3f7"
+    },
+    {
+      "path": "wasm/thornado_web_wasm.js",
+      "sha256": "06e03ca6986226e8d1f0f35886e8aae66e5855a5458491e20adfdfc793b61519"
+    },
+    {
+      "path": "wasm/thornado_web_wasm_bg.wasm",
+      "sha256": "b2ac96b2513d1124eaf7e7c363506b8d850e40680cfc1d4aeebf2fe3b0c2a036"
+    }
+  ]
+}

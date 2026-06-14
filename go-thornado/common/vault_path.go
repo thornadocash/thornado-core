@@ -53,7 +53,7 @@ func VaultDepositPath(pathType VaultDepositPathType, depositIndex, commitmentInd
 }
 
 func UserSecretPath(pathType VaultDepositPathType, depositIndex, commitmentIndex uint64) string {
-	return fmt.Sprintf("tc84/btc/%s/%d'/%d'", pathType, depositIndex, commitmentIndex)
+	return fmt.Sprintf("tc84'/btc'/%s'/%d'/%d'", pathType, depositIndex, commitmentIndex)
 }
 
 func VaultDepositLookaheadPathIndexes(pathType VaultDepositPathType) ([]uint64, error) {

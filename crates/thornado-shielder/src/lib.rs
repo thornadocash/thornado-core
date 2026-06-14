@@ -1,13 +1,11 @@
-use bitcoin::bip32::{ChildNumber, Xpriv};
-use bitcoin::secp256k1::ecdsa::Signature as SecpSignature;
-use bitcoin::secp256k1::{
-    Message as SecpMessage, PublicKey as SecpPublicKey, Secp256k1, SecretKey,
-};
-use bitcoin::Network;
+use hmac::{Hmac, Mac};
+use k256::ecdsa::signature::hazmat::{PrehashSigner, PrehashVerifier};
+use k256::ecdsa::{Signature as SecpSignature, SigningKey, VerifyingKey};
+use k256::elliptic_curve::PrimeField;
+use k256::{FieldBytes, Scalar, SecretKey};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
+use sha2::{Digest, Sha256, Sha512};
 use std::collections::BTreeSet;
-use std::str::FromStr;
 
 pub mod engine;
 
@@ -19,7 +17,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 pub const DOMAIN: &str = "thornado-shielder-v1";
 pub const HARDENED_CHILD_OFFSET: u64 = 1 << 31;
-const DEPOSIT_TYPE_INDEX: u32 = 0;
 pub const DEFAULT_DENOMINATIONS_SATS: [u64; 5] =
     [1_000_000_000, 100_000_000, 10_000_000, 1_000_000, 100_000];
 
@@ -71,6 +68,8 @@ pub struct ShieldAuthorization {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NoteReceipt {
     pub deposit_id: String,
+    #[serde(default = "default_deposit_type")]
+    pub deposit_type: String,
     #[serde(default = "default_deposit_index")]
     pub deposit_index: u64,
     pub denomination_sats: u64,
@@ -84,6 +83,10 @@ fn default_deposit_index() -> u64 {
     0
 }
 
+fn default_deposit_type() -> String {
+    "user".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ShieldReceipt {
     pub notes: Vec<NoteReceipt>,
@@ -92,8 +95,16 @@ pub struct ShieldReceipt {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NoteRecoveryCandidate {
+    #[serde(default = "default_deposit_type")]
+    pub deposit_type: String,
     pub deposit_index: u64,
     pub index: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum UserPathChild {
+    Hardened(u32),
+    Normal(u32),
 }
 
 impl ShieldReceipt {
@@ -168,7 +179,7 @@ pub fn derive_shield_receipt_for_deposit(
 
 pub fn derive_shield_receipt_for_deposit_type(
     deposit_id: &str,
-    _deposit_type: &str,
+    deposit_type: &str,
     deposit_index: u64,
     amount_sats: u64,
     client_seed: &str,
@@ -179,7 +190,7 @@ pub fn derive_shield_receipt_for_deposit_type(
         let index = index as u64;
         let child_secret = note_child_secret_for_deposit_type(
             client_seed,
-            "",
+            deposit_type,
             deposit_index,
             deposit_id,
             index + 1,
@@ -205,6 +216,7 @@ pub fn derive_shield_receipt_for_deposit_type(
         );
         notes.push(NoteReceipt {
             deposit_id: deposit_id.to_string(),
+            deposit_type: normalized_deposit_type(deposit_type).to_string(),
             deposit_index,
             denomination_sats: denomination,
             index,
@@ -234,10 +246,14 @@ pub fn client_pubkey_for_deposit(client_seed: &str, deposit_index: u64) -> Strin
 
 pub fn client_pubkey_for_deposit_type(
     client_seed: &str,
-    _deposit_type: &str,
+    deposit_type: &str,
     deposit_index: u64,
 ) -> String {
-    deposit_pubkey_from_secret(&deposit_root_secret_for_deposit(client_seed, deposit_index))
+    deposit_pubkey_from_secret(&deposit_root_secret_for_deposit_type(
+        client_seed,
+        deposit_type,
+        deposit_index,
+    ))
 }
 
 pub fn shield_authorization(
@@ -268,20 +284,22 @@ pub fn shield_authorization_for_deposit(
 
 pub fn shield_authorization_for_deposit_type(
     client_seed: &str,
-    _deposit_type: &str,
+    deposit_type: &str,
     deposit_index: u64,
     deposit_id: &str,
     amount_sats: u64,
     note_commitments: &[NoteCommitment],
 ) -> ShieldAuthorization {
-    let deposit_pubkey = client_pubkey_for_deposit(client_seed, deposit_index);
-    let secp = Secp256k1::new();
-    let secret_key = deposit_secret_key(client_seed, deposit_index);
+    let deposit_pubkey = client_pubkey_for_deposit_type(client_seed, deposit_type, deposit_index);
+    let secret_key = deposit_secret_key_for_type(client_seed, deposit_type, deposit_index);
     let message =
         shield_authorization_message(&deposit_pubkey, deposit_id, amount_sats, note_commitments);
-    let signature = secp.sign_ecdsa(&message, &secret_key);
+    let signing_key = SigningKey::from(secret_key);
+    let signature: SecpSignature = signing_key
+        .sign_prehash(&message)
+        .expect("32-byte shield authorization digest should sign");
     ShieldAuthorization {
-        signature: hex::encode(signature.serialize_der()),
+        signature: hex::encode(signature.to_der().as_bytes()),
         deposit_pubkey,
     }
 }
@@ -295,8 +313,10 @@ pub fn verify_shield_authorization(
     if deposit_pubkey.is_empty() || authorization.deposit_pubkey != deposit_pubkey {
         return Err(Error::InvalidShieldAuthorization);
     }
-    let pubkey =
-        SecpPublicKey::from_str(deposit_pubkey).map_err(|_| Error::InvalidShieldAuthorization)?;
+    let pubkey_bytes =
+        hex::decode(deposit_pubkey).map_err(|_| Error::InvalidShieldAuthorization)?;
+    let pubkey = VerifyingKey::from_sec1_bytes(&pubkey_bytes)
+        .map_err(|_| Error::InvalidShieldAuthorization)?;
     let signature = hex::decode(&authorization.signature)
         .ok()
         .and_then(|bytes| SecpSignature::from_der(&bytes).ok())
@@ -310,8 +330,8 @@ pub fn verify_shield_authorization(
             .sum(),
         note_commitments,
     );
-    Secp256k1::verification_only()
-        .verify_ecdsa(&message, &signature, &pubkey)
+    pubkey
+        .verify_prehash(&message, &signature)
         .map_err(|_| Error::InvalidShieldAuthorization)
 }
 
@@ -399,12 +419,15 @@ pub fn note_recovery_candidates(
     note_limit: u64,
 ) -> Vec<NoteRecoveryCandidate> {
     let mut candidates = Vec::new();
-    for deposit_index in 0..deposit_limit {
-        for index in 1..=note_limit {
-            candidates.push(NoteRecoveryCandidate {
-                deposit_index,
-                index: index - 1,
-            });
+    for deposit_type in ["user", "node"] {
+        for deposit_index in 0..deposit_limit {
+            for index in 1..=note_limit {
+                candidates.push(NoteRecoveryCandidate {
+                    deposit_type: deposit_type.to_string(),
+                    deposit_index,
+                    index: index - 1,
+                });
+            }
         }
     }
     candidates
@@ -418,8 +441,33 @@ pub fn recover_note_receipt(
     denomination_sats: u64,
     commitment: &str,
 ) -> Result<NoteReceipt> {
-    let child_secret =
-        note_child_secret_for_deposit(client_seed, deposit_index, deposit_id, note_index + 1);
+    recover_note_receipt_for_deposit_type(
+        client_seed,
+        "",
+        deposit_index,
+        note_index,
+        deposit_id,
+        denomination_sats,
+        commitment,
+    )
+}
+
+pub fn recover_note_receipt_for_deposit_type(
+    client_seed: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+    note_index: u64,
+    deposit_id: &str,
+    denomination_sats: u64,
+    commitment: &str,
+) -> Result<NoteReceipt> {
+    let child_secret = note_child_secret_for_deposit_type(
+        client_seed,
+        deposit_type,
+        deposit_index,
+        deposit_id,
+        note_index + 1,
+    );
     let nullifier = hash_parts_field248(&[
         DOMAIN,
         "receipt-nullifier",
@@ -444,6 +492,7 @@ pub fn recover_note_receipt(
     }
     Ok(NoteReceipt {
         deposit_id: deposit_id.to_string(),
+        deposit_type: normalized_deposit_type(deposit_type).to_string(),
         deposit_index,
         denomination_sats,
         index: note_index,
@@ -487,12 +536,15 @@ pub fn note_child_secret_for_deposit(
 
 pub fn note_child_secret_for_deposit_type(
     client_seed: &str,
-    _deposit_type: &str,
+    deposit_type: &str,
     deposit_index: u64,
     _deposit_id: &str,
     index: u64,
 ) -> String {
-    hex::encode(derive_bip32_secret_key(client_seed, deposit_index, index).secret_bytes())
+    hex::encode(
+        derive_bip32_secret_key_for_type(client_seed, deposit_type, deposit_index, index)
+            .to_bytes(),
+    )
 }
 
 pub fn hardened_child_index(index: u64) -> u64 {
@@ -506,7 +558,7 @@ fn shield_authorization_message(
     deposit_id: &str,
     amount_sats: u64,
     note_commitments: &[NoteCommitment],
-) -> SecpMessage {
+) -> Vec<u8> {
     let commitments_json =
         serde_json::to_string(note_commitments).expect("note commitments should serialize");
     let digest = hash_parts_bytes(&[
@@ -517,11 +569,17 @@ fn shield_authorization_message(
         &amount_sats.to_string(),
         &commitments_json,
     ]);
-    SecpMessage::from_digest_slice(&digest).expect("sha256 digest has secp256k1 message length")
+    digest
 }
 
-fn deposit_root_secret_for_deposit(client_seed: &str, deposit_index: u64) -> String {
-    hex::encode(derive_bip32_secret_key(client_seed, deposit_index, 0).secret_bytes())
+fn deposit_root_secret_for_deposit_type(
+    client_seed: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+) -> String {
+    hex::encode(
+        derive_bip32_secret_key_for_type(client_seed, deposit_type, deposit_index, 0).to_bytes(),
+    )
 }
 
 fn deposit_pubkey_from_secret(deposit_secret: &str) -> String {
@@ -529,25 +587,90 @@ fn deposit_pubkey_from_secret(deposit_secret: &str) -> String {
     let Ok(secret_key) = SecretKey::from_slice(&secret_bytes) else {
         return String::new();
     };
-    let secp = Secp256k1::new();
-    SecpPublicKey::from_secret_key(&secp, &secret_key).to_string()
+    let signing_key = SigningKey::from(secret_key);
+    VerifyingKey::from(&signing_key)
+        .to_encoded_point(true)
+        .as_bytes()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
-fn deposit_secret_key(client_seed: &str, deposit_index: u64) -> SecretKey {
-    derive_bip32_secret_key(client_seed, deposit_index, 0)
+fn deposit_secret_key_for_type(
+    client_seed: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+) -> SecretKey {
+    derive_bip32_secret_key_for_type(client_seed, deposit_type, deposit_index, 0)
 }
 
-fn derive_bip32_secret_key(client_seed: &str, deposit_index: u64, note_index: u64) -> SecretKey {
-    let seed = decode_client_seed(client_seed);
-    let secp = Secp256k1::new();
-    let master = Xpriv::new_master(Network::Bitcoin, &seed)
-        .expect("BIP39 seed should derive a valid BIP32 master key");
-    let path = thornado_bip32_path(deposit_index, note_index)
+fn derive_bip32_secret_key_for_type(
+    client_seed: &str,
+    deposit_type: &str,
+    deposit_index: u64,
+    note_index: u64,
+) -> SecretKey {
+    let path = thornado_bip32_path_for_type(deposit_type, deposit_index, note_index)
         .expect("thornado path indexes should fit BIP32 hardened indexes");
-    master
-        .derive_priv(&secp, &path)
+    derive_hardened_bip32_private_key(&decode_client_seed(client_seed), &path)
         .expect("thornado hardened BIP32 derivation should succeed")
-        .private_key
+}
+
+fn derive_hardened_bip32_private_key(seed: &[u8], path: &[UserPathChild]) -> Result<SecretKey> {
+    let master = hmac_sha512(b"Bitcoin seed", seed);
+    let mut key = secret_key_from_bytes(&master[..32])?;
+    let mut chain_code = [0_u8; 32];
+    chain_code.copy_from_slice(&master[32..]);
+
+    for child in path {
+        let (child_index, mut data) = match child {
+            UserPathChild::Hardened(index) => {
+                let mut data = Vec::with_capacity(37);
+                data.push(0);
+                data.extend_from_slice(&key.to_bytes());
+                (HARDENED_CHILD_OFFSET as u32 + index, data)
+            }
+            UserPathChild::Normal(index) => {
+                let signing_key = SigningKey::from(key.clone());
+                let mut data = Vec::with_capacity(37);
+                data.extend_from_slice(
+                    VerifyingKey::from(&signing_key)
+                        .to_encoded_point(true)
+                        .as_bytes(),
+                );
+                (*index, data)
+            }
+        };
+        data.extend_from_slice(&child_index.to_be_bytes());
+        let derived = hmac_sha512(&chain_code, &data);
+        let child_tweak = scalar_from_bytes(&derived[..32])?;
+        let parent = scalar_from_bytes(&key.to_bytes())?;
+        let child_key = child_tweak.add(&parent);
+        if bool::from(child_key.is_zero()) {
+            return Err(Error::Shielder("derived zero child key".to_string()));
+        }
+        key = SecretKey::from_slice(&child_key.to_bytes())
+            .map_err(|err| Error::Shielder(err.to_string()))?;
+        chain_code.copy_from_slice(&derived[32..]);
+    }
+    Ok(key)
+}
+
+fn hmac_sha512(key: &[u8], data: &[u8]) -> [u8; 64] {
+    let mut mac = Hmac::<Sha512>::new_from_slice(key).expect("HMAC accepts any key length");
+    mac.update(data);
+    mac.finalize().into_bytes().into()
+}
+
+fn secret_key_from_bytes(bytes: &[u8]) -> Result<SecretKey> {
+    SecretKey::from_slice(bytes).map_err(|err| Error::Shielder(err.to_string()))
+}
+
+fn scalar_from_bytes(bytes: &[u8]) -> Result<Scalar> {
+    let field_bytes = FieldBytes::from_slice(bytes);
+    Option::<Scalar>::from(Scalar::from_repr(*field_bytes))
+        .filter(|scalar| !bool::from(scalar.is_zero()))
+        .ok_or_else(|| Error::Shielder("invalid secp256k1 scalar".to_string()))
 }
 
 fn decode_client_seed(client_seed: &str) -> Vec<u8> {
@@ -560,16 +683,33 @@ fn decode_client_seed(client_seed: &str) -> Vec<u8> {
     hash_parts_bytes(&[DOMAIN, "bip39-seed-fallback", trimmed]).to_vec()
 }
 
-fn thornado_bip32_path(deposit_index: u64, note_index: u64) -> Result<Vec<ChildNumber>> {
+fn deposit_type_purpose_index(deposit_type: &str) -> u32 {
+    if normalized_deposit_type(deposit_type) == "node" {
+        1
+    } else {
+        0
+    }
+}
+
+fn normalized_deposit_type(deposit_type: &str) -> &'static str {
+    if deposit_type.eq_ignore_ascii_case("node") {
+        "node"
+    } else {
+        "user"
+    }
+}
+
+fn thornado_bip32_path_for_type(
+    deposit_type: &str,
+    deposit_index: u64,
+    note_index: u64,
+) -> Result<Vec<UserPathChild>> {
     Ok(vec![
-        ChildNumber::from_hardened_idx(84).map_err(|err| Error::Shielder(err.to_string()))?,
-        ChildNumber::from_hardened_idx(0).map_err(|err| Error::Shielder(err.to_string()))?,
-        ChildNumber::from_hardened_idx(DEPOSIT_TYPE_INDEX)
-            .map_err(|err| Error::Shielder(err.to_string()))?,
-        ChildNumber::from_hardened_idx(bip32_index(deposit_index)?)
-            .map_err(|err| Error::Shielder(err.to_string()))?,
-        ChildNumber::from_hardened_idx(bip32_index(note_index)?)
-            .map_err(|err| Error::Shielder(err.to_string()))?,
+        UserPathChild::Hardened(44),
+        UserPathChild::Hardened(60),
+        UserPathChild::Hardened(deposit_type_purpose_index(deposit_type)),
+        UserPathChild::Normal(bip32_index(deposit_index)?),
+        UserPathChild::Normal(bip32_index(note_index)?),
     ])
 }
 
@@ -587,10 +727,6 @@ fn greedy_denominations(amount_sats: u64) -> (Vec<u64>, u64) {
         }
     }
     (denominations, remaining)
-}
-
-fn hash_parts(parts: &[&str]) -> String {
-    hex::encode(hash_parts_bytes(parts))
 }
 
 fn hash_parts_field248(parts: &[&str]) -> String {
@@ -672,23 +808,38 @@ mod tests {
     }
 
     #[test]
-    fn note_derivation_uses_fixed_hardened_bip32_path() {
-        let path = thornado_bip32_path(7, 3).unwrap();
+    fn note_derivation_uses_evm_rooted_hardened_bip32_path() {
+        let path = thornado_bip32_path_for_type("user", 7, 3).unwrap();
         assert_eq!(
             path,
             vec![
-                ChildNumber::from_hardened_idx(84).unwrap(),
-                ChildNumber::from_hardened_idx(0).unwrap(),
-                ChildNumber::from_hardened_idx(0).unwrap(),
-                ChildNumber::from_hardened_idx(7).unwrap(),
-                ChildNumber::from_hardened_idx(3).unwrap(),
+                UserPathChild::Hardened(44),
+                UserPathChild::Hardened(60),
+                UserPathChild::Hardened(0),
+                UserPathChild::Normal(7),
+                UserPathChild::Normal(3),
             ]
         );
 
         let seed = hex::encode([42_u8; 64]);
         let user = note_child_secret_for_deposit_type(&seed, "user", 0, "", 1);
         let node = note_child_secret_for_deposit_type(&seed, "node", 0, "", 1);
-        assert_eq!(user, node);
+        assert_ne!(user, node);
+
+        let user_deposit_pubkey = client_pubkey_for_deposit_type(&seed, "user", 0);
+        let node_typed_deposit_pubkey = client_pubkey_for_deposit_type(&seed, "node", 0);
+        assert_ne!(user_deposit_pubkey, node_typed_deposit_pubkey);
+
+        let user_receipt =
+            derive_shield_receipt_for_deposit_type("dep-1", "user", 0, 100_000_000, &seed).unwrap();
+        let node_receipt =
+            derive_shield_receipt_for_deposit_type("dep-1", "node", 0, 100_000_000, &seed).unwrap();
+        assert_eq!(user_receipt.notes[0].deposit_type, "user");
+        assert_eq!(node_receipt.notes[0].deposit_type, "node");
+        assert_ne!(
+            user_receipt.notes[0].commitment,
+            node_receipt.notes[0].commitment
+        );
     }
 
     #[test]
