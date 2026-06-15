@@ -3,6 +3,8 @@ package types;
 
 option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
 
+import "types/query_deposit.proto";
+
 message QueryShielderRedeemRequest {
   string withdrawal_id = 1;
   string height = 2;
@@ -42,11 +44,25 @@ message ShielderSpentNullifier {
   string withdrawal_id = 2;
 }
 
-message QueryShielderSyncRequest { string height = 1; }
+message QueryShielderSyncRequest {
+  string height = 1;
+  uint64 limit = 2;
+  string deposit_cursor = 3;
+  string note_cursor = 4;
+  string nullifier_cursor = 5;
+}
 
 message QueryShielderSyncResponse {
   repeated ShielderNoteRecord notes = 1;
   repeated ShielderSpentNullifier nullifiers = 2;
+  repeated QueryDepositResponse deposits = 3;
+  string next_deposit_cursor = 4;
+  string next_note_cursor = 5;
+  string next_nullifier_cursor = 6;
+  bool has_more = 7;
+  uint64 total_deposits = 8;
+  uint64 total_notes = 9;
+  uint64 total_nullifiers = 10;
 }
 
 message QueryShielderRedeemQuoteRequest {

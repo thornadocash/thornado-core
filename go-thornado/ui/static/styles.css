@@ -89,7 +89,7 @@ main {
   opacity: 0;
   transform: translateY(-6px);
   clip-path: inset(0 0 0 100%);
-  pointer-events: none;
+  pointer-events: auto;
   border: 0;
   background: transparent;
   box-shadow: none;
@@ -376,6 +376,7 @@ p {
   background: transparent;
   border: 0;
   border-radius: 0;
+  pointer-events: auto;
 }
 
 .tab-button {
@@ -388,6 +389,7 @@ p {
   font-size: 13px;
   font-weight: 800;
   box-shadow: none;
+  pointer-events: auto;
 }
 
 .tab-button.active {
@@ -1014,7 +1016,7 @@ aside > * {
   text-align: center;
 }
 
-.stage-card.done .collapsed-address-summary {
+.stage-card .collapsed-address-summary {
   display: grid;
   justify-items: center;
   gap: 6px;
@@ -1023,7 +1025,7 @@ aside > * {
   text-align: center;
 }
 
-.stage-card.done .collapsed-address-summary span {
+.stage-card .collapsed-address-summary span {
   color: var(--muted);
   font-family: var(--font-sans);
   font-size: 12px;
@@ -1204,12 +1206,58 @@ aside > * {
   overflow-wrap: anywhere;
 }
 
+.scan-progress-row {
+  display: grid;
+  gap: 9px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid rgba(98, 78, 42, 0.12);
+}
+
+.scan-progress-copy {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.scan-progress-copy strong {
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-weight: 600;
+}
+
+.scan-progress-track {
+  height: 5px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(98, 78, 42, 0.12);
+}
+
+.scan-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #a9781f, #d9ad52);
+  transition: width 180ms ease;
+}
+
 .shield-summary-row strong {
   color: var(--ink);
   font-family: var(--font-serif);
   font-weight: 700;
   text-align: right;
   overflow-wrap: anywhere;
+}
+
+.pool-inline-count {
+  color: var(--muted);
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 650;
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .deposit-batches-dropdown {

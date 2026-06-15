@@ -23,6 +23,7 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/config"
 	"github.com/thornadocash/go-thornado/constants"
+	"github.com/thornadocash/go-thornado/x/thornado/keeper"
 	keeperv1 "github.com/thornadocash/go-thornado/x/thornado/keeper/v1"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
@@ -925,6 +926,10 @@ func (qs queryServer) queryDeposit(ctx cosmos.Context, req *types.QueryDepositRe
 	if deposit.DepositID.IsEmpty() {
 		return nil, errors.New("deposit not found")
 	}
+	return depositQueryResponse(deposit), nil
+}
+
+func depositQueryResponse(deposit types.DepositRecord) *types.QueryDepositResponse {
 	return &types.QueryDepositResponse{
 		DepositId:                deposit.DepositID.String(),
 		Owner:                    deposit.Owner.String(),
@@ -948,7 +953,7 @@ func (qs queryServer) queryDeposit(ctx cosmos.Context, req *types.QueryDepositRe
 		PurgeAtHeight:            deposit.PurgeAtHeight,
 		RefundEligibleHeight:     deposit.RefundEligibleHeight,
 		RefundQueuedHeight:       deposit.RefundQueuedHeight,
-	}, nil
+	}
 }
 
 func (qs queryServer) queryShielderRedeem(ctx cosmos.Context, req *types.QueryShielderRedeemRequest) (*types.QueryShielderRedeemResponse, error) {
@@ -976,22 +981,109 @@ func (qs queryServer) queryShielderNullifier(ctx cosmos.Context, req *types.Quer
 	return resp, nil
 }
 
-func (qs queryServer) queryShielderSync(ctx cosmos.Context, _ *types.QueryShielderSyncRequest) (*types.QueryShielderSyncResponse, error) {
+func (qs queryServer) queryShielderSync(ctx cosmos.Context, req *types.QueryShielderSyncRequest) (*types.QueryShielderSyncResponse, error) {
 	k := qs.mgr.Keeper()
 
-	noteIter := k.GetShielderNoteRecordIterator(ctx)
-	defer noteIter.Close()
+	limit := int(req.GetLimit())
+	legacyFullSync := limit == 0 && strings.TrimSpace(req.GetDepositCursor()) == "" && strings.TrimSpace(req.GetNoteCursor()) == "" && strings.TrimSpace(req.GetNullifierCursor()) == ""
+	if limit == 0 {
+		limit = 500
+	}
+	if limit > 2000 {
+		limit = 2000
+	}
+
+	deposits, nextDepositCursor, totalDeposits, moreDeposits, err := queryShielderSyncDeposits(ctx, k, strings.TrimSpace(req.GetDepositCursor()), limit, legacyFullSync)
+	if err != nil {
+		return nil, err
+	}
+	notes, nextNoteCursor, totalNotes, moreNotes, err := queryShielderSyncNotes(ctx, k, strings.TrimSpace(req.GetNoteCursor()), limit, legacyFullSync)
+	if err != nil {
+		return nil, err
+	}
+	nullifiers, nextNullifierCursor, totalNullifiers, moreNullifiers, err := queryShielderSyncNullifiers(ctx, k, strings.TrimSpace(req.GetNullifierCursor()), limit, legacyFullSync)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.QueryShielderSyncResponse{
+		Notes:               notes,
+		Nullifiers:          nullifiers,
+		Deposits:            deposits,
+		NextDepositCursor:   nextDepositCursor,
+		NextNoteCursor:      nextNoteCursor,
+		NextNullifierCursor: nextNullifierCursor,
+		HasMore:             moreDeposits || moreNotes || moreNullifiers,
+		TotalDeposits:       totalDeposits,
+		TotalNotes:          totalNotes,
+		TotalNullifiers:     totalNullifiers,
+	}, nil
+}
+
+func queryShielderSyncDeposits(ctx cosmos.Context, k keeper.Keeper, cursor string, limit int, full bool) ([]*types.QueryDepositResponse, string, uint64, bool, error) {
+	iter := k.GetDepositRecordIterator(ctx)
+	defer iter.Close()
+
+	deposits := make([]*types.QueryDepositResponse, 0)
+	var total uint64
+	var last string
+	more := false
+	for ; iter.Valid(); iter.Next() {
+		var deposit types.DepositRecord
+		if err := json.Unmarshal(iter.Value(), &deposit); err != nil {
+			return nil, "", 0, false, err
+		}
+		key := strings.TrimSpace(deposit.DepositID.String())
+		if key == "" {
+			continue
+		}
+		total++
+		if cursor != "" && key <= cursor {
+			continue
+		}
+		if !full && len(deposits) >= limit {
+			more = true
+			continue
+		}
+		deposits = append(deposits, depositQueryResponse(deposit))
+		last = key
+	}
+	if !more {
+		last = ""
+	}
+	return deposits, last, total, more, nil
+}
+
+func queryShielderSyncNotes(ctx cosmos.Context, k keeper.Keeper, cursor string, limit int, full bool) ([]*types.ShielderNoteRecord, string, uint64, bool, error) {
+	iter := k.GetShielderNoteRecordIterator(ctx)
+	defer iter.Close()
 
 	notes := make([]*types.ShielderNoteRecord, 0)
-	for ; noteIter.Valid(); noteIter.Next() {
+	var total uint64
+	var last string
+	more := false
+	for ; iter.Valid(); iter.Next() {
 		var record types.StoredShielderNoteRecord
-		if err := json.Unmarshal(noteIter.Value(), &record); err != nil {
-			return nil, err
+		if err := json.Unmarshal(iter.Value(), &record); err != nil {
+			return nil, "", 0, false, err
+		}
+		key := strings.TrimSpace(record.Commitment)
+		if key == "" {
+			continue
+		}
+		total++
+		if cursor != "" && key <= cursor {
+			continue
+		}
+		if !full && len(notes) >= limit {
+			more = true
+			continue
 		}
 		notes = append(notes, &types.ShielderNoteRecord{
 			Commitment:       strings.TrimSpace(record.Commitment),
 			DenominationSats: record.DenominationSats,
 		})
+		last = key
 	}
 	sort.Slice(notes, func(i, j int) bool {
 		if notes[i].DenominationSats == notes[j].DenominationSats {
@@ -999,30 +1091,50 @@ func (qs queryServer) queryShielderSync(ctx cosmos.Context, _ *types.QueryShield
 		}
 		return notes[i].DenominationSats < notes[j].DenominationSats
 	})
+	if !more {
+		last = ""
+	}
+	return notes, last, total, more, nil
+}
 
-	nullifierIter := k.GetShielderNullifierIterator(ctx)
-	defer nullifierIter.Close()
+func queryShielderSyncNullifiers(ctx cosmos.Context, k keeper.Keeper, cursor string, limit int, full bool) ([]*types.ShielderSpentNullifier, string, uint64, bool, error) {
+	iter := k.GetShielderNullifierIterator(ctx)
+	defer iter.Close()
 
 	nullifiers := make([]*types.ShielderSpentNullifier, 0)
-	for ; nullifierIter.Valid(); nullifierIter.Next() {
-		nullifier := strings.TrimLeft(strings.TrimPrefix(string(nullifierIter.Key()), "shielder_nullifier/"), "/")
+	var total uint64
+	var last string
+	more := false
+	for ; iter.Valid(); iter.Next() {
+		nullifier := strings.TrimLeft(strings.TrimPrefix(string(iter.Key()), "shielder_nullifier/"), "/")
+		if nullifier == "" {
+			continue
+		}
+		total++
+		if cursor != "" && nullifier <= cursor {
+			continue
+		}
+		if !full && len(nullifiers) >= limit {
+			more = true
+			continue
+		}
 		var withdrawalID string
-		if err := json.Unmarshal(nullifierIter.Value(), &withdrawalID); err != nil {
-			return nil, err
+		if err := json.Unmarshal(iter.Value(), &withdrawalID); err != nil {
+			return nil, "", 0, false, err
 		}
 		nullifiers = append(nullifiers, &types.ShielderSpentNullifier{
 			NullifierHash: strings.TrimSpace(nullifier),
 			WithdrawalId:  strings.TrimSpace(withdrawalID),
 		})
+		last = nullifier
 	}
 	sort.Slice(nullifiers, func(i, j int) bool {
 		return nullifiers[i].NullifierHash < nullifiers[j].NullifierHash
 	})
-
-	return &types.QueryShielderSyncResponse{
-		Notes:      notes,
-		Nullifiers: nullifiers,
-	}, nil
+	if !more {
+		last = ""
+	}
+	return nullifiers, last, total, more, nil
 }
 
 func (qs queryServer) queryShielderRedeemQuote(ctx cosmos.Context, req *types.QueryShielderRedeemQuoteRequest) (*types.QueryShielderRedeemQuoteResponse, error) {

@@ -43,10 +43,11 @@ const MS_PER_YEAR = 365 * 24 * 60 * 60 * 1000;
 const DEFAULT_BLOCKS_PER_YEAR = 365 * 24 * 60 * 60;
 const DENOMINATIONS = [1000000000, 100000000, 10000000, 1000000];
 const WITHDRAWAL_FEE_BASIS_POINTS = 100;
-const WITHDRAWAL_FEE_MIN_SATS = 100000;
+const SHIELDER_NOTE_MIN_SATS = Math.min(...DENOMINATIONS);
 const DEMO_MATURITY_MS = 60000;
 const MIN_LATER_DEPOSITS = 3;
 const POOL_REFRESH_MS = 15000;
+const SHIELDER_SYNC_PAGE_LIMIT = 250;
 const DEFAULT_CHURN_CYCLE_MS = 20 * 60 * 1000;
 const BIP39_WORDS = ["abandon","ability","able","about","above","absent","absorb","abstract","absurd","abuse","access","accident","account","accuse","achieve","acid","acoustic","acquire","across","act","action","actor","actress","actual","adapt","add","addict","address","adjust","admit","adult","advance","advice","aerobic","affair","afford","afraid","again","age","agent","agree","ahead","aim","air","airport","aisle","alarm","album","alcohol","alert","alien","all","alley","allow","almost","alone","alpha","already","also","alter","always","amateur","amazing","among","amount","amused","analyst","anchor","ancient","anger","angle","angry","animal","ankle","announce","annual","another","answer","antenna","antique","anxiety","any","apart","apology","appear","apple","approve","april","arch","arctic","area","arena","argue","arm","armed","armor","army","around","arrange","arrest","arrive","arrow","art","artefact","artist","artwork","ask","aspect","assault","asset","assist","assume","asthma","athlete","atom","attack","attend","attitude","attract","auction","audit","august","aunt","author","auto","autumn","average","avocado","avoid","awake","aware","away","awesome","awful","awkward","axis","baby","bachelor","bacon","badge","bag","balance","balcony","ball","bamboo","banana","banner","bar","barely","bargain","barrel","base","basic","basket","battle","beach","bean","beauty","because","become","beef","before","begin","behave","behind","believe","below","belt","bench","benefit","best","betray","better","between","beyond","bicycle","bid","bike","bind","biology","bird","birth","bitter","black","blade","blame","blanket","blast","bleak","bless","blind","blood","blossom","blouse","blue","blur","blush","board","boat","body","boil","bomb","bone","bonus","book","boost","border","boring","borrow","boss","bottom","bounce","box","boy","bracket","brain","brand","brass","brave","bread","breeze","brick","bridge","brief","bright","bring","brisk","broccoli","broken","bronze","broom","brother","brown","brush","bubble","buddy","budget","buffalo","build","bulb","bulk","bullet","bundle","bunker","burden","burger","burst","bus","business","busy","butter","buyer","buzz","cabbage","cabin","cable","cactus","cage","cake","call","calm","camera","camp","can","canal","cancel","candy","cannon","canoe","canvas","canyon","capable","capital","captain","car","carbon","card","cargo","carpet","carry","cart","case","cash","casino","castle","casual","cat","catalog","catch","category","cattle","caught","cause","caution","cave","ceiling","celery","cement","census","century","cereal","certain","chair","chalk","champion","change","chaos","chapter","charge","chase","chat","cheap","check","cheese","chef","cherry","chest","chicken","chief","child","chimney","choice","choose","chronic","chuckle","chunk","churn","cigar","cinnamon","circle","citizen","city","civil","claim","clap","clarify","claw","clay","clean","clerk","clever","click","client","cliff","climb","clinic","clip","clock","clog","close","cloth","cloud","clown","club","clump","cluster","clutch","coach","coast","coconut","code","coffee","coil","coin","collect","color","column","combine","come","comfort","comic","common","company","concert","conduct","confirm","congress","connect","consider","control","convince","cook","cool","copper","copy","coral","core","corn","correct","cost","cotton","couch","country","couple","course","cousin","cover","coyote","crack","cradle","craft","cram","crane","crash","crater","crawl","crazy","cream","credit","creek","crew","cricket","crime","crisp","critic","crop","cross","crouch","crowd","crucial","cruel","cruise","crumble","crunch","crush","cry","crystal","cube","culture","cup","cupboard","curious","current","curtain","curve","cushion","custom","cute","cycle","dad","damage","damp","dance","danger","daring","dash","daughter","dawn","day","deal","debate","debris","decade","december","decide","decline","decorate","decrease","deer","defense","define","defy","degree","delay","deliver","demand","demise","denial","dentist","deny","depart","depend","deposit","depth","deputy","derive","describe","desert","design","desk","despair","destroy","detail","detect","develop","device","devote","diagram","dial","diamond","diary","dice","diesel","diet","differ","digital","dignity","dilemma","dinner","dinosaur","direct","dirt","disagree","discover","disease","dish","dismiss","disorder","display","distance","divert","divide","divorce","dizzy","doctor","document","dog","doll","dolphin","domain","donate","donkey","donor","door","dose","double","dove","draft","dragon","drama","drastic","draw","dream","dress","drift","drill","drink","drip","drive","drop","drum","dry","duck","dumb","dune","during","dust","dutch","duty","dwarf","dynamic","eager","eagle","early","earn","earth","easily","east","easy","echo","ecology","economy","edge","edit","educate","effort","egg","eight","either","elbow","elder","electric","elegant","element","elephant","elevator","elite","else","embark","embody","embrace","emerge","emotion","employ","empower","empty","enable","enact","end","endless","endorse","enemy","energy","enforce","engage","engine","enhance","enjoy","enlist","enough","enrich","enroll","ensure","enter","entire","entry","envelope","episode","equal","equip","era","erase","erode","erosion","error","erupt","escape","essay","essence","estate","eternal","ethics","evidence","evil","evoke","evolve","exact","example","excess","exchange","excite","exclude","excuse","execute","exercise","exhaust","exhibit","exile","exist","exit","exotic","expand","expect","expire","explain","expose","express","extend","extra","eye","eyebrow","fabric","face","faculty","fade","faint","faith","fall","false","fame","family","famous","fan","fancy","fantasy","farm","fashion","fat","fatal","father","fatigue","fault","favorite","feature","february","federal","fee","feed","feel","female","fence","festival","fetch","fever","few","fiber","fiction","field","figure","file","film","filter","final","find","fine","finger","finish","fire","firm","first","fiscal","fish","fit","fitness","fix","flag","flame","flash","flat","flavor","flee","flight","flip","float","flock","floor","flower","fluid","flush","fly","foam","focus","fog","foil","fold","follow","food","foot","force","forest","forget","fork","fortune","forum","forward","fossil","foster","found","fox","fragile","frame","frequent","fresh","friend","fringe","frog","front","frost","frown","frozen","fruit","fuel","fun","funny","furnace","fury","future","gadget","gain","galaxy","gallery","game","gap","garage","garbage","garden","garlic","garment","gas","gasp","gate","gather","gauge","gaze","general","genius","genre","gentle","genuine","gesture","ghost","giant","gift","giggle","ginger","giraffe","girl","give","glad","glance","glare","glass","glide","glimpse","globe","gloom","glory","glove","glow","glue","goat","goddess","gold","good","goose","gorilla","gospel","gossip","govern","gown","grab","grace","grain","grant","grape","grass","gravity","great","green","grid","grief","grit","grocery","group","grow","grunt","guard","guess","guide","guilt","guitar","gun","gym","habit","hair","half","hammer","hamster","hand","happy","harbor","hard","harsh","harvest","hat","have","hawk","hazard","head","health","heart","heavy","hedgehog","height","hello","helmet","help","hen","hero","hidden","high","hill","hint","hip","hire","history","hobby","hockey","hold","hole","holiday","hollow","home","honey","hood","hope","horn","horror","horse","hospital","host","hotel","hour","hover","hub","huge","human","humble","humor","hundred","hungry","hunt","hurdle","hurry","hurt","husband","hybrid","ice","icon","idea","identify","idle","ignore","ill","illegal","illness","image","imitate","immense","immune","impact","impose","improve","impulse","inch","include","income","increase","index","indicate","indoor","industry","infant","inflict","inform","inhale","inherit","initial","inject","injury","inmate","inner","innocent","input","inquiry","insane","insect","inside","inspire","install","intact","interest","into","invest","invite","involve","iron","island","isolate","issue","item","ivory","jacket","jaguar","jar","jazz","jealous","jeans","jelly","jewel","job","join","joke","journey","joy","judge","juice","jump","jungle","junior","junk","just","kangaroo","keen","keep","ketchup","key","kick","kid","kidney","kind","kingdom","kiss","kit","kitchen","kite","kitten","kiwi","knee","knife","knock","know","lab","label","labor","ladder","lady","lake","lamp","language","laptop","large","later","latin","laugh","laundry","lava","law","lawn","lawsuit","layer","lazy","leader","leaf","learn","leave","lecture","left","leg","legal","legend","leisure","lemon","lend","length","lens","leopard","lesson","letter","level","liar","liberty","library","license","life","lift","light","like","limb","limit","link","lion","liquid","list","little","live","lizard","load","loan","lobster","local","lock","logic","lonely","long","loop","lottery","loud","lounge","love","loyal","lucky","luggage","lumber","lunar","lunch","luxury","lyrics","machine","mad","magic","magnet","maid","mail","main","major","make","mammal","man","manage","mandate","mango","mansion","manual","maple","marble","march","margin","marine","market","marriage","mask","mass","master","match","material","math","matrix","matter","maximum","maze","meadow","mean","measure","meat","mechanic","medal","media","melody","melt","member","memory","mention","menu","mercy","merge","merit","merry","mesh","message","metal","method","middle","midnight","milk","million","mimic","mind","minimum","minor","minute","miracle","mirror","misery","miss","mistake","mix","mixed","mixture","mobile","model","modify","mom","moment","monitor","monkey","monster","month","moon","moral","more","morning","mosquito","mother","motion","motor","mountain","mouse","move","movie","much","muffin","mule","multiply","muscle","museum","mushroom","music","must","mutual","myself","mystery","myth","naive","name","napkin","narrow","nasty","nation","nature","near","neck","need","negative","neglect","neither","nephew","nerve","nest","net","network","neutral","never","news","next","nice","night","noble","noise","nominee","noodle","normal","north","nose","notable","note","nothing","notice","novel","now","nuclear","number","nurse","nut","oak","obey","object","oblige","obscure","observe","obtain","obvious","occur","ocean","october","odor","off","offer","office","often","oil","okay","old","olive","olympic","omit","once","one","onion","online","only","open","opera","opinion","oppose","option","orange","orbit","orchard","order","ordinary","organ","orient","original","orphan","ostrich","other","outdoor","outer","output","outside","oval","oven","over","own","owner","oxygen","oyster","ozone","pact","paddle","page","pair","palace","palm","panda","panel","panic","panther","paper","parade","parent","park","parrot","party","pass","patch","path","patient","patrol","pattern","pause","pave","payment","peace","peanut","pear","peasant","pelican","pen","penalty","pencil","people","pepper","perfect","permit","person","pet","phone","photo","phrase","physical","piano","picnic","picture","piece","pig","pigeon","pill","pilot","pink","pioneer","pipe","pistol","pitch","pizza","place","planet","plastic","plate","play","please","pledge","pluck","plug","plunge","poem","poet","point","polar","pole","police","pond","pony","pool","popular","portion","position","possible","post","potato","pottery","poverty","powder","power","practice","praise","predict","prefer","prepare","present","pretty","prevent","price","pride","primary","print","priority","prison","private","prize","problem","process","produce","profit","program","project","promote","proof","property","prosper","protect","proud","provide","public","pudding","pull","pulp","pulse","pumpkin","punch","pupil","puppy","purchase","purity","purpose","purse","push","put","puzzle","pyramid","quality","quantum","quarter","question","quick","quit","quiz","quote","rabbit","raccoon","race","rack","radar","radio","rail","rain","raise","rally","ramp","ranch","random","range","rapid","rare","rate","rather","raven","raw","razor","ready","real","reason","rebel","rebuild","recall","receive","recipe","record","recycle","reduce","reflect","reform","refuse","region","regret","regular","reject","relax","release","relief","rely","remain","remember","remind","remove","render","renew","rent","reopen","repair","repeat","replace","report","require","rescue","resemble","resist","resource","response","result","retire","retreat","return","reunion","reveal","review","reward","rhythm","rib","ribbon","rice","rich","ride","ridge","rifle","right","rigid","ring","riot","ripple","risk","ritual","rival","river","road","roast","robot","robust","rocket","romance","roof","rookie","room","rose","rotate","rough","round","route","royal","rubber","rude","rug","rule","run","runway","rural","sad","saddle","sadness","safe","sail","salad","salmon","salon","salt","salute","same","sample","sand","satisfy","satoshi","sauce","sausage","save","say","scale","scan","scare","scatter","scene","scheme","school","science","scissors","scorpion","scout","scrap","screen","script","scrub","sea","search","season","seat","second","secret","section","security","seed","seek","segment","select","sell","seminar","senior","sense","sentence","series","service","session","settle","setup","seven","shadow","shaft","shallow","share","shed","shell","sheriff","shield","shift","shine","ship","shiver","shock","shoe","shoot","shop","short","shoulder","shove","shrimp","shrug","shuffle","shy","sibling","sick","side","siege","sight","sign","silent","silk","silly","silver","similar","simple","since","sing","siren","sister","situate","six","size","skate","sketch","ski","skill","skin","skirt","skull","slab","slam","sleep","slender","slice","slide","slight","slim","slogan","slot","slow","slush","small","smart","smile","smoke","smooth","snack","snake","snap","sniff","snow","soap","soccer","social","sock","soda","soft","solar","soldier","solid","solution","solve","someone","song","soon","sorry","sort","soul","sound","soup","source","south","space","spare","spatial","spawn","speak","special","speed","spell","spend","sphere","spice","spider","spike","spin","spirit","split","spoil","sponsor","spoon","sport","spot","spray","spread","spring","spy","square","squeeze","squirrel","stable","stadium","staff","stage","stairs","stamp","stand","start","state","stay","steak","steel","stem","step","stereo","stick","still","sting","stock","stomach","stone","stool","story","stove","strategy","street","strike","strong","struggle","student","stuff","stumble","style","subject","submit","subway","success","such","sudden","suffer","sugar","suggest","suit","summer","sun","sunny","sunset","super","supply","supreme","sure","surface","surge","surprise","surround","survey","suspect","sustain","swallow","swamp","swap","swarm","swear","sweet","swift","swim","swing","switch","sword","symbol","symptom","syrup","system","table","tackle","tag","tail","talent","talk","tank","tape","target","task","taste","tattoo","taxi","teach","team","tell","ten","tenant","tennis","tent","term","test","text","thank","that","theme","then","theory","there","they","thing","this","thought","three","thrive","throw","thumb","thunder","ticket","tide","tiger","tilt","timber","time","tiny","tip","tired","tissue","title","toast","tobacco","today","toddler","toe","together","toilet","token","tomato","tomorrow","tone","tongue","tonight","tool","tooth","top","topic","topple","torch","tornado","tortoise","toss","total","tourist","toward","tower","town","toy","track","trade","traffic","tragic","train","transfer","trap","trash","travel","tray","treat","tree","trend","trial","tribe","trick","trigger","trim","trip","trophy","trouble","truck","true","truly","trumpet","trust","truth","try","tube","tuition","tumble","tuna","tunnel","turkey","turn","turtle","twelve","twenty","twice","twin","twist","two","type","typical","ugly","umbrella","unable","unaware","uncle","uncover","under","undo","unfair","unfold","unhappy","uniform","unique","unit","universe","unknown","unlock","until","unusual","unveil","update","upgrade","uphold","upon","upper","upset","urban","urge","usage","use","used","useful","useless","usual","utility","vacant","vacuum","vague","valid","valley","valve","van","vanish","vapor","various","vast","vault","vehicle","velvet","vendor","venture","venue","verb","verify","version","very","vessel","veteran","viable","vibrant","vicious","victory","video","view","village","vintage","violin","virtual","virus","visa","visit","visual","vital","vivid","vocal","voice","void","volcano","volume","vote","voyage","wage","wagon","wait","walk","wall","walnut","want","warfare","warm","warrior","wash","wasp","waste","water","wave","way","wealth","weapon","wear","weasel","weather","web","wedding","weekend","weird","welcome","west","wet","whale","what","wheat","wheel","when","where","whip","whisper","wide","width","wife","wild","will","win","window","wine","wing","wink","winner","winter","wire","wisdom","wise","wish","witness","wolf","woman","wonder","wood","wool","word","work","world","worry","worth","wrap","wreck","wrestle","wrist","write","wrong","yard","year","yellow","you","young","youth","zebra","zero","zone","zoo"];
 const state = {
@@ -71,6 +72,10 @@ const state = {
   latestBlockHeight: null,
   withdrawingNote: null,
   withdrawnNotes: {},
+  publicNoteBuckets: {},
+  publicNoteBucketsPending: false,
+  shielderSyncCache: null,
+  shielderSyncPending: null,
   churnCycleMs: DEFAULT_CHURN_CYCLE_MS,
   churnServerDeltaMs: 0,
   waitStartedAt: null,
@@ -91,6 +96,7 @@ const state = {
   noteRecoveryQueued: false,
   noteRecoveryStatus: "idle",
   noteRecoveryBatchKey: "",
+  noteRecoveryProgress: null,
   appStarted: false,
   moreOpen: false,
   moreSettled: false,
@@ -277,18 +283,18 @@ function btcAddressLink(address) {
   return `<a class="tx-link address-link" href="${btcAddressExplorerUrl(value)}" target="_blank" rel="noopener" title="${safe}">${escapeHtml(short(value, 14, 12))}</a>`;
 }
 
-function collapsedDepositSummary(address, hasDeposit, expired) {
+function collapsedDepositSummary(address, hasDeposit, batch = activeBatch()) {
   if (!hasDeposit || !address) {
     return "No address yet";
   }
-  if (expired) {
+  const remaining = batchExpiryRemainingMs(batch);
+  if (remaining === 0) {
     return `
       <div class="collapsed-address-summary">
         <span>Expired</span>
       </div>
     `;
   }
-  const remaining = depositRemainingMs();
   const expiry = remaining === null
       ? "Expiry unknown"
       : `Expires in ${formatExpiryHuman(remaining)}`;
@@ -877,12 +883,21 @@ function updateNotePoolPosition(note, leavesResponse) {
   note.privacy_target_later_notes = MIN_LATER_DEPOSITS;
 }
 
+function updatePublicNoteBuckets(sync) {
+  const buckets = {};
+  for (const item of sync?.notes || []) {
+    const denomination = Number(item.denomination_sats || 0);
+    if (!denomination) {
+      continue;
+    }
+    buckets[denomination] = (buckets[denomination] || 0) + 1;
+  }
+  state.publicNoteBuckets = buckets;
+}
+
 async function shielderLeavesForDenomination(denomination) {
-  const sync = await api("/thornado/shielder/sync");
-  const leaves = (sync.notes || [])
-    .filter((item) => Number(item.denomination_sats || 0) === Number(denomination || 0))
-    .map((item) => item.commitment)
-    .filter(Boolean);
+  const sync = await shielderSync();
+  const leaves = sync.notesByDenomination.get(Number(denomination || 0)) || [];
   return {
     denomination_sats: Number(denomination || 0),
     leaf_count: leaves.length,
@@ -908,6 +923,19 @@ async function refreshReceiptPoolPositions() {
     if (leavesResponse) {
       updateNotePoolPosition(note, leavesResponse);
     }
+  }
+}
+
+async function refreshPublicNoteBuckets() {
+  if (state.publicNoteBucketsPending) {
+    return;
+  }
+  state.publicNoteBucketsPending = true;
+  try {
+    await shielderSync({ force: true });
+    renderNotes();
+  } finally {
+    state.publicNoteBucketsPending = false;
   }
 }
 
@@ -1200,6 +1228,7 @@ function resetDepositState() {
   state.noteRecoveryQueued = false;
   state.noteRecoveryStatus = "idle";
   state.noteRecoveryBatchKey = "";
+  state.noteRecoveryProgress = null;
   state.paneBatchKeys = { deposit: "", shield: "", withdraw: "" };
   ["stageDeposit", "stageDepositTrack", "stageShield", "stageWait", "stageWithdraw"].forEach((id) => {
     $(id).dataset.expanded = "0";
@@ -1262,6 +1291,25 @@ function renderDepositHistory() {
 
 function hasRecoverableDepositBatch() {
   return state.batches.some((batch) => batchConfirmed(batch) || batchFinalised(batch) || String(batch?.status || "").toLowerCase() === "committed");
+}
+
+function noteRecoveryInPhase(phase) {
+  return state.noteRecoveryStatus === phase && Boolean(state.noteRecoveryProgress);
+}
+
+function noteRecoveryVisible() {
+  return Boolean(state.noteRecoveryProgress)
+    && ["searching_commitments", "searching_nullifiers", "done"].includes(state.noteRecoveryStatus);
+}
+
+function noteRecoveryLabel() {
+  if (state.noteRecoveryStatus === "searching_nullifiers") {
+    return "Matching notes";
+  }
+  if (state.noteRecoveryStatus === "done") {
+    return "Sync complete";
+  }
+  return "Syncing public set";
 }
 
 function renderDenominations() {
@@ -1384,6 +1432,9 @@ function updateDashboard() {
     return progress.seen && progress.current < progress.required;
   });
   const showDepositTracking = hasDeposit || hasTrackedDeposits || hasUnconfirmedSeenDeposit;
+  if (!hasDeposit && !hasTrackedDeposits && !state.depositRequestPending) {
+    $("stageDeposit").dataset.expanded = "1";
+  }
   if (hasDeposit && !hasSeenDeposit && !anyConfirmed && !isDepositExpired) {
     $("stageDeposit").dataset.expanded = "1";
     $("stageDepositTrack").dataset.expanded = "1";
@@ -1463,7 +1514,7 @@ function updateDashboard() {
   $("receiptFingerprint").textContent = selectedNotes[0]?.root_fingerprint || "none";
   $("remainderSats").textContent = btcAmount(state.receipt?.remainder_sats || 0);
   $("feePreview").textContent = btcAmount(Number($("feeSats").value || 0));
-  $("depositSummary").innerHTML = collapsedDepositSummary(activeDepositAddress, hasDeposit, isDepositExpired);
+  $("depositSummary").innerHTML = collapsedDepositSummary(activeDepositAddress, hasDeposit, batch);
   $("depositTrackSummary").textContent = displayBatches.length
     ? `${displayBatches.length} deposits tracked`
     : hasUnconfirmedSeenDeposit
@@ -1500,6 +1551,176 @@ async function api(path, options = {}) {
     }
     throw new Error(message);
   }
+}
+
+function invalidateShielderSyncCache() {
+  state.shielderSyncCache = null;
+  state.shielderSyncPending = null;
+}
+
+function setNoteRecoveryProgress(progress = null) {
+  state.noteRecoveryProgress = progress;
+  updateDashboard();
+}
+
+function pageCursor(page, stream) {
+  return page?.[`next_${stream}_cursor`]
+    || page?.next_cursors?.[stream]
+    || page?.cursors?.[stream]
+    || "";
+}
+
+function pageTotal(page, stream, rows) {
+  const value = page?.[`total_${stream}s`]
+    ?? page?.totals?.[stream]
+    ?? page?.totals?.[`${stream}s`]
+    ?? null;
+  const total = Number(value);
+  return Number.isFinite(total) && total >= 0 ? total : rows.length;
+}
+
+function stablePublicKey(row, fields, fallbackPrefix) {
+  for (const field of fields) {
+    const value = String(row?.[field] || "").trim();
+    if (value) {
+      return `${field}:${value}`;
+    }
+  }
+  return `${fallbackPrefix}:${JSON.stringify(row || {})}`;
+}
+
+function uniquePublicRows(rows, fields, fallbackPrefix) {
+  const seen = new Set();
+  const out = [];
+  for (const row of rows || []) {
+    const key = stablePublicKey(row, fields, fallbackPrefix);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push(row);
+  }
+  return out;
+}
+
+function noteOrderValue(note) {
+  const value = Number(
+    note?.leaf_index
+    ?? note?.leaf_position
+    ?? note?.merkle_index
+    ?? note?.index
+    ?? NaN
+  );
+  return Number.isFinite(value) ? value : Number.MAX_SAFE_INTEGER;
+}
+
+function shielderSyncHasMore(page, cursors) {
+  if (typeof page?.has_more === "boolean") {
+    return page.has_more;
+  }
+  if (page?.has_more && typeof page.has_more === "object") {
+    return Boolean(page.has_more.deposit || page.has_more.deposits || page.has_more.note || page.has_more.notes || page.has_more.nullifier || page.has_more.nullifiers);
+  }
+  return Boolean(cursors.deposit || cursors.note || cursors.nullifier);
+}
+
+async function shielderSync(options = {}) {
+  const force = Boolean(options.force);
+  const onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
+  const now = Date.now();
+  if (!force && state.shielderSyncCache && now - state.shielderSyncCache.fetchedAt < POOL_REFRESH_MS) {
+    if (onProgress) {
+      onProgress({ percent: 100, done: true, ...state.shielderSyncCache.stats });
+    }
+    return state.shielderSyncCache.payload;
+  }
+  if (!force && state.shielderSyncPending) {
+    return state.shielderSyncPending;
+  }
+  state.shielderSyncPending = (async () => {
+    const payload = { notes: [], nullifiers: [], deposits: [] };
+    const cursors = { deposit: "", note: "", nullifier: "" };
+    let stats = { loaded: 0, total: 0, percent: 0 };
+    let hasMore = true;
+    do {
+      const params = new URLSearchParams({ limit: String(SHIELDER_SYNC_PAGE_LIMIT) });
+      if (cursors.deposit) params.set("deposit_cursor", cursors.deposit);
+      if (cursors.note) params.set("note_cursor", cursors.note);
+      if (cursors.nullifier) params.set("nullifier_cursor", cursors.nullifier);
+      const page = await api(`/thornado/shielder/sync?${params.toString()}`);
+      payload.notes.push(...(page.notes || []));
+      payload.nullifiers.push(...(page.nullifiers || []));
+      payload.deposits.push(...(page.deposits || []));
+      cursors.deposit = pageCursor(page, "deposit");
+      cursors.note = pageCursor(page, "note");
+      cursors.nullifier = pageCursor(page, "nullifier");
+      hasMore = shielderSyncHasMore(page, cursors);
+      if (hasMore && !cursors.deposit && !cursors.note && !cursors.nullifier) {
+        hasMore = false;
+      }
+      const total = pageTotal(page, "deposit", payload.deposits)
+        + pageTotal(page, "note", payload.notes)
+        + pageTotal(page, "nullifier", payload.nullifiers);
+      const loaded = payload.deposits.length + payload.notes.length + payload.nullifiers.length;
+      stats = {
+        phase: "public",
+        loaded,
+        total,
+        percent: hasMore && total > 0 ? Math.min(99, Math.floor((loaded / total) * 100)) : 100,
+        deposits: payload.deposits.length,
+        notes: payload.notes.length,
+        nullifiers: payload.nullifiers.length
+      };
+      if (onProgress) {
+        onProgress(stats);
+      }
+    } while (hasMore);
+    stats = { ...stats, phase: "public", percent: 100, done: true };
+    if (onProgress) {
+      onProgress(stats);
+    }
+    payload.notes = uniquePublicRows(payload.notes, ["commitment", "note_id"], "note");
+    payload.nullifiers = uniquePublicRows(payload.nullifiers, ["nullifier_hash"], "nullifier");
+    payload.deposits = uniquePublicRows(payload.deposits, ["deposit_id", "txid", "tx_id"], "deposit");
+    payload.notes.sort((a, b) => {
+      const denomA = Number(a.denomination_sats || 0);
+      const denomB = Number(b.denomination_sats || 0);
+      if (denomA === denomB) {
+        const orderA = noteOrderValue(a);
+        const orderB = noteOrderValue(b);
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        return String(a.commitment || "").localeCompare(String(b.commitment || ""));
+      }
+      return denomA - denomB;
+    });
+    payload.nullifiers.sort((a, b) => String(a.nullifier_hash || "").localeCompare(String(b.nullifier_hash || "")));
+    payload.deposits.sort((a, b) => String(a.deposit_id || "").localeCompare(String(b.deposit_id || "")));
+      const notesByDenomination = new Map();
+      for (const note of payload?.notes || []) {
+        const denomination = Number(note.denomination_sats || 0);
+        if (!denomination || !note.commitment) {
+          continue;
+        }
+        const leaves = notesByDenomination.get(denomination) || [];
+        leaves.push(note.commitment);
+        notesByDenomination.set(denomination, leaves);
+      }
+      const normalized = {
+        notes: payload?.notes || [],
+        nullifiers: payload?.nullifiers || [],
+        deposits: payload?.deposits || [],
+        notesByDenomination,
+        nullifierSet: new Set((payload?.nullifiers || []).map((item) => String(item.nullifier_hash || "").trim()).filter(Boolean))
+      };
+      state.shielderSyncCache = { fetchedAt: Date.now(), payload: normalized, stats };
+      updatePublicNoteBuckets(normalized);
+      return normalized;
+  })().finally(() => {
+      state.shielderSyncPending = null;
+    });
+  return state.shielderSyncPending;
 }
 
 async function refreshHash() {
@@ -1561,12 +1782,38 @@ function greedyDenominations(amountSats) {
   let remaining = amountSats;
   const denominations = [];
   for (const denomination of DENOMINATIONS) {
+    if (denomination < SHIELDER_NOTE_MIN_SATS) {
+      continue;
+    }
     while (remaining >= denomination) {
       denominations.push(denomination);
       remaining -= denomination;
     }
   }
   return { denominations, remaining };
+}
+
+function withdrawalFeeForDenomination(denominationSats) {
+  return Math.floor(Number(denominationSats || 0) * WITHDRAWAL_FEE_BASIS_POINTS / 10000);
+}
+
+function applySpendableNoteFloor(receipt) {
+  const notes = Array.isArray(receipt?.notes) ? receipt.notes : [];
+  let feeRemainder = Number(receipt?.remainder_sats || 0);
+  const filtered = [];
+  for (const note of notes) {
+    const denomination = Number(note.denomination_sats || 0);
+    if (denomination < SHIELDER_NOTE_MIN_SATS) {
+      feeRemainder += denomination;
+    } else {
+      filtered.push(note);
+    }
+  }
+  return {
+    ...receipt,
+    notes: filtered,
+    remainder_sats: feeRemainder
+  };
 }
 
 function encodePart(part) {
@@ -2167,14 +2414,18 @@ async function deriveShieldReceipt(depositId, amountSats, seedHex, depositIndex 
     : wasm.deriveShieldReceiptForDepositJson
       ? wasm.deriveShieldReceiptForDepositJson(depositId, BigInt(depositIndex), BigInt(amountSats), seedHex)
       : wasm.deriveShieldReceiptJson(depositId, BigInt(amountSats), seedHex));
-  receipt.notes = receipt.notes.map((note) => ({
+  const filteredReceipt = applySpendableNoteFloor(receipt);
+  filteredReceipt.notes = filteredReceipt.notes.map((note) => ({
     ...note,
+    deposit_id: depositId,
+    deposit_amount_sats: amountSats,
+    deposit_remainder_sats: Number(filteredReceipt.remainder_sats || 0),
     deposit_index: depositIndex,
     deposit_type: depositType,
     derivation_path: notePath(depositIndex, note.index + 1, depositType),
     root_fingerprint: fingerprint
   }));
-  return receipt;
+  return filteredReceipt;
 }
 
 async function deriveShieldReceiptForBatch(batch, seedHex, fingerprint) {
@@ -2191,15 +2442,19 @@ async function deriveShieldReceiptForBatch(batch, seedHex, fingerprint) {
     : wasm.deriveShieldReceiptForDepositJson
       ? wasm.deriveShieldReceiptForDepositJson(depositId, BigInt(depositIndex), BigInt(amountSats), seedHex)
       : wasm.deriveShieldReceiptJson(depositId, BigInt(amountSats), seedHex));
-  receipt.notes = receipt.notes.map((note) => ({
+  const filteredReceipt = applySpendableNoteFloor(receipt);
+  filteredReceipt.notes = filteredReceipt.notes.map((note) => ({
     ...note,
+    deposit_id: depositId,
+    deposit_amount_sats: amountSats,
+    deposit_remainder_sats: Number(filteredReceipt.remainder_sats || 0),
     deposit_index: depositIndex,
     deposit_type: depositType,
     derivation_path: notePath(depositIndex, note.index + 1, depositType),
     root_fingerprint: fingerprint,
     nullifier_hash: wasm.nullifierHashJson ? wasm.nullifierHashJson(note.nullifier) : note.nullifier_hash
   }));
-  return receipt;
+  return filteredReceipt;
 }
 
 async function recoverKnownDepositReceipts(seedHex, sync, fingerprint) {
@@ -2214,8 +2469,25 @@ async function recoverKnownDepositReceipts(seedHex, sync, fingerprint) {
     if (!batchConfirmed(batch)) {
       continue;
     }
-    const receipt = await deriveShieldReceiptForBatch(batch, seedHex, fingerprint);
-    const matchedNotes = (receipt?.notes || []).filter((note) => chainCommitments.has(String(note.commitment || "").toLowerCase()));
+    const txs = mergeDepositTxs(batch.depositTxs);
+    const receiptInputs = txs.length
+      ? txs.map((tx) => ({
+          ...batch,
+          depositId: tx.txid,
+          inboundTxId: tx.txid,
+          amountSats: tx.amountSats
+        }))
+      : [batch];
+    const matchedNotes = [];
+    let remainderSats = 0;
+    for (const input of receiptInputs) {
+      const receipt = await deriveShieldReceiptForBatch(input, seedHex, fingerprint);
+      const notes = (receipt?.notes || []).filter((note) => chainCommitments.has(String(note.commitment || "").toLowerCase()));
+      if (notes.length) {
+        matchedNotes.push(...notes);
+        remainderSats += Number(receipt?.remainder_sats || 0);
+      }
+    }
     if (!matchedNotes.length) {
       continue;
     }
@@ -2235,9 +2507,8 @@ async function recoverKnownDepositReceipts(seedHex, sync, fingerprint) {
       ...batch,
       status: "committed",
       receipt: {
-        ...receipt,
         notes: matchedNotes,
-        remainder_sats: receipt.remainder_sats || 0
+        remainder_sats: remainderSats
       },
       shieldedAt: batch.shieldedAt || Date.now() - DEMO_MATURITY_MS,
       maturesAt: batch.maturesAt || Date.now() - 1
@@ -2586,12 +2857,8 @@ function txAmountSats(txStatus = null) {
   return Number.isFinite(amount) ? amount : 0;
 }
 
-async function depositTxsForAddress(address, seedTxIds = []) {
-  const wanted = String(address || "").trim();
-  if (!wanted) {
-    return [];
-  }
-  const ids = new Set(seedTxIds.filter(Boolean).map((value) => String(value).toUpperCase()));
+async function buildDepositTxScanCache() {
+  const ids = new Set();
   const txout = await api("/thornado/txout").catch(() => null);
   for (const batch of txout?.txouts || []) {
     for (const item of batch.tx_array || []) {
@@ -2600,23 +2867,72 @@ async function depositTxsForAddress(address, seedTxIds = []) {
       }
     }
   }
-  const records = [];
+  return {
+    ids,
+    txById: new Map(),
+    txsByAddress: new Map(),
+    depositById: new Map()
+  };
+}
+
+async function readDepositTxRecord(id, cache = null) {
+  const key = String(id || "").toUpperCase();
+  if (!key) {
+    return null;
+  }
+  if (cache?.txById?.has(key)) {
+    return cache.txById.get(key);
+  }
+  const txStatus = await api(`/thornado/tx/${key}`).catch(() => null);
+  const tx = txStatus?.observed_tx?.tx || txStatus?.txs?.[0]?.tx || {};
+  if (!tx?.id && !tx?.to_address) {
+    cache?.txById?.set(key, null);
+    return null;
+  }
+  const deposit = cache?.depositById?.has(key)
+    ? cache.depositById.get(key)
+    : await api(`/thornado/deposit/${key}`).catch(() => null);
+  cache?.depositById?.set(key, deposit);
+  const progress = depositConfirmationProgress({}, deposit, txStatus);
+  const record = {
+    txid: String(tx.id || key).toUpperCase(),
+    amountSats: txAmountSats(txStatus),
+    progress,
+    txStatus,
+    deposit,
+    status: deposit?.status || (progress.current >= progress.required ? "deposit_matched" : progress.seen ? "deposit_observed" : "address_issued")
+  };
+  cache?.txById?.set(key, record);
+  const address = String(tx.to_address || "").trim();
+  if (cache && address) {
+    const rows = cache.txsByAddress.get(address) || [];
+    if (!rows.some((row) => row.txid === record.txid)) {
+      rows.push(record);
+      cache.txsByAddress.set(address, rows);
+    }
+  }
+  return record;
+}
+
+async function depositTxsForAddress(address, seedTxIds = [], scanCache = null) {
+  const wanted = String(address || "").trim();
+  if (!wanted) {
+    return [];
+  }
+  const records = [...(scanCache?.txsByAddress?.get(wanted) || [])];
+  const ids = new Set(seedTxIds.filter(Boolean).map((value) => String(value).toUpperCase()));
+  for (const id of scanCache?.ids || []) {
+    ids.add(id);
+  }
   for (const id of ids) {
-    const txStatus = await api(`/thornado/tx/${id}`).catch(() => null);
-    const tx = txStatus?.observed_tx?.tx || txStatus?.txs?.[0]?.tx || {};
-    if (String(tx.to_address || "").trim() !== wanted) {
+    if (records.some((record) => record.txid === id)) {
       continue;
     }
-    const deposit = await api(`/thornado/deposit/${id}`).catch(() => null);
-    const progress = depositConfirmationProgress({}, {}, txStatus);
-    records.push({
-      txid: String(tx.id || id).toUpperCase(),
-      amountSats: txAmountSats(txStatus),
-      progress,
-      txStatus,
-      deposit,
-      status: deposit?.status || (progress.current >= progress.required ? "deposit_matched" : progress.seen ? "deposit_observed" : "address_issued")
-    });
+    const record = await readDepositTxRecord(id, scanCache);
+    const tx = record?.txStatus?.observed_tx?.tx || record?.txStatus?.txs?.[0]?.tx || {};
+    if (record && String(tx.to_address || "").trim() === wanted) {
+      records.push(record);
+    }
   }
   records.sort((a, b) => String(a.txid).localeCompare(String(b.txid)));
   return records;
@@ -2799,6 +3115,7 @@ async function discoverDepositBatches(options = {}) {
     return state.batches;
   }
   const nextByType = { user: 0, node: 0 };
+  const scanCache = await buildDepositTxScanCache();
   for (const scanType of ["user", "node"]) {
     for (let depositIndex = 0; depositIndex < 32; depositIndex += 1) {
       const depositPubkey = await clientPubkeyFromSeed(seedHex, depositIndex, scanType);
@@ -2831,7 +3148,7 @@ async function discoverDepositBatches(options = {}) {
       if (!amountSats) {
         amountSats = txAmountSats(txStatus);
       }
-      const depositTxs = await depositTxsForAddress(session.deposit_address, [observedTxId]);
+      const depositTxs = await depositTxsForAddress(session.deposit_address, [observedTxId], scanCache);
       if (depositTxs.length) {
         amountSats = Number(depositTxs[depositTxs.length - 1].amountSats || amountSats || 0);
         observedTxId = depositTxs[depositTxs.length - 1].txid;
@@ -2888,20 +3205,44 @@ async function discoverDepositBatches(options = {}) {
       state.noteRecoveryPending = true;
       state.noteRecoveryStatus = "searching_commitments";
       state.noteRecoveryBatchKey = state.paneBatchKeys.deposit || state.activeBatchKey || "";
+      state.noteRecoveryProgress = { percent: 0, loaded: 0, total: 0 };
       updateDashboard();
-      sync = await api("/thornado/shielder/sync");
+      sync = await shielderSync({
+        force: true,
+        onProgress: (progress) => {
+          setNoteRecoveryProgress(progress);
+        }
+      });
       state.noteRecoveryStatus = "searching_nullifiers";
+      state.noteRecoveryProgress = {
+        phase: "local",
+        percent: 0,
+        loaded: 0,
+        total: (sync.notes?.length || 0) + (sync.nullifiers?.length || 0),
+        notes: sync.notes?.length || 0,
+        nullifiers: sync.nullifiers?.length || 0
+      };
       updateDashboard();
       const fingerprint = await rootFingerprint(seedHex);
       knownRecovery = await recoverKnownDepositReceipts(seedHex, sync, fingerprint);
       if (!knownRecovery.recovered.length) {
         const depositIndexes = state.batches.map((batch) => Number(batch.depositIndex || 0));
+        state.noteRecoveryProgress = {
+          ...state.noteRecoveryProgress,
+          percent: 50
+        };
+        updateDashboard();
         const workerRecovery = await recoverNotesOffThread(seedHex, sync, depositIndexes, fingerprint);
         knownRecovery = {
           recovered: workerRecovery.recoveredBatches || [],
           withdrawn: workerRecovery.withdrawnNotes || []
         };
       }
+      state.noteRecoveryProgress = {
+        ...state.noteRecoveryProgress,
+        percent: 100,
+        done: true
+      };
       for (const item of knownRecovery.withdrawn || []) {
         state.withdrawnNotes[item.key] = {
           txhash: item.txhash,
@@ -2910,7 +3251,6 @@ async function discoverDepositBatches(options = {}) {
           nullifierHash: item.nullifierHash
         };
       }
-      await hydrateWithdrawnNotePayouts();
       for (const batch of knownRecovery.recovered || []) {
         const selectedKey = state.paneBatchKeys.deposit || state.activeBatchKey || "";
         const selected = state.batches.find((item) => batchKey(item) === String(selectedKey));
@@ -2926,9 +3266,31 @@ async function discoverDepositBatches(options = {}) {
       }
       hydrateReceipt();
       openWithdrawForRecoveredNotes();
+      const recoveryTotal = Number(state.noteRecoveryProgress?.total || 0);
       state.noteRecoveryStatus = "done";
+      state.noteRecoveryProgress = {
+        ...state.noteRecoveryProgress,
+        loaded: recoveryTotal || Number(state.noteRecoveryProgress?.loaded || 0),
+        total: recoveryTotal,
+        percent: 100,
+        done: true
+      };
+      updateDashboard();
+      setTimeout(() => {
+        if (state.noteRecoveryStatus === "done" && state.noteRecoveryProgress?.done) {
+          state.noteRecoveryProgress = null;
+          updateDashboard();
+        }
+      }, 12000);
+      hydrateWithdrawnNotePayouts()
+        .then(() => {
+          renderNotes();
+          updateDashboard();
+        })
+        .catch((error) => log("withdraw/hydrate", { error: errorText(error) }));
     } catch (error) {
       state.noteRecoveryStatus = "error";
+      state.noteRecoveryProgress = null;
       throw error;
     } finally {
       state.noteRecoveryPending = false;
@@ -3002,8 +3364,7 @@ async function waitForCommittedTx(txhash, timeoutMs = 30000) {
 }
 
 async function quoteWithdrawalFee(note) {
-  const percentFeeSats = Math.floor(Number(note.denomination_sats || 0) * WITHDRAWAL_FEE_BASIS_POINTS / 10000);
-  const feeSats = Math.max(percentFeeSats, WITHDRAWAL_FEE_MIN_SATS);
+  const feeSats = withdrawalFeeForDenomination(note?.denomination_sats);
   if (!Number.isSafeInteger(feeSats) || feeSats < 0) {
     throw new Error("invalid withdrawal amount");
   }
@@ -3042,8 +3403,7 @@ function globalNoteIndex(note) {
 }
 
 function noteCoversCurrentFee(note) {
-  const feeSats = Number($("feeSats").value || 0);
-  return Number(note?.denomination_sats || 0) > feeSats;
+  return Number(note?.denomination_sats || 0) > withdrawalFeeForDenomination(note?.denomination_sats);
 }
 
 async function firstWithdrawableNoteInBatch(batch) {
@@ -3134,42 +3494,78 @@ function renderShieldBatches() {
   card.className = "batch-card";
 
   const progress = batchConfirmationProgress(selectedBatch);
-  const txid = selectedBatch.inboundTxId || selectedBatch.depositId || "";
   const notes = selectedBatch.receipt?.notes || [];
-  const amount = Number(selectedBatch.amountSats || notes.reduce((sum, note) => sum + Number(note.denomination_sats || 0), 0));
-  const meta = document.createElement("div");
-  meta.className = "batch-meta";
-  meta.innerHTML = `
-    <div class="shield-summary-row"><span>${txid ? txHashLink(txid) : "pending"}</span><strong>${btcAmount(amount)}</strong></div>
-  `;
-  card.append(meta);
+  const txRows = mergeDepositTxs(selectedBatch.depositTxs);
+  const fallbackTxid = selectedBatch.inboundTxId || selectedBatch.depositId || txRows[0]?.txid || "";
+
+  const appendDepositTxRows = () => {
+    if (txRows.length) {
+      for (const tx of txRows) {
+        const header = document.createElement("div");
+        header.className = "shield-summary-row";
+        header.innerHTML = `<span>${txHashLink(tx.txid)}</span><strong>${btcAmount(Number(tx.amountSats || 0))}</strong>`;
+        card.append(header);
+      }
+      return;
+    }
+    const amount = Number(selectedBatch.amountSats || 0);
+    if (fallbackTxid || amount) {
+      const header = document.createElement("div");
+      header.className = "shield-summary-row";
+      header.innerHTML = `<span>${fallbackTxid ? txHashLink(fallbackTxid) : "pending"}</span><strong>${btcAmount(amount)}</strong>`;
+      card.append(header);
+    }
+  };
+
+  if (noteRecoveryVisible()) {
+    if (!notes.length) {
+      appendDepositTxRows();
+    }
+    card.append(renderScanProgressRow(noteRecoveryLabel()));
+  }
 
   if (notes.length) {
     const mature = batchMature(selectedBatch);
+    const groups = new Map();
     for (const note of notes) {
-      const withdrawal = state.withdrawnNotes[noteKey(note)];
-      const spent = note.spent || withdrawal?.status === "spent" || Boolean(withdrawal?.outHash);
-      const row = document.createElement("div");
-      row.className = "batch-note-row";
-      row.innerHTML = `<span>${btcAmount(note.denomination_sats)}</span><strong>${spent ? "Withdrawn" : mature ? "Mature" : "Maturing"}</strong>`;
-      card.append(row);
+      const txid = note.deposit_id || fallbackTxid || "pending";
+      if (!groups.has(txid)) {
+        groups.set(txid, {
+          txid,
+          amountSats: Number(note.deposit_amount_sats || 0),
+          notes: []
+        });
+      }
+      const group = groups.get(txid);
+      group.notes.push(note);
+      if (!group.amountSats) {
+        group.amountSats += Number(note.denomination_sats || 0);
+      }
     }
-  } else if ((state.noteRecoveryPending || state.noteRecoveryQueued) && state.noteRecoveryStatus === "searching_commitments") {
-    const row = document.createElement("div");
-    row.className = "batch-note-row";
-    row.innerHTML = '<span>Searching for commitments</span><strong><span class="button-spinner" aria-hidden="true"></span></strong>';
-    card.append(row);
-  } else if ((state.noteRecoveryPending || state.noteRecoveryQueued) && state.noteRecoveryStatus === "searching_nullifiers") {
-    const row = document.createElement("div");
-    row.className = "batch-note-row";
-    row.innerHTML = '<span>Commitments found</span><strong>Checking nullifiers</strong>';
-    card.append(row);
+    for (const group of groups.values()) {
+      const header = document.createElement("div");
+      header.className = "shield-summary-row";
+      header.innerHTML = `<span>${group.txid !== "pending" ? txHashLink(group.txid) : "pending"}</span><strong>${btcAmount(group.amountSats)}</strong>`;
+      card.append(header);
+      for (const note of group.notes) {
+        const withdrawal = state.withdrawnNotes[noteKey(note)];
+        const spent = note.spent || withdrawal?.status === "spent" || Boolean(withdrawal?.outHash);
+        const row = document.createElement("div");
+        row.className = "batch-note-row";
+        row.innerHTML = `<span>${btcAmount(note.denomination_sats)}</span><strong>${spent ? "Withdrawn" : mature ? "Mature" : "Maturing"}</strong>`;
+        card.append(row);
+      }
+    }
+  } else if (noteRecoveryVisible()) {
+    // Progress row rendered above the empty state.
   } else if (String(selectedBatch.status || "").toLowerCase() === "committed") {
+    appendDepositTxRows();
     const row = document.createElement("div");
     row.className = "batch-note-row";
     row.innerHTML = "<span>Already shielded</span><strong>Searching notes...</strong>";
     card.append(row);
   } else if (batchFinalised(selectedBatch)) {
+    appendDepositTxRows();
     const actionRow = document.createElement("div");
     actionRow.className = "batch-note-row";
     const button = document.createElement("button");
@@ -3185,10 +3581,30 @@ function renderShieldBatches() {
   } else {
     const row = document.createElement("div");
     row.className = "batch-note-row";
-    row.innerHTML = `<span>${progress.seen ? "Deposit finalising" : "Waiting for deposit"}</span><strong>${txid ? txHashLink(txid) : "pending"}</strong>`;
+    row.innerHTML = `<span>${progress.seen ? "Deposit finalising" : "Waiting for deposit"}</span><strong>${fallbackTxid ? txHashLink(fallbackTxid) : "pending"}</strong>`;
     card.append(row);
   }
   el.append(card);
+}
+
+function renderScanProgressRow(label) {
+  const progress = state.noteRecoveryProgress || {};
+  const percent = Math.max(0, Math.min(100, Number(progress.percent || 0)));
+  const loaded = Number(progress.loaded || 0);
+  const total = Number(progress.total || 0);
+  const detail = total > 0
+    ? `${Math.min(loaded, total)} / ${total}`
+    : `${percent}%`;
+  const row = document.createElement("div");
+  row.className = "scan-progress-row";
+  row.innerHTML = `
+    <div class="scan-progress-copy">
+      <span>${label}</span>
+      <strong>${detail}</strong>
+    </div>
+    <div class="scan-progress-track" aria-hidden="true"><span style="width:${percent}%"></span></div>
+  `;
+  return row;
 }
 
 function renderNotes() {
@@ -3202,19 +3618,11 @@ function renderNotes() {
     el.append(row);
     return;
   }
-  if ((state.noteRecoveryPending || state.noteRecoveryQueued) && state.noteRecoveryStatus === "searching_commitments") {
-    const row = document.createElement("div");
-    row.className = "pane-empty";
-    row.textContent = "Waiting for commitment search.";
-    el.append(row);
-    return;
-  }
-  if ((state.noteRecoveryPending || state.noteRecoveryQueued) && state.noteRecoveryStatus === "searching_nullifiers") {
-    const row = document.createElement("div");
-    row.className = "pane-empty";
-    row.textContent = "Searching for nullifiers.";
-    el.append(row);
-    return;
+  if (noteRecoveryVisible()) {
+    el.append(renderScanProgressRow(noteRecoveryLabel()));
+    if (!selectedBatch.receipt?.notes?.length) {
+      return;
+    }
   }
   if (!selectedBatch.receipt?.notes?.length) {
     const row = document.createElement("div");
@@ -3232,7 +3640,20 @@ function renderNotes() {
   }
   const card = document.createElement("div");
   card.className = "batch-card";
+  const userNoteBuckets = {};
   for (const note of selectedBatch.receipt.notes) {
+    const denomination = Number(note.denomination_sats || 0);
+    if (denomination) {
+      userNoteBuckets[denomination] = (userNoteBuckets[denomination] || 0) + 1;
+    }
+  }
+  const publicBuckets = state.publicNoteBuckets || {};
+  if (!Object.keys(publicBuckets).length) {
+    refreshPublicNoteBuckets().catch((error) => log("pool/sync", { error: errorText(error) }));
+  }
+  for (const note of selectedBatch.receipt.notes) {
+    const denomination = Number(note.denomination_sats || 0);
+    const otherNotes = Math.max(0, Number(publicBuckets[denomination] || 0) - Number(userNoteBuckets[denomination] || 0));
     const index = globalNoteIndex(note);
     const key = noteKey(note);
     const withdrawal = state.withdrawnNotes[key];
@@ -3263,7 +3684,10 @@ function renderNotes() {
       state.selectedNote = selectedBatch.receipt.notes.findIndex((item) => noteKey(item) === key);
       openWithdrawAddressModal(Math.max(0, state.selectedNote));
     });
-    row.innerHTML = `<span>${btcAmount(note.denomination_sats)}</span>`;
+    row.innerHTML = `
+      <span>${btcAmount(note.denomination_sats)}</span>
+      <span class="pool-inline-count">${otherNotes} other ${otherNotes === 1 ? "note" : "notes"}</span>
+    `;
     row.append(action);
     if (withdrawal?.outHash || isPending) {
       const detail = document.createElement("div");
@@ -3383,6 +3807,7 @@ function queueDepositRecovery() {
   state.noteRecoveryQueued = true;
   state.noteRecoveryStatus = "searching_commitments";
   state.noteRecoveryBatchKey = state.paneBatchKeys.deposit || state.activeBatchKey || "";
+  state.noteRecoveryProgress = { percent: 0, loaded: 0, total: 0 };
   updateDashboard();
   setTimeout(() => {
     state.noteRecoveryQueued = false;
@@ -3391,6 +3816,7 @@ function queueDepositRecovery() {
       state.noteRecoveryPending = false;
       state.noteRecoveryQueued = false;
       state.noteRecoveryStatus = "error";
+      state.noteRecoveryProgress = null;
       log("deposit/recovery", { error: message });
       setMessage(`Note recovery skipped: ${message}`, "warn", 9, 30000);
       updateDashboard();
@@ -3550,6 +3976,7 @@ async function shieldDeposit(targetBatchKey = state.activeBatchKey || "") {
       }
     });
     payload.tx_response = await waitForCommittedTx(payload.txhash);
+    invalidateShielderSyncCache();
     upsertBatch({
       depositIndex,
       batchId: batchKey(batch),
@@ -3595,6 +4022,7 @@ async function withdrawNote(noteIndex = state.selectedNote || 0) {
       body: { proof, public: publicInputs }
     });
     payload.tx_response = await waitForCommittedTx(payload.txhash, 45000);
+    invalidateShielderSyncCache();
     setMessage("Withdrawal accepted. Waiting for BTC payout...", "ok", 9, 600000);
     updateDashboard();
     const withdrawalID = payload.withdrawal_id || publicInputs.nullifier_hash;
@@ -3602,6 +4030,8 @@ async function withdrawNote(noteIndex = state.selectedNote || 0) {
       ? await api(`/thornado/shielder/redeem/${payload.withdrawal_id}`).catch(() => null)
       : null;
     const inHash = redeem?.in_hash || withdrawalID;
+    state.withdrawnNotes[key] = { txhash: payload.txhash, withdrawalID, inHash, status: "pending" };
+    renderNotes();
     const requestedHeight = Number(redeem?.requested_height || 0);
     const netSats = Math.max(0, Number(note.denomination_sats || 0) - Number($("feeSats").value || 0));
     const outHash = await waitForOutboundHash(inHash, $("recipient").value.trim(), netSats, requestedHeight);
@@ -3630,6 +4060,7 @@ function openWithdrawAddressModal(noteIndex) {
   state.pendingWithdrawNote = noteIndex;
   const input = $("withdrawRecipientInput");
   input.value = "";
+  updateWithdrawAddressModal();
   $("withdrawAddressModal").hidden = false;
   setTimeout(() => input.focus(), 0);
 }
@@ -3637,6 +4068,16 @@ function openWithdrawAddressModal(noteIndex) {
 function closeWithdrawAddressModal() {
   $("withdrawAddressModal").hidden = true;
   state.pendingWithdrawNote = null;
+  $("withdrawRecipientInput").value = "";
+  updateWithdrawAddressModal();
+}
+
+function updateWithdrawAddressModal() {
+  const button = $("confirmWithdrawAddress");
+  if (!button) {
+    return;
+  }
+  button.disabled = !$("withdrawRecipientInput").value.trim();
 }
 
 async function confirmWithdrawAddress() {
@@ -3662,6 +4103,24 @@ window.thornadoE2E = {
       })),
       selectedNote: state.selectedNote,
       message: $("message").textContent
+    };
+  },
+  async deriveForSelectedDeposit() {
+    const batch = selectedFlowBatch();
+    if (!batch) throw new Error("no selected deposit");
+    const seedHex = await walletRootSeedHex();
+    const receipt = await deriveShieldReceipt(
+      batch.depositId || batch.inboundTxId || "",
+      Number(batch.amountSats || 0),
+      seedHex,
+      Number(batch.depositIndex || 0)
+    );
+    return {
+      deposit: depositLabel(batch),
+      amount: btcAmount(batch.amountSats || 0),
+      notes: receipt.notes.map((note) => btcAmount(note.denomination_sats)),
+      remainder: btcAmount(receipt.remainder_sats || 0),
+      fees: receipt.notes.map((note) => btcAmount(withdrawalFeeForDenomination(note.denomination_sats)))
     };
   },
   async withdrawFirstMature(recipient) {
@@ -4016,6 +4475,8 @@ async function fundAuctionBidFromNotes() {
     method: "POST",
     body: { proof, public: publicInputs }
   });
+  payload.tx_response = await waitForCommittedTx(payload.txhash, 45000);
+  invalidateShielderSyncCache();
   writeSalesStatus("Fund node sale bid", payload);
   state.withdrawnNotes[noteKey(candidate.note)] = {
     txhash: payload.txhash,
@@ -4144,6 +4605,9 @@ function revealSecret() {
 
 function hideSecret() {
   state.secretMode = "hidden";
+  $("customSecretError").hidden = true;
+  $("customSecretError").textContent = "";
+  setMessage("");
   renderSecret();
 }
 
@@ -4198,6 +4662,7 @@ function cancelCustomSecret() {
   $("customSecretError").hidden = true;
   $("customSecretError").textContent = "";
   state.secretMode = "revealed";
+  setMessage("");
   renderSecret();
 }
 
@@ -4335,6 +4800,12 @@ function switchToTor() {
 	      const isSales = tabName === "sales";
 	      const isHow = tabName === "how";
     state.currentTab = isNetwork ? "network" : isNodes ? "nodes" : isSales ? "sales" : isHow ? "how" : "user";
+    if (state.currentTab !== "user" && state.secretMode !== "hidden") {
+      state.secretMode = "hidden";
+      $("customSecretError").hidden = true;
+      $("customSecretError").textContent = "";
+      renderSecret();
+    }
 	      $("userPanel").hidden = isNetwork || isNodes || isSales || isHow;
 	      $("networkPanel").hidden = !isNetwork;
 	      $("nodesPanel").hidden = !isNodes;
@@ -4405,6 +4876,23 @@ document.querySelectorAll("[data-stage-toggle]").forEach((button) => {
   button.addEventListener("click", () => toggleStage(button.dataset.stageToggle));
 });
 document.addEventListener("click", (event) => {
+  const tabButton = event.target.closest?.("#tabUser, #tabNodes, #tabNodeSales, #tabNetwork, #tabHow");
+  if (tabButton) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (tabButton.id === "tabUser") {
+      run(prepareUserPurposeDeposit);
+    } else if (tabButton.id === "tabNodes") {
+      showTab("nodes");
+    } else if (tabButton.id === "tabNodeSales") {
+      showTab("sales");
+    } else if (tabButton.id === "tabNetwork") {
+      showTab("network");
+    } else if (tabButton.id === "tabHow") {
+      showTab("how");
+    }
+    return;
+  }
   const option = event.target.closest?.(".deposit-option[data-dropdown-option]");
   if (option) {
     event.preventDefault();
@@ -4473,6 +4961,13 @@ $("withdrawAddressModal").addEventListener("click", (event) => {
   if (event.target === $("withdrawAddressModal")) closeWithdrawAddressModal();
 });
 $("confirmWithdrawAddress").addEventListener("click", () => run(confirmWithdrawAddress));
+$("withdrawRecipientInput").addEventListener("input", updateWithdrawAddressModal);
+$("withdrawRecipientInput").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !$("confirmWithdrawAddress").disabled) {
+    event.preventDefault();
+    run(confirmWithdrawAddress);
+  }
+});
 $("refreshNodeTools").addEventListener("click", () => run(refreshNodeTools));
 document.querySelectorAll("[data-node-subtab]").forEach((button) => {
   button.addEventListener("click", () => showNodeWorkflow(button.dataset.nodeSubtab));
@@ -4568,14 +5063,12 @@ renderMoreNav();
       discoverDepositBatches({ recoverNotes: false })
         .then(() => {
           updateDashboard();
-          setMessage(
-            hasRecoverableDepositBatch()
-              ? "Deposits synced. Searching commitments..."
-              : state.batches.length ? "Deposits synced." : "No previous deposits found.",
-            state.batches.length ? "ok" : "",
-            1,
-            10000
-          );
+          if (hasRecoverableDepositBatch()) {
+            setMessage("Deposits synced. Searching commitments...", "ok", 1, 10000);
+            queueDepositRecovery();
+          } else {
+            setMessage(state.batches.length ? "Deposits synced." : "No previous deposits found.", state.batches.length ? "ok" : "", 1, 10000);
+          }
         })
         .catch((error) => {
           const message = errorText(error);

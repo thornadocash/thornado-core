@@ -576,20 +576,9 @@ func PostShielderShield(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 			return types.DepositRecord{}, err
 		}
 	}
-	seen := make(map[string]struct{}, len(noteCommitments))
 	var total uint64
 	for _, note := range noteCommitments {
-		if note.Commitment == "" {
-			return types.DepositRecord{}, fmt.Errorf("empty shielder commitment")
-		}
-		if _, ok := seen[note.Commitment]; ok {
-			return types.DepositRecord{}, fmt.Errorf("duplicate shielder commitment")
-		}
-		if k.ShielderCommitmentExists(ctx, note.Commitment) {
-			return types.DepositRecord{}, fmt.Errorf("shielder commitment already exists")
-		}
 		total += note.DenominationSats
-		seen[note.Commitment] = struct{}{}
 	}
 	if total == 0 {
 		return types.DepositRecord{}, fmt.Errorf("missing shielder commitment amount")
@@ -603,34 +592,8 @@ func PostShielderShield(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 	if err := k.SetDepositRecord(ctx, deposit); err != nil {
 		return types.DepositRecord{}, err
 	}
-	byDenomination := make(map[uint64][]string)
-	for _, note := range noteCommitments {
-		if err := k.SetShielderCommitment(ctx, note.Commitment); err != nil {
-			return types.DepositRecord{}, err
-		}
-		if err := k.SetShielderDenominationCommitment(ctx, note.DenominationSats, note.Commitment); err != nil {
-			return types.DepositRecord{}, err
-		}
-		if err := k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
-			Commitment:       note.Commitment,
-			DenominationSats: note.DenominationSats,
-		}); err != nil {
-			return types.DepositRecord{}, err
-		}
-		byDenomination[note.DenominationSats] = append(byDenomination[note.DenominationSats], note.Commitment)
-	}
-	for denomination := range byDenomination {
-		leaves, err := k.GetShielderDenominationCommitments(ctx, denomination)
-		if err != nil {
-			return types.DepositRecord{}, err
-		}
-		root, err := ComputeShielderMerkleRoot(leaves)
-		if err != nil {
-			return types.DepositRecord{}, err
-		}
-		if err := k.SetShielderMerkleRoot(ctx, denomination, root); err != nil {
-			return types.DepositRecord{}, err
-		}
+	if err := insertShielderCommitments(ctx, k, noteCommitments); err != nil {
+		return types.DepositRecord{}, err
 	}
 	return deposit, nil
 }
@@ -844,6 +807,10 @@ func insertShielderCommitments(ctx cosmos.Context, k keeper.Keeper, notes []shie
 		}
 		byDenomination[note.DenominationSats] = append(byDenomination[note.DenominationSats], note.Commitment)
 	}
+	return refreshShielderRoots(ctx, k, byDenomination)
+}
+
+func refreshShielderRoots(ctx cosmos.Context, k keeper.Keeper, byDenomination map[uint64][]string) error {
 	for denomination := range byDenomination {
 		leaves, err := k.GetShielderDenominationCommitments(ctx, denomination)
 		if err != nil {
@@ -1553,18 +1520,8 @@ func ShieldShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 		}
 		byDenomination[note.DenominationSats] = append(byDenomination[note.DenominationSats], note.Commitment)
 	}
-	for denomination := range byDenomination {
-		leaves, err := k.GetShielderDenominationCommitments(ctx, denomination)
-		if err != nil {
-			return types.DepositRecord{}, err
-		}
-		root, err := ComputeShielderMerkleRoot(leaves)
-		if err != nil {
-			return types.DepositRecord{}, err
-		}
-		if err := k.SetShielderMerkleRoot(ctx, denomination, root); err != nil {
-			return types.DepositRecord{}, err
-		}
+	if err := refreshShielderRoots(ctx, k, byDenomination); err != nil {
+		return types.DepositRecord{}, err
 	}
 	bond.FeeDebtSats = accrued
 	bond.UpdatedHeight = ctx.BlockHeight()
