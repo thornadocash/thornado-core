@@ -81,6 +81,7 @@ const state = {
   lastWithdrawalFeeSats: null,
   lastWithdrawalNoteKey: null,
   lastWithdrawalContextKey: "",
+  addressPaneFocusKey: "",
   shieldStageOpenedForDeposit: false,
   withdrawStageOpenedForNotes: "",
   pendingWithdrawNote: null,
@@ -336,6 +337,9 @@ function toggleStage(stageId) {
   const el = $(stageId);
   const nextExpanded = el.dataset.expanded === "1" ? "0" : "1";
   el.dataset.expanded = nextExpanded;
+  if (stageId === "stageDeposit" && nextExpanded === "0") {
+    state.addressPaneFocusKey = "";
+  }
   if (stageId === "stageWithdraw" && nextExpanded === "0") {
     state.withdrawStageOpenedForNotes = matureNotesKey();
   }
@@ -1343,24 +1347,36 @@ function updateDashboard() {
   const hasConfirmed = confirmationProgress.current >= confirmationProgress.required
     || batch?.status === "deposit_matched"
     || batch?.status === "committed";
-  const hasShielded = notes.length > 0;
   const anyConfirmed = state.batches.some((item) => batchConfirmed(item)) || hasConfirmed;
   const selectedFinalised = batchFinalised(batch);
-  const hasMatureNote = state.batches.some((item) => item.receipt?.notes?.length && batchMature(item));
+  const selectedNotes = batch?.receipt?.notes || [];
+  const hasShielded = selectedNotes.length > 0;
+  const hasMatureNote = hasShielded && batchMature(batch);
   const selectedBatchKey = batch ? batchKey(batch) : "";
-  if (selectedFinalised && state.shieldStageOpenedForDeposit !== selectedBatchKey) {
+  const selectedMatureNoteKey = hasMatureNote ? `${selectedBatchKey}:${selectedNotes.length}` : "";
+  const addressFocusActive = Boolean(
+    state.depositRequestPending ||
+    (
+      state.addressPaneFocusKey &&
+      state.addressPaneFocusKey === selectedBatchKey &&
+      hasDeposit &&
+      !hasSeenDeposit &&
+      !anyConfirmed &&
+      !isDepositExpired
+    )
+  );
+  if (!addressFocusActive && selectedFinalised && state.shieldStageOpenedForDeposit !== selectedBatchKey) {
     $("stageDeposit").dataset.expanded = "0";
     $("stageDepositTrack").dataset.expanded = "1";
     $("stageShield").dataset.expanded = "1";
     state.shieldStageOpenedForDeposit = selectedBatchKey;
   }
-  const matureNoteKey = matureNotesKey();
-  if (hasMatureNote && matureNoteKey && state.withdrawStageOpenedForNotes !== matureNoteKey) {
+  if (!addressFocusActive && hasMatureNote && selectedMatureNoteKey && state.withdrawStageOpenedForNotes !== selectedMatureNoteKey) {
     $("stageDeposit").dataset.expanded = "0";
     $("stageShield").dataset.expanded = "0";
     $("stageWait").dataset.expanded = "0";
     $("stageWithdraw").dataset.expanded = "1";
-    state.withdrawStageOpenedForNotes = matureNoteKey;
+    state.withdrawStageOpenedForNotes = selectedMatureNoteKey;
   }
   const hasTrackedDeposits = displayBatches.length > 0;
   const hasUnconfirmedSeenDeposit = displayBatches.some((item) => {
@@ -1373,7 +1389,7 @@ function updateDashboard() {
     $("stageDepositTrack").dataset.expanded = "1";
   }
   const hasProof = Boolean(state.lastWithdrawalProof && state.lastWithdrawalPublic);
-  const note = selectedReceiptNote();
+  const note = selectedNotes[state.selectedNote || 0] || selectedNotes[0] || null;
   const laterNoteCount = note?.later_note_count;
   const hasLaterNoteCount = Number.isFinite(laterNoteCount);
   const targetLaterNotes = Number.isFinite(note?.privacy_target_later_notes)
@@ -1390,7 +1406,7 @@ function updateDashboard() {
   $("depositMetric").textContent = displayBatches.length
     ? `${displayBatches.length} batches`
     : hasDeposit ? isDepositExpired ? "Expired" : state.activeIntentId : "No intent";
-  $("notesMetric").textContent = `${notes.length} minted`;
+  $("notesMetric").textContent = `${selectedNotes.length} minted`;
   $("privacyMetric").textContent = hasShielded ? `${laterNoteProgress} later` : "No pool yet";
   setStep("stepWallet", hasWallet ? "done" : "active");
   setStep("stepDeposit", hasObservableDeposit || anyConfirmed ? "done" : hasWallet ? "active" : "");
@@ -1444,7 +1460,7 @@ function updateDashboard() {
   $("privacyMeter").style.width = hasShielded
     ? `${Math.round(30 + poolProgress * 62)}%`
     : hasDeposit ? "18%" : "8%";
-  $("receiptFingerprint").textContent = notes[0]?.root_fingerprint || "none";
+  $("receiptFingerprint").textContent = selectedNotes[0]?.root_fingerprint || "none";
   $("remainderSats").textContent = btcAmount(state.receipt?.remainder_sats || 0);
   $("feePreview").textContent = btcAmount(Number($("feeSats").value || 0));
   $("depositSummary").innerHTML = collapsedDepositSummary(activeDepositAddress, hasDeposit, isDepositExpired);
@@ -1456,16 +1472,13 @@ function updateDashboard() {
         ? "Watching current address"
       : "No deposits tracked";
   $("shieldSummary").textContent = hasShielded
-    ? `${notes.length} notes minted`
-    : anyConfirmed
+    ? `${selectedNotes.length} notes minted`
+    : selectedFinalised
       ? `Matched ${short(state.activeIntentId, 12, 10)}`
       : "Waiting for deposit";
-  const withdrawableNoteCount = state.batches.reduce((sum, item) => {
-    if (!item.receipt?.notes?.length || !batchMature(item)) {
-      return sum;
-    }
-    return sum + item.receipt.notes.filter((note) => !note.spent && !state.withdrawnNotes[noteKey(note)]).length;
-  }, 0);
+  const withdrawableNoteCount = hasMatureNote
+    ? selectedNotes.filter((item) => !item.spent && !state.withdrawnNotes[noteKey(item)]).length
+    : 0;
   $("withdrawSummary").textContent = hasProof
     ? "Proof generated"
     : hasMatureNote
@@ -2529,20 +2542,19 @@ function depositConfirmationProgress(session = {}, deposit = {}, txStatus = null
   if (current === null) {
     current = 0;
   }
-  if (txStatus?.observed_tx?.tx?.id && observedStage.completed === true) {
-    current = Math.max(current, required);
-  }
   if (observedHeight !== null && targetHeight !== null && targetHeight >= observedHeight) {
     current = Math.max(current, required - Math.max(0, targetHeight - observedHeight));
   }
   const status = String(deposit.status || session.status || "");
   const hasDepositRecord = Boolean(deposit && Object.keys(deposit).length);
+  const observedTxId = inboundTxId(session, deposit) || txStatus?.observed_tx?.tx?.id || txStatus?.txs?.[0]?.tx?.id || "";
   const seen = Boolean(
     observedHeight
       || readNumber(observedStage.pre_confirmation_count, observedStage.final_count)
       || status && status !== "address_issued"
       || session.deposit_id
       || deposit.deposit_id
+      || observedTxId
   );
   const final = status === "deposit_matched"
     || status === "committed"
@@ -2808,6 +2820,9 @@ async function discoverDepositBatches(options = {}) {
       }
       if (observedTxId) {
         txStatus = await api(`/thornado/tx/${observedTxId}`).catch(() => null);
+      }
+      if (!observedTxId && session.inbound_tx_id) {
+        observedTxId = session.inbound_tx_id;
       }
       if (deposit) {
         amountSats = Number(deposit?.amount_sats || amountSats || 0);
@@ -3266,6 +3281,8 @@ async function requestDeposit() {
   state.depositAutoConfirming = false;
   state.depositExpiresAt = null;
   state.depositExpiresAtHeight = null;
+  state.addressPaneFocusKey = "__pending__";
+  $("stageDeposit").dataset.expanded = "1";
   $("requestDeposit").disabled = true;
   $("depositResult").hidden = true;
   $("depositAddress").textContent = "";
@@ -3284,6 +3301,7 @@ async function requestDeposit() {
     const reusableBatch = activeBatch();
     if (batchIssuedUnexpired(reusableBatch)) {
       activateDepositBatch(reusableBatch);
+      state.addressPaneFocusKey = batchKey(reusableBatch);
       $("depositAddress").hidden = false;
       $("stageDeposit").dataset.expanded = "1";
       $("stageDepositTrack").dataset.expanded = "1";
@@ -3337,6 +3355,7 @@ async function requestDeposit() {
     upsertBatch(newBatch);
     supersedeOlderIssuedBatches(depositIndex);
     activateDepositBatch(newBatch);
+    state.addressPaneFocusKey = batchKey(newBatch);
     state.depositDropdownOpen = true;
     state.waitStartedAt = null;
     state.waitMaturesAt = null;

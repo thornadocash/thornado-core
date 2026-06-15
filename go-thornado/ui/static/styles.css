@@ -958,7 +958,7 @@ aside > * {
 
 .stage-card.done {
   min-height: 0;
-  padding: 48px 14px 12px;
+  padding: 74px 24px 24px;
   border-color: rgba(132, 101, 44, 0.24);
   background:
     linear-gradient(180deg, rgba(255, 253, 247, 0.98), rgba(251, 246, 233, 0.92));
@@ -967,7 +967,7 @@ aside > * {
 
 .stage-card:not(.expanded):not(.locked) {
   min-height: 0;
-  padding: 48px 14px 12px;
+  padding: 74px 24px 24px;
   border-color: rgba(132, 101, 44, 0.24);
   background:
     linear-gradient(180deg, rgba(255, 253, 247, 0.98), rgba(251, 246, 233, 0.92));
@@ -1010,6 +1010,7 @@ aside > * {
 .stage-card.done .stage-summary {
   display: block;
   width: 100%;
+  margin-top: 2px;
   text-align: center;
 }
 
