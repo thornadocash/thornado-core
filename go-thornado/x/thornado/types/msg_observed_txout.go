@@ -41,7 +41,7 @@ func (m *MsgObservedTxOut) ValidateBasic() error {
 		return cosmos.ErrUnknownRequest(fmt.Sprintf("too many observed txs: %d, max %d", len(m.Txs), MaxObservedTxBatchSize))
 	}
 	for _, tx := range m.Txs {
-		if err := validateObservedTxPayload(tx); err != nil {
+		if err := validateObservedTxPayload(tx, false); err != nil {
 			return cosmos.ErrUnknownRequest(err.Error())
 		}
 		obAddr, err := tx.ObservedPubKey.GetAddress(tx.Tx.Coins[0].Asset.GetChain())

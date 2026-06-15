@@ -196,8 +196,8 @@ func RecordDepositObservation(ctx cosmos.Context, k keeper.Keeper, tx ObservedTx
 		return nil
 	}
 	required := int64(0)
-	if tx.FinaliseHeight > tx.BlockHeight {
-		required = tx.FinaliseHeight - tx.BlockHeight
+	if !finalised && tx.BlockHeight > 0 && tx.FinaliseHeight >= tx.BlockHeight {
+		required = tx.FinaliseHeight - tx.BlockHeight + 1
 	}
 	if required <= 0 {
 		required = k.GetConfigInt64(ctx, constants.BTC_ConfirmationsMin)
@@ -205,31 +205,52 @@ func RecordDepositObservation(ctx cosmos.Context, k keeper.Keeper, tx ObservedTx
 	if required <= 0 {
 		required = 1
 	}
-	current := int64(0)
-	if finalised {
-		current = required
-	}
 
 	if session, err := k.GetDepositSession(ctx, mapping.Owner); err == nil && tx.Tx.ToAddress.Equals(session.DepositAddress) {
+		sessionRequired := required
+		if session.BTCConfirmationsRequired > 0 {
+			sessionRequired = session.BTCConfirmationsRequired
+		}
 		session.InboundTxID = tx.Tx.ID
 		session.BTCObservedHeight = tx.BlockHeight
-		session.BTCConfirmations = current
-		session.BTCConfirmationsRequired = required
+		session.BTCConfirmations = depositConfirmationProgress(finalised, tx.BlockHeight, sessionRequired)
+		session.BTCConfirmationsRequired = sessionRequired
+		if !finalised && session.Status == types.DepositStatusAddressIssued {
+			session.Status = types.DepositStatusDepositObserved
+		}
 		if err := k.SetDepositSession(ctx, session); err != nil {
 			return err
 		}
 	}
 
 	if deposit, err := k.GetDepositRecord(ctx, tx.Tx.ID); err == nil && !deposit.DepositID.IsEmpty() {
+		depositRequired := required
+		if deposit.BTCConfirmationsRequired > 0 {
+			depositRequired = deposit.BTCConfirmationsRequired
+		}
 		deposit.InboundTxID = tx.Tx.ID
 		deposit.BTCObservedHeight = tx.BlockHeight
-		deposit.BTCConfirmations = current
-		deposit.BTCConfirmationsRequired = required
+		deposit.BTCConfirmations = depositConfirmationProgress(finalised, tx.BlockHeight, depositRequired)
+		deposit.BTCConfirmationsRequired = depositRequired
 		if err := k.SetDepositRecord(ctx, deposit); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func depositConfirmationProgress(finalised bool, blockHeight, required int64) int64 {
+	current := int64(0)
+	switch {
+	case finalised:
+		current = required
+	case blockHeight > 0:
+		current = 1
+	}
+	if current > required {
+		return required
+	}
+	return current
 }
 
 func ProcessExpiredDepositAddressReturns(ctx cosmos.Context, mgr Manager) error {

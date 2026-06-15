@@ -36,15 +36,44 @@ const signedTxOutCacheSize = 10_000
 const deckRefreshTime = 1 * time.Second
 
 type txInKey struct {
-	chain  common.Chain
-	height int64
+	chain   common.Chain
+	height  int64
+	mempool bool
+}
+
+func finaliseHeight(blockHeight, confirmationsRequired int64) int64 {
+	if confirmationsRequired <= 1 {
+		return blockHeight
+	}
+	return blockHeight + confirmationsRequired - 1
+}
+
+func confirmationsRequiredForFinaliseHeight(finaliseHeight, blockHeight int64) int64 {
+	if finaliseHeight <= blockHeight {
+		return 1
+	}
+	return finaliseHeight - blockHeight + 1
 }
 
 func TxInKey(txIn *types.TxIn) txInKey {
 	return txInKey{
-		chain:  txIn.Chain,
-		height: txIn.TxArray[0].BlockHeight + txIn.ConfirmationRequired,
+		chain:   txIn.Chain,
+		height:  finaliseHeight(txIn.TxArray[0].BlockHeight, txIn.ConfirmationRequired),
+		mempool: txIn.MemPool,
 	}
+}
+
+func txInItemsEqualIgnoreHeight(a, b *types.TxInItem) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	if a.Tx != b.Tx || a.Sender != b.Sender || a.To != b.To {
+		return false
+	}
+	if !a.Coins.EqualsEx(b.Coins) || !a.Gas.Equals(b.Gas) {
+		return false
+	}
+	return a.ObservedVaultPubKey.Equals(b.ObservedVaultPubKey)
 }
 
 // Observer observer service
@@ -229,16 +258,32 @@ func (o *Observer) handleObservedTxCommitted(tx common.ObservedTx) {
 	defer o.lock.Unlock()
 
 	k := txInKey{
-		chain:  tx.Tx.Chain,
-		height: tx.FinaliseHeight,
+		chain:   tx.Tx.Chain,
+		height:  tx.FinaliseHeight,
+		mempool: !isFinal && tx.BlockHeight == 0,
 	}
 
 	deck, ok := o.onDeck[k]
 	if !ok {
-		if isFinal {
-			o.removeFinalisedTxFromOtherDecks(tx, nil)
+		for candidateKey, candidateDeck := range o.onDeck {
+			for _, txInItem := range candidateDeck.TxArray {
+				if txInItem.EqualsObservedTx(tx) {
+					k = candidateKey
+					deck = candidateDeck
+					ok = true
+					break
+				}
+			}
+			if ok {
+				break
+			}
 		}
-		return
+		if !ok {
+			if isFinal {
+				o.removeFinalisedTxFromOtherDecks(tx, nil)
+			}
+			return
+		}
 	}
 
 	for j, txInItem := range deck.TxArray {
@@ -260,7 +305,7 @@ func (o *Observer) handleObservedTxCommitted(tx common.ObservedTx) {
 			} else {
 				if j == 0 {
 					// update block confirmation count
-					deck.ConfirmationRequired = k.height - deck.TxArray[0].BlockHeight
+					deck.ConfirmationRequired = confirmationsRequiredForFinaliseHeight(k.height, deck.TxArray[0].BlockHeight)
 				}
 				if err := o.storage.AddOrUpdateTx(deck); err != nil {
 					o.logger.Error().Err(err).Msg("fail to update tx in storage")
@@ -323,7 +368,7 @@ func (o *Observer) removeFinalisedTxFromOtherDecks(tx common.ObservedTx, current
 				}
 			} else {
 				if i == 0 {
-					deck.ConfirmationRequired = k.height - deck.TxArray[0].BlockHeight
+					deck.ConfirmationRequired = confirmationsRequiredForFinaliseHeight(k.height, deck.TxArray[0].BlockHeight)
 				}
 				if err := o.storage.AddOrUpdateTx(deck); err != nil {
 					o.logger.Error().Err(err).Msg("fail to update stale pre-confirmation tx storage")
@@ -427,7 +472,7 @@ func (o *Observer) sendDeck(ctx context.Context) {
 			} else {
 				// Update confirmation required if first item was removed
 				if firstItemRemoved && len(deck.TxArray) > 0 {
-					deck.ConfirmationRequired = k.height - deck.TxArray[0].BlockHeight
+					deck.ConfirmationRequired = confirmationsRequiredForFinaliseHeight(k.height, deck.TxArray[0].BlockHeight)
 				}
 				if err := o.storage.AddOrUpdateTx(deck); err != nil {
 					o.logger.Error().Err(err).Msg("fail to update tx in storage")
@@ -558,6 +603,7 @@ func (o *Observer) processObservedTx(txIn types.TxIn) {
 	// Now acquire a write lock for modifying the onDeck slice
 	o.lock.Lock()
 	defer o.lock.Unlock()
+	o.promoteMempoolObservationsLocked(&txIn)
 
 	in, ok := o.onDeck[k]
 	if ok {
@@ -605,6 +651,45 @@ func (o *Observer) processObservedTx(txIn types.TxIn) {
 		o.logger.Error().Err(err).Msg("fail to add tx to storage")
 	}
 	o.logger.Debug().Msgf("AddOrUpdateTx new took %s", time.Since(setDeckStart))
+}
+
+func (o *Observer) promoteMempoolObservationsLocked(txIn *types.TxIn) {
+	if txIn == nil || txIn.MemPool {
+		return
+	}
+	for _, incoming := range txIn.TxArray {
+		promoted := false
+		for k, deck := range o.onDeck {
+			if !k.mempool || !deck.MemPool || !deck.Chain.Equals(txIn.Chain) {
+				continue
+			}
+			for i, pending := range deck.TxArray {
+				if !txInItemsEqualIgnoreHeight(pending, incoming) {
+					continue
+				}
+				incoming.CommittedUnFinalised = pending.CommittedUnFinalised
+				deck.TxArray = slices.Delete(deck.TxArray, i, i+1)
+				if len(deck.TxArray) == 0 {
+					delete(o.onDeck, k)
+					if err := o.storage.RemoveTx(deck, k.height); err != nil {
+						o.logger.Error().Err(err).Msg("fail to remove promoted mempool tx from storage")
+					}
+				} else {
+					if i == 0 {
+						deck.ConfirmationRequired = confirmationsRequiredForFinaliseHeight(k.height, deck.TxArray[0].BlockHeight)
+					}
+					if err := o.storage.AddOrUpdateTx(deck); err != nil {
+						o.logger.Error().Err(err).Msg("fail to update promoted mempool tx storage")
+					}
+				}
+				promoted = true
+				break
+			}
+			if promoted {
+				break
+			}
+		}
+	}
 }
 
 func (o *Observer) filterObservations(chain common.Chain, items []*types.TxInItem, memPool bool) []*types.TxInItem {
@@ -693,7 +778,7 @@ BlockLoop:
 					} else {
 						if i == 0 {
 							// update block confirmation count
-							txIn.ConfirmationRequired = k.height - txIn.TxArray[0].BlockHeight
+							txIn.ConfirmationRequired = confirmationsRequiredForFinaliseHeight(k.height, txIn.TxArray[0].BlockHeight)
 						}
 						if err := o.storage.AddOrUpdateTx(txIn); err != nil {
 							o.logger.Error().Err(err).Msg("fail to update tx in storage")
@@ -767,7 +852,9 @@ func (o *Observer) getThornadoTxIns(txIn *types.TxIn, finalized bool, finaliseHe
 			continue
 		}
 		height := item.BlockHeight
-		if finalized {
+		if txIn.MemPool && !finalized {
+			height = 0
+		} else if finalized {
 			height = finaliseHeight
 		}
 		// Strip out any empty Coin from Coins and Gas, as even one empty Coin will make a MsgObservedTxIn for instance fail validation.

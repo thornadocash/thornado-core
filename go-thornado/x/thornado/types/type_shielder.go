@@ -9,12 +9,13 @@ import (
 )
 
 const (
-	DepositStatusAddressIssued  = "address_issued"
-	DepositStatusDepositMatched = "deposit_matched"
-	DepositStatusReturnQueued   = "return_queued"
-	DepositStatusSettled        = "settled"
-	DepositStatusCommitted      = "committed"
-	DepositStatusKeysignQueued  = "keysign_queued"
+	DepositStatusAddressIssued   = "address_issued"
+	DepositStatusDepositObserved = "deposit_observed"
+	DepositStatusDepositMatched  = "deposit_matched"
+	DepositStatusReturnQueued    = "return_queued"
+	DepositStatusSettled         = "settled"
+	DepositStatusCommitted       = "committed"
+	DepositStatusKeysignQueued   = "keysign_queued"
 )
 
 const (

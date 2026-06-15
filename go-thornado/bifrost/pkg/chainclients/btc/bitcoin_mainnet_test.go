@@ -43,6 +43,66 @@ func (s *BitcoinSuite) TestConfirmationCountReady(c *C) {
 		Filtered: true,
 		MemPool:  true,
 	}), Equals, true)
+
+	s.client.currentBlockHeight.Store(2)
+	c.Assert(s.client.ConfirmationCountReady(types.TxIn{
+		Chain: common.BTCChain,
+		TxArray: []*types.TxInItem{
+			{
+				BlockHeight: 2,
+				Tx:          "24ed2d26fd5d4e0e8fa86633e40faf1bdfc8d1903b1cd02855286312d48818a2",
+				Sender:      "bc1q0s4mg25tu6termrk8egltfyme4q7sg3h0e56p3",
+				To:          "bc1q2gjc0rnhy4nrxvuklk6ptwkcs9kcr59mcl2q9j",
+				Coins: common.Coins{
+					common.NewCoin(common.BTCAsset, cosmos.NewUint(123456)),
+				},
+				ObservedVaultPubKey: pkey,
+			},
+		},
+		Filtered:             true,
+		MemPool:              false,
+		ConfirmationRequired: 1,
+	}), Equals, true)
+	c.Assert(s.client.ConfirmationCountReady(types.TxIn{
+		Chain: common.BTCChain,
+		TxArray: []*types.TxInItem{
+			{
+				BlockHeight: 2,
+				Tx:          "24ed2d26fd5d4e0e8fa86633e40faf1bdfc8d1903b1cd02855286312d48818a2",
+				Sender:      "bc1q0s4mg25tu6termrk8egltfyme4q7sg3h0e56p3",
+				To:          "bc1q2gjc0rnhy4nrxvuklk6ptwkcs9kcr59mcl2q9j",
+				Coins: common.Coins{
+					common.NewCoin(common.BTCAsset, cosmos.NewUint(123456)),
+				},
+				ObservedVaultPubKey: pkey,
+			},
+		},
+		Filtered:             true,
+		MemPool:              false,
+		ConfirmationRequired: 2,
+	}), Equals, false)
+
+	s.client.currentBlockHeight.Store(0)
+	c.Assert(s.client.ConfirmationCountReady(types.TxIn{
+		Chain: common.BTCChain,
+		TxArray: []*types.TxInItem{
+			{
+				BlockHeight: 2,
+				Tx:          "24ed2d26fd5d4e0e8fa86633e40faf1bdfc8d1903b1cd02855286312d48818a2",
+				Sender:      "bc1q0s4mg25tu6termrk8egltfyme4q7sg3h0e56p3",
+				To:          "bc1q2gjc0rnhy4nrxvuklk6ptwkcs9kcr59mcl2q9j",
+				Coins: common.Coins{
+					common.NewCoin(common.BTCAsset, cosmos.NewUint(123456)),
+				},
+				ObservedVaultPubKey: pkey,
+			},
+		},
+		Filtered:             true,
+		MemPool:              false,
+		ConfirmationRequired: 1,
+	}), Equals, true)
+	c.Assert(s.client.getCurrentBlockHeight(), Equals, int64(10))
+
 	s.client.currentBlockHeight.Store(3)
 	c.Assert(s.client.ConfirmationCountReady(types.TxIn{
 		Chain: common.BTCChain,

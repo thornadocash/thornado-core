@@ -60,6 +60,60 @@ func TestObservedTxQuorumValidateBasicAllowsBTCChildPathSource(t *testing.T) {
 	require.NoError(t, msg.ValidateBasic())
 }
 
+func TestObservedTxValidateBasicAllowsInboundMempoolHeight(t *testing.T) {
+	SetupConfigForTest()
+
+	pubKey := GetRandomPubKey()
+	rootAddress, err := pubKey.GetAddress(common.BTCChain)
+	require.NoError(t, err)
+
+	tx := common.NewTx(
+		GetRandomTxHash(),
+		GetRandomBTCAddress(),
+		rootAddress,
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(1000))),
+		common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(100))},
+	)
+	observedTx := common.NewObservedTx(tx, 0, pubKey, 10)
+
+	inboundMsg := NewMsgObservedTxIn(common.ObservedTxs{observedTx}, GetRandomBech32Addr())
+	require.NoError(t, inboundMsg.ValidateBasic())
+
+	quorumMsg := NewMsgObservedTxQuorum(&common.QuorumTx{
+		ObsTx:        observedTx,
+		Inbound:      true,
+		Attestations: []*common.Attestation{{PubKey: []byte{1}}},
+	}, GetRandomBech32Addr())
+	require.NoError(t, quorumMsg.ValidateBasic())
+}
+
+func TestObservedTxValidateBasicRejectsOutboundMempoolHeight(t *testing.T) {
+	SetupConfigForTest()
+
+	pubKey := GetRandomPubKey()
+	rootAddress, err := pubKey.GetAddress(common.BTCChain)
+	require.NoError(t, err)
+
+	tx := common.NewTx(
+		GetRandomTxHash(),
+		rootAddress,
+		GetRandomBTCAddress(),
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(1000))),
+		common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(100))},
+	)
+	observedTx := common.NewObservedTx(tx, 0, pubKey, 10)
+
+	outboundMsg := NewMsgObservedTxOut(common.ObservedTxs{observedTx}, GetRandomBech32Addr())
+	require.ErrorContains(t, outboundMsg.ValidateBasic(), "block height can't be zero")
+
+	quorumMsg := NewMsgObservedTxQuorum(&common.QuorumTx{
+		ObsTx:        observedTx,
+		Inbound:      false,
+		Attestations: []*common.Attestation{{PubKey: []byte{1}}},
+	}, GetRandomBech32Addr())
+	require.ErrorContains(t, quorumMsg.ValidateBasic(), "block height can't be zero")
+}
+
 func TestObservedTxValidateBasicRejectsMultipleCoinsOrGasCoins(t *testing.T) {
 	SetupConfigForTest()
 

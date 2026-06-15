@@ -370,18 +370,45 @@ func (s *TemporalStorageExtraSuite) TestUntrackMempoolTx_WithCache(c *C) {
 	c.Assert(added, Equals, true)
 }
 
+func (s *TemporalStorageExtraSuite) TestMempoolTxLookupAndList(c *C) {
+	store, db := s.newStorage(c, 100)
+	defer func() { c.Assert(db.Close(), IsNil) }()
+
+	exists, err := store.HasMempoolTx("tx1")
+	c.Assert(err, IsNil)
+	c.Assert(exists, Equals, false)
+
+	added, err := store.TrackMempoolTx("tx1")
+	c.Assert(err, IsNil)
+	c.Assert(added, Equals, true)
+
+	exists, err = store.HasMempoolTx("tx1")
+	c.Assert(err, IsNil)
+	c.Assert(exists, Equals, true)
+
+	txids, err := store.ListMempoolTxs()
+	c.Assert(err, IsNil)
+	c.Assert(txids, DeepEquals, []string{"tx1"})
+}
+
 func (s *TemporalStorageExtraSuite) TestTrackObservedTx(c *C) {
 	store, db := s.newStorage(c, 0)
 	defer func() { c.Assert(db.Close(), IsNil) }()
 
-	added, err := store.TrackObservedTx("obs1")
+	added, previous, err := store.TrackObservedTxStage("obs1", ObservedTxStageMempool)
 	c.Assert(err, IsNil)
 	c.Assert(added, Equals, true)
+	c.Assert(previous, Equals, "")
 
-	// second track should return false
-	added, err = store.TrackObservedTx("obs1")
+	added, previous, err = store.TrackObservedTxStage("obs1", ObservedTxStageFinal)
+	c.Assert(err, IsNil)
+	c.Assert(added, Equals, true)
+	c.Assert(previous, Equals, ObservedTxStageMempool)
+
+	added, previous, err = store.TrackObservedTxStage("obs1", ObservedTxStageFinal)
 	c.Assert(err, IsNil)
 	c.Assert(added, Equals, false)
+	c.Assert(previous, Equals, ObservedTxStageFinal)
 }
 
 func (s *TemporalStorageExtraSuite) TestUntrackObservedTx(c *C) {

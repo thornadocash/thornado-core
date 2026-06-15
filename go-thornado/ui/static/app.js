@@ -37,7 +37,7 @@ async function thornadoWasm() {
 const DOMAIN = "thornado-mvp-v1";
 const POW_DIFFICULTY_BITS = 17;
 const MIN_POW_MS = 2000;
-const MIN_CONFS = 1;
+const DEFAULT_MIN_CONFS = 1;
 const POW_VISUAL_REFERENCE_MS = 10000;
 const MS_PER_YEAR = 365 * 24 * 60 * 60 * 1000;
 const DEFAULT_BLOCKS_PER_YEAR = 365 * 24 * 60 * 60;
@@ -66,6 +66,7 @@ const state = {
   shieldPending: false,
   depositExpiresAt: null,
   depositExpiresAtHeight: null,
+  minConfirmations: DEFAULT_MIN_CONFS,
   blocksPerYear: DEFAULT_BLOCKS_PER_YEAR,
   latestBlockHeight: null,
   withdrawingNote: null,
@@ -81,13 +82,18 @@ const state = {
   lastWithdrawalNoteKey: null,
   lastWithdrawalContextKey: "",
   shieldStageOpenedForDeposit: false,
+  withdrawStageOpenedForNotes: "",
   pendingWithdrawNote: null,
   depositDropdownOpen: false,
   openBatchDropdown: "",
   noteRecoveryPending: false,
+  noteRecoveryQueued: false,
   noteRecoveryStatus: "idle",
   noteRecoveryBatchKey: "",
   appStarted: false,
+  moreOpen: false,
+  moreSettled: false,
+  quoteWriting: false,
   currentTab: "user",
   nodeConnected: false,
   nodeStatusText: "connecting",
@@ -108,6 +114,8 @@ const state = {
 };
 
 const $ = (id) => document.getElementById(id);
+let quoteWriteTimer = null;
+let moreRevealTimer = null;
 
 function renderNodeEndpoint() {
   const el = $("nodeEndpoint");
@@ -255,6 +263,42 @@ function txHashLink(txid) {
   return `<a class="tx-link" href="${btcExplorerUrl(value)}" target="_blank" rel="noopener" title="${safe}">${escapeHtml(short(value, 6, 8))}</a>`;
 }
 
+function btcAddressExplorerUrl(address) {
+  return `https://mempool.space/testnet/address/${encodeURIComponent(String(address || "").trim())}`;
+}
+
+function btcAddressLink(address) {
+  const value = String(address || "").trim();
+  if (!value) {
+    return "No address yet";
+  }
+  const safe = escapeHtml(value);
+  return `<a class="tx-link address-link" href="${btcAddressExplorerUrl(value)}" target="_blank" rel="noopener" title="${safe}">${escapeHtml(short(value, 14, 12))}</a>`;
+}
+
+function collapsedDepositSummary(address, hasDeposit, expired) {
+  if (!hasDeposit || !address) {
+    return "No address yet";
+  }
+  if (expired) {
+    return `
+      <div class="collapsed-address-summary">
+        <span>Expired</span>
+      </div>
+    `;
+  }
+  const remaining = depositRemainingMs();
+  const expiry = remaining === null
+      ? "Expiry unknown"
+      : `Expires in ${formatExpiryHuman(remaining)}`;
+  return `
+    <div class="collapsed-address-summary">
+      ${btcAddressLink(address)}
+      <span>${escapeHtml(expiry)}</span>
+    </div>
+  `;
+}
+
 function setStep(id, status) {
   const el = $(id);
   if (!el) {
@@ -276,7 +320,11 @@ function setStage(id, status) {
   el.classList.toggle("expanded", expanded);
   const toggle = el.querySelector(".stage-toggle");
   if (toggle) {
-    toggle.textContent = expanded ? "-" : "+";
+    const stageIndex = Array.from(document.querySelectorAll(".stage-card"))
+      .filter((stage) => stage.closest(".flow-stage") && !stage.classList.contains("locked"))
+      .indexOf(el) + 1;
+    toggle.textContent = expanded && stageIndex > 0 ? String(stageIndex).padStart(2, "0") : "+";
+    toggle.setAttribute("aria-label", expanded ? "Collapse pane" : "Open pane");
   }
   const wrapper = el.closest(".flow-stage");
   if (wrapper) {
@@ -286,8 +334,19 @@ function setStage(id, status) {
 
 function toggleStage(stageId) {
   const el = $(stageId);
-  el.dataset.expanded = el.dataset.expanded === "1" ? "0" : "1";
+  const nextExpanded = el.dataset.expanded === "1" ? "0" : "1";
+  el.dataset.expanded = nextExpanded;
+  if (stageId === "stageWithdraw" && nextExpanded === "0") {
+    state.withdrawStageOpenedForNotes = matureNotesKey();
+  }
   updateDashboard();
+}
+
+function matureNotesKey() {
+  return state.batches
+    .filter((item) => item.receipt?.notes?.length && batchMature(item))
+    .map((item) => `${batchKey(item)}:${item.receipt.notes.length}`)
+    .join("|");
 }
 
 function renderDepositQr(address) {
@@ -559,7 +618,7 @@ function batchConfirmationProgress(batch) {
   const txs = mergeDepositTxs(batch?.depositTxs);
   if (txs.length) {
     const progresses = txs.map((tx) => tx.progress || depositConfirmationProgress(batch?.session, tx.deposit, tx.txStatus));
-    const required = Math.max(...progresses.map((item) => Number(item.required || MIN_CONFS)));
+    const required = Math.max(...progresses.map((item) => Number(item.required || minConfirmations())));
     const current = Math.min(...progresses.map((item) => Number(item.current || 0)));
     return {
       current: Math.max(0, Math.min(required, current)),
@@ -575,6 +634,22 @@ function batchConfirmed(batch) {
   return progress.current >= progress.required
     || batch?.status === "deposit_matched"
     || batch?.status === "committed";
+}
+
+function depositFinalised(session = {}, deposit = {}, txStatus = null) {
+  const status = String(deposit?.status || session?.status || "");
+  const stages = txStatus?.stages || {};
+  return status === "deposit_matched"
+    || status === "committed"
+    || stages.inbound_finalised?.completed === true
+    || stages.inbound_confirmation_counted?.completed === true;
+}
+
+function batchFinalised(batch) {
+  if (batch?.status === "committed" || depositFinalised(batch?.session, batch?.deposit, batch?.txStatus)) {
+    return true;
+  }
+  return mergeDepositTxs(batch?.depositTxs).some((tx) => depositFinalised(batch?.session, tx.deposit, tx.txStatus));
 }
 
 function batchMaturityMs(batch) {
@@ -605,11 +680,11 @@ function requestDepositButtonHidden() {
     return true;
   }
   const batch = activeBatch();
-  return batchIssuedUnexpired(batch) && !$("depositQr").hidden;
+  return Boolean(batch?.depositAddress && !batchExpired(batch));
 }
 
 function requestDepositButtonLabel(batch = activeBatch()) {
-  if (batch?.depositAddress && (batchExpired(batch) || batchHasDepositValue(batch))) {
+  if (batch?.depositAddress && batchExpired(batch)) {
     return "Get New Address";
   }
   return "Get Address";
@@ -654,7 +729,7 @@ function batchStatusText(batch) {
   if (batchIssuedUnexpired(batch)) {
     return `Issued (${batchIssuedAge(batch)})`;
   }
-  return `${progress.current} / ${progress.required}`;
+  return confirmationProgressLabel(progress);
 }
 
 function depositLabel(batch) {
@@ -719,7 +794,6 @@ function renderBatchDropdown(batches, selectedBatch, ariaLabel = "Select deposit
   const dropdown = document.createElement("div");
   dropdown.className = `deposit-batches-dropdown${state.openBatchDropdown === key ? " open" : ""}`;
   dropdown.dataset.paneKey = paneKey;
-  const selectedAmount = Number(selectedBatch?.amountSats || selectedBatch?.receipt?.notes?.reduce((sum, note) => sum + Number(note.denomination_sats || 0), 0) || 0);
   const selectedButton = document.createElement("button");
   selectedButton.type = "button";
   selectedButton.className = "deposit-selected";
@@ -727,8 +801,7 @@ function renderBatchDropdown(batches, selectedBatch, ariaLabel = "Select deposit
   selectedButton.setAttribute("aria-label", ariaLabel);
   selectedButton.setAttribute("aria-expanded", state.openBatchDropdown === key ? "true" : "false");
   selectedButton.innerHTML = `
-    <span>${escapeHtml(depositLabel(selectedBatch))}${selectedAmount > 0 ? ` (${escapeHtml(btcAmount(selectedAmount))})` : ""}</span>
-    <strong>${escapeHtml(batchStatusText(selectedBatch))}</strong>
+    <span>${escapeHtml(depositLabel(selectedBatch))}</span>
     <i class="deposit-mark" aria-hidden="true"></i>
   `;
   selectedButton.addEventListener("click", (event) => {
@@ -1006,6 +1079,7 @@ async function refreshChurnWindow() {
   });
   applyRouteConfig(config);
   applyBlockTimingConfig(config);
+  applyDepositConfirmationConfig(config);
   const now = Date.now();
   return applyChurnWindow({
     server_time_ms: now,
@@ -1024,6 +1098,17 @@ function configNumber(config, ...keys) {
     }
   }
   return null;
+}
+
+function minConfirmations() {
+  return Math.max(1, Number(state.minConfirmations || DEFAULT_MIN_CONFS) || DEFAULT_MIN_CONFS);
+}
+
+function applyDepositConfirmationConfig(config) {
+  const value = configNumber(config, "BTC_ConfirmationsMin", "BTC_CONFIRMATIONSMIN", "BTC_CONFIRMATIONS_MIN");
+  if (value !== null) {
+    state.minConfirmations = Math.max(1, value);
+  }
 }
 
 function applyBlockTimingConfig(config) {
@@ -1108,6 +1193,7 @@ function resetDepositState() {
   state.depositDropdownOpen = false;
   state.openBatchDropdown = "";
   state.noteRecoveryPending = false;
+  state.noteRecoveryQueued = false;
   state.noteRecoveryStatus = "idle";
   state.noteRecoveryBatchKey = "";
   state.paneBatchKeys = { deposit: "", shield: "", withdraw: "" };
@@ -1119,7 +1205,7 @@ function resetDepositState() {
   $("depositResult").hidden = true;
   $("clientPubkey").hidden = true;
   $("powResult").hidden = true;
-  $("confirmations").textContent = `0 / ${MIN_CONFS}`;
+  $("confirmations").textContent = `0 / ${minConfirmations()}`;
   renderDepositHistory();
 }
 
@@ -1152,7 +1238,7 @@ function renderDepositHistory() {
       detailRows.push(`
         <div class="row">
           <span>${txHashLink(tx.txid)}</span>
-          <strong>${btcAmount(Number(tx.amountSats || 0))} · ${txProgress.current} / ${txProgress.required}</strong>
+          <strong>${btcAmount(Number(tx.amountSats || 0))} · ${confirmationProgressLabel(txProgress)}</strong>
         </div>
       `);
     }
@@ -1163,11 +1249,15 @@ function renderDepositHistory() {
     detailRows.push(`<div class="row"><span>Total</span><strong>${btcAmount(Number(selectedBatch.amountSats || 0))}</strong></div>`);
   }
   if (!txRows.length && (!batchExpired(selectedBatch) || batchHasDepositValue(selectedBatch))) {
-    detailRows.push(`<div class="row"><span>Confirmations</span><strong>${progress.current} / ${progress.required}</strong></div>`);
+    detailRows.push(`<div class="row"><span>Confirmations</span><strong>${confirmationProgressLabel(progress)}</strong></div>`);
   }
   detail.innerHTML = detailRows.join("");
   dropdown.append(renderBatchDropdown(orderedBatches, selectedBatch, "Select tracked deposit", "deposit"));
   el.append(dropdown, detail);
+}
+
+function hasRecoverableDepositBatch() {
+  return state.batches.some((batch) => batchConfirmed(batch) || batchFinalised(batch) || String(batch?.status || "").toLowerCase() === "committed");
 }
 
 function renderDenominations() {
@@ -1207,7 +1297,7 @@ function hydrateReceipt() {
   state.waitStartedAt = state.waitStartedAt || maturedAt - DEMO_MATURITY_MS;
   state.waitMaturesAt = state.waitMaturesAt || maturedAt;
   state.selectedNote = Math.min(state.selectedNote || 0, state.receipt.notes.length - 1);
-  $("confirmations").textContent = `${MIN_CONFS} / ${MIN_CONFS}`;
+  $("confirmations").textContent = `${minConfirmations()} / ${minConfirmations()}`;
   $("amountSats").value = String(state.batches.reduce((sum, batch) => sum + Number(batch.amountSats || 0), 0));
   $("depositResult").hidden = true;
   $("depositQr").hidden = true;
@@ -1255,12 +1345,22 @@ function updateDashboard() {
     || batch?.status === "committed";
   const hasShielded = notes.length > 0;
   const anyConfirmed = state.batches.some((item) => batchConfirmed(item)) || hasConfirmed;
+  const selectedFinalised = batchFinalised(batch);
   const hasMatureNote = state.batches.some((item) => item.receipt?.notes?.length && batchMature(item));
-  if ((hasSeenDeposit || anyConfirmed) && !state.shieldStageOpenedForDeposit) {
+  const selectedBatchKey = batch ? batchKey(batch) : "";
+  if (selectedFinalised && state.shieldStageOpenedForDeposit !== selectedBatchKey) {
     $("stageDeposit").dataset.expanded = "0";
     $("stageDepositTrack").dataset.expanded = "1";
     $("stageShield").dataset.expanded = "1";
-    state.shieldStageOpenedForDeposit = true;
+    state.shieldStageOpenedForDeposit = selectedBatchKey;
+  }
+  const matureNoteKey = matureNotesKey();
+  if (hasMatureNote && matureNoteKey && state.withdrawStageOpenedForNotes !== matureNoteKey) {
+    $("stageDeposit").dataset.expanded = "0";
+    $("stageShield").dataset.expanded = "0";
+    $("stageWait").dataset.expanded = "0";
+    $("stageWithdraw").dataset.expanded = "1";
+    state.withdrawStageOpenedForNotes = matureNoteKey;
   }
   const hasTrackedDeposits = displayBatches.length > 0;
   const hasUnconfirmedSeenDeposit = displayBatches.some((item) => {
@@ -1294,17 +1394,17 @@ function updateDashboard() {
   $("privacyMetric").textContent = hasShielded ? `${laterNoteProgress} later` : "No pool yet";
   setStep("stepWallet", hasWallet ? "done" : "active");
   setStep("stepDeposit", hasObservableDeposit || anyConfirmed ? "done" : hasWallet ? "active" : "");
-  setStep("stepShield", hasShielded ? "done" : anyConfirmed || hasSeenDeposit ? "active" : "");
+  setStep("stepShield", hasShielded ? "done" : selectedFinalised ? "active" : "");
   setStep("stepWithdraw", hasShielded ? "active" : "");
   setStage("stageDeposit", hasDeposit && (hasSeenDeposit || anyConfirmed) ? "done" : "active");
   setStage("stageDepositTrack", showDepositTracking ? (anyConfirmed ? "done" : "active") : "locked");
-  setStage("stageShield", hasShielded ? "done" : anyConfirmed || hasSeenDeposit ? "active" : "locked");
+  setStage("stageShield", hasShielded ? "done" : selectedFinalised ? "active" : "locked");
   const waitWrapper = $("stageWait")?.closest(".flow-stage");
   if (waitWrapper) {
     waitWrapper.hidden = true;
   }
   setStage("stageWithdraw", hasMatureNote ? "active" : "locked");
-  $("shieldDeposit").disabled = !hasConfirmed || batch?.status === "committed" || state.shieldPending;
+  $("shieldDeposit").disabled = !selectedFinalised || batch?.status === "committed" || state.shieldPending;
   $("shieldDeposit").innerHTML = state.shieldPending
     ? '<span class="button-spinner" aria-hidden="true"></span>Shielding'
     : "Shield Deposit";
@@ -1323,14 +1423,11 @@ function updateDashboard() {
   renderDepositQr(hasDeposit && !isDepositExpired ? activeDepositAddress : "");
   renderDepositExpiry();
   $("knownAmount").textContent = btcAmount(Number($("amountSats").value || 0));
-  $("shieldAmountLarge").textContent = btcAmount(Number($("amountSats").value || 0));
-  $("shieldConfs").textContent = `${confirmationProgress.current} / ${confirmationProgress.required} confirmations`;
   const activeDepositId = batch?.inboundTxId || batch?.depositId || $("intentId").value.trim();
   $("shieldDepositDetails").hidden = true;
   $("shieldDepositAmount").textContent = btcAmount(Number(batch?.amountSats || $("amountSats").value || 0));
   $("shieldDepositTxid").innerHTML = txHashLink(activeDepositId);
   $("shieldDepositTxid").title = activeDepositId || "";
-  $("shieldConfirmView").hidden = true;
   $("shieldDeposit").hidden = true;
   $("denomBreakdown").hidden = true;
   $("laterDepositMetric").textContent = laterNoteProgress;
@@ -1350,11 +1447,7 @@ function updateDashboard() {
   $("receiptFingerprint").textContent = notes[0]?.root_fingerprint || "none";
   $("remainderSats").textContent = btcAmount(state.receipt?.remainder_sats || 0);
   $("feePreview").textContent = btcAmount(Number($("feeSats").value || 0));
-  $("depositSummary").textContent = hasConfirmed
-    ? "Address issued"
-    : hasDeposit
-      ? `Address ${short($("depositAddress").textContent.trim(), 14, 10)}`
-      : "No address yet";
+  $("depositSummary").innerHTML = collapsedDepositSummary(activeDepositAddress, hasDeposit, isDepositExpired);
   $("depositTrackSummary").textContent = displayBatches.length
     ? `${displayBatches.length} deposits tracked`
     : hasUnconfirmedSeenDeposit
@@ -1367,10 +1460,16 @@ function updateDashboard() {
     : anyConfirmed
       ? `Matched ${short(state.activeIntentId, 12, 10)}`
       : "Waiting for deposit";
+  const withdrawableNoteCount = state.batches.reduce((sum, item) => {
+    if (!item.receipt?.notes?.length || !batchMature(item)) {
+      return sum;
+    }
+    return sum + item.receipt.notes.filter((note) => !note.spent && !state.withdrawnNotes[noteKey(note)]).length;
+  }, 0);
   $("withdrawSummary").textContent = hasProof
     ? "Proof generated"
     : hasMatureNote
-      ? "Ready to withdraw"
+      ? `${withdrawableNoteCount} notes available`
       : "Waiting for maturity";
   renderDenominations();
   renderShieldBatches();
@@ -1781,12 +1880,61 @@ function renderIntroGate() {
     return;
   }
   const isUserTab = state.currentTab === "user";
-  intro.hidden = !isUserTab;
-  $("startFlow").hidden = state.appStarted;
+  intro.hidden = false;
+  $("startFlow").hidden = !isUserTab || state.appStarted;
   if (panel && isUserTab) {
     panel.hidden = !state.appStarted;
   }
   stage.hidden = isUserTab && !state.appStarted;
+}
+
+function renderMoreNav() {
+  const topbar = $("topbar");
+  const button = $("moreToggle");
+  const intro = $("introGate");
+  if (!topbar || !button) {
+    return;
+  }
+  topbar.classList.toggle("open", state.moreOpen);
+  topbar.classList.toggle("settled", state.moreOpen && state.moreSettled);
+  topbar.classList.toggle("closing", state.quoteWriting && !state.moreOpen);
+  if (intro) {
+    intro.classList.remove("more-open");
+    intro.classList.toggle("quote-writing", state.quoteWriting && !state.moreOpen);
+  }
+  button.setAttribute("aria-expanded", state.moreOpen ? "true" : "false");
+  button.textContent = state.moreOpen ? "Hide" : "Menu";
+}
+
+function toggleMoreNav() {
+  const opening = !state.moreOpen;
+  if (quoteWriteTimer) {
+    clearTimeout(quoteWriteTimer);
+    quoteWriteTimer = null;
+  }
+  if (moreRevealTimer) {
+    clearTimeout(moreRevealTimer);
+    moreRevealTimer = null;
+  }
+  state.moreOpen = opening;
+  state.moreSettled = false;
+  state.quoteWriting = !opening;
+  if (opening) {
+    moreRevealTimer = setTimeout(() => {
+      state.moreSettled = true;
+      moreRevealTimer = null;
+      renderMoreNav();
+    }, 520);
+  }
+  if (!opening) {
+    closeStatusMenus();
+    quoteWriteTimer = setTimeout(() => {
+      state.quoteWriting = false;
+      quoteWriteTimer = null;
+      renderMoreNav();
+    }, 1250);
+  }
+  renderMoreNav();
 }
 
 function base64FromBytes(bytes) {
@@ -2330,16 +2478,23 @@ function readNumber(...values) {
 function confirmationProgressFromUi() {
   const text = String($("confirmations").textContent || "");
   const match = text.match(/(\d+)\s*\/\s*(\d+)/);
-  const required = Number(match?.[2] || MIN_CONFS) || MIN_CONFS;
+  const required = Number(match?.[2] || minConfirmations()) || minConfirmations();
   const current = Math.min(required, Number(match?.[1] || 0) || 0);
   return { current, required, seen: current > 0 || text.includes("seen") };
 }
 
-function setConfirmationProgress(current, required = MIN_CONFS, seen = false) {
-  const normalizedRequired = Math.max(1, Number(required || MIN_CONFS) || MIN_CONFS);
+function setConfirmationProgress(current, required = minConfirmations(), seen = false) {
+  const normalizedRequired = Math.max(1, Number(required || minConfirmations()) || minConfirmations());
   const normalizedCurrent = Math.max(0, Math.min(normalizedRequired, Number(current || 0) || 0));
   $("confirmations").textContent = `${normalizedCurrent} / ${normalizedRequired}${seen ? " seen" : ""}`;
   return { current: normalizedCurrent, required: normalizedRequired, seen };
+}
+
+function confirmationProgressLabel(progress = {}, suffix = "") {
+  const required = Math.max(1, Number(progress.required || minConfirmations()) || minConfirmations());
+  const current = Math.max(0, Math.min(required, Number(progress.current || 0) || 0));
+  const prefix = progress.seen && current === 0 ? "Mempool · " : "";
+  return `${prefix}${current} / ${required}${suffix}`;
 }
 
 function depositConfirmationProgress(session = {}, deposit = {}, txStatus = null) {
@@ -2350,8 +2505,8 @@ function depositConfirmationProgress(session = {}, deposit = {}, txStatus = null
     session.BTCConfirmationsRequired,
     deposit.btc_confirmations_required,
     deposit.BTCConfirmationsRequired,
-    MIN_CONFS
-  ) || MIN_CONFS;
+    minConfirmations()
+  ) || minConfirmations();
   const txStages = txStatus?.stages || {};
   const observedStage = txStages.inbound_observed || {};
   const countedStage = txStages.inbound_confirmation_counted || {};
@@ -2373,6 +2528,9 @@ function depositConfirmationProgress(session = {}, deposit = {}, txStatus = null
   const hasExplicitProgress = current !== null;
   if (current === null) {
     current = 0;
+  }
+  if (txStatus?.observed_tx?.tx?.id && observedStage.completed === true) {
+    current = Math.max(current, required);
   }
   if (observedHeight !== null && targetHeight !== null && targetHeight >= observedHeight) {
     current = Math.max(current, required - Math.max(0, targetHeight - observedHeight));
@@ -2720,12 +2878,15 @@ async function discoverDepositBatches(options = {}) {
       state.noteRecoveryStatus = "searching_nullifiers";
       updateDashboard();
       const fingerprint = await rootFingerprint(seedHex);
-      const depositIndexes = state.batches.map((batch) => Number(batch.depositIndex || 0));
-      const workerRecovery = await recoverNotesOffThread(seedHex, sync, depositIndexes, fingerprint);
-      knownRecovery = {
-        recovered: workerRecovery.recoveredBatches || [],
-        withdrawn: workerRecovery.withdrawnNotes || []
-      };
+      knownRecovery = await recoverKnownDepositReceipts(seedHex, sync, fingerprint);
+      if (!knownRecovery.recovered.length) {
+        const depositIndexes = state.batches.map((batch) => Number(batch.depositIndex || 0));
+        const workerRecovery = await recoverNotesOffThread(seedHex, sync, depositIndexes, fingerprint);
+        knownRecovery = {
+          recovered: workerRecovery.recoveredBatches || [],
+          withdrawn: workerRecovery.withdrawnNotes || []
+        };
+      }
       for (const item of knownRecovery.withdrawn || []) {
         state.withdrawnNotes[item.key] = {
           txhash: item.txhash,
@@ -2762,6 +2923,8 @@ async function discoverDepositBatches(options = {}) {
   renderNotes();
   if (recoverNotes) {
     setMessage(`Synced ${sync.notes?.length || 0} public notes and ${sync.nullifiers?.length || 0} spent nullifiers. Recovered ${state.receipt?.notes?.length || 0} local notes.`, knownRecovery.recovered.length ? "ok" : "warn");
+  } else if (hasRecoverableDepositBatch()) {
+    queueDepositRecovery();
   }
   const e2eRecipient = new URLSearchParams(location.search).get("e2eWithdraw");
   if (recoverNotes && e2eRecipient && !state.e2eWithdrawStarted) {
@@ -2962,32 +3125,26 @@ function renderShieldBatches() {
   const meta = document.createElement("div");
   meta.className = "batch-meta";
   meta.innerHTML = `
-    <div class="row"><span>Amount</span><strong>${btcAmount(amount)}</strong></div>
-    <div class="row"><span>Tx ID</span><strong>${txHashLink(txid)}</strong></div>
+    <div class="shield-summary-row"><span>${txid ? txHashLink(txid) : "pending"}</span><strong>${btcAmount(amount)}</strong></div>
   `;
   card.append(meta);
 
   if (notes.length) {
-    const remaining = batchMaturityMs(selectedBatch);
+    const mature = batchMature(selectedBatch);
     for (const note of notes) {
+      const withdrawal = state.withdrawnNotes[noteKey(note)];
+      const spent = note.spent || withdrawal?.status === "spent" || Boolean(withdrawal?.outHash);
       const row = document.createElement("div");
       row.className = "batch-note-row";
-      const withdrawal = state.withdrawnNotes[noteKey(note)];
-      const isWithdrawn = note.spent || withdrawal?.outHash || withdrawal?.status === "spent";
-      const maturity = isWithdrawn
-        ? '<span class="maturity-pill ready">Withdrawn</span>'
-        : remaining === 0
-          ? '<span class="maturity-pill ready">Mature</span>'
-          : `<span class="maturity-pill">${formatWaitClock(remaining)}</span>`;
-      row.innerHTML = `<span>${btcAmount(note.denomination_sats)}</span>${maturity}`;
+      row.innerHTML = `<span>${btcAmount(note.denomination_sats)}</span><strong>${spent ? "Withdrawn" : mature ? "Mature" : "Maturing"}</strong>`;
       card.append(row);
     }
-  } else if (state.noteRecoveryPending && state.noteRecoveryStatus === "searching_commitments") {
+  } else if ((state.noteRecoveryPending || state.noteRecoveryQueued) && state.noteRecoveryStatus === "searching_commitments") {
     const row = document.createElement("div");
     row.className = "batch-note-row";
     row.innerHTML = '<span>Searching for commitments</span><strong><span class="button-spinner" aria-hidden="true"></span></strong>';
     card.append(row);
-  } else if (state.noteRecoveryPending && state.noteRecoveryStatus === "searching_nullifiers") {
+  } else if ((state.noteRecoveryPending || state.noteRecoveryQueued) && state.noteRecoveryStatus === "searching_nullifiers") {
     const row = document.createElement("div");
     row.className = "batch-note-row";
     row.innerHTML = '<span>Commitments found</span><strong>Checking nullifiers</strong>';
@@ -2995,9 +3152,9 @@ function renderShieldBatches() {
   } else if (String(selectedBatch.status || "").toLowerCase() === "committed") {
     const row = document.createElement("div");
     row.className = "batch-note-row";
-    row.innerHTML = "<span>Already shielded</span><strong>Search commitments</strong>";
+    row.innerHTML = "<span>Already shielded</span><strong>Searching notes...</strong>";
     card.append(row);
-  } else if (batchConfirmed(selectedBatch)) {
+  } else if (batchFinalised(selectedBatch)) {
     const actionRow = document.createElement("div");
     actionRow.className = "batch-note-row";
     const button = document.createElement("button");
@@ -3007,13 +3164,13 @@ function renderShieldBatches() {
       ? '<span class="button-spinner" aria-hidden="true"></span>Shielding'
       : "Shield Deposit";
     button.addEventListener("click", () => run(() => shieldDeposit(batchKey(selectedBatch))));
-    actionRow.innerHTML = `<span>${progress.current} / ${progress.required} confirmations</span>`;
+    actionRow.innerHTML = "<span></span>";
     actionRow.append(button);
     card.append(actionRow);
   } else {
     const row = document.createElement("div");
     row.className = "batch-note-row";
-    row.innerHTML = `<span>${progress.seen ? "Deposit seen" : "Waiting for deposit"}</span><strong>${progress.current} / ${progress.required}</strong>`;
+    row.innerHTML = `<span>${progress.seen ? "Deposit finalising" : "Waiting for deposit"}</span><strong>${txid ? txHashLink(txid) : "pending"}</strong>`;
     card.append(row);
   }
   el.append(card);
@@ -3030,14 +3187,14 @@ function renderNotes() {
     el.append(row);
     return;
   }
-  if (state.noteRecoveryPending && state.noteRecoveryStatus === "searching_commitments") {
+  if ((state.noteRecoveryPending || state.noteRecoveryQueued) && state.noteRecoveryStatus === "searching_commitments") {
     const row = document.createElement("div");
     row.className = "pane-empty";
     row.textContent = "Waiting for commitment search.";
     el.append(row);
     return;
   }
-  if (state.noteRecoveryPending && state.noteRecoveryStatus === "searching_nullifiers") {
+  if ((state.noteRecoveryPending || state.noteRecoveryQueued) && state.noteRecoveryStatus === "searching_nullifiers") {
     const row = document.createElement("div");
     row.className = "pane-empty";
     row.textContent = "Searching for nullifiers.";
@@ -3186,7 +3343,7 @@ async function requestDeposit() {
     $("depositAddress").hidden = false;
     $("stageDeposit").dataset.expanded = "1";
     $("stageDepositTrack").dataset.expanded = "1";
-    setConfirmationProgress(0, MIN_CONFS, false);
+    setConfirmationProgress(0, minConfirmations(), false);
     renderDepositHistory();
     log("deposit/request", { batch: batchLabel({ depositIndex }), user_pubkey: userPubkey, owner, pow: mined, response: payload, session });
     setMessage("Deposit address committed on-chain.", "ok");
@@ -3201,13 +3358,19 @@ async function requestDeposit() {
 }
 
 function queueDepositRecovery() {
-  if (state.noteRecoveryPending) {
+  if (state.noteRecoveryPending || state.noteRecoveryQueued || !hasRecoverableDepositBatch()) {
     return;
   }
+  state.noteRecoveryQueued = true;
+  state.noteRecoveryStatus = "searching_commitments";
+  state.noteRecoveryBatchKey = state.paneBatchKeys.deposit || state.activeBatchKey || "";
+  updateDashboard();
   setTimeout(() => {
+    state.noteRecoveryQueued = false;
     discoverDepositBatches({ recoverNotes: true, preserveSelection: true }).catch((error) => {
       const message = errorText(error);
       state.noteRecoveryPending = false;
+      state.noteRecoveryQueued = false;
       state.noteRecoveryStatus = "error";
       log("deposit/recovery", { error: message });
       setMessage(`Note recovery skipped: ${message}`, "warn", 9, 30000);
@@ -3291,8 +3454,9 @@ async function confirmDeposit() {
     } else {
       setMessage("Deposit confirmed.", "ok", 2, 15000);
     }
+    queueDepositRecovery();
   } else if (progress.seen) {
-    setMessage(`Deposit seen. Waiting for confirmations: ${progress.current} / ${progress.required}.`, "warn", 1, 15000);
+    setMessage(`Deposit seen. Waiting for confirmations: ${confirmationProgressLabel(progress)}.`, "warn", 1, 15000);
   } else {
     setMessage("Waiting for BTC deposit at this address.", "warn", 1, 15000);
   }
@@ -3308,7 +3472,10 @@ async function autoConfirmDeposit() {
     await confirmDeposit();
   } catch (error) {
     const message = errorText(error);
-    const friendly = /deposit not matched|address_issued/i.test(message)
+    const reconnecting = /bad gateway|failed to fetch|networkerror|load failed|connection|econnrefused|502|503|504/i.test(message);
+    const friendly = reconnecting
+      ? "Node reconnecting. Deposit tracking will retry."
+      : /deposit not matched|address_issued/i.test(message)
       ? "Waiting for BTC deposit at this address."
       : `Deposit tracking paused: ${message}`;
     setMessage(friendly, "warn", 1, 15000);
@@ -3384,7 +3551,11 @@ async function shieldDeposit(targetBatchKey = state.activeBatchKey || "") {
     renderNotes();
     renderDepositHistory();
     log("shield", { ...payload, receipt });
-    setMessage(`Minted ${receipt.notes.length} notes. Deposit remainder moved to the fee bucket.`, "ok");
+    const remainderSats = Number(receipt.remainder_sats || 0);
+    const remainderMessage = remainderSats > 0
+      ? ` ${btcAmount(remainderSats)} dust remainder moved to the fee bucket.`
+      : "";
+    setMessage(`Minted ${receipt.notes.length} notes.${remainderMessage}`, "ok");
   } finally {
     state.shieldPending = false;
     updateDashboard();
@@ -3545,7 +3716,7 @@ function renderEmbeddedFlow(targetId, title) {
   el.innerHTML = `
     <div class="row"><span>${escapeHtml(title)}</span><strong>${escapeHtml(status)}</strong></div>
     <div class="row"><span>Address</span><strong>${escapeHtml(short(address, 18, 10))}</strong></div>
-    <div class="row"><span>Confirmations</span><strong>${progress.current || 0} / ${progress.required || MIN_CONFS}</strong></div>
+    <div class="row"><span>Confirmations</span><strong>${confirmationProgressLabel(progress)}</strong></div>
     <div class="row"><span>Amount</span><strong>${btcAmount(amount)}</strong></div>
   `;
 }
@@ -3960,22 +4131,22 @@ function hideSecret() {
 const flowHelp = {
   deposit: {
     title: "Get Address",
-    src: "/thornado/ui/how-it-works/get-address.png?v=how-redraw-v2",
+    src: "/thornado/ui/how-it-works/get-address.png?v=shield-minimal-v1",
     alt: "Get Address data flow between user, browser, and protocol"
   },
   wait: {
     title: "Deposit",
-    src: "/thornado/ui/how-it-works/deposit.png?v=how-redraw-v2",
+    src: "/thornado/ui/how-it-works/deposit.png?v=shield-minimal-v1",
     alt: "Deposit data flow between user, Bitcoin, and protocol"
   },
   shield: {
     title: "Shield",
-    src: "/thornado/ui/how-it-works/shield.png?v=how-redraw-v2",
+    src: "/thornado/ui/how-it-works/shield.png?v=shield-minimal-v1",
     alt: "Shield data flow showing where the privacy link breaks"
   },
   withdraw: {
     title: "Withdraw",
-    src: "/thornado/ui/how-it-works/withdraw.png?v=how-redraw-v2",
+    src: "/thornado/ui/how-it-works/withdraw.png?v=shield-minimal-v1",
     alt: "Withdraw data flow showing local note scan, ZK proof, and payout"
   }
 };
@@ -4161,6 +4332,19 @@ function switchToTor() {
     if (isNodes) {
       showNodeWorkflow(state.nodeWorkflow || "new");
     }
+    if (quoteWriteTimer) {
+      clearTimeout(quoteWriteTimer);
+      quoteWriteTimer = null;
+    }
+    if (moreRevealTimer) {
+      clearTimeout(moreRevealTimer);
+      moreRevealTimer = null;
+    }
+    state.moreOpen = false;
+    state.moreSettled = false;
+    state.quoteWriting = false;
+    closeStatusMenus();
+    renderMoreNav();
     renderIntroGate();
 	    }
 
@@ -4169,6 +4353,7 @@ function switchToTor() {
 	    $("tabNodeSales").addEventListener("click", () => showTab("sales"));
 	    $("tabNetwork").addEventListener("click", () => showTab("network"));
 	    $("tabHow").addEventListener("click", () => showTab("how"));
+$("moreToggle").addEventListener("click", toggleMoreNav);
 $("routeStatusButton").addEventListener("click", (event) => {
   event.stopPropagation();
   toggleStatusMenu("routeStatus");
@@ -4334,6 +4519,7 @@ if (urlParams.has("recipient")) {
 state.appStarted = localStorage.getItem(APP_STARTED_KEY) === "1";
 renderStatusControls();
 renderIntroGate();
+renderMoreNav();
 
 (async () => {
   let restoredSecret = false;
@@ -4363,7 +4549,14 @@ renderIntroGate();
       discoverDepositBatches({ recoverNotes: false })
         .then(() => {
           updateDashboard();
-          setMessage(state.batches.length ? "Deposits synced." : "No previous deposits found.", state.batches.length ? "ok" : "", 1, 10000);
+          setMessage(
+            hasRecoverableDepositBatch()
+              ? "Deposits synced. Searching commitments..."
+              : state.batches.length ? "Deposits synced." : "No previous deposits found.",
+            state.batches.length ? "ok" : "",
+            1,
+            10000
+          );
         })
         .catch((error) => {
           const message = errorText(error);

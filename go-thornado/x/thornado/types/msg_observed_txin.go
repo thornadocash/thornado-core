@@ -47,7 +47,7 @@ func (m *MsgObservedTxIn) ValidateBasic() error {
 		return cosmos.ErrUnknownRequest(fmt.Sprintf("too many observed txs: %d, max %d", len(m.Txs), MaxObservedTxBatchSize))
 	}
 	for _, tx := range m.Txs {
-		if err := validateObservedTxPayload(tx); err != nil {
+		if err := validateObservedTxPayload(tx, true); err != nil {
 			return cosmos.ErrUnknownRequest(err.Error())
 		}
 		obAddr, err := tx.ObservedPubKey.GetAddress(tx.Tx.Coins[0].Asset.GetChain())
@@ -71,9 +71,21 @@ func (m *MsgObservedTxIn) ValidateBasic() error {
 	return nil
 }
 
-func validateObservedTxPayload(tx common.ObservedTx) error {
-	if err := tx.Valid(); err != nil {
-		return err
+func validateObservedTxPayload(tx common.ObservedTx, allowMempool bool) error {
+	if allowMempool && tx.BlockHeight == 0 {
+		if err := tx.Tx.Valid(); err != nil {
+			return err
+		}
+		if tx.ObservedPubKey.IsEmpty() {
+			return fmt.Errorf("observed vault pubkey is empty")
+		}
+		if tx.FinaliseHeight <= 0 {
+			return fmt.Errorf("finalise block height can't be zero")
+		}
+	} else {
+		if err := tx.Valid(); err != nil {
+			return err
+		}
 	}
 	if len(tx.Tx.Coins) > MaxObservedTxCoinItems {
 		return fmt.Errorf("too many observed tx coins: %d, max %d", len(tx.Tx.Coins), MaxObservedTxCoinItems)

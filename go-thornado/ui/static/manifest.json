@@ -2,71 +2,88 @@
   "assets": [
     {
       "path": "index.html",
-      "sha256": "cfd8111d2c8137b3bc306ec2ba61c376aab97f9fc8056053e68c63349e214ba5"
+      "sha256": "ce590a682d951d2d0baba1fb3ac9c066a63d41fbfbb9b988b9a9202b8cc20b7e",
+      "bytes": 32856
     },
     {
       "path": "styles.css",
-      "sha256": "f21f63c5f2f5649769cf1372ca908d6e6f34a1efa593497ab8ed274ca658d23a"
+      "sha256": "5ef294f73df3400b4e4469dfe413fe4a1a4b904edb4449c3f47f4668cb26698a",
+      "bytes": 37137
     },
     {
       "path": "app.js",
-      "sha256": "2fb2b4b1d16921515cd481fb4fb83861fcd5e9df4bfd785cc54e9c04e8c86c42"
+      "sha256": "27b1ee32da4418e42a0c2590621f0268034d4d1fbad7d4dce648bca01649727d",
+      "bytes": 188302
     },
     {
       "path": "modules/api.js",
-      "sha256": "734c4beeb1f7d57db2fd8762fb8de74ac7dbf52ee0172143988d7690953e439f"
+      "sha256": "734c4beeb1f7d57db2fd8762fb8de74ac7dbf52ee0172143988d7690953e439f",
+      "bytes": 748
     },
     {
       "path": "modules/forms.js",
-      "sha256": "64cf8860e18d419173de8f035287cbea23a1f76f9ed13e9d0b0c8729d4a8a03c"
+      "sha256": "64cf8860e18d419173de8f035287cbea23a1f76f9ed13e9d0b0c8729d4a8a03c",
+      "bytes": 247
     },
     {
       "path": "vendor/qrcode.min.js",
-      "sha256": "d87972a8317479e697189cc5b663bfaac0ea9a76861cda1ca881716be44ed3f7"
+      "sha256": "d87972a8317479e697189cc5b663bfaac0ea9a76861cda1ca881716be44ed3f7",
+      "bytes": 20883
     },
     {
       "path": "how-it-works/bond-increments.png",
-      "sha256": "c85ee577b392e89956bf9382250550d4639089fc0632f67001fe721775c2d434"
+      "sha256": "7e61664ecc7c5871e96ca3c58cfbf4d653888f132052bd91a1ca06a00a25e9bc",
+      "bytes": 55906
     },
     {
       "path": "how-it-works/collecting-fees.png",
-      "sha256": "83040389357b01440b0910d214520fc587a3515120e03d044b8c47d1515b279f"
+      "sha256": "d1b8623cbb3da6591dc80c1c78acaf52a5a8aa41434c15de34158b08cd97b446",
+      "bytes": 81640
     },
     {
       "path": "how-it-works/deposit.png",
-      "sha256": "eb59dfe515cf33f63722d30a8a5249d14626922634ee09ac7ef6a34e84280b1a"
+      "sha256": "a7b77e07e27141575520729a3a976439c229ae4ab58a7aaac443a8171f90c2fa",
+      "bytes": 178548
     },
     {
       "path": "how-it-works/get-address.png",
-      "sha256": "e3488a1a706321c84a58dbd0a8352161f514f08d28115f385665c44aad4d842b"
+      "sha256": "c5ccd321f3d22e0f8cb0bd3e57e025267c4df5e63664f8bd35ad24bd7d906f71",
+      "bytes": 201023
     },
     {
       "path": "how-it-works/node-bonding.png",
-      "sha256": "95f9a4c7c5f3cfa24f7bac5e5484e779ac16965842a7cbd7507370e92ecc8124"
+      "sha256": "cdf85df2b1dc6665e20084e9cf7997f7f3752d90f526178b5cf18ea24f48a203",
+      "bytes": 246333
     },
     {
       "path": "how-it-works/node-churning.png",
-      "sha256": "1849126ab6e2d73627bcb71f4ce04fb061eb9ba258ef64f26fb78418138f95a1"
+      "sha256": "5e5f855f42cdd58231bf3f9d0129a29fd91e20da390a5b12d9e11894b9c1a85f",
+      "bytes": 84013
     },
     {
       "path": "how-it-works/node-sales.png",
-      "sha256": "c9618dddcfcfd9aa6954ea00711e7ab2f0652bc1d3ddc3792e17c031c901065b"
+      "sha256": "053cd4bc475100821aa494ae09e14d6635d27a466d2dbcd76b270e66f8ea96a5",
+      "bytes": 85691
     },
     {
       "path": "how-it-works/shield.png",
-      "sha256": "4a6a5c390c105ae354a3809cab88fde07569cc8a3b57a54ef51dedebf5f5b66a"
+      "sha256": "11dc633b6fb32da1d0015988d7f6e61181ed52c0e2d8df0fa3c37371f006865e",
+      "bytes": 213911
     },
     {
       "path": "how-it-works/withdraw.png",
-      "sha256": "62249b6ba19be666b8467132b9da611b300c8104e95a19ff185ea9d4cd9745f3"
+      "sha256": "dd3e845fa02d108fe90d8b3df101232a2c0fe9457ce1b12e07a01f38361877fb",
+      "bytes": 204834
     },
     {
       "path": "wasm/thornado_web_wasm.js",
-      "sha256": "06e03ca6986226e8d1f0f35886e8aae66e5855a5458491e20adfdfc793b61519"
+      "sha256": "06e03ca6986226e8d1f0f35886e8aae66e5855a5458491e20adfdfc793b61519",
+      "bytes": 27241
     },
     {
       "path": "wasm/thornado_web_wasm_bg.wasm",
-      "sha256": "b2ac96b2513d1124eaf7e7c363506b8d850e40680cfc1d4aeebf2fe3b0c2a036"
+      "sha256": "b2ac96b2513d1124eaf7e7c363506b8d850e40680cfc1d4aeebf2fe3b0c2a036",
+      "bytes": 876234
     }
   ]
 }

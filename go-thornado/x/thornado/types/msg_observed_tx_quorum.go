@@ -48,7 +48,7 @@ func (m *MsgObservedTxQuorum) ValidateBasic() error {
 
 	tx := m.QuoTx.ObsTx
 
-	if err := validateObservedTxPayload(tx); err != nil {
+	if err := validateObservedTxPayload(tx, m.QuoTx.Inbound); err != nil {
 		return cosmos.ErrUnknownRequest(err.Error())
 	}
 	obAddr, err := tx.ObservedPubKey.GetAddress(tx.Tx.Coins[0].Asset.GetChain())

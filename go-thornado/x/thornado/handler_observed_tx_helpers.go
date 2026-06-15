@@ -40,8 +40,10 @@ func processTxInAttestation(
 	penaltyCtx = ctx.WithContext(context.WithValue(penaltyCtx.Context(), constants.CtxObservedTx, tx.Tx.ID.String()))
 
 	ok := false
-	if err := k.SetLastObserveHeight(ctx, tx.Tx.Chain, signer, tx.BlockHeight); err != nil {
-		ctx.Logger().Error("fail to save last observe height", "error", err, "signer", signer, "chain", tx.Tx.Chain)
+	if tx.BlockHeight > 0 {
+		if err := k.SetLastObserveHeight(ctx, tx.Tx.Chain, signer, tx.BlockHeight); err != nil {
+			ctx.Logger().Error("fail to save last observe height", "error", err, "signer", signer, "chain", tx.Tx.Chain)
+		}
 	}
 
 	// As an observation requires processing by all nodes no matter what,
@@ -183,8 +185,10 @@ func handleObservedTxInQuorum(
 			voter.UpdatedVault = true
 		}
 	}
-	if err = k.SetLastChainHeight(ctx, tx.Tx.Chain, tx.BlockHeight); err != nil {
-		ctx.Logger().Error("fail to set last chain height", "error", err)
+	if tx.BlockHeight > 0 {
+		if err = k.SetLastChainHeight(ctx, tx.Tx.Chain, tx.BlockHeight); err != nil {
+			ctx.Logger().Error("fail to set last chain height", "error", err)
+		}
 	}
 
 	// save the changes in Tx Voter to key value store

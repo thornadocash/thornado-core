@@ -57,3 +57,53 @@ func TestMinimumFeeDenominationSupported(t *testing.T) {
 		t.Fatalf("unexpected fee receipt notes: %#v", receipt.Notes)
 	}
 }
+
+func TestDeriveShieldReceiptBTCDecimalDenominations(t *testing.T) {
+	tests := []struct {
+		name      string
+		amount    uint64
+		expected  []uint64
+		remainder uint64
+	}{
+		{
+			name:      "0.11 BTC",
+			amount:    11_000_000,
+			expected:  []uint64{10_000_000, 1_000_000},
+			remainder: 0,
+		},
+		{
+			name:      "0.12 BTC",
+			amount:    12_000_000,
+			expected:  []uint64{10_000_000, 1_000_000, 1_000_000},
+			remainder: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			receiptJSON, err := DeriveShieldReceipt("decimal-denom", tt.amount, "client-seed")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var receipt struct {
+				Notes []struct {
+					DenominationSats uint64 `json:"denomination_sats"`
+				} `json:"notes"`
+				RemainderSats uint64 `json:"remainder_sats"`
+			}
+			if err := json.Unmarshal([]byte(receiptJSON), &receipt); err != nil {
+				t.Fatal(err)
+			}
+			if receipt.RemainderSats != tt.remainder {
+				t.Fatalf("unexpected remainder: got %d want %d", receipt.RemainderSats, tt.remainder)
+			}
+			if len(receipt.Notes) != len(tt.expected) {
+				t.Fatalf("unexpected note count: got %d want %d", len(receipt.Notes), len(tt.expected))
+			}
+			for i, want := range tt.expected {
+				if got := receipt.Notes[i].DenominationSats; got != want {
+					t.Fatalf("note %d denomination: got %d want %d", i, got, want)
+				}
+			}
+		})
+	}
+}

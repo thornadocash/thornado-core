@@ -225,10 +225,11 @@ func (s *BitcoinSuite) TestGetBlock(c *C) {
 }
 
 func (s *BitcoinSuite) TestFetchTxs(c *C) {
-	txs, err := s.client.FetchTxs(0, 0)
+	txs, err := s.client.FetchTxs(0, 10)
 	c.Assert(err, IsNil)
 	c.Assert(txs.Chain, Equals, common.BTCChain)
 	c.Assert(txs.TxArray, HasLen, 0)
+	c.Assert(s.client.getCurrentBlockHeight(), Equals, int64(10))
 }
 
 func (s *BitcoinSuite) TestExtractTxsDoesNotToggleObservedTxCache(c *C) {
@@ -869,10 +870,113 @@ func (s *BitcoinSuite) TestGetMemPool(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(txIns.TxArray, HasLen, 0)
 
-	// Non-internal inbound mempool txs are ignored until they appear in a block.
+	// Fixture mempool txs do not pay to a Thornado address.
 	txIns, err = s.client.FetchMemPool(1024)
 	c.Assert(err, IsNil)
 	c.Assert(txIns.TxArray, HasLen, 0)
+}
+
+func (s *BitcoinSuite) TestGetTxInAllowsRBFMempoolInbound(c *C) {
+	baseAddresses, err := s.client.getBaseAddress()
+	c.Assert(err, IsNil)
+	c.Assert(baseAddresses, Not(HasLen), 0)
+
+	tx := btcjson.TxRawResult{
+		Txid: "rbf-mempool-inbound",
+		Hash: "rbf-mempool-inbound",
+		Vin: []btcjson.Vin{
+			{
+				Txid:     "24ed2d26fd5d4e0e8fa86633e40faf1bdfc8d1903b1cd02855286312d48818a2",
+				Vout:     0,
+				Sequence: 0xfffffffd,
+			},
+		},
+		Vout: []btcjson.Vout{
+			{
+				Value: 0.11000000,
+				ScriptPubKey: btcjson.ScriptPubKeyResult{
+					Addresses: []string{baseAddresses[0].String()},
+					Hex:       "5120f01002397e3cb9179d41f1e25412bd29fc8d22f8fe786758aeeacf137a4cbc5f",
+					Type:      "witness_v1_taproot",
+				},
+			},
+		},
+	}
+
+	txIn, err := s.client.getTxIn(&tx, 1024, true, nil)
+	c.Assert(err, IsNil)
+	c.Assert(txIn.IsEmpty(), Equals, false)
+	c.Assert(txIn.Tx, Equals, tx.Txid)
+	c.Assert(txIn.BlockHeight, Equals, int64(1024))
+}
+
+func (s *BitcoinSuite) TestConfirmedMempoolTxRetainsMarker(c *C) {
+	txid := ttypes.GetRandomTxHash().String()
+	_, err := s.client.temporalStorage.TrackMempoolTx(txid)
+	c.Assert(err, IsNil)
+
+	key := fmt.Sprintf("getrawtransaction-%s", txid)
+	previous, hadPrevious := btcChainRPCs[key]
+	btcChainRPCs[key] = map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"result":  "02000000000100",
+	}
+	defer func() {
+		if hadPrevious {
+			btcChainRPCs[key] = previous
+		} else {
+			delete(btcChainRPCs, key)
+		}
+	}()
+
+	errataQueue := make(chan types.ErrataBlock, 1)
+	s.client.globalErrataQueue = errataQueue
+	s.client.errataDroppedMempoolTxs(1024, map[string]struct{}{})
+
+	c.Assert(len(errataQueue), Equals, 0)
+	exists, err := s.client.temporalStorage.HasMempoolTx(txid)
+	c.Assert(err, IsNil)
+	c.Assert(exists, Equals, true)
+}
+
+func (s *BitcoinSuite) TestDroppedMempoolTxQueuesErrata(c *C) {
+	txid := ttypes.GetRandomTxHash().String()
+	_, err := s.client.temporalStorage.TrackMempoolTx(txid)
+	c.Assert(err, IsNil)
+
+	key := fmt.Sprintf("getrawtransaction-%s", txid)
+	previous, hadPrevious := btcChainRPCs[key]
+	btcChainRPCs[key] = map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"error": map[string]interface{}{
+			"code":    -5,
+			"message": "No such mempool or blockchain transaction",
+		},
+	}
+	defer func() {
+		if hadPrevious {
+			btcChainRPCs[key] = previous
+		} else {
+			delete(btcChainRPCs, key)
+		}
+	}()
+
+	errataQueue := make(chan types.ErrataBlock, 1)
+	s.client.globalErrataQueue = errataQueue
+	s.client.errataDroppedMempoolTxs(1024, map[string]struct{}{})
+
+	c.Assert(errataQueue, HasLen, 1)
+	errata := <-errataQueue
+	c.Assert(errata.Height, Equals, int64(1024))
+	c.Assert(errata.Txs, HasLen, 1)
+	c.Assert(errata.Txs[0].TxID.String(), Equals, txid)
+	c.Assert(errata.Txs[0].Chain, Equals, common.BTCChain)
+
+	exists, err := s.client.temporalStorage.HasMempoolTx(txid)
+	c.Assert(err, IsNil)
+	c.Assert(exists, Equals, false)
 }
 
 func (s *BitcoinSuite) TestGetOutput(c *C) {

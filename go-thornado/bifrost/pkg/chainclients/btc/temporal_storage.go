@@ -40,6 +40,11 @@ const (
 	PrefixSpentUtxoByHeight = "spentutxobyheight-"
 )
 
+const (
+	ObservedTxStageMempool = "mempool"
+	ObservedTxStageFinal   = "final"
+)
+
 // -------------------------------------------------------------------------------------
 // Types
 // -------------------------------------------------------------------------------------
@@ -246,20 +251,63 @@ func (t *TemporalStorage) UntrackMempoolTx(txid string) error {
 	return err
 }
 
-// TrackObservedTx attempts to track the provided observed txid. Returns
-// true if the txid was successfully added, and false if the txid was already tracked or
-// an error occurred during write.
+// HasMempoolTx returns true when the txid is currently tracked as a mempool tx.
+func (t *TemporalStorage) HasMempoolTx(txid string) (bool, error) {
+	key := t.getMemPoolKey(txid)
+	if t.mempoolTxIDCache != nil && t.mempoolTxIDCache.Contains(key) {
+		return true, nil
+	}
+	exists, err := t.db.Has([]byte(key), nil)
+	if exists && err == nil && t.mempoolTxIDCache != nil {
+		t.mempoolTxIDCache.Add(key, nil)
+	}
+	return exists, err
+}
+
+// ListMempoolTxs returns every txid currently tracked as a mempool tx.
+func (t *TemporalStorage) ListMempoolTxs() ([]string, error) {
+	iter := t.db.NewIterator(util.BytesPrefix([]byte(PrefixMempool)), nil)
+	defer iter.Release()
+
+	var txids []string
+	for iter.Next() {
+		txids = append(txids, string(iter.Value()))
+	}
+	if err := iter.Error(); err != nil {
+		return nil, err
+	}
+	return txids, nil
+}
+
+// TrackObservedTx attempts to track the provided observed txid as final.
 func (t *TemporalStorage) TrackObservedTx(txid string) (bool, error) {
+	added, _, err := t.TrackObservedTxStage(txid, ObservedTxStageFinal)
+	return added, err
+}
+
+// TrackObservedTxStage tracks the observed stage for a txid. It allows one
+// transition from mempool to final so pre-confirmation observation does not
+// suppress the mined observation.
+func (t *TemporalStorage) TrackObservedTxStage(txid, stage string) (bool, string, error) {
 	key := t.getObservedTxKey(txid)
 	exist, err := t.db.Has([]byte(key), nil)
 	if err != nil {
-		return exist, err
+		return exist, "", err
 	}
 	if exist {
-		return false, nil
+		previous, err := t.db.Get([]byte(key), nil)
+		if err != nil {
+			return false, "", err
+		}
+		previousStage := string(previous)
+		if previousStage == ObservedTxStageMempool && stage == ObservedTxStageFinal {
+			err = t.db.Put([]byte(key), []byte(stage), nil)
+			return true, previousStage, err
+		}
+		return false, previousStage, nil
 	}
-	err = t.db.Put([]byte(key), []byte(txid), nil)
-	return true, err
+	err = t.db.Put([]byte(key), []byte(stage), nil)
+	return true, "", err
 }
 
 // UntrackObservedTx untracks the provided observed txid.

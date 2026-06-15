@@ -396,10 +396,6 @@ func (c *Client) getTxIn(tx *btcjson.TxRawResult, height int64, isMemPool bool, 
 		c.log.Debug().Int64("height", height).Str("txid", tx.Hash).Msg("ignore tx not matching format")
 		return types.TxInItem{}, nil
 	}
-	// RBF enabled transaction will not be observed until committed to block
-	if c.isRBFEnabled(tx) && isMemPool {
-		return types.TxInItem{}, nil
-	}
 	sender, err := c.getSender(tx, vinZeroTxs)
 	if err != nil {
 		return types.TxInItem{}, fmt.Errorf("fail to get sender from tx: %w", err)
@@ -550,6 +546,16 @@ func (c *Client) extractTxs(block *btcjson.GetBlockVerboseTxResult) (types.TxIn,
 
 	var txItems []*types.TxInItem
 	for idx, tx := range block.Tx {
+		wasMempoolTracked, err := c.temporalStorage.HasMempoolTx(tx.Txid)
+		if err != nil {
+			c.log.Err(err).Str("txid", tx.Txid).Msg("fail to check mempool tracking")
+		}
+		if !wasMempoolTracked && tx.Hash != "" && tx.Hash != tx.Txid {
+			wasMempoolTracked, err = c.temporalStorage.HasMempoolTx(tx.Hash)
+			if err != nil {
+				c.log.Err(err).Str("txid", tx.Hash).Msg("fail to check mempool tracking")
+			}
+		}
 		// mempool transaction get committed to block , thus remove it from mempool cache
 		c.removeFromMemPoolCache(tx.Txid)
 		c.removeFromMemPoolCache(tx.Hash)
@@ -570,11 +576,11 @@ func (c *Client) extractTxs(block *btcjson.GetBlockVerboseTxResult) (types.TxIn,
 			continue
 		}
 		var added bool
-		added, err = c.temporalStorage.TrackObservedTx(txInItem.Tx)
+		added, _, err = c.temporalStorage.TrackObservedTxStage(txInItem.Tx, ObservedTxStageFinal)
 		if err != nil {
 			c.log.Err(err).Msgf("fail to determine whether hash(%s) had been observed before", txInItem.Tx)
 		}
-		if !added {
+		if !added && !wasMempoolTracked {
 			c.log.Info().Msgf("tx: %s had been report before, ignore", txInItem.Tx)
 			continue
 		}

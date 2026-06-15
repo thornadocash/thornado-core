@@ -113,6 +113,10 @@ func NewClient(
 	}
 
 	logger := log.Logger.With().Stringer("chain", cfg.ChainID).Logger()
+	if !cfg.BlockScanner.ScanMemPool {
+		logger.Warn().Msg("BTC mempool scanning disabled in config; enabling for Thornado inbound pre-observation")
+		cfg.BlockScanner.ScanMemPool = true
+	}
 
 	// create rpc client
 	rpcClient, err := rpc.NewClient(
@@ -434,7 +438,11 @@ func (c *Client) OnObservedTxIn(txIn types.TxInItem, blockHeight int64) {
 	if blockMeta == nil {
 		blockMeta = NewBlockMeta("", blockHeight, "")
 	}
-	if _, err = c.temporalStorage.TrackObservedTx(txIn.Tx); err != nil {
+	observedStage := ObservedTxStageFinal
+	if blockHeight <= 0 {
+		observedStage = ObservedTxStageMempool
+	}
+	if _, _, err = c.temporalStorage.TrackObservedTxStage(txIn.Tx, observedStage); err != nil {
 		c.log.Err(err).Msgf("fail to add hash (%s) to observed tx cache", txIn.Tx)
 	}
 	if c.isBaseAddress(txIn.Sender) {
@@ -474,7 +482,7 @@ func (c *Client) FetchTxs(height, chainHeight int64) (types.TxIn, error) {
 		return txIn, fmt.Errorf("fail to get block: %w", err)
 	}
 
-	c.updateCurrentBlockHeight(height)
+	c.updateCurrentBlockHeight(chainHeight)
 	reScannedTxs, err := c.processReorg(block)
 	if err != nil {
 		c.log.Err(err).Msg("fail to process re-org")
@@ -549,6 +557,12 @@ func (c *Client) FetchMemPool(height int64) (types.TxIn, error) {
 	if err != nil {
 		return types.TxIn{}, fmt.Errorf("fail to get tx hashes from mempool: %w", err)
 	}
+	currentMempool := make(map[string]struct{}, len(hashes))
+	for _, h := range hashes {
+		currentMempool[h] = struct{}{}
+	}
+	c.errataDroppedMempoolTxs(height, currentMempool)
+
 	txIn := types.TxIn{
 		Chain:   c.GetChain(),
 		MemPool: true,
@@ -652,6 +666,39 @@ func (c *Client) FetchMemPool(height int64) (types.TxIn, error) {
 	return txIn, returnErr
 }
 
+func (c *Client) errataDroppedMempoolTxs(height int64, currentMempool map[string]struct{}) {
+	tracked, err := c.temporalStorage.ListMempoolTxs()
+	if err != nil {
+		c.log.Err(err).Msg("fail to list tracked mempool txs")
+		return
+	}
+
+	var dropped []types.ErrataTx
+	for _, txid := range tracked {
+		if _, ok := currentMempool[txid]; ok {
+			continue
+		}
+		if c.confirmTx(txid) {
+			// Keep mined txs in the mempool marker set until block extraction
+			// consumes them. That lets the later final observation pass the
+			// observed-tx duplicate cache after the pre-confirmation observe.
+			continue
+		}
+		c.removeFromMemPoolCache(txid)
+		dropped = append(dropped, types.ErrataTx{
+			TxID:  common.TxID(txid),
+			Chain: c.cfg.ChainID,
+		})
+	}
+	if len(dropped) == 0 || c.globalErrataQueue == nil {
+		return
+	}
+	c.globalErrataQueue <- types.ErrataBlock{
+		Height: height,
+		Txs:    dropped,
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // Client - Confirmation Counting
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -691,7 +738,7 @@ func (c *Client) GetConfirmationCount(txIn types.TxIn) int64 {
 
 // ConfirmationCountReady will be called by the observer before sending the txIn to
 // Thornado. It will return true if the scanner height is greater than or equal to the
-// observed block height + confirmation required.
+// observed block height + confirmation required - 1.
 // https://medium.com/coinmonks/1confvalue-a-simple-pow-confirmation-rule-of-thumb-a8d9c6c483dd
 func (c *Client) ConfirmationCountReady(txIn types.TxIn) bool {
 	// if there are no txs, nothing will be reported
@@ -707,10 +754,27 @@ func (c *Client) ConfirmationCountReady(txIn types.TxIn) bool {
 	// check if we have the necessary number of confirmations
 	height := txIn.TxArray[0].BlockHeight
 	confirm := txIn.ConfirmationRequired
-	ready := (c.getCurrentBlockHeight() - height) >= confirm // every tx already has 1
+	if confirm <= 0 {
+		return true
+	}
+
+	currentHeight := c.getCurrentBlockHeight()
+	if currentHeight < height {
+		if chainHeight, err := c.GetHeight(); err == nil {
+			c.updateCurrentBlockHeight(chainHeight)
+			currentHeight = c.getCurrentBlockHeight()
+		} else {
+			c.log.Err(err).Int64("height", height).Msg("fail to refresh chain height for confirmation count")
+		}
+	}
+
+	confirmations := currentHeight - height + 1
+	ready := confirmations >= confirm
 	c.log.Info().
 		Int64("height", height).
+		Int64("chain_height", currentHeight).
 		Int64("required", confirm).
+		Int64("confirmations", confirmations).
 		Bool("ready", ready).
 		Msg("confirmation count check")
 

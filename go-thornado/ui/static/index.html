@@ -4,17 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Thornado</title>
-  <link rel="stylesheet" href="/thornado/ui/styles.css?v=how-redraw-v2">
+  <link rel="stylesheet" href="/thornado/ui/styles.css?v=shield-summary-row-v1">
 </head>
 <body>
   <main>
-    <header class="topbar">
-      <div class="brand-lockup">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <div class="brand-copy">
-          <h1>Thornado</h1>
-        </div>
+    <div id="introGate" class="intro-gate">
+      <blockquote class="intro-quote">
+        Looking at ways to add more anonymity to bitcoin
+        <cite class="intro-author">- Hal Finney, 22 Jan 2009</cite>
+      </blockquote>
+      <div class="quote-controls">
+        <button id="startFlow" class="start-button" type="button">Let's Start</button>
+        <button id="moreToggle" class="more-toggle" type="button" aria-expanded="false" aria-controls="topbar">Menu</button>
       </div>
+    </div>
+
+    <header id="topbar" class="topbar">
       <nav class="tabs" aria-label="Thornado views">
         <button id="tabUser" class="tab-button active" type="button">User</button>
         <button id="tabNodes" class="tab-button" type="button">Node Operator</button>
@@ -49,14 +54,6 @@
         </div>
       </div>
     </header>
-
-    <div id="introGate" class="intro-gate">
-      <blockquote class="intro-quote">
-        Looking at ways to add more anonymity to bitcoin
-        <cite class="intro-author">- Hal Finney, 22 Jan 2009</cite>
-      </blockquote>
-      <button id="startFlow" class="start-button" type="button">Let's Start</button>
-    </div>
 
     <div class="overview">
       <div class="metric">
@@ -168,14 +165,10 @@
               <div class="row"><span>Deposit received</span><strong id="shieldDepositAmount">0 BTC</strong></div>
               <div class="row"><span>Tx ID</span><strong id="shieldDepositTxid">none</strong></div>
             </div>
-            <div id="shieldConfirmView" class="shield-confirm" hidden>
-            <div id="shieldAmountLarge" class="deposit-amount-large">0 BTC</div>
-              <div id="shieldConfs" class="confirmation-count">0 / 1 confirmations</div>
-            </div>
             <div class="actions" hidden>
               <button id="shieldDeposit" disabled>Shield Deposit</button>
             </div>
-            <strong id="confirmations" hidden>0 / 1</strong>
+            <strong id="confirmations" hidden>0</strong>
             <strong id="knownAmount" hidden>0 BTC</strong>
             <strong id="remainderSats" hidden>0 BTC</strong>
             <div id="denomBreakdown" class="panel-list"></div>
@@ -322,47 +315,47 @@
         <section class="how-image">
           <span class="flow-index">01</span>
           <h2>Get Address</h2>
-          <img src="/thornado/ui/how-it-works/get-address.png?v=how-redraw-v2" alt="Get Address data flow between user, browser, and protocol">
+          <img src="/thornado/ui/how-it-works/get-address.png?v=shield-note-rows-v1" alt="Get Address data flow between user, browser, and protocol">
         </section>
         <section class="how-image">
           <span class="flow-index">02</span>
           <h2>Deposit</h2>
-          <img src="/thornado/ui/how-it-works/deposit.png?v=how-redraw-v2" alt="Deposit data flow between user, Bitcoin, and protocol">
+          <img src="/thornado/ui/how-it-works/deposit.png?v=shield-note-rows-v1" alt="Deposit data flow between user, Bitcoin, and protocol">
         </section>
         <section class="how-image">
           <span class="flow-index">03</span>
           <h2>Shield</h2>
-          <img src="/thornado/ui/how-it-works/shield.png?v=how-redraw-v2" alt="Shield data flow showing where the privacy link breaks">
+          <img src="/thornado/ui/how-it-works/shield.png?v=shield-note-rows-v1" alt="Shield data flow showing where the privacy link breaks">
         </section>
         <section class="how-image">
           <span class="flow-index">04</span>
           <h2>Withdraw</h2>
-          <img src="/thornado/ui/how-it-works/withdraw.png?v=how-redraw-v2" alt="Withdraw data flow showing local note scan, ZK proof, and payout">
+          <img src="/thornado/ui/how-it-works/withdraw.png?v=shield-note-rows-v1" alt="Withdraw data flow showing local note scan, ZK proof, and payout">
         </section>
         <section class="how-image">
           <span class="flow-index">05</span>
           <h2>Node Bonding</h2>
-          <img src="/thornado/ui/how-it-works/node-bonding.png?v=how-redraw-v2" alt="Node bonding flow from PoW deposit to shield-confirmed node bond">
+          <img src="/thornado/ui/how-it-works/node-bonding.png?v=shield-note-rows-v1" alt="Node bonding flow from PoW deposit to shield-confirmed node bond">
         </section>
         <section class="how-image">
           <span class="flow-index">06</span>
           <h2>Node Churning</h2>
-          <img src="/thornado/ui/how-it-works/node-churning.png?v=how-redraw-v2" alt="Node churning flow from selected node to FROST keygen and vault migration">
+          <img src="/thornado/ui/how-it-works/node-churning.png?v=shield-note-rows-v1" alt="Node churning flow from selected node to FROST keygen and vault migration">
         </section>
         <section class="how-image">
           <span class="flow-index">07</span>
           <h2>Bond Increments</h2>
-          <img src="/thornado/ui/how-it-works/bond-increments.png?v=how-redraw-v2" alt="Bond increment formula by permanent node slot">
+          <img src="/thornado/ui/how-it-works/bond-increments.png?v=shield-note-rows-v1" alt="Bond increment formula by permanent node slot">
         </section>
         <section class="how-image">
           <span class="flow-index">08</span>
           <h2>Collecting Fees</h2>
-          <img src="/thornado/ui/how-it-works/collecting-fees.png?v=how-redraw-v2" alt="Fee collection flow from withdrawals to node fee notes">
+          <img src="/thornado/ui/how-it-works/collecting-fees.png?v=shield-note-rows-v1" alt="Fee collection flow from withdrawals to node fee notes">
         </section>
         <section class="how-image">
           <span class="flow-index">09</span>
           <h2>Node Sales</h2>
-          <img src="/thornado/ui/how-it-works/node-sales.png?v=how-redraw-v2" alt="Node slot sale flow from standby auction to seller shield and slot transfer">
+          <img src="/thornado/ui/how-it-works/node-sales.png?v=shield-note-rows-v1" alt="Node slot sale flow from standby auction to seller shield and slot transfer">
         </section>
       </div>
     </div>
@@ -704,6 +697,6 @@
     </div>
   </div>
 
-  <script type="module" src="/thornado/ui/app.js?v=how-redraw-v2"></script>
+  <script type="module" src="/thornado/ui/app.js?v=shield-summary-row-v1"></script>
 </body>
 </html>
