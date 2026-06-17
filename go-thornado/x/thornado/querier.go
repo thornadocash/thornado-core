@@ -1150,7 +1150,7 @@ func (qs queryServer) queryShielderRedeemQuote(ctx cosmos.Context, req *types.Qu
 		FeeSats:        fee,
 		NetSats:        req.AmountSats - fee,
 		FeeBasisPoints: withdrawalFeeBp(ctx, qs.mgr.Keeper()),
-		FeeMinSats:     uint64(qs.mgr.Keeper().GetConfigInt64(ctx, constants.Withdrawal_FeeMinSats)),
+		FeeMinSats:     0,
 	}, nil
 }
 

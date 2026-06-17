@@ -2,6 +2,7 @@
 import os
 import pty
 import select
+import subprocess
 import sys
 import time
 
@@ -29,7 +30,18 @@ def parse(argv):
 
 def main():
     cmd, pairs = parse(sys.argv[1:])
-    pid, fd = pty.fork()
+    try:
+        pid, fd = pty.fork()
+    except OSError as exc:
+        if "out of pty devices" not in str(exc):
+            raise
+        proc = subprocess.run(
+            cmd,
+            input="".join((pair[1] + "\n") for pair in pairs),
+            text=True,
+            env=os.environ,
+        )
+        raise SystemExit(proc.returncode)
     if pid == 0:
         os.execvpe(cmd[0], cmd, os.environ)
 

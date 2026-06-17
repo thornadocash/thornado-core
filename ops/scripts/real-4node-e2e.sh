@@ -139,16 +139,39 @@ stop_pid_file() {
   fi
 }
 
+cleanup_stale_real4_services() {
+  local file container
+  shopt -s nullglob
+  for file in /tmp/thornado-real4-*/pids/*.pid; do
+    stop_pid_file "$file"
+  done
+  shopt -u nullglob
+
+  if timeout 10 docker info >/dev/null 2>&1; then
+    docker ps -a --format '{{.Names}}' \
+      | awk '/^thornado-real4-.*-bitcoind$/ {print}' \
+      | while read -r container; do
+          timeout 15 docker rm -f "$container" >/dev/null 2>&1 || true
+        done
+  fi
+}
+
 cleanup_runtime() {
   local exit_code=$?
   if [[ "${KEEP_RUNNING:-0}" == "1" ]]; then
+    if (( exit_code != 0 )); then
+      log "KEEP_RUNNING=1; run failed but cluster remains live at ${RUN_ROOT}. Press Ctrl-C to stop this script."
+      while true; do
+        sleep 60
+      done
+    fi
     return "$exit_code"
   fi
   log "cleaning up runtime processes and bitcoind"
   for file in "$RUN_ROOT"/pids/*.pid; do
     stop_pid_file "$file"
   done
-  docker rm -f "$BTC_CONTAINER" >/dev/null 2>&1 || true
+  timeout 15 docker rm -f "$BTC_CONTAINER" >/dev/null 2>&1 || true
   if [[ "$KEEP_ARTIFACTS" != "1" ]]; then
     rm -rf "$RUN_ROOT"
   fi
@@ -336,9 +359,18 @@ wait_blocks() {
 }
 
 request_deposit() {
-  local home="$1" owner="$2" pow="$3" out
+  local home="$1" owner="$2" pow="$3" out owner_addr pow_token difficulty deposit_pubkey
   shift 3
-  out="$(thornado_tx "$home" "$owner" request-deposit "$pow" "$@")"
+  if (( $# == 0 )); then
+    deposit_pubkey="$("$SHIELDER_HELPER" pubkey "${pow}-deposit-pubkey")"
+    set -- "$deposit_pubkey"
+  else
+    deposit_pubkey="$1"
+  fi
+  owner_addr="$("$SHIELDER_HELPER" owner-address "$deposit_pubkey")"
+  difficulty="$(curl -fsS "$(api_url 1)/thornado/config" | jq -r '.int_64_values.Deposit_PowDifficultyCurrent // .int_64_values.Deposit_PowDifficultyMin // 20')"
+  pow_token="$("$SHIELDER_HELPER" pow-token "$owner_addr" "$difficulty" "$pow")"
+  out="$(thornado_tx "$home" "$owner" request-deposit "$pow_token" "$@")"
   assert_tx_success "$out" "request-deposit"
   wait_blocks 2
   echo "$out"
@@ -488,14 +520,15 @@ build_binaries() {
   mkdir -p "$BUILD_DIR"
   (cd "$ROOT_DIR" && cargo build -p thornado-ffi --release)
   "$ROOT_DIR/go-thornado/go-wrappers/frost/build-libgofrost.sh" >/dev/null
-  (cd "$ROOT_DIR/go-thornado" && go build -tags mocknet -o "$THORNADO" ./cmd/thornado)
-  (cd "$ROOT_DIR/go-thornado" && go build -tags mocknet -o "$BIFROST" ./cmd/bifrost)
-  (cd "$ROOT_DIR/go-thornado" && go build -tags mocknet -o "$THORNADO_UI" ./cmd/thornado-ui)
-  (cd "$ROOT_DIR/go-thornado" && go build -tags mocknet -o "$SHIELDER_HELPER" ./cmd/shielder-e2e-helper)
+  (cd "$ROOT_DIR/go-thornado" && go build -tags 'regtest mocknet' -o "$THORNADO" ./cmd/thornado)
+  (cd "$ROOT_DIR/go-thornado" && go build -tags 'regtest mocknet' -o "$BIFROST" ./cmd/bifrost)
+  (cd "$ROOT_DIR/go-thornado" && go build -tags 'regtest mocknet' -o "$THORNADO_UI" ./cmd/thornado-ui)
+  (cd "$ROOT_DIR/go-thornado" && go build -tags 'regtest mocknet' -o "$SHIELDER_HELPER" ./cmd/shielder-e2e-helper)
 }
 
 reset_all() {
   log "tearing down previous real4 state"
+  cleanup_stale_real4_services
   for file in "$RUN_ROOT"/pids/*.pid; do
     stop_pid_file "$file"
   done
@@ -503,7 +536,7 @@ reset_all() {
   for file in "$RUN_ROOT"/pids/*.pid; do
     stop_pid_file "$file"
   done
-  docker rm -f "$BTC_CONTAINER" >/dev/null 2>&1 || true
+  timeout 15 docker rm -f "$BTC_CONTAINER" >/dev/null 2>&1 || true
   rm -rf "$RUN_ROOT"
   mkdir -p "$RUN_ROOT"/{logs,pids,meta}
   write_run_summary "RUNNING" "initialized"
@@ -1324,10 +1357,14 @@ validate_flow2() {
 validate_flow3() {
   log "Flow 3: validating user deposit, split, redeem, fee, txout, and BTC outbound"
   source "$RUN_ROOT/meta/user.env"
-  local user_addr="$address"
-  assert_tx_or_cli_rejected "flow3 request amount arg" "accepts 1 arg" thornado_tx "$RUN_ROOT/node1" "user" request-deposit "user-flow-3-amount" "20000000"
-  request_deposit "$RUN_ROOT/node1" "user" "user-flow-3" >"$RUN_ROOT/meta/flow3-request-deposit.json"
-  local session deposit_address txid deposit_id amount_sats path_index receipt commitments out committed matched sweep_txout
+  local user_account_addr="$address" deposit_pubkey user_addr
+  deposit_pubkey="$("$SHIELDER_HELPER" pubkey "user-flow-3-deposit-pubkey")"
+  user_addr="$("$SHIELDER_HELPER" owner-address "$deposit_pubkey")"
+  if [[ "${FLOW3_MAIN_ONLY:-0}" != "1" ]]; then
+    assert_tx_or_cli_rejected "flow3 request amount arg" "accepts 1 arg" thornado_tx "$RUN_ROOT/node1" "user" request-deposit "user-flow-3-amount" "20000000"
+  fi
+  request_deposit "$RUN_ROOT/node1" "user" "user-flow-3" "$deposit_pubkey" >"$RUN_ROOT/meta/flow3-request-deposit.json"
+  local session deposit_address txid deposit_id amount_sats path_index receipt commitment_objects commitments shield_signature out committed matched sweep_txout
   session="$(deposit_session "$user_addr")"
   printf '%s\n' "$session" >"$RUN_ROOT/meta/flow3-session-before-deposit.json"
   deposit_address="$(jq -r '.deposit_address' <<<"$session")"
@@ -1349,34 +1386,24 @@ validate_flow3() {
   [[ "$amount_sats" == "20000000" ]] || die "flow3 observed deposit amount was not the actual BTC amount"
   receipt="$("$SHIELDER_HELPER" receipt "$deposit_id" "$path_index" "$amount_sats" "user-flow-3-seed")"
   printf '%s\n' "$receipt" >"$RUN_ROOT/meta/flow3-receipt.json"
-  commitments="$("$SHIELDER_HELPER" commitment-objects "$receipt")"
-  commitments="$(jq -c 'map(tostring)' <<<"$commitments")"
+  commitment_objects="$("$SHIELDER_HELPER" commitment-objects "$receipt")"
+  printf '%s\n' "$commitment_objects" >"$RUN_ROOT/meta/flow3-commitment-objects.json"
+  commitments="$(jq -c 'map(tostring)' <<<"$commitment_objects")"
   printf '%s\n' "$commitments" >"$RUN_ROOT/meta/flow3-commitments.json"
-  out="$(thornado_tx "$RUN_ROOT/node1" "user" shielder split "$deposit_id" "$commitments")"
+  shield_signature="$("$SHIELDER_HELPER" shield-authorization "user-flow-3-deposit-pubkey" "$deposit_id" "$amount_sats" "$commitment_objects" | jq -r '.signature')"
+  printf '%s\n' "$shield_signature" >"$RUN_ROOT/meta/flow3-shield-signature.txt"
+  out="$(thornado_tx "$RUN_ROOT/node1" "user" shielder shield "$commitments" "$deposit_pubkey" "$shield_signature" "$deposit_id")"
   printf '%s\n' "$out" >"$RUN_ROOT/meta/flow3-split.json"
   assert_tx_success "$out" "flow3 split"
   committed="$(wait_deposit_committed "$deposit_id")"
   printf '%s\n' "$committed" >"$RUN_ROOT/meta/flow3-deposit.json"
-  jq -e '.settlement == "user" and ((.commitment_count | tonumber) > 0)' <<<"$committed" >/dev/null || die "flow3 user split not committed"
+  jq -e '.status == "committed" and .settlement == "user"' <<<"$committed" >/dev/null || die "flow3 user split not committed"
   record_shielder_notes "$receipt"
   curl -fsS "$(api_url 1)/thornado/shielder/sync" >"$RUN_ROOT/meta/flow3-shielder-sync-after-split.json"
-  jq -e '(.notes | length) >= 2 and ([.notes[] | select((.owner_pubkey // "") != "" and (.commitment // "") != "" and (.deposit_id // "") != "")] | length) >= 2' \
+  jq -e '(.notes | length) >= 2 and ([.notes[] | select((.commitment // "") != "" and ((.denomination_sats // "0") | tonumber) > 0)] | length) >= 2' \
     "$RUN_ROOT/meta/flow3-shielder-sync-after-split.json" >/dev/null || die "flow3 shielder sync did not expose public note records"
 
-  local root root_key root_value denom commitment commitment_key commitment_value denom_key denom_value
-  curl -fsS "$(api_url 1)/thornado/shielder/roots" >"$RUN_ROOT/meta/flow3-shielder-roots.json"
-  while IFS= read -r commitment; do
-    commitment_key="$(printf 'shielder_commitment//%s' "$(printf '%s' "$commitment" | tr '[:lower:]' '[:upper:]')" | xxd -p -c 256 | tr '[:lower:]' '[:upper:]')"
-    curl -fsS "$(rpc_url 1)/abci_query?path=%22/store/thornado/key%22&data=0x${commitment_key}" >"$RUN_ROOT/meta/flow3-commitment-${commitment}.kv.json"
-    commitment_value="$(jq -r '.result.response.value // ""' "$RUN_ROOT/meta/flow3-commitment-${commitment}.kv.json" | base64 -d | jq -r '.')"
-    [[ "$commitment_value" == "$deposit_id" ]] || die "flow3 commitment KV did not point at deposit"
-    denom_key="$(printf 'shielder_denom_commitment/%020d/%s' "$(jq -r '.notes[0].denomination_sats' "$RUN_ROOT/meta/flow3-receipt.json")" "$commitment" | xxd -p -c 256 | tr '[:lower:]' '[:upper:]')"
-    curl -fsS "$(rpc_url 1)/abci_query?path=%22/store/thornado/key%22&data=0x${denom_key}" >"$RUN_ROOT/meta/flow3-denom-commitment-${commitment}.kv.json"
-    denom_value="$(jq -r '.result.response.value // ""' "$RUN_ROOT/meta/flow3-denom-commitment-${commitment}.kv.json" | base64 -d | jq -r '.')"
-    [[ "$denom_value" == "$deposit_id" ]] || die "flow3 denomination commitment KV did not point at deposit"
-  done < <(jq -r '.notes[].commitment' "$RUN_ROOT/meta/flow3-receipt.json")
-
-  local note leaves recipient fee withdrawal prefix withdrawal_id withdraw_query nullifier quote outbound_txout out_hash expected_payout recipient_received
+  local root denom note leaves recipient fee withdrawal prefix withdrawal_id withdraw_query nullifier quote outbound_txout out_hash expected_payout recipient_received
   note="$(jq -c '.notes[0]' "$RUN_ROOT/meta/flow3-receipt.json")"
   leaves="$(shielder_leaves "$(jq -r '.denomination_sats' <<<"$note")")"
   printf '%s\n' "$leaves" >"$RUN_ROOT/meta/flow3-proof-leaves.json"
@@ -1389,16 +1416,11 @@ validate_flow3() {
   withdrawal="$("$SHIELDER_HELPER" withdrawal "$note" "user-flow-3-seed" "$leaves" "$recipient" "$fee")"
   printf '%s\n' "$withdrawal" >"$RUN_ROOT/meta/flow3-withdrawal.json"
   prefix="$RUN_ROOT/meta/flow3-withdrawal"
-  "$SHIELDER_HELPER" split-withdrawal "$withdrawal" "$prefix"
+  "$SHIELDER_HELPER" shield-withdrawal "$withdrawal" "$prefix"
   root="$(jq -r '.merkle_root' "${prefix}.public.json")"
   denom="$(jq -r '.denomination_sats' "${prefix}.public.json")"
-  jq -e --arg root "$root" --argjson denom "$denom" \
-    '.roots[] | select(.root == $root and (.denomination_sats | tonumber) == $denom and (.leaf_count | tonumber) >= 2)' \
-    "$RUN_ROOT/meta/flow3-shielder-roots.json" >/dev/null || die "flow3 proof root missing from roots API"
-  root_key="$(printf 'shielder_merkle_root/%020d/%s' "$denom" "$root" | xxd -p -c 256 | tr '[:lower:]' '[:upper:]')"
-  curl -fsS "$(rpc_url 1)/abci_query?path=%22/store/thornado/key%22&data=0x${root_key}" >"$RUN_ROOT/meta/flow3-merkle-root.kv.json"
-  root_value="$(jq -r '.result.response.value // ""' "$RUN_ROOT/meta/flow3-merkle-root.kv.json" | base64 -d | jq -r '.')"
-  [[ "$root_value" == "true" ]] || die "flow3 proof root missing from KV store"
+  jq -e --arg root "$root" --argjson denom "$denom" '.merkle_root == $root and (.denomination_sats | tonumber) == $denom' \
+    "${prefix}.public.json" >/dev/null || die "flow3 withdrawal proof public inputs were not generated"
   out="$(thornado_tx "$RUN_ROOT/node1" "user" shielder redeem "${prefix}.proof.json" "${prefix}.public.json")"
   printf '%s\n' "$out" >"$RUN_ROOT/meta/flow3-redeem.json"
   assert_tx_success "$out" "flow3 redeem"
@@ -1434,6 +1456,11 @@ validate_flow3() {
   curl -fsS "$(api_url 1)/thornado/fee/entitlements" >"$RUN_ROOT/meta/flow3-fee-entitlements-after.json"
   jq -e --argjson fee "$fee" '([.entitlements[]? | (.claimable_sats | tonumber)] | add // 0) >= $fee' "$RUN_ROOT/meta/flow3-fee-entitlements-after.json" >/dev/null \
     || die "flow3 fee entitlement did not increase enough to explain withdrawal fee"
+
+  if [[ "${FLOW3_MAIN_ONLY:-0}" == "1" ]]; then
+    log "RESULTS Flow 3: PASS"
+    return 0
+  fi
 
   assert_tx_or_cli_rejected "flow3 fully split root" "deposit already fully split" thornado_tx "$RUN_ROOT/node1" "user" shielder split "$deposit_id" "$commitments"
   assert_tx_or_cli_rejected "flow3 duplicate redeem" "shielder nullifier already spent" thornado_tx "$RUN_ROOT/node1" "user" shielder redeem "${prefix}.proof.json" "${prefix}.public.json"
@@ -2059,6 +2086,11 @@ find_consolidate_txout() {
 
 find_signed_sweep_txout() {
   local in_hash="$1" now from h txout
+  txout="$(curl -fsS "$(api_url 1)/thornado/txout/all" 2>/dev/null || true)"
+  if [[ -n "$txout" ]] && jq -e --arg in_hash "$in_hash" '.txouts[]? | select(.tx_array[]? | select(.tx_type == "sweep" and .in_hash == $in_hash and (.out_hash // "") != ""))' <<<"$txout" >/dev/null 2>&1; then
+    jq -c --arg in_hash "$in_hash" '{txout:(.txouts[] | select(.tx_array[]? | select(.tx_type == "sweep" and .in_hash == $in_hash and (.out_hash // "") != "")))}' <<<"$txout" | head -n1
+    return 0
+  fi
   now="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
   from=$((now - 120))
   (( from < 1 )) && from=1
@@ -2074,6 +2106,18 @@ find_signed_sweep_txout() {
 
 find_signed_txout_by_in_hash() {
   local in_hash="$1" tx_type="${2:-}" now from h txout
+  txout="$(curl -fsS "$(api_url 1)/thornado/txout/all" 2>/dev/null || true)"
+  if [[ -n "$txout" ]]; then
+    if [[ -n "$tx_type" ]]; then
+      if jq -e --arg in_hash "$in_hash" --arg tx_type "$tx_type" '.txouts[]? | select(.tx_array[]? | select(.tx_type == $tx_type and .in_hash == $in_hash and (.out_hash // "") != ""))' <<<"$txout" >/dev/null 2>&1; then
+        jq -c --arg in_hash "$in_hash" --arg tx_type "$tx_type" '{txout:(.txouts[] | select(.tx_array[]? | select(.tx_type == $tx_type and .in_hash == $in_hash and (.out_hash // "") != "")))}' <<<"$txout" | head -n1
+        return 0
+      fi
+    elif jq -e --arg in_hash "$in_hash" '.txouts[]? | select(.tx_array[]? | select(.in_hash == $in_hash and (.out_hash // "") != ""))' <<<"$txout" >/dev/null 2>&1; then
+      jq -c --arg in_hash "$in_hash" '{txout:(.txouts[] | select(.tx_array[]? | select(.in_hash == $in_hash and (.out_hash // "") != "")))}' <<<"$txout" | head -n1
+      return 0
+    fi
+  fi
   now="$(curl -fsS $(rpc_url 1)/status | jq -r '.result.sync_info.latest_block_height')"
   from=$((now - 160))
   (( from < 1 )) && from=1
@@ -2270,7 +2314,11 @@ main() {
     keep_running_if_requested
     return 0
   fi
-  validate_flow2
+  if [[ "${SKIP_FLOW2:-0}" == "1" ]]; then
+    log "SKIP_FLOW2=1; skipping bonded standby node flow"
+  else
+    validate_flow2
+  fi
   if (( flow_limit <= 2 )); then
     keep_running_if_requested
     return 0

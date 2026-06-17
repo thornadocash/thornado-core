@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -155,7 +156,7 @@ func NewObserver(pubkeyMgr *pubkeymanager.PubKeyManager,
 		wg:                    &sync.WaitGroup{},
 		onDeck:                make(map[txInKey]*types.TxIn),
 		globalTxsQueue:        make(chan types.TxIn),
-		globalErrataQueue:     make(chan types.ErrataBlock),
+		globalErrataQueue:     make(chan types.ErrataBlock, 128),
 		globalSolvencyQueue:   make(chan types.Solvency),
 		globalNetworkFeeQueue: make(chan common.NetworkFee),
 		errCounter:            m.GetCounterVec(metrics.ObserverError),
@@ -189,7 +190,60 @@ func (o *Observer) Start(ctx context.Context) error {
 	go o.processNetworkFeeQueue(ctx)
 	go o.deck(ctx)
 	go o.attestationGossip.Start(ctx)
+	go o.processManualObservations(ctx)
 	return nil
+}
+
+func (o *Observer) processManualObservations(ctx context.Context) {
+	cfg := config.GetBifrost().ManualObserve
+	if !cfg.Enabled || len(cfg.TxIDs) == 0 {
+		return
+	}
+	interval := cfg.Interval
+	if interval <= 0 {
+		interval = time.Second
+	}
+
+	seen := make(map[string]struct{}, len(cfg.TxIDs))
+	for _, raw := range cfg.TxIDs {
+		txid := strings.TrimSpace(raw)
+		if txid == "" {
+			continue
+		}
+		if _, ok := seen[txid]; ok {
+			continue
+		}
+		seen[txid] = struct{}{}
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-o.stopChan:
+			return
+		default:
+		}
+
+		chain, err := o.getChain(common.BTCChain)
+		if err != nil {
+			o.logger.Error().Err(err).Str("txid", txid).Msg("manual observe failed to get chain")
+			continue
+		}
+		txIn, err := chain.ObserveTxIn(txid)
+		if err != nil {
+			o.logger.Error().Err(err).Str("txid", txid).Msg("manual observe failed")
+			continue
+		}
+		o.logger.Info().Str("txid", txid).Bool("mempool", txIn.MemPool).Msg("manual observe queued")
+		o.globalTxsQueue <- txIn
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-o.stopChan:
+			return
+		case <-time.After(interval):
+		}
+	}
 }
 
 // ObserveSigned is called when a tx is signed by the signer and returns an observation that should be immediately submitted.
@@ -852,7 +906,7 @@ func (o *Observer) getThornadoTxIns(txIn *types.TxIn, finalized bool, finaliseHe
 			continue
 		}
 		height := item.BlockHeight
-		if txIn.MemPool && !finalized {
+		if txIn.MemPool && !finalized && !txIn.AllowFutureObservation {
 			height = 0
 		} else if finalized {
 			height = finaliseHeight

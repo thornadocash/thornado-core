@@ -138,9 +138,8 @@ func (b *ThornadoBlockScan) processTxOutBlock(blockHeight int64) error {
 		tx, err := b.thornado.GetKeysign(blockHeight, pk.String())
 		if err != nil {
 			if errors.Is(err, btypes.ErrUnavailableBlock) {
-				// custom error (to be dropped and not logged) because the block is
-				// available yet
-				return btypes.ErrUnavailableBlock
+				b.logger.Debug().Int64("block", blockHeight).Stringer("pubkey", pk).Msg("skipping unavailable txout block")
+				continue
 			}
 			return fmt.Errorf("fail to get keysign from block scanner: %w", err)
 		}
@@ -149,6 +148,24 @@ func (b *ThornadoBlockScan) processTxOutBlock(blockHeight int64) error {
 			b.logger.Debug().Int64("block", blockHeight).Msg("nothing to process")
 			continue
 		}
+		b.txOutChan <- tx
+	}
+	pendingTxOuts, err := b.thornado.GetPendingTxOutKeysigns()
+	if err != nil {
+		return fmt.Errorf("fail to get pending keysigns from txout queue: %w", err)
+	}
+	for _, tx := range pendingTxOuts {
+		if len(tx.TxArray) == 0 {
+			continue
+		}
+		if tx.Height == blockHeight {
+			continue
+		}
+		b.logger.Debug().
+			Int64("scanner_block", blockHeight).
+			Int64("txout_height", tx.Height).
+			Int("txout_count", len(tx.TxArray)).
+			Msg("discovered pending txout from queue")
 		b.txOutChan <- tx
 	}
 	return nil

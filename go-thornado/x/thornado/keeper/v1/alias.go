@@ -40,6 +40,7 @@ const (
 	TxOutStatusPendingBatch = types.TxOutStatusPendingBatch
 	TxOutStatusPendingSign  = types.TxOutStatusPendingSign
 	TxOutStatusPendingRetry = types.TxOutStatusPendingRetry
+	TxOutStatusComplete     = types.TxOutStatusComplete
 )
 
 var (

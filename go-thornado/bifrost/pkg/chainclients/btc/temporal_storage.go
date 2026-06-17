@@ -285,6 +285,12 @@ func (t *TemporalStorage) TrackObservedTx(txid string) (bool, error) {
 	return added, err
 }
 
+// HasObservedTx returns true when the txid is currently tracked as observed.
+func (t *TemporalStorage) HasObservedTx(txid string) (bool, error) {
+	key := t.getObservedTxKey(txid)
+	return t.db.Has([]byte(key), nil)
+}
+
 // TrackObservedTxStage tracks the observed stage for a txid. It allows one
 // transition from mempool to final so pre-confirmation observation does not
 // suppress the mined observation.

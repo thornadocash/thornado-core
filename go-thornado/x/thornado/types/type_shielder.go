@@ -13,9 +13,11 @@ const (
 	DepositStatusDepositObserved = "deposit_observed"
 	DepositStatusDepositMatched  = "deposit_matched"
 	DepositStatusReturnQueued    = "return_queued"
+	DepositStatusReturnComplete  = "return_complete"
 	DepositStatusSettled         = "settled"
 	DepositStatusCommitted       = "committed"
 	DepositStatusKeysignQueued   = "keysign_queued"
+	DepositStatusErrata          = "errata"
 )
 
 const (

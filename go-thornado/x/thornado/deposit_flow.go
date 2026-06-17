@@ -256,7 +256,7 @@ func depositConfirmationProgress(finalised bool, blockHeight, required int64) in
 func ProcessExpiredDepositAddressReturns(ctx cosmos.Context, mgr Manager) error {
 	k := mgr.Keeper()
 	iter := k.GetDepositRecordIterator(ctx)
-	defer iter.Close()
+	deposits := make([]types.DepositRecord, 0)
 
 	for ; iter.Valid(); iter.Next() {
 		var deposit types.DepositRecord
@@ -264,8 +264,44 @@ func ProcessExpiredDepositAddressReturns(ctx cosmos.Context, mgr Manager) error 
 			ctx.Logger().Error("fail to unmarshal deposit record", "error", err)
 			continue
 		}
+		deposits = append(deposits, deposit)
+	}
+	if err := iter.Error(); shouldLogIteratorError(err) {
+		ctx.Logger().Error("deposit record iterator ended with error", "error", err)
+	}
+	if err := iter.Close(); shouldLogIteratorError(err) {
+		ctx.Logger().Error("fail to close deposit record iterator", "error", err)
+	}
+
+	expiredDeposits := make([]types.DepositRecord, 0)
+
+	for _, deposit := range deposits {
+		if deposit.Status == types.DepositStatusErrata {
+			if err := purgeTxOutItemsForDeposit(ctx, k, deposit.DepositID, types.TxOutTypeSweep, types.TxOutTypeRefund); err != nil {
+				ctx.Logger().Error("fail to purge errata deposit txout items", "error", err, "deposit_id", deposit.DepositID)
+			}
+			continue
+		}
+		if deposit.Status == types.DepositStatusReturnQueued && !depositSweepCompleted(ctx, k, deposit) {
+			if _, err := purgeRefundTxOutItemAtHeight(ctx, k, deposit.RefundQueuedHeight, deposit.DepositID); err != nil {
+				ctx.Logger().Error("fail to purge premature deposit refund txout", "error", err, "deposit_id", deposit.DepositID.String())
+				continue
+			}
+			deposit.Status = types.DepositStatusDepositMatched
+			deposit.RefundQueuedHeight = 0
+			if err := k.SetDepositRecord(ctx, deposit); err != nil {
+				ctx.Logger().Error("fail to reset premature deposit refund", "error", err, "deposit_id", deposit.DepositID.String())
+			}
+		}
 		if deposit.Status != types.DepositStatusDepositMatched {
 			continue
+		}
+		if !depositSweepCompleted(ctx, k, deposit) {
+			if purged, err := purgeLegacyRefundTxOutForDeposit(ctx, k, deposit); err != nil {
+				ctx.Logger().Debug("legacy premature refund cleanup did not complete", "error", err, "deposit_id", deposit.DepositID.String())
+			} else if purged {
+				ctx.Logger().Info("purged legacy premature deposit refund txout", "deposit_id", deposit.DepositID.String())
+			}
 		}
 		if deposit.Settlement != "" {
 			continue
@@ -273,6 +309,17 @@ func ProcessExpiredDepositAddressReturns(ctx cosmos.Context, mgr Manager) error 
 		if deposit.RefundEligibleHeight <= 0 || deposit.RefundEligibleHeight > ctx.BlockHeight() {
 			continue
 		}
+		if !depositSweepCompleted(ctx, k, deposit) {
+			ctx.Logger().Info("expired deposit refund waiting for completed sweep",
+				"deposit_id", deposit.DepositID.String(),
+				"path_index", deposit.DepositPathIndex,
+			)
+			continue
+		}
+		expiredDeposits = append(expiredDeposits, deposit)
+	}
+
+	for _, deposit := range expiredDeposits {
 		if err := queueExpiredDepositReturn(ctx, mgr, deposit); err != nil {
 			ctx.Logger().Error("fail to return expired deposit", "error", err, "deposit_id", deposit.DepositID.String())
 			continue
@@ -283,10 +330,41 @@ func ProcessExpiredDepositAddressReturns(ctx cosmos.Context, mgr Manager) error 
 			ctx.Logger().Error("fail to mark expired deposit return queued", "error", err, "deposit_id", deposit.DepositID.String())
 		}
 	}
-	if err := iter.Error(); err != nil {
-		return err
+	return nil
+}
+
+func depositSweepCompleted(ctx cosmos.Context, k keeper.Keeper, deposit types.DepositRecord) bool {
+	if deposit.DepositID.IsEmpty() {
+		return false
 	}
-	return purgeExpiredDepositAddresses(ctx, mgr)
+	if deposit.DepositPathIndex == common.MainVaultPathIndex {
+		return true
+	}
+	if deposit.MatchedHeight <= 0 {
+		return false
+	}
+	txOut, err := k.GetTxOut(ctx, deposit.MatchedHeight)
+	if err != nil {
+		ctx.Logger().Debug("unable to get deposit sweep txout", "error", err, "height", deposit.MatchedHeight, "deposit_id", deposit.DepositID.String())
+		return false
+	}
+	return txOutHasCompletedDepositSweep(txOut, deposit)
+}
+
+func txOutHasCompletedDepositSweep(txOut *TxOut, deposit types.DepositRecord) bool {
+	if txOut == nil {
+		return false
+	}
+	for _, item := range txOut.TxArray {
+		if item.InHash.Equals(deposit.DepositID) &&
+			item.GetTxType() == types.TxOutTypeSweep &&
+			item.VaultPubKey.Equals(deposit.VaultPubKey) &&
+			item.VaultPathIndex == deposit.DepositPathIndex &&
+			!item.OutHash.IsEmpty() {
+			return true
+		}
+	}
+	return false
 }
 
 func queueExpiredDepositReturn(ctx cosmos.Context, mgr Manager, deposit types.DepositRecord) error {
@@ -295,6 +373,10 @@ func queueExpiredDepositReturn(ctx cosmos.Context, mgr Manager, deposit types.De
 	}
 	if deposit.ReturnAddress.IsEmpty() {
 		return fmt.Errorf("missing deposit return address")
+	}
+	vault, _, err := currentBTCVaultAddress(ctx, mgr.Keeper())
+	if err != nil {
+		return fmt.Errorf("fail to get base vault for deposit return: %w", err)
 	}
 	feeSats := withdrawalFeeSats(ctx, mgr.Keeper(), deposit.AmountSats)
 	if feeSats >= deposit.AmountSats {
@@ -309,23 +391,20 @@ func queueExpiredDepositReturn(ctx cosmos.Context, mgr Manager, deposit types.De
 		return nil
 	}
 	amount := cosmos.NewUint(deposit.AmountSats - feeSats)
-	maxGasCoin, err := mgr.GasMgr().GetMaxGas(ctx, common.BTCChain)
-	if err != nil {
-		return fmt.Errorf("fail to get bitcoin return max gas: %w", err)
-	}
 	gasRate := mgr.Keeper().GetConfigInt64(ctx, constants.BTC_DefaultSatsPerVByte)
 	if nf, err := mgr.Keeper().GetNetworkFee(ctx, common.BTCChain); err == nil && nf.TransactionFeeRate > 0 {
 		gasRate = int64(nf.TransactionFeeRate)
 	}
 	item := TxOutItem{
-		Chain:      common.BTCChain,
-		ToAddress:  deposit.ReturnAddress,
-		Coin:       common.NewCoin(common.BTCAsset, amount),
-		MaxGas:     common.Gas{maxGasCoin},
-		GasRate:    gasRate,
-		InHash:     deposit.DepositID,
-		ModuleName: BaseName,
-		TxType:     types.TxOutTypeRefund,
+		Chain:          common.BTCChain,
+		ToAddress:      deposit.ReturnAddress,
+		VaultPubKey:    vault.PubKey,
+		VaultPathIndex: common.MainVaultPathIndex,
+		Coin:           common.NewCoin(common.BTCAsset, amount),
+		GasRate:        gasRate,
+		InHash:         deposit.DepositID,
+		ModuleName:     BaseName,
+		TxType:         types.TxOutTypeRefund,
 	}
 	ctx.Logger().Info("queued expired deposit return",
 		"deposit_id", deposit.DepositID.String(),
@@ -333,14 +412,80 @@ func queueExpiredDepositReturn(ctx cosmos.Context, mgr Manager, deposit types.De
 		"amount", amount.String(),
 		"fee", feeSats,
 	)
-	ok, err := mgr.TxOutStore().TryAddTxOutItem(ctx, mgr, item, cosmos.ZeroUint())
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return fmt.Errorf("deposit return was not queued")
+	if err := mgr.Keeper().AppendTxOut(ctx, ctx.BlockHeight(), item); err != nil {
+		return fmt.Errorf("fail to queue deposit return txout: %w", err)
 	}
 	return addWithdrawalFee(ctx, mgr.Keeper(), feeSats)
+}
+
+func purgeRefundTxOutItemAtHeight(ctx cosmos.Context, k keeper.Keeper, height int64, depositID common.TxID) (bool, error) {
+	if height <= 0 || depositID.IsEmpty() {
+		return false, nil
+	}
+	var lastErr error
+	for h := height - 100; h <= height+100; h++ {
+		if h <= 0 {
+			continue
+		}
+		changed, err := purgeRefundTxOutItemExactHeight(ctx, k, h, depositID)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if changed {
+			return true, nil
+		}
+	}
+	return false, lastErr
+}
+
+func purgeRefundTxOutItemExactHeight(ctx cosmos.Context, k keeper.Keeper, height int64, depositID common.TxID) (bool, error) {
+	txOut, err := k.GetTxOut(ctx, height)
+	if err != nil {
+		return false, err
+	}
+	filtered := txOut.TxArray[:0]
+	changed := false
+	for _, item := range txOut.TxArray {
+		if item.InHash.Equals(depositID) && item.GetTxType() == types.TxOutTypeRefund {
+			changed = true
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	if !changed {
+		return false, nil
+	}
+	txOut.TxArray = filtered
+	if len(txOut.TxArray) == 0 {
+		return true, k.ClearTxOut(ctx, height)
+	}
+	return true, k.SetTxOut(ctx, txOut)
+}
+
+func purgeLegacyRefundTxOutForDeposit(ctx cosmos.Context, k keeper.Keeper, deposit types.DepositRecord) (bool, error) {
+	if deposit.DepositID.IsEmpty() {
+		return false, nil
+	}
+	start := deposit.RefundEligibleHeight - 200
+	if start < deposit.MatchedHeight {
+		start = deposit.MatchedHeight
+	}
+	if start < 1 {
+		start = 1
+	}
+	var lastErr error
+	for height := start; height <= ctx.BlockHeight(); height++ {
+		changed, err := purgeRefundTxOutItemExactHeight(ctx, k, height, deposit.DepositID)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if changed {
+			return true, nil
+		}
+	}
+	return false, lastErr
 }
 
 func nextDepositAddressExpiryHeight(ctx cosmos.Context, k keeper.Keeper) int64 {
@@ -390,7 +535,7 @@ func nextChurnHeightAfter(ctx cosmos.Context, k keeper.Keeper, height int64) int
 func purgeExpiredDepositAddresses(ctx cosmos.Context, mgr Manager) error {
 	k := mgr.Keeper()
 	iter := k.GetDepositAddressIterator(ctx)
-	defer iter.Close()
+	expired := make([]types.DepositAddress, 0)
 
 	for ; iter.Valid(); iter.Next() {
 		var mapping types.DepositAddress
@@ -401,6 +546,16 @@ func purgeExpiredDepositAddresses(ctx cosmos.Context, mgr Manager) error {
 		if mapping.PurgeAtHeight <= 0 || mapping.PurgeAtHeight > ctx.BlockHeight() {
 			continue
 		}
+		expired = append(expired, mapping)
+	}
+	if err := iter.Error(); shouldLogIteratorError(err) {
+		ctx.Logger().Error("deposit address iterator ended with error", "error", err)
+	}
+	if err := iter.Close(); shouldLogIteratorError(err) {
+		ctx.Logger().Error("fail to close deposit address iterator", "error", err)
+	}
+
+	for _, mapping := range expired {
 		if err := k.DeleteDepositAddress(ctx, mapping.Address); err != nil {
 			ctx.Logger().Error("fail to purge deposit address", "error", err, "address", mapping.Address.String())
 		}
@@ -408,12 +563,12 @@ func purgeExpiredDepositAddresses(ctx cosmos.Context, mgr Manager) error {
 			ctx.Logger().Error("fail to purge stale deposit refund txout", "error", err, "address", mapping.Address.String())
 		}
 	}
-	return iter.Error()
+	return nil
 }
 
 func purgeRefundTxOutItemsForAddress(ctx cosmos.Context, k keeper.Keeper, address common.Address) error {
 	iter := k.GetDepositRecordIterator(ctx)
-	defer iter.Close()
+	depositIDs := make([]common.TxID, 0)
 
 	for ; iter.Valid(); iter.Next() {
 		var deposit types.DepositRecord
@@ -424,29 +579,50 @@ func purgeRefundTxOutItemsForAddress(ctx cosmos.Context, k keeper.Keeper, addres
 		if deposit.DepositID.IsEmpty() || !deposit.DepositAddress.Equals(address) {
 			continue
 		}
-		if err := purgeRefundTxOutItems(ctx, k, deposit.DepositID); err != nil {
+		depositIDs = append(depositIDs, deposit.DepositID)
+	}
+	if err := iter.Error(); shouldLogIteratorError(err) {
+		ctx.Logger().Error("deposit record iterator ended with error", "error", err)
+	}
+	if err := iter.Close(); shouldLogIteratorError(err) {
+		ctx.Logger().Error("fail to close deposit record iterator", "error", err)
+	}
+
+	for _, depositID := range depositIDs {
+		if err := purgeRefundTxOutItems(ctx, k, depositID); err != nil {
 			return err
 		}
 	}
-	return iter.Error()
+	return nil
 }
 
 func purgeRefundTxOutItems(ctx cosmos.Context, k keeper.Keeper, depositID common.TxID) error {
+	return purgeTxOutItemsForDeposit(ctx, k, depositID, types.TxOutTypeRefund)
+}
+
+func purgeTxOutItemsForDeposit(ctx cosmos.Context, k keeper.Keeper, depositID common.TxID, txTypes ...string) error {
+	typeSet := make(map[string]struct{}, len(txTypes))
+	for _, txType := range txTypes {
+		typeSet[txType] = struct{}{}
+	}
 	iter := k.GetTxOutIterator(ctx)
-	defer iter.Close()
+	updates := make([]TxOut, 0)
+	clears := make([]int64, 0)
 
 	for ; iter.Valid(); iter.Next() {
 		var txOut TxOut
-		if err := json.Unmarshal(iter.Value(), &txOut); err != nil {
+		if err := k.Cdc().Unmarshal(iter.Value(), &txOut); err != nil {
 			ctx.Logger().Error("fail to unmarshal txout", "error", err)
 			continue
 		}
 		filtered := txOut.TxArray[:0]
 		changed := false
 		for _, item := range txOut.TxArray {
-			if item.InHash.Equals(depositID) && item.GetTxType() == types.TxOutTypeRefund {
-				changed = true
-				continue
+			if item.InHash.Equals(depositID) {
+				if _, ok := typeSet[item.GetTxType()]; ok {
+					changed = true
+					continue
+				}
 			}
 			filtered = append(filtered, item)
 		}
@@ -455,14 +631,27 @@ func purgeRefundTxOutItems(ctx cosmos.Context, k keeper.Keeper, depositID common
 		}
 		txOut.TxArray = filtered
 		if len(txOut.TxArray) == 0 {
-			if err := k.ClearTxOut(ctx, txOut.Height); err != nil {
-				return err
-			}
+			clears = append(clears, txOut.Height)
 			continue
 		}
+		updates = append(updates, txOut)
+	}
+	if err := iter.Error(); shouldLogIteratorError(err) {
+		ctx.Logger().Error("txout iterator ended with error", "error", err)
+	}
+	if err := iter.Close(); shouldLogIteratorError(err) {
+		ctx.Logger().Error("fail to close txout iterator", "error", err)
+	}
+
+	for _, height := range clears {
+		if err := k.ClearTxOut(ctx, height); err != nil {
+			return err
+		}
+	}
+	for _, txOut := range updates {
 		if err := k.SetTxOut(ctx, &txOut); err != nil {
 			return err
 		}
 	}
-	return iter.Error()
+	return nil
 }

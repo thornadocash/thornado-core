@@ -936,6 +936,9 @@ func AuthorizeShielderRedeem(ctx cosmos.Context, k keeper.Keeper, req ShielderRe
 	if err := validateShielderRedeemPolicy(ctx, k, policy, publicInputs); err != nil {
 		return types.ShielderRedeem{}, err
 	}
+	if err := validateShielderRedeemProtocolFee(ctx, k, policy, publicInputs); err != nil {
+		return types.ShielderRedeem{}, err
+	}
 	if err := RejectLeakyShielderRedeemProof(ctx, k, req.Proof); err != nil {
 		return types.ShielderRedeem{}, err
 	}
@@ -1197,12 +1200,23 @@ func validateShielderRedeemPolicy(ctx cosmos.Context, k keeper.Keeper, policy st
 	return nil
 }
 
-func withdrawalFeeSats(ctx cosmos.Context, k keeper.Keeper, amountSats uint64) uint64 {
-	fee := withdrawalFeeSatsForBp(amountSats, withdrawalFeeBp(ctx, k))
-	if minFee := uint64(k.GetConfigInt64(ctx, constants.Withdrawal_FeeMinSats)); fee < minFee {
-		return minFee
+func validateShielderRedeemProtocolFee(ctx cosmos.Context, k keeper.Keeper, policy string, publicInputs shielderRedeemPublicInputs) error {
+	switch policy {
+	case types.ShielderRedeemPolicyUserBTC:
+		expected := withdrawalFeeSats(ctx, k, publicInputs.DenominationSats)
+		if publicInputs.FeeSats != expected {
+			return fmt.Errorf("invalid withdrawal fee authorization: %d/%d", publicInputs.FeeSats, expected)
+		}
+	case types.ShielderRedeemPolicyBondEscrow, types.ShielderRedeemPolicyBidDeposit:
+		if publicInputs.FeeSats != 0 {
+			return fmt.Errorf("%s redeems must not pay withdrawal fee", policy)
+		}
 	}
-	return fee
+	return nil
+}
+
+func withdrawalFeeSats(ctx cosmos.Context, k keeper.Keeper, amountSats uint64) uint64 {
+	return withdrawalFeeSatsForBp(amountSats, withdrawalFeeBp(ctx, k))
 }
 
 func withdrawalFeeSatsForBp(amountSats, feeBp uint64) uint64 {

@@ -89,7 +89,6 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 		redeemTx, checkpoint.IndividualAmounts, err = c.buildTx(tx, sourceScript)
 		if err != nil {
 			if tx.TxType == "sweep" &&
-				thornadoHeight > tx.Height+10 &&
 				strings.Contains(err.Error(), "insufficient available UTXOs") {
 				c.log.Warn().
 					Stringer("in_hash", tx.InHash).
@@ -97,8 +96,12 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 					Int64("tx_height", tx.Height).
 					Int64("thornado_height", thornadoHeight).
 					Err(err).
-					Msg("skipping stale BTC sweep with no spendable source UTXO")
-				return nil, nil, nil, nil
+					Msg("BTC sweep source tx is not spendable; requesting errata")
+				return nil, nil, nil, stypes.MissingSourceTxError{
+					TxID:  tx.InHash,
+					Chain: tx.Chain,
+					Err:   err,
+				}
 			}
 			return nil, nil, nil, err
 		}
@@ -205,6 +208,68 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 	}
 
 	return signedTx.Bytes(), nil, txIn, nil
+}
+
+// SourceTxMissing checks whether a sweep source is still spendable without
+// producing or signing an outbound transaction.
+func (c *Client) SourceTxMissing(tx stypes.TxOutItem, thornadoHeight int64) (bool, error) {
+	if tx.TxType != "sweep" {
+		return false, nil
+	}
+	if c.signerCacheManager.HasSigned(tx.CacheHash()) {
+		c.log.Info().
+			Stringer("in_hash", tx.InHash).
+			Str("txout_hash", tx.CacheHash()).
+			Msg("sweep source already spent by a cached signed txout; skipping errata")
+		return false, nil
+	}
+	sourceScript, err := c.getSourceScript(tx)
+	if err != nil {
+		return false, fmt.Errorf("fail to get source pay to address script: %w", err)
+	}
+	_, _, err = c.buildTx(tx, sourceScript)
+	if err == nil {
+		return false, nil
+	}
+	if strings.Contains(err.Error(), "insufficient available UTXOs") {
+		if c.sweepSpendInMempool(tx) {
+			c.log.Info().
+				Stringer("in_hash", tx.InHash).
+				Uint64("vault_path_index", tx.VaultPathIndex).
+				Msg("BTC sweep source is already spent by a mempool tx; skipping errata")
+			return false, nil
+		}
+		c.log.Warn().
+			Stringer("in_hash", tx.InHash).
+			Uint64("vault_path_index", tx.VaultPathIndex).
+			Int64("tx_height", tx.Height).
+			Int64("thornado_height", thornadoHeight).
+			Err(err).
+			Msg("BTC sweep source tx is not spendable; requesting errata")
+		return true, nil
+	}
+	return false, err
+}
+
+func (c *Client) sweepSpendInMempool(tx stypes.TxOutItem) bool {
+	txids, err := c.rpc.GetRawMempool()
+	if err != nil {
+		c.log.Debug().Err(err).Stringer("in_hash", tx.InHash).Msg("fail to read mempool while checking sweep source")
+		return false
+	}
+	target := strings.ToLower(tx.InHash.String())
+	for _, txid := range txids {
+		raw, err := c.rpc.GetRawTransactionVerbose(txid)
+		if err != nil {
+			continue
+		}
+		for _, vin := range raw.Vin {
+			if strings.EqualFold(vin.Txid, target) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // GetVaultLock returns a mutex for the given vault pubkey. This is primarily used to

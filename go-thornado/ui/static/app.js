@@ -70,10 +70,15 @@ const state = {
   minConfirmations: DEFAULT_MIN_CONFS,
   blocksPerYear: DEFAULT_BLOCKS_PER_YEAR,
   latestBlockHeight: null,
+  latestBlockTimeMs: null,
+  latestBlockSeenAtMs: null,
+  observedBlockMs: null,
   withdrawingNote: null,
   withdrawnNotes: {},
   publicNoteBuckets: {},
   publicNoteBucketsPending: false,
+  refundTxByInHash: new Map(),
+  refundTxoutPending: false,
   shielderSyncCache: null,
   shielderSyncPending: null,
   churnCycleMs: DEFAULT_CHURN_CYCLE_MS,
@@ -86,6 +91,7 @@ const state = {
   lastWithdrawalFeeSats: null,
   lastWithdrawalNoteKey: null,
   lastWithdrawalContextKey: "",
+  withdrawalPayouts: {},
   addressPaneFocusKey: "",
   shieldStageOpenedForDeposit: false,
   withdrawStageOpenedForNotes: "",
@@ -115,6 +121,8 @@ const state = {
     shield: "",
     withdraw: ""
   },
+  stageUserToggled: {},
+  stageSelectionKey: "",
   e2eWithdrawStarted: false,
   messagePriority: 0,
   messagePriorityUntil: 0
@@ -339,10 +347,18 @@ function setStage(id, status) {
   }
 }
 
+function autoSetStageExpanded(stageId, expanded) {
+  if (state.stageUserToggled?.[stageId]) {
+    return;
+  }
+  $(stageId).dataset.expanded = expanded ? "1" : "0";
+}
+
 function toggleStage(stageId) {
   const el = $(stageId);
   const nextExpanded = el.dataset.expanded === "1" ? "0" : "1";
   el.dataset.expanded = nextExpanded;
+  state.stageUserToggled[stageId] = true;
   if (stageId === "stageDeposit" && nextExpanded === "0") {
     state.addressPaneFocusKey = "";
   }
@@ -406,7 +422,7 @@ function batchExpiryRemainingMs(batch = activeBatch()) {
   }
   const expiryHeight = Number(batch.session?.expires_at_height || batch.deposit?.expires_at_height || 0);
   if (Number.isFinite(expiryHeight) && expiryHeight > 0 && state.latestBlockHeight !== null) {
-    return blocksToMs(Math.max(0, expiryHeight - state.latestBlockHeight));
+    return msUntilBlockHeight(expiryHeight);
   }
   return null;
 }
@@ -423,7 +439,7 @@ function depositRemainingMs() {
     return Math.max(0, state.depositExpiresAt - Date.now());
   }
   if (state.depositExpiresAtHeight && state.latestBlockHeight !== null) {
-    return blocksToMs(Math.max(0, state.depositExpiresAtHeight - state.latestBlockHeight));
+    return msUntilBlockHeight(state.depositExpiresAtHeight);
   }
   return null;
 }
@@ -464,6 +480,65 @@ function blocksToMs(blocks) {
   const count = Math.max(0, Number(blocks || 0));
   const blocksPerYear = Number(state.blocksPerYear || DEFAULT_BLOCKS_PER_YEAR);
   return Math.round(count * MS_PER_YEAR / Math.max(1, blocksPerYear));
+}
+
+function interpolatedBlockHeight() {
+  const height = Number(state.latestBlockHeight);
+  const blockMs = Number(state.observedBlockMs || blocksToMs(1));
+  const seenAt = Number(state.latestBlockSeenAtMs || 0);
+  if (!Number.isFinite(height) || !Number.isFinite(blockMs) || blockMs <= 0 || !seenAt) {
+    return height;
+  }
+  return height + Math.max(0, Date.now() - seenAt) / blockMs;
+}
+
+function msUntilBlockHeight(height) {
+  const target = Number(height);
+  const current = interpolatedBlockHeight();
+  if (!Number.isFinite(target) || !Number.isFinite(current)) {
+    return null;
+  }
+  return blocksToMs(Math.max(0, target - current));
+}
+
+function applyObservedBlockMs(blockMs) {
+  if (!Number.isFinite(blockMs) || blockMs <= 0) return;
+  const clamped = Math.min(10 * 60 * 1000, Math.max(250, blockMs));
+  state.observedBlockMs = state.observedBlockMs
+    ? (state.observedBlockMs * 0.7) + (clamped * 0.3)
+    : clamped;
+  state.blocksPerYear = Math.round(MS_PER_YEAR / state.observedBlockMs);
+}
+
+function updateObservedBlockTiming(height, timeMs) {
+  const nextHeight = Number(height);
+  const nextTime = Number(timeMs);
+  const prevHeight = Number(state.latestBlockHeight || 0);
+  const prevTime = Number(state.latestBlockTimeMs || 0);
+  if (Number.isFinite(prevHeight) && prevHeight > 0 && nextHeight > prevHeight && Number.isFinite(prevTime) && prevTime > 0 && nextTime > prevTime) {
+    applyObservedBlockMs((nextTime - prevTime) / (nextHeight - prevHeight));
+  }
+  if (Number.isFinite(nextTime) && nextTime > 0) {
+    state.latestBlockTimeMs = nextTime;
+  }
+  if (Number.isFinite(nextHeight) && nextHeight > 0) {
+    state.latestBlockSeenAtMs = Date.now();
+  }
+}
+
+async function calibrateObservedBlockTiming() {
+  const latest = await api("/thornado/block");
+  const latestHeader = latest?.header || latest?.block?.header || {};
+  const latestHeight = Number(latestHeader.height || latest?.id?.height || 0);
+  const latestTime = Date.parse(latestHeader.time || "");
+  if (!Number.isFinite(latestHeight) || latestHeight <= 1 || !Number.isFinite(latestTime)) return;
+  const sampleHeight = Math.max(1, latestHeight - 50);
+  const sample = await api(`/cosmos/base/tendermint/v1beta1/blocks/${sampleHeight}`);
+  const sampleHeader = sample?.block?.header || {};
+  const oldHeight = Number(sampleHeader.height || sampleHeight);
+  const oldTime = Date.parse(sampleHeader.time || "");
+  if (!Number.isFinite(oldHeight) || oldHeight >= latestHeight || !Number.isFinite(oldTime) || latestTime <= oldTime) return;
+  applyObservedBlockMs((latestTime - oldTime) / (latestHeight - oldHeight));
 }
 
 function formatClock(ms) {
@@ -541,6 +616,31 @@ function setReceiptFromBatches() {
   state.selectedNote = Math.min(state.selectedNote || 0, Math.max(0, (state.receipt?.notes?.length || 1) - 1));
 }
 
+function mergeReceipts(existing = null, incoming = null) {
+  if (!existing?.notes?.length) {
+    return incoming || existing;
+  }
+  if (!incoming?.notes?.length) {
+    return existing;
+  }
+  const notes = [];
+  const seen = new Set();
+  for (const note of [...existing.notes, ...incoming.notes]) {
+    const key = noteKey(note);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    notes.push(note);
+  }
+  return {
+    ...existing,
+    ...incoming,
+    notes,
+    remainder_sats: Number(existing.remainder_sats || 0) + Number(incoming.remainder_sats || 0)
+  };
+}
+
 function upsertBatch(batch) {
   const key = batchKey(batch);
   const existingIndex = state.batches.findIndex((item) => batchKey(item) === key);
@@ -548,7 +648,9 @@ function upsertBatch(batch) {
     const existing = state.batches[existingIndex];
     const keepRecovered = existing.status === "committed" && existing.receipt?.notes?.length && batch.status !== "committed";
     const timing = batchTimingFromSession(batch.session || existing.session, batch.deposit || existing.deposit);
-    const depositTxs = mergeDepositTxs(existing.depositTxs, batch.depositTxs);
+    const depositTxs = Array.isArray(batch.depositTxs)
+      ? mergeDepositTxs(batch.depositTxs)
+      : mergeDepositTxs(existing.depositTxs);
     state.batches[existingIndex] = {
       ...existing,
       ...batch,
@@ -557,7 +659,7 @@ function upsertBatch(batch) {
       expiresAt: batch.expiresAt ?? timing.expiresAt ?? existing.expiresAt,
       amountSats: keepRecovered ? existing.amountSats : batch.amountSats ?? existing.amountSats,
       status: keepRecovered ? existing.status : batch.status ?? existing.status,
-      receipt: keepRecovered ? existing.receipt : batch.receipt ?? existing.receipt,
+      receipt: keepRecovered ? existing.receipt : mergeReceipts(existing.receipt, batch.receipt) ?? existing.receipt,
       depositTxs,
       shieldedAt: batch.shieldedAt ?? existing.shieldedAt,
       maturesAt: batch.maturesAt ?? existing.maturesAt
@@ -589,6 +691,28 @@ function mergeDepositTxs(...groups) {
     byId.set(id, { ...(byId.get(id) || {}), ...tx, txid: id });
   }
   return [...byId.values()].sort((a, b) => String(a.txid).localeCompare(String(b.txid)));
+}
+
+function depositTxErrata(tx = {}) {
+  const status = String(tx?.status || tx?.deposit?.status || "").toLowerCase();
+  return status === "errata" || status === "reverted" || status === "removed";
+}
+
+function depositTxRefunding(tx = {}) {
+  const status = String(tx?.status || tx?.deposit?.status || "").toLowerCase();
+  return status === "return_queued" || status === "return_complete" || status === "refunded";
+}
+
+function depositTxShieldable(tx = {}) {
+  return !depositTxErrata(tx) && !depositTxRefunding(tx);
+}
+
+function depositTxCount(batch) {
+  return mergeDepositTxs(batch?.depositTxs).filter((tx) => !depositTxErrata(tx)).length;
+}
+
+function trackedDepositTxCount(batches = []) {
+  return batches.reduce((sum, batch) => sum + depositTxCount(batch), 0);
 }
 
 function activeBatch() {
@@ -648,6 +772,9 @@ function batchConfirmed(batch) {
 
 function depositFinalised(session = {}, deposit = {}, txStatus = null) {
   const status = String(deposit?.status || session?.status || "");
+  if (status === "errata" || status === "reverted" || status === "removed") {
+    return false;
+  }
   const stages = txStatus?.stages || {};
   return status === "deposit_matched"
     || status === "committed"
@@ -656,10 +783,19 @@ function depositFinalised(session = {}, deposit = {}, txStatus = null) {
 }
 
 function batchFinalised(batch) {
-  if (batch?.status === "committed" || depositFinalised(batch?.session, batch?.deposit, batch?.txStatus)) {
+  if (batch?.status === "committed") {
     return true;
   }
-  return mergeDepositTxs(batch?.depositTxs).some((tx) => depositFinalised(batch?.session, tx.deposit, tx.txStatus));
+  return finalisedDepositTxs(batch).length > 0;
+}
+
+function finalisedDepositTxs(batch) {
+  return mergeDepositTxs(batch?.depositTxs)
+    .filter((tx) => depositTxShieldable(tx) && depositFinalised({}, tx.deposit, tx.txStatus));
+}
+
+function firstFinalisedDepositTx(batch) {
+  return finalisedDepositTxs(batch)[0] || null;
 }
 
 function batchMaturityMs(batch) {
@@ -729,6 +865,10 @@ function batchExpiredAge(batch) {
 }
 
 function batchStatusText(batch) {
+  const status = String(batch?.status || batch?.deposit?.status || batch?.session?.status || "").toLowerCase();
+  if (status === "errata" || status === "reverted" || status === "removed") {
+    return "Errata";
+  }
   const progress = batchConfirmationProgress(batch);
   if (batch.superseded && !batchHasDepositValue(batch)) {
     return `Expired (${batchIssuedAge(batch)})`;
@@ -811,8 +951,8 @@ function renderBatchDropdown(batches, selectedBatch, ariaLabel = "Select deposit
   selectedButton.setAttribute("aria-label", ariaLabel);
   selectedButton.setAttribute("aria-expanded", state.openBatchDropdown === key ? "true" : "false");
   selectedButton.innerHTML = `
-    <span>${escapeHtml(depositLabel(selectedBatch))}</span>
     <i class="deposit-mark" aria-hidden="true"></i>
+    <span>${escapeHtml(depositLabel(selectedBatch))}</span>
   `;
   selectedButton.addEventListener("click", (event) => {
     event.preventDefault();
@@ -852,6 +992,8 @@ function renderBatchDropdown(batches, selectedBatch, ariaLabel = "Select deposit
       state.paneBatchKeys[paneKey] = batchKey(batch);
       if (paneKey === "deposit") {
         activateDepositBatch(batch);
+        state.stageUserToggled = {};
+        state.stageSelectionKey = "";
         state.noteRecoveryStatus = "idle";
         state.noteRecoveryBatchKey = batchKey(batch);
         queueDepositRecovery();
@@ -940,6 +1082,10 @@ async function refreshPublicNoteBuckets() {
 }
 
 function findOutboundHash(payload, inHash, recipient = "", amountSats = 0) {
+  return findOutboundTxout(payload, inHash, recipient, amountSats)?.item?.out_hash || "";
+}
+
+function findOutboundTxout(payload, inHash, recipient = "", amountSats = 0) {
   const txouts = Array.isArray(payload?.txouts)
     ? payload.txouts
     : payload?.keysign
@@ -953,21 +1099,121 @@ function findOutboundHash(payload, inHash, recipient = "", amountSats = 0) {
       const matchesOutput = recipient
         && item.to_address === recipient
         && Number(item.coin?.amount || 0) === Number(amountSats || 0);
-      if ((matchesInHash || matchesOutput) && item.out_hash) {
-        return item.out_hash;
+      if (matchesInHash || matchesOutput) {
+        return { txout, item };
       }
     }
   }
-  return "";
+  return null;
+}
+
+function pendingPayoutText(payout) {
+  if (!payout) {
+    return "Pending";
+  }
+  if (payout.outHash) {
+    return payout.outHash;
+  }
+  const status = String(payout.status || "").toLowerCase();
+  if (status === "pending_batch") {
+    const baseMs = msUntilBlockHeight(payout.height) || 0;
+    const ms = Math.max(0, baseMs + blocksToMs(1));
+    return ms && ms > 0 ? `Pending (${formatPendingDuration(ms)})` : "Pending";
+  }
+  if (status === "pending_retry") {
+    const ms = msUntilBlockHeight(payout.retryUntilHeight);
+    return ms && ms > 0 ? `Retrying (${formatPendingDuration(ms)})` : "Retrying";
+  }
+  if (status === "pending_sign") {
+    const estimateMs = blocksToMs(1);
+    const elapsedMs = Math.max(0, Date.now() - Number(payout.statusSinceMs || Date.now()));
+    const remainingMs = Math.max(0, estimateMs - elapsedMs);
+    return remainingMs > 0 ? `Signing (${formatPendingDuration(remainingMs)})` : "Signing";
+  }
+  return status ? status.replace(/_/g, " ") : "Pending";
+}
+
+function pendingPayoutFromTxout(txoutMatch) {
+  if (!txoutMatch) return null;
+  return {
+    height: Number(txoutMatch.txout?.height || 0),
+    status: txoutMatch.txout?.status || "",
+    outHash: txoutMatch.item?.out_hash || "",
+    retryUntilHeight: Number(txoutMatch.txout?.retry_until_height || 0),
+    signingAttempt: Number(txoutMatch.txout?.signing_attempt || 0)
+  };
+}
+
+function setWithdrawalPayout(key, payout) {
+  if (!key || !payout) return;
+  const previous = state.withdrawalPayouts[key] || {};
+  const status = String(payout.status || "").toLowerCase();
+  const previousStatus = String(previous.status || "").toLowerCase();
+  state.withdrawalPayouts[key] = {
+    ...previous,
+    ...payout,
+    statusSinceMs: status && status === previousStatus && previous.statusSinceMs
+      ? previous.statusSinceMs
+      : Date.now()
+  };
+}
+
+function txoutBatches(payload = {}) {
+  if (Array.isArray(payload?.txouts)) {
+    return payload.txouts;
+  }
+  if (Array.isArray(payload?.tx_out)) {
+    return payload.tx_out;
+  }
+  if (payload?.keysign) {
+    return [payload.keysign];
+  }
+  if (payload?.txout) {
+    return [payload.txout];
+  }
+  return [];
+}
+
+function cacheRefundTxouts(payload = {}) {
+  const byInHash = new Map();
+  for (const txout of txoutBatches(payload)) {
+    for (const item of txout.tx_array || []) {
+      if (String(item.tx_type || "").toLowerCase() !== "refund" || !item.in_hash) {
+        continue;
+      }
+      const inHash = String(item.in_hash).toUpperCase();
+      byInHash.set(inHash, {
+        ...item,
+        height: txout.height || item.height || "",
+        status: txout.status || item.status || "",
+        signingTransactionId: txout.signing_transaction_id || ""
+      });
+    }
+  }
+  state.refundTxByInHash = byInHash;
+  return byInHash;
+}
+
+async function refreshRefundTxouts() {
+  if (state.refundTxoutPending) {
+    return;
+  }
+  state.refundTxoutPending = true;
+  try {
+    cacheRefundTxouts(await api("/thornado/txout"));
+    renderDepositHistory();
+  } finally {
+    state.refundTxoutPending = false;
+  }
 }
 
 async function scanKeysignBlocksForOutbound(inHash, recipient = "", amountSats = 0, requestedHeight = 0) {
   const current = await api("/thornado/txout");
   const currentHeight = Number(current?.txout?.height || 0);
   const start = Math.max(1, Number(requestedHeight || 0));
-  const foundInQueue = findOutboundHash(current, inHash, recipient, amountSats);
-  if (foundInQueue || !currentHeight || !start) {
-    return foundInQueue;
+  const foundInQueue = findOutboundTxout(current, inHash, recipient, amountSats);
+  if (foundInQueue?.item?.out_hash || !currentHeight || !start) {
+    return foundInQueue?.item?.out_hash || "";
   }
   const from = Math.max(1, Math.min(start, currentHeight));
   const to = Math.max(from, currentHeight);
@@ -985,6 +1231,11 @@ async function scanKeysignBlocksForOutbound(inHash, recipient = "", amountSats =
 
 async function hydrateWithdrawnNotePayouts() {
   const entries = Object.entries(state.withdrawnNotes || {});
+  const current = await api("/thornado/txout").catch(() => null);
+  const currentHeight = Number(current?.txout?.height || 0);
+  if (Number.isFinite(currentHeight) && currentHeight > 0) {
+    state.latestBlockHeight = currentHeight;
+  }
   await Promise.all(entries.map(async ([key, withdrawal]) => {
     if (!withdrawal || withdrawal.outHash) {
       return;
@@ -1001,7 +1252,12 @@ async function hydrateWithdrawnNotePayouts() {
     const recipient = redeem.recipient || "";
     const amountSats = Math.max(0, Number(redeem.amount_sats || 0) - Number(redeem.fee_sats || 0));
     const requestedHeight = Number(redeem.requested_height || 0);
-    const outHash = await scanKeysignBlocksForOutbound(inHash, recipient, amountSats, requestedHeight).catch(() => "");
+    const pending = current ? findOutboundTxout(current, inHash, recipient, amountSats) : null;
+    if (pending) {
+      setWithdrawalPayout(key, pendingPayoutFromTxout(pending));
+    }
+    const outHash = pending?.item?.out_hash
+      || await scanKeysignBlocksForOutbound(inHash, recipient, amountSats, requestedHeight).catch(() => "");
     state.withdrawnNotes[key] = {
       ...withdrawal,
       withdrawalID,
@@ -1014,10 +1270,31 @@ async function hydrateWithdrawnNotePayouts() {
   }));
 }
 
-async function waitForOutboundHash(inHash, recipient = "", amountSats = 0, requestedHeight = 0, timeoutMs = 900000) {
+function hasPendingWithdrawalPayouts() {
+  return Object.values(state.withdrawnNotes || {}).some((withdrawal) => withdrawal && !withdrawal.outHash);
+}
+
+async function waitForOutboundHash(inHash, recipient = "", amountSats = 0, requestedHeight = 0, timeoutMs = 900000, onPayout = null) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
-    const outHash = await scanKeysignBlocksForOutbound(inHash, recipient, amountSats, requestedHeight);
+    const current = await api("/thornado/txout").catch(() => null);
+    const currentHeight = Number(current?.txout?.height || 0);
+    if (Number.isFinite(currentHeight) && currentHeight > 0) {
+      state.latestBlockHeight = currentHeight;
+    }
+    const pending = current ? findOutboundTxout(current, inHash, recipient, amountSats) : null;
+    if (pending?.item?.out_hash) {
+      return pending.item.out_hash;
+    }
+    if (pending && onPayout) {
+      onPayout(pendingPayoutFromTxout(pending));
+    } else if (requestedHeight && onPayout) {
+      onPayout({ status: "pending_batch", height: Number(requestedHeight || 0) });
+    }
+    const outHash = await scanKeysignBlocksForOutbound(inHash, recipient, amountSats, requestedHeight).catch((error) => {
+      log("withdraw/payout-scan", { error: errorText(error) });
+      return "";
+    });
     if (outHash) {
       return outHash;
     }
@@ -1080,6 +1357,13 @@ function formatExpiryHuman(ms) {
   return `${totalDays} ${totalDays === 1 ? "day" : "days"}`;
 }
 
+function formatPendingDuration(ms) {
+  const totalSeconds = Math.ceil(Math.max(0, Number(ms || 0)) / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+}
+
 function applyChurnWindow(window) {
   state.churnCycleMs = window.cycle_ms || DEFAULT_CHURN_CYCLE_MS;
   state.churnServerDeltaMs = Date.now() - window.server_now_ms;
@@ -1112,6 +1396,7 @@ async function refreshChurnWindow() {
   applyRouteConfig(config);
   applyBlockTimingConfig(config);
   applyDepositConfirmationConfig(config);
+  calibrateObservedBlockTiming().catch((error) => log("block/timing", { error: errorText(error) }));
   const now = Date.now();
   return applyChurnWindow({
     server_time_ms: now,
@@ -1222,6 +1507,7 @@ function resetDepositState() {
   state.shieldPending = false;
   state.withdrawingNote = null;
   state.withdrawnNotes = {};
+  state.withdrawalPayouts = {};
   state.depositDropdownOpen = false;
   state.openBatchDropdown = "";
   state.noteRecoveryPending = false;
@@ -1230,6 +1516,8 @@ function resetDepositState() {
   state.noteRecoveryBatchKey = "";
   state.noteRecoveryProgress = null;
   state.paneBatchKeys = { deposit: "", shield: "", withdraw: "" };
+  state.stageUserToggled = {};
+  state.stageSelectionKey = "";
   ["stageDeposit", "stageDepositTrack", "stageShield", "stageWait", "stageWithdraw"].forEach((id) => {
     $(id).dataset.expanded = "0";
   });
@@ -1268,10 +1556,21 @@ function renderDepositHistory() {
   if (txRows.length) {
     for (const tx of txRows) {
       const txProgress = tx.progress || depositConfirmationProgress(selectedBatch.session, tx.deposit, tx.txStatus);
+      const rowStatus = String(tx.deposit?.status || selectedBatch.status || "").toLowerCase();
+      const rowErrata = rowStatus === "errata" || rowStatus === "reverted" || rowStatus === "removed";
+      const rowRefunding = depositTxRefunding(tx);
+      const refundTx = rowRefunding ? state.refundTxByInHash.get(String(tx.txid || "").toUpperCase()) : null;
+      const refundHash = String(refundTx?.out_hash || "").trim();
+      const refundStatus = `
+        <span class="deposit-refund-status">
+          <strong>Refunded</strong>
+          <small>${refundHash ? txHashLink(refundHash) : "pending signature"}</small>
+        </span>
+      `;
       detailRows.push(`
-        <div class="row">
+        <div class="row${rowErrata ? " deposit-errata" : ""}">
           <span>${txHashLink(tx.txid)}</span>
-          <strong>${btcAmount(Number(tx.amountSats || 0))} · ${confirmationProgressLabel(txProgress)}</strong>
+          <strong>${rowErrata ? `${btcAmount(Number(tx.amountSats || 0))} · Errata` : rowRefunding ? refundStatus : `${btcAmount(Number(tx.amountSats || 0))} · ${confirmationProgressLabel(txProgress)}`}</strong>
         </div>
       `);
     }
@@ -1401,6 +1700,13 @@ function updateDashboard() {
   const hasShielded = selectedNotes.length > 0;
   const hasMatureNote = hasShielded && batchMature(batch);
   const selectedBatchKey = batch ? batchKey(batch) : "";
+  if (selectedBatchKey !== state.stageSelectionKey) {
+    const hadSelection = Boolean(state.stageSelectionKey);
+    state.stageSelectionKey = selectedBatchKey;
+    if (hadSelection) {
+      state.stageUserToggled = {};
+    }
+  }
   const selectedMatureNoteKey = hasMatureNote ? `${selectedBatchKey}:${selectedNotes.length}` : "";
   const addressFocusActive = Boolean(
     state.depositRequestPending ||
@@ -1414,16 +1720,17 @@ function updateDashboard() {
     )
   );
   if (!addressFocusActive && selectedFinalised && state.shieldStageOpenedForDeposit !== selectedBatchKey) {
-    $("stageDeposit").dataset.expanded = "0";
-    $("stageDepositTrack").dataset.expanded = "1";
-    $("stageShield").dataset.expanded = "1";
+    autoSetStageExpanded("stageDeposit", false);
+    autoSetStageExpanded("stageDepositTrack", false);
+    autoSetStageExpanded("stageShield", true);
     state.shieldStageOpenedForDeposit = selectedBatchKey;
   }
   if (!addressFocusActive && hasMatureNote && selectedMatureNoteKey && state.withdrawStageOpenedForNotes !== selectedMatureNoteKey) {
-    $("stageDeposit").dataset.expanded = "0";
-    $("stageShield").dataset.expanded = "0";
-    $("stageWait").dataset.expanded = "0";
-    $("stageWithdraw").dataset.expanded = "1";
+    autoSetStageExpanded("stageDeposit", false);
+    autoSetStageExpanded("stageDepositTrack", false);
+    autoSetStageExpanded("stageShield", false);
+    autoSetStageExpanded("stageWait", false);
+    autoSetStageExpanded("stageWithdraw", true);
     state.withdrawStageOpenedForNotes = selectedMatureNoteKey;
   }
   const hasTrackedDeposits = displayBatches.length > 0;
@@ -1433,11 +1740,11 @@ function updateDashboard() {
   });
   const showDepositTracking = hasDeposit || hasTrackedDeposits || hasUnconfirmedSeenDeposit;
   if (!hasDeposit && !hasTrackedDeposits && !state.depositRequestPending) {
-    $("stageDeposit").dataset.expanded = "1";
+    autoSetStageExpanded("stageDeposit", true);
   }
-  if (hasDeposit && !hasSeenDeposit && !anyConfirmed && !isDepositExpired) {
-    $("stageDeposit").dataset.expanded = "1";
-    $("stageDepositTrack").dataset.expanded = "1";
+  if (hasDeposit && !selectedFinalised && !isDepositExpired) {
+    autoSetStageExpanded("stageDeposit", true);
+    autoSetStageExpanded("stageDepositTrack", true);
   }
   const hasProof = Boolean(state.lastWithdrawalProof && state.lastWithdrawalPublic);
   const note = selectedNotes[state.selectedNote || 0] || selectedNotes[0] || null;
@@ -1515,8 +1822,9 @@ function updateDashboard() {
   $("remainderSats").textContent = btcAmount(state.receipt?.remainder_sats || 0);
   $("feePreview").textContent = btcAmount(Number($("feeSats").value || 0));
   $("depositSummary").innerHTML = collapsedDepositSummary(activeDepositAddress, hasDeposit, batch);
-  $("depositTrackSummary").textContent = displayBatches.length
-    ? `${displayBatches.length} deposits tracked`
+  const trackedDepositCount = trackedDepositTxCount(displayBatches);
+  $("depositTrackSummary").textContent = trackedDepositCount
+    ? `${trackedDepositCount} deposit${trackedDepositCount === 1 ? "" : "s"} tracked`
     : hasUnconfirmedSeenDeposit
       ? "Deposit seen"
       : hasDeposit
@@ -1735,9 +2043,14 @@ async function refreshHash() {
   }
   const height = payload?.id?.height || payload?.header?.height || payload?.block?.header?.height || "latest";
   const producer = payload?.header?.proposer_address || payload?.block?.header?.proposer_address || "unknown";
+  const blockTime = Date.parse(payload?.header?.time || payload?.block?.header?.time || "");
   const numericHeight = Number(height);
   if (Number.isFinite(numericHeight)) {
+    updateObservedBlockTiming(numericHeight, blockTime);
     state.latestBlockHeight = numericHeight;
+    if (!Number.isFinite(blockTime)) {
+      state.latestBlockSeenAtMs = Date.now();
+    }
   }
   state.nodeConnected = true;
   state.nodeStatusText = "connected";
@@ -1746,6 +2059,9 @@ async function refreshHash() {
   $("blockProducer").title = producer;
   renderStatusControls();
   renderDepositExpiry();
+  if (hasPendingWithdrawalPayouts()) {
+    renderNotes();
+  }
 }
 
 function sats(value) {
@@ -1794,7 +2110,11 @@ function greedyDenominations(amountSats) {
 }
 
 function withdrawalFeeForDenomination(denominationSats) {
-  return Math.floor(Number(denominationSats || 0) * WITHDRAWAL_FEE_BASIS_POINTS / 10000);
+  const amount = Number(denominationSats || 0);
+  if (!Number.isSafeInteger(amount) || amount <= 0) {
+    return 0;
+  }
+  return Math.floor(amount * WITHDRAWAL_FEE_BASIS_POINTS / 10000);
 }
 
 function applySpendableNoteFloor(receipt) {
@@ -2553,12 +2873,11 @@ function commitments(receipt) {
 }
 
 function withdrawalProofContextKey(note, options = {}) {
-  return JSON.stringify({
-    note: noteKey(note),
-    recipient: options.recipient || "",
-    feeSats: options.feeSats ?? null,
-    publicPatch: options.publicPatch || {}
-  });
+	return JSON.stringify({
+		note: noteKey(note),
+		recipient: options.recipient || "",
+		publicPatch: options.publicPatch || {}
+	});
 }
 
 async function generateWithdrawalProof(noteIndex = state.selectedNote || 0, options = {}) {
@@ -2817,6 +3136,7 @@ function depositConfirmationProgress(session = {}, deposit = {}, txStatus = null
     current = Math.max(current, required - Math.max(0, targetHeight - observedHeight));
   }
   const status = String(deposit.status || session.status || "");
+  const statusErrata = status === "errata" || status === "reverted" || status === "removed";
   const hasDepositRecord = Boolean(deposit && Object.keys(deposit).length);
   const observedTxId = inboundTxId(session, deposit) || txStatus?.observed_tx?.tx?.id || txStatus?.txs?.[0]?.tx?.id || "";
   const seen = Boolean(
@@ -2827,10 +3147,10 @@ function depositConfirmationProgress(session = {}, deposit = {}, txStatus = null
       || deposit.deposit_id
       || observedTxId
   );
-  const final = status === "deposit_matched"
+  const final = !statusErrata && (status === "deposit_matched"
     || status === "committed"
     || countedStage.completed === true
-    || (!hasExplicitProgress && hasDepositRecord && !observedHeight);
+    || (!hasExplicitProgress && hasDepositRecord && !observedHeight));
   return {
     current: final ? required : Math.min(required, Math.max(0, current)),
     required,
@@ -2939,23 +3259,70 @@ async function depositTxsForAddress(address, seedTxIds = [], scanCache = null) {
 }
 
 function applyDepositTxAggregate(batch, depositTxs = []) {
-  if (!batch || !depositTxs.length) {
+  if (!batch) {
     return batch;
   }
   const txs = mergeDepositTxs(depositTxs);
-  const latest = txs[txs.length - 1];
   batch.depositTxs = txs;
+  if (!txs.length) {
+    batch.amountSats = 0;
+    batch.inboundTxId = "";
+    batch.txStatus = null;
+    if (String(batch.deposit?.status || batch.status || "").toLowerCase() !== "errata") {
+      batch.depositId = "";
+      batch.deposit = null;
+      batch.status = batch.depositAddress ? "address_issued" : batch.status;
+    }
+    return batch;
+  }
+  const liveTxs = txs.filter((tx) => !depositTxErrata(tx));
+  const shieldableTxs = txs.filter((tx) => depositTxShieldable(tx));
+  const latest = liveTxs[liveTxs.length - 1] || txs[txs.length - 1];
   batch.inboundTxId = latest?.txid || batch.inboundTxId;
   batch.depositId = latest?.deposit?.deposit_id || latest?.txid || batch.depositId;
-  batch.amountSats = txs.reduce((sum, tx) => sum + Number(tx.amountSats || 0), 0);
+  batch.amountSats = liveTxs.reduce((sum, tx) => sum + Number(tx.amountSats || 0), 0);
   batch.deposit = latest?.deposit || batch.deposit;
   batch.txStatus = latest?.txStatus || batch.txStatus;
-  if (txs.length && txs.every((tx) => tx.progress?.current >= tx.progress?.required)) {
+  if (liveTxs.length && liveTxs.every((tx) => depositTxRefunding(tx))) {
+    batch.status = latest?.status || latest?.deposit?.status || batch.status;
+  } else if (shieldableTxs.length && shieldableTxs.every((tx) => tx.progress?.current >= tx.progress?.required)) {
     batch.status = batch.status === "committed" ? batch.status : "deposit_matched";
-  } else if (txs.length) {
+  } else if (shieldableTxs.length) {
     batch.status = batch.status === "committed" ? batch.status : "deposit_observed";
   }
   return batch;
+}
+
+async function pruneMissingDepositTxs(sync = null) {
+  const publicDepositIds = new Set((sync?.deposits || [])
+    .map((deposit) => String(deposit.deposit_id || deposit.txid || deposit.tx_id || "").toUpperCase())
+    .filter(Boolean));
+  for (const batch of state.batches) {
+    const txs = mergeDepositTxs(batch.depositTxs);
+    if (!txs.length) {
+      continue;
+    }
+    const kept = [];
+    let changed = false;
+    for (const tx of txs) {
+      const txid = String(tx.txid || "").toUpperCase();
+      if (!txid || depositTxErrata(tx) || publicDepositIds.has(txid)) {
+        kept.push(tx);
+        continue;
+      }
+      const txStatus = await api(`/thornado/tx/${txid}`).catch(() => null);
+      const liveTx = txStatus?.observed_tx?.tx || txStatus?.txs?.[0]?.tx || null;
+      const finalised = txStatus?.stages?.inbound_finalised?.completed === true || txStatus?.finalised_height > 0;
+      if (liveTx?.id && finalised) {
+        kept.push({ ...tx, txStatus });
+        continue;
+      }
+      changed = true;
+    }
+    if (changed) {
+      applyDepositTxAggregate(batch, kept);
+    }
+  }
 }
 
 function recoverNotesOffThread(seedHex, sync, depositIndexes, fingerprint) {
@@ -3104,6 +3471,7 @@ async function discoverDepositBatches(options = {}) {
   const recoverNotes = options.recoverNotes !== false;
   const preserveSelection = options.preserveSelection === true;
   const selectedKeyBeforeScan = state.paneBatchKeys.deposit || state.activeBatchKey || "";
+  const knownBatchKeysBeforeScan = new Set(state.batches.map((batch) => batchKey(batch)));
   const requestedPurpose = activeDepositPurpose();
   if (!$("walletRoot").value.trim()) {
     return [];
@@ -3181,12 +3549,18 @@ async function discoverDepositBatches(options = {}) {
   }
   state.nextDepositIndexByType = nextByType;
   state.nextDepositIndex = Number(nextByType[requestedPurpose] || 0);
+  const newlyVisibleBatch = sortedBatches(visibleDepositBatches({ includeExpired: true, includeIssued: true }))
+    .find((batch) => !knownBatchKeysBeforeScan.has(batchKey(batch)));
   const preservedBatch = preserveSelection
     ? state.batches.find((batch) => batchKey(batch) === String(selectedKeyBeforeScan))
     : null;
   const openIssuedBatch = [...state.batches].reverse().find((batch) => normalizeDepositType(batch.depositType) === requestedPurpose && batchIssuedUnexpired(batch));
   const latestBatch = state.batches[state.batches.length - 1];
-  if (preservedBatch) {
+  if (newlyVisibleBatch) {
+    state.paneBatchKeys.deposit = batchKey(newlyVisibleBatch);
+    activateDepositBatch(newlyVisibleBatch);
+    $("stageDepositTrack").dataset.expanded = "1";
+  } else if (preservedBatch) {
     state.paneBatchKeys.deposit = batchKey(preservedBatch);
     activateDepositBatch(preservedBatch);
   } else if (openIssuedBatch) {
@@ -3213,6 +3587,7 @@ async function discoverDepositBatches(options = {}) {
           setNoteRecoveryProgress(progress);
         }
       });
+      await pruneMissingDepositTxs(sync);
       state.noteRecoveryStatus = "searching_nullifiers";
       state.noteRecoveryProgress = {
         phase: "local",
@@ -3264,6 +3639,7 @@ async function discoverDepositBatches(options = {}) {
           batchId: existing ? batchKey(existing) : batch.batchId
         });
       }
+      await pruneMissingDepositTxs(sync);
       hydrateReceipt();
       openWithdrawForRecoveredNotes();
       const recoveryTotal = Number(state.noteRecoveryProgress?.total || 0);
@@ -3364,7 +3740,8 @@ async function waitForCommittedTx(txhash, timeoutMs = 30000) {
 }
 
 async function quoteWithdrawalFee(note) {
-  const feeSats = withdrawalFeeForDenomination(note?.denomination_sats);
+  const amountSats = Number(note?.denomination_sats || 0);
+  const feeSats = withdrawalFeeForDenomination(amountSats);
   if (!Number.isSafeInteger(feeSats) || feeSats < 0) {
     throw new Error("invalid withdrawal amount");
   }
@@ -3374,16 +3751,14 @@ async function quoteWithdrawalFee(note) {
 }
 
 async function validateGeneratedProof(noteIndex = state.selectedNote || 0, options = {}) {
-  let proof = state.lastWithdrawalProof;
-  let publicInputs = state.lastWithdrawalPublic;
-  const requestedFee = Number($("feeSats").value || 0);
-  const note = state.receipt?.notes?.[noteIndex];
-  const hasExplicitFee = Object.prototype.hasOwnProperty.call(options, "feeSats");
-  const contextKey = withdrawalProofContextKey(note, options);
-  if (!proof || !publicInputs || (!hasExplicitFee && state.lastWithdrawalFeeSats !== requestedFee) || state.lastWithdrawalContextKey !== contextKey) {
-    const generated = await generateWithdrawalProof(noteIndex, options);
-    proof = generated.proof;
-    publicInputs = generated.public;
+	let proof = state.lastWithdrawalProof;
+	let publicInputs = state.lastWithdrawalPublic;
+	const note = state.receipt?.notes?.[noteIndex];
+	const contextKey = withdrawalProofContextKey(note, options);
+	if (!proof || !publicInputs || state.lastWithdrawalContextKey !== contextKey) {
+		const generated = await generateWithdrawalProof(noteIndex, options);
+		proof = generated.proof;
+		publicInputs = generated.public;
   }
   const wasm = await thornadoWasm();
   wasm.verifyWithdrawalJson(JSON.stringify(proof), JSON.stringify(publicInputs));
@@ -3404,6 +3779,42 @@ function globalNoteIndex(note) {
 
 function noteCoversCurrentFee(note) {
   return Number(note?.denomination_sats || 0) > withdrawalFeeForDenomination(note?.denomination_sats);
+}
+
+function ownedNoteSnapshot() {
+  const buckets = {};
+  const commitments = new Set();
+  const seen = new Set();
+  for (const batch of state.batches || []) {
+    for (const note of batch?.receipt?.notes || []) {
+      const denomination = Number(note?.denomination_sats || 0);
+      if (!denomination) {
+        continue;
+      }
+      const key = noteKey(note);
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      if (note?.commitment) {
+        commitments.add(String(note.commitment));
+      }
+      buckets[denomination] = (buckets[denomination] || 0) + 1;
+    }
+  }
+  return { buckets, commitments };
+}
+
+function otherNotesInDenomination(denomination, ownedSnapshot) {
+  const publicNotes = state.shielderSyncCache?.payload?.notes || [];
+  if (publicNotes.length) {
+    return publicNotes.filter((note) =>
+      Number(note?.denomination_sats || 0) === denomination &&
+      !ownedSnapshot.commitments.has(String(note?.commitment || ""))
+    ).length;
+  }
+  const publicBuckets = state.publicNoteBuckets || {};
+  return Math.max(0, Number(publicBuckets[denomination] || 0) - Number(ownedSnapshot.buckets[denomination] || 0));
 }
 
 async function firstWithdrawableNoteInBatch(batch) {
@@ -3496,11 +3907,14 @@ function renderShieldBatches() {
   const progress = batchConfirmationProgress(selectedBatch);
   const notes = selectedBatch.receipt?.notes || [];
   const txRows = mergeDepositTxs(selectedBatch.depositTxs);
-  const fallbackTxid = selectedBatch.inboundTxId || selectedBatch.depositId || txRows[0]?.txid || "";
+  const finalisedTxRows = finalisedDepositTxs(selectedBatch);
+  const shieldableTxRows = txRows.filter((tx) => depositTxShieldable(tx));
+  const fallbackTxid = shieldableTxRows[0]?.txid || (!txRows.length ? selectedBatch.inboundTxId || selectedBatch.depositId || "" : "");
 
   const appendDepositTxRows = () => {
-    if (txRows.length) {
-      for (const tx of txRows) {
+    const eligibleRows = finalisedTxRows.length ? finalisedTxRows : [];
+    if (eligibleRows.length) {
+      for (const tx of eligibleRows) {
         const header = document.createElement("div");
         header.className = "shield-summary-row";
         header.innerHTML = `<span>${txHashLink(tx.txid)}</span><strong>${btcAmount(Number(tx.amountSats || 0))}</strong>`;
@@ -3550,11 +3964,31 @@ function renderShieldBatches() {
       for (const note of group.notes) {
         const withdrawal = state.withdrawnNotes[noteKey(note)];
         const spent = note.spent || withdrawal?.status === "spent" || Boolean(withdrawal?.outHash);
+        const maturityLabel = mature ? "Mature" : `Maturing (${formatWaitClock(batchMaturityMs(selectedBatch))})`;
         const row = document.createElement("div");
         row.className = "batch-note-row";
-        row.innerHTML = `<span>${btcAmount(note.denomination_sats)}</span><strong>${spent ? "Withdrawn" : mature ? "Mature" : "Maturing"}</strong>`;
+        row.innerHTML = `<span>${btcAmount(note.denomination_sats)}</span><strong>${spent ? "Withdrawn" : maturityLabel}</strong>`;
         card.append(row);
       }
+    }
+    const shieldedTxIds = new Set([...groups.keys()].map((txid) => String(txid || "").toUpperCase()));
+    for (const tx of finalisedTxRows.filter((row) => !shieldedTxIds.has(String(row.txid || "").toUpperCase()))) {
+      const header = document.createElement("div");
+      header.className = "shield-summary-row";
+      header.innerHTML = `<span>${txHashLink(tx.txid)}</span><strong>${btcAmount(Number(tx.amountSats || 0))}</strong>`;
+      card.append(header);
+      const actionRow = document.createElement("div");
+      actionRow.className = "batch-note-row";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.disabled = state.shieldPending;
+      button.innerHTML = state.shieldPending && batchKey(selectedBatch) === String(state.activeBatchKey || "")
+        ? '<span class="button-spinner" aria-hidden="true"></span>Shielding'
+        : "Shield Deposit";
+      button.addEventListener("click", () => run(() => shieldDeposit(batchKey(selectedBatch), tx.txid)));
+      actionRow.innerHTML = "<span></span>";
+      actionRow.append(button);
+      card.append(actionRow);
     }
   } else if (noteRecoveryVisible()) {
     // Progress row rendered above the empty state.
@@ -3566,18 +4000,25 @@ function renderShieldBatches() {
     card.append(row);
   } else if (batchFinalised(selectedBatch)) {
     appendDepositTxRows();
-    const actionRow = document.createElement("div");
-    actionRow.className = "batch-note-row";
-    const button = document.createElement("button");
-    button.type = "button";
-    button.disabled = state.shieldPending;
-    button.innerHTML = state.shieldPending && batchKey(selectedBatch) === String(state.activeBatchKey || "")
-      ? '<span class="button-spinner" aria-hidden="true"></span>Shielding'
-      : "Shield Deposit";
-    button.addEventListener("click", () => run(() => shieldDeposit(batchKey(selectedBatch))));
-    actionRow.innerHTML = "<span></span>";
-    actionRow.append(button);
-    card.append(actionRow);
+    if (finalisedTxRows.length || !txRows.length) {
+      const actionRow = document.createElement("div");
+      actionRow.className = "batch-note-row";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.disabled = state.shieldPending;
+      button.innerHTML = state.shieldPending && batchKey(selectedBatch) === String(state.activeBatchKey || "")
+        ? '<span class="button-spinner" aria-hidden="true"></span>Shielding'
+        : "Shield Deposit";
+      button.addEventListener("click", () => run(() => shieldDeposit(batchKey(selectedBatch), finalisedTxRows[0]?.txid || "")));
+      actionRow.innerHTML = "<span></span>";
+      actionRow.append(button);
+      card.append(actionRow);
+    } else {
+      const row = document.createElement("div");
+      row.className = "batch-note-row";
+      row.innerHTML = "<span>Waiting for finalised deposit</span><strong>not ready</strong>";
+      card.append(row);
+    }
   } else {
     const row = document.createElement("div");
     row.className = "batch-note-row";
@@ -3640,23 +4081,19 @@ function renderNotes() {
   }
   const card = document.createElement("div");
   card.className = "batch-card";
-  const userNoteBuckets = {};
-  for (const note of selectedBatch.receipt.notes) {
-    const denomination = Number(note.denomination_sats || 0);
-    if (denomination) {
-      userNoteBuckets[denomination] = (userNoteBuckets[denomination] || 0) + 1;
-    }
-  }
-  const publicBuckets = state.publicNoteBuckets || {};
-  if (!Object.keys(publicBuckets).length) {
+  const ownedSnapshot = ownedNoteSnapshot();
+  if (!state.shielderSyncCache?.payload?.notes?.length && !Object.keys(state.publicNoteBuckets || {}).length) {
     refreshPublicNoteBuckets().catch((error) => log("pool/sync", { error: errorText(error) }));
   }
   for (const note of selectedBatch.receipt.notes) {
     const denomination = Number(note.denomination_sats || 0);
-    const otherNotes = Math.max(0, Number(publicBuckets[denomination] || 0) - Number(userNoteBuckets[denomination] || 0));
+    const otherNotes = otherNotesInDenomination(denomination, ownedSnapshot);
     const index = globalNoteIndex(note);
     const key = noteKey(note);
     const withdrawal = state.withdrawnNotes[key];
+    const payoutOutHash = state.withdrawalPayouts[key]?.outHash || "";
+    const effectiveOutHash = withdrawal?.outHash || payoutOutHash;
+    const hasOutboundHash = Boolean(effectiveOutHash);
     const isSpent = note.spent || withdrawal?.status === "spent";
     const isWithdrawing = state.withdrawingNote === key;
     const feeCovered = noteCoversCurrentFee(note);
@@ -3673,27 +4110,33 @@ function renderNotes() {
     action.dataset.batchIndex = String(selectedBatch.depositIndex ?? "");
     action.dataset.noteIndex = String(note.note_index ?? index ?? "");
     action.dataset.noteAmount = String(note.denomination_sats ?? "");
-    const isPending = isWithdrawing || (withdrawal && !withdrawal.outHash && withdrawal.status !== "spent");
-    const isWithdrawn = isSpent || Boolean(withdrawal?.outHash);
-    action.textContent = isWithdrawn ? "Withdrawn" : isPending ? "Pending" : feeCovered ? "Withdraw" : "Fee too high";
-    action.disabled = isWithdrawn || isPending || !feeCovered;
-    action.addEventListener("click", () => {
-      state.receipt = selectedBatch.receipt;
-      state.activeBatchIndex = Number(selectedBatch.depositIndex || 0);
-      state.activeBatchKey = batchKey(selectedBatch);
-      state.selectedNote = selectedBatch.receipt.notes.findIndex((item) => noteKey(item) === key);
-      openWithdrawAddressModal(Math.max(0, state.selectedNote));
-    });
-    row.innerHTML = `
-      <span>${btcAmount(note.denomination_sats)}</span>
-      <span class="pool-inline-count">${otherNotes} other ${otherNotes === 1 ? "note" : "notes"}</span>
-    `;
-    row.append(action);
-    if (withdrawal?.outHash || isPending) {
-      const detail = document.createElement("div");
-      detail.className = "row note-withdrawal";
-      detail.innerHTML = `<span>Tx ID</span><strong>${withdrawal?.outHash ? txHashLink(withdrawal.outHash) : "Pending"}</strong>`;
-      row.append(detail);
+    const isPending = isWithdrawing || (isSpent && !hasOutboundHash) || (withdrawal && !hasOutboundHash);
+    const isWithdrawn = hasOutboundHash;
+    row.innerHTML = `<span>${btcAmount(note.denomination_sats)}</span>`;
+    if (isWithdrawn || isPending) {
+      const status = document.createElement("strong");
+      status.className = "withdraw-status";
+      if (!hasOutboundHash && String(state.withdrawalPayouts[key]?.status || "").toLowerCase() === "pending_sign") {
+      status.classList.add("signing");
+      }
+      status.innerHTML = hasOutboundHash
+        ? txHashLink(effectiveOutHash)
+        : escapeHtml(pendingPayoutText(state.withdrawalPayouts[key]));
+      row.append(status);
+    } else {
+      const count = document.createElement("span");
+      count.className = "pool-inline-count";
+      count.textContent = `${otherNotes} other ${otherNotes === 1 ? "note" : "notes"}`;
+      action.textContent = feeCovered ? "Withdraw" : "Fee too high";
+      action.disabled = !feeCovered;
+      action.addEventListener("click", () => {
+        state.receipt = selectedBatch.receipt;
+        state.activeBatchIndex = Number(selectedBatch.depositIndex || 0);
+        state.activeBatchKey = batchKey(selectedBatch);
+        state.selectedNote = selectedBatch.receipt.notes.findIndex((item) => noteKey(item) === key);
+        openWithdrawAddressModal(Math.max(0, state.selectedNote));
+      });
+      row.append(count, action);
     }
     card.append(row);
   }
@@ -3779,6 +4222,8 @@ async function requestDeposit() {
     upsertBatch(newBatch);
     supersedeOlderIssuedBatches(depositIndex);
     activateDepositBatch(newBatch);
+    state.stageUserToggled = {};
+    state.stageSelectionKey = "";
     state.addressPaneFocusKey = batchKey(newBatch);
     state.depositDropdownOpen = true;
     state.waitStartedAt = null;
@@ -3940,7 +4385,7 @@ async function autoConfirmDeposit() {
   }
 }
 
-async function shieldDeposit(targetBatchKey = state.activeBatchKey || "") {
+async function shieldDeposit(targetBatchKey = state.activeBatchKey || "", targetTxId = "") {
   state.shieldPending = true;
   const selected = state.batches.find((batch) => batchKey(batch) === String(targetBatchKey || "")) || activeBatch();
   if (selected) {
@@ -3951,10 +4396,18 @@ async function shieldDeposit(targetBatchKey = state.activeBatchKey || "") {
   updateDashboard();
   setMessage("Shielding deposit into notes...", "");
   try {
-    const shieldRef = batch?.depositId || batch?.inboundTxId || "";
-    const amountSats = Number(batch?.amountSats || 0) || getAmountSats();
+    const finalisedTxRows = finalisedDepositTxs(batch);
+    const targetKey = String(targetTxId || "").toUpperCase();
+    const finalisedTx = targetKey
+      ? finalisedTxRows.find((tx) => String(tx.txid || "").toUpperCase() === targetKey)
+      : finalisedTxRows[0];
+    const shieldRef = finalisedTx?.deposit?.deposit_id || finalisedTx?.txid || batch?.depositId || batch?.inboundTxId || "";
+    const amountSats = Number(finalisedTx?.amountSats || 0) || Number(batch?.amountSats || 0) || getAmountSats();
     if (!shieldRef) {
       throw new Error("deposit id is not known yet");
+    }
+    if (mergeDepositTxs(batch?.depositTxs).length && !finalisedTx) {
+      throw new Error("deposit is not finalised yet");
     }
     if (!amountSats) {
       throw new Error("deposit amount is not known yet");
@@ -4030,12 +4483,28 @@ async function withdrawNote(noteIndex = state.selectedNote || 0) {
       ? await api(`/thornado/shielder/redeem/${payload.withdrawal_id}`).catch(() => null)
       : null;
     const inHash = redeem?.in_hash || withdrawalID;
-    state.withdrawnNotes[key] = { txhash: payload.txhash, withdrawalID, inHash, status: "pending" };
-    renderNotes();
     const requestedHeight = Number(redeem?.requested_height || 0);
-    const netSats = Math.max(0, Number(note.denomination_sats || 0) - Number($("feeSats").value || 0));
-    const outHash = await waitForOutboundHash(inHash, $("recipient").value.trim(), netSats, requestedHeight);
+    const netSats = Math.max(0, Number(note.denomination_sats || 0) - withdrawalFeeForDenomination(note.denomination_sats));
+    state.withdrawnNotes[key] = { txhash: payload.txhash, withdrawalID, inHash, status: "pending" };
+    setWithdrawalPayout(key, { status: "pending_batch", height: requestedHeight });
+    renderNotes();
+    const outHash = await waitForOutboundHash(
+      inHash,
+      $("recipient").value.trim(),
+      netSats,
+      requestedHeight,
+      900000,
+      (payout) => {
+        if (payout) {
+          setWithdrawalPayout(key, payout);
+          renderNotes();
+        }
+      }
+    );
     state.withdrawnNotes[key] = { txhash: payload.txhash, withdrawalID, inHash, outHash };
+    if (outHash) {
+      delete state.withdrawalPayouts[key];
+    }
     log("withdraw", { ...payload, out_hash: outHash });
     setMessage(outHash ? "Withdrawal complete. BTC payout found." : "Withdrawal accepted. BTC payout is still pending.", outHash ? "ok" : "warn", 10, 600000);
   } catch (error) {
@@ -4904,6 +5373,8 @@ document.addEventListener("click", (event) => {
       state.paneBatchKeys[paneKey] = batchKey(batch);
       if (paneKey === "deposit") {
         activateDepositBatch(batch);
+        state.stageUserToggled = {};
+        state.stageSelectionKey = "";
         state.noteRecoveryStatus = "idle";
         state.noteRecoveryBatchKey = batchKey(batch);
         queueDepositRecovery();
@@ -4997,14 +5468,6 @@ $("fundAuctionBidCommand").addEventListener("click", () => run(fundAuctionBidFro
 	    $("buildPauseCommand").addEventListener("click", () => run(buildPauseCommand));
 	    $("buildResumeCommand").addEventListener("click", () => run(buildResumeCommand));
 	    $("amountSats").addEventListener("input", updateDashboard);
-$("feeSats").addEventListener("input", () => {
-  state.lastWithdrawalProof = null;
-  state.lastWithdrawalPublic = null;
-  state.lastWithdrawalFeeSats = null;
-  state.lastWithdrawalNoteKey = null;
-  state.lastWithdrawalContextKey = "";
-  updateDashboard();
-});
 $("walletRoot").addEventListener("input", () => {
   resetDepositState();
   persistWalletSecret().catch((error) => log("secret/save", { error: error.message }));
@@ -5085,7 +5548,13 @@ setInterval(() => {
   if (hasMaturingNotes && $("withdrawAddressModal").hidden) {
     renderNotes();
   }
-  if (hasMaturingNotes || state.depositExpiresAt) {
+  if (hasPendingWithdrawalPayouts() && $("withdrawAddressModal").hidden) {
+    renderNotes();
+  }
+  if (state.depositExpiresAt || state.depositExpiresAtHeight) {
+    renderDepositExpiry();
+  }
+  if (hasMaturingNotes || state.depositExpiresAt || state.depositExpiresAtHeight || hasPendingWithdrawalPayouts()) {
     updateDashboard();
   }
 }, 1000);
@@ -5101,6 +5570,14 @@ setInterval(() => {
   if (!state.receipt?.notes?.length) {
     return;
   }
+  if (hasPendingWithdrawalPayouts()) {
+    hydrateWithdrawnNotePayouts()
+      .then(() => {
+        renderNotes();
+        updateDashboard();
+      })
+      .catch((error) => log("withdraw/hydrate", { error: error?.message || String(error) }));
+  }
   refreshReceiptPoolPositions()
     .then(() => {
       renderNotes();
@@ -5109,10 +5586,14 @@ setInterval(() => {
     .catch((error) => log("notes/pool", { error: error?.message || String(error) }));
 }, POOL_REFRESH_MS);
 refreshHash().catch((error) => setMessage(error.message, "error"));
+refreshRefundTxouts().catch((error) => log("refund/txout", { error: error?.message || String(error) }));
 refreshNodeCount().catch((error) => log("node/count", { error: error?.message || String(error) }));
 setInterval(() => {
   refreshHash().catch((error) => log("block/status", { error: error?.message || String(error) }));
 }, 5000);
+setInterval(() => {
+  refreshRefundTxouts().catch((error) => log("refund/txout", { error: error?.message || String(error) }));
+}, POOL_REFRESH_MS);
 setInterval(() => {
   refreshNodeCount().catch((error) => log("node/count", { error: error?.message || String(error) }));
 }, 15000);

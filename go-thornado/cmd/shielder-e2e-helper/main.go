@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
+	sdksecp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	prefix "github.com/thornadocash/go-thornado/cmd"
 	"github.com/thornadocash/go-thornado/common"
@@ -19,6 +20,21 @@ import (
 func die(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, format+"\n", args...)
 	os.Exit(1)
+}
+
+func hasLeadingZeroBits(bytes []byte, bits int) bool {
+	fullZeroBytes := bits / 8
+	remainingBits := bits % 8
+	for i := 0; i < fullZeroBytes; i++ {
+		if bytes[i] != 0 {
+			return false
+		}
+	}
+	if remainingBits == 0 {
+		return true
+	}
+	mask := byte(0xff << (8 - remainingBits))
+	return bytes[fullZeroBytes]&mask == 0
 }
 
 func main() {
@@ -97,6 +113,41 @@ func main() {
 			die("%v", err)
 		}
 		fmt.Println(out)
+	case "owner-address":
+		if len(os.Args) != 3 {
+			die("usage: shielder-e2e-helper owner-address [compressed-pubkey]")
+		}
+		raw, err := hex.DecodeString(strings.TrimSpace(os.Args[2]))
+		if err != nil {
+			die("invalid compressed-pubkey: %v", err)
+		}
+		if len(raw) == 32 {
+			raw = append([]byte{0x02}, raw...)
+		}
+		if len(raw) != 33 {
+			die("invalid compressed-pubkey length")
+		}
+		if raw[0] != 0x02 && raw[0] != 0x03 {
+			die("invalid compressed-pubkey prefix")
+		}
+		pubkey := &sdksecp256k1.PubKey{Key: raw}
+		fmt.Println(sdk.AccAddress(pubkey.Address()).String())
+	case "pow-token":
+		if len(os.Args) != 5 {
+			die("usage: shielder-e2e-helper pow-token [owner] [difficulty-bits] [label]")
+		}
+		var bits int
+		if _, err := fmt.Sscanf(os.Args[3], "%d", &bits); err != nil {
+			die("invalid difficulty-bits: %v", err)
+		}
+		for nonce := uint64(0); ; nonce++ {
+			token := fmt.Sprintf("%s:%d", os.Args[4], nonce)
+			sum := sha256.Sum256([]byte(os.Args[2] + ":" + token))
+			if hasLeadingZeroBits(sum[:], bits) {
+				fmt.Println(token)
+				return
+			}
+		}
 	case "receipt":
 		if len(os.Args) != 6 {
 			die("usage: shielder-e2e-helper receipt [deposit-id] [path-index] [amount-sats] [client-seed]")
@@ -202,6 +253,19 @@ func main() {
 			die("%v", err)
 		}
 		fmt.Println(string(out))
+	case "shield-authorization":
+		if len(os.Args) != 6 {
+			die("usage: shielder-e2e-helper shield-authorization [client-seed] [deposit-id] [amount-sats] [commitments-json]")
+		}
+		var amount uint64
+		if _, err := fmt.Sscanf(os.Args[4], "%d", &amount); err != nil {
+			die("invalid amount-sats: %v", err)
+		}
+		out, err := shielder.ShieldAuthorization(os.Args[2], os.Args[3], amount, os.Args[5])
+		if err != nil {
+			die("%v", err)
+		}
+		fmt.Println(out)
 	case "merkle-root":
 		if len(os.Args) != 3 {
 			die("usage: shielder-e2e-helper merkle-root [leaves-json]")

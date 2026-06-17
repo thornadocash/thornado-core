@@ -228,6 +228,13 @@ func (am AppModule) EndBlock(goCtx context.Context) ([]abci.ValidatorUpdate, err
 
 	nodes := am.mgr.NodeMgr().EndBlock(ctx, am.mgr)
 
+	if err := ProcessExpiredDepositAddressReturns(ctx, am.mgr); err != nil {
+		ctx.Logger().Error("fail to process expired deposit returns", "error", err)
+	}
+	if err := purgeExpiredDepositAddresses(ctx, am.mgr); err != nil {
+		ctx.Logger().Error("fail to purge expired deposit addresses", "error", err)
+	}
+
 	if err := am.mgr.TxOutStore().EndBlock(ctx, am.mgr); err != nil {
 		ctx.Logger().Error("fail to process txout endblock", "error", err)
 	}

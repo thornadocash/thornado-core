@@ -38,7 +38,10 @@ import (
 	ttypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
-var errNotDesignatedFrostSigner = errors.New("not designated FROST signer")
+var (
+	errNotDesignatedFrostSigner = errors.New("not designated FROST signer")
+	errTxOutStale               = errors.New("txout is stale")
+)
 
 type frostVaultChecker interface {
 	IsFrostVault(common.PubKey) bool
@@ -708,7 +711,7 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 	if !item.Round7Retry || inactiveVaultRound7Retry {
 		if blockHeight-signingTransactionPeriod > height-s.cfg.Signer.RescheduleBufferBlocks {
 			s.logger.Error().Msgf("tx was created at block height(%d), now it is (%d), it is older than (%d) blocks, skip it", height, blockHeight, signingTransactionPeriod)
-			return nil, nil, nil
+			return nil, nil, errTxOutStale
 		}
 	}
 
@@ -741,6 +744,13 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 		s.logger.Info().Str("signer_address", chain.GetAddress(tx.VaultPubKey)).Msg("different vault address, ignore")
 		return nil, nil, nil
 	}
+	if missing, err := chain.SourceTxMissing(tx, blockHeight); err != nil {
+		s.logger.Error().Err(err).Interface("tx", tx).Msg("fail to check sweep source tx")
+	} else if missing {
+		if s.submitMissingSourceErrata(tx.InHash, tx.Chain) {
+			return nil, nil, nil
+		}
+	}
 	designated, err := s.isDesignatedFrostSigner(item, chain, blockHeight, signingTransactionPeriod)
 	if err != nil {
 		return nil, nil, err
@@ -770,7 +780,14 @@ func (s *Signer) signAndBroadcast(item TxOutStoreItem) ([]byte, *types.TxInItem,
 	// scenario, the network could broadcast a transaction several times,
 	// bleeding funds.
 	if !chain.IsBlockScannerHealthy() {
-		return nil, nil, fmt.Errorf("the block scanner for chain %s is unhealthy, not signing transactions due to it", chain.GetChain())
+		if strings.EqualFold(os.Getenv("BIFROST_SIGNER_ALLOW_UNHEALTHY_SIGNING"), "true") {
+			s.logger.Warn().
+				Stringer("chain", chain.GetChain()).
+				Stringer("in_hash", tx.InHash).
+				Msg("signing while block scanner is unhealthy due to explicit override")
+		} else {
+			return nil, nil, fmt.Errorf("the block scanner for chain %s is unhealthy, not signing transactions due to it", chain.GetChain())
+		}
 	}
 
 	start := time.Now()
@@ -900,6 +917,25 @@ func (s *Signer) storageList() []TxOutStoreItem {
 	return s.storage.List()
 }
 
+func (s *Signer) submitMissingSourceErrata(txID common.TxID, chain common.Chain) bool {
+	msg := s.thornadoBridge.GetErrataMsg(txID, chain)
+	errataTxID, err := s.thornadoBridge.Broadcast(msg)
+	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Stringer("missing_source_tx", txID).
+			Stringer("chain", chain).
+			Msg("fail to submit missing source tx errata")
+		return false
+	}
+	s.logger.Warn().
+		Stringer("missing_source_tx", txID).
+		Stringer("chain", chain).
+		Stringer("errata_tx", errataTxID).
+		Msg("submitted missing source tx errata")
+	return true
+}
+
 func (s *Signer) processTransaction(item TxOutStoreItem) {
 	item = s.refreshTxOutBatchMetadata(item)
 	if item.BatchStatus != "" && item.BatchStatus != "pending_sign" {
@@ -938,6 +974,34 @@ func (s *Signer) processTransaction(item TxOutStoreItem) {
 	})
 	if err != nil {
 		if errors.Is(err, errNotDesignatedFrostSigner) {
+			cancel()
+			return
+		}
+		var missingSource types.MissingSourceTxError
+		if errors.As(err, &missingSource) {
+			if s.submitMissingSourceErrata(missingSource.TxID, missingSource.Chain) {
+				if storeErr := s.storage.Remove(item); storeErr != nil {
+					s.logger.Error().Err(storeErr).Msg("fail to remove errata'd tx out store item")
+				}
+			}
+			cancel()
+			return
+		}
+		if errors.Is(err, errTxOutStale) {
+			blockHeight, heightErr := s.thornadoBridge.GetBlockHeight()
+			if heightErr != nil {
+				s.logger.Error().Err(heightErr).Msg("fail to get block height while deferring stale txout")
+				blockHeight = item.Height
+			}
+			item.DeferredUntilHeight = blockHeight + 1_000_000
+			if storeErr := s.storage.Set(item); storeErr != nil {
+				s.logger.Error().Err(storeErr).Msg("fail to defer stale tx out store item")
+			}
+			s.logger.Warn().
+				Int64("height", item.Height).
+				Int64("deferred_until_height", item.DeferredUntilHeight).
+				Interface("tx", item.TxOutItem).
+				Msg("deferred stale tx out store item")
 			cancel()
 			return
 		}

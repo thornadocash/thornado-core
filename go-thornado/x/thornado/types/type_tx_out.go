@@ -18,6 +18,7 @@ const (
 	TxOutStatusPendingBatch = "pending_batch"
 	TxOutStatusPendingSign  = "pending_sign"
 	TxOutStatusPendingRetry = "pending_retry"
+	TxOutStatusComplete     = "complete"
 )
 
 func NormalizeTxOutType(txType string) string {

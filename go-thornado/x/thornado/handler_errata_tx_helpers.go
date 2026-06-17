@@ -11,6 +11,7 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 func processErrataTxAttestation(
@@ -42,6 +43,9 @@ func processErrataTxAttestation(
 			penaltyManager.IncPenaltyPoints(penaltyCtx, observePenaltyPoints, attester)
 		}
 		ctx.Logger().Info("signer already signed MsgErrataTx", "signer", attester.String(), "txid", er.Id)
+		if voter.BlockHeight > 0 || voter.HasConsensus(active) {
+			return processErrataState(ctx, k, eventMgr, er)
+		}
 		return nil
 	}
 
@@ -58,8 +62,7 @@ func processErrataTxAttestation(
 		if (voter.BlockHeight + observeFlex) >= ctx.BlockHeight() {
 			penaltyManager.DecPenaltyPoints(penaltyCtx, lackOfObservationPenalty, attester)
 		}
-		// errata tx already processed
-		return nil
+		return processErrataState(ctx, k, eventMgr, er)
 	}
 
 	voter.BlockHeight = ctx.BlockHeight()
@@ -72,16 +75,33 @@ func processErrataTxAttestation(
 	penaltyManager.DecPenaltyPoints(penaltyCtx, observePenaltyPoints, signers...)
 	penaltyManager.IncPenaltyPoints(penaltyCtx, lackOfObservationPenalty, nonSigners...)
 
+	return processErrataState(ctx, k, eventMgr, er)
+}
+
+func processErrataState(ctx cosmos.Context, k keeper.Keeper, eventMgr EventManager, er *common.ErrataTx) error {
+	depositErrataProcessed, err := processErrataDepositRecord(ctx, k, er)
+	if err != nil {
+		return err
+	}
 	observedVoter, err := k.GetObservedTxInVoter(ctx, er.Id)
 	if err != nil {
 		return err
 	}
 
 	if len(observedVoter.Txs) == 0 {
-		return processErrataOutboundTx(ctx, k, eventMgr, er)
+		processed, err := processErrataOutboundTx(ctx, k, eventMgr, er)
+		if err != nil {
+			return err
+		}
+		if !processed && !depositErrataProcessed {
+			ctx.Logger().Info("errata tx not found in thornado state; treating as already cleared", "tx_id", er.Id, "chain", er.Chain)
+		}
+		return nil
 	}
 	if observedVoter.Tx.IsEmpty() {
-		ctx.Logger().Info("tx has not reach consensus yet, so nothing need to be done", "tx_id", er.Id)
+		observedVoter.SetReverted()
+		k.SetObservedTxInVoter(ctx, observedVoter)
+		ctx.Logger().Info("marked non-consensus observed tx errata", "tx_id", er.Id, "chain", er.Chain)
 		return nil
 	}
 
@@ -118,29 +138,68 @@ func processErrataTxAttestation(
 	return nil
 }
 
+func processErrataDepositRecord(ctx cosmos.Context, k keeper.Keeper, er *common.ErrataTx) (bool, error) {
+	if er == nil || !er.Chain.Equals(common.BTCChain) || er.Id.IsEmpty() {
+		return false, nil
+	}
+	deposit, err := k.GetDepositRecord(ctx, er.Id)
+	if err != nil {
+		return false, err
+	}
+	if deposit.DepositID.IsEmpty() {
+		return false, nil
+	}
+	deposit.Status = types.DepositStatusErrata
+	deposit.BTCConfirmations = 0
+	deposit.BTCObservedHeight = 0
+	if err := k.SetDepositRecord(ctx, deposit); err != nil {
+		return false, err
+	}
+	if err := purgeTxOutItemsForDeposit(ctx, k, deposit.DepositID, types.TxOutTypeSweep, types.TxOutTypeRefund); err != nil {
+		return false, err
+	}
+	if session, err := k.GetDepositSession(ctx, deposit.Owner); err == nil && session.InboundTxID.Equals(er.Id) {
+		session.InboundTxID = ""
+		session.DepositID = ""
+		session.BTCConfirmations = 0
+		session.BTCObservedHeight = 0
+		if session.Status == types.DepositStatusDepositObserved || session.Status == types.DepositStatusDepositMatched {
+			session.Status = types.DepositStatusAddressIssued
+		}
+		if err := k.SetDepositSession(ctx, session); err != nil {
+			return false, err
+		}
+	}
+	ctx.Logger().Info("marked deposit errata", "deposit_id", er.Id, "chain", er.Chain)
+	return true, nil
+}
+
 // processErrataOutboundTx handles an errata for an outbound tx that was sent but later reorged out.
 // It re-credits funds to the vault so they are not abandoned.
 // The tx is marked as reverted rather than rescheduled.
-func processErrataOutboundTx(ctx cosmos.Context, k keeper.Keeper, eventMgr EventManager, er *common.ErrataTx) error {
+func processErrataOutboundTx(ctx cosmos.Context, k keeper.Keeper, eventMgr EventManager, er *common.ErrataTx) (bool, error) {
 	txOutVoter, err := k.GetObservedTxOutVoter(ctx, er.Id)
 	if err != nil {
-		return fmt.Errorf("fail to get observed tx out voter for tx (%s) : %w", er.Id, err)
+		return false, fmt.Errorf("fail to get observed tx out voter for tx (%s) : %w", er.Id, err)
 	}
 	if len(txOutVoter.Txs) == 0 {
-		return fmt.Errorf("cannot find tx: %s", er.Id)
+		return false, nil
+	}
+	if txOutVoter.Reverted {
+		return true, nil
 	}
 	if txOutVoter.Tx.IsEmpty() {
-		return fmt.Errorf("tx out voter is not finalised")
+		return true, fmt.Errorf("tx out voter is not finalised")
 	}
 	tx := txOutVoter.Tx.Tx
 	if !tx.Chain.Equals(er.Chain) || tx.Coins.IsEmpty() {
-		return nil
+		return true, nil
 	}
 	vaultPubKey := txOutVoter.Tx.ObservedPubKey
 	if !vaultPubKey.IsEmpty() {
 		v, err := k.GetVault(ctx, vaultPubKey)
 		if err != nil {
-			return fmt.Errorf("fail to get vault with pubkey %s: %w", vaultPubKey, err)
+			return true, fmt.Errorf("fail to get vault with pubkey %s: %w", vaultPubKey, err)
 		}
 		// Credit funds back to the vault so they are not lost.
 		// Note: We intentionally do NOT change InactiveVault back to RetiringVault
@@ -153,7 +212,7 @@ func processErrataOutboundTx(ctx cosmos.Context, k keeper.Keeper, eventMgr Event
 
 		if !v.IsEmpty() {
 			if err := k.SetVault(ctx, v); err != nil {
-				return fmt.Errorf("fail to save vault: %w", err)
+				return true, fmt.Errorf("fail to save vault: %w", err)
 			}
 		}
 	}
@@ -161,10 +220,10 @@ func processErrataOutboundTx(ctx cosmos.Context, k keeper.Keeper, eventMgr Event
 	// emit security event
 	event := NewEventSecurity(tx, "outbound errata")
 	if err := eventMgr.EmitEvent(ctx, event); err != nil {
-		return ErrInternal(err, "fail to emit security event")
+		return true, ErrInternal(err, "fail to emit security event")
 	}
 
 	txOutVoter.SetReverted()
 	k.SetObservedTxOutVoter(ctx, txOutVoter)
-	return nil
+	return true, nil
 }

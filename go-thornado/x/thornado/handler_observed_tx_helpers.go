@@ -297,8 +297,10 @@ func processTxOutAttestation(
 	}))
 	penaltyCtx = ctx.WithContext(context.WithValue(penaltyCtx.Context(), constants.CtxObservedTx, tx.Tx.ID.String()))
 
-	if err := k.SetLastObserveHeight(ctx, tx.Tx.Chain, signer, tx.BlockHeight); err != nil {
-		ctx.Logger().Error("fail to save last observe height", "error", err, "signer", signer, "chain", tx.Tx.Chain)
+	if tx.BlockHeight > 0 {
+		if err := k.SetLastObserveHeight(ctx, tx.Tx.Chain, signer, tx.BlockHeight); err != nil {
+			ctx.Logger().Error("fail to save last observe height", "error", err, "signer", signer, "chain", tx.Tx.Chain)
+		}
 	}
 
 	// As an observation requires processing by all nodes no matter what,
@@ -683,6 +685,28 @@ func markObservedOutboundTxOut(ctx cosmos.Context, mgr Manager, tx ObservedTx) {
 			txOut.TxArray[i].OutHash = tx.Tx.ID
 			if err := mgr.Keeper().SetTxOut(ctx, txOut); err != nil {
 				ctx.Logger().Error("fail to save tx out", "error", err)
+			}
+			if item.TxType == types.TxOutTypeRefund && !item.InHash.IsEmpty() {
+				deposit, err := mgr.Keeper().GetDepositRecord(ctx, item.InHash)
+				if err != nil {
+					ctx.Logger().Error("fail to get refunded deposit record", "error", err, "deposit_id", item.InHash.String())
+				} else if deposit.Status == types.DepositStatusReturnQueued {
+					deposit.Status = types.DepositStatusReturnComplete
+					if err := mgr.Keeper().SetDepositRecord(ctx, deposit); err != nil {
+						ctx.Logger().Error("fail to mark deposit return complete", "error", err, "deposit_id", item.InHash.String())
+					}
+				}
+			}
+			if item.TxType == types.TxOutTypeOut && !item.InHash.IsEmpty() {
+				redeem, err := mgr.Keeper().GetShielderRedeem(ctx, item.InHash.String())
+				if err == nil && redeem.Status == types.DepositStatusKeysignQueued {
+					redeem.Status = types.ShielderRedeemStatusSettled
+					if err := mgr.Keeper().SetShielderRedeem(ctx, redeem); err != nil {
+						ctx.Logger().Error("fail to mark shielder redeem settled", "error", err, "withdrawal_id", item.InHash.String())
+					}
+				} else if err != nil {
+					ctx.Logger().Debug("matched outbound is not a shielder redeem", "error", err, "in_hash", item.InHash.String())
+				}
 			}
 			return
 		}

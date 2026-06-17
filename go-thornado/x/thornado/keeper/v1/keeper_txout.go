@@ -115,8 +115,23 @@ func (k KVStore) SetTxOut(ctx cosmos.Context, blockOut *TxOut) error {
 	if blockOut.Status == "" {
 		blockOut.Status = TxOutStatusPendingSign
 	}
+	if txOutComplete(*blockOut) {
+		blockOut.Status = TxOutStatusComplete
+	}
 	k.setTxOut(ctx, k.GetKey(prefixTxOut, strconv.FormatInt(blockOut.Height, 10)), *blockOut)
 	return nil
+}
+
+func txOutComplete(txOut TxOut) bool {
+	if len(txOut.TxArray) == 0 {
+		return false
+	}
+	for _, item := range txOut.TxArray {
+		if item.OutHash.IsEmpty() {
+			return false
+		}
+	}
+	return true
 }
 
 // GetTxOutIterator iterate tx out

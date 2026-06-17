@@ -144,7 +144,7 @@ func (e *ErrataTx) Equals(other *ErrataTx) bool {
 	if e.Chain != other.Chain {
 		return false
 	}
-	if e.Id != other.Id {
+	if !e.Id.Equals(other.Id) {
 		return false
 	}
 	return true

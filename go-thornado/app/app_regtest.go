@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	begin = make(chan struct{})
-	end   = make(chan struct{})
+	begin            = make(chan struct{})
+	end              = make(chan struct{})
+	manualBlockHooks bool
 )
 
 func init() {
@@ -31,6 +32,10 @@ func init() {
 	}
 	http.HandleFunc("/newBlock", newBlock)
 	portString := os.Getenv("CREATE_BLOCK_PORT")
+	if portString == "" {
+		return
+	}
+	manualBlockHooks = true
 	go func() {
 		err := http.ListenAndServe(":"+portString, nil)
 		if err != nil {
@@ -44,13 +49,17 @@ func (app *ThornadoApp) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
 	// are consistent and don't change block hashes (eg. 24h volume calculation)
 	timestamp := time.Unix(ctx.BlockHeight(), 0).UTC()
 	ctx = ctx.WithBlockTime(timestamp)
-	<-begin
+	if manualBlockHooks {
+		<-begin
+	}
 	return app.ModuleManager.BeginBlock(ctx.WithBlockTime(timestamp))
 }
 
 // EndBlocker application updates every end block
 func (app *ThornadoApp) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
-	defer func() { end <- struct{}{} }()
+	if manualBlockHooks {
+		defer func() { end <- struct{}{} }()
+	}
 	// Use an artificial timestamp, to ensure block time specific changes
 	// are consistent and don't change block hashes (eg. 24h volume calculation)
 	timestamp := time.Unix(ctx.BlockHeight(), 0).UTC()

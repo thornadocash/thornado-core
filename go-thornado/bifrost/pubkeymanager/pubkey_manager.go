@@ -243,18 +243,19 @@ func (pkm *PubKeyManager) addDepositAddressLookahead(pk common.PubKey) {
 // AddNodePubKey add the given public key as a node public key to internal storage
 func (pkm *PubKeyManager) AddNodePubKey(pk common.PubKey, algo common.SigningAlgo) {
 	var newKey bool
+	var existingKey bool
 
 	pkm.rwMutex.Lock()
 	for i, pubkey := range pkm.pubkeys {
 		if pubkey.PubKey.Equals(pk) {
 			pkm.pubkeys[i].Signer = true
 			pkm.pubkeys[i].NodeAccount = true
-			pkm.rwMutex.Unlock()
-			return
+			existingKey = true
+			break
 		}
 	}
 
-	if !pkm.hasPubKeyNoLock(pk) {
+	if !existingKey {
 		pkm.pubkeys = append(pkm.pubkeys, pubKeyInfo{
 			PubKey:      pk,
 			Algo:        algo,
@@ -268,6 +269,10 @@ func (pkm *PubKeyManager) AddNodePubKey(pk common.PubKey, algo common.SigningAlg
 	if newKey {
 		pkm.fireCallback(pk)
 	}
+	// The pubkey manager can start before the signer has loaded its node
+	// pubkey. Refresh vault membership now so existing vaults are marked as
+	// signer targets for this node.
+	pkm.fetchPubKeys(false)
 }
 
 // RemovePubKey remove the given public key from internal storage

@@ -54,6 +54,7 @@ const (
 	ConfigDefaultsEndpoint   = "/thornado/config/defaults"
 	ChainVersionEndpoint     = "/thornado/version"
 	NetworkFeeEndpoint       = "/thornado/network_fee"
+	TxOutEndpoint            = "/thornado/txout/out"
 )
 
 // thornadoBridge will be used to send tx to Thornado
@@ -103,6 +104,7 @@ type ThornadoBridge interface {
 	Broadcast(msgs ...sdk.Msg) (common.TxID, error)
 	BroadcastWithBlocking(msgs ...sdk.Msg) (common.TxID, error)
 	GetKeysign(blockHeight int64, pk string) (types.TxOut, error)
+	GetPendingTxOutKeysigns() ([]types.TxOut, error)
 	GetNodeAccount(string) (*stypes.NodeAccount, error)
 	GetNodeAccounts() ([]*stypes.QueryNodeResponse, error)
 	GetKeygenBlock(int64, string) (stypes.KeygenBlock, error)
@@ -762,16 +764,25 @@ func (b *thornadoBridge) PostNetworkFee(height int64, chain common.Chain, transa
 	return b.Broadcast(msg)
 }
 
-// GetConstants returns grouped genesis defaults flattened for legacy callers.
+// GetConstants returns live config values, falling back to genesis defaults.
 func (b *thornadoBridge) GetConstants() (map[string]int64, error) {
-	buf, s, err := b.getWithPath(ConfigDefaultsEndpoint)
+	defaults, err := b.getConfigValues(ConfigDefaultsEndpoint)
 	if err != nil {
-		return nil, fmt.Errorf("fail to get config defaults: %w", err)
+		return nil, err
 	}
-	if s != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", s)
+	overrides, err := b.getConfigValues(ConfigEndpoint)
+	if err != nil {
+		return nil, err
 	}
-	return decodeConfigInt64Values(buf)
+	for key := range defaults {
+		if value, ok := lookupConfigValue(overrides, key); ok {
+			defaults[key] = value
+		}
+	}
+	for key, value := range overrides {
+		defaults[key] = value
+	}
+	return defaults, nil
 }
 
 // GetThornadoVersion retrieve thornado version

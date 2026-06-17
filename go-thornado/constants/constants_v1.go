@@ -98,7 +98,7 @@ func NewConfigValue() *ConfigVals {
 
 			// Withdrawal
 			Withdrawal_FeeBasisPoints:     100,
-			Withdrawal_FeeMinSats:         100_000,
+			Withdrawal_FeeMinSats:         0,
 			Withdrawal_BatchWindowMinutes: 10,
 		},
 		boolValues:   map[ConfigName]bool{},

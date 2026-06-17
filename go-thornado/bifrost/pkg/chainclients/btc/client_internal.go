@@ -115,10 +115,19 @@ func (c *Client) reConfirmTx(height int64) ([]int64, error) {
 		if err != nil {
 			return nil, fmt.Errorf("fail to get block meta %d from local storage: %w", i, err)
 		}
+		if blockMeta == nil {
+			c.log.Debug().Int64("height", i).Msg("missing block meta during reorg reconfirm")
+			continue
+		}
 
 		hash, err := c.rpc.GetBlockHash(blockMeta.Height)
 		if err != nil {
-			c.log.Err(err).Msgf("fail to get block verbose tx result: %d", blockMeta.Height)
+			c.log.Err(err).Msgf("fail to get block hash: %d", blockMeta.Height)
+			continue
+		}
+		if hash == "" {
+			c.log.Debug().Int64("height", blockMeta.Height).Msg("empty block hash during reorg reconfirm")
+			continue
 		}
 		if strings.EqualFold(blockMeta.BlockHash, hash) {
 			break // we know about this block, everything prior is okay

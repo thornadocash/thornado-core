@@ -11,6 +11,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/tx"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/spf13/cobra"
 
 	"github.com/thornadocash/go-thornado/common"
@@ -45,6 +46,7 @@ func GetTxCmd() *cobra.Command {
 	cmd.AddCommand(GetCmdShielder())
 	cmd.AddCommand(GetCmdObserveTxIns())
 	cmd.AddCommand(GetCmdObserveTxOuts())
+	cmd.AddCommand(GetCmdErrataTx())
 	addTxFlagsToCommands(cmd.Commands())
 	return cmd
 }
@@ -463,6 +465,50 @@ func GetCmdObserveTxOuts() *cobra.Command {
 
 	cmd.RunE = observeTxs(true)
 
+	return cmd
+}
+
+// GetCmdErrataTx command manually submits errata for missing or reverted transactions.
+func GetCmdErrataTx() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "errata-tx --txids [tx-id-1],[tx-id-2]",
+		Short: "manually submit errata for transactions",
+		Args:  cobra.ExactArgs(0),
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			txids, err := cmd.Flags().GetString("txids")
+			if err != nil {
+				return err
+			}
+			if strings.TrimSpace(txids) == "" {
+				return fmt.Errorf("--txids is required")
+			}
+			signer := clientCtx.GetFromAddress()
+			if signer.Empty() {
+				return fmt.Errorf("--from must be set")
+			}
+			msgs := make([]sdk.Msg, 0)
+			for _, raw := range strings.Split(txids, ",") {
+				txid := strings.TrimSpace(raw)
+				if txid == "" {
+					continue
+				}
+				hash, err := common.NewTxID(txid)
+				if err != nil {
+					return fmt.Errorf("invalid txid %q: %w", txid, err)
+				}
+				msgs = append(msgs, types.NewMsgErrataTx(hash, common.BTCChain, signer))
+			}
+			if len(msgs) == 0 {
+				return fmt.Errorf("no txids to errata")
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msgs...)
+		},
+	}
+	cmd.Flags().String("txids", "", "comma separated list of tx ids to errata")
 	return cmd
 }
 

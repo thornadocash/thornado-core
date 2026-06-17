@@ -11,5 +11,8 @@ import (
 
 func InitGenesis(ctx cosmos.Context, keeper keeper.Keeper, data GenesisState) []abci.ValidatorUpdate {
 	nodes := initGenesis(ctx, keeper, data)
+	if len(nodes) == 0 {
+		return nodes
+	}
 	return nodes[:1]
 }

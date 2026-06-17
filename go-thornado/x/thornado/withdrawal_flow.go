@@ -21,9 +21,6 @@ func QueueAuthorizedWithdrawalTxOut(ctx cosmos.Context, k keeper.Keeper, authori
 	if feeSats >= authorization.AmountSats {
 		return types.ShielderRedeem{}, fmt.Errorf("withdrawal fee exceeds amount")
 	}
-	if authorization.FeeSats != 0 && authorization.FeeSats != feeSats {
-		return types.ShielderRedeem{}, fmt.Errorf("invalid withdrawal fee authorization: %d/%d", authorization.FeeSats, feeSats)
-	}
 	authorization.FeeSats = feeSats
 
 	amount := authorization.AmountSats - authorization.FeeSats

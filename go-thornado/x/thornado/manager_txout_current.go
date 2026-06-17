@@ -40,8 +40,9 @@ func newTxOutStorage(keeper keeper.Keeper, constAccessor constants.ConfigValues,
 
 func (tos *TxOutStorage) EndBlock(ctx cosmos.Context, mgr Manager) error {
 	if err := tos.updateBatchStates(ctx); err != nil {
-		return err
+		ctx.Logger().Error("fail to update txout batch states", "error", err)
 	}
+
 	// update the max gas for all outbounds in this block. This can be useful
 	// if an outbound transaction was scheduled into the future, and the gas
 	// for that blockchain changes in that time span. This avoids the need to
@@ -118,20 +119,24 @@ func (tos *TxOutStorage) updateBatchStates(ctx cosmos.Context) error {
 	signingPeriod := getConfigDurationBlocks(ctx, tos.keeper, constants.Keysign_PeriodMinutes)
 	retryPeriod := getConfigDurationBlocks(ctx, tos.keeper, constants.Withdrawal_BatchWindowMinutes)
 	iterator := tos.keeper.GetTxOutIterator(ctx)
-	defer iterator.Close()
+	updates := make([]TxOut, 0)
 
 	for ; iterator.Valid(); iterator.Next() {
 		var txOut TxOut
 		if err := tos.keeper.Cdc().Unmarshal(iterator.Value(), &txOut); err != nil {
+			_ = iterator.Close()
 			return err
 		}
 		if txOut.IsEmpty() {
 			continue
 		}
+		if !txOutHasPendingItems(txOut) {
+			txOut.Status = TxOutStatusComplete
+			updates = append(updates, txOut)
+			continue
+		}
 		if !txOutUsesBatching(txOut) {
-			if err := tos.keeper.SetTxOut(ctx, &txOut); err != nil {
-				return err
-			}
+			updates = append(updates, txOut)
 			continue
 		}
 		if txOut.Status == TxOutStatusPendingBatch && txOut.Height <= ctx.BlockHeight() {
@@ -152,6 +157,16 @@ func (tos *TxOutStorage) updateBatchStates(ctx cosmos.Context) error {
 		if txOut.Status == TxOutStatusPendingSign && txOutHasPendingItems(txOut) {
 			txOut.SigningLeader = tos.selectSigningLeader(ctx, txOut, txOut.SigningAttempt)
 		}
+		updates = append(updates, txOut)
+	}
+	if err := iterator.Error(); shouldLogIteratorError(err) {
+		ctx.Logger().Error("txout iterator ended with error", "error", err)
+	}
+	if err := iterator.Close(); shouldLogIteratorError(err) {
+		ctx.Logger().Error("fail to close txout iterator", "error", err)
+	}
+
+	for _, txOut := range updates {
 		if err := tos.keeper.SetTxOut(ctx, &txOut); err != nil {
 			return err
 		}

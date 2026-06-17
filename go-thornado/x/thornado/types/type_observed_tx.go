@@ -196,8 +196,8 @@ func (m *ObservedTxVoter) SetReverted() {
 }
 
 func (m *ObservedTxVoter) setStatus(toStatus common.Status) {
-	for _, item := range m.Txs {
-		item.Status = toStatus
+	for i := range m.Txs {
+		m.Txs[i].Status = toStatus
 	}
 	if !m.Tx.IsEmpty() {
 		m.Tx.Status = toStatus

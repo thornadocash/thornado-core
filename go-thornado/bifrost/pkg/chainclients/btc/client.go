@@ -220,6 +220,45 @@ func (c *Client) GetHeight() (int64, error) {
 	return c.rpc.GetBlockCount()
 }
 
+// ObserveTxIn resolves a Bitcoin transaction through this node's RPC and converts it
+// to the same inbound observation shape used by the scanner.
+func (c *Client) ObserveTxIn(txid string) (types.TxIn, error) {
+	tx, err := c.rpc.GetRawTransactionVerbose(txid)
+	if err != nil {
+		return types.TxIn{}, fmt.Errorf("fail to get raw transaction %s: %w", txid, err)
+	}
+
+	height := c.currentBlockHeight.Load()
+	mempool := tx.BlockHash == ""
+	if !mempool {
+		block, err := c.rpc.GetBlockVerbose(tx.BlockHash)
+		if err != nil {
+			return types.TxIn{}, fmt.Errorf("fail to get block for transaction %s: %w", txid, err)
+		}
+		height = block.Height
+	}
+	if height <= 0 {
+		height, err = c.GetHeight()
+		if err != nil {
+			return types.TxIn{}, fmt.Errorf("fail to get chain height for transaction %s: %w", txid, err)
+		}
+	}
+
+	txInItem, err := c.getTxIn(tx, height, mempool, nil)
+	if err != nil {
+		return types.TxIn{}, fmt.Errorf("fail to build tx observation %s: %w", txid, err)
+	}
+	if txInItem.IsEmpty() || txInItem.Coins.IsEmpty() {
+		return types.TxIn{}, fmt.Errorf("transaction %s is not an observable inbound", txid)
+	}
+
+	return types.TxIn{
+		Chain:   c.GetChain(),
+		TxArray: []*types.TxInItem{&txInItem},
+		MemPool: mempool,
+	}, nil
+}
+
 // GetNetworkFee returns current chain network fee according to Bifrost.
 func (c *Client) GetNetworkFee() (transactionSize, transactionFeeRate uint64) {
 	transactionSize = c.cfg.UTXO.EstimatedAverageTxSize
@@ -699,6 +738,54 @@ func (c *Client) errataDroppedMempoolTxs(height int64, currentMempool map[string
 	}
 }
 
+func (c *Client) errataMissingObservedTx(height int64, txid string) bool {
+	if txid == "" || c.globalErrataQueue == nil {
+		return false
+	}
+	c.removeFromMemPoolCache(txid)
+	if err := c.temporalStorage.UntrackObservedTx(txid); err != nil {
+		c.log.Err(err).Str("txid", txid).Msg("fail to remove missing observed tx from cache")
+	}
+	c.globalErrataQueue <- types.ErrataBlock{
+		Height: height,
+		Txs: []types.ErrataTx{
+			{
+				TxID:  common.TxID(txid),
+				Chain: c.cfg.ChainID,
+			},
+		},
+	}
+	return true
+}
+
+func (c *Client) errataMissingObservedTxs(height int64, txIn types.TxIn) bool {
+	if height <= 0 {
+		height = c.getCurrentBlockHeight()
+		if height <= 0 {
+			if chainHeight, err := c.GetHeight(); err == nil {
+				c.updateCurrentBlockHeight(chainHeight)
+				height = chainHeight
+			} else {
+				c.log.Err(err).Msg("fail to refresh chain height for missing observed tx errata")
+			}
+		}
+	}
+	missing := false
+	for _, tx := range txIn.TxArray {
+		if tx == nil || tx.Tx == "" {
+			continue
+		}
+		if c.confirmTx(tx.Tx) {
+			continue
+		}
+		c.log.Info().Int64("height", height).Str("txid", tx.Tx).Msg("observed tx disappeared; queue errata")
+		if c.errataMissingObservedTx(height, tx.Tx) {
+			missing = true
+		}
+	}
+	return missing
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // Client - Confirmation Counting
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -746,13 +833,24 @@ func (c *Client) ConfirmationCountReady(txIn types.TxIn) bool {
 		return true
 	}
 
-	// Mempool transactions are ready for pre-confirmation observation.
 	if txIn.MemPool {
+		height := int64(0)
+		if len(txIn.TxArray) > 0 {
+			height = txIn.TxArray[0].BlockHeight
+		}
+		if c.errataMissingObservedTxs(height, txIn) {
+			return false
+		}
+		// Mempool transactions are ready for pre-confirmation observation.
 		return true
 	}
 
 	// check if we have the necessary number of confirmations
 	height := txIn.TxArray[0].BlockHeight
+	if c.errataMissingObservedTxs(height, txIn) {
+		return false
+	}
+
 	confirm := txIn.ConfirmationRequired
 	if confirm <= 0 {
 		return true

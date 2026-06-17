@@ -334,7 +334,7 @@ func reserveSolvencyAttestations(ctx cosmos.Context, k keeper.Keeper, voter type
 func reserveErrataTxAttestations(ctx cosmos.Context, k keeper.Keeper, voter types.ErrataTxVoter, signers []cosmos.AccAddress) error {
 	for _, signer := range signers {
 		if !voter.Sign(signer) {
-			return cosmos.ErrUnknownRequest("errata tx attestation already submitted")
+			continue
 		}
 	}
 	if ctx.IsCheckTx() {
@@ -466,6 +466,9 @@ func shielderRedeemAnte(ctx cosmos.Context, k keeper.Keeper, proof, public []byt
 	}
 	policy := normalizeShielderRedeemPolicy(publicInputs.RecipientPolicy)
 	if err := validateShielderRedeemPolicy(ctx, k, policy, publicInputs); err != nil {
+		return ctx, err
+	}
+	if err := validateShielderRedeemProtocolFee(ctx, k, policy, publicInputs); err != nil {
 		return ctx, err
 	}
 	if k.ShielderNullifierSpent(ctx, publicInputs.NullifierHash) {

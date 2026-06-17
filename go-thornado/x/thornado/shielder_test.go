@@ -231,6 +231,14 @@ func TestWithdrawalFeeIsProtocolOnePercent(t *testing.T) {
 	if got := withdrawalFeeSatsForBp(100_000_000, uint64(constants.NewConfigValue().GetInt64Value(constants.Withdrawal_FeeBasisPoints))); got != 1_000_000 {
 		t.Fatalf("unexpected fee: %d", got)
 	}
+	k := newShielderFlowTestKeeper()
+	ctx := cosmos.Context{}
+	if got := withdrawalFeeSats(ctx, k, 1_000_000); got != 10_000 {
+		t.Fatalf("0.01 BTC note fee should be exactly 1%%: %d", got)
+	}
+	if got := constants.NewConfigValue().GetInt64Value(constants.Withdrawal_FeeMinSats); got != 0 {
+		t.Fatalf("withdrawal min fee should be disabled: %d", got)
+	}
 }
 
 func TestFeeClaimPayloadBindsRecipientAndCounter(t *testing.T) {

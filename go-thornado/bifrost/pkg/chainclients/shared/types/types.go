@@ -27,6 +27,10 @@ type ChainClient interface {
 	// SignTx returns the signed transaction.
 	SignTx(tx types.TxOutItem, height int64) ([]byte, []byte, *types.TxInItem, error)
 
+	// SourceTxMissing returns true when a sweep source cannot be found on the
+	// external chain and should be errata'd before signing.
+	SourceTxMissing(tx types.TxOutItem, height int64) (bool, error)
+
 	// BroadcastTx broadcasts the transaction and returns the transaction hash.
 	BroadcastTx(_ types.TxOutItem, _ []byte) (string, error)
 
@@ -50,6 +54,9 @@ type ChainClient interface {
 
 	// OnObservedTxIn is called when a new observed tx is received.
 	OnObservedTxIn(txIn types.TxInItem, blockHeight int64)
+
+	// ObserveTxIn retrieves a transaction from the chain and returns it as an inbound observation.
+	ObserveTxIn(txid string) (types.TxIn, error)
 
 	// GetConfirmationCount returns the confirmation count for the given tx.
 	GetConfirmationCount(txIn types.TxIn) int64

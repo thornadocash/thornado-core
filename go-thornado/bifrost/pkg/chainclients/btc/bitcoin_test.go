@@ -979,6 +979,113 @@ func (s *BitcoinSuite) TestDroppedMempoolTxQueuesErrata(c *C) {
 	c.Assert(exists, Equals, false)
 }
 
+func (s *BitcoinSuite) TestConfirmationCountReadyQueuesErrataForMissingObservedTx(c *C) {
+	txid := ttypes.GetRandomTxHash().String()
+	_, err := s.client.temporalStorage.TrackMempoolTx(txid)
+	c.Assert(err, IsNil)
+	_, _, err = s.client.temporalStorage.TrackObservedTxStage(txid, ObservedTxStageMempool)
+	c.Assert(err, IsNil)
+
+	key := fmt.Sprintf("getrawtransaction-%s", txid)
+	previous, hadPrevious := btcChainRPCs[key]
+	btcChainRPCs[key] = map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"error": map[string]interface{}{
+			"code":    -5,
+			"message": "No such mempool or blockchain transaction",
+		},
+	}
+	defer func() {
+		if hadPrevious {
+			btcChainRPCs[key] = previous
+		} else {
+			delete(btcChainRPCs, key)
+		}
+	}()
+
+	errataQueue := make(chan types.ErrataBlock, 1)
+	s.client.globalErrataQueue = errataQueue
+	ready := s.client.ConfirmationCountReady(types.TxIn{
+		Chain:                common.BTCChain,
+		ConfirmationRequired: 1,
+		TxArray: []*types.TxInItem{
+			{
+				BlockHeight: 1024,
+				Tx:          txid,
+			},
+		},
+	})
+
+	c.Assert(ready, Equals, false)
+	c.Assert(errataQueue, HasLen, 1)
+	errata := <-errataQueue
+	c.Assert(errata.Height, Equals, int64(1024))
+	c.Assert(errata.Txs, HasLen, 1)
+	c.Assert(errata.Txs[0].TxID.String(), Equals, txid)
+	c.Assert(errata.Txs[0].Chain, Equals, common.BTCChain)
+
+	exists, err := s.client.temporalStorage.HasMempoolTx(txid)
+	c.Assert(err, IsNil)
+	c.Assert(exists, Equals, false)
+	added, previousStage, err := s.client.temporalStorage.TrackObservedTxStage(txid, ObservedTxStageFinal)
+	c.Assert(err, IsNil)
+	c.Assert(added, Equals, true)
+	c.Assert(previousStage, Equals, "")
+}
+
+func (s *BitcoinSuite) TestConfirmationCountReadyQueuesErrataForMissingMempoolObservedTx(c *C) {
+	txid := ttypes.GetRandomTxHash().String()
+	_, err := s.client.temporalStorage.TrackMempoolTx(txid)
+	c.Assert(err, IsNil)
+	_, _, err = s.client.temporalStorage.TrackObservedTxStage(txid, ObservedTxStageMempool)
+	c.Assert(err, IsNil)
+
+	key := fmt.Sprintf("getrawtransaction-%s", txid)
+	previous, hadPrevious := btcChainRPCs[key]
+	btcChainRPCs[key] = map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"error": map[string]interface{}{
+			"code":    -5,
+			"message": "No such mempool or blockchain transaction",
+		},
+	}
+	defer func() {
+		if hadPrevious {
+			btcChainRPCs[key] = previous
+		} else {
+			delete(btcChainRPCs, key)
+		}
+	}()
+
+	errataQueue := make(chan types.ErrataBlock, 1)
+	s.client.globalErrataQueue = errataQueue
+	s.client.updateCurrentBlockHeight(2048)
+	ready := s.client.ConfirmationCountReady(types.TxIn{
+		Chain:   common.BTCChain,
+		MemPool: true,
+		TxArray: []*types.TxInItem{
+			{
+				BlockHeight: 0,
+				Tx:          txid,
+			},
+		},
+	})
+
+	c.Assert(ready, Equals, false)
+	c.Assert(errataQueue, HasLen, 1)
+	errata := <-errataQueue
+	c.Assert(errata.Height, Equals, int64(2048))
+	c.Assert(errata.Txs, HasLen, 1)
+	c.Assert(errata.Txs[0].TxID.String(), Equals, txid)
+	c.Assert(errata.Txs[0].Chain, Equals, common.BTCChain)
+
+	exists, err := s.client.temporalStorage.HasMempoolTx(txid)
+	c.Assert(err, IsNil)
+	c.Assert(exists, Equals, false)
+}
+
 func (s *BitcoinSuite) TestGetOutput(c *C) {
 	var vaultPubKey common.PubKey
 	var err error

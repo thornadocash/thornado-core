@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	btypes "github.com/thornadocash/go-thornado/bifrost/blockscanner/types"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
@@ -16,6 +17,24 @@ var ErrNotFound = fmt.Errorf("not found")
 type QueryKeysign struct {
 	Keysign   types.TxOut `json:"keysign"`
 	Signature string      `json:"signature"`
+}
+
+type queryTxOutQueue struct {
+	Txouts []struct {
+		Height  string `json:"height"`
+		TxArray []struct {
+			VaultPubKey string `json:"vault_pub_key"`
+		} `json:"tx_array"`
+	} `json:"txouts"`
+}
+
+func hasUnsignedTxOutItem(txOut types.TxOut) bool {
+	for _, item := range txOut.TxArray {
+		if item.OutHash.IsEmpty() {
+			return true
+		}
+	}
+	return false
 }
 
 // GetKeysign retrieves txout from this block height from thornado
@@ -62,4 +81,42 @@ func (b *thornadoBridge) GetKeysign(blockHeight int64, pk string) (types.TxOut, 
 	}
 
 	return query.Keysign, nil
+}
+
+func (b *thornadoBridge) GetPendingTxOutKeysigns() ([]types.TxOut, error) {
+	body, _, err := b.getWithPath(TxOutEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pending txouts: %w", err)
+	}
+	var queue queryTxOutQueue
+	if err = json.Unmarshal(body, &queue); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal pending txouts: %w", err)
+	}
+
+	seen := make(map[string]struct{})
+	txOuts := make([]types.TxOut, 0, len(queue.Txouts))
+	for _, txOut := range queue.Txouts {
+		height, err := strconv.ParseInt(txOut.Height, 10, 64)
+		if err != nil || height <= 0 {
+			continue
+		}
+		for _, item := range txOut.TxArray {
+			if item.VaultPubKey == "" {
+				continue
+			}
+			key := fmt.Sprintf("%d/%s", height, item.VaultPubKey)
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+			keysign, err := b.GetKeysign(height, item.VaultPubKey)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get pending keysign %s: %w", key, err)
+			}
+			if len(keysign.TxArray) > 0 && hasUnsignedTxOutItem(keysign) {
+				txOuts = append(txOuts, keysign)
+			}
+		}
+	}
+	return txOuts, nil
 }

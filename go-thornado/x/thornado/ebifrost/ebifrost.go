@@ -246,7 +246,7 @@ func (b *EnshrinedBifrost) SendQuorumErrataTx(ctx context.Context, e *common.Quo
 	b.quorumTxCache.Lock()
 	for i, item := range b.quorumTxCache.items {
 		tx := item.Item
-		if tx.ObsTx.Tx.Chain == e.ErrataTx.Chain && tx.ObsTx.Tx.ID == e.ErrataTx.Id {
+		if tx.ObsTx.Tx.Chain == e.ErrataTx.Chain && tx.ObsTx.Tx.ID.Equals(e.ErrataTx.Id) {
 			// remove the tx from the cache because we observed an error for it
 			b.quorumTxCache.items = append(b.quorumTxCache.items[:i], b.quorumTxCache.items[i+1:]...)
 			break

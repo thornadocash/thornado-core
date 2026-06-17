@@ -75,7 +75,7 @@ main {
 
 .topbar {
   position: absolute;
-  top: 116px;
+  top: 104px;
   left: 0;
   right: 0;
   z-index: 120;
@@ -576,7 +576,7 @@ aside > * {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: 22px;
-  margin-top: 28px;
+  margin-top: 40px;
   align-items: start;
 }
 
@@ -594,6 +594,10 @@ aside > * {
   border: 0;
   box-shadow: none;
   backdrop-filter: none;
+}
+
+.app-board::after {
+  display: none;
 }
 
 .intro-gate {
@@ -683,7 +687,7 @@ aside > * {
 .more-toggle {
   position: absolute;
   z-index: 3;
-  top: -2px;
+  top: -4px;
   right: 0;
   min-height: 24px;
   padding: 0 2px 2px;
@@ -764,9 +768,22 @@ aside > * {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 34px;
+  min-height: 38px;
   min-width: 0;
   pointer-events: none;
+}
+
+.stage-card[data-expanded="1"] .stage-heading::after,
+.stage-card.expanded .stage-heading::after,
+.stage-card.locked .stage-heading::after,
+.stage-card.done.expanded .stage-heading::after {
+  content: "";
+  position: absolute;
+  left: 26px;
+  right: 26px;
+  bottom: -14px;
+  height: 1px;
+  background: rgba(98, 78, 42, 0.12);
 }
 
 .stage-card.done .stage-heading {
@@ -805,14 +822,15 @@ aside > * {
 
 .card-tools {
   position: absolute;
-  top: 12px;
+  top: 16px;
   left: 12px;
   pointer-events: none;
 }
 
 .icon-button {
-  width: 34px;
-  min-height: 34px;
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
   padding: 0;
   border: 1px solid rgba(132, 101, 44, 0.18);
   border-radius: 50%;
@@ -980,8 +998,8 @@ aside > * {
   padding: 84px 26px 26px;
 }
 
-.stage-card:not(.expanded):not(.locked) > :not(.stage-heading):not(.stage-summary),
-.stage-card.done > :not(.stage-heading):not(.stage-summary) {
+.stage-card:not(.expanded):not(.locked) > :not(.stage-heading):not(.stage-summary):not(.card-tools),
+.stage-card.done:not(.expanded) > :not(.stage-heading):not(.stage-summary):not(.card-tools) {
   display: none !important;
 }
 
@@ -1009,7 +1027,7 @@ aside > * {
 }
 
 .stage-card:not(.expanded):not(.locked) .stage-summary,
-.stage-card.done .stage-summary {
+.stage-card.done:not(.expanded) .stage-summary {
   display: block;
   width: 100%;
   margin-top: 2px;
@@ -1198,12 +1216,45 @@ aside > * {
   padding-bottom: 0;
 }
 
+.batch-meta .row.deposit-errata {
+  opacity: 0.62;
+}
+
+.batch-meta .row.deposit-errata span,
+.batch-meta .row.deposit-errata strong {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
 .batch-note-row strong {
   color: var(--ink);
   font-family: var(--font-serif);
   font-weight: 600;
   text-align: right;
   overflow-wrap: anywhere;
+}
+
+.withdraw-status.signing {
+  color: var(--ok);
+}
+
+.deposit-refund-status {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.deposit-refund-status strong {
+  font: inherit;
+  color: var(--ink);
+}
+
+.deposit-refund-status small {
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .scan-progress-row {
@@ -1274,9 +1325,8 @@ aside > * {
 }
 
 .deposit-selected {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 12px;
-  justify-content: space-between;
+  display: flex;
+  justify-content: flex-start;
   gap: 12px;
   align-items: center;
   width: 100%;
@@ -1302,26 +1352,47 @@ aside > * {
 }
 
 .deposit-mark {
-  justify-self: end;
-  width: 9px;
-  height: 9px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: translateY(-2px) rotate(45deg);
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(116, 80, 15, 0.08);
+  color: var(--accent-strong);
+  box-shadow: inset 0 0 0 1px rgba(116, 80, 15, 0.08);
+  transform: none;
 }
 
-.deposit-mark::before,
+.deposit-mark::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-1px) rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
 .deposit-mark::after {
   content: none;
 }
 
 .deposit-selected[aria-expanded="true"] .deposit-mark {
-  transform: translateY(3px) rotate(225deg);
+  transform: none;
+}
+
+.deposit-selected[aria-expanded="true"] .deposit-mark::before {
+  transform: translateY(2px) rotate(225deg);
 }
 
 .deposit-selected:hover .deposit-mark,
 .deposit-selected:focus-visible .deposit-mark {
   color: var(--accent);
+  background: rgba(116, 80, 15, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(116, 80, 15, 0.14);
 }
 
 .deposit-menu {

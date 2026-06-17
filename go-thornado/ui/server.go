@@ -60,11 +60,16 @@ func handleDevWithdrawProof(staticDir string) http.HandlerFunc {
 			http.Error(w, "invalid witness payload", http.StatusBadRequest)
 			return
 		}
-		repoRoot := filepath.Clean(filepath.Join(staticDir, "..", "..", ".."))
+		repoRoot := findRepoRootForWithdrawProof(staticDir)
 		script := filepath.Join(repoRoot, "circuits", "tornado", "scripts", "prove-withdraw.mjs")
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
 		defer cancel()
-		cmd := exec.CommandContext(ctx, "node", "--stack_size=65500", script)
+		nodeBinary, err := findNodeBinary()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		cmd := exec.CommandContext(ctx, nodeBinary, "--stack_size=65500", script)
 		cmd.Dir = repoRoot
 		cmd.Stdin = bytes.NewReader(input.Bytes())
 		var stderr bytes.Buffer
@@ -80,6 +85,40 @@ func handleDevWithdrawProof(staticDir string) http.HandlerFunc {
 		}
 		w.Header().Set("content-type", "application/json")
 		_, _ = w.Write(out)
+	}
+}
+
+func findNodeBinary() (string, error) {
+	if override := strings.TrimSpace(os.Getenv("NODE_BINARY")); override != "" {
+		if _, err := os.Stat(override); err != nil {
+			return "", err
+		} else {
+			return override, nil
+		}
+	}
+	if node, err := exec.LookPath("node"); err == nil {
+		return node, nil
+	}
+	for _, candidate := range []string{"/opt/homebrew/bin/node", "/usr/local/bin/node", "/usr/bin/node"} {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	return "", exec.ErrNotFound
+}
+
+func findRepoRootForWithdrawProof(staticDir string) string {
+	dir := filepath.Clean(staticDir)
+	for {
+		script := filepath.Join(dir, "circuits", "tornado", "scripts", "prove-withdraw.mjs")
+		if _, err := os.Stat(script); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return filepath.Clean(filepath.Join(staticDir, "..", "..", ".."))
+		}
+		dir = parent
 	}
 }
 

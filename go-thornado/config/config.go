@@ -430,6 +430,7 @@ type Bifrost struct {
 	FROST           BifrostFROSTConfiguration `mapstructure:"frost"`
 	ObserverLevelDB LevelDBOptions            `mapstructure:"observer_leveldb"`
 	ObserverWorkers int                       `mapstructure:"observer_workers"`
+	ManualObserve   BifrostManualObserve      `mapstructure:"manual_observe"`
 }
 
 func (b Bifrost) GetChains() map[common.Chain]BifrostChainConfiguration {
@@ -537,6 +538,12 @@ type BifrostAttestationGossipConfig struct {
 
 	// maximum concurrent receives from a single peer
 	PeerConcurrentReceives int `mapstructure:"peer_concurrent_receives"`
+}
+
+type BifrostManualObserve struct {
+	Enabled  bool          `mapstructure:"enabled"`
+	TxIDs    []string      `mapstructure:"txids"`
+	Interval time.Duration `mapstructure:"interval"`
 }
 
 type BifrostChainConfiguration struct {

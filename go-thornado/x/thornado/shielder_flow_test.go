@@ -306,6 +306,7 @@ func TestUserShieldAndUnshieldFlowQueuesNetWithdrawal(t *testing.T) {
 		MerkleRoot:    "root-user",
 		Recipient:     GetRandomBTCAddress(),
 		AmountSats:    amount,
+		FeeSats:       123,
 		InHash:        GetRandomTxHash(),
 		VaultPubKey:   deposit.VaultPubKey,
 		Status:        types.ShielderRedeemStatusAuthorized,
@@ -628,25 +629,39 @@ func TestExpiredDepositRefundSubtractsFee(t *testing.T) {
 	SetupConfigForTest()
 	ctx := flowTestContext()
 	k := newShielderFlowTestKeeper()
+	baseVault := Vault{
+		PubKey: GetRandomPubKey(),
+		Status: ActiveVault,
+		Type:   BaseVault,
+	}
+	k.baseVaults = Vaults{baseVault}
 	mgr := newShielderFlowTestManager(k)
 	amount := uint64(1_000_000)
 	deposit := types.DepositRecord{
-		DepositID:     GetRandomTxHash(),
-		AmountSats:    amount,
-		ReturnAddress: GetRandomBTCAddress(),
+		DepositID:        GetRandomTxHash(),
+		AmountSats:       amount,
+		ReturnAddress:    GetRandomBTCAddress(),
+		VaultPubKey:      GetRandomPubKey(),
+		DepositPathIndex: 7,
 	}
 	if err := queueExpiredDepositReturn(ctx, mgr, deposit); err != nil {
 		t.Fatal(err)
 	}
-	if len(mgr.txOut.items) != 1 {
-		t.Fatalf("expected one refund txout, got %d", len(mgr.txOut.items))
+	if len(k.txOuts) != 1 {
+		t.Fatalf("expected one refund txout, got %d", len(k.txOuts))
 	}
 	fee := withdrawalFeeSats(ctx, k, amount)
-	if got := mgr.txOut.items[0].Coin.Amount.Uint64(); got != amount-fee {
+	if got := k.txOuts[0].Coin.Amount.Uint64(); got != amount-fee {
 		t.Fatalf("refund did not subtract fee: %d/%d", got, amount-fee)
 	}
-	if mgr.txOut.items[0].GetTxType() != types.TxOutTypeRefund {
-		t.Fatalf("unexpected txout type: %s", mgr.txOut.items[0].GetTxType())
+	if k.txOuts[0].GetTxType() != types.TxOutTypeRefund {
+		t.Fatalf("unexpected txout type: %s", k.txOuts[0].GetTxType())
+	}
+	if !k.txOuts[0].VaultPubKey.Equals(baseVault.PubKey) {
+		t.Fatalf("refund should spend from base vault: %s/%s", k.txOuts[0].VaultPubKey, baseVault.PubKey)
+	}
+	if k.txOuts[0].VaultPathIndex != common.MainVaultPathIndex {
+		t.Fatalf("refund should spend from base vault path: %d", k.txOuts[0].VaultPathIndex)
 	}
 	if k.feePool.TotalCollectedSats != fee {
 		t.Fatalf("refund fee was not collected: %#v", k.feePool)
