@@ -6,7 +6,7 @@ Latest run: `/tmp/thornado-flow4-clean-v5`, `FLOW_LIMIT=4`, real 4-node Thornado
 
 ## Happy Path
 
-- check: operator bond has `fee_share_active:true`; desired_result: fee share became active after confirmed protocol bond split; validated: true
+- check: operator bond has `fee_share_active:true`; desired_result: fee share became active after the node bonded by spending shielded notes to `bond_escrow`; validated: true
 - check: fee entitlement query returns claimable amount; desired_result: `claimable_sats == accrued_sats - fee_debt_sats`; validated: true
 - check: operator signs fee claim commitment; desired_result: signature payload binds node pubkey, owner, accrued_sats, fee_per_slot_share, note commitments, and fee note pubkeys, and verifies against stored operator pubkey; validated: true
 - check: fee claim tx succeeds; desired_result: committed `operator_fee` deposit record is created directly, with `amount_sats == claimable_sats` and no pending BTC deposit session; validated: true

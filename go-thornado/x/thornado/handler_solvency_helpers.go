@@ -80,15 +80,12 @@ func processSolvencyAttestation(
 	// Do checks for whether to act on this consensus or not.
 	haltSolvencyCheckKey := constants.Halt_SolvencyCheck.String()
 	stopSolvencyCheck := k.GetConfigInt64(ctx, constants.Halt_SolvencyCheck)
-	if stopSolvencyCheck > 0 && stopSolvencyCheck < ctx.BlockHeight() {
-		return nil
-	}
 	haltChain := stopSolvencyCheck
 	// If the chain was halted this block, leave it halted without overriding.
 	// (For instance if halted because of a different vault which is insolvent.)
 	// Also don't unhalt if the chain was manually halted for a future height
 	// or indefinitely ('1').
-	if haltChain >= ctx.BlockHeight() || haltChain == 1 {
+	if shouldSkipSolvencyHaltAction(haltChain, ctx.BlockHeight()) {
 		return nil
 	}
 	// If the solvency message is from a height which does not reflect inbounds
@@ -111,15 +108,11 @@ func processSolvencyAttestation(
 	// from unhalting the chain while this vault remains insolvent.
 	if isInsolvent {
 		if haltChain <= 0 {
-			k.SetConfig(ctx, haltSolvencyCheckKey, ctx.BlockHeight())
-			configEvent := NewEventSetConfig(strings.ToUpper(haltSolvencyCheckKey), strconv.FormatInt(ctx.BlockHeight(), 10))
-			if err := mgr.EventMgr().EmitEvent(ctx, configEvent); err != nil {
-				ctx.Logger().Error("fail to emit set_config event", "error", err)
-			}
+			setSolvencyAndSigningHalt(ctx, k, mgr.EventMgr(), voter.Chain, ctx.BlockHeight())
 			ctx.Logger().Info("chain is insolvent, halt until it is resolved", "chain", voter.Chain)
 		} else if haltChain > 1 && haltChain < ctx.BlockHeight() {
 			// Refresh halt height to current block so a solvent vault can't unhalt next block
-			k.SetConfig(ctx, haltSolvencyCheckKey, ctx.BlockHeight())
+			setSolvencyAndSigningHalt(ctx, k, mgr.EventMgr(), voter.Chain, ctx.BlockHeight())
 		}
 	}
 
@@ -134,9 +127,52 @@ func processSolvencyAttestation(
 		if err := mgr.EventMgr().EmitEvent(ctx, configEvent); err != nil {
 			ctx.Logger().Error("fail to emit set_config event", "error", err)
 		}
+		clearMatchingSolvencySigningHalt(ctx, k, mgr.EventMgr(), voter.Chain, haltChain)
 	}
 
 	return nil
+}
+
+func shouldSkipSolvencyHaltAction(haltHeight, blockHeight int64) bool {
+	return haltHeight == 1 || haltHeight >= blockHeight
+}
+
+type solvencyHaltConfigKeeper interface {
+	GetConfig(cosmos.Context, string) (int64, error)
+	SetConfig(cosmos.Context, string, int64)
+}
+
+func setSolvencyAndSigningHalt(ctx cosmos.Context, k solvencyHaltConfigKeeper, eventMgr EventManager, chain common.Chain, height int64) {
+	haltSolvencyCheckKey := constants.Halt_SolvencyCheck.String()
+	haltSigningKey := fmt.Sprintf(constants.ConfigTemplateHaltSigning, chain)
+
+	k.SetConfig(ctx, haltSolvencyCheckKey, height)
+	k.SetConfig(ctx, haltSigningKey, height)
+
+	if eventMgr == nil {
+		return
+	}
+	if err := eventMgr.EmitEvent(ctx, NewEventSetConfig(strings.ToUpper(haltSolvencyCheckKey), strconv.FormatInt(height, 10))); err != nil {
+		ctx.Logger().Error("fail to emit set_config event", "error", err)
+	}
+	if err := eventMgr.EmitEvent(ctx, NewEventSetConfig(strings.ToUpper(haltSigningKey), strconv.FormatInt(height, 10))); err != nil {
+		ctx.Logger().Error("fail to emit set_config event", "error", err)
+	}
+}
+
+func clearMatchingSolvencySigningHalt(ctx cosmos.Context, k solvencyHaltConfigKeeper, eventMgr EventManager, chain common.Chain, haltChain int64) {
+	haltSigningKey := fmt.Sprintf(constants.ConfigTemplateHaltSigning, chain)
+	if signingHalt, _ := k.GetConfig(ctx, haltSigningKey); signingHalt != haltChain {
+		return
+	}
+
+	k.SetConfig(ctx, haltSigningKey, 0)
+	if eventMgr == nil {
+		return
+	}
+	if err := eventMgr.EmitEvent(ctx, NewEventSetConfig(strings.ToUpper(haltSigningKey), "0")); err != nil {
+		ctx.Logger().Error("fail to emit set_config event", "error", err)
+	}
 }
 
 // insolvencyCheck compare the coins in vault against the coins report by solvency message
@@ -187,6 +223,21 @@ func insolvencyCheck(ctx cosmos.Context, mgr Manager, vault Vault, coins common.
 		}
 		if gap.IsZero() {
 			continue
+		}
+
+		if gasAllowance := recentAuthorizedOutboundGas(ctx, mgr, vault, chain, c.Asset); !gasAllowance.IsZero() {
+			if gap.LTE(gasAllowance) {
+				ctx.Logger().Info(
+					"vault solvency gap covered by recent authorized outbound gas",
+					"asset", c.Asset.String(),
+					"vault amount", c.Amount.String(),
+					"wallet amount", walletCoin.Amount.String(),
+					"gap", gap.String(),
+					"authorized outbound gas", gasAllowance.String(),
+				)
+				continue
+			}
+			gap = gap.Sub(gasAllowance)
 		}
 
 		gapValue := gap
@@ -254,4 +305,65 @@ func deductVaultBlockPendingOutbound(vault Vault, block *TxOut) Vault {
 		}
 	}
 	return vault
+}
+
+func recentAuthorizedOutboundGas(ctx cosmos.Context, mgr Manager, vault Vault, chain common.Chain, asset common.Asset) cosmos.Uint {
+	if !asset.Equals(chain.GetGasAsset()) {
+		return cosmos.ZeroUint()
+	}
+
+	signingPeriod := getConfigDurationBlocks(ctx, mgr.Keeper(), constants.Keysign_PeriodMinutes)
+	startHeight := ctx.BlockHeight() - signingPeriod
+	if startHeight < 1 {
+		startHeight = 1
+	}
+
+	seenOutHashes := make(map[common.TxID]struct{})
+	total := cosmos.ZeroUint()
+	for height := startHeight; height < ctx.BlockHeight(); height++ {
+		blockOut, err := mgr.Keeper().GetTxOut(ctx, height)
+		if err != nil {
+			ctx.Logger().Error("fail to get block tx out while checking outbound gas allowance", "error", err)
+			continue
+		}
+		for _, item := range blockOut.TxArray {
+			if !item.VaultPubKey.Equals(vault.PubKey) || !item.Chain.Equals(chain) || item.OutHash.IsEmpty() {
+				continue
+			}
+			if _, ok := seenOutHashes[item.OutHash]; ok {
+				continue
+			}
+			seenOutHashes[item.OutHash] = struct{}{}
+			voter, err := mgr.Keeper().GetObservedTxOutVoter(ctx, item.OutHash)
+			if err != nil {
+				continue
+			}
+			if gas, ok := observedOutboundGas(voter, vault, chain, asset); ok {
+				total = total.Add(gas)
+			}
+		}
+	}
+	return total
+}
+
+func observedOutboundGas(voter ObservedTxVoter, vault Vault, chain common.Chain, asset common.Asset) (cosmos.Uint, bool) {
+	if gas, ok := observedTxGas(voter.Tx, voter.TxID, vault, chain, asset); ok {
+		return gas, true
+	}
+	for _, tx := range voter.Txs {
+		if gas, ok := observedTxGas(tx, voter.TxID, vault, chain, asset); ok {
+			return gas, true
+		}
+	}
+	return cosmos.ZeroUint(), false
+}
+
+func observedTxGas(tx common.ObservedTx, txID common.TxID, vault Vault, chain common.Chain, asset common.Asset) (cosmos.Uint, bool) {
+	if tx.IsEmpty() ||
+		!tx.Tx.ID.Equals(txID) ||
+		!tx.Tx.Chain.Equals(chain) ||
+		!tx.ObservedPubKey.Equals(vault.PubKey) {
+		return cosmos.ZeroUint(), false
+	}
+	return tx.Tx.Gas.ToCoins().GetCoin(asset).Amount, true
 }

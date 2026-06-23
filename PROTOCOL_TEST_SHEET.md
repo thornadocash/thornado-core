@@ -355,7 +355,7 @@ Important intended behavior from code:
 - Merkle root must be known for the denomination.
 - Recipient must be BTC.
 - Fee must equal configured withdrawal fee unless public `fee_sats` is zero.
-- Default fee config is `Withdrawal_FeeBasisPoints=200` and `Withdrawal_FeeMinSats=10000`.
+- Current fee policy is `Withdrawal_FeeBasisPoints=100`; local e2e sets `Withdrawal_FeeMinSats=100000` unless a specific test overrides it.
 - Accepted withdrawal stores status `keysign_queued`.
 - Accepted withdrawal queues BTC outbound with:
   - `InHash = withdrawal_id`

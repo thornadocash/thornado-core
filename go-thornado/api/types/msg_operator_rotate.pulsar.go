@@ -19,6 +19,7 @@ var (
 	fd_MsgOperatorRotate_signer           protoreflect.FieldDescriptor
 	fd_MsgOperatorRotate_operator_address protoreflect.FieldDescriptor
 	fd_MsgOperatorRotate_coin             protoreflect.FieldDescriptor
+	fd_MsgOperatorRotate_operator_pub_key protoreflect.FieldDescriptor
 )
 
 func init() {
@@ -27,6 +28,7 @@ func init() {
 	fd_MsgOperatorRotate_signer = md_MsgOperatorRotate.Fields().ByName("signer")
 	fd_MsgOperatorRotate_operator_address = md_MsgOperatorRotate.Fields().ByName("operator_address")
 	fd_MsgOperatorRotate_coin = md_MsgOperatorRotate.Fields().ByName("coin")
+	fd_MsgOperatorRotate_operator_pub_key = md_MsgOperatorRotate.Fields().ByName("operator_pub_key")
 }
 
 var _ protoreflect.Message = (*fastReflection_MsgOperatorRotate)(nil)
@@ -112,6 +114,12 @@ func (x *fastReflection_MsgOperatorRotate) Range(f func(protoreflect.FieldDescri
 			return
 		}
 	}
+	if x.OperatorPubKey != "" {
+		value := protoreflect.ValueOfString(x.OperatorPubKey)
+		if !f(fd_MsgOperatorRotate_operator_pub_key, value) {
+			return
+		}
+	}
 }
 
 // Has reports whether a field is populated.
@@ -133,6 +141,8 @@ func (x *fastReflection_MsgOperatorRotate) Has(fd protoreflect.FieldDescriptor) 
 		return len(x.OperatorAddress) != 0
 	case "types.MsgOperatorRotate.coin":
 		return x.Coin != nil
+	case "types.MsgOperatorRotate.operator_pub_key":
+		return x.OperatorPubKey != ""
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgOperatorRotate"))
@@ -155,6 +165,8 @@ func (x *fastReflection_MsgOperatorRotate) Clear(fd protoreflect.FieldDescriptor
 		x.OperatorAddress = nil
 	case "types.MsgOperatorRotate.coin":
 		x.Coin = nil
+	case "types.MsgOperatorRotate.operator_pub_key":
+		x.OperatorPubKey = ""
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgOperatorRotate"))
@@ -180,6 +192,9 @@ func (x *fastReflection_MsgOperatorRotate) Get(descriptor protoreflect.FieldDesc
 	case "types.MsgOperatorRotate.coin":
 		value := x.Coin
 		return protoreflect.ValueOfMessage(value.ProtoReflect())
+	case "types.MsgOperatorRotate.operator_pub_key":
+		value := x.OperatorPubKey
+		return protoreflect.ValueOfString(value)
 	default:
 		if descriptor.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgOperatorRotate"))
@@ -206,6 +221,8 @@ func (x *fastReflection_MsgOperatorRotate) Set(fd protoreflect.FieldDescriptor, 
 		x.OperatorAddress = value.Bytes()
 	case "types.MsgOperatorRotate.coin":
 		x.Coin = value.Message().Interface().(*common.Coin)
+	case "types.MsgOperatorRotate.operator_pub_key":
+		x.OperatorPubKey = value.Interface().(string)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgOperatorRotate"))
@@ -235,6 +252,8 @@ func (x *fastReflection_MsgOperatorRotate) Mutable(fd protoreflect.FieldDescript
 		panic(fmt.Errorf("field signer of message types.MsgOperatorRotate is not mutable"))
 	case "types.MsgOperatorRotate.operator_address":
 		panic(fmt.Errorf("field operator_address of message types.MsgOperatorRotate is not mutable"))
+	case "types.MsgOperatorRotate.operator_pub_key":
+		panic(fmt.Errorf("field operator_pub_key of message types.MsgOperatorRotate is not mutable"))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgOperatorRotate"))
@@ -255,6 +274,8 @@ func (x *fastReflection_MsgOperatorRotate) NewField(fd protoreflect.FieldDescrip
 	case "types.MsgOperatorRotate.coin":
 		m := new(common.Coin)
 		return protoreflect.ValueOfMessage(m.ProtoReflect())
+	case "types.MsgOperatorRotate.operator_pub_key":
+		return protoreflect.ValueOfString("")
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.MsgOperatorRotate"))
@@ -336,6 +357,10 @@ func (x *fastReflection_MsgOperatorRotate) ProtoMethods() *protoiface.Methods {
 			l = options.Size(x.Coin)
 			n += 1 + l + runtime.Sov(uint64(l))
 		}
+		l = len(x.OperatorPubKey)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
 		if x.unknownFields != nil {
 			n += len(x.unknownFields)
 		}
@@ -364,6 +389,13 @@ func (x *fastReflection_MsgOperatorRotate) ProtoMethods() *protoiface.Methods {
 		if x.unknownFields != nil {
 			i -= len(x.unknownFields)
 			copy(dAtA[i:], x.unknownFields)
+		}
+		if len(x.OperatorPubKey) > 0 {
+			i -= len(x.OperatorPubKey)
+			copy(dAtA[i:], x.OperatorPubKey)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.OperatorPubKey)))
+			i--
+			dAtA[i] = 0x22
 		}
 		if x.Coin != nil {
 			encoded, err := options.Marshal(x.Coin)
@@ -546,6 +578,38 @@ func (x *fastReflection_MsgOperatorRotate) ProtoMethods() *protoiface.Methods {
 					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, err
 				}
 				iNdEx = postIndex
+			case 4:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field OperatorPubKey", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.OperatorPubKey = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
 			default:
 				iNdEx = preIndex
 				skippy, err := runtime.Skip(dAtA[iNdEx:])
@@ -602,6 +666,7 @@ type MsgOperatorRotate struct {
 	Signer          []byte       `protobuf:"bytes,1,opt,name=signer,proto3" json:"signer,omitempty"`
 	OperatorAddress []byte       `protobuf:"bytes,2,opt,name=operator_address,json=operatorAddress,proto3" json:"operator_address,omitempty"`
 	Coin            *common.Coin `protobuf:"bytes,3,opt,name=coin,proto3" json:"coin,omitempty"`
+	OperatorPubKey  string       `protobuf:"bytes,4,opt,name=operator_pub_key,json=operatorPubKey,proto3" json:"operator_pub_key,omitempty"`
 }
 
 func (x *MsgOperatorRotate) Reset() {
@@ -645,6 +710,13 @@ func (x *MsgOperatorRotate) GetCoin() *common.Coin {
 	return nil
 }
 
+func (x *MsgOperatorRotate) GetOperatorPubKey() string {
+	if x != nil {
+		return x.OperatorPubKey
+	}
+	return ""
+}
+
 var File_types_msg_operator_rotate_proto protoreflect.FileDescriptor
 
 var file_types_msg_operator_rotate_proto_rawDesc = []byte{
@@ -653,7 +725,7 @@ var file_types_msg_operator_rotate_proto_rawDesc = []byte{
 	0x6f, 0x12, 0x05, 0x74, 0x79, 0x70, 0x65, 0x73, 0x1a, 0x13, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e,
 	0x2f, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x14, 0x67,
 	0x6f, 0x67, 0x6f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67, 0x6f, 0x67, 0x6f, 0x2e, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x22, 0xe4, 0x01, 0x0a, 0x11, 0x4d, 0x73, 0x67, 0x4f, 0x70, 0x65, 0x72, 0x61,
+	0x6f, 0x74, 0x6f, 0x22, 0x8e, 0x02, 0x0a, 0x11, 0x4d, 0x73, 0x67, 0x4f, 0x70, 0x65, 0x72, 0x61,
 	0x74, 0x6f, 0x72, 0x52, 0x6f, 0x74, 0x61, 0x74, 0x65, 0x12, 0x49, 0x0a, 0x06, 0x73, 0x69, 0x67,
 	0x6e, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x42, 0x31, 0xfa, 0xde, 0x1f, 0x2d, 0x67,
 	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x6d, 0x6f, 0x73,
@@ -667,16 +739,19 @@ var file_types_msg_operator_rotate_proto_rawDesc = []byte{
 	0x73, 0x52, 0x0f, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x41, 0x64, 0x64, 0x72, 0x65,
 	0x73, 0x73, 0x12, 0x26, 0x0a, 0x04, 0x63, 0x6f, 0x69, 0x6e, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b,
 	0x32, 0x0c, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x43, 0x6f, 0x69, 0x6e, 0x42, 0x04,
-	0xc8, 0xde, 0x1f, 0x00, 0x52, 0x04, 0x63, 0x6f, 0x69, 0x6e, 0x42, 0x86, 0x01, 0x0a, 0x09, 0x63,
-	0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x42, 0x16, 0x4d, 0x73, 0x67, 0x4f, 0x70, 0x65,
-	0x72, 0x61, 0x74, 0x6f, 0x72, 0x52, 0x6f, 0x74, 0x61, 0x74, 0x65, 0x50, 0x72, 0x6f, 0x74, 0x6f,
-	0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74,
-	0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74,
-	0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70, 0x65,
-	0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xca,
-	0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2, 0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5c,
-	0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54, 0x79,
-	0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0xc8, 0xde, 0x1f, 0x00, 0x52, 0x04, 0x63, 0x6f, 0x69, 0x6e, 0x12, 0x28, 0x0a, 0x10, 0x6f, 0x70,
+	0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x04,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x50, 0x75,
+	0x62, 0x4b, 0x65, 0x79, 0x42, 0x86, 0x01, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70,
+	0x65, 0x73, 0x42, 0x16, 0x4d, 0x73, 0x67, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x52,
+	0x6f, 0x74, 0x61, 0x74, 0x65, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69,
+	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64,
+	0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64,
+	0x6f, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58,
+	0x58, 0xaa, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65,
+	0x73, 0xe2, 0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74,
+	0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0x62, 0x06, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (

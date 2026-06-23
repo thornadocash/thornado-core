@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -18,6 +19,7 @@ const (
 	TxOutStatusPendingBatch = "pending_batch"
 	TxOutStatusPendingSign  = "pending_sign"
 	TxOutStatusPendingRetry = "pending_retry"
+	TxOutStatusCancelled    = "cancelled"
 	TxOutStatusComplete     = "complete"
 )
 
@@ -129,13 +131,25 @@ func (toi TxOutItem) GetTxType() string {
 	return NormalizeTxOutType(toi.TxType)
 }
 
+func txOutSourceInputsString(inputs []TxOutInput) string {
+	if len(inputs) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(inputs))
+	for _, input := range inputs {
+		parts = append(parts, fmt.Sprintf("%s:%d:%d", input.TxId, input.Vout, input.AmountSats))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
+}
+
 // Hash returns a sha256 hash that uniquely represents the TxOutItem.
 // This matches bifrost/thornadoclient/types/tx_out.go TxOutItem.Hash() to ensure
 // Thornado and Bifrost use the same deterministic ordering when processing outbounds.
 func (toi TxOutItem) Hash() string {
 	// Bifrost uses Coins (slice) which formats as "<amount> <asset>" for single coin.
 	// Thornado uses Coin (singular) which has the same String() format.
-	str := fmt.Sprintf("%s|%s|%s|%s|%s", toi.Chain, toi.ToAddress, toi.VaultPubKey, toi.Coin, toi.InHash)
+	str := fmt.Sprintf("%s|%s|%s|%s|%s|%s", toi.Chain, toi.ToAddress, toi.VaultPubKey, toi.Coin, toi.InHash, txOutSourceInputsString(toi.SourceInputs))
 	return fmt.Sprintf("%X", sha256.Sum256([]byte(str)))
 }
 

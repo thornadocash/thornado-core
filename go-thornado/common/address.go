@@ -28,6 +28,12 @@ func NewAddress(address string) (Address, error) {
 	if len(address) == 0 {
 		return NoAddress, nil
 	}
+	if strings.EqualFold(address, BondEscrowAddress.String()) {
+		return BondEscrowAddress, nil
+	}
+	if strings.EqualFold(address, NoopAddress.String()) {
+		return NoopAddress, nil
+	}
 
 	if !alphaNumRegex.MatchString(address) {
 		return NoAddress, fmt.Errorf("address format not supported: %s", address)

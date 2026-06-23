@@ -54,7 +54,7 @@ func (h IPAddressHandler) validate(ctx cosmos.Context, msg MsgSetIPAddress) erro
 
 func (h IPAddressHandler) handle(ctx cosmos.Context, msg MsgSetIPAddress) error {
 	ctx.Logger().Info("handleMsgSetIPAddress request", "ip address", msg.IPAddress)
-	nodeAccount, err := h.mgr.Keeper().GetNodeAccount(ctx, msg.Signer)
+	nodeAccount, err := resolveNodeAccountBySigner(ctx, h.mgr.Keeper(), msg.Signer)
 	if err != nil {
 		ctx.Logger().Error("fail to get node account", "error", err, "address", msg.Signer.String())
 		return cosmos.ErrUnauthorized(fmt.Sprintf("unable to find account: %s", msg.Signer))
@@ -67,21 +67,16 @@ func (h IPAddressHandler) handle(ctx cosmos.Context, msg MsgSetIPAddress) error 
 
 	ctx.EventManager().EmitEvent(
 		cosmos.NewEvent("set_ip_address",
-			cosmos.NewAttribute("node_address", msg.Signer.String()),
+			cosmos.NewAttribute("node_address", nodeAccount.NodeAddress.String()),
 			cosmos.NewAttribute("address", msg.IPAddress)))
 
 	return nil
 }
 
 func validateIPAddressAuth(ctx cosmos.Context, k keeper.Keeper, signer cosmos.AccAddress) error {
-	nodeAccount, err := k.GetNodeAccount(ctx, signer)
+	nodeAccount, err := resolveNodeAccountBySigner(ctx, k, signer)
 	if err != nil {
 		ctx.Logger().Error("fail to get node account", "error", err, "address", signer.String())
-		return cosmos.ErrUnauthorized(fmt.Sprintf("%s is not authorized", signer))
-	}
-	if nodeAccount.IsEmpty() {
-		ctx.Logger().Error("unauthorized account", "address", signer.String())
-
 		return cosmos.ErrUnauthorized(fmt.Sprintf("%s is not authorized", signer))
 	}
 	if nodeAccount.Type != NodeTypeNode {

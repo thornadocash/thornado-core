@@ -3,6 +3,8 @@ package types;
 
 option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
 
+import "types/query_tx.proto";
+
 message QueryDepositRequest {
   string deposit_id = 1;
   string height = 2;
@@ -74,4 +76,14 @@ message QueryVaultDepositAddressResponse {
   int64 created_height = 8;
   int64 expires_at_height = 9;
   int64 purge_at_height = 10;
+}
+
+message QueryDepositAddressTxsRequest {
+  string address = 1;
+  string height = 2;
+}
+
+message QueryDepositAddressTxsResponse {
+  string address = 1;
+  repeated QueryTxResponse txs = 2;
 }

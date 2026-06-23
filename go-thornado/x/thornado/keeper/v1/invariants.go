@@ -18,6 +18,7 @@ func (k KVStore) InvariantRoutes() []common.InvariantRoute {
 		common.NewInvariantRoute("node_bonds", NodeBondInvariant(k)),
 		common.NewInvariantRoute("node_slot_auctions", NodeSlotAuctionInvariant(k)),
 		common.NewInvariantRoute("fees", FeeInvariant(k)),
+		common.NewInvariantRoute("vault_backing", VaultBackingInvariant(k)),
 	}
 }
 
@@ -168,6 +169,15 @@ func NodeBondInvariant(k KVStore) common.Invariant {
 				}
 				continue
 			}
+			principal, pending, err := nodeBonderTotals(ctx, k, bond.NodePubKey)
+			if err != nil {
+				msg = append(msg, fmt.Sprintf("%s: bonder total error: %v", bond.NodePubKey, err))
+				broken = true
+			}
+			if principal != bond.BondSats || pending != bond.PendingSats {
+				msg = append(msg, fmt.Sprintf("%s: bonder totals principal/pending %d/%d != bond %d/%d", bond.NodePubKey, principal, pending, bond.BondSats, bond.PendingSats))
+				broken = true
+			}
 			if bond.FeeShareActive {
 				activeSlots++
 				if bond.FeeDebtSats > pool.FeePerSlotShare {
@@ -190,6 +200,25 @@ func NodeBondInvariant(k KVStore) common.Invariant {
 		}
 		return msg, broken
 	}
+}
+
+func nodeBonderTotals(ctx cosmos.Context, k KVStore, nodePubKey string) (uint64, uint64, error) {
+	var principal uint64
+	var pending uint64
+	iterator := k.GetShielderNodeBonderIterator(ctx)
+	defer iterator.Close()
+	for ; iterator.Valid(); iterator.Next() {
+		var bonder types.ShielderNodeBonder
+		if err := json.Unmarshal(iterator.Value(), &bonder); err != nil {
+			return 0, 0, err
+		}
+		if bonder.NodePubKey != nodePubKey {
+			continue
+		}
+		principal += bonder.PrincipalSats
+		pending += bonder.PendingSats
+	}
+	return principal, pending, nil
 }
 
 func NodeSlotAuctionInvariant(k KVStore) common.Invariant {
@@ -253,4 +282,373 @@ func FeeInvariant(k KVStore) common.Invariant {
 		}
 		return msg, broken
 	}
+}
+
+type vaultBackingTotals struct {
+	vaultSats                uint64
+	depositAddressSats       uint64
+	internalInflightSats     uint64
+	completedInternalOutSats uint64
+	internalGasSpentSats     uint64
+	externalGasSpentSats     uint64
+	noteLiabilitySats        uint64
+	spentNoteSats            uint64
+	depositLiabilitySats     uint64
+	pendingExternalTxOutSats uint64
+	feeLiabilitySats         uint64
+	nodeBondLiabilitySats    uint64
+	nodeBidLiabilitySats     uint64
+}
+
+func (t vaultBackingTotals) controlledSats() uint64 {
+	return t.vaultSats + t.depositAddressSats + t.internalInflightSats + t.completedInternalOutSats + t.internalGasSpentSats + t.externalGasSpentSats
+}
+
+func (t vaultBackingTotals) liabilitySats() uint64 {
+	return t.noteLiabilitySats + t.depositLiabilitySats + t.pendingExternalTxOutSats + t.feeLiabilitySats + t.nodeBondLiabilitySats + t.nodeBidLiabilitySats
+}
+
+func VaultBackingInvariant(k KVStore) common.Invariant {
+	return func(ctx cosmos.Context) (msg []string, broken bool) {
+		totals := vaultBackingTotals{}
+
+		vaultSats, vaultMsg, vaultBroken := backingVaultSats(ctx, k)
+		totals.vaultSats = vaultSats
+		msg = append(msg, vaultMsg...)
+		broken = broken || vaultBroken
+
+		depositAddressSats, depositLiabilitySats, depositMsg, depositBroken := backingDepositSats(ctx, k)
+		totals.depositAddressSats = depositAddressSats
+		totals.depositLiabilitySats = depositLiabilitySats
+		msg = append(msg, depositMsg...)
+		broken = broken || depositBroken
+
+		internalInflightSats, completedInternalOutSats, internalGasSpentSats, externalGasSpentSats, pendingExternalTxOutSats, txOutMsg, txOutBroken := backingTxOutSats(ctx, k)
+		totals.internalInflightSats = internalInflightSats
+		totals.completedInternalOutSats = completedInternalOutSats
+		totals.internalGasSpentSats = internalGasSpentSats
+		totals.externalGasSpentSats = externalGasSpentSats
+		totals.pendingExternalTxOutSats = pendingExternalTxOutSats
+		msg = append(msg, txOutMsg...)
+		broken = broken || txOutBroken
+
+		noteLiabilitySats, spentNoteSats, noteMsg, noteBroken := backingNoteLiabilitySats(ctx, k)
+		totals.noteLiabilitySats = noteLiabilitySats
+		totals.spentNoteSats = spentNoteSats
+		msg = append(msg, noteMsg...)
+		broken = broken || noteBroken
+
+		feeLiabilitySats, feeMsg, feeBroken := backingFeeLiabilitySats(ctx, k)
+		totals.feeLiabilitySats = feeLiabilitySats
+		msg = append(msg, feeMsg...)
+		broken = broken || feeBroken
+
+		nodeBondSats, bondMsg, bondBroken := backingNodeBondLiabilitySats(ctx, k)
+		totals.nodeBondLiabilitySats = nodeBondSats
+		msg = append(msg, bondMsg...)
+		broken = broken || bondBroken
+
+		nodeBidSats, bidMsg, bidBroken := backingNodeBidLiabilitySats(ctx, k)
+		totals.nodeBidLiabilitySats = nodeBidSats
+		msg = append(msg, bidMsg...)
+		broken = broken || bidBroken
+
+		controlled := totals.controlledSats()
+		liability := totals.liabilitySats()
+		if controlled < liability {
+			msg = append(msg, fmt.Sprintf(
+				"vault backing deficit: controlled=%d liabilities=%d vault=%d deposit_addresses=%d internal_inflight=%d completed_internal_outputs=%d internal_gas_spent=%d external_gas_spent=%d notes=%d spent_notes=%d deposits=%d pending_external_txout=%d fees=%d node_bonds=%d node_bids=%d",
+				controlled,
+				liability,
+				totals.vaultSats,
+				totals.depositAddressSats,
+				totals.internalInflightSats,
+				totals.completedInternalOutSats,
+				totals.internalGasSpentSats,
+				totals.externalGasSpentSats,
+				totals.noteLiabilitySats,
+				totals.spentNoteSats,
+				totals.depositLiabilitySats,
+				totals.pendingExternalTxOutSats,
+				totals.feeLiabilitySats,
+				totals.nodeBondLiabilitySats,
+				totals.nodeBidLiabilitySats,
+			))
+			broken = true
+		}
+
+		return msg, broken
+	}
+}
+
+func backingVaultSats(ctx cosmos.Context, k KVStore) (uint64, []string, bool) {
+	var total uint64
+	var msg []string
+	var broken bool
+
+	iterator := k.GetVaultIterator(ctx)
+	defer iterator.Close()
+
+	for ; iterator.Valid(); iterator.Next() {
+		var vault Vault
+		if err := k.cdc.Unmarshal(iterator.Value(), &vault); err != nil {
+			msg = append(msg, fmt.Sprintf("invalid vault encoding: %s", string(iterator.Key())))
+			broken = true
+			continue
+		}
+		if !vault.IsBase() {
+			continue
+		}
+		total += vault.GetCoin(common.BTCAsset).Amount.Uint64()
+	}
+
+	return total, msg, broken
+}
+
+func backingDepositSats(ctx cosmos.Context, k KVStore) (uint64, uint64, []string, bool) {
+	var depositAddressSats uint64
+	var depositLiabilitySats uint64
+	var msg []string
+	var broken bool
+
+	iterator := k.GetDepositRecordIterator(ctx)
+	defer iterator.Close()
+
+	for ; iterator.Valid(); iterator.Next() {
+		var deposit types.DepositRecord
+		if err := json.Unmarshal(iterator.Value(), &deposit); err != nil {
+			msg = append(msg, fmt.Sprintf("invalid deposit encoding for backing: %s", string(iterator.Key())))
+			broken = true
+			continue
+		}
+
+		if depositRequiresDepositAddressBacking(deposit) {
+			depositAddressSats += backingDepositUnshieldedSats(deposit)
+		}
+
+		switch deposit.Status {
+		case types.DepositStatusDepositObserved, types.DepositStatusDepositMatched, types.DepositStatusSettled:
+			depositLiabilitySats += backingDepositUnshieldedSats(deposit)
+		}
+	}
+
+	return depositAddressSats, depositLiabilitySats, msg, broken
+}
+
+func depositRequiresDepositAddressBacking(deposit types.DepositRecord) bool {
+	switch deposit.Status {
+	case types.DepositStatusDepositObserved, types.DepositStatusDepositMatched, types.DepositStatusSettled:
+	default:
+		return false
+	}
+	if deposit.DepositAddress.IsNoop() || deposit.DepositPathIndex == common.MainVaultPathIndex {
+		return false
+	}
+	return !deposit.SweepComplete
+}
+
+func backingDepositUnshieldedSats(deposit types.DepositRecord) uint64 {
+	if deposit.AmountSats <= deposit.ShieldedSats {
+		return 0
+	}
+	return deposit.AmountSats - deposit.ShieldedSats
+}
+
+func backingTxOutSats(ctx cosmos.Context, k KVStore) (uint64, uint64, uint64, uint64, uint64, []string, bool) {
+	var internalInflightSats uint64
+	var completedInternalOutSats uint64
+	var internalGasSpentSats uint64
+	var externalGasSpentSats uint64
+	var externalPendingSats uint64
+	var msg []string
+	var broken bool
+	completedExternalOutHashes := make(map[common.TxID]struct{})
+
+	iterator := k.GetTxOutIterator(ctx)
+	defer iterator.Close()
+
+	for ; iterator.Valid(); iterator.Next() {
+		var txOut TxOut
+		if err := k.cdc.Unmarshal(iterator.Value(), &txOut); err != nil {
+			msg = append(msg, fmt.Sprintf("invalid txout encoding for backing: %s", string(iterator.Key())))
+			broken = true
+			continue
+		}
+		for _, item := range txOut.TxArray {
+			if !item.Chain.Equals(common.BTCChain) {
+				continue
+			}
+			amount := item.Coin.Amount.Uint64()
+			if types.IsInternalTxOutType(item.GetTxType()) {
+				if !item.OutHash.IsEmpty() {
+					voter, err := k.GetObservedTxOutVoter(ctx, item.OutHash)
+					if err != nil || !voter.Tx.Tx.Chain.Equals(common.BTCChain) || !voter.Tx.IsFinal() {
+						gas := item.MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount.Uint64()
+						internalInflightSats += amount + gas
+						continue
+					}
+					completedInternalOutSats += amount
+					internalGasSpentSats += txOutInternalGasSpent(item)
+					continue
+				}
+				gas := item.MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount.Uint64()
+				internalInflightSats += amount + gas
+				continue
+			}
+			if !item.OutHash.IsEmpty() {
+				completedExternalOutHashes[item.OutHash] = struct{}{}
+				continue
+			}
+			externalPendingSats += amount
+		}
+	}
+	for outHash := range completedExternalOutHashes {
+		voter, err := k.GetObservedTxOutVoter(ctx, outHash)
+		if err != nil {
+			msg = append(msg, fmt.Sprintf("completed external txout missing observed voter: %s", outHash.String()))
+			broken = true
+			continue
+		}
+		if voter.Tx.Tx.Chain.Equals(common.BTCChain) && voter.Tx.IsFinal() {
+			externalGasSpentSats += voter.Tx.Tx.Gas.ToCoins().GetCoin(common.BTCAsset).Amount.Uint64()
+		}
+	}
+
+	return internalInflightSats, completedInternalOutSats, internalGasSpentSats, externalGasSpentSats, externalPendingSats, msg, broken
+}
+
+func txOutInternalGasSpent(item TxOutItem) uint64 {
+	var sourceTotal uint64
+	for _, input := range item.SourceInputs {
+		sourceTotal += input.AmountSats
+	}
+	if sourceTotal <= item.Coin.Amount.Uint64() {
+		return 0
+	}
+	return sourceTotal - item.Coin.Amount.Uint64()
+}
+
+func backingNoteLiabilitySats(ctx cosmos.Context, k KVStore) (uint64, uint64, []string, bool) {
+	minted, msg, broken := backingMintedNoteSats(ctx, k)
+	spent, spentMsg, spentBroken := backingSpentNoteSats(ctx, k)
+	msg = append(msg, spentMsg...)
+	broken = broken || spentBroken
+
+	if spent > minted {
+		msg = append(msg, fmt.Sprintf("spent note amount %d exceeds minted note amount %d", spent, minted))
+		return 0, spent, msg, true
+	}
+
+	return minted - spent, spent, msg, broken
+}
+
+func backingMintedNoteSats(ctx cosmos.Context, k KVStore) (uint64, []string, bool) {
+	var total uint64
+	var msg []string
+	var broken bool
+
+	iterator := k.GetShielderNoteRecordIterator(ctx)
+	defer iterator.Close()
+
+	for ; iterator.Valid(); iterator.Next() {
+		var record types.StoredShielderNoteRecord
+		if err := json.Unmarshal(iterator.Value(), &record); err != nil {
+			msg = append(msg, fmt.Sprintf("invalid note record encoding: %s", string(iterator.Key())))
+			broken = true
+			continue
+		}
+		total += record.DenominationSats
+	}
+
+	return total, msg, broken
+}
+
+func backingSpentNoteSats(ctx cosmos.Context, k KVStore) (uint64, []string, bool) {
+	var total uint64
+	var msg []string
+	var broken bool
+
+	iterator := k.GetShielderNullifierIterator(ctx)
+	defer iterator.Close()
+
+	for ; iterator.Valid(); iterator.Next() {
+		var withdrawalID string
+		if err := json.Unmarshal(iterator.Value(), &withdrawalID); err != nil {
+			msg = append(msg, fmt.Sprintf("invalid nullifier encoding: %s", string(iterator.Key())))
+			broken = true
+			continue
+		}
+		withdrawal, err := k.GetShielderRedeem(ctx, withdrawalID)
+		if err != nil {
+			msg = append(msg, fmt.Sprintf("%s: redeem lookup error: %v", withdrawalID, err))
+			broken = true
+			continue
+		}
+		if withdrawal.AmountSats == 0 {
+			msg = append(msg, fmt.Sprintf("%s: spent nullifier missing redeem amount", withdrawalID))
+			broken = true
+			continue
+		}
+		total += withdrawal.AmountSats
+	}
+
+	return total, msg, broken
+}
+
+func backingFeeLiabilitySats(ctx cosmos.Context, k KVStore) (uint64, []string, bool) {
+	pool, err := k.GetFeePool(ctx)
+	if err != nil {
+		return 0, []string{fmt.Sprintf("fee pool error: %v", err)}, true
+	}
+	if pool.TotalClaimedSats > pool.TotalCollectedSats {
+		return 0, []string{fmt.Sprintf("claimed fees %d exceed collected fees %d", pool.TotalClaimedSats, pool.TotalCollectedSats)}, true
+	}
+	return pool.TotalCollectedSats - pool.TotalClaimedSats, nil, false
+}
+
+func backingNodeBondLiabilitySats(ctx cosmos.Context, k KVStore) (uint64, []string, bool) {
+	var total uint64
+	var msg []string
+	var broken bool
+
+	iterator := k.GetShielderNodeBondIterator(ctx)
+	defer iterator.Close()
+
+	for ; iterator.Valid(); iterator.Next() {
+		var bond types.ShielderNodeBond
+		if err := json.Unmarshal(iterator.Value(), &bond); err != nil {
+			msg = append(msg, fmt.Sprintf("invalid shielder bond encoding for backing: %s", string(iterator.Key())))
+			broken = true
+			continue
+		}
+		if bond.Sold {
+			continue
+		}
+		total += bond.BondSats + bond.PendingSats
+	}
+
+	return total, msg, broken
+}
+
+func backingNodeBidLiabilitySats(ctx cosmos.Context, k KVStore) (uint64, []string, bool) {
+	var total uint64
+	var msg []string
+	var broken bool
+
+	iterator := k.GetNodeSlotBidIterator(ctx)
+	defer iterator.Close()
+
+	for ; iterator.Valid(); iterator.Next() {
+		var bid types.NodeSlotBid
+		if err := json.Unmarshal(iterator.Value(), &bid); err != nil {
+			msg = append(msg, fmt.Sprintf("invalid node slot bid encoding for backing: %s", string(iterator.Key())))
+			broken = true
+			continue
+		}
+		if !bid.Settled {
+			total += bid.AmountSats
+		}
+	}
+
+	return total, msg, broken
 }

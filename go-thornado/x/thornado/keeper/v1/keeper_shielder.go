@@ -366,6 +366,35 @@ func (k KVStore) GetShielderNodeBondIterator(ctx cosmos.Context) cosmos.Iterator
 	return k.getIterator(ctx, prefixShielderNodeBond)
 }
 
+func (k KVStore) SetShielderNodeBonder(ctx cosmos.Context, bonder types.ShielderNodeBonder) error {
+	if err := bonder.Valid(); err != nil {
+		return err
+	}
+	return k.setShielderJSON(ctx, k.GetKey(prefixShielderNodeBonder, bonder.Key()), bonder)
+}
+
+func (k KVStore) GetShielderNodeBonder(ctx cosmos.Context, nodePubKey string, bonder cosmos.AccAddress) (types.ShielderNodeBonder, error) {
+	record := types.ShielderNodeBonder{
+		NodePubKey: strings.TrimSpace(nodePubKey),
+		Bonder:     bonder,
+	}
+	_, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderNodeBonder, record.Key()), &record)
+	return record, err
+}
+
+func (k KVStore) GetShielderNodeBonderIterator(ctx cosmos.Context) cosmos.Iterator {
+	return k.getIterator(ctx, prefixShielderNodeBonder)
+}
+
+func (k KVStore) DeleteShielderNodeBonder(ctx cosmos.Context, nodePubKey string, bonder cosmos.AccAddress) error {
+	record := types.ShielderNodeBonder{
+		NodePubKey: strings.TrimSpace(nodePubKey),
+		Bonder:     bonder,
+	}
+	k.del(ctx, k.GetKey(prefixShielderNodeBonder, record.Key()))
+	return nil
+}
+
 func (k KVStore) SetFeePool(ctx cosmos.Context, pool types.FeePool) error {
 	return k.setShielderJSON(ctx, k.GetKey(prefixFeePool, "global"), pool)
 }
@@ -421,7 +450,10 @@ func (k KVStore) SetNodeSlotBid(ctx cosmos.Context, bid types.NodeSlotBid) error
 
 func (k KVStore) GetNodeSlotBid(ctx cosmos.Context, bidID string) (types.NodeSlotBid, error) {
 	record := types.NodeSlotBid{BidID: strings.TrimSpace(bidID)}
-	_, err := k.getShielderJSON(ctx, k.GetKey(prefixNodeSlotBid, record.Key()), &record)
+	found, err := k.getShielderJSON(ctx, k.GetKey(prefixNodeSlotBid, record.Key()), &record)
+	if err == nil && !found {
+		record = types.NodeSlotBid{}
+	}
 	return record, err
 }
 

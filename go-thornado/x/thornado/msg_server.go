@@ -60,6 +60,21 @@ func (ms msgServer) NodePauseChain(goCtx context.Context, msg *types.MsgNodePaus
 	return externalHandler(goCtx, handler, msg)
 }
 
+func (ms msgServer) OperatorRotate(goCtx context.Context, msg *types.MsgOperatorRotate) (*types.MsgEmpty, error) {
+	handler := NewOperatorRotateHandler(ms.mgr)
+	return externalHandler(goCtx, handler, msg)
+}
+
+func (ms msgServer) Maint(goCtx context.Context, msg *types.MsgMaint) (*types.MsgEmpty, error) {
+	handler := NewMaintHandler(ms.mgr)
+	return externalHandler(goCtx, handler, msg)
+}
+
+func (ms msgServer) Leave(goCtx context.Context, msg *types.MsgLeave) (*types.MsgEmpty, error) {
+	handler := NewLeaveHandler(ms.mgr)
+	return externalHandler(goCtx, handler, msg)
+}
+
 func (ms msgServer) ObservedTxIn(goCtx context.Context, msg *types.MsgObservedTxIn) (*types.MsgEmpty, error) {
 	handler := NewObservedTxInHandler(ms.mgr)
 	return externalHandler(goCtx, handler, msg)
@@ -200,6 +215,17 @@ func (ms msgServer) ShielderShieldFees(goCtx context.Context, msg *types.MsgShie
 		AmountSats: deposit.AmountSats,
 		Status:     deposit.Status,
 	}, nil
+}
+
+func (ms msgServer) NodeOperatorFeeSet(goCtx context.Context, msg *types.MsgNodeOperatorFeeSet) (*types.MsgEmpty, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, err
+	}
+	if _, err := SetNodeOperatorFeeBasisPoints(ctx, ms.mgr.Keeper(), msg.Signer, msg.NodePubKey, msg.OperatorFeeBasisPoints); err != nil {
+		return nil, err
+	}
+	return &types.MsgEmpty{}, nil
 }
 
 func (ms msgServer) NodeSlotAuctionCreate(goCtx context.Context, msg *types.MsgNodeSlotAuctionCreate) (*types.MsgNodeSlotAuctionCreateResponse, error) {

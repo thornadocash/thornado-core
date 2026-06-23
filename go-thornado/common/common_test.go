@@ -106,3 +106,34 @@ func (s CommonSuite) TestObservedTxSignablePayloadCoversWrapperAndInbound(c *C) 
 		c.Assert(accountedFor[field], Equals, true, Commentf("ObservedTx field %q must be classified as signed or deliberately excluded", field))
 	}
 }
+
+func (s CommonSuite) TestQuorumTxEqualsUsesSignedPayload(c *C) {
+	base := QuorumTx{
+		Inbound: true,
+		ObsTx: ObservedTx{
+			Tx: Tx{
+				ID:          "tx1",
+				Chain:       BTCChain,
+				FromAddress: "from",
+				ToAddress:   "to",
+				Coins:       Coins{NewCoin(BTCAsset, cosmos.NewUint(1000))},
+				Gas:         Gas{NewCoin(BTCAsset, cosmos.NewUint(10))},
+				SourceInputs: []TxInput{{
+					TxID:       "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+					Vout:       0,
+					AmountSats: 1000,
+				}},
+			},
+			BlockHeight:    10,
+			FinaliseHeight: 10,
+			ObservedPubKey: "pubkey",
+		},
+	}
+	same := base
+	c.Assert(base.Equals(&same), Equals, true)
+
+	differentSignedPayload := base
+	differentSignedPayload.ObsTx.Tx.SourceInputs = append([]TxInput(nil), base.ObsTx.Tx.SourceInputs...)
+	differentSignedPayload.ObsTx.Tx.SourceInputs[0].AmountSats = 2000
+	c.Assert(base.Equals(&differentSignedPayload), Equals, false)
+}

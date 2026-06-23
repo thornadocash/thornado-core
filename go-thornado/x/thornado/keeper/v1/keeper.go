@@ -74,6 +74,7 @@ const (
 	prefixShielderRedeem           types.DbPrefix = "shielder_withdrawal/"
 	prefixShielderNullifier        types.DbPrefix = "shielder_nullifier/"
 	prefixShielderNodeBond         types.DbPrefix = "shielder_node_bond/"
+	prefixShielderNodeBonder       types.DbPrefix = "shielder_node_bonder/"
 	prefixShielderNodeBondSlot     types.DbPrefix = "shielder_node_bond_slot/"
 	prefixFeePool                  types.DbPrefix = "fee_pool/"
 	prefixShielderFeeNotePubKey    types.DbPrefix = "shielder_fee_note_pubkey/"

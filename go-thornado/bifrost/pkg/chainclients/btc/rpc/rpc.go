@@ -198,6 +198,14 @@ func (c *Client) GetRawTransaction(txid string) (string, error) {
 	return tx, extractBTCError(err)
 }
 
+// GetTxOut returns information about an unspent transaction output. A nil result
+// means Bitcoin Core knows the outpoint but it is spent, or the outpoint is absent.
+func (c *Client) GetTxOut(txid string, vout uint32, includeMempool bool) (*btcjson.GetTxOutResult, error) {
+	var result *btcjson.GetTxOutResult
+	err := c.Call(&result, "gettxout", txid, vout, includeMempool)
+	return result, extractBTCError(err)
+}
+
 // BatchGetRawTransactionVerbose returns a raw transaction for given transaction ids.
 func (c *Client) BatchGetRawTransactionVerbose(txids []string) ([]*btcjson.TxRawResult, []error, error) {
 	// create batch request
@@ -236,6 +244,20 @@ func (c *Client) BatchGetRawTransactionVerbose(txids []string) ([]*btcjson.TxRaw
 func (c *Client) ImportAddress(address string) error {
 	err := c.Call(nil, "importaddress", address, "", false)
 	return extractBTCError(err)
+}
+
+// AddressKnown reports whether this wallet already tracks the address.
+func (c *Client) AddressKnown(address string) (bool, error) {
+	var info struct {
+		IsMine      bool `json:"ismine"`
+		IsWatchOnly bool `json:"iswatchonly"`
+		Solvable    bool `json:"solvable"`
+	}
+	err := c.Call(&info, "getaddressinfo", address)
+	if err != nil {
+		return false, extractBTCError(err)
+	}
+	return info.IsMine || info.IsWatchOnly || info.Solvable, nil
 }
 
 // ImportDescriptorAddress imports a descriptor wallet watch-only address.
@@ -294,6 +316,9 @@ func (c *Client) CreateWallet(name string) error {
 	if rpcErr, ok := err.(*btcjson.RPCError); ok && rpcErr.Code == btcjson.ErrRPCWallet {
 		return nil
 	}
+	if name == "" && err != nil && strings.Contains(err.Error(), "Wallet name cannot be empty") {
+		return nil
+	}
 
 	return err
 }
@@ -309,9 +334,13 @@ func (c *Client) ListUnspent(address string) ([]btcjson.ListUnspentResult, error
 }
 
 func (c *Client) GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error) {
-	var info btcjson.GetNetworkInfoResult
+	type networkInfoCompat struct {
+		btcjson.GetNetworkInfoResult
+		Warnings json.RawMessage `json:"warnings"`
+	}
+	var info networkInfoCompat
 	err := c.Call(&info, "getnetworkinfo")
-	return &info, extractBTCError(err)
+	return &info.GetNetworkInfoResult, extractBTCError(err)
 }
 
 func (c *Client) Call(result any, method string, args ...interface{}) error {

@@ -1,5 +1,7 @@
+.git
+/build
 /target
-/.git
-/.cometbft*
-/thornado-state.json
-*.tmp
+/tmp
+.DS_Store
+**/*.log
+ops/logs

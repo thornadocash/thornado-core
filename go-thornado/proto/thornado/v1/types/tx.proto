@@ -10,6 +10,7 @@ import "types/msg_node_pause_chain.proto";
 import "types/msg_observed_txin.proto";
 import "types/msg_observed_txout.proto";
 import "types/msg_observed_tx_quorum.proto";
+import "types/msg_operator_rotate.proto";
 import "types/msg_send.proto";
 import "types/msg_set_ip_address.proto";
 import "types/msg_set_node_keys.proto";
@@ -20,6 +21,7 @@ import "types/msg_keygen_vault.proto";
 import "types/msg_version.proto";
 import "types/msg_upgrade.proto";
 import "types/msg_maint.proto";
+import "types/msg_leave.proto";
 
 option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
 
@@ -34,6 +36,9 @@ service Msg {
   rpc NetworkFee(MsgNetworkFee) returns (MsgEmpty);
   rpc NetworkFeeQuorum(MsgNetworkFeeQuorum) returns (MsgEmpty);
   rpc NodePauseChain(MsgNodePauseChain) returns (MsgEmpty);
+  rpc OperatorRotate(MsgOperatorRotate) returns (MsgEmpty);
+  rpc Maint(MsgMaint) returns (MsgEmpty);
+  rpc Leave(MsgLeave) returns (MsgEmpty);
   rpc ObservedTxIn(MsgObservedTxIn) returns (MsgEmpty);
   rpc ObservedTxOut(MsgObservedTxOut) returns (MsgEmpty);
   rpc ObservedTxQuorum(MsgObservedTxQuorum) returns (MsgEmpty);
@@ -52,6 +57,7 @@ service Msg {
   rpc ShielderShield(MsgShielderShield) returns (MsgShielderShieldResponse);
   rpc ShielderRedeem(MsgShielderRedeem) returns (MsgShielderRedeemResponse);
   rpc ShielderShieldFees(MsgShielderShieldFees) returns (MsgShielderShieldFeesResponse);
+  rpc NodeOperatorFeeSet(MsgNodeOperatorFeeSet) returns (MsgEmpty);
   rpc NodeSlotAuctionCreate(MsgNodeSlotAuctionCreate) returns (MsgNodeSlotAuctionCreateResponse);
   rpc NodeSlotAuctionBidCreate(MsgNodeSlotAuctionBidCreate) returns (MsgNodeSlotAuctionBidCreateResponse);
   rpc NodeSlotAuctionSelectBid(MsgNodeSlotAuctionSelectBid) returns (MsgEmpty);

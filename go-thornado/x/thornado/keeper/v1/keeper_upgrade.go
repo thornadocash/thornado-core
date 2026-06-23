@@ -101,7 +101,7 @@ func (k KVStore) RemoveExpiredUpgradeProposals(ctx cosmos.Context) error {
 		nameSplit := strings.Split(string(key), "/")
 		name := nameSplit[len(nameSplit)-1]
 
-		var upgrade types.Upgrade
+		var upgrade types.UpgradeProposal
 		if err := k.cdc.Unmarshal(value, &upgrade); err != nil {
 			return fmt.Errorf("failed to unmarshal proposed upgrade: %w", err)
 		}

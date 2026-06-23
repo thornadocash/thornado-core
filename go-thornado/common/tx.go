@@ -95,6 +95,10 @@ func (tx TxID) String() string {
 	return string(tx)
 }
 
+func (input TxInput) String() string {
+	return fmt.Sprintf("%s:%d:%d", input.TxID, input.Vout, input.AmountSats)
+}
+
 // Txs a list of Tx
 type Txs []Tx
 

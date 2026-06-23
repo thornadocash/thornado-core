@@ -49,7 +49,7 @@ func (h NodePauseChainHandler) validate(ctx cosmos.Context, msg MsgNodePauseChai
 		return err
 	}
 
-	if !isSignedByActiveNodeAccounts(ctx, h.mgr.Keeper(), msg.GetSigners()) {
+	if _, err := resolveActiveNodeAccountBySigner(ctx, h.mgr.Keeper(), msg.Signer); err != nil {
 		return cosmos.ErrUnauthorized(fmt.Sprintf("%+v are not authorized", msg.GetSigners()))
 	}
 
@@ -58,6 +58,10 @@ func (h NodePauseChainHandler) validate(ctx cosmos.Context, msg MsgNodePauseChai
 
 func (h NodePauseChainHandler) handle(ctx cosmos.Context, msg MsgNodePauseChain) error {
 	ctx.Logger().Info("handleMsgNodePauseChain request", "node", msg.Signer, "value", msg.Value)
+	nodeAccount, err := resolveActiveNodeAccountBySigner(ctx, h.mgr.Keeper(), msg.Signer)
+	if err != nil {
+		return cosmos.ErrUnauthorized(err.Error())
+	}
 	// get block height of last churn
 	active, err := h.mgr.Keeper().GetBaseVaultsByStatus(ctx, ActiveVault)
 	if err != nil {
@@ -71,7 +75,7 @@ func (h NodePauseChainHandler) handle(ctx cosmos.Context, msg MsgNodePauseChain)
 	}
 
 	// check that node hasn't used this handler since the last churn already
-	nodeHeight := h.mgr.Keeper().GetNodePauseChain(ctx, msg.Signer)
+	nodeHeight := h.mgr.Keeper().GetNodePauseChain(ctx, nodeAccount.NodeAddress)
 	if nodeHeight > 0 && nodeHeight >= lastChurn {
 		return fmt.Errorf("node has already chosen pause/resume since the last churn")
 	}
@@ -88,17 +92,17 @@ func (h NodePauseChainHandler) handle(ctx cosmos.Context, msg MsgNodePauseChain)
 	if msg.Value > 0 { // node intends to pause chain
 		if pauseHeight > ctx.BlockHeight() { // chain is paused
 			pauseHeight += blocks
-			h.mgr.Keeper().SetNodePauseChain(ctx, msg.Signer)
+			h.mgr.Keeper().SetNodePauseChain(ctx, nodeAccount.NodeAddress)
 		} else { // chain isn't paused
 			pauseHeight = ctx.BlockHeight() + blocks
-			h.mgr.Keeper().SetNodePauseChain(ctx, msg.Signer)
+			h.mgr.Keeper().SetNodePauseChain(ctx, nodeAccount.NodeAddress)
 		}
 	} else { // node intends to resume chain
 		if pauseHeight <= ctx.BlockHeight() {
 			// chain isn't paused, so don't do anything
 			return nil
 		}
-		h.mgr.Keeper().SetNodePauseChain(ctx, msg.Signer)
+		h.mgr.Keeper().SetNodePauseChain(ctx, nodeAccount.NodeAddress)
 		pauseHeight -= blocks
 	}
 
@@ -115,5 +119,5 @@ func (h NodePauseChainHandler) handle(ctx cosmos.Context, msg MsgNodePauseChain)
 // and also during deliver. Store changes will persist if this function
 // succeeds, regardless of the success of the transaction.
 func NodePauseChainAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg MsgNodePauseChain) (cosmos.Context, error) {
-	return activeNodeAccountsSignerPriority(ctx, k, msg.GetSigners())
+	return activeOperationalNodeSignerPriority(ctx, k, msg.GetSigners())
 }

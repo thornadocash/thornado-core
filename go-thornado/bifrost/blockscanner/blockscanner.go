@@ -310,11 +310,10 @@ func (b *BlockScanner) scanBlocks() {
 				lastConfigCheck = time.Now()
 			}
 
-			// Chain is paused, mark as unhealthy
+			// Chain is paused, mark as unhealthy but keep scanning. Outbound
+			// observations must still land so solvency halts can self-heal.
 			if isChainPaused {
 				b.healthy.Store(false)
-				time.Sleep(constants.ThornadoBlockTime)
-				continue
 			}
 
 			chainHeight, err := b.chainScanner.GetHeight()

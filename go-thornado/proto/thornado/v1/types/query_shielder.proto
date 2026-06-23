@@ -21,6 +21,13 @@ message QueryShielderRedeemResponse {
   string vault_pub_key = 8;
   int64 requested_height = 9;
   string status = 10;
+  string txout_status = 11;
+  int64 txout_height = 12;
+  uint64 txout_epoch = 13;
+  string tx_type = 14;
+  string out_hash = 15;
+  uint32 out_vout = 16;
+  string outpoint = 17;
 }
 
 message QueryShielderNullifierRequest {
@@ -32,6 +39,17 @@ message QueryShielderNullifierResponse {
   string nullifier_hash = 1;
   bool spent = 2;
   string withdrawal_id = 3;
+  string withdrawal_status = 4;
+  uint64 amount_sats = 5;
+  uint64 fee_sats = 6;
+  string in_hash = 7;
+  string txout_status = 8;
+  int64 txout_height = 9;
+  uint64 txout_epoch = 10;
+  string tx_type = 11;
+  string out_hash = 12;
+  uint32 out_vout = 13;
+  string outpoint = 14;
 }
 
 message ShielderNoteRecord {
@@ -42,6 +60,17 @@ message ShielderNoteRecord {
 message ShielderSpentNullifier {
   string nullifier_hash = 1;
   string withdrawal_id = 2;
+  string withdrawal_status = 3;
+  uint64 amount_sats = 4;
+  uint64 fee_sats = 5;
+  string in_hash = 6;
+  string txout_status = 7;
+  int64 txout_height = 8;
+  uint64 txout_epoch = 9;
+  string tx_type = 10;
+  string out_hash = 11;
+  uint32 out_vout = 12;
+  string outpoint = 13;
 }
 
 message QueryShielderSyncRequest {

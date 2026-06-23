@@ -29,6 +29,7 @@ func NewStandaloneHandler(cfg StandaloneConfig) http.Handler {
 	if cfg.StaticDir != "" {
 		static = http.FileServer(http.Dir(cfg.StaticDir))
 		index = func(w http.ResponseWriter, r *http.Request) {
+			setDevNoStore(w)
 			w.Header().Set("content-type", "text/html; charset=utf-8")
 			http.ServeFile(w, r, cfg.StaticDir+"/index.html")
 		}
@@ -39,12 +40,25 @@ func NewStandaloneHandler(cfg StandaloneConfig) http.Handler {
 	if cfg.StaticDir != "" {
 		rtr.HandleFunc(uiAssetsPath+"prover/withdraw/prove", handleDevWithdrawProof(cfg.StaticDir)).Methods(http.MethodPost, http.MethodOptions)
 	}
-	rtr.PathPrefix(uiAssetsPath).Handler(http.StripPrefix(uiAssetsPath, static)).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
+	rtr.PathPrefix(uiAssetsPath).Handler(http.StripPrefix(uiAssetsPath, noStoreHandler(static))).Methods(http.MethodGet, http.MethodHead, http.MethodOptions)
 
 	if cfg.NodeURL != nil {
 		rtr.PathPrefix("/").Handler(newNodeProxy(cfg.NodeURL))
 	}
 	return rtr
+}
+
+func setDevNoStore(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+}
+
+func noStoreHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		setDevNoStore(w)
+		next.ServeHTTP(w, r)
+	})
 }
 
 func handleDevWithdrawProof(staticDir string) http.HandlerFunc {

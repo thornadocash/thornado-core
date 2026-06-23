@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Thornado</title>
-  <link rel="stylesheet" href="/thornado/ui/styles.css?v=header-panel-frame-v1">
+  <link rel="stylesheet" href="/thornado/ui/styles.css?v=sell-button-size-v1">
 </head>
 <body>
   <main>
@@ -28,6 +28,15 @@
         <button id="tabHow" class="tab-button" type="button">How it works</button>
       </nav>
       <div class="top-status">
+        <div id="shieldedSummary" class="status-menu shielded-summary" hidden>
+          <button id="shieldedSummaryButton" class="status-chip shielded-summary-button" type="button" aria-expanded="false" aria-haspopup="menu">
+            <span id="shieldedSummaryAmount">0 BTC</span>
+          </button>
+          <div id="shieldedSummaryMenu" class="status-dropdown status-dropdown-wide shielded-summary-menu" role="menu" hidden>
+            <div id="shieldedSummaryList" class="shielded-summary-list"></div>
+            <button id="shieldedSummaryWithdraw" type="button" role="menuitem">Withdraw</button>
+          </div>
+        </div>
         <div id="routeStatus" class="status-menu">
           <button id="routeStatusButton" class="status-chip" type="button" aria-expanded="false" aria-haspopup="menu">
             <span id="routeStatusDot" class="status-dot yellow"></span>
@@ -232,78 +241,71 @@
           <h2>Network</h2>
         </section>
 
-        <section class="surface-section">
-          <h2>Client Network</h2>
-          <div class="shield-panel">
-            <div>
-              <span class="panel-label">Client delivery</span>
-              <div class="panel-list">
-                <div class="row"><span>App bundle</span><strong>manifest verified</strong></div>
-                <div class="row"><span>Transport</span><strong id="nodeEndpoint">same origin</strong></div>
-                <div class="row"><span>Privacy mode</span><strong>local secret only</strong></div>
-              </div>
-            </div>
-            <div>
-              <span class="panel-label">Node connection</span>
-              <div class="panel-list">
-                <div class="row"><span>Broadcast</span><strong>browser API</strong></div>
-                <div class="row"><span>State queries</span><strong>same node</strong></div>
-                <div class="row"><span>BTC chain</span><strong>observed by Bifrost</strong></div>
-              </div>
-            </div>
+        <section class="surface-section network-overview">
+          <div class="network-metric-grid">
+            <div class="network-metric"><span>Block</span><strong id="networkExplorerHeight">unavailable</strong></div>
+            <div class="network-metric"><span>Base Vault BTC</span><strong id="networkVaultBtc">unavailable</strong></div>
+            <div class="network-metric"><span>Shielded BTC</span><strong id="networkShieldedBtc">unavailable</strong></div>
+            <div class="network-metric"><span>Nodes</span><strong id="networkNodeTotal">unavailable</strong></div>
+            <div class="network-metric"><span>Next Churn</span><strong id="networkChurnCycle">unavailable</strong></div>
+            <div class="network-metric"><span>Active Vaults</span><strong id="networkVaultCount">unavailable</strong></div>
           </div>
         </section>
 
         <section class="surface-section">
-          <h2>Operators And Governance</h2>
-          <div class="shield-panel">
-            <div>
-              <span class="panel-label">Operator set</span>
-              <div class="panel-list">
-                <div class="row"><span>Threshold</span><strong>67% FROST</strong></div>
-                <div class="row"><span>Churn interval</span><strong id="networkChurnInterval">3 days</strong></div>
-                <div class="row"><span>Target nodes</span><strong id="networkTargetNodes">4</strong></div>
-                <div class="row"><span>Next churn</span><strong id="networkNextChurn">not scheduled</strong></div>
-                <div class="row"><span>Max churn</span><strong id="networkMaxChurn">1 per cycle</strong></div>
-                <div class="row"><span>Offline penalty</span><strong>1% per missed cycle</strong></div>
-              </div>
-            </div>
-            <div>
-              <span class="panel-label">Governance</span>
-              <div class="panel-list">
-                <div class="row"><span>Permanent slots</span><strong>auction market</strong></div>
-                <div class="row"><span>Bond</span><strong>slot-index formula</strong></div>
-                <div class="row"><span>Shutdown vote</span><strong>67% required</strong></div>
-                <div class="row"><span>Maintenance mode</span><strong>30 days</strong></div>
-              </div>
-            </div>
+          <h2>Explore</h2>
+          <div class="explorer-unified-search">
+            <input id="networkExploreQuery" autocomplete="off" placeholder="Address, node, BTC address, or tx hash">
+            <button id="networkExploreSearch" type="button">Search</button>
+          </div>
+          <div id="networkExploreResult" class="explorer-result"></div>
+        </section>
+
+        <section class="surface-section">
+          <h2>Chain</h2>
+          <div class="panel-list explorer-list">
+            <div class="row"><span>Chain ID</span><strong id="networkChainId">unavailable</strong></div>
+            <div class="row"><span>Block hash</span><strong id="networkBlockHash">unavailable</strong></div>
+            <div class="row"><span>Block time</span><strong id="networkBlockTime">unavailable</strong></div>
+            <div class="row"><span>Transactions</span><strong id="networkTxCount">unavailable</strong></div>
+            <div class="row"><span>BTC observed</span><strong id="networkBtcObserved">unavailable</strong></div>
+            <div class="row"><span>BTC signed</span><strong id="networkBtcSigned">unavailable</strong></div>
           </div>
         </section>
 
+        <section class="surface-section">
+          <h2>Vaults</h2>
+          <div class="panel-list explorer-list">
+            <div class="row"><span>Solvency</span><strong id="networkSolvency">unavailable</strong></div>
+            <div class="row"><span>Inbound txs</span><strong id="networkVaultInbounds">unavailable</strong></div>
+            <div class="row"><span>Outbound txs</span><strong id="networkVaultOutbounds">unavailable</strong></div>
+            <div class="row"><span>Pending outbounds</span><strong id="networkVaultPending">unavailable</strong></div>
+          </div>
+          <div id="networkVaultsList" class="explorer-table"></div>
+        </section>
+
+        <section class="surface-section">
+          <h2>Privacy Set</h2>
+          <div class="panel-list explorer-list">
+            <div class="row"><span>Deposits</span><strong id="networkDepositCount">unavailable</strong></div>
+            <div class="row"><span>Notes</span><strong id="networkNoteCount">unavailable</strong></div>
+            <div class="row"><span>Spent notes</span><strong id="networkNullifierCount">unavailable</strong></div>
+            <div class="row"><span>Fee bucket</span><strong id="networkFeeBucket">unavailable</strong></div>
+          </div>
+        </section>
+
+        <section class="surface-section">
+          <h2>Node Set</h2>
+          <div class="panel-list explorer-list">
+            <div class="row"><span>Active</span><strong id="networkActiveNodes">unavailable</strong></div>
+            <div class="row"><span>Standby</span><strong id="networkStandbyNodes">unavailable</strong></div>
+            <div class="row"><span>Bonded BTC</span><strong id="networkBondedBtc">unavailable</strong></div>
+            <div class="row"><span>Next slot bond</span><strong id="networkNextSlotBond">unavailable</strong></div>
+            <div class="row"><span>Slot auctions</span><strong id="networkAuctionCount">unavailable</strong></div>
+          </div>
+          <div id="networkNodesList" class="explorer-table"></div>
+        </section>
       </div>
-
-      <aside class="context-rail">
-        <div class="side-panel">
-          <h2>System Params</h2>
-          <div class="panel-list">
-            <div class="row"><span>Denominations</span><strong>10, 1, 0.1, 0.01 BTC</strong></div>
-            <div class="row"><span>PoW target</span><strong>~10 seconds</strong></div>
-            <div class="row"><span>Withdrawal fee</span><strong>max 1% / 0.001 BTC</strong></div>
-            <div class="row"><span>Fee bucket</span><strong>node-share pool</strong></div>
-          </div>
-        </div>
-
-        <div class="side-panel">
-          <h2>Protocol Surfaces</h2>
-          <div class="pill-row">
-            <span class="pill ok">deposit watch</span>
-            <span class="pill ok">shield proofs</span>
-            <span class="pill ok">withdraw proofs</span>
-            <span class="pill ok">slot auction</span>
-            <span class="pill ok">fee claims</span>
-          </div>
-        </div>
-      </aside>
     </div>
 
     <div id="howPanel" class="tab-panel how-page" hidden>
@@ -367,129 +369,206 @@
         </section>
 
         <div class="subtabs workflow-tabs" aria-label="Node workflows">
-          <button id="nodeSubtabNew" class="subtab-button active" type="button" data-node-subtab="new"><span>01</span>New Node</button>
+          <button id="nodeSubtabNew" class="subtab-button active" type="button" data-node-subtab="new"><span>01</span>Node</button>
           <button id="nodeSubtabBond" class="subtab-button" type="button" data-node-subtab="bond"><span>02</span>Bond</button>
-          <button id="nodeSubtabManage" class="subtab-button" type="button" data-node-subtab="manage"><span>03</span>Manage</button>
+          <button id="nodeSubtabManage" class="subtab-button" type="button" data-node-subtab="manage"><span>03</span>Governance</button>
           <button id="nodeSubtabIncome" class="subtab-button" type="button" data-node-subtab="income"><span>04</span>Income</button>
           <button id="nodeSubtabSell" class="subtab-button" type="button" data-node-subtab="sell"><span>05</span>Sell</button>
         </div>
 
         <section class="surface-section" data-node-section="new">
-          <h2>New Node</h2>
-          <div class="shield-panel form-grid">
+          <h2>Node</h2>
+          <div class="node-setup-stack">
             <div>
-              <span class="panel-label">Secret</span>
-              <div class="panel-list">
-                <div class="row"><span>Status</span><strong id="nodeSecretStatus">Set secret in User</strong></div>
-              </div>
-              <div class="actions">
-                <button id="refreshNodeTools" class="secondary" type="button">Refresh Network</button>
-              </div>
+              <span class="panel-label">Node side</span>
+              <p class="operator-note">Run the node process from the CLI, generate its node keys, publish IP and version, then bond it. Once registered and bonded, routine node transactions can be sent gaslessly by the node itself.</p>
             </div>
             <div>
-              <span class="panel-label">Slot readiness</span>
-              <div class="panel-list">
-                <div class="row"><span>Next slot</span><strong id="nodeNextSlot">unknown</strong></div>
-                <div class="row"><span>Required bond</span><strong id="nodeRequiredBond">unknown</strong></div>
-              </div>
+              <span class="panel-label">Operator UI</span>
+              <p class="operator-note">Monitor registration, bond, version, income, and leave state after CLI setup.</p>
               <label>
-                Key name
-                <input id="nodeKeyName" value="node">
+                Node address
+                <input id="nodeLookupAddress" placeholder="tthor1...">
               </label>
+              <div class="actions">
+                <button id="nodeLookupStatusButton" type="button">Add Node Address</button>
+              </div>
+              <div class="panel-list">
+                <div class="row"><span>Status</span><strong id="nodeLookupStatus">No node selected</strong></div>
+                <div class="row"><span>Bond</span><strong id="nodeLookupBond">unknown</strong></div>
+                <div class="row"><span>Version</span><strong id="nodeLookupVersion">unknown</strong></div>
+              </div>
             </div>
           </div>
-
-          <div class="shield-panel form-grid">
-            <div>
-              <span class="panel-label">Network presence</span>
-              <label>
-                IP address
-                <input id="nodeIpAddress" placeholder="127.0.0.1">
-              </label>
-              <div class="actions">
-                <button id="buildSetIpCommand" type="button">Set IP</button>
-                <button id="buildSetVersionCommand" class="secondary" type="button">Set Version</button>
-              </div>
-            </div>
-            <div>
-              <span class="panel-label">Node keys</span>
-              <label>
-                Secp256k1 pubkey
-                <input id="nodeSecpPubkey" placeholder="tthorpub1...">
-              </label>
-              <label>
-                Ed25519 pubkey
-                <input id="nodeEdPubkey" placeholder="tthorpub1...">
-              </label>
-              <label>
-                Consensus pubkey
-                <input id="nodeConsPubkey" placeholder="tthorv1pub1...">
-              </label>
-              <div class="actions">
-                <button id="buildSetKeysCommand" type="button">Set Node Keys</button>
-              </div>
-            </div>
+          <div hidden>
+            <strong id="nodeSecretStatus">Set secret in User</strong>
+            <strong id="nodeNextSlot">unknown</strong>
+            <strong id="nodeRequiredBond">unknown</strong>
+            <input id="nodeKeyName" value="node">
+            <input id="nodeIpAddress">
+            <input id="nodeSecpPubkey">
+            <input id="nodeEdPubkey">
+            <input id="nodeConsPubkey">
+            <button id="refreshNodeTools" type="button">Refresh Network</button>
+            <button id="buildSetIpCommand" type="button">Set IP</button>
+            <button id="buildSetVersionCommand" type="button">Set Version</button>
+            <button id="buildSetKeysCommand" type="button">Set Node Keys</button>
           </div>
           <pre id="nodeCommandOutput" class="log" hidden></pre>
         </section>
 
         <section class="surface-section" data-node-section="bond" hidden>
           <h2>Bond</h2>
-          <div class="shield-panel form-grid">
-            <div>
-              <span class="panel-label">Target node</span>
-              <label>
-                Node address / consensus pubkey
-                <input id="bondNodePubkey" placeholder="tthorv1pub1...">
-              </label>
-              <div class="actions">
-                <button id="buildBondFromNotesCommand" type="button">Bond From Shielded Note</button>
-              </div>
+          <div id="nodeBondFlow" class="bond-flow bond-reuse-flow">
+            <p class="operator-note bond-intro">Shield your BTC Deposit first, then Bond to your Node.</p>
+            <div class="panel-list bond-balance-panel">
+              <div class="row"><span>Shielded Balance</span><strong id="nodeBondShieldedBalance">0 BTC</strong></div>
             </div>
-            <div>
-              <span class="panel-label">Node-purpose deposit</span>
-              <label>
-                Amount sats
-                <input id="nodeBondAmountSats" type="number" min="1" step="1" placeholder="100000000">
-              </label>
-              <div class="actions">
-                <button id="prepareNodeBondDeposit" class="secondary" type="button">Prepare Bond Deposit</button>
-                <button id="nodeBondGetAddress" class="secondary" type="button">Get Address</button>
-                <button id="nodeBondShield" class="secondary" type="button">Shield</button>
-              </div>
+            <div id="nodeBondActionSummary" class="stage-summary">No shielded BTC found.</div>
+            <label id="nodeBondAddressLabel" hidden>
+              Node address
+              <input id="bondNodePubkey" placeholder="tthor1...">
+            </label>
+            <div id="nodeBondNoteDetails" class="notes notes-table"></div>
+            <div class="actions">
+              <button id="nodeBondDepositShortcut" type="button">Deposit</button>
+              <button id="buildBondFromNotesCommand" type="button" hidden>Bond</button>
             </div>
           </div>
-          <div id="nodeBondFlow" class="panel-list"></div>
+          <div hidden>
+            <input id="nodeBondAmountSats" type="number" min="1" step="1" placeholder="100000000">
+            <div id="nodeBondAddressSummary"></div>
+            <div id="nodeBondAddressDetails"></div>
+            <div id="nodeBondDepositSummary"></div>
+            <div id="nodeBondDepositDetails"></div>
+            <div id="nodeBondShieldSummary"></div>
+            <div id="nodeBondShieldDetails"></div>
+            <button id="nodeBondGetAddress" type="button">Get Address</button>
+            <button id="nodeBondShield" type="button">Shield Deposit</button>
+          </div>
+          <button id="prepareNodeBondDeposit" class="secondary" type="button" hidden>Prepare Bond Deposit</button>
         </section>
 
         <section class="surface-section" data-node-section="manage" hidden>
-          <h2>Manage</h2>
-          <div class="shield-panel form-grid">
-            <div>
-              <span class="panel-label">Upgrade vote</span>
-              <label>
-                Upgrade name
-                <input id="upgradeName" placeholder="upgrade name">
-              </label>
-              <label>
-                Upgrade height
-                <input id="upgradeHeight" type="number" min="1" step="1" placeholder="height">
-              </label>
-              <label>
-                Upgrade info
-                <input id="upgradeInfo" placeholder="optional info">
-              </label>
-              <div class="actions">
-                <button id="buildProposeUpgradeCommand" type="button">Propose</button>
-                <button id="buildApproveUpgradeCommand" class="secondary" type="button">Approve</button>
-                <button id="buildRejectUpgradeCommand" class="secondary" type="button">Reject</button>
+          <h2>Governance</h2>
+          <div class="governance-layout">
+            <div class="governance-group">
+              <span class="panel-label">Protocol pause</span>
+              <div class="actions governance-actions">
+                <button id="buildPauseCommand" class="danger-outline" type="button">Pause Protocol</button>
+                <button id="buildResumeCommand" class="secondary" type="button">Resume Protocol</button>
               </div>
             </div>
-            <div>
-              <span class="panel-label">Operational state</span>
-              <div class="actions">
-                <button id="buildPauseCommand" class="secondary" type="button">Pause</button>
-                <button id="buildResumeCommand" class="secondary" type="button">Resume</button>
+            <div class="governance-group">
+              <span class="panel-label">Config votes</span>
+              <div class="governance-fields config-vote-row">
+                <label>
+                  Config
+                  <select id="configVoteKey">
+                    <optgroup label="Chain">
+                      <option value="Chain_BlockTimeSeconds">Block time seconds</option>
+                      <option value="Chain_PauseNodeMinutes">Pause node minutes</option>
+                    </optgroup>
+                    <optgroup label="Signing evidence">
+                      <option value="BlockSign_DoublePenaltyPoints">Block double-sign penalty points</option>
+                      <option value="BlockSign_MissPenaltyPoints">Block miss penalty points</option>
+                      <option value="DoubleSign_MaxAgeMinutes">Double-sign max age minutes</option>
+                    </optgroup>
+                    <optgroup label="BTC">
+                      <option value="BTC_ConfMultiplierBasisPoints">Confirmation multiplier bps</option>
+                      <option value="BTC_ConfirmationsMin">Minimum confirmations</option>
+                      <option value="BTC_DefaultSatsPerVByte">Default sats per vbyte</option>
+                      <option value="BTC_MaxConfirmations">Maximum confirmations</option>
+                      <option value="BTC_MaxMempoolAncestors">Maximum mempool ancestors</option>
+                      <option value="BTC_MaxSatsPerVByte">Maximum sats per vbyte</option>
+                    </optgroup>
+                    <optgroup label="Deposit">
+                      <option value="Deposit_AmountMinSats">Minimum deposit sats</option>
+                      <option value="Deposit_PowDifficultyMin">PoW difficulty minimum</option>
+                      <option value="Deposit_PowDifficultyMax">PoW difficulty maximum</option>
+                      <option value="Deposit_PowExpiryMinutes">PoW expiry minutes</option>
+                      <option value="Deposit_PowRetargetStepMax">PoW retarget step max</option>
+                      <option value="Deposit_PowSamplesMin">PoW samples minimum</option>
+                      <option value="Deposit_PowTargetPercentile">PoW target percentile</option>
+                      <option value="Deposit_PowTargetSeconds">PoW target seconds</option>
+                      <option value="Deposit_SessionExpiryMinutes">Session expiry minutes</option>
+                      <option value="Deposit_SweepRetryIntervalMinutes">Sweep retry minutes</option>
+                      <option value="Deposit_RefundIfForgottenDays">Forgotten refund days</option>
+                    </optgroup>
+                    <optgroup label="Halt">
+                      <option value="Halt_ChainGlobal">Chain global</option>
+                      <option value="Halt_Churning">Churning</option>
+                      <option value="Halt_SigningGlobal">Signing global</option>
+                      <option value="Halt_SolvencyCheck">Solvency check</option>
+                    </optgroup>
+                    <optgroup label="Node">
+                      <option value="Node_SetDesired">Desired active nodes</option>
+                      <option value="Vault_BaseMembersMin">Base vault members minimum</option>
+                      <option value="Node_BondStartAmountSats">Bond start sats</option>
+                      <option value="Node_BondSlotIncrementSats">Bond slot increment sats</option>
+                      <option value="Node_BadPenaltyPointsMin">Bad penalty points minimum</option>
+                      <option value="Node_BadRedline">Bad node redline</option>
+                      <option value="Node_PenaltyChurnOutThreshold">Penalty churn-out threshold</option>
+                      <option value="Node_MissingBlocksChurnOut">Missing blocks churn out</option>
+                      <option value="Node_MissingBlocksChurnOutMax">Missing blocks churn-out max</option>
+                      <option value="Node_MissingBlocksTrackMax">Missing blocks track max</option>
+                    </optgroup>
+                    <optgroup label="Operations">
+                      <option value="Churn_IntervalMinutes">Churn interval minutes</option>
+                      <option value="Churn_RetryIntervalMinutes">Churn retry minutes</option>
+                      <option value="Keygen_FailJailMinutes">Keygen fail jail minutes</option>
+                      <option value="Keygen_FailPenaltyPoints">Keygen fail penalty points</option>
+                      <option value="Keygen_RetryIntervalMinutes">Keygen retry minutes</option>
+                      <option value="Keysign_FailJailMinutes">Keysign fail jail minutes</option>
+                      <option value="Keysign_FailPenaltyPoints">Keysign fail penalty points</option>
+                      <option value="Keysign_PeriodMinutes">Keysign period minutes</option>
+                      <option value="Signer_Concurrency">Signer concurrency</option>
+                    </optgroup>
+                    <optgroup label="Sales">
+                      <option value="NodeSale_AuctionExpiryMaxMinutes">Auction expiry max minutes</option>
+                      <option value="NodeSale_AuctionExpiryMinMinutes">Auction expiry min minutes</option>
+                      <option value="NodeSale_BidAmountMinSats">Bid amount minimum sats</option>
+                    </optgroup>
+                    <optgroup label="Accounting">
+                      <option value="Observation_DelayFlexibilityMinutes">Observation delay flexibility minutes</option>
+                      <option value="Observation_MissPenaltyPoints">Observation miss penalty points</option>
+                      <option value="Observation_SubmitPenaltyPoints">Observation submit penalty points</option>
+                      <option value="Shielder_FeeShareScale">Shielder fee share scale</option>
+                      <option value="Shielder_NoteAmountMinSats">Shielder note minimum sats</option>
+                      <option value="TxOut_MaxAttempts">Outbound max attempts</option>
+                      <option value="UTXO_MaxSpendCount">UTXO max spend count</option>
+                      <option value="Withdrawal_FeeBasisPoints">Withdrawal fee basis points</option>
+                      <option value="Withdrawal_FeeMinSats">Withdrawal fee minimum sats</option>
+                      <option value="Withdrawal_BatchWindowMinutes">Withdrawal batch window minutes</option>
+                    </optgroup>
+                    <optgroup label="Upgrade and vault">
+                      <option value="Config_OperationalVotesMin">Operational votes minimum</option>
+                      <option value="Upgrade_ProposalCountMax">Upgrade proposal count max</option>
+                      <option value="Vault_MigrationIntervalMinutes">Vault migration interval minutes</option>
+                      <option value="Vault_MigrationRounds">Vault migration rounds</option>
+                      <option value="Vault_RetiredRecoveryAttemptsMax">Retired vault recovery attempts max</option>
+                    </optgroup>
+                  </select>
+                </label>
+                <label>
+                  Value
+                  <input id="configVoteValue" type="number" step="1" placeholder="0">
+                </label>
+                <button id="buildConfigVoteCommand" type="button">Vote Config</button>
+              </div>
+            </div>
+            <div class="governance-group">
+              <span class="panel-label">Upgrade votes</span>
+              <div class="governance-fields upgrade-vote-row">
+                <label>
+                  Upgrade name
+                  <input id="upgradeName" placeholder="upgrade name">
+                </label>
+                <label>
+                  Upgrade height
+                  <input id="upgradeHeight" type="number" min="1" step="1" placeholder="height">
+                </label>
+                <button id="buildProposeUpgradeCommand" type="button">Propose</button>
               </div>
             </div>
           </div>
@@ -497,110 +576,67 @@
 
         <section class="surface-section" data-node-section="income" hidden>
           <h2>Income</h2>
-          <div class="shield-panel form-grid">
-            <div>
-              <span class="panel-label">Fee entitlement</span>
-              <label>
-                Node address / consensus pubkey
-                <input id="incomeNodePubkey" placeholder="tthorv1pub1...">
-              </label>
-              <div class="panel-list">
-                <div class="row"><span>Claimable</span><strong id="nodeIncomeClaimable">unknown</strong></div>
+          <div class="income-panel">
+            <div class="income-metrics">
+              <div class="income-metric">
+                <span>Fee Bucket</span>
+                <strong id="nodeIncomeFeeBucket">unknown</strong>
               </div>
-              <div class="actions">
-                <button id="nodeIncomePrepareFee" class="secondary" type="button">Fee Bucket</button>
+              <div class="income-metric">
+                <span>Operator Entitlement</span>
+                <strong id="nodeIncomeClaimable">unknown</strong>
               </div>
             </div>
-            <div>
-              <span class="panel-label">Shield fee claim</span>
-              <label>
-                Fee note pubkeys JSON or CSV
-                <input id="incomeFeeNotePubkeys" placeholder='["pubkey"]'>
-              </label>
-              <label>
-                Fee commitments JSON or CSV
-                <input id="incomeFeeCommitments" placeholder='["commitment"]'>
-              </label>
-              <label>
-                Operator signature hex
-                <input id="incomeFeeOperatorSignature" placeholder="signature">
-              </label>
-              <div class="actions">
-                <button id="nodeIncomeBuildFee" type="button">Shield Fees</button>
-              </div>
+            <div class="actions income-actions">
+              <button id="nodeIncomeBuildFee" type="button">Claim Fees</button>
             </div>
           </div>
-          <pre id="nodeIncomeOutput" class="log"></pre>
+          <div hidden>
+            <input id="incomeNodePubkey">
+            <input id="incomeFeeNotePubkeys">
+            <input id="incomeFeeCommitments">
+            <input id="incomeFeeOperatorSignature">
+            <button id="nodeIncomePrepareFee" type="button">Refresh Fees</button>
+          </div>
+          <pre id="nodeIncomeOutput" class="log" hidden></pre>
         </section>
 
         <section class="surface-section" data-node-section="sell" hidden>
           <h2>Sell</h2>
-          <div class="shield-panel form-grid">
-            <div>
-              <span class="panel-label">List slot</span>
+          <div class="sell-flow">
+            <div class="panel-list sell-address-panel">
+              <div class="row"><span>Node address</span><strong id="saleSellerNodeDisplay">linked to secret</strong></div>
+            </div>
+            <div class="sell-list-row">
               <label>
-                Seller node address / pubkey
-                <input id="saleSellerNodePubkey" placeholder="tthorv1pub1...">
-              </label>
-              <label>
-                Reserve sats
+                Reserve
                 <input id="saleReserveSats" type="number" min="0" step="1" placeholder="100000000">
               </label>
               <label>
-                Expiry height
-                <input id="saleExpiryHeight" type="number" min="1" step="1" placeholder="height">
+                Expiry
+                <input id="saleExpiryAt" type="date">
               </label>
-              <div class="actions">
-                <button id="buildAuctionCreateCommand" type="button">List For Sale</button>
-              </div>
+              <button id="buildAuctionCreateCommand" type="button">List For Sale</button>
             </div>
-            <div>
-              <span class="panel-label">Complete sale</span>
-              <label>
-                Sale auction id
-                <input id="sellAuctionId" placeholder="auction id">
-              </label>
-              <label>
-                Sale bid id
-                <input id="sellBidId" placeholder="bid id">
-              </label>
-              <label>
-                Seller commitments JSON or CSV
-                <input id="saleSellerCommitments" placeholder='["commitment"]'>
-              </label>
-              <label>
-                Seller shield signature hex
-                <input id="saleSellerSignature" placeholder="signature">
-              </label>
-              <div class="actions">
-                <button id="buildAuctionSelectCommand" class="secondary" type="button">Select Bid</button>
-                <button id="nodeSellPreparePayout" class="secondary" type="button">Sale Bucket</button>
-                <button id="nodeSellBuildPayout" type="button">Shield Sale</button>
-              </div>
+            <div class="sell-bids">
+              <div class="panel-label">Bids</div>
+              <div id="nodeSellBidsList" class="notes notes-table"></div>
             </div>
+          </div>
+          <div hidden>
+            <input id="saleSellerNodePubkey">
+            <input id="saleExpiryHeight" type="number" min="1" step="1">
+            <input id="sellAuctionId">
+            <input id="sellBidId">
+            <input id="saleSellerCommitments">
+            <input id="saleSellerSignature">
+            <button id="buildAuctionSelectCommand" type="button">Select Bid</button>
+            <button id="nodeSellPreparePayout" type="button">Sale Bucket</button>
+            <button id="nodeSellBuildPayout" type="button">Shield Sale</button>
           </div>
           <pre id="nodeSellOutput" class="log"></pre>
         </section>
       </div>
-      <aside class="context-rail">
-        <div class="side-panel">
-          <h2>Operator Status</h2>
-          <div class="panel-list">
-            <div class="row"><span>Secret</span><strong id="nodeContextSecretStatus">Set secret in User</strong></div>
-            <div class="row"><span>Next slot</span><strong id="nodeContextNextSlot">unknown</strong></div>
-            <div class="row"><span>Required bond</span><strong id="nodeContextRequiredBond">unknown</strong></div>
-          </div>
-        </div>
-        <div class="side-panel">
-          <h2>Checklist</h2>
-          <div class="pill-row">
-            <span class="pill">register keys</span>
-            <span class="pill">set IP</span>
-            <span class="pill">pass preflight</span>
-            <span class="pill">shield bond</span>
-          </div>
-        </div>
-      </aside>
     </div>
 
     <div id="nodeSalesPanel" class="tab-panel grid" hidden>
@@ -611,63 +647,38 @@
 
         <section class="surface-section market-section">
           <h2>Node Sales</h2>
-          <div class="actions">
-            <button id="refreshNodeSales" class="secondary" type="button">Refresh Sales</button>
-          </div>
           <div id="nodeSalesList" class="batch-list"></div>
         </section>
 
         <section class="surface-section">
           <h2>Bid</h2>
-          <div class="shield-panel form-grid">
-            <div>
-              <span class="panel-label">Sale</span>
-              <div class="panel-list">
-                <div class="row"><span>Auction</span><strong id="salesSelectedAuction">none</strong></div>
-              </div>
-              <label>
-                Bidder operator pubkey
-                <input id="salesBidOperatorPubkey" placeholder="tthorpub1...">
-              </label>
-              <label>
-                Bidder node pubkey
-                <input id="salesBidNodePubkey" placeholder="tthorv1pub1...">
-              </label>
+          <div id="nodeSalesBidFlow" class="bond-flow bond-reuse-flow">
+            <div class="panel-list bond-balance-panel">
+              <div class="row"><span>Shielded Balance</span><strong id="nodeSalesShieldedBalance">0 BTC</strong></div>
+              <div class="row"><span>Auction</span><strong id="salesSelectedAuction">none</strong></div>
             </div>
-            <div>
-              <span class="panel-label">Bid</span>
-              <label>
-                Amount sats
-                <input id="salesBidAmountSats" type="number" min="1" step="1" placeholder="100000000">
-              </label>
-              <label>
-                Bid id
-                <input id="salesBidId" placeholder="created bid id">
-              </label>
-              <div class="actions">
-                <button id="nodeSalesBidDeposit" class="secondary" type="button">Bid Deposit</button>
-                <button id="nodeSalesBidGetAddress" class="secondary" type="button">Get Address</button>
-                <button id="nodeSalesBidShield" class="secondary" type="button">Shield</button>
-                <button id="buildAuctionBidCommand" type="button">Place Bid</button>
-                <button id="fundAuctionBidCommand" type="button">Fund Bid From Shielded Note</button>
-              </div>
+            <div id="nodeSalesBidSummary" class="stage-summary">No shielded BTC found. Deposit and shield BTC first.</div>
+            <div id="nodeSalesBidNoteDetails" class="notes notes-table"></div>
+            <div class="actions">
+              <button id="nodeSalesDepositShortcut" type="button">Deposit</button>
+              <button id="openNodeSalesBid" type="button" hidden>Bid</button>
             </div>
           </div>
-          <div id="nodeSalesBidFlow" class="panel-list"></div>
+          <div hidden>
+            <input id="salesBidOperatorPubkey" placeholder="tthorpub1...">
+            <input id="salesBidNodePubkey" placeholder="tthorv1pub1...">
+            <input id="salesBidAmountSats" type="number" min="1" step="1" placeholder="100000000">
+            <input id="salesBidId" placeholder="created bid id">
+            <button id="nodeSalesBidDeposit" type="button">Bid Deposit</button>
+            <button id="nodeSalesBidGetAddress" type="button">Get Address</button>
+            <button id="nodeSalesBidShield" type="button">Shield</button>
+            <button id="buildAuctionBidCommand" type="button">Place Bid</button>
+            <button id="fundAuctionBidCommand" type="button">Fund Bid From Shielded Note</button>
+          </div>
           <pre id="nodeSalesCommandOutput" class="log" hidden></pre>
         </section>
       </div>
 
-      <aside class="context-rail">
-        <div class="side-panel">
-          <h2>Bid Flow</h2>
-          <div class="panel-list">
-            <div class="row"><span>Funding</span><strong>node-purpose shielded notes</strong></div>
-            <div class="row"><span>Settlement</span><strong>protocol bid escrow</strong></div>
-            <div class="row"><span>Seller payout</span><strong>separate operator flow</strong></div>
-          </div>
-        </div>
-      </aside>
     </div>
   </main>
 
@@ -688,7 +699,7 @@
         <button id="cancelWithdrawAddress" class="flow-modal-close" type="button" aria-label="Close">×</button>
       </div>
       <label>
-        Receive address
+        <span id="withdrawRecipientLabel">Receive address</span>
         <input id="withdrawRecipientInput" autocomplete="off" placeholder="New BTC receive address">
       </label>
       <div class="actions">
@@ -697,6 +708,19 @@
     </div>
   </div>
 
-  <script type="module" src="/thornado/ui/app.js?v=header-panel-frame-v1"></script>
+  <div id="explorerDetailModal" class="flow-modal" hidden>
+    <div class="flow-modal-panel explorer-detail-panel" role="dialog" aria-modal="true" aria-labelledby="explorerDetailTitle">
+      <div class="flow-modal-heading">
+        <div>
+          <h2 id="explorerDetailTitle">Explorer</h2>
+          <div id="explorerDetailSubtitle" class="explorer-detail-subtitle"></div>
+        </div>
+        <button id="explorerDetailClose" class="flow-modal-close" type="button" aria-label="Close">×</button>
+      </div>
+      <div id="explorerDetailBody" class="explorer-detail-body"></div>
+    </div>
+  </div>
+
+  <script type="module" src="/thornado/ui/app.js?v=sell-button-size-v1"></script>
 </body>
 </html>

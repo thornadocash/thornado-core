@@ -3,6 +3,8 @@ package thornado
 import (
 	"fmt"
 
+	"github.com/blang/semver"
+
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
@@ -62,22 +64,20 @@ func (h MaintHandler) validate(ctx cosmos.Context, msg types.MsgMaint) error {
 	return nil
 }
 
+func MaintAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg types.MsgMaint) (cosmos.Context, error) {
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	if err := validateMaintAuth(ctx, k, msg.NodeAddress, msg.Signer); err != nil {
+		return ctx, err
+	}
+	return ctx.WithPriority(ActiveNodePriority), nil
+}
+
 func validateMaintAuth(ctx cosmos.Context, k keeper.Keeper, acc, signer cosmos.AccAddress) error {
-	nodeAccount, err := k.GetNodeAccount(ctx, acc)
+	_, err := resolveNodeAccountByAddressAndSigner(ctx, k, acc, signer)
 	if err != nil {
 		ctx.Logger().Error("fail to get node account", "error", err, "address", acc.String())
-		return cosmos.ErrUnauthorized(fmt.Sprintf("%s is not authorized", acc))
-	}
-	if nodeAccount.IsEmpty() {
-		ctx.Logger().Error("fail to get node account, empty")
-		return cosmos.ErrUnauthorized(fmt.Sprintf("%s is not authorized", acc))
-	}
-	bondAddr, err := nodeAccount.BondAddress.AccAddress()
-	if err != nil {
-		return err
-	}
-	if !bondAddr.Equals(signer) {
-		ctx.Logger().Error("unauthorized account", "operator", bondAddr.String(), "signer", signer.String())
 		return cosmos.ErrUnauthorized(fmt.Sprintf("%s is not authorized", acc))
 	}
 	return nil

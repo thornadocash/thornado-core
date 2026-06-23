@@ -32,6 +32,7 @@ func GetQueryCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(GetCmdGetVersion())
+	cmd.AddCommand(GetCmdNodeQuery())
 	cmd.AddCommand(GetCmdGetNORelay())
 	return cmd
 }

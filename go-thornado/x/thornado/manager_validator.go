@@ -30,6 +30,29 @@ func findCountToRemove(active NodeAccounts) (toRemove int) {
 	return
 }
 
+func findCountToRemoveWithReplacements(active NodeAccounts, replacementCount, targetCount int, minimumNodesForBFT int64) int {
+	toRemove := findCountToRemove(active)
+	if toRemove > 0 {
+		return toRemove
+	}
+	if replacementCount <= 0 || !hasLeaveCandidate(active) || len(active) < targetCount {
+		return 0
+	}
+	if len(active)-1+replacementCount < int(minimumNodesForBFT) {
+		return 0
+	}
+	return 1
+}
+
+func hasLeaveCandidate(active NodeAccounts) bool {
+	for _, na := range active {
+		if na.LeaveScore > 0 || na.ForcedToLeave || na.RequestedToLeave {
+			return true
+		}
+	}
+	return false
+}
+
 // findMaxAbleToLeave - given number of current active node account, figure out
 // the max number of individuals we can allow to leave in a single churn event
 func findMaxAbleToLeave(count int) int {

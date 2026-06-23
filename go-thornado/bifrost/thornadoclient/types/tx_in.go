@@ -24,6 +24,8 @@ type TxIn struct {
 type TxInItem struct {
 	BlockHeight           int64         `json:"block_height"`
 	Tx                    string        `json:"tx"`
+	SourceVout            uint32        `json:"source_vout"`
+	SourceInputs          []TxOutInput  `json:"source_inputs,omitempty"`
 	Sender                string        `json:"sender"`
 	To                    string        `json:"to"` // to address
 	Coins                 common.Coins  `json:"coins"`
@@ -51,6 +53,7 @@ func NewTxInItem(
 	return &TxInItem{
 		BlockHeight:           blockHeight,
 		Tx:                    tx,
+		SourceVout:            0,
 		Sender:                sender,
 		To:                    to,
 		Coins:                 coins,
@@ -73,6 +76,12 @@ func (t *TxInItem) Equals(other *TxInItem) bool {
 		return false
 	}
 	if t.Tx != other.Tx {
+		return false
+	}
+	if t.SourceVout != other.SourceVout {
+		return false
+	}
+	if !sourceInputsEqual(t.SourceInputs, other.SourceInputs) {
 		return false
 	}
 	if t.Sender != other.Sender {
@@ -104,6 +113,12 @@ func (t *TxInItem) EqualsObservedTx(other common.ObservedTx) bool {
 	if !txId.Equals(other.Tx.ID) {
 		return false
 	}
+	if t.SourceVout != other.Tx.SourceVout {
+		return false
+	}
+	if !txOutInputsEqualObservedInputs(t.SourceInputs, other.Tx.SourceInputs) {
+		return false
+	}
 	if t.Sender != other.Tx.FromAddress.String() {
 		return false
 	}
@@ -126,6 +141,8 @@ func (t *TxInItem) Copy() *TxInItem {
 	return &TxInItem{
 		BlockHeight:           t.BlockHeight,
 		Tx:                    t.Tx,
+		SourceVout:            t.SourceVout,
+		SourceInputs:          append([]TxOutInput(nil), t.SourceInputs...),
 		Sender:                t.Sender,
 		To:                    t.To,
 		Coins:                 t.Coins.Copy(),
@@ -142,6 +159,7 @@ func (t *TxInItem) Copy() *TxInItem {
 func (t *TxInItem) IsEmpty() bool {
 	return t.BlockHeight == 0 &&
 		t.Tx == "" &&
+		t.SourceVout == 0 &&
 		t.Sender == "" &&
 		t.To == "" &&
 		t.Coins.IsEmpty() &&

@@ -1,14 +1,14 @@
-import qrcode from "/thornado/ui/vendor/qrcode.min.js?v=esm";
-import { nodeOrigin, requestJson } from "/thornado/ui/modules/api.js";
-import { parseListInput } from "/thornado/ui/modules/forms.js";
+import qrcode from "./vendor/qrcode.min.js?v=esm";
+import { nodeOrigin, requestJson } from "./modules/api.js";
+import { parseListInput } from "./modules/forms.js";
 
 let thornadoWasmReady;
 
 async function thornadoWasm() {
   if (!thornadoWasmReady) {
     const wasmVersion = new URLSearchParams(window.location.search).get("v") || "local";
-    const wasmUrl = new URL(`/thornado/ui/wasm/thornado_web_wasm.js?v=${encodeURIComponent(wasmVersion)}`, window.location.origin).href;
-    const wasmBinaryUrl = new URL(`/thornado/ui/wasm/thornado_web_wasm_bg.wasm?v=${encodeURIComponent(wasmVersion)}`, window.location.origin).href;
+    const wasmUrl = new URL(`./wasm/thornado_web_wasm.js?v=${encodeURIComponent(wasmVersion)}`, import.meta.url).href;
+    const wasmBinaryUrl = new URL(`./wasm/thornado_web_wasm_bg.wasm?v=${encodeURIComponent(wasmVersion)}`, import.meta.url).href;
     thornadoWasmReady = import(wasmUrl).then(async (mod) => {
       await mod.default(wasmBinaryUrl);
       return mod;
@@ -22,6 +22,7 @@ async function thornadoWasm() {
     shieldAuthorizationJson: mod.shield_authorization_json,
     shieldAuthorizationForDepositJson: mod.shield_authorization_for_deposit_json,
     shieldAuthorizationForDepositTypeJson: mod.shield_authorization_for_deposit_type_json,
+    feeClaimAuthorizationForDepositTypeJson: mod.fee_claim_authorization_for_deposit_type_json,
     deriveShieldReceiptJson: mod.derive_shield_receipt_json,
     deriveShieldReceiptForDepositJson: mod.derive_shield_receipt_for_deposit_json,
     deriveShieldReceiptForDepositTypeJson: mod.derive_shield_receipt_for_deposit_type_json,
@@ -92,6 +93,7 @@ const state = {
   lastWithdrawalNoteKey: null,
   lastWithdrawalContextKey: "",
   withdrawalPayouts: {},
+  withdrawAddressMode: "withdraw",
   addressPaneFocusKey: "",
   shieldStageOpenedForDeposit: false,
   withdrawStageOpenedForNotes: "",
@@ -106,6 +108,7 @@ const state = {
   appStarted: false,
   moreOpen: false,
   moreSettled: false,
+  shieldedSummaryOpen: false,
   quoteWriting: false,
   currentTab: "user",
   nodeConnected: false,
@@ -184,6 +187,92 @@ function renderStatusControls() {
     nodeLabel.textContent = state.nodeConnected ? "Connected" : "Thornado";
   }
   setDot("nodeStatusDot", state.nodeConnected ? "green" : state.nodeStatusText === "connecting" ? "yellow" : "red");
+}
+
+function shieldedNoteItems() {
+  const items = [];
+  const seen = new Set();
+  for (const batch of state.batches || []) {
+    for (const note of batch?.receipt?.notes || []) {
+      const key = noteKey(note);
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      const withdrawal = state.withdrawnNotes[key];
+      const spent = note.spent || withdrawal?.status === "spent" || Boolean(withdrawal?.outHash);
+      items.push({
+        batch,
+        note,
+        key,
+        denomination: Number(note.denomination_sats || 0),
+        mature: batchMature(batch),
+        spent
+      });
+    }
+  }
+  return items;
+}
+
+function firstTopbarWithdrawCandidate(items = shieldedNoteItems()) {
+  return items.find((item) => item.mature && !item.spent) ||
+    items.find((item) => !item.spent) ||
+    items[0] ||
+    null;
+}
+
+function renderShieldedSummary() {
+  const root = $("shieldedSummary");
+  const button = $("shieldedSummaryButton");
+  const amount = $("shieldedSummaryAmount");
+  const menu = $("shieldedSummaryMenu");
+  const list = $("shieldedSummaryList");
+  const withdraw = $("shieldedSummaryWithdraw");
+  if (!root || !button || !amount || !menu || !list || !withdraw) {
+    return;
+  }
+  const items = shieldedNoteItems();
+  const spendable = items.filter((item) => !item.spent);
+  const total = spendable.reduce((sum, item) => sum + item.denomination, 0);
+  root.hidden = total <= 0;
+  if (root.hidden) {
+    menu.hidden = true;
+    button.setAttribute("aria-expanded", "false");
+    return;
+  }
+  amount.textContent = btcAmount(total);
+  menu.hidden = !state.shieldedSummaryOpen;
+  button.setAttribute("aria-expanded", state.shieldedSummaryOpen ? "true" : "false");
+  list.textContent = "";
+  for (const item of spendable) {
+    const row = document.createElement("div");
+    row.className = "shielded-summary-row";
+    row.innerHTML = `<span>${btcAmount(item.denomination)}</span><strong>${item.mature ? "Mature" : "Maturing"}</strong>`;
+    list.append(row);
+  }
+  const candidate = firstTopbarWithdrawCandidate(spendable);
+  withdraw.disabled = !candidate;
+}
+
+function openTopbarWithdraw() {
+  const candidate = firstTopbarWithdrawCandidate();
+  if (!candidate?.batch) {
+    return;
+  }
+  markAppStarted(false);
+  state.currentTab = "user";
+  state.paneBatchKeys.deposit = batchKey(candidate.batch);
+  activateDepositBatch(candidate.batch);
+  state.receipt = candidate.batch.receipt;
+  state.activeBatchKey = batchKey(candidate.batch);
+  state.activeBatchIndex = Number(candidate.batch.depositIndex || 0);
+  state.selectedNote = Math.max(0, candidate.batch.receipt.notes.findIndex((note) => noteKey(note) === candidate.key));
+  state.stageUserToggled.stageWithdraw = true;
+  $("stageWithdraw").dataset.expanded = "1";
+  state.shieldedSummaryOpen = false;
+  showTab("user");
+  updateDashboard();
+  $("stageWithdraw")?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 async function refreshNodeCount() {
@@ -1847,6 +1936,8 @@ function updateDashboard() {
   renderShieldBatches();
   renderNotes();
   renderSecret();
+  renderEmbeddedNodeFlows();
+  renderShieldedSummary();
 }
 
 async function api(path, options = {}) {
@@ -2443,6 +2534,7 @@ function stopPowVisual(hide = true) {
 const SECRET_STORE_NAME = "thornado-secret-v1";
 const SECRET_KEY_ID = "wallet-root";
 const APP_STARTED_KEY = "thornado-app-started-v1";
+const MENU_OPEN_KEY = "thornado-menu-open-v1";
 
 function markAppStarted(persist = true) {
   state.appStarted = true;
@@ -2499,6 +2591,7 @@ function toggleMoreNav() {
   state.moreOpen = opening;
   state.moreSettled = false;
   state.quoteWriting = !opening;
+  localStorage.setItem(MENU_OPEN_KEY, opening ? "1" : "0");
   if (opening) {
     moreRevealTimer = setTimeout(() => {
       state.moreSettled = true;
@@ -3886,6 +3979,25 @@ function firstProtocolRedeemableNodeNote() {
   return null;
 }
 
+function firstProtocolRedeemableShieldedNote() {
+  const items = shieldedNoteItems()
+    .filter((item) => item.mature && !item.spent)
+    .sort((a, b) => Number(b.batch?.displayIndex ?? b.batch?.depositIndex ?? 0) - Number(a.batch?.displayIndex ?? a.batch?.depositIndex ?? 0));
+  const item = items[0];
+  if (!item?.batch?.receipt?.notes?.length) {
+    return null;
+  }
+  state.receipt = item.batch.receipt;
+  state.activeBatchIndex = Number(item.batch.depositIndex || 0);
+  state.activeBatchKey = batchKey(item.batch);
+  const index = item.batch.receipt.notes.findIndex((note) => noteKey(note) === item.key);
+  if (index < 0) {
+    return null;
+  }
+  state.selectedNote = index;
+  return { batch: item.batch, note: item.note, index };
+}
+
 function renderShieldBatches() {
   const el = $("shieldBatchList");
   if (!el) {
@@ -4525,8 +4637,18 @@ async function withdrawNote(noteIndex = state.selectedNote || 0) {
   }
 }
 
-function openWithdrawAddressModal(noteIndex) {
+function setWithdrawAddressMode(mode = "withdraw") {
+  state.withdrawAddressMode = mode;
+  const isBid = mode === "bid";
+  if ($("withdrawAddressTitle")) $("withdrawAddressTitle").textContent = isBid ? "Bid" : "Withdraw";
+  if ($("withdrawRecipientLabel")) $("withdrawRecipientLabel").textContent = isBid ? "Node address bidding to" : "Receive address";
+  if ($("withdrawRecipientInput")) $("withdrawRecipientInput").placeholder = isBid ? "Node address" : "New BTC receive address";
+  if ($("confirmWithdrawAddress")) $("confirmWithdrawAddress").textContent = isBid ? "Bid" : "Withdraw";
+}
+
+function openWithdrawAddressModal(noteIndex, mode = "withdraw") {
   state.pendingWithdrawNote = noteIndex;
+  setWithdrawAddressMode(mode);
   const input = $("withdrawRecipientInput");
   input.value = "";
   updateWithdrawAddressModal();
@@ -4537,6 +4659,7 @@ function openWithdrawAddressModal(noteIndex) {
 function closeWithdrawAddressModal() {
   $("withdrawAddressModal").hidden = true;
   state.pendingWithdrawNote = null;
+  setWithdrawAddressMode("withdraw");
   $("withdrawRecipientInput").value = "";
   updateWithdrawAddressModal();
 }
@@ -4552,9 +4675,14 @@ function updateWithdrawAddressModal() {
 async function confirmWithdrawAddress() {
   const address = $("withdrawRecipientInput").value.trim();
   if (!address) {
-    throw new Error("receive address is required");
+    throw new Error(state.withdrawAddressMode === "bid" ? "node address is required" : "receive address is required");
   }
   const noteIndex = Number(state.pendingWithdrawNote || 0);
+  if (state.withdrawAddressMode === "bid") {
+    closeWithdrawAddressModal();
+    await submitNodeSalesBid(address, noteIndex);
+    return;
+  }
   $("recipient").value = address;
   closeWithdrawAddressModal();
   await withdrawNote(noteIndex);
@@ -4627,16 +4755,430 @@ async function refreshNodeTools() {
     $("nodeRequiredBond").textContent = metrics.next_slot_bond_required_sats
       ? btcAmount(Number(metrics.next_slot_bond_required_sats))
       : "unknown";
-    if ($("nodeContextNextSlot")) $("nodeContextNextSlot").textContent = $("nodeNextSlot").textContent;
-    if ($("nodeContextRequiredBond")) $("nodeContextRequiredBond").textContent = $("nodeRequiredBond").textContent;
   }
   updateNodeSecretStatus();
   renderNodeSalesList();
+  renderNodeSellFlow();
 	      log("node/tools/refresh", { metrics, auctions, height });
 	    }
 
+function setExplorerText(id, value) {
+  const el = $(id);
+  if (el) {
+    el.textContent = value === undefined || value === null || value === "" ? "unavailable" : String(value);
+  }
+}
+
+async function apiFirst(paths) {
+  let lastError = null;
+  for (const path of paths) {
+    try {
+      return await api(path);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error("query unavailable");
+}
+
+function numberValue(value) {
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function intLabel(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed.toLocaleString() : "unavailable";
+}
+
+function btcLabelFromSats(sats) {
+  const parsed = Number(sats || 0);
+  return Number.isFinite(parsed) ? btcAmount(parsed) : "unavailable";
+}
+
+function coinAmountSats(coin) {
+  const asset = String(coin?.asset || coin?.Asset || "").toUpperCase();
+  if (asset && !asset.includes("BTC")) {
+    return 0;
+  }
+  return numberValue(coin?.amount ?? coin?.Amount ?? coin?.sats ?? coin?.Sats);
+}
+
+function vaultsFromPayload(payload) {
+  return Array.isArray(payload?.base_vaults) ? payload.base_vaults
+    : Array.isArray(payload?.baseVaults) ? payload.baseVaults
+      : Array.isArray(payload?.vaults) ? payload.vaults
+        : Array.isArray(payload) ? payload
+          : [];
+}
+
+function nodesFromPayload(payload) {
+  return Array.isArray(payload?.nodes) ? payload.nodes : Array.isArray(payload) ? payload : [];
+}
+
+function shortHash(value) {
+  return value ? short(String(value), 14, 10) : "unavailable";
+}
+
+function renderExplorerRows(id, rows, emptyText) {
+  const root = $(id);
+  if (!root) return;
+  root.textContent = "";
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "pane-empty";
+    empty.textContent = emptyText;
+    root.append(empty);
+    return;
+  }
+  for (const row of rows) {
+    const item = document.createElement("div");
+    item.className = "explorer-row";
+    item.innerHTML = row;
+    root.append(item);
+  }
+}
+
+function closeExplorerDetail() {
+  const modal = $("explorerDetailModal");
+  if (modal) {
+    modal.hidden = true;
+  }
+  const body = $("explorerDetailBody");
+  if (body) {
+    body.textContent = "";
+  }
+}
+
+function openExplorerDetail(kind, subject, rows, raw = null) {
+  const modal = $("explorerDetailModal");
+  const title = $("explorerDetailTitle");
+  const subtitle = $("explorerDetailSubtitle");
+  const body = $("explorerDetailBody");
+  if (!modal || !title || !subtitle || !body) {
+    return;
+  }
+  title.textContent = `${kind} Explorer`;
+  subtitle.textContent = subject || "";
+  body.textContent = "";
+  const summary = document.createElement("div");
+  summary.className = "panel-list explorer-list";
+  for (const [label, value] of rows) {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `<span>${escapeHtml(label)}</span><strong>${escapeHtml(value === undefined || value === null || value === "" ? "unavailable" : String(value))}</strong>`;
+    summary.append(row);
+  }
+  body.append(summary);
+  const pre = document.createElement("pre");
+  pre.className = "explorer-detail-raw";
+  pre.textContent = JSON.stringify(raw || {}, null, 2);
+  body.append(pre);
+  modal.hidden = false;
+}
+
+function setExplorerResult(id, rows, raw = null, detail = null) {
+  const root = $(id);
+  if (!root) return;
+  root.textContent = "";
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "pane-empty";
+    empty.textContent = "No result";
+    root.append(empty);
+    return;
+  }
+  const list = document.createElement("div");
+  list.className = "panel-list explorer-list";
+  for (const [label, value] of rows) {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `<span>${escapeHtml(label)}</span><strong>${escapeHtml(value === undefined || value === null || value === "" ? "unavailable" : String(value))}</strong>`;
+    list.append(row);
+  }
+  root.append(list);
+  if (detail) {
+    const actions = document.createElement("div");
+    actions.className = "actions explorer-result-actions";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Details";
+    button.addEventListener("click", () => openExplorerDetail(detail.kind, detail.subject, rows, raw));
+    actions.append(button);
+    root.append(actions);
+  }
+  if (raw) {
+    const details = document.createElement("details");
+    details.className = "explorer-raw";
+    details.innerHTML = `<summary>Raw</summary><pre>${escapeHtml(JSON.stringify(raw, null, 2))}</pre>`;
+    root.append(details);
+  }
+}
+
+function txHashFromResponse(tx) {
+  return tx?.observed_tx?.tx?.id
+    || tx?.observedTx?.tx?.id
+    || tx?.tx_response?.txhash
+    || tx?.txResponse?.txhash
+    || tx?.hash
+    || "";
+}
+
+function looksLikeTxHash(query) {
+  return /^[0-9a-f]{64}$/i.test(query);
+}
+
+function looksLikeBtcAddress(query) {
+  return /^(bc1|tb1|bcrt1|[13mn2])[a-z0-9]+$/i.test(query);
+}
+
+async function renderNetworkAddressDetail(query, preferNode = false) {
+  const [accountResult, depositResult, nodeResult] = await Promise.allSettled([
+    api(`/auth/accounts/${encodeURIComponent(query)}`),
+    api(`/thornado/deposit/address/txs?address=${encodeURIComponent(query)}`),
+    api(`/thornado/node/${encodeURIComponent(query)}`)
+  ]);
+  const account = accountResult.status === "fulfilled" ? accountResult.value : null;
+  const deposits = depositResult.status === "fulfilled" ? depositResult.value : null;
+  const node = nodeResult.status === "fulfilled" ? nodeResult.value : null;
+  const txs = deposits?.txs || [];
+  const isNode = Boolean(node?.node_address || node?.nodeAddress || node?.status || node?.total_bond || node?.totalBond);
+  if (preferNode && isNode) {
+    const preflight = node?.preflight_status || node?.preflightStatus || {};
+    const rows = [
+      ["Node", shortHash(node.node_address || node.nodeAddress || query)],
+      ["Status", node.status],
+      ["Bond", btcLabelFromSats(node.total_bond ?? node.totalBond)],
+      ["Version", node.version],
+      ["Operator", shortHash(node.node_operator_address || node.nodeOperatorAddress)],
+      ["IP", node.ip_address || node.ipAddress],
+      ["Preflight", preflight.status],
+      ["Missing blocks", intLabel(node.missing_blocks ?? node.missingBlocks)]
+    ];
+    setExplorerResult("networkExploreResult", rows, node, { kind: "Node", subject: query });
+    openExplorerDetail("Node", query, rows, node);
+    return;
+  }
+  const rows = [
+    ["Address", shortHash(query)],
+    ["Account number", account?.account_number ?? account?.accountNumber],
+    ["Sequence", account?.sequence],
+    ["Deposit txs", intLabel(txs.length)],
+    ["Node status", node?.status || node?.node?.status],
+    ["Node bond", isNode ? btcLabelFromSats(node.total_bond ?? node.totalBond ?? node.node?.total_bond ?? node.node?.totalBond) : ""]
+  ];
+  const kind = looksLikeBtcAddress(query) ? "BTC Address" : "Address";
+  const raw = { account, deposits, node };
+  setExplorerResult("networkExploreResult", rows, raw, { kind, subject: query });
+  openExplorerDetail(kind, query, rows, raw);
+}
+
+async function renderNetworkTxDetail(query) {
+  const tx = await apiFirst([
+    `/thornado/tx/${encodeURIComponent(query)}`,
+    `/cosmos/tx/v1beta1/txs/${encodeURIComponent(query)}`
+  ]);
+  const stages = tx?.stages || {};
+  const observed = tx?.observed_tx || tx?.observedTx || {};
+  const rows = [
+    ["Tx", shortHash(txHashFromResponse(tx) || query)],
+    ["Consensus height", intLabel(tx.consensus_height ?? tx.consensusHeight)],
+    ["Finalised height", intLabel(tx.finalised_height ?? tx.finalisedHeight)],
+    ["Outbound height", intLabel(tx.outbound_height ?? tx.outboundHeight)],
+    ["Observed", observed.status || (observed.tx ? "yes" : "")],
+    ["Actions", intLabel((tx.actions || []).length)],
+    ["Out txs", intLabel((tx.out_txs || tx.outTxs || []).length)],
+    ["Stage", stages.status || stages.current || (tx?.tx_response?.code === 0 ? "committed" : "")]
+  ];
+  setExplorerResult("networkExploreResult", rows, tx, { kind: "Transaction", subject: query });
+  openExplorerDetail("Transaction", query, rows, tx);
+}
+
+async function searchNetworkExplore() {
+  const query = $("networkExploreQuery").value.trim();
+  if (!query) {
+    throw new Error("search value is required");
+  }
+  setExplorerResult("networkExploreResult", [["Status", "loading"]]);
+  try {
+    if (looksLikeTxHash(query)) {
+      await renderNetworkTxDetail(query);
+      return;
+    }
+    if (looksLikeBtcAddress(query)) {
+      await renderNetworkAddressDetail(query, false);
+      return;
+    }
+    if (/^tthor/i.test(query)) {
+      await renderNetworkAddressDetail(query, true);
+      return;
+    }
+    await renderNetworkTxDetail(query);
+  } catch (error) {
+    try {
+      await renderNetworkAddressDetail(query, true);
+    } catch {
+      setExplorerResult("networkExploreResult", [["Error", errorText(error)]]);
+    }
+  }
+}
+
+function bindExplorerSearch(inputId, buttonId, handler) {
+  const input = $(inputId);
+  const button = $(buttonId);
+  if (button) {
+    button.addEventListener("click", () => run(handler));
+  }
+  if (input) {
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        run(handler);
+      }
+    });
+  }
+}
+
+function configValue(configs, key) {
+  if (!configs) return 0;
+  const direct = configs[key] ?? configs.values?.[key] ?? configs.config?.[key];
+  if (direct !== undefined) return numberValue(direct);
+  const list = Array.isArray(configs?.values) ? configs.values : Array.isArray(configs) ? configs : [];
+  const found = list.find((item) => item?.key === key || item?.name === key);
+  return numberValue(found?.value ?? found?.int64_value ?? found?.int64Value);
+}
+
+async function refreshNetworkExplorer() {
+  const results = await Promise.allSettled([
+    api("/thornado/block"),
+    api("/thornado/lastblock"),
+    api("/thornado/nodes"),
+    apiFirst(["/thornado/nodes/metrics", "/thornado/node/metrics"]),
+    api("/thornado/vaults/base"),
+    api("/thornado/vaults/solvency"),
+    api("/thornado/fees"),
+    api("/thornado/shielder/sync?limit=2000"),
+    api("/thornado/node/auctions"),
+    api("/thornado/config/nodes").catch(() => null)
+  ]);
+  const value = (index) => results[index].status === "fulfilled" ? results[index].value : null;
+  const block = value(0);
+  const lastBlocks = value(1);
+  const nodes = nodesFromPayload(value(2));
+  const metrics = value(3);
+  const vaults = vaultsFromPayload(value(4));
+  const solvency = value(5);
+  const fees = value(6);
+  const sync = value(7);
+  const auctions = Array.isArray(value(8)?.auctions) ? value(8).auctions : [];
+  const configs = value(9);
+
+  const header = block?.header || block?.block?.header || {};
+  const blockId = block?.id || block?.block_id || block?.blockId || {};
+  setExplorerText("networkExplorerHeight", intLabel(header.height));
+  setExplorerText("networkChainId", header.chain_id || header.chainId);
+  setExplorerText("networkBlockHash", shortHash(blockId.hash));
+  setExplorerText("networkBlockTime", header.time ? new Date(header.time).toLocaleString() : "unavailable");
+  setExplorerText("networkTxCount", intLabel((block?.txs || []).length));
+
+  const btcLast = (lastBlocks?.last_blocks || lastBlocks?.lastBlocks || []).find((item) => String(item.chain || "").toUpperCase() === "BTC");
+  setExplorerText("networkBtcObserved", intLabel(btcLast?.last_observed_in ?? btcLast?.lastObservedIn));
+  setExplorerText("networkBtcSigned", intLabel(btcLast?.last_signed_out ?? btcLast?.lastSignedOut));
+
+  const vaultSats = vaults.reduce((sum, vault) => sum + (vault.coins || []).reduce((total, coin) => total + coinAmountSats(coin), 0), 0);
+  const inboundCount = vaults.reduce((sum, vault) => sum + numberValue(vault.inbound_tx_count ?? vault.inboundTxCount), 0);
+  const outboundCount = vaults.reduce((sum, vault) => sum + numberValue(vault.outbound_tx_count ?? vault.outboundTxCount), 0);
+  const pendingCount = vaults.reduce((sum, vault) => sum + ((vault.pending_tx_block_heights || vault.pendingTxBlockHeights || []).length), 0);
+  setExplorerText("networkVaultBtc", btcLabelFromSats(vaultSats));
+  setExplorerText("networkVaultCount", intLabel(vaults.length));
+  setExplorerText("networkVaultInbounds", intLabel(inboundCount));
+  setExplorerText("networkVaultOutbounds", intLabel(outboundCount));
+  setExplorerText("networkVaultPending", intLabel(pendingCount));
+  const solvencyAssets = solvency?.assets || [];
+  const btcSolvency = solvencyAssets.find((item) => String(item.asset || "").toUpperCase().includes("BTC"));
+  setExplorerText("networkSolvency", btcSolvency ? btcLabelFromSats(btcSolvency.amount) : "unavailable");
+  renderExplorerRows("networkVaultsList", vaults.slice(0, 8).map((vault) => `
+    <span>${escapeHtml(shortHash(vault.pub_key || vault.pubKey))}</span>
+    <strong>${escapeHtml(vault.status || "unknown")}</strong>
+    <em>${btcLabelFromSats((vault.coins || []).reduce((sum, coin) => sum + coinAmountSats(coin), 0))}</em>
+  `), "No base vaults");
+
+  const notes = sync?.notes || [];
+  const nullifiers = sync?.nullifiers || [];
+  const noteSats = notes.reduce((sum, note) => sum + numberValue(note.denomination_sats ?? note.denominationSats), 0);
+  const spentSats = nullifiers.reduce((sum, item) => sum + numberValue(item.amount_sats ?? item.amountSats), 0);
+  setExplorerText("networkShieldedBtc", btcLabelFromSats(Math.max(0, noteSats - spentSats)));
+  setExplorerText("networkDepositCount", intLabel(sync?.total_deposits ?? sync?.totalDeposits));
+  setExplorerText("networkNoteCount", intLabel(sync?.total_notes ?? sync?.totalNotes));
+  setExplorerText("networkNullifierCount", intLabel(sync?.total_nullifiers ?? sync?.totalNullifiers));
+  setExplorerText("networkFeeBucket", btcLabelFromSats(fees?.pending_sats ?? fees?.pendingSats));
+
+  const activeNodes = nodes.filter((node) => String(node.status || "").toLowerCase() === "active");
+  const standbyNodes = nodes.filter((node) => String(node.status || "").toLowerCase() === "standby");
+  const totalBondSats = nodes.reduce((sum, node) => sum + numberValue(node.total_bond ?? node.totalBond ?? node.bond), 0);
+  setExplorerText("networkNodeTotal", intLabel(nodes.length));
+  setExplorerText("networkActiveNodes", intLabel(metrics?.active_slots ?? metrics?.activeSlots ?? activeNodes.length));
+  setExplorerText("networkStandbyNodes", intLabel(metrics?.standby_slots ?? metrics?.standbySlots ?? standbyNodes.length));
+  setExplorerText("networkBondedBtc", btcLabelFromSats(metrics?.confirmed_bond_sats ?? metrics?.confirmedBondSats ?? totalBondSats));
+  setExplorerText("networkNextSlotBond", btcLabelFromSats(metrics?.next_slot_bond_required_sats ?? metrics?.nextSlotBondRequiredSats));
+  setExplorerText("networkAuctionCount", intLabel(auctions.length));
+  const churnMinutes = configValue(configs, "Churn_IntervalMinutes");
+  setExplorerText("networkChurnCycle", churnMinutes ? `${churnMinutes.toLocaleString()} min cycle` : "unavailable");
+  renderExplorerRows("networkNodesList", nodes.slice(0, 10).map((node) => `
+    <span>${escapeHtml(shortHash(node.node_address || node.nodeAddress))}</span>
+    <strong>${escapeHtml(node.status || "unknown")}</strong>
+    <em>${btcLabelFromSats(node.total_bond ?? node.totalBond ?? node.bond)}</em>
+  `), "No nodes");
+
+  log("network/explorer", {
+    block: Boolean(block),
+    nodes: nodes.length,
+    vaults: vaults.length,
+    sync: Boolean(sync)
+  });
+}
+
+function nodeStatusValue(node) {
+  return node?.status || node?.node_status || node?.active_status || node?.result?.status || node?.result?.node_status || "unknown";
+}
+
+function nodeBondValue(node) {
+  const value = node?.bond || node?.bond_sats || node?.total_bond || node?.result?.bond || node?.result?.bond_sats || node?.result?.total_bond;
+  const numeric = Number(value || 0);
+  return numeric > 0 ? btcAmount(numeric) : "unknown";
+}
+
+async function refreshNodeLookup() {
+  const address = $("nodeLookupAddress")?.value.trim();
+  if (!address) {
+    $("nodeLookupStatus").textContent = "Enter node address";
+    $("nodeLookupBond").textContent = "unknown";
+    $("nodeLookupVersion").textContent = "unknown";
+    return;
+  }
+  $("nodeLookupStatus").textContent = "Checking";
+  $("nodeLookupBond").textContent = "unknown";
+  $("nodeLookupVersion").textContent = "unknown";
+  try {
+    const payload = await api(`/thornado/node/${encodeURIComponent(address)}`);
+    const node = payload?.node || payload?.result || payload;
+    $("nodeLookupStatus").textContent = nodeStatusValue(node);
+    $("nodeLookupBond").textContent = nodeBondValue(node);
+    $("nodeLookupVersion").textContent = node?.version || node?.node_version || node?.result?.version || "unknown";
+    log("node/lookup", { address, node });
+  } catch (error) {
+    $("nodeLookupStatus").textContent = "Not found";
+    $("nodeLookupBond").textContent = "unknown";
+    $("nodeLookupVersion").textContent = "unknown";
+    log("node/lookup", { address, error: errorText(error) });
+  }
+}
+
 function showNodeWorkflow(workflow) {
   state.nodeWorkflow = workflow || "new";
+  if (state.nodeWorkflow === "bond") {
+    syncBondNodeAddress();
+  }
   document.querySelectorAll("[data-node-section]").forEach((section) => {
     section.hidden = section.dataset.nodeSection !== state.nodeWorkflow;
   });
@@ -4644,6 +5186,9 @@ function showNodeWorkflow(workflow) {
     button.classList.toggle("active", button.dataset.nodeSubtab === state.nodeWorkflow);
   });
   renderEmbeddedNodeFlows();
+  if (state.nodeWorkflow === "income") {
+    refreshNodeIncome().catch((error) => log("node/income/refresh", { error: errorText(error) }));
+  }
 }
 
 function activeNodeBatch() {
@@ -4669,8 +5214,107 @@ function renderEmbeddedFlow(targetId, title) {
 }
 
 function renderEmbeddedNodeFlows() {
-  renderEmbeddedFlow("nodeBondFlow", "Bond deposit");
-  renderEmbeddedFlow("nodeSalesBidFlow", "Bid deposit");
+  renderNodeBondFlow();
+  renderNodeSalesBidFlow();
+  renderNodeSellFlow();
+}
+
+function syncBondNodeAddress(force = false) {
+  const source = $("nodeLookupAddress")?.value.trim() || "";
+  const target = $("bondNodePubkey");
+  if (!target || !source) {
+    return;
+  }
+  if (force || !target.value.trim()) {
+    target.value = source;
+  }
+}
+
+function renderNodeBondFlow() {
+  const root = $("nodeBondFlow");
+  if (!root) return;
+  syncBondNodeAddress();
+  const items = shieldedNoteItems().filter((item) => !item.spent);
+  const matureItems = items.filter((item) => item.mature);
+  const total = items.reduce((sum, item) => sum + item.denomination, 0);
+  const hasShielded = total > 0;
+  if ($("nodeBondShieldedBalance")) {
+    $("nodeBondShieldedBalance").textContent = btcAmount(total);
+  }
+  if ($("nodeBondActionSummary")) {
+    $("nodeBondActionSummary").textContent = hasShielded
+      ? matureItems.length
+        ? "Select a node address and bond mature shielded notes."
+        : "Shielded notes are still maturing."
+      : "No shielded BTC found. Deposit and shield BTC first.";
+  }
+  if ($("nodeBondAddressLabel")) {
+    $("nodeBondAddressLabel").hidden = !hasShielded;
+  }
+  const noteDetails = $("nodeBondNoteDetails");
+  if (noteDetails) {
+    noteDetails.textContent = "";
+    if (hasShielded) {
+      const card = document.createElement("div");
+      card.className = "batch-card";
+      for (const item of items) {
+        const withdrawal = state.withdrawnNotes[item.key];
+        const row = document.createElement("div");
+        row.className = "batch-note-row";
+        row.innerHTML = `<span>${btcAmount(item.denomination)}</span><strong>${withdrawal?.status === "bond" ? "Bonded" : item.mature ? "Ready" : "Maturing"}</strong>`;
+        card.append(row);
+      }
+      noteDetails.append(card);
+    }
+  }
+  if ($("nodeBondDepositShortcut")) {
+    $("nodeBondDepositShortcut").hidden = hasShielded;
+  }
+  if ($("buildBondFromNotesCommand")) {
+    $("buildBondFromNotesCommand").hidden = !hasShielded;
+    $("buildBondFromNotesCommand").disabled = !matureItems.length;
+  }
+}
+
+function renderNodeSalesBidFlow() {
+  const root = $("nodeSalesBidFlow");
+  if (!root) return;
+  const items = shieldedNoteItems().filter((item) => !item.spent);
+  const matureItems = items.filter((item) => item.mature);
+  const total = items.reduce((sum, item) => sum + item.denomination, 0);
+  const hasShielded = total > 0;
+  if ($("nodeSalesShieldedBalance")) {
+    $("nodeSalesShieldedBalance").textContent = btcAmount(total);
+  }
+  if ($("nodeSalesBidSummary")) {
+    $("nodeSalesBidSummary").textContent = hasShielded
+      ? matureItems.length
+        ? "Select an auction, enter the bidder node address, then bid with mature shielded BTC."
+        : "Shielded notes are still maturing."
+      : "No shielded BTC found. Deposit and shield BTC first.";
+  }
+  const noteDetails = $("nodeSalesBidNoteDetails");
+  if (noteDetails) {
+    noteDetails.textContent = "";
+    if (hasShielded) {
+      const card = document.createElement("div");
+      card.className = "batch-card";
+      for (const item of items) {
+        const row = document.createElement("div");
+        row.className = "batch-note-row";
+        row.innerHTML = `<span>${btcAmount(item.denomination)}</span><strong>${item.mature ? "Ready" : "Maturing"}</strong>`;
+        card.append(row);
+      }
+      noteDetails.append(card);
+    }
+  }
+  if ($("nodeSalesDepositShortcut")) {
+    $("nodeSalesDepositShortcut").hidden = hasShielded;
+  }
+  if ($("openNodeSalesBid")) {
+    $("openNodeSalesBid").hidden = !hasShielded;
+    $("openNodeSalesBid").disabled = !matureItems.length;
+  }
 }
 
 function auctionID(auction) {
@@ -4712,11 +5356,94 @@ function renderNodeSalesList() {
     button.addEventListener("click", () => {
       state.selectedSaleAuctionId = id;
       $("salesSelectedAuction").textContent = id || "unknown";
-      prepareNodeSalesBidDeposit().catch((error) => setMessage(errorText(error), "error"));
+      renderNodeSalesBidFlow();
+      $("openNodeSalesBid")?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
     action.append(button);
     card.append(action);
     el.append(card);
+  }
+}
+
+function auctionBids(auction) {
+  const raw = auction?.bids || auction?.Bids || auction?.bid || auction?.offers || [];
+  return Array.isArray(raw) ? raw : [];
+}
+
+function bidID(bid) {
+  return String(bid?.bid_id || bid?.bidId || bid?.id || bid?.offer_id || bid?.offerId || "");
+}
+
+function bidAmountSats(bid) {
+  return Number(bid?.amount_sats || bid?.amountSats || bid?.bid_amount_sats || bid?.bidAmountSats || bid?.amount || 0);
+}
+
+function estimateHeightFromDateInput(value) {
+  const raw = String(value || "").trim();
+  const targetMs = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+    ? new Date(`${raw}T23:59:59`).getTime()
+    : Date.parse(raw);
+  if (!Number.isFinite(targetMs)) return "";
+  const current = interpolatedBlockHeight();
+  const blockMs = Number(state.observedBlockMs || blocksToMs(1));
+  if (!Number.isFinite(current) || !Number.isFinite(blockMs) || blockMs <= 0) return "";
+  return String(Math.max(1, Math.ceil(current + Math.max(0, targetMs - Date.now()) / blockMs)));
+}
+
+async function renderNodeSellFlow() {
+  if (!$("saleSellerNodeDisplay")) return;
+  let identity = null;
+  try {
+    identity = await deriveNodeIdentity();
+  } catch {
+    // Secret is optional while browsing the operator UI.
+  }
+  const sellerKeys = new Set([identity?.authPubkey, identity?.authAddress].filter(Boolean));
+  if ($("saleSellerNodeDisplay")) {
+    $("saleSellerNodeDisplay").textContent = identity?.authAddress ? short(identity.authAddress, 18, 10) : "connect secret";
+  }
+  if ($("saleSellerNodePubkey")) {
+    $("saleSellerNodePubkey").value = identity?.authPubkey || "";
+  }
+
+  const rows = [];
+  for (const auction of state.nodeSales || []) {
+    const seller = auction.seller_node_pub_key || auction.sellerNodePubKey || auction.node_pub_key || auction.nodePubKey || "";
+    if (sellerKeys.size && seller && !sellerKeys.has(seller)) continue;
+    const id = auctionID(auction);
+    for (const bid of auctionBids(auction)) {
+      rows.push({ auctionID: id, bid, amount: bidAmountSats(bid) });
+    }
+  }
+
+  const list = $("nodeSellBidsList");
+  if (!list) return;
+  list.textContent = "";
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "pane-empty";
+    empty.textContent = "No bids yet";
+    list.append(empty);
+    return;
+  }
+  for (const row of rows) {
+    const id = bidID(row.bid);
+    const el = document.createElement("div");
+    el.className = "note-row";
+    el.innerHTML = `
+      <span>${escapeHtml(short(id || row.auctionID || "bid", 10, 8))}</span>
+      <span>${row.amount ? btcAmount(row.amount) : "unknown"}</span>
+    `;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Accept";
+    button.addEventListener("click", () => {
+      if ($("sellAuctionId")) $("sellAuctionId").value = row.auctionID;
+      if ($("sellBidId")) $("sellBidId").value = id;
+      run(buildAuctionSelectCommand);
+    });
+    el.append(button);
+    list.append(el);
   }
 }
 
@@ -4726,11 +5453,11 @@ async function buildBondFromNotesCommand() {
   if (!operatorPubKey || !nodePubKey) {
     throw new Error("node address and operator pubkey are required");
   }
-  const candidate = firstProtocolRedeemableNodeNote();
+  const candidate = firstProtocolRedeemableShieldedNote();
   if (!candidate) {
-    throw new Error("shield a node-purpose deposit and wait until its notes are mature before bonding");
+    throw new Error("shield a BTC deposit and wait until its notes are mature before bonding");
   }
-  setMessage("Generating bond proof from node-purpose note...", "", 8, 120000);
+  setMessage("Generating bond proof from shielded note...", "", 8, 120000);
   const { proof, public: publicInputs } = await validateGeneratedProof(
     candidate.index,
     protocolRedeemOptions("bond_escrow", { node_pub_key: nodePubKey })
@@ -4754,7 +5481,6 @@ function updateNodeSecretStatus() {
   const connected = Boolean($("walletRoot")?.value.trim());
   const text = connected ? "Secret connected" : "Set secret in User";
   if ($("nodeSecretStatus")) $("nodeSecretStatus").textContent = text;
-  if ($("nodeContextSecretStatus")) $("nodeContextSecretStatus").textContent = text;
   return connected;
 }
 
@@ -4852,18 +5578,70 @@ async function prepareNodeEntitlementBucket(label) {
   });
 }
 
-async function prepareNodeFeeShield() {
-  const nodePubKey = $("incomeNodePubkey").value.trim() || $("bondNodePubkey").value.trim() || $("nodeConsPubkey").value.trim();
-  await prepareNodeEntitlementBucket("Fee split");
+function feeBucketBalance(pool) {
+  const pending = Number(pool?.pending_sats ?? pool?.pendingSats ?? NaN);
+  if (Number.isFinite(pending)) {
+    return pending;
+  }
+  const collected = Number(pool?.total_collected_sats ?? pool?.totalCollectedSats ?? 0);
+  const claimed = Number(pool?.total_claimed_sats ?? pool?.totalClaimedSats ?? 0);
+  return Math.max(0, collected - claimed);
+}
+
+function nodeConsPubKeyValue(node) {
+  return node?.node_cons_pub_key || node?.nodeConsPubKey || node?.result?.node_cons_pub_key || node?.result?.nodeConsPubKey || "";
+}
+
+async function resolveIncomeNodePubKey() {
+  const existing = $("incomeNodePubkey")?.value.trim();
+  if (existing) {
+    return existing;
+  }
+  const direct = $("nodeConsPubkey")?.value.trim();
+  if (direct) {
+    $("incomeNodePubkey").value = direct;
+    return direct;
+  }
+  const selected = $("nodeLookupAddress")?.value.trim() || $("bondNodePubkey")?.value.trim();
+  if (!selected) {
+    return "";
+  }
+  if (/pub/i.test(selected)) {
+    $("incomeNodePubkey").value = selected;
+    return selected;
+  }
+  const payload = await api(`/thornado/node/${encodeURIComponent(selected)}`);
+  const node = payload?.node || payload?.result || payload;
+  const nodePubKey = nodeConsPubKeyValue(node);
+  if (nodePubKey) {
+    $("incomeNodePubkey").value = nodePubKey;
+  }
+  return nodePubKey;
+}
+
+async function refreshNodeIncome() {
+  const pool = await api("/thornado/fees").catch(() => null);
+  if ($("nodeIncomeFeeBucket")) {
+    const bucket = pool ? feeBucketBalance(pool) : NaN;
+    $("nodeIncomeFeeBucket").textContent = Number.isFinite(bucket) ? btcAmount(bucket) : "unknown";
+  }
   let entitlement = null;
+  const nodePubKey = await resolveIncomeNodePubKey().catch(() => "");
   if (nodePubKey) {
     entitlement = await api(`/thornado/fee/entitlement/${encodeURIComponent(nodePubKey)}`).catch(() => null);
   }
-  const claimable = Number(entitlement?.claimable_sats || 0);
-  if ($("nodeIncomeClaimable")) $("nodeIncomeClaimable").textContent = claimable ? btcAmount(claimable) : "query unavailable or zero";
-  writeNodeStatus("Fee split", {
-    claimable: claimable ? btcAmount(claimable) : "query unavailable or zero"
-  });
+  const claimable = Number(entitlement?.claimable_sats || entitlement?.claimableSats || 0);
+  if ($("nodeIncomeClaimable")) {
+    $("nodeIncomeClaimable").textContent = entitlement ? btcAmount(claimable) : "unknown";
+  }
+  if ($("nodeIncomeBuildFee")) {
+    $("nodeIncomeBuildFee").disabled = !entitlement || claimable <= 0;
+  }
+  return { pool, entitlement, nodePubKey, claimable };
+}
+
+async function prepareNodeFeeShield() {
+  await refreshNodeIncome();
 }
 
 async function prepareNodeSaleShield() {
@@ -4895,9 +5673,12 @@ async function submitNodeSaleShield() {
 }
 
 async function buildAuctionCreateCommand() {
-  const seller = $("saleSellerNodePubkey").value.trim() || "<seller-node-pubkey>";
+  const identity = await deriveNodeIdentity();
+  const seller = identity.authPubkey;
   const reserve = $("saleReserveSats").value.trim() || "<reserve-sats>";
-  const expiry = $("saleExpiryHeight").value.trim() || "<expiry-height>";
+  const expiry = estimateHeightFromDateInput($("saleExpiryAt")?.value) || $("saleExpiryHeight").value.trim() || "<expiry-height>";
+  if ($("saleSellerNodePubkey")) $("saleSellerNodePubkey").value = seller;
+  if ($("saleExpiryHeight")) $("saleExpiryHeight").value = expiry;
   await browserTx("/thornado/browser/node/auction-create", {
     node_pubkey: seller,
     reserve_sats: reserve,
@@ -4919,11 +5700,19 @@ async function buildAuctionBidCommand() {
   const auctionID = state.selectedSaleAuctionId || (selectedText && selectedText !== "none" ? selectedText : "") || "<auction-id>";
   const operatorPubKey = $("salesBidOperatorPubkey").value.trim() || "<operator-pubkey>";
   const nodePubKey = $("salesBidNodePubkey").value.trim() || "<node-pubkey>";
-  await browserTx("/thornado/browser/node/auction-bid-create", {
+  const payload = await browserTx("/thornado/browser/node/auction-bid-create", {
     auction_id: auctionID,
     operator_pubkey: operatorPubKey,
     node_pubkey: nodePubKey
   }, "Create node sale bid", writeSalesStatus);
+  if (payload.txhash) {
+    payload.tx_response = await waitForCommittedTx(payload.txhash, 45000);
+  }
+  const bidID = extractBidID(payload);
+  if (bidID) {
+    $("salesBidId").value = bidID;
+  }
+  return payload;
 }
 
 async function fundAuctionBidFromNotes() {
@@ -4931,11 +5720,11 @@ async function fundAuctionBidFromNotes() {
   if (!bidID) {
     throw new Error("bid id is required");
   }
-  const candidate = firstProtocolRedeemableNodeNote();
+  const candidate = firstProtocolRedeemableShieldedNote();
   if (!candidate) {
-    throw new Error("shield a node-purpose deposit and wait until its notes are mature before funding the bid");
+    throw new Error("shield BTC and wait until its notes are mature before funding the bid");
   }
-  setMessage("Generating bid funding proof from node-purpose note...", "", 8, 120000);
+  setMessage("Generating bid funding proof from shielded note...", "", 8, 120000);
   const { proof, public: publicInputs } = await validateGeneratedProof(
     candidate.index,
     protocolRedeemOptions("bid_deposit", { bid_id: bidID })
@@ -4954,6 +5743,43 @@ async function fundAuctionBidFromNotes() {
   };
   renderNotes();
   updateDashboard();
+}
+
+function extractBidID(payload) {
+  const direct = payload?.bid_id || payload?.bidId || payload?.response?.bid_id || payload?.response?.bidId;
+  if (direct) {
+    return String(direct);
+  }
+  const haystack = JSON.stringify(payload || {});
+  const match = haystack.match(/"bid[_-]?id"\s*:\s*"([^"]+)"/i) || haystack.match(/bid[_-]?id['"=:\s]+([A-Za-z0-9._:-]+)/i);
+  return match ? match[1] : "";
+}
+
+async function openNodeSalesBid() {
+  const candidate = firstProtocolRedeemableShieldedNote();
+  if (!candidate) {
+    throw new Error("shield BTC and wait until its notes are mature before bidding");
+  }
+  state.selectedNote = candidate.index;
+  openWithdrawAddressModal(candidate.index, "bid");
+}
+
+async function submitNodeSalesBid(nodePubKey, noteIndex) {
+  const selectedText = $("salesSelectedAuction").textContent.trim();
+  const auctionID = state.selectedSaleAuctionId || (selectedText && selectedText !== "none" ? selectedText : "");
+  if (!auctionID) {
+    throw new Error("select an auction first");
+  }
+  $("salesBidNodePubkey").value = nodePubKey;
+  $("salesBidOperatorPubkey").value = (await deriveNodeIdentity()).authPubkey;
+  state.selectedNote = Number(noteIndex || 0);
+  const bidPayload = await buildAuctionBidCommand();
+  const bidID = $("salesBidId").value.trim() || extractBidID(bidPayload);
+  if (!bidID) {
+    throw new Error("bid was created, but bid id was not returned");
+  }
+  $("salesBidId").value = bidID;
+  await fundAuctionBidFromNotes();
 }
 
 function writeNodeStatus(label, payload) {
@@ -5004,46 +5830,91 @@ function writeSalesStatus(label, payload) {
 	      }, "Set node keys");
 	    }
 
+	    async function buildConfigVoteCommand() {
+	      const key = $("configVoteKey").value.trim();
+	      const value = $("configVoteValue").value.trim();
+	      if (!key || value === "") {
+	        throw new Error("config and value are required");
+	      }
+	      await browserTx("/thornado/browser/config/vote", { key, value }, "Vote config");
+	    }
+
 	    async function buildProposeUpgradeCommand() {
 	      const name = $("upgradeName").value.trim();
 	      const height = $("upgradeHeight").value.trim();
-	      const info = $("upgradeInfo").value.trim();
 	      if (!name || !height) {
 	        throw new Error("upgrade name and height are required");
 	      }
+	      const info = "";
 	      await browserTx("/thornado/browser/upgrade/propose", { name, height, info }, "Propose upgrade");
 	    }
 
-	    async function buildApproveUpgradeCommand() {
-	      const name = $("upgradeName").value.trim();
-	      if (!name) {
-	        throw new Error("upgrade name is required");
-	      }
-	      await browserTx("/thornado/browser/upgrade/approve", { name }, "Approve upgrade");
-	    }
-
-	    async function buildRejectUpgradeCommand() {
-	      const name = $("upgradeName").value.trim();
-	      if (!name) {
-	        throw new Error("upgrade name is required");
-	      }
-	      await browserTx("/thornado/browser/upgrade/reject", { name }, "Reject upgrade");
-	    }
-
 	    async function buildShieldFeesCommand() {
-	      const nodePubKey = $("incomeNodePubkey").value.trim() || $("bondNodePubkey").value.trim() || $("nodeConsPubkey").value.trim();
-	      const sig = $("incomeFeeOperatorSignature").value.trim();
-	      const commitments = $("incomeFeeCommitments").value.trim();
-	      const pubkeys = $("incomeFeeNotePubkeys").value.trim();
-	      if (!nodePubKey || !sig || !commitments || !pubkeys) {
-	        throw new Error("node pubkey, operator signature, commitments, and fee note pubkeys are required");
+	      const { entitlement, nodePubKey, claimable } = await refreshNodeIncome();
+	      if (!entitlement || !nodePubKey) {
+	        throw new Error("select a registered node first");
 	      }
-	      await browserTx("/thornado/browser/node/shield-fees", {
+	      if (claimable <= 0) {
+	        throw new Error("no fees claimable");
+	      }
+	      const seedHex = await walletRootSeedHex();
+	      const owner = await nodeSignerAddress();
+	      const depositIndex = Number(state.nextDepositIndexByType.user || 0);
+	      const accrued = Number(entitlement.accrued_sats || entitlement.accruedSats || claimable);
+	      const feePerSlotShare = Number(entitlement.fee_per_slot_share || entitlement.feePerSlotShare || accrued);
+	      const claimRef = `fee-claim:${nodePubKey}:${owner}:${accrued}:${feePerSlotShare}:${depositIndex}`;
+	      const wasm = await thornadoWasm();
+	      if (!wasm.feeClaimAuthorizationForDepositTypeJson) {
+	        throw new Error("fee claim helper unavailable");
+	      }
+	      const authorization = JSON.parse(wasm.feeClaimAuthorizationForDepositTypeJson(
+	        seedHex,
+	        "node",
+	        BigInt(0),
+	        "user",
+	        BigInt(depositIndex),
+	        claimRef,
+	        nodePubKey,
+	        owner,
+	        BigInt(accrued),
+	        BigInt(feePerSlotShare),
+	        BigInt(claimable)
+	      ));
+	      const payload = await browserTx("/thornado/browser/node/shield-fees", {
 	        node_pubkey: nodePubKey,
-	        operator_signature: sig,
-	        commitments: parseListInput(commitments),
-	        fee_note_pubkeys: parseListInput(pubkeys)
-	      }, "Shield fees");
+	        operator_signature: authorization.operator_signature,
+	        commitments: authorization.commitments,
+	        fee_note_pubkeys: authorization.fee_note_pubkeys
+	      }, "Claim fees");
+	      payload.tx_response = await waitForCommittedTx(payload.txhash);
+	      const amountSats = Number(payload.amount_sats || claimable);
+	      const fingerprint = await rootFingerprint(seedHex);
+	      const receipt = authorization.receipt;
+	      receipt.notes = (receipt.notes || []).map((note) => ({
+	        ...note,
+	        deposit_amount_sats: amountSats,
+	        deposit_remainder_sats: Number(receipt.remainder_sats || 0),
+	        deposit_index: depositIndex,
+	        deposit_type: "user",
+	        derivation_path: notePath(depositIndex, note.index + 1, "user"),
+	        root_fingerprint: fingerprint
+	      }));
+	      upsertBatch({
+	        depositIndex,
+	        batchId: `fee:${payload.deposit_id || claimRef}`,
+	        owner,
+	        depositType: "user",
+	        depositId: payload.deposit_id || claimRef,
+	        amountSats,
+	        status: "committed",
+	        receipt,
+	        shieldedAt: Date.now(),
+	        maturesAt: Date.now() + DEMO_MATURITY_MS
+	      });
+	      invalidateShielderSyncCache();
+	      state.currentTab = "nodes";
+	      updateDashboard();
+	      await refreshNodeIncome();
 	    }
 
 	    async function buildPauseCommand() {
@@ -5222,7 +6093,7 @@ async function copySecret() {
 }
 
 function closeStatusMenus() {
-  ["routeStatus", "nodeStatus"].forEach((id) => {
+  ["routeStatus", "nodeStatus", "shieldedSummary"].forEach((id) => {
     const menu = $(`${id}Menu`);
     const button = $(`${id}Button`);
     if (menu) {
@@ -5232,6 +6103,7 @@ function closeStatusMenus() {
       button.setAttribute("aria-expanded", "false");
     }
   });
+  state.shieldedSummaryOpen = false;
 }
 
 function toggleStatusMenu(id) {
@@ -5244,6 +6116,13 @@ function toggleStatusMenu(id) {
   closeStatusMenus();
   menu.hidden = !willOpen;
   button.setAttribute("aria-expanded", willOpen ? "true" : "false");
+}
+
+function toggleShieldedSummary() {
+  const willOpen = !$("shieldedSummaryMenu") || $("shieldedSummaryMenu").hidden;
+  closeStatusMenus();
+  state.shieldedSummaryOpen = willOpen;
+  renderShieldedSummary();
 }
 
 function switchToTor() {
@@ -5288,20 +6167,12 @@ function switchToTor() {
 	      if (isNetwork || isNodes || isSales) {
 	        refreshNodeTools().catch((error) => log("node/tools/refresh", { error: error.message }));
 	      }
+    if (isNetwork) {
+      refreshNetworkExplorer().catch((error) => log("network/explorer", { error: errorText(error) }));
+    }
     if (isNodes) {
       showNodeWorkflow(state.nodeWorkflow || "new");
     }
-    if (quoteWriteTimer) {
-      clearTimeout(quoteWriteTimer);
-      quoteWriteTimer = null;
-    }
-    if (moreRevealTimer) {
-      clearTimeout(moreRevealTimer);
-      moreRevealTimer = null;
-    }
-    state.moreOpen = false;
-    state.moreSettled = false;
-    state.quoteWriting = false;
     closeStatusMenus();
     renderMoreNav();
     renderIntroGate();
@@ -5313,6 +6184,14 @@ function switchToTor() {
 	    $("tabNetwork").addEventListener("click", () => showTab("network"));
 	    $("tabHow").addEventListener("click", () => showTab("how"));
 $("moreToggle").addEventListener("click", toggleMoreNav);
+$("shieldedSummaryButton").addEventListener("click", (event) => {
+  event.stopPropagation();
+  toggleShieldedSummary();
+});
+$("shieldedSummaryWithdraw").addEventListener("click", (event) => {
+  event.stopPropagation();
+  openTopbarWithdraw();
+});
 $("routeStatusButton").addEventListener("click", (event) => {
   event.stopPropagation();
   toggleStatusMenu("routeStatus");
@@ -5340,6 +6219,7 @@ $("flowModal").addEventListener("click", (event) => {
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !$("flowModal").hidden) closeFlowHelp();
   if (event.key === "Escape" && !$("withdrawAddressModal").hidden) closeWithdrawAddressModal();
+  if (event.key === "Escape" && !$("explorerDetailModal").hidden) closeExplorerDetail();
 });
 document.querySelectorAll("[data-stage-toggle]").forEach((button) => {
   button.addEventListener("click", () => toggleStage(button.dataset.stageToggle));
@@ -5431,6 +6311,10 @@ $("cancelWithdrawAddress").addEventListener("click", closeWithdrawAddressModal);
 $("withdrawAddressModal").addEventListener("click", (event) => {
   if (event.target === $("withdrawAddressModal")) closeWithdrawAddressModal();
 });
+$("explorerDetailClose").addEventListener("click", closeExplorerDetail);
+$("explorerDetailModal").addEventListener("click", (event) => {
+  if (event.target === $("explorerDetailModal")) closeExplorerDetail();
+});
 $("confirmWithdrawAddress").addEventListener("click", () => run(confirmWithdrawAddress));
 $("withdrawRecipientInput").addEventListener("input", updateWithdrawAddressModal);
 $("withdrawRecipientInput").addEventListener("keydown", (event) => {
@@ -5440,26 +6324,39 @@ $("withdrawRecipientInput").addEventListener("keydown", (event) => {
   }
 });
 $("refreshNodeTools").addEventListener("click", () => run(refreshNodeTools));
+$("nodeLookupStatusButton").addEventListener("click", () => run(refreshNodeLookup));
+$("nodeLookupAddress").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    run(refreshNodeLookup);
+  }
+});
+$("nodeLookupAddress").addEventListener("input", () => {
+  syncBondNodeAddress();
+  renderEmbeddedNodeFlows();
+});
 document.querySelectorAll("[data-node-subtab]").forEach((button) => {
   button.addEventListener("click", () => showNodeWorkflow(button.dataset.nodeSubtab));
 });
 $("prepareNodeBondDeposit").addEventListener("click", () => run(prepareNodeBondDeposit));
+$("nodeBondDepositShortcut").addEventListener("click", () => run(prepareUserPurposeDeposit));
 $("nodeBondGetAddress").addEventListener("click", () => run(requestNodePurposeDeposit));
 $("nodeBondShield").addEventListener("click", () => run(shieldNodePurposeDeposit));
 $("buildBondFromNotesCommand").addEventListener("click", () => run(buildBondFromNotesCommand));
 	    $("buildSetIpCommand").addEventListener("click", () => run(buildSetIpCommand));
 	    $("buildSetVersionCommand").addEventListener("click", () => run(buildSetVersionCommand));
 	    $("buildSetKeysCommand").addEventListener("click", () => run(buildSetKeysCommand));
+	    $("buildConfigVoteCommand").addEventListener("click", () => run(buildConfigVoteCommand));
 	    $("buildProposeUpgradeCommand").addEventListener("click", () => run(buildProposeUpgradeCommand));
-	    $("buildApproveUpgradeCommand").addEventListener("click", () => run(buildApproveUpgradeCommand));
-	    $("buildRejectUpgradeCommand").addEventListener("click", () => run(buildRejectUpgradeCommand));
 $("nodeIncomePrepareFee").addEventListener("click", () => run(prepareNodeFeeShield));
 $("nodeIncomeBuildFee").addEventListener("click", () => run(buildShieldFeesCommand));
+bindExplorerSearch("networkExploreQuery", "networkExploreSearch", searchNetworkExplore);
 $("buildAuctionCreateCommand").addEventListener("click", () => run(buildAuctionCreateCommand));
 $("buildAuctionSelectCommand").addEventListener("click", () => run(buildAuctionSelectCommand));
 $("nodeSellPreparePayout").addEventListener("click", () => run(prepareNodeSaleShield));
 $("nodeSellBuildPayout").addEventListener("click", () => run(submitNodeSaleShield));
-$("refreshNodeSales").addEventListener("click", () => run(refreshNodeTools));
+$("nodeSalesDepositShortcut").addEventListener("click", () => run(prepareUserPurposeDeposit));
+$("openNodeSalesBid").addEventListener("click", () => run(openNodeSalesBid));
 $("nodeSalesBidDeposit").addEventListener("click", () => run(prepareNodeSalesBidDeposit));
 $("nodeSalesBidGetAddress").addEventListener("click", () => run(requestNodePurposeDeposit));
 $("nodeSalesBidShield").addEventListener("click", () => run(shieldNodePurposeDeposit));
@@ -5494,6 +6391,9 @@ if (urlParams.has("recipient")) {
   $("recipient").value = urlParams.get("recipient") || "";
 }
 state.appStarted = localStorage.getItem(APP_STARTED_KEY) === "1";
+state.moreOpen = localStorage.getItem(MENU_OPEN_KEY) === "1";
+state.moreSettled = state.moreOpen;
+state.quoteWriting = false;
 renderStatusControls();
 renderIntroGate();
 renderMoreNav();

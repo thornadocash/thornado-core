@@ -40,12 +40,16 @@ func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(&MsgMigrate{}, ModuleName+"/MsgMigrate", nil)
 	cdc.RegisterConcrete(&MsgSend{}, ModuleName+"/MsgSend", nil)
 	cdc.RegisterConcrete(&MsgNodePauseChain{}, ModuleName+"/MsgNodePauseChain", nil)
+	cdc.RegisterConcrete(&MsgOperatorRotate{}, ModuleName+"/MsgOperatorRotate", nil)
+	cdc.RegisterConcrete(&MsgMaint{}, ModuleName+"/MsgMaint", nil)
+	cdc.RegisterConcrete(&MsgLeave{}, ModuleName+"/MsgLeave", nil)
 	cdc.RegisterConcrete(&MsgSolvency{}, ModuleName+"/MsgSolvency", nil)
 	cdc.RegisterConcrete(&MsgSolvencyQuorum{}, ModuleName+"/MsgSolvencyQuorum", nil)
 	cdc.RegisterConcrete(&MsgDepositRequestPow{}, ModuleName+"/MsgDepositRequestPow", nil)
 	cdc.RegisterConcrete(&MsgShielderShield{}, ModuleName+"/MsgShielderShield", nil)
 	cdc.RegisterConcrete(&MsgShielderRedeem{}, ModuleName+"/MsgShielderRedeem", nil)
 	cdc.RegisterConcrete(&MsgShielderShieldFees{}, ModuleName+"/MsgShielderShieldFees", nil)
+	cdc.RegisterConcrete(&MsgNodeOperatorFeeSet{}, ModuleName+"/MsgNodeOperatorFeeSet", nil)
 	cdc.RegisterConcrete(&MsgNodeSlotAuctionCreate{}, ModuleName+"/MsgNodeSlotAuctionCreate", nil)
 	cdc.RegisterConcrete(&MsgNodeSlotAuctionBidCreate{}, ModuleName+"/MsgNodeSlotAuctionBidCreate", nil)
 	cdc.RegisterConcrete(&MsgNodeSlotAuctionSelectBid{}, ModuleName+"/MsgNodeSlotAuctionSelectBid", nil)
@@ -79,12 +83,16 @@ func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		&MsgMigrate{},
 		&MsgSend{},
 		&MsgNodePauseChain{},
+		&MsgOperatorRotate{},
+		&MsgMaint{},
+		&MsgLeave{},
 		&MsgSolvency{},
 		&MsgSolvencyQuorum{},
 		&MsgDepositRequestPow{},
 		&MsgShielderShield{},
 		&MsgShielderRedeem{},
 		&MsgShielderShieldFees{},
+		&MsgNodeOperatorFeeSet{},
 		&MsgNodeSlotAuctionCreate{},
 		&MsgNodeSlotAuctionBidCreate{},
 		&MsgNodeSlotAuctionSelectBid{},
@@ -103,6 +111,9 @@ func DefineCustomGetSigners(signingOptions *signing.Options) {
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNetworkFee"), MsgNetworkFeeCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNetworkFeeQuorum"), MsgNetworkFeeQuorumCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNodePauseChain"), MsgNodePauseChainCustomGetSigners)
+	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgOperatorRotate"), MsgOperatorRotateCustomGetSigners)
+	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgMaint"), MsgMaintCustomGetSigners)
+	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgLeave"), MsgLeaveCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgObservedTxIn"), MsgObservedTxInCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgObservedTxQuorum"), MsgObservedTxQuorumCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgObservedTxOut"), MsgObservedTxOutCustomGetSigners)
@@ -121,6 +132,7 @@ func DefineCustomGetSigners(signingOptions *signing.Options) {
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgShielderShield"), MsgShielderShieldCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgShielderRedeem"), MsgShielderRedeemCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgShielderShieldFees"), MsgShielderShieldFeesCustomGetSigners)
+	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNodeOperatorFeeSet"), MsgNodeOperatorFeeSetCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNodeSlotAuctionCreate"), MsgNodeSlotAuctionCreateCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNodeSlotAuctionBidCreate"), MsgNodeSlotAuctionBidCreateCustomGetSigners)
 	signingOptions.DefineCustomGetSigners(protoreflect.FullName("types.MsgNodeSlotAuctionSelectBid"), MsgNodeSlotAuctionSelectBidCustomGetSigners)

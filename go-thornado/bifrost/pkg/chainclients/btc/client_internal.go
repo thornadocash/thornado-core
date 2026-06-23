@@ -32,16 +32,114 @@ func (c *Client) isBaseAddress(addressToCheck string) bool {
 	baseVaults, err := c.getBaseAddress()
 	if err != nil {
 		c.log.Err(err).Msg("fail to get base addresses")
-		if len(baseVaults) == 0 {
-			return false
-		}
 	}
 	for _, addr := range baseVaults {
 		if strings.EqualFold(addr.String(), addressToCheck) {
 			return true
 		}
 	}
+	address, err := common.NewAddress(addressToCheck)
+	if err == nil && c.bridge.IsVaultDepositAddress(address) {
+		return true
+	}
+	if c.isRegisteredVaultPathAddress(addressToCheck) {
+		return true
+	}
 	return false
+}
+
+func (c *Client) isRegisteredVaultPathAddress(addressToCheck string) bool {
+	c.vaultPathLock.RLock()
+	pathsByPubKey := make(map[string][]uint64, len(c.vaultPaths))
+	for pubKey, paths := range c.vaultPaths {
+		for path := range paths {
+			pathsByPubKey[pubKey] = append(pathsByPubKey[pubKey], path)
+		}
+	}
+	c.vaultPathLock.RUnlock()
+
+	for pubKeyString, paths := range pathsByPubKey {
+		pubKey, err := common.NewPubKey(pubKeyString)
+		if err != nil {
+			c.log.Debug().Err(err).Str("pubkey", pubKeyString).Msg("fail to parse registered vault pubkey")
+			continue
+		}
+		for _, path := range paths {
+			addr, err := c.getVaultAddressAtPath(pubKey, path)
+			if err != nil {
+				c.log.Debug().Err(err).Str("pubkey", pubKeyString).Uint64("path_index", path).Msg("fail to derive registered vault path address")
+				continue
+			}
+			if strings.EqualFold(addr.String(), addressToCheck) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (c *Client) protocolControlledTxIn(txIn types.TxIn) bool {
+	if len(txIn.TxArray) == 0 {
+		return false
+	}
+	for _, item := range txIn.TxArray {
+		if item == nil || strings.TrimSpace(item.Sender) == "" {
+			return false
+		}
+		if !c.isProtocolControlledAddress(item.Sender, item.ObservedVaultPubKey) {
+			return false
+		}
+	}
+	return true
+}
+
+func (c *Client) isProtocolControlledAddress(addressToCheck string, observedPubKey common.PubKey) bool {
+	if c.isBaseAddress(addressToCheck) {
+		return true
+	}
+	if !observedPubKey.IsEmpty() && c.isVaultAddressAtRegisteredPath(addressToCheck, observedPubKey) {
+		return true
+	}
+	baseVaults, err := c.bridge.GetBasePubKeys()
+	if err != nil {
+		c.log.Err(err).Msg("fail to get base pubkeys for protocol-controlled address check")
+		return false
+	}
+	for _, vault := range baseVaults {
+		if vault.Algo != common.SigningAlgoSecp256k1 {
+			continue
+		}
+		if c.isVaultAddressAtRegisteredPath(addressToCheck, vault.PubKey) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Client) isVaultAddressAtRegisteredPath(addressToCheck string, pubkey common.PubKey) bool {
+	if pubkey.IsEmpty() {
+		return false
+	}
+	for _, pathIndex := range c.registeredVaultPathsWithMain(pubkey) {
+		addr, err := c.getVaultAddressAtPath(pubkey, pathIndex)
+		if err != nil {
+			continue
+		}
+		if strings.EqualFold(addr.String(), addressToCheck) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Client) registeredVaultPathsWithMain(pubkey common.PubKey) []uint64 {
+	paths := c.registeredVaultPaths(pubkey)
+	for _, pathIndex := range paths {
+		if pathIndex == common.MainVaultPathIndex {
+			return paths
+		}
+	}
+	return append(paths, common.MainVaultPathIndex)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -405,11 +503,22 @@ func (c *Client) getTxIn(tx *btcjson.TxRawResult, height int64, isMemPool bool, 
 		c.log.Debug().Int64("height", height).Str("txid", tx.Hash).Msg("ignore tx not matching format")
 		return types.TxInItem{}, nil
 	}
+	height = c.canonicalObservedHeight(tx, height, isMemPool)
 	sender, err := c.getSender(tx, vinZeroTxs)
 	if err != nil {
 		return types.TxInItem{}, fmt.Errorf("fail to get sender from tx: %w", err)
 	}
-	output, err := c.getOutput(sender, tx, false)
+	isProtocolSender := c.isProtocolControlledAddress(sender, common.EmptyPubKey)
+	if isProtocolSender {
+		txInItem, ok, err := c.getBatchOutboundTxIn(tx, sender, height)
+		if err != nil {
+			return types.TxInItem{}, err
+		}
+		if ok {
+			return txInItem, nil
+		}
+	}
+	output, err := c.getOutput(sender, tx, isProtocolSender)
 	if err != nil {
 		if errors.Is(err, btypes.ErrFailOutputMatchCriteria) {
 			c.log.Debug().Int64("height", height).Str("txid", tx.Hash).Msg("ignore tx not matching format")
@@ -438,16 +547,88 @@ func (c *Client) getTxIn(tx *btcjson.TxRawResult, height int64, isMemPool bool, 
 	if err != nil {
 		return types.TxInItem{}, fmt.Errorf("fail to get gas from tx: %w", err)
 	}
+	sourceInputs := observedSourceInputsWithAmounts(tx, vinZeroTxs)
+	if vinZeroTxs == nil {
+		sourceInputs = c.observedSourceInputsFromRPC(tx)
+	}
 	return types.TxInItem{
-		BlockHeight: height,
-		Tx:          tx.Txid,
-		Sender:      sender,
-		To:          toAddr,
+		BlockHeight:  height,
+		Tx:           tx.Txid,
+		SourceVout:   output.N,
+		SourceInputs: sourceInputs,
+		Sender:       sender,
+		To:           toAddr,
 		Coins: common.Coins{
 			common.NewCoin(c.cfg.ChainID.GetGasAsset(), cosmos.NewUint(amt)),
 		},
 		Gas: gas,
 	}, nil
+}
+
+func (c *Client) getBatchOutboundTxIn(tx *btcjson.TxRawResult, sender string, height int64) (types.TxInItem, bool, error) {
+	var toAddr string
+	var total uint64
+	outputs := 0
+	for _, vout := range tx.Vout {
+		// analyze-ignore(float-comparison)
+		if vout.Value <= 0 {
+			continue
+		}
+		addresses := c.getAddressesFromScriptPubKey(vout.ScriptPubKey)
+		if len(addresses) != 1 {
+			continue
+		}
+		receiver := addresses[0]
+		if strings.EqualFold(receiver, sender) {
+			continue
+		}
+		amount, err := btcutil.NewAmount(vout.Value)
+		if err != nil {
+			return types.TxInItem{}, false, fmt.Errorf("fail to parse float64: %w", err)
+		}
+		if toAddr == "" {
+			toAddr = receiver
+		}
+		total += uint64(amount.ToUnit(btcutil.AmountSatoshi))
+		outputs++
+	}
+	if outputs == 0 {
+		return types.TxInItem{}, false, nil
+	}
+	gas, err := c.getGas(tx, false)
+	if err != nil {
+		return types.TxInItem{}, false, fmt.Errorf("fail to get gas from tx: %w", err)
+	}
+	sourceInputs := observedSourceInputsWithAmounts(tx, nil)
+	if len(sourceInputs) > 0 {
+		sourceInputs = c.observedSourceInputsFromRPC(tx)
+	}
+	return types.TxInItem{
+		BlockHeight:  height,
+		Tx:           tx.Txid,
+		SourceInputs: sourceInputs,
+		Sender:       sender,
+		To:           toAddr,
+		Coins: common.Coins{
+			common.NewCoin(c.cfg.ChainID.GetGasAsset(), cosmos.NewUint(total)),
+		},
+		Gas: gas,
+	}, true, nil
+}
+
+func (c *Client) canonicalObservedHeight(tx *btcjson.TxRawResult, fallback int64, isMemPool bool) int64 {
+	if isMemPool || tx == nil || tx.BlockHash == "" {
+		return fallback
+	}
+	block, err := c.rpc.GetBlockVerbose(tx.BlockHash)
+	if err != nil {
+		c.log.Debug().Err(err).Str("txid", tx.Txid).Str("block_hash", tx.BlockHash).Msg("fail to canonicalize observed tx height")
+		return fallback
+	}
+	if block.Height <= 0 {
+		return fallback
+	}
+	return block.Height
 }
 
 func (c *Client) getVinZeroTxs(block *btcjson.GetBlockVerboseTxResult) (map[string]*btcjson.TxRawResult, error) {
@@ -555,16 +736,6 @@ func (c *Client) extractTxs(block *btcjson.GetBlockVerboseTxResult) (types.TxIn,
 
 	var txItems []*types.TxInItem
 	for idx, tx := range block.Tx {
-		wasMempoolTracked, err := c.temporalStorage.HasMempoolTx(tx.Txid)
-		if err != nil {
-			c.log.Err(err).Str("txid", tx.Txid).Msg("fail to check mempool tracking")
-		}
-		if !wasMempoolTracked && tx.Hash != "" && tx.Hash != tx.Txid {
-			wasMempoolTracked, err = c.temporalStorage.HasMempoolTx(tx.Hash)
-			if err != nil {
-				c.log.Err(err).Str("txid", tx.Hash).Msg("fail to check mempool tracking")
-			}
-		}
 		// mempool transaction get committed to block , thus remove it from mempool cache
 		c.removeFromMemPoolCache(tx.Txid)
 		c.removeFromMemPoolCache(tx.Hash)
@@ -585,13 +756,16 @@ func (c *Client) extractTxs(block *btcjson.GetBlockVerboseTxResult) (types.TxIn,
 			continue
 		}
 		var added bool
-		added, _, err = c.temporalStorage.TrackObservedTxStage(txInItem.Tx, ObservedTxStageFinal)
+		added, previousStage, err := c.temporalStorage.TrackObservedTxStage(txInItem.Tx, ObservedTxStageFinal)
 		if err != nil {
 			c.log.Err(err).Msgf("fail to determine whether hash(%s) had been observed before", txInItem.Tx)
 		}
-		if !added && !wasMempoolTracked {
+		if !added {
 			c.log.Info().Msgf("tx: %s had been report before, ignore", txInItem.Tx)
 			continue
+		}
+		if previousStage == ObservedTxStageMempool {
+			c.log.Info().Msgf("tx: %s promoted from mempool observation to final", txInItem.Tx)
 		}
 		txItems = append(txItems, &txInItem)
 	}
@@ -605,10 +779,6 @@ func (c *Client) ignoreTx(tx *btcjson.TxRawResult, height int64) bool {
 		return true
 	}
 	if tx.Vin[0].Txid == "" {
-		return true
-	}
-	// LockTime <= current height doesn't affect spendability.
-	if tx.LockTime > uint32(height) {
 		return true
 	}
 	countWithOutput := 0
@@ -639,7 +809,7 @@ func (c *Client) ignoreTx(tx *btcjson.TxRawResult, height int64) bool {
 // else prefer the first Vout with value that's to a vault
 // an exception need to be made for consolidate tx , because consolidate tx will be send from base back base itself
 func (c *Client) getOutput(sender string, tx *btcjson.TxRawResult, consolidate bool) (btcjson.Vout, error) {
-	isSenderBase := c.isBaseAddress(sender)
+	isSenderProtocolControlled := c.isProtocolControlledAddress(sender, common.EmptyPubKey)
 	for _, vout := range tx.Vout {
 		// analyze-ignore(float-comparison)
 		if vout.Value <= 0 {
@@ -656,7 +826,7 @@ func (c *Client) getOutput(sender string, tx *btcjson.TxRawResult, consolidate b
 		// if the sender is a vault then assume the first Vout is the output (and a later Vout could be change).
 		// If the sender isn't a vault, then do do not for instance
 		// return a change address Vout as the output if before the vault-inbound Vout.
-		if !isSenderBase && !c.isBaseAddress(receiver) {
+		if !isSenderProtocolControlled && !c.isBaseAddress(receiver) {
 			continue
 		}
 

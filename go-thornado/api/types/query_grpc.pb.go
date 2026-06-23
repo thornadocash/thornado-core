@@ -51,6 +51,7 @@ const (
 	Query_ShielderRedeemQuote_FullMethodName  = "/types.Query/ShielderRedeemQuote"
 	Query_FeePool_FullMethodName              = "/types.Query/FeePool"
 	Query_DepositSession_FullMethodName       = "/types.Query/DepositSession"
+	Query_DepositAddressTxs_FullMethodName    = "/types.Query/DepositAddressTxs"
 	Query_NodeBond_FullMethodName             = "/types.Query/NodeBond"
 	Query_NodeSlotAuction_FullMethodName      = "/types.Query/NodeSlotAuction"
 	Query_NodeSlotAuctions_FullMethodName     = "/types.Query/NodeSlotAuctions"
@@ -106,6 +107,7 @@ type QueryClient interface {
 	ShielderRedeemQuote(ctx context.Context, in *QueryShielderRedeemQuoteRequest, opts ...grpc.CallOption) (*QueryShielderRedeemQuoteResponse, error)
 	FeePool(ctx context.Context, in *QueryFeePoolRequest, opts ...grpc.CallOption) (*QueryFeePoolResponse, error)
 	DepositSession(ctx context.Context, in *QueryDepositSessionRequest, opts ...grpc.CallOption) (*QueryDepositSessionResponse, error)
+	DepositAddressTxs(ctx context.Context, in *QueryDepositAddressTxsRequest, opts ...grpc.CallOption) (*QueryDepositAddressTxsResponse, error)
 	NodeBond(ctx context.Context, in *QueryNodeBondRequest, opts ...grpc.CallOption) (*QueryNodeBondResponse, error)
 	NodeSlotAuction(ctx context.Context, in *QueryNodeSlotAuctionRequest, opts ...grpc.CallOption) (*QueryNodeSlotAuctionResponse, error)
 	NodeSlotAuctions(ctx context.Context, in *QueryNodeSlotAuctionsRequest, opts ...grpc.CallOption) (*QueryNodeSlotAuctionsResponse, error)
@@ -421,6 +423,15 @@ func (c *queryClient) DepositSession(ctx context.Context, in *QueryDepositSessio
 	return out, nil
 }
 
+func (c *queryClient) DepositAddressTxs(ctx context.Context, in *QueryDepositAddressTxsRequest, opts ...grpc.CallOption) (*QueryDepositAddressTxsResponse, error) {
+	out := new(QueryDepositAddressTxsResponse)
+	err := c.cc.Invoke(ctx, Query_DepositAddressTxs_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *queryClient) NodeBond(ctx context.Context, in *QueryNodeBondRequest, opts ...grpc.CallOption) (*QueryNodeBondResponse, error) {
 	out := new(QueryNodeBondResponse)
 	err := c.cc.Invoke(ctx, Query_NodeBond_FullMethodName, in, out, opts...)
@@ -610,6 +621,7 @@ type QueryServer interface {
 	ShielderRedeemQuote(context.Context, *QueryShielderRedeemQuoteRequest) (*QueryShielderRedeemQuoteResponse, error)
 	FeePool(context.Context, *QueryFeePoolRequest) (*QueryFeePoolResponse, error)
 	DepositSession(context.Context, *QueryDepositSessionRequest) (*QueryDepositSessionResponse, error)
+	DepositAddressTxs(context.Context, *QueryDepositAddressTxsRequest) (*QueryDepositAddressTxsResponse, error)
 	NodeBond(context.Context, *QueryNodeBondRequest) (*QueryNodeBondResponse, error)
 	NodeSlotAuction(context.Context, *QueryNodeSlotAuctionRequest) (*QueryNodeSlotAuctionResponse, error)
 	NodeSlotAuctions(context.Context, *QueryNodeSlotAuctionsRequest) (*QueryNodeSlotAuctionsResponse, error)
@@ -729,6 +741,9 @@ func (UnimplementedQueryServer) FeePool(context.Context, *QueryFeePoolRequest) (
 }
 func (UnimplementedQueryServer) DepositSession(context.Context, *QueryDepositSessionRequest) (*QueryDepositSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DepositSession not implemented")
+}
+func (UnimplementedQueryServer) DepositAddressTxs(context.Context, *QueryDepositAddressTxsRequest) (*QueryDepositAddressTxsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DepositAddressTxs not implemented")
 }
 func (UnimplementedQueryServer) NodeBond(context.Context, *QueryNodeBondRequest) (*QueryNodeBondResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NodeBond not implemented")
@@ -1370,6 +1385,24 @@ func _Query_DepositSession_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_DepositAddressTxs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryDepositAddressTxsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).DepositAddressTxs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_DepositAddressTxs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).DepositAddressTxs(ctx, req.(*QueryDepositAddressTxsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Query_NodeBond_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(QueryNodeBondRequest)
 	if err := dec(in); err != nil {
@@ -1810,6 +1843,10 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DepositSession",
 			Handler:    _Query_DepositSession_Handler,
+		},
+		{
+			MethodName: "DepositAddressTxs",
+			Handler:    _Query_DepositAddressTxs_Handler,
 		},
 		{
 			MethodName: "NodeBond",

@@ -1,12 +1,12 @@
 use thornado_shielder::{
     client_pubkey_for_deposit, client_pubkey_for_deposit_type, client_pubkey_from_secret,
     derive_shield_receipt, derive_shield_receipt_for_deposit,
-    derive_shield_receipt_for_deposit_type, merkle_root, note_recovery_candidates, nullifier_hash,
-    recipient_binding_field, recover_note_receipt, recover_note_receipt_for_deposit_type,
-    shield_authorization, shield_authorization_for_deposit, shield_authorization_for_deposit_type,
-    shielder_withdrawal_from_receipt, validate_withdrawal_public_inputs,
-    withdrawal_witness_from_receipt, DenominationTree, NoteCommitment, NoteReceipt,
-    ShielderProofVerifier, WithdrawalProof, WithdrawalPublicInputs,
+    derive_shield_receipt_for_deposit_type, fee_claim_authorization_for_deposit_type, merkle_root,
+    note_recovery_candidates, nullifier_hash, recipient_binding_field, recover_note_receipt,
+    recover_note_receipt_for_deposit_type, shield_authorization, shield_authorization_for_deposit,
+    shield_authorization_for_deposit_type, shielder_withdrawal_from_receipt,
+    validate_withdrawal_public_inputs, withdrawal_witness_from_receipt, DenominationTree,
+    NoteCommitment, NoteReceipt, ShielderProofVerifier, WithdrawalProof, WithdrawalPublicInputs,
 };
 use wasm_bindgen::prelude::*;
 
@@ -129,6 +129,35 @@ pub fn shield_authorization_for_deposit_type_json(
         amount_sats,
         &note_commitments,
     )))
+}
+
+#[wasm_bindgen]
+pub fn fee_claim_authorization_for_deposit_type_json(
+    client_seed: &str,
+    signer_deposit_type: &str,
+    signer_deposit_index: u64,
+    note_deposit_type: &str,
+    note_deposit_index: u64,
+    claim_ref: &str,
+    node_pubkey: &str,
+    owner: &str,
+    accrued_sats: u64,
+    fee_per_slot_share_sats: u64,
+    amount_sats: u64,
+) -> Result<String, JsValue> {
+    json(fee_claim_authorization_for_deposit_type(
+        client_seed,
+        signer_deposit_type,
+        signer_deposit_index,
+        note_deposit_type,
+        note_deposit_index,
+        claim_ref,
+        node_pubkey,
+        owner,
+        accrued_sats,
+        fee_per_slot_share_sats,
+        amount_sats,
+    ))
 }
 
 #[wasm_bindgen]

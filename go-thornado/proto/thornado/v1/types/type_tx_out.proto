@@ -9,6 +9,15 @@ option (gogoproto.goproto_getters_all) = false;
 import "common/common.proto";
 import "gogoproto/gogo.proto";
 
+message TxOutInput {
+  option (gogoproto.stringer) = true;
+
+  string tx_id = 1
+      [ (gogoproto.casttype) = "github.com/thornadocash/go-thornado/common.TxID" ];
+  uint32 vout = 2;
+  uint64 amount_sats = 3;
+}
+
 message TxOutItem {
   string chain = 1 [
     (gogoproto.casttype) = "github.com/thornadocash/go-thornado/common.Chain",
@@ -46,6 +55,8 @@ message TxOutItem {
   ];
   uint64 vault_path_index = 17;
   string tx_type = 18;
+  uint32 out_vout = 19;
+  repeated TxOutInput source_inputs = 20 [ (gogoproto.nullable) = false ];
 }
 
 message TxOut {

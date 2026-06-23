@@ -46,6 +46,7 @@ func TestRegisterBrowserAPIUsesPlainPaths(t *testing.T) {
 		"/thornado/browser/node/sale-shield",
 		"/thornado/browser/node/pause-chain",
 		"/thornado/browser/node/resume-chain",
+		"/thornado/browser/config/vote",
 		"/thornado/browser/upgrade/propose",
 		"/thornado/browser/upgrade/approve",
 		"/thornado/browser/upgrade/reject",
@@ -119,6 +120,12 @@ func TestNodeBrowserMessageBuilders(t *testing.T) {
 			body:  `{"node_pubkey":"tthorv1pub1addwnpepqd4vrm257qdesvw0h6z259qgg27kvqxm79n4mn8twv3drmadvh676a4yxm9","reserve_sats":"100000000","expiry_height":"100","signer":"` + signer + `"}`,
 			build: nodeAuctionCreateMsg,
 			want:  &types.MsgNodeSlotAuctionCreate{},
+		},
+		{
+			name:  "config vote",
+			body:  `{"key":"Node_SetDesired","value":"5","signer":"` + signer + `"}`,
+			build: configVoteMsg,
+			want:  &types.MsgConfig{},
 		},
 	}
 	for _, tt := range tests {

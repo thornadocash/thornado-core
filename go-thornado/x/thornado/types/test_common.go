@@ -29,7 +29,6 @@ func GetRandomNode(status NodeStatus) NodeAccount {
 	k, _ := cosmos.Bech32ifyPubKey(cosmos.Bech32PubKeyTypeConsPub, accts[0].PubKey)
 	pubKeys := common.PubKeySet{
 		Secp256k1: GetRandomPubKey(),
-		Ed25519:   GetRandomPubKey(),
 	}
 	addr, _ := pubKeys.Secp256k1.GetThorAddress()
 	bondAddr := common.Address(addr.String())
@@ -54,7 +53,6 @@ func GetRandomVaultNode(status NodeStatus) NodeAccount {
 	k, _ := cosmos.Bech32ifyPubKey(cosmos.Bech32PubKeyTypeConsPub, accts[0].PubKey)
 	pubKeys := common.PubKeySet{
 		Secp256k1: GetRandomPubKey(),
-		Ed25519:   GetRandomPubKey(),
 	}
 	addr, _ := pubKeys.Secp256k1.GetThorAddress()
 	bondAddr := common.Address(addr.String())
@@ -146,7 +144,7 @@ func GetRandomTxHash() common.TxID {
 
 // GetRandomPubKeySet return a random common.PubKeySet for test purpose
 func GetRandomPubKeySet() common.PubKeySet {
-	return common.NewPubKeySet(GetRandomPubKey(), GetRandomPubKey())
+	return common.NewPubKeySet(GetRandomPubKey())
 }
 
 func GetRandomVault() Vault {

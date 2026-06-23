@@ -198,6 +198,10 @@ type KeeperShielder interface {
 	SetShielderNodeBond(ctx cosmos.Context, bond types.ShielderNodeBond) error
 	GetShielderNodeBond(ctx cosmos.Context, nodePubKey string) (types.ShielderNodeBond, error)
 	GetShielderNodeBondIterator(ctx cosmos.Context) cosmos.Iterator
+	SetShielderNodeBonder(ctx cosmos.Context, bonder types.ShielderNodeBonder) error
+	GetShielderNodeBonder(ctx cosmos.Context, nodePubKey string, bonder cosmos.AccAddress) (types.ShielderNodeBonder, error)
+	GetShielderNodeBonderIterator(ctx cosmos.Context) cosmos.Iterator
+	DeleteShielderNodeBonder(ctx cosmos.Context, nodePubKey string, bonder cosmos.AccAddress) error
 	SetFeePool(ctx cosmos.Context, pool types.FeePool) error
 	GetFeePool(ctx cosmos.Context) (types.FeePool, error)
 	SetShielderFeeNotePubKey(ctx cosmos.Context, pubKey string) error

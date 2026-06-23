@@ -294,6 +294,18 @@ func (k KVStoreDummy) GetShielderNodeBond(_ cosmos.Context, _ string) (types.Shi
 func (k KVStoreDummy) GetShielderNodeBondIterator(_ cosmos.Context) cosmos.Iterator {
 	return NewDummyIterator()
 }
+func (k KVStoreDummy) SetShielderNodeBonder(_ cosmos.Context, _ types.ShielderNodeBonder) error {
+	return kaboom
+}
+func (k KVStoreDummy) GetShielderNodeBonder(_ cosmos.Context, _ string, _ cosmos.AccAddress) (types.ShielderNodeBonder, error) {
+	return types.ShielderNodeBonder{}, kaboom
+}
+func (k KVStoreDummy) GetShielderNodeBonderIterator(_ cosmos.Context) cosmos.Iterator {
+	return NewDummyIterator()
+}
+func (k KVStoreDummy) DeleteShielderNodeBonder(_ cosmos.Context, _ string, _ cosmos.AccAddress) error {
+	return kaboom
+}
 func (k KVStoreDummy) SetFeePool(_ cosmos.Context, _ types.FeePool) error {
 	return kaboom
 }

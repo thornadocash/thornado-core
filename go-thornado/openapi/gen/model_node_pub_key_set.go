@@ -17,7 +17,6 @@ import (
 // NodePubKeySet struct for NodePubKeySet
 type NodePubKeySet struct {
 	Secp256k1 *string `json:"secp256k1,omitempty"`
-	Ed25519   *string `json:"ed25519,omitempty"`
 }
 
 // NewNodePubKeySet instantiates a new NodePubKeySet object
@@ -69,45 +68,10 @@ func (o *NodePubKeySet) SetSecp256k1(v string) {
 	o.Secp256k1 = &v
 }
 
-// GetEd25519 returns the Ed25519 field value if set, zero value otherwise.
-func (o *NodePubKeySet) GetEd25519() string {
-	if o == nil || o.Ed25519 == nil {
-		var ret string
-		return ret
-	}
-	return *o.Ed25519
-}
-
-// GetEd25519Ok returns a tuple with the Ed25519 field value if set, nil otherwise
-// and a boolean to check if the value has been set.
-func (o *NodePubKeySet) GetEd25519Ok() (*string, bool) {
-	if o == nil || o.Ed25519 == nil {
-		return nil, false
-	}
-	return o.Ed25519, true
-}
-
-// HasEd25519 returns a boolean if a field has been set.
-func (o *NodePubKeySet) HasEd25519() bool {
-	if o != nil && o.Ed25519 != nil {
-		return true
-	}
-
-	return false
-}
-
-// SetEd25519 gets a reference to the given string and assigns it to the Ed25519 field.
-func (o *NodePubKeySet) SetEd25519(v string) {
-	o.Ed25519 = &v
-}
-
 func (o NodePubKeySet) MarshalJSON_deprecated() ([]byte, error) {
 	toSerialize := map[string]interface{}{}
 	if o.Secp256k1 != nil {
 		toSerialize["secp256k1"] = o.Secp256k1
-	}
-	if o.Ed25519 != nil {
-		toSerialize["ed25519"] = o.Ed25519
 	}
 	return json.Marshal(toSerialize)
 }

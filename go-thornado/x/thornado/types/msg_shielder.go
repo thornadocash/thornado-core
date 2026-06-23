@@ -32,6 +32,10 @@ var (
 	_ sdk.HasValidateBasic = &MsgShielderShieldFees{}
 	_ sdk.LegacyMsg        = &MsgShielderShieldFees{}
 
+	_ sdk.Msg              = &MsgNodeOperatorFeeSet{}
+	_ sdk.HasValidateBasic = &MsgNodeOperatorFeeSet{}
+	_ sdk.LegacyMsg        = &MsgNodeOperatorFeeSet{}
+
 	_ sdk.Msg              = &MsgNodeSlotAuctionCreate{}
 	_ sdk.HasValidateBasic = &MsgNodeSlotAuctionCreate{}
 	_ sdk.LegacyMsg        = &MsgNodeSlotAuctionCreate{}
@@ -63,6 +67,7 @@ const (
 	MaxShielderOperatorSignatureBytes = 64
 	MaxShielderIDLength               = 128
 	MaxPowDurationMs                  = 24 * 60 * 60 * 1000
+	MaxNodeOperatorFeeBasisPoints     = 10_000
 )
 
 func NewMsgDepositRequestPow(powToken, depositPubkey string) *MsgDepositRequestPow {
@@ -206,9 +211,6 @@ func (m *MsgShielderShieldFees) ValidateBasic() error {
 	if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, m.NodePubKey); err != nil {
 		return fmt.Errorf("invalid node pubkey: %w", err)
 	}
-	if len(m.OperatorSignature) == 0 {
-		return fmt.Errorf("missing shielder fee operator signature")
-	}
 	if len(m.OperatorSignature) > MaxShielderOperatorSignatureBytes {
 		return fmt.Errorf("shielder fee operator signature too long")
 	}
@@ -246,6 +248,39 @@ func MsgShielderShieldFeesCustomGetSigners(m proto.Message) ([][]byte, error) {
 	msg, ok := m.(*apitypes.MsgShielderShieldFees)
 	if !ok {
 		return nil, fmt.Errorf("can't cast as MsgShielderShieldFees: %T", m)
+	}
+	return [][]byte{msg.Signer}, nil
+}
+
+func NewMsgNodeOperatorFeeSet(nodePubKey string, operatorFeeBasisPoints uint64, signer cosmos.AccAddress) *MsgNodeOperatorFeeSet {
+	return &MsgNodeOperatorFeeSet{
+		NodePubKey:             strings.TrimSpace(nodePubKey),
+		OperatorFeeBasisPoints: operatorFeeBasisPoints,
+		Signer:                 signer,
+	}
+}
+
+func (m *MsgNodeOperatorFeeSet) ValidateBasic() error {
+	if m.Signer.Empty() {
+		return cosmos.ErrInvalidAddress(m.Signer.String())
+	}
+	if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, m.NodePubKey); err != nil {
+		return fmt.Errorf("invalid node pubkey: %w", err)
+	}
+	if m.OperatorFeeBasisPoints > MaxNodeOperatorFeeBasisPoints {
+		return fmt.Errorf("node operator fee basis points must be <= %d", MaxNodeOperatorFeeBasisPoints)
+	}
+	return nil
+}
+
+func (m *MsgNodeOperatorFeeSet) GetSigners() []cosmos.AccAddress {
+	return []cosmos.AccAddress{m.Signer}
+}
+
+func MsgNodeOperatorFeeSetCustomGetSigners(m proto.Message) ([][]byte, error) {
+	msg, ok := m.(*apitypes.MsgNodeOperatorFeeSet)
+	if !ok {
+		return nil, fmt.Errorf("can't cast as MsgNodeOperatorFeeSet: %T", m)
 	}
 	return [][]byte{msg.Signer}, nil
 }

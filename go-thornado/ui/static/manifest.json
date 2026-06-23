@@ -2,18 +2,18 @@
   "assets": [
     {
       "path": "index.html",
-      "sha256": "ce590a682d951d2d0baba1fb3ac9c066a63d41fbfbb9b988b9a9202b8cc20b7e",
-      "bytes": 32856
+      "sha256": "59dfdb62ee2c6514fcfd0fe416334fdf735fdb7efa94251d4f9b01939785067a",
+      "bytes": 39651
     },
     {
       "path": "styles.css",
-      "sha256": "5ef294f73df3400b4e4469dfe413fe4a1a4b904edb4449c3f47f4668cb26698a",
-      "bytes": 37137
+      "sha256": "94858ce26f5540d86dbd0614b997e3e7b26d63e804ccbb30958c7537c939d7f2",
+      "bytes": 51119
     },
     {
       "path": "app.js",
-      "sha256": "27b1ee32da4418e42a0c2590621f0268034d4d1fbad7d4dce648bca01649727d",
-      "bytes": 188302
+      "sha256": "9f872393792c401018fc2957ca29377942c532fffe29bf1ea90756ec39121f4c",
+      "bytes": 262876
     },
     {
       "path": "modules/api.js",
@@ -77,13 +77,13 @@
     },
     {
       "path": "wasm/thornado_web_wasm.js",
-      "sha256": "06e03ca6986226e8d1f0f35886e8aae66e5855a5458491e20adfdfc793b61519",
-      "bytes": 27241
+      "sha256": "b1a475c36f52ff0f9036dbbe3e539e733a81ba4a74534d092045b7eb31f83cd1",
+      "bytes": 29380
     },
     {
       "path": "wasm/thornado_web_wasm_bg.wasm",
-      "sha256": "b2ac96b2513d1124eaf7e7c363506b8d850e40680cfc1d4aeebf2fe3b0c2a036",
-      "bytes": 876234
+      "sha256": "336d67ebbbb68d50d739e8b0d16eb4b8b77ce16c18fa1c23470eb18906a34fec",
+      "bytes": 886231
     }
   ]
 }

@@ -45,7 +45,7 @@ func main() {
 	cfg.Seal()
 
 	if len(os.Args) < 2 {
-		die("usage: shielder-e2e-helper {pubkey|receipt|commitments|protocol-bond-commitment|merkle-root|withdrawal|shield-withdrawal}")
+		die("usage: shielder-e2e-helper {pubkey|receipt|commitments|merkle-root|withdrawal|withdrawal-policy|shield-withdrawal}")
 	}
 	switch os.Args[1] {
 	case "receipt-simple":
@@ -203,36 +203,6 @@ func main() {
 			die("%v", err)
 		}
 		fmt.Println(string(bz))
-	case "protocol-bond-commitment":
-		if len(os.Args) != 8 {
-			die("usage: shielder-e2e-helper protocol-bond-commitment [deposit-id] [operator-pubkey] [node-pubkey] [node-slot] [denomination-sats] [vault-pubkey]")
-		}
-		var slot, amount uint64
-		if _, err := fmt.Sscanf(os.Args[5], "%d", &slot); err != nil {
-			die("invalid node-slot: %v", err)
-		}
-		if _, err := fmt.Sscanf(os.Args[6], "%d", &amount); err != nil {
-			die("invalid denomination-sats: %v", err)
-		}
-		raw := fmt.Sprintf("thornado:bond-commitment:v1|%s|%s|%s|%d|%d|%d|%s",
-			os.Args[2], os.Args[3], os.Args[4], slot, amount, 0, os.Args[7])
-		sum := sha256.Sum256([]byte(raw))
-		receiptJSON, err := shielder.DeriveShieldReceipt(strings.ToUpper(hex.EncodeToString(sum[:])), amount, strings.ToUpper(hex.EncodeToString(sum[:])))
-		if err != nil {
-			die("%v", err)
-		}
-		var receipt struct {
-			Notes []struct {
-				Commitment string `json:"commitment"`
-			} `json:"notes"`
-		}
-		if err := json.Unmarshal([]byte(receiptJSON), &receipt); err != nil {
-			die("%v", err)
-		}
-		if len(receipt.Notes) == 0 {
-			die("missing protocol note")
-		}
-		fmt.Println(strings.ToUpper(strings.TrimSpace(receipt.Notes[0].Commitment)))
 	case "commitment-objects":
 		if len(os.Args) != 3 {
 			die("usage: shielder-e2e-helper commitment-objects [receipt-json]")
@@ -270,11 +240,19 @@ func main() {
 		if len(os.Args) != 3 {
 			die("usage: shielder-e2e-helper merkle-root [leaves-json]")
 		}
-		out, err := shielder.MerkleRoot(os.Args[2])
+		rootHex, err := shielder.MerkleRoot(os.Args[2])
 		if err != nil {
 			die("%v", err)
 		}
-		fmt.Println(out)
+		root := strings.TrimPrefix(strings.TrimSpace(rootHex), "0x")
+		raw, err := hex.DecodeString(root)
+		if err != nil {
+			die("invalid merkle root: %v", err)
+		}
+		for left, right := 0, len(raw)-1; left < right; left, right = left+1, right-1 {
+			raw[left], raw[right] = raw[right], raw[left]
+		}
+		fmt.Println(new(big.Int).SetBytes(raw).String())
 	case "withdrawal":
 		if len(os.Args) != 7 {
 			die("usage: shielder-e2e-helper withdrawal [note-json] [client-seed] [leaves-json] [recipient] [fee-sats]")
@@ -288,6 +266,47 @@ func main() {
 			die("%v", err)
 		}
 		fmt.Println(out)
+	case "withdrawal-policy":
+		if len(os.Args) != 10 {
+			die("usage: shielder-e2e-helper withdrawal-policy [note-json] [client-seed] [leaves-json] [recipient] [fee-sats] [recipient-policy] [node-pubkey] [bid-id]")
+		}
+		var fee uint64
+		if _, err := fmt.Sscanf(os.Args[6], "%d", &fee); err != nil {
+			die("invalid fee-sats: %v", err)
+		}
+		out, err := shielder.ShielderWithdrawalFromReceipt(os.Args[2], os.Args[3], os.Args[4], os.Args[5], fee)
+		if err != nil {
+			die("%v", err)
+		}
+		var pair []json.RawMessage
+		if err := json.Unmarshal([]byte(out), &pair); err != nil {
+			die("invalid withdrawal json: %v", err)
+		}
+		if len(pair) != 2 {
+			die("withdrawal json must be [proof, public]")
+		}
+		var public map[string]any
+		if err := json.Unmarshal(pair[1], &public); err != nil {
+			die("invalid public json: %v", err)
+		}
+		if policy := strings.TrimSpace(os.Args[7]); policy != "" {
+			public["recipient_policy"] = policy
+		}
+		if nodePubKey := strings.TrimSpace(os.Args[8]); nodePubKey != "" {
+			public["node_pub_key"] = nodePubKey
+		}
+		if bidID := strings.TrimSpace(os.Args[9]); bidID != "" {
+			public["bid_id"] = bidID
+		}
+		patched, err := json.Marshal(public)
+		if err != nil {
+			die("%v", err)
+		}
+		next, err := json.Marshal([]json.RawMessage{pair[0], patched})
+		if err != nil {
+			die("%v", err)
+		}
+		fmt.Println(string(next))
 	case "shield-withdrawal":
 		if len(os.Args) != 4 {
 			die("usage: shielder-e2e-helper shield-withdrawal [withdrawal-json] [out-prefix]")

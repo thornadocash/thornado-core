@@ -251,6 +251,25 @@ func (s *BitcoinSuite) TestExtractTxsDoesNotToggleObservedTxCache(c *C) {
 	c.Assert(thirdScan.TxArray, HasLen, 0)
 }
 
+func (s *BitcoinSuite) TestExtractTxsPromotesMempoolObservationToFinal(c *C) {
+	block, err := s.client.getBlock(0)
+	c.Assert(err, IsNil)
+	txid := "24ed2d26fd5d4e0e8fa86633e40faf1bdfc8d1903b1cd02855286312d48818a2"
+	s.markFixtureTxToBaseAddress(c, block, txid)
+
+	_, _, err = s.client.temporalStorage.TrackObservedTxStage(txid, ObservedTxStageMempool)
+	c.Assert(err, IsNil)
+
+	finalScan, err := s.client.extractTxs(block)
+	c.Assert(err, IsNil)
+	c.Assert(finalScan.TxArray, HasLen, 1)
+	c.Assert(finalScan.TxArray[0].Tx, Equals, txid)
+
+	duplicateFinalScan, err := s.client.extractTxs(block)
+	c.Assert(err, IsNil)
+	c.Assert(duplicateFinalScan.TxArray, HasLen, 0)
+}
+
 func (s *BitcoinSuite) markFixtureTxToBaseAddress(c *C, block *btcjson.GetBlockVerboseTxResult, txid string) {
 	baseAddresses, err := s.client.getBaseAddress()
 	c.Assert(err, IsNil)
@@ -318,7 +337,9 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 	ignored := s.client.ignoreTx(&tx, currentHeight)
 	c.Assert(ignored, Equals, false)
 
-	// tx with LockTime later than current height, so should be ignored
+	// tx with LockTime later than current height should still be inspected.
+	// Bitcoin Core handles finality for mempool/block acceptance; Bifrost's
+	// local height can lag and should not permanently skip an otherwise valid tx.
 	tx = btcjson.TxRawResult{
 		Vin: []btcjson.Vin{
 			{
@@ -344,7 +365,7 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 		LockTime: uint32(currentHeight) + 1,
 	}
 	ignored = s.client.ignoreTx(&tx, currentHeight)
-	c.Assert(ignored, Equals, true)
+	c.Assert(ignored, Equals, false)
 
 	// tx with LockTime equal to current height, so should not be ignored
 	tx = btcjson.TxRawResult{
@@ -1264,6 +1285,33 @@ func (s *BitcoinSuite) TestGetOutput(c *C) {
 	c.Assert(out.ScriptPubKey.Addresses[0], Equals, vaultAddressString)
 	c.Assert(out.Value, Equals, 1.49655603)
 
+	childPath, err := common.VaultDepositPathIndex(common.VaultDepositPathUser, 0, common.DepositPathCommitmentRoot)
+	c.Assert(err, IsNil)
+	childAddress, err := common.DeriveBTCTaprootAddress(vaultPubKey, childPath)
+	c.Assert(err, IsNil)
+	childAddressString := childAddress.String()
+	s.client.rememberVaultPath(vaultPubKey, childPath)
+	tx = btcjson.TxRawResult{
+		Vin: []btcjson.Vin{
+			{
+				Txid: "5b0876dcc027d2f0c671fc250460ee388df39697c3ff082007b6ddd9cb9a7513",
+				Vout: 1,
+			},
+		},
+		Vout: []btcjson.Vout{
+			{
+				Value: 1.49655603,
+				ScriptPubKey: btcjson.ScriptPubKeyResult{
+					Addresses: []string{childAddressString},
+				},
+			},
+		},
+	}
+	out, err = s.client.getOutput(childAddressString, &tx, true)
+	c.Assert(err, IsNil)
+	c.Assert(out.ScriptPubKey.Addresses[0], Equals, childAddressString)
+	c.Assert(out.Value, Equals, 1.49655603)
+
 	// invalid tx only multiple (positive-value) vout Addresses
 	tx = btcjson.TxRawResult{
 		Vin: []btcjson.Vin{
@@ -1292,6 +1340,129 @@ func (s *BitcoinSuite) TestGetOutput(c *C) {
 	}
 	out, err = s.client.getOutput(vaultAddressString, &tx, true)
 	c.Assert(err, NotNil)
+}
+
+func (s *BitcoinSuite) TestGetTxInObservesRegisteredPathSelfConsolidation(c *C) {
+	var vaultPubKey common.PubKey
+	var err error
+	if common.CurrentChainNetwork == common.MainNet {
+		vaultPubKey, err = common.NewPubKey("thorpub1addwnpepqwprh5vd0rrk78kd98qjruuazwvapnxft7f86w7hlf768whxytpn5quf2gs")
+	} else {
+		vaultPubKey, err = common.NewPubKey("tthorpub1addwnpepqflvfv08t6qt95lmttd6wpf3ss8wx63e9vf6fvyuj2yy6nnyna576rfzjks")
+	}
+	c.Assert(err, IsNil)
+	childPath, err := common.VaultDepositPathIndex(common.VaultDepositPathUser, 0, common.DepositPathCommitmentRoot)
+	c.Assert(err, IsNil)
+	childAddress, err := common.DeriveBTCTaprootAddress(vaultPubKey, childPath)
+	c.Assert(err, IsNil)
+	childAddressString := childAddress.String()
+	s.client.rememberVaultPath(vaultPubKey, childPath)
+
+	prevTxID := strings.Repeat("a", 64)
+	selfTxID := strings.Repeat("b", 64)
+	key := fmt.Sprintf("getrawtransaction-%s", prevTxID)
+	previous, hadPrevious := btcChainRPCs[key]
+	btcChainRPCs[key] = map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      3,
+		"error":   nil,
+		"result": map[string]interface{}{
+			"txid": prevTxID,
+			"hash": prevTxID,
+			"vin": []map[string]interface{}{
+				{"coinbase": "00", "sequence": 4294967295},
+			},
+			"vout": []map[string]interface{}{
+				{
+					"value": 1.0,
+					"n":     0,
+					"scriptPubKey": map[string]interface{}{
+						"hex":       "5120f01002397e3cb9179d41f1e25412bd29fc8d22f8fe786758aeeacf137a4cbc5f",
+						"type":      "witness_v1_taproot",
+						"addresses": []string{childAddressString},
+					},
+				},
+			},
+		},
+	}
+	defer func() {
+		if hadPrevious {
+			btcChainRPCs[key] = previous
+		} else {
+			delete(btcChainRPCs, key)
+		}
+	}()
+
+	tx := btcjson.TxRawResult{
+		Txid: selfTxID,
+		Hash: selfTxID,
+		Vin: []btcjson.Vin{
+			{
+				Txid: prevTxID,
+				Vout: 0,
+			},
+		},
+		Vout: []btcjson.Vout{
+			{
+				Value: 0.997,
+				N:     0,
+				ScriptPubKey: btcjson.ScriptPubKeyResult{
+					Addresses: []string{childAddressString},
+					Hex:       "5120f01002397e3cb9179d41f1e25412bd29fc8d22f8fe786758aeeacf137a4cbc5f",
+					Type:      "witness_v1_taproot",
+				},
+			},
+		},
+	}
+	txIn, err := s.client.getTxIn(&tx, 1024, false, nil)
+	c.Assert(err, IsNil)
+	c.Assert(txIn.IsEmpty(), Equals, false)
+	c.Assert(txIn.Tx, Equals, selfTxID)
+	c.Assert(txIn.Sender, Equals, childAddressString)
+	c.Assert(txIn.To, Equals, childAddressString)
+	c.Assert(txIn.SourceInputs, HasLen, 1)
+	c.Assert(txIn.SourceInputs[0].TxID.String(), Equals, strings.ToUpper(prevTxID))
+	c.Assert(txIn.SourceInputs[0].Vout, Equals, uint32(0))
+	c.Assert(txIn.SourceInputs[0].AmountSats, Equals, uint64(100_000_000))
+}
+
+func (s *BitcoinSuite) TestIsBaseAddressFallsBackToRegisteredVaultPath(c *C) {
+	var vaultPubKey common.PubKey
+	var err error
+	if common.CurrentChainNetwork == common.MainNet {
+		vaultPubKey, err = common.NewPubKey("thorpub1addwnpepqwprh5vd0rrk78kd98qjruuazwvapnxft7f86w7hlf768whxytpn5quf2gs")
+	} else {
+		vaultPubKey, err = common.NewPubKey("tthorpub1addwnpepqflvfv08t6qt95lmttd6wpf3ss8wx63e9vf6fvyuj2yy6nnyna576rfzjks")
+	}
+	c.Assert(err, IsNil)
+	childPath, err := common.VaultDepositPathIndex(common.VaultDepositPathUser, 0, common.DepositPathCommitmentRoot)
+	c.Assert(err, IsNil)
+	childAddress, err := common.DeriveBTCTaprootAddress(vaultPubKey, childPath)
+	c.Assert(err, IsNil)
+
+	s.client.bridge = &mockBaseBridge{}
+	s.client.rememberVaultPath(vaultPubKey, childPath)
+
+	c.Assert(s.client.isBaseAddress(childAddress.String()), Equals, true)
+}
+
+func (s *BitcoinSuite) TestIsBaseAddressAcceptsBridgeDepositAddress(c *C) {
+	var vaultPubKey common.PubKey
+	var err error
+	if common.CurrentChainNetwork == common.MainNet {
+		vaultPubKey, err = common.NewPubKey("thorpub1addwnpepqwprh5vd0rrk78kd98qjruuazwvapnxft7f86w7hlf768whxytpn5quf2gs")
+	} else {
+		vaultPubKey, err = common.NewPubKey("tthorpub1addwnpepqflvfv08t6qt95lmttd6wpf3ss8wx63e9vf6fvyuj2yy6nnyna576rfzjks")
+	}
+	c.Assert(err, IsNil)
+	childPath, err := common.VaultDepositPathIndex(common.VaultDepositPathUser, 1, common.DepositPathCommitmentRoot)
+	c.Assert(err, IsNil)
+	childAddress, err := common.DeriveBTCTaprootAddress(vaultPubKey, childPath)
+	c.Assert(err, IsNil)
+
+	s.client.bridge = &mockBaseBridge{depositAddr: childAddress}
+
+	c.Assert(s.client.isBaseAddress(childAddress.String()), Equals, true)
 }
 
 func (s *BitcoinSuite) TestIsValidUTXO(c *C) {

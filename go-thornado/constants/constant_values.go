@@ -92,7 +92,6 @@ const (
 	Vault_RetiredRecoveryAttemptsMax
 
 	Withdrawal_FeeBasisPoints
-	Withdrawal_FeeMinSats
 	Withdrawal_BatchWindowMinutes
 )
 

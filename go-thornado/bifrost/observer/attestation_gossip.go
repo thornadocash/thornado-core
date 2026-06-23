@@ -3,6 +3,7 @@ package observer
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"sync"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/config"
 	"github.com/thornadocash/go-thornado/x/thornado/ebifrost"
+	thornadotypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 const (
@@ -82,10 +84,35 @@ var (
 type txKey struct {
 	Chain                  common.Chain
 	ID                     common.TxID
+	ObservedPubKey         common.PubKey
 	UniqueHash             string
 	AllowFutureObservation bool
 	Finalized              bool
 	Inbound                bool
+}
+
+func newObservedTxKey(tx common.ObservedTx, inbound, allowFutureObservation bool) txKey {
+	uniqueHash := ""
+	if tx.Tx.ID.IsEmpty() {
+		uniqueHash = tx.Tx.Hash(tx.BlockHeight)
+	}
+	if tx.IsFinal() {
+		allowFutureObservation = false
+	}
+	signBz, err := tx.GetSignablePayloadWithInbound(inbound)
+	if err == nil {
+		payloadHash := sha256.Sum256(signBz)
+		uniqueHash = fmt.Sprintf("%X", payloadHash[:])
+	}
+	return txKey{
+		Chain:                  tx.Tx.Chain,
+		ID:                     tx.Tx.ID,
+		ObservedPubKey:         tx.ObservedPubKey,
+		UniqueHash:             uniqueHash,
+		AllowFutureObservation: allowFutureObservation,
+		Finalized:              tx.IsFinal(),
+		Inbound:                inbound,
+	}
 }
 
 type attestableObservedTx struct {
@@ -356,7 +383,7 @@ func (s *AttestationGossip) handleQuorumTxCommitted(en *ebifrost.EventNotificati
 		return
 	}
 
-	if s.observerHandleObservedTxCommitted != nil {
+	if s.observerHandleObservedTxCommitted != nil && s.shouldNotifyObserverObservedTxCommitted(qtx) {
 		// if our attestation is in the quorum tx, we can remove it from our observer deck.
 		for _, att := range qtx.Attestations {
 			if bytes.Equal(att.PubKey, s.pubKey) {
@@ -368,14 +395,7 @@ func (s *AttestationGossip) handleQuorumTxCommitted(en *ebifrost.EventNotificati
 		}
 	}
 
-	k := txKey{
-		Chain:                  qtx.ObsTx.Tx.Chain,
-		ID:                     qtx.ObsTx.Tx.ID,
-		UniqueHash:             qtx.ObsTx.Tx.Hash(qtx.ObsTx.BlockHeight),
-		AllowFutureObservation: qtx.AllowFutureObservation,
-		Inbound:                qtx.Inbound,
-		Finalized:              qtx.ObsTx.IsFinal(),
-	}
+	k := newObservedTxKey(qtx.ObsTx, qtx.Inbound, qtx.AllowFutureObservation)
 
 	s.mu.Lock()
 	as, ok := s.observedTxs[k]
@@ -391,6 +411,17 @@ func (s *AttestationGossip) handleQuorumTxCommitted(en *ebifrost.EventNotificati
 
 	defer as.mu.Unlock()
 	as.MarkAttestationsCommitted(qtx.Attestations)
+}
+
+func (s *AttestationGossip) shouldNotifyObserverObservedTxCommitted(qtx common.QuorumTx) bool {
+	if !qtx.ObsTx.IsFinal() {
+		return true
+	}
+	total := s.activeValidatorCount()
+	if total == 0 {
+		return false
+	}
+	return thornadotypes.HasSuperMajority(len(qtx.Attestations), total)
 }
 
 // Handle a committed quorum network fee event

@@ -3,6 +3,7 @@ package pubkeymanager
 import (
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/cometbft/cometbft/crypto/secp256k1"
 	"github.com/rs/zerolog"
@@ -25,7 +26,9 @@ func TestAddPubKeyRegistersBaseVaultBeforeDepositLookahead(t *testing.T) {
 	}
 
 	var mu sync.Mutex
+	var depositOnce sync.Once
 	var order []string
+	depositCallback := make(chan struct{})
 	pkm.RegisterCallback(func(common.PubKey) error {
 		mu.Lock()
 		defer mu.Unlock()
@@ -40,17 +43,82 @@ func TestAddPubKeyRegistersBaseVaultBeforeDepositLookahead(t *testing.T) {
 		mu.Lock()
 		defer mu.Unlock()
 		order = append(order, "first-deposit")
+		depositOnce.Do(func() {
+			close(depositCallback)
+		})
 		return nil
 	})
 
 	pkm.AddPubKey(pk, true, common.SigningAlgoSecp256k1)
 
 	mu.Lock()
-	defer mu.Unlock()
-	if len(order) < 2 {
-		t.Fatalf("expected base and deposit callbacks, got %v", order)
+	if len(order) < 1 {
+		t.Fatalf("expected base callback, got %v", order)
 	}
 	if order[0] != "base" {
+		mu.Unlock()
 		t.Fatalf("expected base callback first, got %v", order)
+	}
+	mu.Unlock()
+
+	select {
+	case <-depositCallback:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for deposit lookahead callback")
+	}
+}
+
+func TestRegisterCallbacksReplayExistingSecpVault(t *testing.T) {
+	pk, err := common.NewPubKeyFromCrypto(secp256k1.GenPrivKey().PubKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pkm := &PubKeyManager{
+		rwMutex:        &sync.RWMutex{},
+		logger:         zerolog.Nop(),
+		callback:       []OnNewPubKey{},
+		pathCallback:   []OnNewPubKeyPath{},
+		vaultAddresses: map[string]common.ChainVaultInfo{},
+		pubkeys: []pubKeyInfo{{
+			PubKey: pk,
+			Signer: true,
+			Algo:   common.SigningAlgoSecp256k1,
+		}},
+	}
+
+	baseReplay := make(chan struct{})
+	pkm.RegisterCallback(func(got common.PubKey) error {
+		if got.Equals(pk) {
+			close(baseReplay)
+		}
+		return nil
+	})
+
+	select {
+	case <-baseReplay:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for base callback replay")
+	}
+
+	firstUserPath, err := common.VaultDepositPathIndex(common.VaultDepositPathUser, 0, common.DepositPathCommitmentRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pathReplay := make(chan struct{})
+	var pathOnce sync.Once
+	pkm.RegisterPathCallback(func(got common.PubKey, pathIndex uint64) error {
+		if got.Equals(pk) && pathIndex == firstUserPath {
+			pathOnce.Do(func() {
+				close(pathReplay)
+			})
+		}
+		return nil
+	})
+
+	select {
+	case <-pathReplay:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for path callback replay")
 	}
 }

@@ -63,6 +63,11 @@ func (h ConfigHandler) validate(ctx cosmos.Context, msg MsgConfig) error {
 
 func (h ConfigHandler) handle(ctx cosmos.Context, msg MsgConfig) error {
 	ctx.Logger().Info("handleMsgConfig request", "node", msg.Signer, "key", msg.Key, "value", msg.Value)
+	nodeAccount, err := resolveActiveNodeAccountBySigner(ctx, h.mgr.Keeper(), msg.Signer)
+	if err != nil {
+		ctx.Logger().Error("fail to resolve node account", "error", err, "address", msg.Signer.String())
+		return cosmos.ErrUnauthorized(fmt.Sprintf("%s is not authorized", msg.Signer))
+	}
 
 	// Get the current Config key value if it exists.
 	currentConfigValue, _ := h.mgr.Keeper().GetConfig(ctx, msg.Key)
@@ -70,15 +75,11 @@ func (h ConfigHandler) handle(ctx cosmos.Context, msg MsgConfig) error {
 
 	// Authorization and emitting of SetNodeConfig, even if a duplicate
 	// (for instance if needed to confirm a new supermajority after a node number decrease).
-	if _, err := h.mgr.Keeper().GetNodeAccount(ctx, msg.Signer); err != nil {
-		ctx.Logger().Error("fail to get node account", "error", err, "address", msg.Signer.String())
-		return cosmos.ErrUnauthorized(fmt.Sprintf("%s is not authorized", msg.Signer))
-	}
-	if err := h.mgr.Keeper().SetNodeConfig(ctx, msg.Key, msg.Value, msg.Signer); err != nil {
+	if err := h.mgr.Keeper().SetNodeConfig(ctx, msg.Key, msg.Value, nodeAccount.NodeAddress); err != nil {
 		ctx.Logger().Error("fail to save node config", "error", err)
 		return err
 	}
-	nodeConfigEvent := NewEventSetNodeConfig(strings.ToUpper(msg.Key), strconv.FormatInt(msg.Value, 10), msg.Signer.String())
+	nodeConfigEvent := NewEventSetNodeConfig(strings.ToUpper(msg.Key), strconv.FormatInt(msg.Value, 10), nodeAccount.NodeAddress.String())
 	if err := h.mgr.EventMgr().EmitEvent(ctx, nodeConfigEvent); err != nil {
 		ctx.Logger().Error("fail to emit set_node_config event", "error", err)
 		return err
@@ -136,7 +137,7 @@ func (h ConfigHandler) handle(ctx cosmos.Context, msg MsgConfig) error {
 }
 
 func validateConfigAuth(ctx cosmos.Context, k keeper.Keeper, msg MsgConfig) (cosmos.Context, error) {
-	return activeNodeAccountsSignerPriority(ctx, k, msg.GetSigners())
+	return activeOperationalNodeSignerPriority(ctx, k, msg.GetSigners())
 }
 
 // ConfigAnteHandler called by the ante handler to gate mempool entry

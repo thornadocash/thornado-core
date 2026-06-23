@@ -30,6 +30,7 @@ func GetTxCmd() *cobra.Command {
 		RunE:                       client.ValidateCmd,
 	}
 
+	cmd.AddCommand(GetCmdNodeOperator())
 	cmd.AddCommand(GetCmdSetNodeKeys())
 	cmd.AddCommand(GetCmdSetVersion())
 	cmd.AddCommand(GetCmdProposeUpgrade())
@@ -392,9 +393,9 @@ func GetCmdRejectUpgrade() *cobra.Command {
 // GetCmdSetNodeKeys command to add a node keys
 func GetCmdSetNodeKeys() *cobra.Command {
 	return &cobra.Command{
-		Use:   "set-node-keys  [secp256k1] [ed25519] [node_consensus_pub_key]",
+		Use:   "set-node-keys  [secp256k1] [node_consensus_pub_key]",
 		Short: "set node keys, the account use to sign this tx has to be whitelist first",
-		Args:  cobra.ExactArgs(3),
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
@@ -405,12 +406,8 @@ func GetCmdSetNodeKeys() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("fail to parse secp256k1 pub key ,err:%w", err)
 			}
-			ed25519Key, err := common.NewPubKey(args[1])
-			if err != nil {
-				return fmt.Errorf("fail to parse ed25519 pub key ,err:%w", err)
-			}
-			pk := common.NewPubKeySet(secp256k1Key, ed25519Key)
-			nodeConsPubKey, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, args[2])
+			pk := common.NewPubKeySet(secp256k1Key)
+			nodeConsPubKey, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, args[1])
 			if err != nil {
 				return fmt.Errorf("fail to parse node consensus public key: %w", err)
 			}

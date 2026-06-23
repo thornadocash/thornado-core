@@ -189,6 +189,19 @@ func (s *AttestationState[T]) UnsentAttestations() []*common.Attestation {
 	return unsent
 }
 
+// UncommittedAttestations returns all attestations that have not been confirmed
+// in a chain block yet. Quorum submissions must include the full pending set so
+// the state machine can verify quorum in one injected message.
+func (s *AttestationState[T]) UncommittedAttestations() []*common.Attestation {
+	atts := make([]*common.Attestation, 0, len(s.attestations))
+	for _, item := range s.attestations {
+		if !item.committed {
+			atts = append(atts, item.attestation)
+		}
+	}
+	return atts
+}
+
 // AttestationsCopy returns a deep copy of all attestations
 func (s *AttestationState[T]) AttestationsCopy() []*common.Attestation {
 	atts := make([]*common.Attestation, 0, len(s.attestations))

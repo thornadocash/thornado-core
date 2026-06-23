@@ -294,6 +294,14 @@ func (s *queryServer) DepositSession(c context.Context, req *types.QueryDepositS
 	return s.queryDepositSession(ctx, req)
 }
 
+func (s *queryServer) DepositAddressTxs(c context.Context, req *types.QueryDepositAddressTxsRequest) (*types.QueryDepositAddressTxsResponse, error) {
+	if err := checkHeightParam(req.Height); err != nil {
+		return nil, err
+	}
+	ctx := s.unwrapSdkContext(c)
+	return s.queryDepositAddressTxs(ctx, req)
+}
+
 func (s *queryServer) NodeBond(c context.Context, req *types.QueryNodeBondRequest) (*types.QueryNodeBondResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err

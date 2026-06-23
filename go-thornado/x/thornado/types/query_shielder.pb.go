@@ -85,6 +85,13 @@ type QueryShielderRedeemResponse struct {
 	VaultPubKey     string `protobuf:"bytes,8,opt,name=vault_pub_key,json=vaultPubKey,proto3" json:"vault_pub_key,omitempty"`
 	RequestedHeight int64  `protobuf:"varint,9,opt,name=requested_height,json=requestedHeight,proto3" json:"requested_height,omitempty"`
 	Status          string `protobuf:"bytes,10,opt,name=status,proto3" json:"status,omitempty"`
+	TxoutStatus     string `protobuf:"bytes,11,opt,name=txout_status,json=txoutStatus,proto3" json:"txout_status,omitempty"`
+	TxoutHeight     int64  `protobuf:"varint,12,opt,name=txout_height,json=txoutHeight,proto3" json:"txout_height,omitempty"`
+	TxoutEpoch      uint64 `protobuf:"varint,13,opt,name=txout_epoch,json=txoutEpoch,proto3" json:"txout_epoch,omitempty"`
+	TxType          string `protobuf:"bytes,14,opt,name=tx_type,json=txType,proto3" json:"tx_type,omitempty"`
+	OutHash         string `protobuf:"bytes,15,opt,name=out_hash,json=outHash,proto3" json:"out_hash,omitempty"`
+	OutVout         uint32 `protobuf:"varint,16,opt,name=out_vout,json=outVout,proto3" json:"out_vout,omitempty"`
+	Outpoint        string `protobuf:"bytes,17,opt,name=outpoint,proto3" json:"outpoint,omitempty"`
 }
 
 func (m *QueryShielderRedeemResponse) Reset()         { *m = QueryShielderRedeemResponse{} }
@@ -190,6 +197,55 @@ func (m *QueryShielderRedeemResponse) GetStatus() string {
 	return ""
 }
 
+func (m *QueryShielderRedeemResponse) GetTxoutStatus() string {
+	if m != nil {
+		return m.TxoutStatus
+	}
+	return ""
+}
+
+func (m *QueryShielderRedeemResponse) GetTxoutHeight() int64 {
+	if m != nil {
+		return m.TxoutHeight
+	}
+	return 0
+}
+
+func (m *QueryShielderRedeemResponse) GetTxoutEpoch() uint64 {
+	if m != nil {
+		return m.TxoutEpoch
+	}
+	return 0
+}
+
+func (m *QueryShielderRedeemResponse) GetTxType() string {
+	if m != nil {
+		return m.TxType
+	}
+	return ""
+}
+
+func (m *QueryShielderRedeemResponse) GetOutHash() string {
+	if m != nil {
+		return m.OutHash
+	}
+	return ""
+}
+
+func (m *QueryShielderRedeemResponse) GetOutVout() uint32 {
+	if m != nil {
+		return m.OutVout
+	}
+	return 0
+}
+
+func (m *QueryShielderRedeemResponse) GetOutpoint() string {
+	if m != nil {
+		return m.Outpoint
+	}
+	return ""
+}
+
 type QueryShielderNullifierRequest struct {
 	NullifierHash string `protobuf:"bytes,1,opt,name=nullifier_hash,json=nullifierHash,proto3" json:"nullifier_hash,omitempty"`
 	Height        string `protobuf:"bytes,2,opt,name=height,proto3" json:"height,omitempty"`
@@ -243,9 +299,20 @@ func (m *QueryShielderNullifierRequest) GetHeight() string {
 }
 
 type QueryShielderNullifierResponse struct {
-	NullifierHash string `protobuf:"bytes,1,opt,name=nullifier_hash,json=nullifierHash,proto3" json:"nullifier_hash,omitempty"`
-	Spent         bool   `protobuf:"varint,2,opt,name=spent,proto3" json:"spent,omitempty"`
-	WithdrawalId  string `protobuf:"bytes,3,opt,name=withdrawal_id,json=withdrawalId,proto3" json:"withdrawal_id,omitempty"`
+	NullifierHash    string `protobuf:"bytes,1,opt,name=nullifier_hash,json=nullifierHash,proto3" json:"nullifier_hash,omitempty"`
+	Spent            bool   `protobuf:"varint,2,opt,name=spent,proto3" json:"spent,omitempty"`
+	WithdrawalId     string `protobuf:"bytes,3,opt,name=withdrawal_id,json=withdrawalId,proto3" json:"withdrawal_id,omitempty"`
+	WithdrawalStatus string `protobuf:"bytes,4,opt,name=withdrawal_status,json=withdrawalStatus,proto3" json:"withdrawal_status,omitempty"`
+	AmountSats       uint64 `protobuf:"varint,5,opt,name=amount_sats,json=amountSats,proto3" json:"amount_sats,omitempty"`
+	FeeSats          uint64 `protobuf:"varint,6,opt,name=fee_sats,json=feeSats,proto3" json:"fee_sats,omitempty"`
+	InHash           string `protobuf:"bytes,7,opt,name=in_hash,json=inHash,proto3" json:"in_hash,omitempty"`
+	TxoutStatus      string `protobuf:"bytes,8,opt,name=txout_status,json=txoutStatus,proto3" json:"txout_status,omitempty"`
+	TxoutHeight      int64  `protobuf:"varint,9,opt,name=txout_height,json=txoutHeight,proto3" json:"txout_height,omitempty"`
+	TxoutEpoch       uint64 `protobuf:"varint,10,opt,name=txout_epoch,json=txoutEpoch,proto3" json:"txout_epoch,omitempty"`
+	TxType           string `protobuf:"bytes,11,opt,name=tx_type,json=txType,proto3" json:"tx_type,omitempty"`
+	OutHash          string `protobuf:"bytes,12,opt,name=out_hash,json=outHash,proto3" json:"out_hash,omitempty"`
+	OutVout          uint32 `protobuf:"varint,13,opt,name=out_vout,json=outVout,proto3" json:"out_vout,omitempty"`
+	Outpoint         string `protobuf:"bytes,14,opt,name=outpoint,proto3" json:"outpoint,omitempty"`
 }
 
 func (m *QueryShielderNullifierResponse) Reset()         { *m = QueryShielderNullifierResponse{} }
@@ -298,6 +365,83 @@ func (m *QueryShielderNullifierResponse) GetSpent() bool {
 func (m *QueryShielderNullifierResponse) GetWithdrawalId() string {
 	if m != nil {
 		return m.WithdrawalId
+	}
+	return ""
+}
+
+func (m *QueryShielderNullifierResponse) GetWithdrawalStatus() string {
+	if m != nil {
+		return m.WithdrawalStatus
+	}
+	return ""
+}
+
+func (m *QueryShielderNullifierResponse) GetAmountSats() uint64 {
+	if m != nil {
+		return m.AmountSats
+	}
+	return 0
+}
+
+func (m *QueryShielderNullifierResponse) GetFeeSats() uint64 {
+	if m != nil {
+		return m.FeeSats
+	}
+	return 0
+}
+
+func (m *QueryShielderNullifierResponse) GetInHash() string {
+	if m != nil {
+		return m.InHash
+	}
+	return ""
+}
+
+func (m *QueryShielderNullifierResponse) GetTxoutStatus() string {
+	if m != nil {
+		return m.TxoutStatus
+	}
+	return ""
+}
+
+func (m *QueryShielderNullifierResponse) GetTxoutHeight() int64 {
+	if m != nil {
+		return m.TxoutHeight
+	}
+	return 0
+}
+
+func (m *QueryShielderNullifierResponse) GetTxoutEpoch() uint64 {
+	if m != nil {
+		return m.TxoutEpoch
+	}
+	return 0
+}
+
+func (m *QueryShielderNullifierResponse) GetTxType() string {
+	if m != nil {
+		return m.TxType
+	}
+	return ""
+}
+
+func (m *QueryShielderNullifierResponse) GetOutHash() string {
+	if m != nil {
+		return m.OutHash
+	}
+	return ""
+}
+
+func (m *QueryShielderNullifierResponse) GetOutVout() uint32 {
+	if m != nil {
+		return m.OutVout
+	}
+	return 0
+}
+
+func (m *QueryShielderNullifierResponse) GetOutpoint() string {
+	if m != nil {
+		return m.Outpoint
 	}
 	return ""
 }
@@ -355,8 +499,19 @@ func (m *ShielderNoteRecord) GetDenominationSats() uint64 {
 }
 
 type ShielderSpentNullifier struct {
-	NullifierHash string `protobuf:"bytes,1,opt,name=nullifier_hash,json=nullifierHash,proto3" json:"nullifier_hash,omitempty"`
-	WithdrawalId  string `protobuf:"bytes,2,opt,name=withdrawal_id,json=withdrawalId,proto3" json:"withdrawal_id,omitempty"`
+	NullifierHash    string `protobuf:"bytes,1,opt,name=nullifier_hash,json=nullifierHash,proto3" json:"nullifier_hash,omitempty"`
+	WithdrawalId     string `protobuf:"bytes,2,opt,name=withdrawal_id,json=withdrawalId,proto3" json:"withdrawal_id,omitempty"`
+	WithdrawalStatus string `protobuf:"bytes,3,opt,name=withdrawal_status,json=withdrawalStatus,proto3" json:"withdrawal_status,omitempty"`
+	AmountSats       uint64 `protobuf:"varint,4,opt,name=amount_sats,json=amountSats,proto3" json:"amount_sats,omitempty"`
+	FeeSats          uint64 `protobuf:"varint,5,opt,name=fee_sats,json=feeSats,proto3" json:"fee_sats,omitempty"`
+	InHash           string `protobuf:"bytes,6,opt,name=in_hash,json=inHash,proto3" json:"in_hash,omitempty"`
+	TxoutStatus      string `protobuf:"bytes,7,opt,name=txout_status,json=txoutStatus,proto3" json:"txout_status,omitempty"`
+	TxoutHeight      int64  `protobuf:"varint,8,opt,name=txout_height,json=txoutHeight,proto3" json:"txout_height,omitempty"`
+	TxoutEpoch       uint64 `protobuf:"varint,9,opt,name=txout_epoch,json=txoutEpoch,proto3" json:"txout_epoch,omitempty"`
+	TxType           string `protobuf:"bytes,10,opt,name=tx_type,json=txType,proto3" json:"tx_type,omitempty"`
+	OutHash          string `protobuf:"bytes,11,opt,name=out_hash,json=outHash,proto3" json:"out_hash,omitempty"`
+	OutVout          uint32 `protobuf:"varint,12,opt,name=out_vout,json=outVout,proto3" json:"out_vout,omitempty"`
+	Outpoint         string `protobuf:"bytes,13,opt,name=outpoint,proto3" json:"outpoint,omitempty"`
 }
 
 func (m *ShielderSpentNullifier) Reset()         { *m = ShielderSpentNullifier{} }
@@ -402,6 +557,83 @@ func (m *ShielderSpentNullifier) GetNullifierHash() string {
 func (m *ShielderSpentNullifier) GetWithdrawalId() string {
 	if m != nil {
 		return m.WithdrawalId
+	}
+	return ""
+}
+
+func (m *ShielderSpentNullifier) GetWithdrawalStatus() string {
+	if m != nil {
+		return m.WithdrawalStatus
+	}
+	return ""
+}
+
+func (m *ShielderSpentNullifier) GetAmountSats() uint64 {
+	if m != nil {
+		return m.AmountSats
+	}
+	return 0
+}
+
+func (m *ShielderSpentNullifier) GetFeeSats() uint64 {
+	if m != nil {
+		return m.FeeSats
+	}
+	return 0
+}
+
+func (m *ShielderSpentNullifier) GetInHash() string {
+	if m != nil {
+		return m.InHash
+	}
+	return ""
+}
+
+func (m *ShielderSpentNullifier) GetTxoutStatus() string {
+	if m != nil {
+		return m.TxoutStatus
+	}
+	return ""
+}
+
+func (m *ShielderSpentNullifier) GetTxoutHeight() int64 {
+	if m != nil {
+		return m.TxoutHeight
+	}
+	return 0
+}
+
+func (m *ShielderSpentNullifier) GetTxoutEpoch() uint64 {
+	if m != nil {
+		return m.TxoutEpoch
+	}
+	return 0
+}
+
+func (m *ShielderSpentNullifier) GetTxType() string {
+	if m != nil {
+		return m.TxType
+	}
+	return ""
+}
+
+func (m *ShielderSpentNullifier) GetOutHash() string {
+	if m != nil {
+		return m.OutHash
+	}
+	return ""
+}
+
+func (m *ShielderSpentNullifier) GetOutVout() uint32 {
+	if m != nil {
+		return m.OutVout
+	}
+	return 0
+}
+
+func (m *ShielderSpentNullifier) GetOutpoint() string {
+	if m != nil {
+		return m.Outpoint
 	}
 	return ""
 }
@@ -742,60 +974,71 @@ func init() {
 func init() { proto.RegisterFile("types/query_shielder.proto", fileDescriptor_3899a1cdae832244) }
 
 var fileDescriptor_3899a1cdae832244 = []byte{
-	// 845 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x55, 0xc1, 0x6e, 0xdb, 0x46,
-	0x10, 0x35, 0x25, 0xcb, 0x96, 0xc7, 0x91, 0xad, 0xb0, 0x6d, 0x4a, 0x39, 0x8d, 0x2c, 0xa8, 0x28,
-	0x20, 0xa3, 0xa8, 0x04, 0xa4, 0x05, 0x7a, 0xea, 0x25, 0xf5, 0x21, 0x45, 0x11, 0x21, 0xa1, 0x4f,
-	0xcd, 0xa1, 0xc4, 0x4a, 0x1c, 0x99, 0x8b, 0x88, 0xbb, 0x0c, 0x77, 0xd9, 0x44, 0xd7, 0x7e, 0x41,
-	0xff, 0xa7, 0xe7, 0x02, 0x3d, 0xe6, 0xd8, 0x63, 0x60, 0xf7, 0x43, 0x8a, 0x9d, 0x5d, 0x52, 0x92,
-	0x25, 0xa1, 0x3e, 0xee, 0x9b, 0x37, 0x3b, 0x3b, 0xef, 0x0d, 0x87, 0x70, 0xa6, 0x17, 0x19, 0xaa,
-	0xd1, 0xdb, 0x02, 0xf3, 0x45, 0xa4, 0x12, 0x8e, 0xf3, 0x18, 0xf3, 0x61, 0x96, 0x4b, 0x2d, 0xfd,
-	0x06, 0xc5, 0xce, 0x3a, 0xab, 0x94, 0x18, 0x33, 0xa9, 0xb8, 0xb6, 0x8c, 0xfe, 0x2f, 0x70, 0xf6,
-	0xca, 0xc0, 0x57, 0x2e, 0x31, 0xc4, 0x18, 0x31, 0x0d, 0xf1, 0x6d, 0x81, 0x4a, 0xfb, 0x5f, 0x42,
-	0xeb, 0x1d, 0xd7, 0x49, 0x9c, 0xb3, 0x77, 0x6c, 0x1e, 0xf1, 0x38, 0xf0, 0x7a, 0xde, 0xe0, 0x28,
-	0x7c, 0xb0, 0x04, 0x7f, 0x8a, 0xfd, 0x47, 0x70, 0x90, 0x20, 0xbf, 0x4e, 0x74, 0x50, 0xa3, 0xa8,
-	0x3b, 0xf5, 0xff, 0xad, 0xc1, 0xe3, 0xad, 0x77, 0xab, 0x4c, 0x0a, 0x85, 0xf7, 0xbb, 0xfc, 0x2b,
-	0x38, 0x11, 0xc5, 0x7c, 0xce, 0x67, 0x1c, 0xf3, 0x28, 0x61, 0x2a, 0x71, 0x45, 0x5a, 0x15, 0xfa,
-	0x9c, 0xa9, 0xc4, 0x3f, 0x87, 0xe3, 0x14, 0xf3, 0x37, 0x73, 0x8c, 0x72, 0x29, 0x75, 0x50, 0x27,
-	0x0e, 0x58, 0x28, 0x94, 0x52, 0xfb, 0x5f, 0xc0, 0x51, 0x8e, 0x53, 0x9e, 0x71, 0x14, 0x3a, 0xd8,
-	0xa7, 0xf0, 0x12, 0x30, 0xe9, 0x2c, 0x95, 0x85, 0xd0, 0x91, 0x62, 0x5a, 0x05, 0x8d, 0x9e, 0x37,
-	0xd8, 0x0f, 0xc1, 0x42, 0x57, 0x4c, 0x2b, 0xbf, 0x03, 0xcd, 0x19, 0xa2, 0x8d, 0x1e, 0x50, 0xf4,
-	0x70, 0x86, 0x48, 0xa1, 0xcf, 0xe1, 0x90, 0x0b, 0xfb, 0xb4, 0x43, 0xdb, 0x3f, 0x17, 0xf4, 0xa6,
-	0x3e, 0xb4, 0x7e, 0x63, 0xc5, 0x5c, 0x47, 0x59, 0x31, 0x89, 0xde, 0xe0, 0x22, 0x68, 0x52, 0xf8,
-	0x98, 0xc0, 0x97, 0xc5, 0xe4, 0x67, 0x5c, 0xf8, 0x17, 0xd0, 0xce, 0xad, 0xd6, 0x18, 0x47, 0x4e,
-	0xc5, 0xa3, 0x9e, 0x37, 0xa8, 0x87, 0xa7, 0x15, 0xfe, 0x9c, 0x60, 0x23, 0xb3, 0xd2, 0x4c, 0x17,
-	0x2a, 0x00, 0x5b, 0xc6, 0x9e, 0xfa, 0xbf, 0xc2, 0x93, 0x35, 0x95, 0xc7, 0xa5, 0x30, 0xa5, 0x89,
-	0x9b, 0x12, 0x7a, 0xdb, 0x24, 0xdc, 0x65, 0xe3, 0xef, 0x1e, 0x74, 0x77, 0x15, 0x70, 0x4e, 0xde,
-	0xb3, 0xc2, 0xa7, 0xd0, 0x50, 0x99, 0xd1, 0xdf, 0x14, 0x68, 0x86, 0xf6, 0xb0, 0x39, 0x06, 0xf5,
-	0xcd, 0x31, 0xe8, 0x33, 0xf0, 0xab, 0xf2, 0x52, 0x63, 0x88, 0x53, 0x99, 0xc7, 0x7e, 0x17, 0x60,
-	0x2a, 0xd3, 0x94, 0xeb, 0xd4, 0xdc, 0x6a, 0x6b, 0xae, 0x20, 0xfe, 0xd7, 0xf0, 0x30, 0x46, 0x21,
-	0x53, 0x2e, 0x98, 0xe6, 0x52, 0x58, 0xfb, 0x6a, 0x64, 0x5f, 0x7b, 0x35, 0x60, 0x7c, 0xec, 0xc7,
-	0xf0, 0xa8, 0x2c, 0x71, 0x65, 0x1e, 0x56, 0xb5, 0x79, 0xdf, 0xf6, 0x36, 0x1a, 0xa9, 0x6d, 0x69,
-	0xe4, 0x4f, 0x0f, 0x82, 0x35, 0x35, 0xaf, 0x16, 0x62, 0x5a, 0x3a, 0xb5, 0xb4, 0xc0, 0x5b, 0xb5,
-	0xc0, 0x08, 0x37, 0xe7, 0x29, 0xd7, 0xee, 0xed, 0xf6, 0x60, 0x9e, 0xe5, 0xbe, 0xe5, 0x68, 0x5a,
-	0xe4, 0x4a, 0xe6, 0x4e, 0xb9, 0x96, 0x43, 0x7f, 0x24, 0xd0, 0xcc, 0xb6, 0x90, 0x1a, 0x4b, 0x8e,
-	0x9d, 0x7d, 0x30, 0x90, 0x23, 0x5c, 0x40, 0x7b, 0xd9, 0x9e, 0x63, 0x35, 0x88, 0x75, 0x5a, 0xe1,
-	0x96, 0xda, 0xff, 0x58, 0x87, 0xce, 0x96, 0xd7, 0xbb, 0x31, 0x18, 0x41, 0xc3, 0x5c, 0xab, 0x02,
-	0xaf, 0x57, 0x1f, 0x1c, 0x3f, 0xed, 0x0c, 0x69, 0xed, 0x0c, 0x37, 0x8d, 0x0b, 0x2d, 0xcf, 0xff,
-	0x01, 0xa0, 0xaa, 0x60, 0x8c, 0x31, 0x59, 0x4f, 0xee, 0x64, 0xad, 0x7b, 0x11, 0xae, 0x24, 0xf8,
-	0xdf, 0x43, 0xd3, 0xb5, 0xaa, 0x82, 0x3a, 0x25, 0x3f, 0x76, 0xc9, 0xf4, 0xc6, 0x4b, 0x1b, 0x2b,
-	0x9f, 0x17, 0x56, 0x64, 0x7f, 0x08, 0x9f, 0x08, 0x7c, 0xaf, 0xa3, 0x3b, 0xf2, 0x59, 0x69, 0x1e,
-	0x9a, 0xd0, 0xe5, 0x9a, 0x84, 0x03, 0x68, 0x13, 0x7f, 0x55, 0x47, 0xab, 0xd0, 0x89, 0xc1, 0xc7,
-	0x4b, 0x2d, 0x9f, 0xc2, 0x67, 0x96, 0x79, 0x57, 0xd0, 0x03, 0xa2, 0x53, 0xd9, 0xf1, 0xba, 0xa8,
-	0x66, 0xb7, 0x24, 0x4c, 0x45, 0xa9, 0xcc, 0x91, 0x36, 0x48, 0x33, 0x3c, 0x4c, 0x98, 0x7a, 0x21,
-	0x73, 0xfa, 0xb0, 0xb4, 0xd4, 0x6c, 0x1e, 0x55, 0x7d, 0x36, 0x69, 0x02, 0x5a, 0x84, 0x5e, 0x96,
-	0xfd, 0x9c, 0xc3, 0xb1, 0xa5, 0x59, 0xf9, 0x8f, 0xec, 0xfa, 0x22, 0x68, 0x4c, 0x42, 0x5f, 0x40,
-	0xdb, 0x11, 0x96, 0x72, 0x03, 0xb1, 0x4e, 0x2d, 0xab, 0x82, 0xfb, 0xaf, 0xe1, 0x7c, 0xcb, 0xd2,
-	0x7e, 0x55, 0x90, 0x79, 0x76, 0x4c, 0xef, 0x6c, 0x4b, 0x6f, 0x63, 0x5b, 0xee, 0x5a, 0x25, 0x7f,
-	0x79, 0xd0, 0xdb, 0x7d, 0xb9, 0x9b, 0xa2, 0xff, 0xbd, 0x7d, 0x75, 0x17, 0xd7, 0xd6, 0x77, 0x71,
-	0x07, 0x9a, 0x02, 0x5d, 0x62, 0xdd, 0x86, 0x04, 0xda, 0xac, 0x01, 0xb4, 0x4d, 0xd6, 0x84, 0x29,
-	0xae, 0xa2, 0x4c, 0x72, 0xa1, 0x15, 0x19, 0xbe, 0x1f, 0x9e, 0xcc, 0x10, 0x9f, 0x19, 0xf8, 0x25,
-	0xa1, 0x7e, 0x0f, 0x1e, 0x18, 0x66, 0xca, 0xc5, 0xda, 0xdf, 0x60, 0x86, 0xf8, 0x82, 0xd3, 0xaa,
-	0x78, 0x36, 0xfe, 0xfb, 0xa6, 0xeb, 0x7d, 0xb8, 0xe9, 0x7a, 0x1f, 0x6f, 0xba, 0xde, 0x1f, 0xb7,
-	0xdd, 0xbd, 0x0f, 0xb7, 0xdd, 0xbd, 0x7f, 0x6e, 0xbb, 0x7b, 0xaf, 0xbf, 0xbb, 0xe6, 0x3a, 0x29,
-	0x26, 0xc3, 0xa9, 0x4c, 0x47, 0x3a, 0x91, 0xb9, 0x60, 0xb1, 0x9c, 0x32, 0x95, 0x8c, 0xae, 0xe5,
-	0x37, 0xe5, 0x79, 0xf4, 0xbe, 0x0a, 0x8d, 0x68, 0x5c, 0x27, 0x07, 0xf4, 0x2f, 0xfe, 0xf6, 0xbf,
-	0x00, 0x00, 0x00, 0xff, 0xff, 0x21, 0x9a, 0xc1, 0x30, 0xcb, 0x07, 0x00, 0x00,
+	// 1020 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x96, 0xcf, 0x8f, 0xdb, 0x44,
+	0x14, 0xc7, 0xd7, 0x9b, 0xcd, 0x26, 0x79, 0xf9, 0xb1, 0x59, 0x03, 0xc5, 0xd9, 0xd2, 0x6c, 0x08,
+	0x42, 0xca, 0x0a, 0x91, 0x48, 0x05, 0x89, 0x13, 0x97, 0xb2, 0x48, 0x45, 0xa8, 0x51, 0xeb, 0x20,
+	0x24, 0x7a, 0xc0, 0x72, 0xe2, 0x97, 0xf5, 0xa8, 0xb1, 0xc7, 0xf5, 0x8c, 0xdb, 0xe4, 0xbf, 0xe0,
+	0xaf, 0x41, 0x48, 0x9c, 0x91, 0x38, 0xf6, 0x84, 0x38, 0x56, 0xbb, 0xff, 0x08, 0x9a, 0x1f, 0x76,
+	0x7e, 0x7a, 0x93, 0x0b, 0xc7, 0xf9, 0xbe, 0x37, 0xf3, 0x3c, 0xdf, 0xf7, 0x99, 0x19, 0xc3, 0x05,
+	0x5f, 0x44, 0xc8, 0x06, 0xaf, 0x13, 0x8c, 0x17, 0x0e, 0xf3, 0x09, 0xce, 0x3c, 0x8c, 0xfb, 0x51,
+	0x4c, 0x39, 0x35, 0x8b, 0x32, 0x76, 0xd1, 0x5a, 0x4d, 0xf1, 0x30, 0xa2, 0x8c, 0x70, 0x95, 0xd1,
+	0xfd, 0x05, 0x2e, 0x5e, 0x08, 0x79, 0xa4, 0x27, 0xda, 0xe8, 0x21, 0x06, 0x36, 0xbe, 0x4e, 0x90,
+	0x71, 0xf3, 0x33, 0xa8, 0xbf, 0x25, 0xdc, 0xf7, 0x62, 0xf7, 0xad, 0x3b, 0x73, 0x88, 0x67, 0x19,
+	0x1d, 0xa3, 0x57, 0xb1, 0x6b, 0x4b, 0xf1, 0x07, 0xcf, 0x7c, 0x00, 0xa7, 0x3e, 0x92, 0x1b, 0x9f,
+	0x5b, 0xc7, 0x32, 0xaa, 0x47, 0xdd, 0xdf, 0x4f, 0xe0, 0xe1, 0xce, 0xb5, 0x59, 0x44, 0x43, 0x86,
+	0x87, 0x2d, 0xfe, 0x39, 0x34, 0xc2, 0x64, 0x36, 0x23, 0x53, 0x82, 0xb1, 0xe3, 0xbb, 0xcc, 0xd7,
+	0x45, 0xea, 0x99, 0xfa, 0xd4, 0x65, 0xbe, 0x79, 0x09, 0xd5, 0x00, 0xe3, 0x57, 0x33, 0x74, 0x62,
+	0x4a, 0xb9, 0x55, 0x90, 0x39, 0xa0, 0x24, 0x9b, 0x52, 0x6e, 0x7e, 0x02, 0x95, 0x18, 0x27, 0x24,
+	0x22, 0x18, 0x72, 0xeb, 0x44, 0x86, 0x97, 0x82, 0x98, 0xee, 0x06, 0x34, 0x09, 0xb9, 0xc3, 0x5c,
+	0xce, 0xac, 0x62, 0xc7, 0xe8, 0x9d, 0xd8, 0xa0, 0xa4, 0x91, 0xcb, 0x99, 0xd9, 0x82, 0xf2, 0x14,
+	0x51, 0x45, 0x4f, 0x65, 0xb4, 0x34, 0x45, 0x94, 0xa1, 0x8f, 0xa1, 0x44, 0x42, 0xf5, 0x69, 0x25,
+	0xb5, 0x7f, 0x12, 0xca, 0x6f, 0xea, 0x42, 0xfd, 0x8d, 0x9b, 0xcc, 0xb8, 0x13, 0x25, 0x63, 0xe7,
+	0x15, 0x2e, 0xac, 0xb2, 0x0c, 0x57, 0xa5, 0xf8, 0x3c, 0x19, 0xff, 0x88, 0x0b, 0xf3, 0x0a, 0x9a,
+	0xb1, 0xf2, 0x1a, 0x3d, 0x47, 0xbb, 0x58, 0xe9, 0x18, 0xbd, 0x82, 0x7d, 0x96, 0xe9, 0x4f, 0xa5,
+	0x2c, 0x6c, 0x66, 0xdc, 0xe5, 0x09, 0xb3, 0x40, 0x95, 0x51, 0x23, 0xf3, 0x53, 0xa8, 0xf1, 0x39,
+	0x4d, 0xb8, 0xa3, 0xa3, 0x55, 0x55, 0x45, 0x6a, 0xa3, 0x8d, 0x14, 0x5d, 0xa1, 0x26, 0x2b, 0xa8,
+	0x14, 0xbd, 0xfa, 0x25, 0xa8, 0xa1, 0x83, 0x11, 0x9d, 0xf8, 0x56, 0x5d, 0x39, 0x20, 0xa5, 0xef,
+	0x85, 0x22, 0xb6, 0xc9, 0xe7, 0x8e, 0x00, 0xc9, 0x6a, 0xa8, 0xfa, 0x7c, 0xfe, 0xd3, 0x22, 0x42,
+	0x61, 0x8d, 0x5c, 0x5a, 0x18, 0x70, 0x26, 0x23, 0x25, 0xb1, 0xac, 0x70, 0x40, 0x87, 0xde, 0xd0,
+	0x84, 0x5b, 0xcd, 0x8e, 0xd1, 0xab, 0xcb, 0xd0, 0xcf, 0x34, 0xe1, 0xe6, 0x85, 0x0c, 0x45, 0x94,
+	0x84, 0xdc, 0x3a, 0x97, 0xb3, 0xb2, 0x71, 0xf7, 0x57, 0x78, 0xb4, 0xc6, 0xcd, 0x30, 0x6d, 0x75,
+	0x8a, 0xe5, 0x36, 0x14, 0xc6, 0x2e, 0x28, 0xf2, 0xc0, 0xfc, 0xa7, 0x00, 0xed, 0xbc, 0x02, 0x9a,
+	0xcd, 0x03, 0x2b, 0x7c, 0x08, 0x45, 0x16, 0x09, 0xa2, 0x44, 0x81, 0xb2, 0xad, 0x06, 0xdb, 0x60,
+	0x17, 0x76, 0x80, 0xfd, 0x05, 0x9c, 0xaf, 0x24, 0xe9, 0xde, 0x29, 0x30, 0x9b, 0xcb, 0x80, 0x6e,
+	0xe0, 0xff, 0xc2, 0xe7, 0x26, 0x38, 0xe5, 0xfd, 0xe0, 0x54, 0xf6, 0x82, 0x03, 0xf7, 0x81, 0x53,
+	0xcd, 0x05, 0xa7, 0x96, 0x0f, 0x4e, 0x3d, 0x1f, 0x9c, 0xc6, 0x06, 0x38, 0x2e, 0x98, 0x59, 0x4b,
+	0x29, 0x47, 0x1b, 0x27, 0x34, 0xf6, 0xcc, 0x36, 0xc0, 0x84, 0x06, 0x01, 0xe1, 0x81, 0xe8, 0x94,
+	0xea, 0xe3, 0x8a, 0x22, 0x3a, 0xe1, 0x61, 0x48, 0x03, 0x12, 0xba, 0x9c, 0xd0, 0x50, 0x99, 0x78,
+	0x2c, 0xf7, 0xd1, 0x5c, 0x0d, 0x08, 0x37, 0xbb, 0x7f, 0x14, 0xe0, 0x41, 0x5a, 0x63, 0x24, 0xba,
+	0x9d, 0xb1, 0x73, 0x28, 0x33, 0x5b, 0x74, 0x1c, 0x1f, 0x4a, 0x47, 0xe1, 0x30, 0x3a, 0x4e, 0xee,
+	0xa5, 0xa3, 0x98, 0x4b, 0xc7, 0xe9, 0xbd, 0x74, 0x94, 0xf6, 0xd3, 0x51, 0xde, 0x4b, 0x47, 0xe5,
+	0x3e, 0x3a, 0x20, 0x97, 0x8e, 0x6a, 0x3e, 0x1d, 0xb5, 0x7c, 0x3a, 0xea, 0x1b, 0x74, 0xfc, 0x69,
+	0x80, 0xb5, 0x76, 0xec, 0x47, 0x8b, 0x70, 0x92, 0x5e, 0x29, 0xcb, 0xbb, 0xc2, 0x58, 0xbd, 0x2b,
+	0xc4, 0x09, 0x9f, 0x91, 0x80, 0x70, 0x0d, 0x84, 0x1a, 0x88, 0x56, 0xeb, 0x67, 0xd4, 0x99, 0x24,
+	0x31, 0xa3, 0xb1, 0xee, 0x4d, 0x5d, 0xab, 0xdf, 0x49, 0x51, 0xec, 0x3e, 0xa4, 0x1c, 0xd3, 0x1c,
+	0x75, 0xba, 0x41, 0x48, 0x3a, 0xe1, 0x0a, 0x9a, 0x4b, 0x64, 0x74, 0x56, 0x51, 0x66, 0x9d, 0x65,
+	0xba, 0x4a, 0xed, 0xbe, 0x2f, 0x40, 0x6b, 0xc7, 0xd7, 0xeb, 0xfb, 0x6a, 0x00, 0x45, 0xb1, 0x2c,
+	0xb3, 0x8c, 0x4e, 0xa1, 0x57, 0x7d, 0xdc, 0xea, 0xcb, 0x17, 0xbf, 0xbf, 0x7d, 0x1a, 0x6c, 0x95,
+	0x67, 0x7e, 0x0b, 0x90, 0x55, 0x10, 0xb4, 0x8b, 0x59, 0x8f, 0x36, 0x66, 0xad, 0xf3, 0x6d, 0xaf,
+	0x4c, 0x30, 0xbf, 0x81, 0xb2, 0xde, 0xaa, 0xc0, 0x52, 0x4c, 0x7e, 0xa8, 0x27, 0xcb, 0x6f, 0xbc,
+	0x56, 0xb1, 0xf4, 0xf3, 0xec, 0x2c, 0xd9, 0xec, 0xc3, 0x07, 0x21, 0xce, 0xb9, 0xb3, 0x61, 0x9f,
+	0xb2, 0xe6, 0x5c, 0x84, 0xae, 0xd7, 0x2c, 0xec, 0x41, 0x53, 0xe6, 0xaf, 0xfa, 0xa8, 0x1c, 0x6a,
+	0x08, 0x7d, 0xb8, 0xf4, 0xf2, 0x31, 0x7c, 0xa4, 0x32, 0x37, 0x0d, 0x55, 0x5c, 0xcb, 0xb2, 0xc3,
+	0x75, 0x53, 0x05, 0x49, 0xbe, 0xcb, 0x9c, 0x80, 0xc6, 0x28, 0x01, 0x2f, 0xdb, 0x25, 0xdf, 0x65,
+	0xcf, 0x68, 0x2c, 0x5f, 0x00, 0x4e, 0xb9, 0x3b, 0x73, 0xb2, 0x7d, 0x96, 0x25, 0x01, 0x75, 0xa9,
+	0x5e, 0xa7, 0xfb, 0x11, 0x80, 0xcb, 0x34, 0x65, 0x7f, 0x0a, 0xb8, 0x90, 0x86, 0xd2, 0xe8, 0x2b,
+	0x68, 0xea, 0x84, 0xa5, 0xdd, 0xea, 0x92, 0x3c, 0x53, 0x59, 0x99, 0xdc, 0x7d, 0x09, 0x97, 0x3b,
+	0xfe, 0x97, 0x5e, 0x24, 0xb2, 0x79, 0x0a, 0xd3, 0x8d, 0xa3, 0x6e, 0x6c, 0x1d, 0xf5, 0xbc, 0x37,
+	0xef, 0x2f, 0x03, 0x3a, 0xf9, 0x8b, 0x6b, 0x8a, 0xf6, 0xae, 0xbe, 0x7a, 0x91, 0x1c, 0xaf, 0x5f,
+	0x24, 0x2d, 0x28, 0x87, 0xa8, 0x27, 0x16, 0x54, 0x28, 0x44, 0x35, 0xab, 0x07, 0x4d, 0x31, 0x6b,
+	0xec, 0x32, 0xc2, 0x1c, 0x79, 0x16, 0xd3, 0x4b, 0xaa, 0x31, 0x45, 0x7c, 0x22, 0xe4, 0xe7, 0x52,
+	0x35, 0x3b, 0x50, 0x13, 0x99, 0x01, 0x09, 0xd7, 0x1e, 0xba, 0x29, 0xe2, 0x33, 0x22, 0xef, 0xdf,
+	0x27, 0xc3, 0xbf, 0x6f, 0xdb, 0xc6, 0xbb, 0xdb, 0xb6, 0xf1, 0xfe, 0xb6, 0x6d, 0xfc, 0x76, 0xd7,
+	0x3e, 0x7a, 0x77, 0xd7, 0x3e, 0xfa, 0xf7, 0xae, 0x7d, 0xf4, 0xf2, 0xeb, 0x1b, 0xc2, 0xfd, 0x64,
+	0xdc, 0x9f, 0xd0, 0x60, 0xc0, 0x7d, 0x1a, 0x87, 0xae, 0x47, 0x27, 0x2e, 0xf3, 0x07, 0x37, 0xf4,
+	0xcb, 0x74, 0x3c, 0x98, 0x67, 0xa1, 0x81, 0xc4, 0x75, 0x7c, 0x2a, 0x7f, 0x83, 0xbf, 0xfa, 0x2f,
+	0x00, 0x00, 0xff, 0xff, 0x37, 0x98, 0x6b, 0xe9, 0x46, 0x0b, 0x00, 0x00,
 }
 
 func (m *QueryShielderRedeemRequest) Marshal() (dAtA []byte, err error) {
@@ -855,6 +1098,53 @@ func (m *QueryShielderRedeemResponse) MarshalToSizedBuffer(dAtA []byte) (int, er
 	_ = i
 	var l int
 	_ = l
+	if len(m.Outpoint) > 0 {
+		i -= len(m.Outpoint)
+		copy(dAtA[i:], m.Outpoint)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.Outpoint)))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x8a
+	}
+	if m.OutVout != 0 {
+		i = encodeVarintQueryShielder(dAtA, i, uint64(m.OutVout))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x80
+	}
+	if len(m.OutHash) > 0 {
+		i -= len(m.OutHash)
+		copy(dAtA[i:], m.OutHash)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.OutHash)))
+		i--
+		dAtA[i] = 0x7a
+	}
+	if len(m.TxType) > 0 {
+		i -= len(m.TxType)
+		copy(dAtA[i:], m.TxType)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.TxType)))
+		i--
+		dAtA[i] = 0x72
+	}
+	if m.TxoutEpoch != 0 {
+		i = encodeVarintQueryShielder(dAtA, i, uint64(m.TxoutEpoch))
+		i--
+		dAtA[i] = 0x68
+	}
+	if m.TxoutHeight != 0 {
+		i = encodeVarintQueryShielder(dAtA, i, uint64(m.TxoutHeight))
+		i--
+		dAtA[i] = 0x60
+	}
+	if len(m.TxoutStatus) > 0 {
+		i -= len(m.TxoutStatus)
+		copy(dAtA[i:], m.TxoutStatus)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.TxoutStatus)))
+		i--
+		dAtA[i] = 0x5a
+	}
 	if len(m.Status) > 0 {
 		i -= len(m.Status)
 		copy(dAtA[i:], m.Status)
@@ -979,6 +1269,73 @@ func (m *QueryShielderNullifierResponse) MarshalToSizedBuffer(dAtA []byte) (int,
 	_ = i
 	var l int
 	_ = l
+	if len(m.Outpoint) > 0 {
+		i -= len(m.Outpoint)
+		copy(dAtA[i:], m.Outpoint)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.Outpoint)))
+		i--
+		dAtA[i] = 0x72
+	}
+	if m.OutVout != 0 {
+		i = encodeVarintQueryShielder(dAtA, i, uint64(m.OutVout))
+		i--
+		dAtA[i] = 0x68
+	}
+	if len(m.OutHash) > 0 {
+		i -= len(m.OutHash)
+		copy(dAtA[i:], m.OutHash)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.OutHash)))
+		i--
+		dAtA[i] = 0x62
+	}
+	if len(m.TxType) > 0 {
+		i -= len(m.TxType)
+		copy(dAtA[i:], m.TxType)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.TxType)))
+		i--
+		dAtA[i] = 0x5a
+	}
+	if m.TxoutEpoch != 0 {
+		i = encodeVarintQueryShielder(dAtA, i, uint64(m.TxoutEpoch))
+		i--
+		dAtA[i] = 0x50
+	}
+	if m.TxoutHeight != 0 {
+		i = encodeVarintQueryShielder(dAtA, i, uint64(m.TxoutHeight))
+		i--
+		dAtA[i] = 0x48
+	}
+	if len(m.TxoutStatus) > 0 {
+		i -= len(m.TxoutStatus)
+		copy(dAtA[i:], m.TxoutStatus)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.TxoutStatus)))
+		i--
+		dAtA[i] = 0x42
+	}
+	if len(m.InHash) > 0 {
+		i -= len(m.InHash)
+		copy(dAtA[i:], m.InHash)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.InHash)))
+		i--
+		dAtA[i] = 0x3a
+	}
+	if m.FeeSats != 0 {
+		i = encodeVarintQueryShielder(dAtA, i, uint64(m.FeeSats))
+		i--
+		dAtA[i] = 0x30
+	}
+	if m.AmountSats != 0 {
+		i = encodeVarintQueryShielder(dAtA, i, uint64(m.AmountSats))
+		i--
+		dAtA[i] = 0x28
+	}
+	if len(m.WithdrawalStatus) > 0 {
+		i -= len(m.WithdrawalStatus)
+		copy(dAtA[i:], m.WithdrawalStatus)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.WithdrawalStatus)))
+		i--
+		dAtA[i] = 0x22
+	}
 	if len(m.WithdrawalId) > 0 {
 		i -= len(m.WithdrawalId)
 		copy(dAtA[i:], m.WithdrawalId)
@@ -1061,6 +1418,73 @@ func (m *ShielderSpentNullifier) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	_ = i
 	var l int
 	_ = l
+	if len(m.Outpoint) > 0 {
+		i -= len(m.Outpoint)
+		copy(dAtA[i:], m.Outpoint)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.Outpoint)))
+		i--
+		dAtA[i] = 0x6a
+	}
+	if m.OutVout != 0 {
+		i = encodeVarintQueryShielder(dAtA, i, uint64(m.OutVout))
+		i--
+		dAtA[i] = 0x60
+	}
+	if len(m.OutHash) > 0 {
+		i -= len(m.OutHash)
+		copy(dAtA[i:], m.OutHash)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.OutHash)))
+		i--
+		dAtA[i] = 0x5a
+	}
+	if len(m.TxType) > 0 {
+		i -= len(m.TxType)
+		copy(dAtA[i:], m.TxType)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.TxType)))
+		i--
+		dAtA[i] = 0x52
+	}
+	if m.TxoutEpoch != 0 {
+		i = encodeVarintQueryShielder(dAtA, i, uint64(m.TxoutEpoch))
+		i--
+		dAtA[i] = 0x48
+	}
+	if m.TxoutHeight != 0 {
+		i = encodeVarintQueryShielder(dAtA, i, uint64(m.TxoutHeight))
+		i--
+		dAtA[i] = 0x40
+	}
+	if len(m.TxoutStatus) > 0 {
+		i -= len(m.TxoutStatus)
+		copy(dAtA[i:], m.TxoutStatus)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.TxoutStatus)))
+		i--
+		dAtA[i] = 0x3a
+	}
+	if len(m.InHash) > 0 {
+		i -= len(m.InHash)
+		copy(dAtA[i:], m.InHash)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.InHash)))
+		i--
+		dAtA[i] = 0x32
+	}
+	if m.FeeSats != 0 {
+		i = encodeVarintQueryShielder(dAtA, i, uint64(m.FeeSats))
+		i--
+		dAtA[i] = 0x28
+	}
+	if m.AmountSats != 0 {
+		i = encodeVarintQueryShielder(dAtA, i, uint64(m.AmountSats))
+		i--
+		dAtA[i] = 0x20
+	}
+	if len(m.WithdrawalStatus) > 0 {
+		i -= len(m.WithdrawalStatus)
+		copy(dAtA[i:], m.WithdrawalStatus)
+		i = encodeVarintQueryShielder(dAtA, i, uint64(len(m.WithdrawalStatus)))
+		i--
+		dAtA[i] = 0x1a
+	}
 	if len(m.WithdrawalId) > 0 {
 		i -= len(m.WithdrawalId)
 		copy(dAtA[i:], m.WithdrawalId)
@@ -1399,6 +1823,31 @@ func (m *QueryShielderRedeemResponse) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovQueryShielder(uint64(l))
 	}
+	l = len(m.TxoutStatus)
+	if l > 0 {
+		n += 1 + l + sovQueryShielder(uint64(l))
+	}
+	if m.TxoutHeight != 0 {
+		n += 1 + sovQueryShielder(uint64(m.TxoutHeight))
+	}
+	if m.TxoutEpoch != 0 {
+		n += 1 + sovQueryShielder(uint64(m.TxoutEpoch))
+	}
+	l = len(m.TxType)
+	if l > 0 {
+		n += 1 + l + sovQueryShielder(uint64(l))
+	}
+	l = len(m.OutHash)
+	if l > 0 {
+		n += 1 + l + sovQueryShielder(uint64(l))
+	}
+	if m.OutVout != 0 {
+		n += 2 + sovQueryShielder(uint64(m.OutVout))
+	}
+	l = len(m.Outpoint)
+	if l > 0 {
+		n += 2 + l + sovQueryShielder(uint64(l))
+	}
 	return n
 }
 
@@ -1436,6 +1885,45 @@ func (m *QueryShielderNullifierResponse) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovQueryShielder(uint64(l))
 	}
+	l = len(m.WithdrawalStatus)
+	if l > 0 {
+		n += 1 + l + sovQueryShielder(uint64(l))
+	}
+	if m.AmountSats != 0 {
+		n += 1 + sovQueryShielder(uint64(m.AmountSats))
+	}
+	if m.FeeSats != 0 {
+		n += 1 + sovQueryShielder(uint64(m.FeeSats))
+	}
+	l = len(m.InHash)
+	if l > 0 {
+		n += 1 + l + sovQueryShielder(uint64(l))
+	}
+	l = len(m.TxoutStatus)
+	if l > 0 {
+		n += 1 + l + sovQueryShielder(uint64(l))
+	}
+	if m.TxoutHeight != 0 {
+		n += 1 + sovQueryShielder(uint64(m.TxoutHeight))
+	}
+	if m.TxoutEpoch != 0 {
+		n += 1 + sovQueryShielder(uint64(m.TxoutEpoch))
+	}
+	l = len(m.TxType)
+	if l > 0 {
+		n += 1 + l + sovQueryShielder(uint64(l))
+	}
+	l = len(m.OutHash)
+	if l > 0 {
+		n += 1 + l + sovQueryShielder(uint64(l))
+	}
+	if m.OutVout != 0 {
+		n += 1 + sovQueryShielder(uint64(m.OutVout))
+	}
+	l = len(m.Outpoint)
+	if l > 0 {
+		n += 1 + l + sovQueryShielder(uint64(l))
+	}
 	return n
 }
 
@@ -1466,6 +1954,45 @@ func (m *ShielderSpentNullifier) Size() (n int) {
 		n += 1 + l + sovQueryShielder(uint64(l))
 	}
 	l = len(m.WithdrawalId)
+	if l > 0 {
+		n += 1 + l + sovQueryShielder(uint64(l))
+	}
+	l = len(m.WithdrawalStatus)
+	if l > 0 {
+		n += 1 + l + sovQueryShielder(uint64(l))
+	}
+	if m.AmountSats != 0 {
+		n += 1 + sovQueryShielder(uint64(m.AmountSats))
+	}
+	if m.FeeSats != 0 {
+		n += 1 + sovQueryShielder(uint64(m.FeeSats))
+	}
+	l = len(m.InHash)
+	if l > 0 {
+		n += 1 + l + sovQueryShielder(uint64(l))
+	}
+	l = len(m.TxoutStatus)
+	if l > 0 {
+		n += 1 + l + sovQueryShielder(uint64(l))
+	}
+	if m.TxoutHeight != 0 {
+		n += 1 + sovQueryShielder(uint64(m.TxoutHeight))
+	}
+	if m.TxoutEpoch != 0 {
+		n += 1 + sovQueryShielder(uint64(m.TxoutEpoch))
+	}
+	l = len(m.TxType)
+	if l > 0 {
+		n += 1 + l + sovQueryShielder(uint64(l))
+	}
+	l = len(m.OutHash)
+	if l > 0 {
+		n += 1 + l + sovQueryShielder(uint64(l))
+	}
+	if m.OutVout != 0 {
+		n += 1 + sovQueryShielder(uint64(m.OutVout))
+	}
+	l = len(m.Outpoint)
 	if l > 0 {
 		n += 1 + l + sovQueryShielder(uint64(l))
 	}
@@ -2021,6 +2548,191 @@ func (m *QueryShielderRedeemResponse) Unmarshal(dAtA []byte) error {
 			}
 			m.Status = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxoutStatus", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TxoutStatus = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 12:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxoutHeight", wireType)
+			}
+			m.TxoutHeight = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.TxoutHeight |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 13:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxoutEpoch", wireType)
+			}
+			m.TxoutEpoch = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.TxoutEpoch |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 14:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxType", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TxType = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 15:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OutHash", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.OutHash = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 16:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OutVout", wireType)
+			}
+			m.OutVout = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.OutVout |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 17:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Outpoint", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Outpoint = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipQueryShielder(dAtA[iNdEx:])
@@ -2269,6 +2981,293 @@ func (m *QueryShielderNullifierResponse) Unmarshal(dAtA []byte) error {
 			}
 			m.WithdrawalId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field WithdrawalStatus", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.WithdrawalStatus = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AmountSats", wireType)
+			}
+			m.AmountSats = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.AmountSats |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FeeSats", wireType)
+			}
+			m.FeeSats = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.FeeSats |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field InHash", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.InHash = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxoutStatus", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TxoutStatus = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 9:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxoutHeight", wireType)
+			}
+			m.TxoutHeight = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.TxoutHeight |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 10:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxoutEpoch", wireType)
+			}
+			m.TxoutEpoch = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.TxoutEpoch |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxType", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TxType = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 12:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OutHash", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.OutHash = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 13:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OutVout", wireType)
+			}
+			m.OutVout = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.OutVout |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 14:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Outpoint", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Outpoint = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipQueryShielder(dAtA[iNdEx:])
@@ -2483,6 +3482,293 @@ func (m *ShielderSpentNullifier) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.WithdrawalId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field WithdrawalStatus", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.WithdrawalStatus = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AmountSats", wireType)
+			}
+			m.AmountSats = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.AmountSats |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FeeSats", wireType)
+			}
+			m.FeeSats = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.FeeSats |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field InHash", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.InHash = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxoutStatus", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TxoutStatus = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxoutHeight", wireType)
+			}
+			m.TxoutHeight = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.TxoutHeight |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 9:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxoutEpoch", wireType)
+			}
+			m.TxoutEpoch = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.TxoutEpoch |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxType", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TxType = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OutHash", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.OutHash = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 12:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OutVout", wireType)
+			}
+			m.OutVout = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.OutVout |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 13:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Outpoint", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQueryShielder
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Outpoint = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

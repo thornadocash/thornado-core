@@ -4,6 +4,12 @@ Manual protocol validation workbook for Thornado/Bifrost/FROST e2e flows.
 
 Use these files as the source of truth while stepping a fresh local chain. Every line starts with `validated: false`; only flip to `true` after manual inspection of chain state, Bifrost logs, BTC regtest state, APIs, and any external persistence.
 
+Current funding model:
+- User BTC enters through a normal deposit address, is swept to the active base vault, then shielded into notes.
+- Node bonds are activated only by spending notes with `MsgBondFromNotes` to `recipient:"bond_escrow"` and `recipient_policy:"bond_escrow"`; normal `shielder shield` must not activate a node bond.
+- Slot auction bids are funded by spending notes with `recipient:"bond_escrow"`, `recipient_policy:"bid_deposit"`, and `bid_id`; bid funding must not create a BTC outbound.
+- Seller proceeds from a slot sale are shielded through `node-sale-shield`; seller notes later withdraw through the normal user BTC redeem path.
+
 Run context to capture before starting:
 - check: run_id is recorded with timestamp, git commit, branch, local config, binary hashes, docker image ids, and BTC regtest datadir; desired_result: all artifacts are reproducible and tied to one run; validated: false
 - check: all previous node, Bifrost, bitcoind, app, and external database state is torn down before genesis; desired_result: no stale app hash, mempool, wallet, sqlite/leveldb, or txout state contaminates the run; validated: false
@@ -15,6 +21,7 @@ Run context to capture before starting:
 - check: external persistence state before each flow; desired_result: Bifrost local state stores, scanner positions, attestation stores, and any configured DBs are snapshotted; validated: false
 
 Documents:
+- [State Change Matrix](./state-change-matrix.md)
 - [Flow 1 Genesis FROST Vault](./flow-1-genesis-frost-vault.md)
 - [Flow 2 Bonded Standby Node](./flow-2-bonded-standby-node.md)
 - [Flow 3 User Deposit Split Withdraw](./flow-3-user-deposit-split-withdraw.md)
@@ -22,6 +29,8 @@ Documents:
 - [Flow 5 Slot Auction](./flow-5-slot-auction.md)
 - [Flow 6 Churn Migration](./flow-6-churn-migration.md)
 - [Flow 7 Deposit Consolidation](./flow-7-deposit-consolidation.md)
+- [Flow 8 Expanded Attack Paths](./flow-8-expanded-attack-paths.md)
+- [Flow 9 Node Tooling](./flow-9-node-tooling.md)
 
 Manual validation rules:
 - check: a flow is not complete until happy path, state checks, bad paths, attack paths, API/querier checks, and persistence checks are all evaluated; desired_result: no section is skipped because the script passed; validated: false

@@ -28,12 +28,20 @@ type ThornadoBlockScan struct {
 	stopChan       chan struct{}
 	txOutChan      chan types.TxOut
 	keygenChan     chan ttypes.KeygenBlock
+	seenKeygens    map[string]struct{}
+	seenKeygensMu  sync.Mutex
 	cfg            config.BifrostBlockScannerConfiguration
 	scannerStorage blockscanner.ScannerStorage
 	thornado       thornadoclient.ThornadoBridge
 	errCounter     *prometheus.CounterVec
 	pubkeyMgr      pubkeymanager.PubKeyValidator
 }
+
+// Keygen requests are sparse Thornado state, not chain transactions. Keep a
+// generous local scan window so accelerated churn tests do not miss retry
+// keygens while Bifrost is catching up.
+const keygenLookbackBlocks int64 = 240
+const keygenChanBufferSize = 64
 
 // NewThornadoBlockScan create a new instance of thornado block scanner
 func NewThornadoBlockScan(cfg config.BifrostBlockScannerConfiguration, scanStorage blockscanner.ScannerStorage, thornado thornadoclient.ThornadoBridge, m *metrics.Metrics, pubkeyMgr pubkeymanager.PubKeyValidator) (*ThornadoBlockScan, error) {
@@ -48,7 +56,8 @@ func NewThornadoBlockScan(cfg config.BifrostBlockScannerConfiguration, scanStora
 		wg:             &sync.WaitGroup{},
 		stopChan:       make(chan struct{}),
 		txOutChan:      make(chan types.TxOut),
-		keygenChan:     make(chan ttypes.KeygenBlock),
+		keygenChan:     make(chan ttypes.KeygenBlock, keygenChanBufferSize),
+		seenKeygens:    make(map[string]struct{}),
 		cfg:            cfg,
 		scannerStorage: scanStorage,
 		thornado:       thornado,
@@ -106,11 +115,28 @@ func (b *ThornadoBlockScan) FetchTxs(height, _ int64) (types.TxIn, error) {
 		return types.TxIn{}, err
 	}
 	go func(blockHeight int64) {
-		if err := b.processKeygenBlock(blockHeight); err != nil {
-			b.logger.Error().Err(err).Int64("block", blockHeight).Msg("fail to process keygen block")
+		keygenHeight := blockHeight
+		if currentHeight, err := b.GetHeight(); err == nil && currentHeight > keygenHeight {
+			keygenHeight = currentHeight
+		}
+		if err := b.processRecentKeygenBlocks(keygenHeight); err != nil {
+			b.logger.Error().Err(err).Int64("block", keygenHeight).Msg("fail to process keygen block")
 		}
 	}(height)
 	return types.TxIn{}, nil
+}
+
+func (b *ThornadoBlockScan) processRecentKeygenBlocks(blockHeight int64) error {
+	start := blockHeight - keygenLookbackBlocks
+	if start < 1 {
+		start = 1
+	}
+	for h := blockHeight; h >= start; h-- {
+		if err := b.processKeygenBlock(h); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (b *ThornadoBlockScan) processKeygenBlock(blockHeight int64) error {
@@ -125,7 +151,40 @@ func (b *ThornadoBlockScan) processKeygenBlock(blockHeight int64) error {
 	}
 
 	if len(keygen.Keygens) > 0 {
-		b.keygenChan <- keygen
+		filtered := ttypes.NewKeygenBlock(keygen.Height)
+		b.seenKeygensMu.Lock()
+		for _, kg := range keygen.Keygens {
+			key := fmt.Sprintf("%d/%s", keygen.Height, kg.ID.String())
+			if _, ok := b.seenKeygens[key]; ok {
+				continue
+			}
+			b.seenKeygens[key] = struct{}{}
+			filtered.Keygens = append(filtered.Keygens, kg)
+		}
+		b.seenKeygensMu.Unlock()
+		if len(filtered.Keygens) == 0 {
+			return nil
+		}
+		b.logger.Info().
+			Int64("block", keygen.Height).
+			Int("keygens", len(filtered.Keygens)).
+			Stringer("node_pubkey", pk).
+			Msg("discovered keygen block")
+		b.logger.Info().
+			Int64("block", keygen.Height).
+			Int("keygens", len(filtered.Keygens)).
+			Int("queue_depth", len(b.keygenChan)).
+			Int("queue_capacity", cap(b.keygenChan)).
+			Stringer("node_pubkey", pk).
+			Msg("queueing keygen block")
+		b.keygenChan <- filtered
+		b.logger.Info().
+			Int64("block", keygen.Height).
+			Int("keygens", len(filtered.Keygens)).
+			Int("queue_depth", len(b.keygenChan)).
+			Int("queue_capacity", cap(b.keygenChan)).
+			Stringer("node_pubkey", pk).
+			Msg("queued keygen block")
 	}
 	return nil
 }

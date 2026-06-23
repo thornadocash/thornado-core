@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"github.com/thornadocash/go-thornado/app/params"
+	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
 
@@ -190,6 +191,7 @@ func (am AppModule) BeginBlock(goCtx context.Context) error {
 	if version.Major > localVer.Major || version.Minor > localVer.Minor {
 		panic(fmt.Sprintf("Unsupported Version: update your binary (your version: %s, network consensus version: %s)", constants.SWVersion.String(), version.String()))
 	}
+	haltOnBrokenVaultBackingInvariant(ctx, am.mgr.Keeper(), am.mgr.EventMgr())
 
 	am.mgr.Keeper().ClearObservingAddresses(ctx)
 
@@ -206,6 +208,53 @@ func (am AppModule) BeginBlock(goCtx context.Context) error {
 	}
 
 	return nil
+}
+
+func haltOnBrokenVaultBackingInvariant(ctx cosmos.Context, k invariantHaltKeeper, eventMgr EventManager) bool {
+	for _, route := range k.InvariantRoutes() {
+		if !strings.EqualFold(route.Route, "vault_backing") {
+			continue
+		}
+		msg, broken := route.Invariant(ctx)
+		if !broken {
+			return false
+		}
+
+		height := ctx.BlockHeight()
+		haltSolvencyKey := constants.Halt_SolvencyCheck.String()
+		haltSigningKey := fmt.Sprintf(constants.ConfigTemplateHaltSigning, common.BTCChain)
+		haltSolvencyHeight := k.GetConfigInt64(ctx, constants.Halt_SolvencyCheck)
+		if haltSolvencyHeight <= 0 || haltSolvencyHeight > height {
+			k.SetConfig(ctx, haltSolvencyKey, height)
+			emitConfigEvent(ctx, eventMgr, haltSolvencyKey, height)
+		}
+		haltSigningHeight, _ := k.GetConfig(ctx, haltSigningKey)
+		if haltSigningHeight <= 0 || haltSigningHeight > height {
+			k.SetConfig(ctx, haltSigningKey, height)
+			emitConfigEvent(ctx, eventMgr, haltSigningKey, height)
+		}
+
+		ctx.Logger().Error("vault backing invariant broken; halted BTC protocol and signing", "messages", strings.Join(msg, "; "))
+		return true
+	}
+	return false
+}
+
+type invariantHaltKeeper interface {
+	InvariantRoutes() []common.InvariantRoute
+	GetConfig(ctx cosmos.Context, key string) (int64, error)
+	GetConfigInt64(ctx cosmos.Context, key constants.ConfigName) int64
+	SetConfig(ctx cosmos.Context, key string, value int64)
+}
+
+func emitConfigEvent(ctx cosmos.Context, eventMgr EventManager, key string, value int64) {
+	if eventMgr == nil {
+		return
+	}
+	configEvent := NewEventSetConfig(strings.ToUpper(key), strconv.FormatInt(value, 10))
+	if err := eventMgr.EmitEvent(ctx, configEvent); err != nil {
+		ctx.Logger().Error("fail to emit set_config event", "error", err)
+	}
 }
 
 // EndBlock called when a block get committed

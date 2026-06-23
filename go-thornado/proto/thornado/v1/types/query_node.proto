@@ -104,6 +104,22 @@ message QueryNodeBondResponse {
   int64 updated_height = 13;
   string node_status = 14;
   int64 penalty_points = 15;
+  uint64 operator_fee_basis_points = 16;
+  uint64 operator_fee_accrued_sats = 17;
+  string pending_operator_fee_deposit_id = 18;
+  repeated QueryNodeBonder bonders = 19;
+}
+
+message QueryNodeBonder {
+  string bonder = 1;
+  uint64 pending_sats = 2;
+  uint64 principal_sats = 3;
+  uint64 claimable_fee_sats = 4;
+  string pending_fee_deposit_id = 5;
+  string sale_entitlement_id = 6;
+  uint64 sale_payout_sats = 7;
+  int64 created_height = 8;
+  int64 updated_height = 9;
 }
 
 message QueryNodeSlotAuctionRequest {

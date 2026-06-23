@@ -63,7 +63,8 @@ func (h ProposeUpgradeHandler) validate(ctx cosmos.Context, msg *MsgProposeUpgra
 		return err
 	}
 
-	if err := signedByActiveNodeAccount(ctx, h.mgr.Keeper(), msg.Signer); err != nil {
+	nodeAccount, err := resolveActiveNodeAccountBySigner(ctx, h.mgr.Keeper(), msg.Signer)
+	if err != nil {
 		return cosmos.ErrUnauthorized(err.Error())
 	}
 
@@ -94,7 +95,7 @@ func (h ProposeUpgradeHandler) validate(ctx cosmos.Context, msg *MsgProposeUpgra
 			return cosmos.ErrUnknownRequest(fmt.Sprintf("failed to unmarshal upgrade proposal: %s", key))
 		}
 
-		if !proposal.Proposer.Equals(msg.Signer) {
+		if !proposal.Proposer.Equals(nodeAccount.NodeAddress) {
 			continue
 		}
 
@@ -112,29 +113,33 @@ func (h ProposeUpgradeHandler) handle(ctx cosmos.Context, msg *MsgProposeUpgrade
 	u := msg.Upgrade
 	name := msg.Name
 	k := h.mgr.Keeper()
+	nodeAccount, err := resolveActiveNodeAccountBySigner(ctx, k, msg.Signer)
+	if err != nil {
+		return cosmos.ErrUnauthorized(err.Error())
+	}
 
 	if err := k.ProposeUpgrade(ctx, name, types.UpgradeProposal{
 		Height:   u.Height,
 		Info:     u.Info,
-		Proposer: msg.Signer,
+		Proposer: nodeAccount.NodeAddress,
 	}); err != nil {
 		return fmt.Errorf("failed to propose upgrade: %w", err)
 	}
 
 	ctx.EventManager().EmitEvent(
 		cosmos.NewEvent("propose_upgrade",
-			cosmos.NewAttribute("node_address", msg.Signer.String()),
+			cosmos.NewAttribute("node_address", nodeAccount.NodeAddress.String()),
 			cosmos.NewAttribute("name", name),
 			cosmos.NewAttribute("height", strconv.FormatInt(u.Height, 10)),
 			cosmos.NewAttribute("info", u.Info),
 		),
 	)
 
-	k.ApproveUpgrade(ctx, msg.Signer, name)
+	k.ApproveUpgrade(ctx, nodeAccount.NodeAddress, name)
 
 	ctx.EventManager().EmitEvent(
 		cosmos.NewEvent("approve_upgrade",
-			cosmos.NewAttribute("node_address", msg.Signer.String()),
+			cosmos.NewAttribute("node_address", nodeAccount.NodeAddress.String()),
 			cosmos.NewAttribute("name", name),
 		),
 	)
@@ -187,7 +192,8 @@ func (h ApproveUpgradeHandler) validate(ctx cosmos.Context, msg *MsgApproveUpgra
 
 	k := h.mgr.Keeper()
 
-	if err := signedByActiveNodeAccount(ctx, k, msg.Signer); err != nil {
+	nodeAccount, err := resolveActiveNodeAccountBySigner(ctx, k, msg.Signer)
+	if err != nil {
 		return cosmos.ErrUnauthorized(err.Error())
 	}
 
@@ -201,7 +207,7 @@ func (h ApproveUpgradeHandler) validate(ctx cosmos.Context, msg *MsgApproveUpgra
 	}
 
 	// Don't care about error here. If it doesn't exist, it's not approved.
-	v, _ := k.GetUpgradeVote(ctx, msg.Signer, msg.Name)
+	v, _ := k.GetUpgradeVote(ctx, nodeAccount.NodeAddress, msg.Name)
 	if v {
 		return cosmos.ErrUnknownRequest(fmt.Sprintf("upgrade already approved: %s", msg.Name))
 	}
@@ -212,12 +218,16 @@ func (h ApproveUpgradeHandler) validate(ctx cosmos.Context, msg *MsgApproveUpgra
 func (h ApproveUpgradeHandler) handle(ctx cosmos.Context, msg *MsgApproveUpgrade) error {
 	k := h.mgr.Keeper()
 	name := msg.Name
+	nodeAccount, err := resolveActiveNodeAccountBySigner(ctx, k, msg.Signer)
+	if err != nil {
+		return cosmos.ErrUnauthorized(err.Error())
+	}
 
-	k.ApproveUpgrade(ctx, msg.Signer, name)
+	k.ApproveUpgrade(ctx, nodeAccount.NodeAddress, name)
 
 	ctx.EventManager().EmitEvent(
 		cosmos.NewEvent("approve_upgrade",
-			cosmos.NewAttribute("node_address", msg.Signer.String()),
+			cosmos.NewAttribute("node_address", nodeAccount.NodeAddress.String()),
 			cosmos.NewAttribute("name", name),
 		),
 	)
@@ -267,7 +277,8 @@ func (h RejectUpgradeHandler) validate(ctx cosmos.Context, msg *MsgRejectUpgrade
 
 	k := h.mgr.Keeper()
 
-	if err := signedByActiveNodeAccount(ctx, h.mgr.Keeper(), msg.Signer); err != nil {
+	nodeAccount, err := resolveActiveNodeAccountBySigner(ctx, h.mgr.Keeper(), msg.Signer)
+	if err != nil {
 		return cosmos.ErrUnauthorized(err.Error())
 	}
 
@@ -280,7 +291,7 @@ func (h RejectUpgradeHandler) validate(ctx cosmos.Context, msg *MsgRejectUpgrade
 		return cosmos.ErrUnknownRequest(fmt.Sprintf("upgrade proposal does not exist: %s", msg.Name))
 	}
 
-	v, err := k.GetUpgradeVote(ctx, msg.Signer, msg.Name)
+	v, err := k.GetUpgradeVote(ctx, nodeAccount.NodeAddress, msg.Name)
 	if err == nil && !v {
 		return cosmos.ErrUnknownRequest(fmt.Sprintf("upgrade already rejected: %s", msg.Name))
 	}
@@ -291,12 +302,16 @@ func (h RejectUpgradeHandler) validate(ctx cosmos.Context, msg *MsgRejectUpgrade
 func (h RejectUpgradeHandler) handle(ctx cosmos.Context, msg *MsgRejectUpgrade) error {
 	k := h.mgr.Keeper()
 	name := msg.Name
+	nodeAccount, err := resolveActiveNodeAccountBySigner(ctx, k, msg.Signer)
+	if err != nil {
+		return cosmos.ErrUnauthorized(err.Error())
+	}
 
-	k.RejectUpgrade(ctx, msg.Signer, name)
+	k.RejectUpgrade(ctx, nodeAccount.NodeAddress, name)
 
 	ctx.EventManager().EmitEvent(
 		cosmos.NewEvent("reject_upgrade",
-			cosmos.NewAttribute("node_address", msg.Signer.String()),
+			cosmos.NewAttribute("node_address", nodeAccount.NodeAddress.String()),
 			cosmos.NewAttribute("name", name),
 		),
 	)
@@ -420,7 +435,7 @@ func scheduleAnyApprovedUpgrade(ctx cosmos.Context, k keeper.Keeper) error {
 // also during deliver to only active node nodes. Store changes will persist
 // if this function succeeds, regardless of the success of the transaction.
 func ActiveNodeAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, signer cosmos.AccAddress) (cosmos.Context, error) {
-	if err := signedByActiveNodeAccount(ctx, k, signer); err != nil {
+	if _, err := resolveActiveNodeAccountBySigner(ctx, k, signer); err != nil {
 		return ctx, err
 	}
 

@@ -164,10 +164,16 @@ func (ad AnteDecorator) anteHandleMessage(ctx sdk.Context, version semver.Versio
 		return ConfigAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgNodePauseChain:
 		return NodePauseChainAnteHandler(ctx, version, ad.keeper, *m)
+	case *types.MsgOperatorRotate:
+		return OperatorRotateAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgSetNodeKeys:
 		return SetNodeKeysAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgSetVersion:
 		return VersionAnteHandler(ctx, version, ad.keeper, *m)
+	case *types.MsgMaint:
+		return MaintAnteHandler(ctx, version, ad.keeper, *m)
+	case *types.MsgLeave:
+		return LeaveAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgProposeUpgrade, *types.MsgApproveUpgrade, *types.MsgRejectUpgrade:
 		legacyMsg, ok := msg.(sdk.LegacyMsg)
 		if !ok {
@@ -188,6 +194,8 @@ func (ad AnteDecorator) anteHandleMessage(ctx sdk.Context, version semver.Versio
 		return ShielderRedeemAnteHandler(ctx, ad.keeper, *m)
 	case *types.MsgShielderShieldFees:
 		return ShielderShieldFeesAnteHandler(ctx, ad.keeper, *m)
+	case *types.MsgNodeOperatorFeeSet:
+		return NodeOperatorFeeSetAnteHandler(ctx, ad.keeper, *m)
 	case *types.MsgNodeSlotAuctionCreate:
 		return NodeSlotAuctionCreateAnteHandler(ctx, ad.keeper, *m)
 	case *types.MsgNodeSlotAuctionBidCreate:
@@ -468,7 +476,7 @@ func shielderRedeemAnte(ctx cosmos.Context, k keeper.Keeper, proof, public []byt
 	if err := validateShielderRedeemPolicy(ctx, k, policy, publicInputs); err != nil {
 		return ctx, err
 	}
-	if err := validateShielderRedeemProtocolFee(ctx, k, policy, publicInputs); err != nil {
+	if err := validateShielderRedeemPublicFee(policy, publicInputs); err != nil {
 		return ctx, err
 	}
 	if k.ShielderNullifierSpent(ctx, publicInputs.NullifierHash) {
@@ -504,19 +512,12 @@ func BondFromNotesAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.Msg
 	if err != nil {
 		return ctx, err
 	}
-	if !bond.NodeAddress.Empty() && !bond.NodeAddress.Equals(msg.Signer) {
-		return ctx, cosmos.ErrUnknownRequest("bond signer mismatch")
-	}
 	operator, err := common.NewPubKey(msg.OperatorPubKey)
 	if err != nil {
 		return ctx, err
 	}
-	operatorAddress, err := operator.GetThorAddress()
-	if err != nil {
-		return ctx, err
-	}
-	if !operatorAddress.Equals(msg.Signer) {
-		return ctx, cosmos.ErrUnknownRequest("bond owner mismatch")
+	if !bond.NodeAddress.Empty() && !bond.OperatorPubKey.Equals(operator) {
+		return ctx, cosmos.ErrUnknownRequest("bond operator mismatch")
 	}
 	return shielderRedeemAnte(ctx, k, msg.Proof, msg.Public)
 }
@@ -535,24 +536,47 @@ func ShielderShieldFeesAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg type
 	if !bond.FeeShareActive {
 		return ctx, cosmos.ErrUnknownRequest("shielder node has no active fee share")
 	}
-	if !bond.NodeAddress.Equals(msg.Signer) {
-		return ctx, cosmos.ErrUnknownRequest("shielder fee signer mismatch")
-	}
-	if !bond.PendingFeeDepositID.IsEmpty() {
-		return ctx, cosmos.ErrUnknownRequest("shielder fee settlement already pending shield")
-	}
 	pool, err := distributeFeePool(ctx, k)
 	if err != nil {
 		return ctx, err
 	}
-	if pool.FeePerSlotShare <= bond.FeeDebtSats {
-		return ctx, cosmos.ErrUnknownRequest("no shielder fees claimable")
+	if err := settleNodeFeeShare(ctx, k, &bond, pool); err != nil {
+		return ctx, err
 	}
-	noteCommitments, err := parseShielderNoteCommitments(msg.Commitments, pool.FeePerSlotShare-bond.FeeDebtSats, false)
+	operatorAddress, err := nodeBondOperatorAddress(bond)
 	if err != nil {
 		return ctx, err
 	}
-	noteCommitments, _, err = applyShielderNoteFloor(ctx, k, noteCommitments, pool.FeePerSlotShare-bond.FeeDebtSats, false)
+	bonder, err := k.GetShielderNodeBonder(ctx, msg.NodePubKey, msg.Signer)
+	if err != nil {
+		return ctx, err
+	}
+	isBonder := !bonder.Bonder.Empty() && bonder.PrincipalSats != 0
+	isOperator := msg.Signer.Equals(operatorAddress)
+	if !isBonder && !isOperator {
+		return ctx, cosmos.ErrUnknownRequest("shielder fee signer mismatch")
+	}
+	if isBonder && !bonder.PendingFeeDepositID.IsEmpty() {
+		return ctx, cosmos.ErrUnknownRequest("shielder bonder fee settlement already pending shield")
+	}
+	if isOperator && !bond.PendingOperatorFeeDepositID.IsEmpty() {
+		return ctx, cosmos.ErrUnknownRequest("shielder operator fee settlement already pending shield")
+	}
+	claimSats := uint64(0)
+	if isBonder {
+		claimSats += nodeBonderClaimableSats(ctx, k, bond, bonder)
+	}
+	if isOperator {
+		claimSats += bond.OperatorFeeAccruedSats
+	}
+	if claimSats == 0 {
+		return ctx, cosmos.ErrUnknownRequest("no shielder fees claimable")
+	}
+	noteCommitments, err := parseShielderNoteCommitments(msg.Commitments, claimSats, false)
+	if err != nil {
+		return ctx, err
+	}
+	noteCommitments, _, err = applyShielderNoteFloor(ctx, k, noteCommitments, claimSats, false)
 	if err != nil {
 		return ctx, err
 	}
@@ -566,16 +590,32 @@ func ShielderShieldFeesAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg type
 		}
 	}
 	if ctx.IsCheckTx() {
-		bond.FeeDebtSats = pool.FeePerSlotShare
-		bond.UpdatedHeight = ctx.BlockHeight()
-		if err := k.SetShielderNodeBond(ctx, bond); err != nil {
-			return ctx, err
-		}
 		for _, pubKey := range notePubKeys {
 			if err := k.SetShielderFeeNotePubKey(ctx, pubKey); err != nil {
 				return ctx, err
 			}
 		}
+	}
+	return ctx, nil
+}
+
+func NodeOperatorFeeSetAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgNodeOperatorFeeSet) (cosmos.Context, error) {
+	if err := msg.ValidateBasic(); err != nil {
+		return ctx, err
+	}
+	bond, err := k.GetShielderNodeBond(ctx, msg.NodePubKey)
+	if err != nil {
+		return ctx, err
+	}
+	if bond.NodePubKey == "" {
+		return ctx, cosmos.ErrUnknownRequest("shielder node bond not found")
+	}
+	operatorAddress, err := nodeBondOperatorAddress(bond)
+	if err != nil {
+		return ctx, err
+	}
+	if !msg.Signer.Equals(operatorAddress) {
+		return ctx, cosmos.ErrUnauthorized("node operator signer mismatch")
 	}
 	return ctx, nil
 }

@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"os"
 	"regexp"
 	"sync"
 	stdatomic "sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -358,10 +360,29 @@ func (c *Client) RegisterPublicKeyAtPath(pubkey common.PubKey, pathIndex uint64)
 		return fmt.Errorf("fail to get address from pubkey(%s): %w", pubkey, err)
 	}
 
-	err = c.rpc.CreateWallet("")
-	if err != nil {
-		c.log.Info().Err(err).Msg("fail to create wallet")
-		return err
+	if !c.cfg.ChainID.Equals(common.BTCChain) {
+		err = c.rpc.CreateWallet("")
+		if err != nil {
+			c.log.Info().Err(err).Msg("fail to create wallet")
+			return err
+		}
+	}
+
+	if c.cfg.ChainID.Equals(common.BTCChain) {
+		unlock, lockErr := lockBTCWalletImport()
+		if lockErr != nil {
+			return lockErr
+		}
+		defer unlock()
+
+		known, knownErr := c.rpc.AddressKnown(addr.String())
+		if knownErr == nil && known {
+			c.rememberVaultPath(pubkey, pathIndex)
+			return nil
+		}
+		if knownErr != nil {
+			c.log.Debug().Err(knownErr).Str("addr", addr.String()).Msg("fail to check imported bitcoin address")
+		}
 	}
 
 	if c.cfg.ChainID.Equals(common.BTCChain) {
@@ -382,6 +403,21 @@ func (c *Client) RegisterPublicKeyAtPath(pubkey common.PubKey, pathIndex uint64)
 	}
 	c.rememberVaultPath(pubkey, pathIndex)
 	return nil
+}
+
+func lockBTCWalletImport() (func(), error) {
+	f, err := os.OpenFile("/tmp/thornado-btc-wallet-import.lock", os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("fail to open BTC wallet import lock: %w", err)
+	}
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+		_ = f.Close()
+		return nil, fmt.Errorf("fail to lock BTC wallet import: %w", err)
+	}
+	return func() {
+		_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+		_ = f.Close()
+	}, nil
 }
 
 func (c *Client) rememberVaultPath(pubkey common.PubKey, pathIndex uint64) {
@@ -412,13 +448,21 @@ func (c *Client) registeredVaultPaths(pubkey common.PubKey) []uint64 {
 
 // GetAccount returns the account details for the given public key.
 func (c *Client) GetAccount(pubkey common.PubKey, height *big.Int) (common.Account, error) {
+	return c.getAccountForPaths(pubkey, c.registeredVaultPathsWithMain(pubkey))
+}
+
+func (c *Client) getSolvencyAccount(pubkey common.PubKey) (common.Account, error) {
+	return c.getAccountForPaths(pubkey, c.solvencyVaultPaths(pubkey))
+}
+
+func (c *Client) getAccountForPaths(pubkey common.PubKey, pathIndexes []uint64) (common.Account, error) {
 	acct := common.Account{}
 	if pubkey.IsEmpty() {
 		return acct, errors.New("pubkey can't be empty")
 	}
 
 	total := 0.0
-	for _, pathIndex := range c.registeredVaultPaths(pubkey) {
+	for _, pathIndex := range pathIndexes {
 		addr, err := c.getVaultAddressAtPath(pubkey, pathIndex)
 		if err != nil {
 			return acct, fmt.Errorf("fail to get address from pubkey(%s) path(%d): %w", pubkey, pathIndex, err)
@@ -449,6 +493,32 @@ func (c *Client) GetAccount(pubkey common.PubKey, height *big.Int) (common.Accou
 		common.Coins{
 			common.NewCoin(c.cfg.ChainID.GetGasAsset(), cosmos.NewUint(uint64(totalAmt))),
 		}), nil
+}
+
+func (c *Client) solvencyVaultPaths(pubkey common.PubKey) []uint64 {
+	seen := make(map[uint64]struct{})
+	paths := make([]uint64, 0, int(common.DepositAddressLookahead)+1)
+	add := func(pathIndex uint64) {
+		if _, ok := seen[pathIndex]; ok {
+			return
+		}
+		seen[pathIndex] = struct{}{}
+		paths = append(paths, pathIndex)
+	}
+	for _, pathIndex := range c.registeredVaultPathsWithMain(pubkey) {
+		add(pathIndex)
+	}
+	for _, pathType := range []common.VaultDepositPathType{common.VaultDepositPathUser, common.VaultDepositPathNode} {
+		pathIndexes, err := common.VaultDepositLookaheadPathIndexes(pathType)
+		if err != nil {
+			c.log.Error().Err(err).Str("pubkey", pubkey.String()).Str("path_type", string(pathType)).Msg("fail to derive solvency vault deposit path lookahead")
+			continue
+		}
+		for _, pathIndex := range pathIndexes {
+			add(pathIndex)
+		}
+	}
+	return paths
 }
 
 // GetAccountByAddress is unimplemented for UTXO chains.
@@ -813,10 +883,17 @@ func (c *Client) GetConfirmationCount(txIn types.TxIn) int64 {
 
 	// get the block height and confirmation required
 	height := txIn.TxArray[0].BlockHeight
+	if c.protocolControlledTxIn(txIn) {
+		c.log.Info().Int64("height", height).Msg("protocol-controlled bitcoin tx requires 1 confirmation")
+		return 1
+	}
 	confirm, err := c.getBlockRequiredConfirmation(txIn, height)
 	if err != nil {
 		c.log.Err(err).Int64("height", height).Msg("fail to get required confirmation")
 		return 0
+	}
+	if confirm > 1 {
+		confirm--
 	}
 
 	c.log.Info().Int64("height", height).Msgf("confirmation required: %d", confirm)
@@ -946,7 +1023,7 @@ func (c *Client) ReportSolvency(height int64) error {
 	processedVaults := 0
 	for i := range chainVaults {
 		var acct common.Account
-		acct, err = c.GetAccount(chainVaults[i].PubKey, nil)
+		acct, err = c.getSolvencyAccount(chainVaults[i].PubKey)
 		if err != nil {
 			c.log.Err(err).Msgf("fail to get account balance")
 			continue

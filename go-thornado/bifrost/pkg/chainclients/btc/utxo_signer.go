@@ -120,15 +120,115 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 		return nil, nil, nil, fmt.Errorf("fail to marshal checkpoint: %w", err)
 	}
 
+	signedTx, txIn, err := c.signBuiltTx(tx, redeemTx, checkpoint.IndividualAmounts, sourceScript, thornadoHeight, redeemTx.TxOut[0].Value)
+	if err != nil {
+		return nil, checkpointBytes, nil, err
+	}
+
+	return signedTx, nil, txIn, nil
+}
+
+func (c *Client) SignTxBatch(txs []stypes.TxOutItem, thornadoHeight int64) ([]byte, []byte, *stypes.TxInItem, error) {
+	if len(txs) == 0 {
+		return nil, nil, nil, errors.New("empty tx batch")
+	}
+	tx := txs[0]
+	if !tx.Chain.Equals(c.cfg.ChainID) {
+		return nil, nil, nil, errors.New("wrong chain")
+	}
+	if !tx.Chain.Equals(common.BTCChain) {
+		return nil, nil, nil, errors.New("batch signing is BTC only")
+	}
+	if tx.Coins.IsEmpty() {
+		return nil, nil, nil, nil
+	}
+	if c.txBatchAlreadySigned(txs) {
+		c.log.Info().Msgf("ignoring already signed transaction batch: (%+v)", txs)
+		return nil, nil, nil, nil
+	}
+
+	sourceScript, err := c.getSourceScript(tx)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("fail to get source pay to address script: %w", err)
+	}
+
+	checkpoint := SignCheckpoint{}
+	redeemTx := &btcwire.MsgTx{}
+	var outputAmount int64
+	if tx.Checkpoint != nil {
+		if err = json.Unmarshal(tx.Checkpoint, &checkpoint); err != nil {
+			return nil, nil, nil, fmt.Errorf("fail to unmarshal checkpoint: %w", err)
+		}
+		if err = redeemTx.Deserialize(bytes.NewReader(checkpoint.UnsignedTx)); err != nil {
+			return nil, nil, nil, fmt.Errorf("fail to deserialize tx: %w", err)
+		}
+		var unspent bool
+		unspent, err = c.vinsUnspent(tx, redeemTx.TxIn)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("fail to verify checkpoint vins: %w", err)
+		}
+		if !unspent {
+			return nil, nil, nil, nil
+		}
+		for _, item := range txs {
+			outputAmount += int64(item.Coins.GetCoin(c.cfg.ChainID.GetGasAsset()).Amount.Uint64())
+		}
+	} else {
+		redeemTx, checkpoint.IndividualAmounts, outputAmount, err = c.buildTxBatch(txs, sourceScript)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		buf := bytes.NewBuffer([]byte{})
+		if err = redeemTx.Serialize(buf); err != nil {
+			return nil, nil, nil, fmt.Errorf("fail to serialize tx: %w", err)
+		}
+		checkpoint.UnsignedTx = buf.Bytes()
+	}
+
+	checkpointBytes, err := json.Marshal(checkpoint)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("fail to marshal checkpoint: %w", err)
+	}
+
+	signedTx, txIn, err := c.signBuiltTx(tx, redeemTx, checkpoint.IndividualAmounts, sourceScript, thornadoHeight, outputAmount)
+	if err != nil {
+		return nil, checkpointBytes, nil, err
+	}
+	return signedTx, nil, txIn, nil
+}
+
+func (c *Client) txBatchAlreadySigned(txs []stypes.TxOutItem) bool {
+	if len(txs) == 0 {
+		return false
+	}
+	for _, tx := range txs {
+		if !c.signerCacheManager.HasSigned(tx.CacheHash()) {
+			return false
+		}
+	}
+	return true
+}
+
+func (c *Client) MarkTxBatchSigned(txs []stypes.TxOutItem, txid string) error {
+	for _, tx := range txs {
+		if err := c.signerCacheManager.SetSigned(tx.CacheHash(), tx.CacheVault(c.GetChain()), txid); err != nil {
+			c.log.Err(err).Msgf("fail to mark tx out batch item (%+v) as signed", tx)
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Client) signBuiltTx(tx stypes.TxOutItem, redeemTx *btcwire.MsgTx, individualAmounts map[string]int64, sourceScript []byte, thornadoHeight int64, observedAmount int64) ([]byte, *stypes.TxInItem, error) {
 	// create the list of signing requests
 	c.log.Info().Msgf("UTXOs to sign: %d", len(redeemTx.TxIn))
 	signings := []struct{ idx, amount int64 }{}
 	totalAmount := int64(0)
 	for idx, txIn := range redeemTx.TxIn {
 		key := formatUtxoKey(txIn.PreviousOutPoint.Hash.String(), txIn.PreviousOutPoint.Index)
-		outputAmount := checkpoint.IndividualAmounts[key]
-		totalAmount += outputAmount
-		signings = append(signings, struct{ idx, amount int64 }{int64(idx), outputAmount})
+		inputAmount := individualAmounts[key]
+		totalAmount += inputAmount
+		signings = append(signings, struct{ idx, amount int64 }{int64(idx), inputAmount})
 	}
 
 	chainHeight, err := c.rpc.GetBlockCount()
@@ -164,7 +264,7 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 	wg.Wait()
 	if utxoErr != nil {
 		err = PostKeysignFailure(c.bridge, tx, c.log, thornadoHeight, utxoErr)
-		return nil, checkpointBytes, nil, fmt.Errorf("fail to sign the message: %w", err)
+		return nil, nil, fmt.Errorf("fail to sign the message: %w", err)
 	}
 
 	var signedTx bytes.Buffer
@@ -174,11 +274,10 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 	err = redeemTx.Serialize(&signedTx)
 
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("fail to serialize tx to bytes: %w", err)
+		return nil, nil, fmt.Errorf("fail to serialize tx to bytes: %w", err)
 	}
 
 	// create the observation to be sent by the signer before broadcast
-	amt := redeemTx.TxOut[0].Value // the first output is the outbound amount
 	gas := totalAmount
 	for _, txOut := range redeemTx.TxOut { // subtract all vouts to from vins to get the gas
 		gas -= txOut.Value
@@ -195,7 +294,7 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 			sender.String(),
 			tx.ToAddress.String(),
 			common.NewCoins(
-				common.NewCoin(c.cfg.ChainID.GetGasAsset(), cosmos.NewUint(uint64(amt))),
+				common.NewCoin(c.cfg.ChainID.GetGasAsset(), cosmos.NewUint(uint64(observedAmount))),
 			),
 			common.Gas(common.NewCoins(
 				common.NewCoin(c.cfg.ChainID.GetGasAsset(), cosmos.NewUint(uint64(gas))),
@@ -205,9 +304,10 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 			"",
 			nil,
 		)
+		txIn.SourceInputs = append([]stypes.TxOutInput(nil), tx.SourceInputs...)
 	}
 
-	return signedTx.Bytes(), nil, txIn, nil
+	return signedTx.Bytes(), txIn, nil
 }
 
 // SourceTxMissing checks whether a sweep source is still spendable without
@@ -239,6 +339,16 @@ func (c *Client) SourceTxMissing(tx stypes.TxOutItem, thornadoHeight int64) (boo
 				Msg("BTC sweep source is already spent by a mempool tx; skipping errata")
 			return false, nil
 		}
+		if missing, checkErr := c.sweepSourceActuallyMissing(tx); checkErr != nil {
+			c.log.Warn().
+				Stringer("in_hash", tx.InHash).
+				Uint64("vault_path_index", tx.VaultPathIndex).
+				Err(checkErr).
+				Msg("fail to verify missing BTC sweep source; deferring errata")
+			return false, nil
+		} else if !missing {
+			return false, nil
+		}
 		c.log.Warn().
 			Stringer("in_hash", tx.InHash).
 			Uint64("vault_path_index", tx.VaultPathIndex).
@@ -251,20 +361,78 @@ func (c *Client) SourceTxMissing(tx stypes.TxOutItem, thornadoHeight int64) (boo
 	return false, err
 }
 
+func (c *Client) sweepSourceActuallyMissing(tx stypes.TxOutItem) (bool, error) {
+	inputs := tx.SourceInputs
+	if len(inputs) == 0 && !tx.InHash.IsEmpty() {
+		inputs = []stypes.TxOutInput{{TxID: tx.InHash, Vout: 0}}
+	}
+	if len(inputs) == 0 {
+		return true, fmt.Errorf("missing sweep source inputs")
+	}
+	for _, input := range inputs {
+		if input.TxID.IsEmpty() {
+			return true, fmt.Errorf("empty sweep source input tx id")
+		}
+		raw, err := c.rpc.GetRawTransactionVerbose(input.TxID.String())
+		if err != nil {
+			c.log.Warn().
+				Stringer("in_hash", tx.InHash).
+				Stringer("source_tx", input.TxID).
+				Uint32("source_vout", input.Vout).
+				Err(err).
+				Msg("BTC sweep source transaction is not known")
+			return true, nil
+		}
+		if raw == nil || int(input.Vout) >= len(raw.Vout) {
+			c.log.Warn().
+				Stringer("in_hash", tx.InHash).
+				Stringer("source_tx", input.TxID).
+				Uint32("source_vout", input.Vout).
+				Msg("BTC sweep source output is not present on source transaction")
+			return true, nil
+		}
+		txOut, err := c.rpc.GetTxOut(input.TxID.String(), input.Vout, true)
+		if err != nil {
+			return false, fmt.Errorf("fail to query source output %s:%d: %w", input.TxID, input.Vout, err)
+		}
+		if txOut != nil {
+			c.log.Info().
+				Stringer("in_hash", tx.InHash).
+				Stringer("source_tx", input.TxID).
+				Uint32("source_vout", input.Vout).
+				Msg("BTC sweep source exists in UTXO set but wallet listunspent did not return it; deferring errata")
+			return false, nil
+		}
+		c.log.Info().
+			Stringer("in_hash", tx.InHash).
+			Stringer("source_tx", input.TxID).
+			Uint32("source_vout", input.Vout).
+			Msg("BTC sweep source output is already spent; waiting for sweep observation")
+		return false, nil
+	}
+	return false, nil
+}
+
 func (c *Client) sweepSpendInMempool(tx stypes.TxOutItem) bool {
 	txids, err := c.rpc.GetRawMempool()
 	if err != nil {
 		c.log.Debug().Err(err).Stringer("in_hash", tx.InHash).Msg("fail to read mempool while checking sweep source")
 		return false
 	}
-	target := strings.ToLower(tx.InHash.String())
+	targets := make(map[string]bool, len(tx.SourceInputs))
+	for _, input := range tx.SourceInputs {
+		targets[sourceInputKey(input.TxID.String(), input.Vout)] = true
+	}
+	if len(targets) == 0 && !tx.InHash.IsEmpty() {
+		targets[sourceInputKey(tx.InHash.String(), 0)] = true
+	}
 	for _, txid := range txids {
 		raw, err := c.rpc.GetRawTransactionVerbose(txid)
 		if err != nil {
 			continue
 		}
 		for _, vin := range raw.Vin {
-			if strings.EqualFold(vin.Txid, target) {
+			if targets[sourceInputKey(vin.Txid, vin.Vout)] {
 				return true
 			}
 		}

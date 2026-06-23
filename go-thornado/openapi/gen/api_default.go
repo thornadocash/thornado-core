@@ -2628,7 +2628,7 @@ func (a *DefaultApiService) ThornadoNodeMetricsGetExecute(r ApiThornadoNodeMetri
 		return nil, &GenericOpenAPIError{error: err.Error()}
 	}
 
-	localVarPath := localBasePath + "/thornado/node/metrics"
+	localVarPath := localBasePath + "/thornado/nodes/metrics"
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

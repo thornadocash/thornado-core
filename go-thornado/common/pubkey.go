@@ -239,17 +239,21 @@ func ConvertAndEncode(hrp string, data []byte) (string, error) {
 // PubKeySet
 ////////////////////////////////////////////////////////////////////////////////////////
 
-// NewPubKeySet create a new instance of PubKeySet , which contains two keys
-func NewPubKeySet(secp256k1, ed25519 PubKey) PubKeySet {
+// NewPubKeySet create a new instance of PubKeySet.
+func NewPubKeySet(secp256k1 PubKey, ed25519 ...PubKey) PubKeySet {
+	edKey := EmptyPubKey
+	if len(ed25519) > 0 {
+		edKey = ed25519[0]
+	}
 	return PubKeySet{
 		Secp256k1: secp256k1,
-		Ed25519:   ed25519,
+		Ed25519:   edKey,
 	}
 }
 
 // IsEmpty will determinate whether PubKeySet is an empty
 func (p PubKeySet) IsEmpty() bool {
-	return p.Secp256k1.IsEmpty() || p.Ed25519.IsEmpty()
+	return p.Secp256k1.IsEmpty() && p.Ed25519.IsEmpty()
 }
 
 // Equals check whether two PubKeySet are the same

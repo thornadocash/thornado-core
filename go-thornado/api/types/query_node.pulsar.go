@@ -5790,23 +5790,78 @@ func (x *fastReflection_QueryNodeBondRequest) ProtoMethods() *protoiface.Methods
 	}
 }
 
+var _ protoreflect.List = (*_QueryNodeBondResponse_19_list)(nil)
+
+type _QueryNodeBondResponse_19_list struct {
+	list *[]*QueryNodeBonder
+}
+
+func (x *_QueryNodeBondResponse_19_list) Len() int {
+	if x.list == nil {
+		return 0
+	}
+	return len(*x.list)
+}
+
+func (x *_QueryNodeBondResponse_19_list) Get(i int) protoreflect.Value {
+	return protoreflect.ValueOfMessage((*x.list)[i].ProtoReflect())
+}
+
+func (x *_QueryNodeBondResponse_19_list) Set(i int, value protoreflect.Value) {
+	valueUnwrapped := value.Message()
+	concreteValue := valueUnwrapped.Interface().(*QueryNodeBonder)
+	(*x.list)[i] = concreteValue
+}
+
+func (x *_QueryNodeBondResponse_19_list) Append(value protoreflect.Value) {
+	valueUnwrapped := value.Message()
+	concreteValue := valueUnwrapped.Interface().(*QueryNodeBonder)
+	*x.list = append(*x.list, concreteValue)
+}
+
+func (x *_QueryNodeBondResponse_19_list) AppendMutable() protoreflect.Value {
+	v := new(QueryNodeBonder)
+	*x.list = append(*x.list, v)
+	return protoreflect.ValueOfMessage(v.ProtoReflect())
+}
+
+func (x *_QueryNodeBondResponse_19_list) Truncate(n int) {
+	for i := n; i < len(*x.list); i++ {
+		(*x.list)[i] = nil
+	}
+	*x.list = (*x.list)[:n]
+}
+
+func (x *_QueryNodeBondResponse_19_list) NewElement() protoreflect.Value {
+	v := new(QueryNodeBonder)
+	return protoreflect.ValueOfMessage(v.ProtoReflect())
+}
+
+func (x *_QueryNodeBondResponse_19_list) IsValid() bool {
+	return x.list != nil
+}
+
 var (
-	md_QueryNodeBondResponse                        protoreflect.MessageDescriptor
-	fd_QueryNodeBondResponse_node_pub_key           protoreflect.FieldDescriptor
-	fd_QueryNodeBondResponse_operator_pub_key       protoreflect.FieldDescriptor
-	fd_QueryNodeBondResponse_node_address           protoreflect.FieldDescriptor
-	fd_QueryNodeBondResponse_slot                   protoreflect.FieldDescriptor
-	fd_QueryNodeBondResponse_pending_sats           protoreflect.FieldDescriptor
-	fd_QueryNodeBondResponse_bond_sats              protoreflect.FieldDescriptor
-	fd_QueryNodeBondResponse_fee_debt_sats          protoreflect.FieldDescriptor
-	fd_QueryNodeBondResponse_fee_share_active       protoreflect.FieldDescriptor
-	fd_QueryNodeBondResponse_pending_fee_deposit_id protoreflect.FieldDescriptor
-	fd_QueryNodeBondResponse_sold                   protoreflect.FieldDescriptor
-	fd_QueryNodeBondResponse_sold_auction_id        protoreflect.FieldDescriptor
-	fd_QueryNodeBondResponse_created_height         protoreflect.FieldDescriptor
-	fd_QueryNodeBondResponse_updated_height         protoreflect.FieldDescriptor
-	fd_QueryNodeBondResponse_node_status            protoreflect.FieldDescriptor
-	fd_QueryNodeBondResponse_penalty_points         protoreflect.FieldDescriptor
+	md_QueryNodeBondResponse                                 protoreflect.MessageDescriptor
+	fd_QueryNodeBondResponse_node_pub_key                    protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_operator_pub_key                protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_node_address                    protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_slot                            protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_pending_sats                    protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_bond_sats                       protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_fee_debt_sats                   protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_fee_share_active                protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_pending_fee_deposit_id          protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_sold                            protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_sold_auction_id                 protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_created_height                  protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_updated_height                  protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_node_status                     protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_penalty_points                  protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_operator_fee_basis_points       protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_operator_fee_accrued_sats       protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_pending_operator_fee_deposit_id protoreflect.FieldDescriptor
+	fd_QueryNodeBondResponse_bonders                         protoreflect.FieldDescriptor
 )
 
 func init() {
@@ -5827,6 +5882,10 @@ func init() {
 	fd_QueryNodeBondResponse_updated_height = md_QueryNodeBondResponse.Fields().ByName("updated_height")
 	fd_QueryNodeBondResponse_node_status = md_QueryNodeBondResponse.Fields().ByName("node_status")
 	fd_QueryNodeBondResponse_penalty_points = md_QueryNodeBondResponse.Fields().ByName("penalty_points")
+	fd_QueryNodeBondResponse_operator_fee_basis_points = md_QueryNodeBondResponse.Fields().ByName("operator_fee_basis_points")
+	fd_QueryNodeBondResponse_operator_fee_accrued_sats = md_QueryNodeBondResponse.Fields().ByName("operator_fee_accrued_sats")
+	fd_QueryNodeBondResponse_pending_operator_fee_deposit_id = md_QueryNodeBondResponse.Fields().ByName("pending_operator_fee_deposit_id")
+	fd_QueryNodeBondResponse_bonders = md_QueryNodeBondResponse.Fields().ByName("bonders")
 }
 
 var _ protoreflect.Message = (*fastReflection_QueryNodeBondResponse)(nil)
@@ -5984,6 +6043,30 @@ func (x *fastReflection_QueryNodeBondResponse) Range(f func(protoreflect.FieldDe
 			return
 		}
 	}
+	if x.OperatorFeeBasisPoints != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.OperatorFeeBasisPoints)
+		if !f(fd_QueryNodeBondResponse_operator_fee_basis_points, value) {
+			return
+		}
+	}
+	if x.OperatorFeeAccruedSats != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.OperatorFeeAccruedSats)
+		if !f(fd_QueryNodeBondResponse_operator_fee_accrued_sats, value) {
+			return
+		}
+	}
+	if x.PendingOperatorFeeDepositId != "" {
+		value := protoreflect.ValueOfString(x.PendingOperatorFeeDepositId)
+		if !f(fd_QueryNodeBondResponse_pending_operator_fee_deposit_id, value) {
+			return
+		}
+	}
+	if len(x.Bonders) != 0 {
+		value := protoreflect.ValueOfList(&_QueryNodeBondResponse_19_list{list: &x.Bonders})
+		if !f(fd_QueryNodeBondResponse_bonders, value) {
+			return
+		}
+	}
 }
 
 // Has reports whether a field is populated.
@@ -6029,6 +6112,14 @@ func (x *fastReflection_QueryNodeBondResponse) Has(fd protoreflect.FieldDescript
 		return x.NodeStatus != ""
 	case "types.QueryNodeBondResponse.penalty_points":
 		return x.PenaltyPoints != int64(0)
+	case "types.QueryNodeBondResponse.operator_fee_basis_points":
+		return x.OperatorFeeBasisPoints != uint64(0)
+	case "types.QueryNodeBondResponse.operator_fee_accrued_sats":
+		return x.OperatorFeeAccruedSats != uint64(0)
+	case "types.QueryNodeBondResponse.pending_operator_fee_deposit_id":
+		return x.PendingOperatorFeeDepositId != ""
+	case "types.QueryNodeBondResponse.bonders":
+		return len(x.Bonders) != 0
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeBondResponse"))
@@ -6075,6 +6166,14 @@ func (x *fastReflection_QueryNodeBondResponse) Clear(fd protoreflect.FieldDescri
 		x.NodeStatus = ""
 	case "types.QueryNodeBondResponse.penalty_points":
 		x.PenaltyPoints = int64(0)
+	case "types.QueryNodeBondResponse.operator_fee_basis_points":
+		x.OperatorFeeBasisPoints = uint64(0)
+	case "types.QueryNodeBondResponse.operator_fee_accrued_sats":
+		x.OperatorFeeAccruedSats = uint64(0)
+	case "types.QueryNodeBondResponse.pending_operator_fee_deposit_id":
+		x.PendingOperatorFeeDepositId = ""
+	case "types.QueryNodeBondResponse.bonders":
+		x.Bonders = nil
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeBondResponse"))
@@ -6136,6 +6235,21 @@ func (x *fastReflection_QueryNodeBondResponse) Get(descriptor protoreflect.Field
 	case "types.QueryNodeBondResponse.penalty_points":
 		value := x.PenaltyPoints
 		return protoreflect.ValueOfInt64(value)
+	case "types.QueryNodeBondResponse.operator_fee_basis_points":
+		value := x.OperatorFeeBasisPoints
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryNodeBondResponse.operator_fee_accrued_sats":
+		value := x.OperatorFeeAccruedSats
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryNodeBondResponse.pending_operator_fee_deposit_id":
+		value := x.PendingOperatorFeeDepositId
+		return protoreflect.ValueOfString(value)
+	case "types.QueryNodeBondResponse.bonders":
+		if len(x.Bonders) == 0 {
+			return protoreflect.ValueOfList(&_QueryNodeBondResponse_19_list{})
+		}
+		listValue := &_QueryNodeBondResponse_19_list{list: &x.Bonders}
+		return protoreflect.ValueOfList(listValue)
 	default:
 		if descriptor.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeBondResponse"))
@@ -6186,6 +6300,16 @@ func (x *fastReflection_QueryNodeBondResponse) Set(fd protoreflect.FieldDescript
 		x.NodeStatus = value.Interface().(string)
 	case "types.QueryNodeBondResponse.penalty_points":
 		x.PenaltyPoints = value.Int()
+	case "types.QueryNodeBondResponse.operator_fee_basis_points":
+		x.OperatorFeeBasisPoints = value.Uint()
+	case "types.QueryNodeBondResponse.operator_fee_accrued_sats":
+		x.OperatorFeeAccruedSats = value.Uint()
+	case "types.QueryNodeBondResponse.pending_operator_fee_deposit_id":
+		x.PendingOperatorFeeDepositId = value.Interface().(string)
+	case "types.QueryNodeBondResponse.bonders":
+		lv := value.List()
+		clv := lv.(*_QueryNodeBondResponse_19_list)
+		x.Bonders = *clv.list
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeBondResponse"))
@@ -6206,6 +6330,12 @@ func (x *fastReflection_QueryNodeBondResponse) Set(fd protoreflect.FieldDescript
 // Mutable is a mutating operation and unsafe for concurrent use.
 func (x *fastReflection_QueryNodeBondResponse) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
 	switch fd.FullName() {
+	case "types.QueryNodeBondResponse.bonders":
+		if x.Bonders == nil {
+			x.Bonders = []*QueryNodeBonder{}
+		}
+		value := &_QueryNodeBondResponse_19_list{list: &x.Bonders}
+		return protoreflect.ValueOfList(value)
 	case "types.QueryNodeBondResponse.node_pub_key":
 		panic(fmt.Errorf("field node_pub_key of message types.QueryNodeBondResponse is not mutable"))
 	case "types.QueryNodeBondResponse.operator_pub_key":
@@ -6236,6 +6366,12 @@ func (x *fastReflection_QueryNodeBondResponse) Mutable(fd protoreflect.FieldDesc
 		panic(fmt.Errorf("field node_status of message types.QueryNodeBondResponse is not mutable"))
 	case "types.QueryNodeBondResponse.penalty_points":
 		panic(fmt.Errorf("field penalty_points of message types.QueryNodeBondResponse is not mutable"))
+	case "types.QueryNodeBondResponse.operator_fee_basis_points":
+		panic(fmt.Errorf("field operator_fee_basis_points of message types.QueryNodeBondResponse is not mutable"))
+	case "types.QueryNodeBondResponse.operator_fee_accrued_sats":
+		panic(fmt.Errorf("field operator_fee_accrued_sats of message types.QueryNodeBondResponse is not mutable"))
+	case "types.QueryNodeBondResponse.pending_operator_fee_deposit_id":
+		panic(fmt.Errorf("field pending_operator_fee_deposit_id of message types.QueryNodeBondResponse is not mutable"))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeBondResponse"))
@@ -6279,6 +6415,15 @@ func (x *fastReflection_QueryNodeBondResponse) NewField(fd protoreflect.FieldDes
 		return protoreflect.ValueOfString("")
 	case "types.QueryNodeBondResponse.penalty_points":
 		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryNodeBondResponse.operator_fee_basis_points":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryNodeBondResponse.operator_fee_accrued_sats":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryNodeBondResponse.pending_operator_fee_deposit_id":
+		return protoreflect.ValueOfString("")
+	case "types.QueryNodeBondResponse.bonders":
+		list := []*QueryNodeBonder{}
+		return protoreflect.ValueOfList(&_QueryNodeBondResponse_19_list{list: &list})
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeBondResponse"))
@@ -6399,6 +6544,22 @@ func (x *fastReflection_QueryNodeBondResponse) ProtoMethods() *protoiface.Method
 		if x.PenaltyPoints != 0 {
 			n += 1 + runtime.Sov(uint64(x.PenaltyPoints))
 		}
+		if x.OperatorFeeBasisPoints != 0 {
+			n += 2 + runtime.Sov(uint64(x.OperatorFeeBasisPoints))
+		}
+		if x.OperatorFeeAccruedSats != 0 {
+			n += 2 + runtime.Sov(uint64(x.OperatorFeeAccruedSats))
+		}
+		l = len(x.PendingOperatorFeeDepositId)
+		if l > 0 {
+			n += 2 + l + runtime.Sov(uint64(l))
+		}
+		if len(x.Bonders) > 0 {
+			for _, e := range x.Bonders {
+				l = options.Size(e)
+				n += 2 + l + runtime.Sov(uint64(l))
+			}
+		}
 		if x.unknownFields != nil {
 			n += len(x.unknownFields)
 		}
@@ -6427,6 +6588,47 @@ func (x *fastReflection_QueryNodeBondResponse) ProtoMethods() *protoiface.Method
 		if x.unknownFields != nil {
 			i -= len(x.unknownFields)
 			copy(dAtA[i:], x.unknownFields)
+		}
+		if len(x.Bonders) > 0 {
+			for iNdEx := len(x.Bonders) - 1; iNdEx >= 0; iNdEx-- {
+				encoded, err := options.Marshal(x.Bonders[iNdEx])
+				if err != nil {
+					return protoiface.MarshalOutput{
+						NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+						Buf:               input.Buf,
+					}, err
+				}
+				i -= len(encoded)
+				copy(dAtA[i:], encoded)
+				i = runtime.EncodeVarint(dAtA, i, uint64(len(encoded)))
+				i--
+				dAtA[i] = 0x1
+				i--
+				dAtA[i] = 0x9a
+			}
+		}
+		if len(x.PendingOperatorFeeDepositId) > 0 {
+			i -= len(x.PendingOperatorFeeDepositId)
+			copy(dAtA[i:], x.PendingOperatorFeeDepositId)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.PendingOperatorFeeDepositId)))
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0x92
+		}
+		if x.OperatorFeeAccruedSats != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.OperatorFeeAccruedSats))
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0x88
+		}
+		if x.OperatorFeeBasisPoints != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.OperatorFeeBasisPoints))
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0x80
 		}
 		if x.PenaltyPoints != 0 {
 			i = runtime.EncodeVarint(dAtA, i, uint64(x.PenaltyPoints))
@@ -6939,6 +7141,946 @@ func (x *fastReflection_QueryNodeBondResponse) ProtoMethods() *protoiface.Method
 						break
 					}
 				}
+			case 16:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field OperatorFeeBasisPoints", wireType)
+				}
+				x.OperatorFeeBasisPoints = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.OperatorFeeBasisPoints |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 17:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field OperatorFeeAccruedSats", wireType)
+				}
+				x.OperatorFeeAccruedSats = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.OperatorFeeAccruedSats |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 18:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field PendingOperatorFeeDepositId", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.PendingOperatorFeeDepositId = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 19:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Bonders", wireType)
+				}
+				var msglen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					msglen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if msglen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + msglen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.Bonders = append(x.Bonders, &QueryNodeBonder{})
+				if err := options.Unmarshal(dAtA[iNdEx:postIndex], x.Bonders[len(x.Bonders)-1]); err != nil {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, err
+				}
+				iNdEx = postIndex
+			default:
+				iNdEx = preIndex
+				skippy, err := runtime.Skip(dAtA[iNdEx:])
+				if err != nil {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, err
+				}
+				if (skippy < 0) || (iNdEx+skippy) < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if (iNdEx + skippy) > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				if !options.DiscardUnknown {
+					x.unknownFields = append(x.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+				}
+				iNdEx += skippy
+			}
+		}
+
+		if iNdEx > l {
+			return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+		}
+		return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, nil
+	}
+	return &protoiface.Methods{
+		NoUnkeyedLiterals: struct{}{},
+		Flags:             protoiface.SupportMarshalDeterministic | protoiface.SupportUnmarshalDiscardUnknown,
+		Size:              size,
+		Marshal:           marshal,
+		Unmarshal:         unmarshal,
+		Merge:             nil,
+		CheckInitialized:  nil,
+	}
+}
+
+var (
+	md_QueryNodeBonder                        protoreflect.MessageDescriptor
+	fd_QueryNodeBonder_bonder                 protoreflect.FieldDescriptor
+	fd_QueryNodeBonder_pending_sats           protoreflect.FieldDescriptor
+	fd_QueryNodeBonder_principal_sats         protoreflect.FieldDescriptor
+	fd_QueryNodeBonder_claimable_fee_sats     protoreflect.FieldDescriptor
+	fd_QueryNodeBonder_pending_fee_deposit_id protoreflect.FieldDescriptor
+	fd_QueryNodeBonder_sale_entitlement_id    protoreflect.FieldDescriptor
+	fd_QueryNodeBonder_sale_payout_sats       protoreflect.FieldDescriptor
+	fd_QueryNodeBonder_created_height         protoreflect.FieldDescriptor
+	fd_QueryNodeBonder_updated_height         protoreflect.FieldDescriptor
+)
+
+func init() {
+	file_types_query_node_proto_init()
+	md_QueryNodeBonder = File_types_query_node_proto.Messages().ByName("QueryNodeBonder")
+	fd_QueryNodeBonder_bonder = md_QueryNodeBonder.Fields().ByName("bonder")
+	fd_QueryNodeBonder_pending_sats = md_QueryNodeBonder.Fields().ByName("pending_sats")
+	fd_QueryNodeBonder_principal_sats = md_QueryNodeBonder.Fields().ByName("principal_sats")
+	fd_QueryNodeBonder_claimable_fee_sats = md_QueryNodeBonder.Fields().ByName("claimable_fee_sats")
+	fd_QueryNodeBonder_pending_fee_deposit_id = md_QueryNodeBonder.Fields().ByName("pending_fee_deposit_id")
+	fd_QueryNodeBonder_sale_entitlement_id = md_QueryNodeBonder.Fields().ByName("sale_entitlement_id")
+	fd_QueryNodeBonder_sale_payout_sats = md_QueryNodeBonder.Fields().ByName("sale_payout_sats")
+	fd_QueryNodeBonder_created_height = md_QueryNodeBonder.Fields().ByName("created_height")
+	fd_QueryNodeBonder_updated_height = md_QueryNodeBonder.Fields().ByName("updated_height")
+}
+
+var _ protoreflect.Message = (*fastReflection_QueryNodeBonder)(nil)
+
+type fastReflection_QueryNodeBonder QueryNodeBonder
+
+func (x *QueryNodeBonder) ProtoReflect() protoreflect.Message {
+	return (*fastReflection_QueryNodeBonder)(x)
+}
+
+func (x *QueryNodeBonder) slowProtoReflect() protoreflect.Message {
+	mi := &file_types_query_node_proto_msgTypes[10]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+var _fastReflection_QueryNodeBonder_messageType fastReflection_QueryNodeBonder_messageType
+var _ protoreflect.MessageType = fastReflection_QueryNodeBonder_messageType{}
+
+type fastReflection_QueryNodeBonder_messageType struct{}
+
+func (x fastReflection_QueryNodeBonder_messageType) Zero() protoreflect.Message {
+	return (*fastReflection_QueryNodeBonder)(nil)
+}
+func (x fastReflection_QueryNodeBonder_messageType) New() protoreflect.Message {
+	return new(fastReflection_QueryNodeBonder)
+}
+func (x fastReflection_QueryNodeBonder_messageType) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryNodeBonder
+}
+
+// Descriptor returns message descriptor, which contains only the protobuf
+// type information for the message.
+func (x *fastReflection_QueryNodeBonder) Descriptor() protoreflect.MessageDescriptor {
+	return md_QueryNodeBonder
+}
+
+// Type returns the message type, which encapsulates both Go and protobuf
+// type information. If the Go type information is not needed,
+// it is recommended that the message descriptor be used instead.
+func (x *fastReflection_QueryNodeBonder) Type() protoreflect.MessageType {
+	return _fastReflection_QueryNodeBonder_messageType
+}
+
+// New returns a newly allocated and mutable empty message.
+func (x *fastReflection_QueryNodeBonder) New() protoreflect.Message {
+	return new(fastReflection_QueryNodeBonder)
+}
+
+// Interface unwraps the message reflection interface and
+// returns the underlying ProtoMessage interface.
+func (x *fastReflection_QueryNodeBonder) Interface() protoreflect.ProtoMessage {
+	return (*QueryNodeBonder)(x)
+}
+
+// Range iterates over every populated field in an undefined order,
+// calling f for each field descriptor and value encountered.
+// Range returns immediately if f returns false.
+// While iterating, mutating operations may only be performed
+// on the current field descriptor.
+func (x *fastReflection_QueryNodeBonder) Range(f func(protoreflect.FieldDescriptor, protoreflect.Value) bool) {
+	if x.Bonder != "" {
+		value := protoreflect.ValueOfString(x.Bonder)
+		if !f(fd_QueryNodeBonder_bonder, value) {
+			return
+		}
+	}
+	if x.PendingSats != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.PendingSats)
+		if !f(fd_QueryNodeBonder_pending_sats, value) {
+			return
+		}
+	}
+	if x.PrincipalSats != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.PrincipalSats)
+		if !f(fd_QueryNodeBonder_principal_sats, value) {
+			return
+		}
+	}
+	if x.ClaimableFeeSats != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.ClaimableFeeSats)
+		if !f(fd_QueryNodeBonder_claimable_fee_sats, value) {
+			return
+		}
+	}
+	if x.PendingFeeDepositId != "" {
+		value := protoreflect.ValueOfString(x.PendingFeeDepositId)
+		if !f(fd_QueryNodeBonder_pending_fee_deposit_id, value) {
+			return
+		}
+	}
+	if x.SaleEntitlementId != "" {
+		value := protoreflect.ValueOfString(x.SaleEntitlementId)
+		if !f(fd_QueryNodeBonder_sale_entitlement_id, value) {
+			return
+		}
+	}
+	if x.SalePayoutSats != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.SalePayoutSats)
+		if !f(fd_QueryNodeBonder_sale_payout_sats, value) {
+			return
+		}
+	}
+	if x.CreatedHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.CreatedHeight)
+		if !f(fd_QueryNodeBonder_created_height, value) {
+			return
+		}
+	}
+	if x.UpdatedHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.UpdatedHeight)
+		if !f(fd_QueryNodeBonder_updated_height, value) {
+			return
+		}
+	}
+}
+
+// Has reports whether a field is populated.
+//
+// Some fields have the property of nullability where it is possible to
+// distinguish between the default value of a field and whether the field
+// was explicitly populated with the default value. Singular message fields,
+// member fields of a oneof, and proto2 scalar fields are nullable. Such
+// fields are populated only if explicitly set.
+//
+// In other cases (aside from the nullable cases above),
+// a proto3 scalar field is populated if it contains a non-zero value, and
+// a repeated field is populated if it is non-empty.
+func (x *fastReflection_QueryNodeBonder) Has(fd protoreflect.FieldDescriptor) bool {
+	switch fd.FullName() {
+	case "types.QueryNodeBonder.bonder":
+		return x.Bonder != ""
+	case "types.QueryNodeBonder.pending_sats":
+		return x.PendingSats != uint64(0)
+	case "types.QueryNodeBonder.principal_sats":
+		return x.PrincipalSats != uint64(0)
+	case "types.QueryNodeBonder.claimable_fee_sats":
+		return x.ClaimableFeeSats != uint64(0)
+	case "types.QueryNodeBonder.pending_fee_deposit_id":
+		return x.PendingFeeDepositId != ""
+	case "types.QueryNodeBonder.sale_entitlement_id":
+		return x.SaleEntitlementId != ""
+	case "types.QueryNodeBonder.sale_payout_sats":
+		return x.SalePayoutSats != uint64(0)
+	case "types.QueryNodeBonder.created_height":
+		return x.CreatedHeight != int64(0)
+	case "types.QueryNodeBonder.updated_height":
+		return x.UpdatedHeight != int64(0)
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeBonder"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeBonder does not contain field %s", fd.FullName()))
+	}
+}
+
+// Clear clears the field such that a subsequent Has call reports false.
+//
+// Clearing an extension field clears both the extension type and value
+// associated with the given field number.
+//
+// Clear is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeBonder) Clear(fd protoreflect.FieldDescriptor) {
+	switch fd.FullName() {
+	case "types.QueryNodeBonder.bonder":
+		x.Bonder = ""
+	case "types.QueryNodeBonder.pending_sats":
+		x.PendingSats = uint64(0)
+	case "types.QueryNodeBonder.principal_sats":
+		x.PrincipalSats = uint64(0)
+	case "types.QueryNodeBonder.claimable_fee_sats":
+		x.ClaimableFeeSats = uint64(0)
+	case "types.QueryNodeBonder.pending_fee_deposit_id":
+		x.PendingFeeDepositId = ""
+	case "types.QueryNodeBonder.sale_entitlement_id":
+		x.SaleEntitlementId = ""
+	case "types.QueryNodeBonder.sale_payout_sats":
+		x.SalePayoutSats = uint64(0)
+	case "types.QueryNodeBonder.created_height":
+		x.CreatedHeight = int64(0)
+	case "types.QueryNodeBonder.updated_height":
+		x.UpdatedHeight = int64(0)
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeBonder"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeBonder does not contain field %s", fd.FullName()))
+	}
+}
+
+// Get retrieves the value for a field.
+//
+// For unpopulated scalars, it returns the default value, where
+// the default value of a bytes scalar is guaranteed to be a copy.
+// For unpopulated composite types, it returns an empty, read-only view
+// of the value; to obtain a mutable reference, use Mutable.
+func (x *fastReflection_QueryNodeBonder) Get(descriptor protoreflect.FieldDescriptor) protoreflect.Value {
+	switch descriptor.FullName() {
+	case "types.QueryNodeBonder.bonder":
+		value := x.Bonder
+		return protoreflect.ValueOfString(value)
+	case "types.QueryNodeBonder.pending_sats":
+		value := x.PendingSats
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryNodeBonder.principal_sats":
+		value := x.PrincipalSats
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryNodeBonder.claimable_fee_sats":
+		value := x.ClaimableFeeSats
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryNodeBonder.pending_fee_deposit_id":
+		value := x.PendingFeeDepositId
+		return protoreflect.ValueOfString(value)
+	case "types.QueryNodeBonder.sale_entitlement_id":
+		value := x.SaleEntitlementId
+		return protoreflect.ValueOfString(value)
+	case "types.QueryNodeBonder.sale_payout_sats":
+		value := x.SalePayoutSats
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryNodeBonder.created_height":
+		value := x.CreatedHeight
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryNodeBonder.updated_height":
+		value := x.UpdatedHeight
+		return protoreflect.ValueOfInt64(value)
+	default:
+		if descriptor.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeBonder"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeBonder does not contain field %s", descriptor.FullName()))
+	}
+}
+
+// Set stores the value for a field.
+//
+// For a field belonging to a oneof, it implicitly clears any other field
+// that may be currently set within the same oneof.
+// For extension fields, it implicitly stores the provided ExtensionType.
+// When setting a composite type, it is unspecified whether the stored value
+// aliases the source's memory in any way. If the composite value is an
+// empty, read-only value, then it panics.
+//
+// Set is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeBonder) Set(fd protoreflect.FieldDescriptor, value protoreflect.Value) {
+	switch fd.FullName() {
+	case "types.QueryNodeBonder.bonder":
+		x.Bonder = value.Interface().(string)
+	case "types.QueryNodeBonder.pending_sats":
+		x.PendingSats = value.Uint()
+	case "types.QueryNodeBonder.principal_sats":
+		x.PrincipalSats = value.Uint()
+	case "types.QueryNodeBonder.claimable_fee_sats":
+		x.ClaimableFeeSats = value.Uint()
+	case "types.QueryNodeBonder.pending_fee_deposit_id":
+		x.PendingFeeDepositId = value.Interface().(string)
+	case "types.QueryNodeBonder.sale_entitlement_id":
+		x.SaleEntitlementId = value.Interface().(string)
+	case "types.QueryNodeBonder.sale_payout_sats":
+		x.SalePayoutSats = value.Uint()
+	case "types.QueryNodeBonder.created_height":
+		x.CreatedHeight = value.Int()
+	case "types.QueryNodeBonder.updated_height":
+		x.UpdatedHeight = value.Int()
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeBonder"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeBonder does not contain field %s", fd.FullName()))
+	}
+}
+
+// Mutable returns a mutable reference to a composite type.
+//
+// If the field is unpopulated, it may allocate a composite value.
+// For a field belonging to a oneof, it implicitly clears any other field
+// that may be currently set within the same oneof.
+// For extension fields, it implicitly stores the provided ExtensionType
+// if not already stored.
+// It panics if the field does not contain a composite type.
+//
+// Mutable is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeBonder) Mutable(fd protoreflect.FieldDescriptor) protoreflect.Value {
+	switch fd.FullName() {
+	case "types.QueryNodeBonder.bonder":
+		panic(fmt.Errorf("field bonder of message types.QueryNodeBonder is not mutable"))
+	case "types.QueryNodeBonder.pending_sats":
+		panic(fmt.Errorf("field pending_sats of message types.QueryNodeBonder is not mutable"))
+	case "types.QueryNodeBonder.principal_sats":
+		panic(fmt.Errorf("field principal_sats of message types.QueryNodeBonder is not mutable"))
+	case "types.QueryNodeBonder.claimable_fee_sats":
+		panic(fmt.Errorf("field claimable_fee_sats of message types.QueryNodeBonder is not mutable"))
+	case "types.QueryNodeBonder.pending_fee_deposit_id":
+		panic(fmt.Errorf("field pending_fee_deposit_id of message types.QueryNodeBonder is not mutable"))
+	case "types.QueryNodeBonder.sale_entitlement_id":
+		panic(fmt.Errorf("field sale_entitlement_id of message types.QueryNodeBonder is not mutable"))
+	case "types.QueryNodeBonder.sale_payout_sats":
+		panic(fmt.Errorf("field sale_payout_sats of message types.QueryNodeBonder is not mutable"))
+	case "types.QueryNodeBonder.created_height":
+		panic(fmt.Errorf("field created_height of message types.QueryNodeBonder is not mutable"))
+	case "types.QueryNodeBonder.updated_height":
+		panic(fmt.Errorf("field updated_height of message types.QueryNodeBonder is not mutable"))
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeBonder"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeBonder does not contain field %s", fd.FullName()))
+	}
+}
+
+// NewField returns a new value that is assignable to the field
+// for the given descriptor. For scalars, this returns the default value.
+// For lists, maps, and messages, this returns a new, empty, mutable value.
+func (x *fastReflection_QueryNodeBonder) NewField(fd protoreflect.FieldDescriptor) protoreflect.Value {
+	switch fd.FullName() {
+	case "types.QueryNodeBonder.bonder":
+		return protoreflect.ValueOfString("")
+	case "types.QueryNodeBonder.pending_sats":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryNodeBonder.principal_sats":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryNodeBonder.claimable_fee_sats":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryNodeBonder.pending_fee_deposit_id":
+		return protoreflect.ValueOfString("")
+	case "types.QueryNodeBonder.sale_entitlement_id":
+		return protoreflect.ValueOfString("")
+	case "types.QueryNodeBonder.sale_payout_sats":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryNodeBonder.created_height":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryNodeBonder.updated_height":
+		return protoreflect.ValueOfInt64(int64(0))
+	default:
+		if fd.IsExtension() {
+			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryNodeBonder"))
+		}
+		panic(fmt.Errorf("message types.QueryNodeBonder does not contain field %s", fd.FullName()))
+	}
+}
+
+// WhichOneof reports which field within the oneof is populated,
+// returning nil if none are populated.
+// It panics if the oneof descriptor does not belong to this message.
+func (x *fastReflection_QueryNodeBonder) WhichOneof(d protoreflect.OneofDescriptor) protoreflect.FieldDescriptor {
+	switch d.FullName() {
+	default:
+		panic(fmt.Errorf("%s is not a oneof field in types.QueryNodeBonder", d.FullName()))
+	}
+	panic("unreachable")
+}
+
+// GetUnknown retrieves the entire list of unknown fields.
+// The caller may only mutate the contents of the RawFields
+// if the mutated bytes are stored back into the message with SetUnknown.
+func (x *fastReflection_QueryNodeBonder) GetUnknown() protoreflect.RawFields {
+	return x.unknownFields
+}
+
+// SetUnknown stores an entire list of unknown fields.
+// The raw fields must be syntactically valid according to the wire format.
+// An implementation may panic if this is not the case.
+// Once stored, the caller must not mutate the content of the RawFields.
+// An empty RawFields may be passed to clear the fields.
+//
+// SetUnknown is a mutating operation and unsafe for concurrent use.
+func (x *fastReflection_QueryNodeBonder) SetUnknown(fields protoreflect.RawFields) {
+	x.unknownFields = fields
+}
+
+// IsValid reports whether the message is valid.
+//
+// An invalid message is an empty, read-only value.
+//
+// An invalid message often corresponds to a nil pointer of the concrete
+// message type, but the details are implementation dependent.
+// Validity is not part of the protobuf data model, and may not
+// be preserved in marshaling or other operations.
+func (x *fastReflection_QueryNodeBonder) IsValid() bool {
+	return x != nil
+}
+
+// ProtoMethods returns optional fastReflectionFeature-path implementations of various operations.
+// This method may return nil.
+//
+// The returned methods type is identical to
+// "google.golang.org/protobuf/runtime/protoiface".Methods.
+// Consult the protoiface package documentation for details.
+func (x *fastReflection_QueryNodeBonder) ProtoMethods() *protoiface.Methods {
+	size := func(input protoiface.SizeInput) protoiface.SizeOutput {
+		x := input.Message.Interface().(*QueryNodeBonder)
+		if x == nil {
+			return protoiface.SizeOutput{
+				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+				Size:              0,
+			}
+		}
+		options := runtime.SizeInputToOptions(input)
+		_ = options
+		var n int
+		var l int
+		_ = l
+		l = len(x.Bonder)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.PendingSats != 0 {
+			n += 1 + runtime.Sov(uint64(x.PendingSats))
+		}
+		if x.PrincipalSats != 0 {
+			n += 1 + runtime.Sov(uint64(x.PrincipalSats))
+		}
+		if x.ClaimableFeeSats != 0 {
+			n += 1 + runtime.Sov(uint64(x.ClaimableFeeSats))
+		}
+		l = len(x.PendingFeeDepositId)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		l = len(x.SaleEntitlementId)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.SalePayoutSats != 0 {
+			n += 1 + runtime.Sov(uint64(x.SalePayoutSats))
+		}
+		if x.CreatedHeight != 0 {
+			n += 1 + runtime.Sov(uint64(x.CreatedHeight))
+		}
+		if x.UpdatedHeight != 0 {
+			n += 1 + runtime.Sov(uint64(x.UpdatedHeight))
+		}
+		if x.unknownFields != nil {
+			n += len(x.unknownFields)
+		}
+		return protoiface.SizeOutput{
+			NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+			Size:              n,
+		}
+	}
+
+	marshal := func(input protoiface.MarshalInput) (protoiface.MarshalOutput, error) {
+		x := input.Message.Interface().(*QueryNodeBonder)
+		if x == nil {
+			return protoiface.MarshalOutput{
+				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+				Buf:               input.Buf,
+			}, nil
+		}
+		options := runtime.MarshalInputToOptions(input)
+		_ = options
+		size := options.Size(x)
+		dAtA := make([]byte, size)
+		i := len(dAtA)
+		_ = i
+		var l int
+		_ = l
+		if x.unknownFields != nil {
+			i -= len(x.unknownFields)
+			copy(dAtA[i:], x.unknownFields)
+		}
+		if x.UpdatedHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.UpdatedHeight))
+			i--
+			dAtA[i] = 0x48
+		}
+		if x.CreatedHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.CreatedHeight))
+			i--
+			dAtA[i] = 0x40
+		}
+		if x.SalePayoutSats != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.SalePayoutSats))
+			i--
+			dAtA[i] = 0x38
+		}
+		if len(x.SaleEntitlementId) > 0 {
+			i -= len(x.SaleEntitlementId)
+			copy(dAtA[i:], x.SaleEntitlementId)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.SaleEntitlementId)))
+			i--
+			dAtA[i] = 0x32
+		}
+		if len(x.PendingFeeDepositId) > 0 {
+			i -= len(x.PendingFeeDepositId)
+			copy(dAtA[i:], x.PendingFeeDepositId)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.PendingFeeDepositId)))
+			i--
+			dAtA[i] = 0x2a
+		}
+		if x.ClaimableFeeSats != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.ClaimableFeeSats))
+			i--
+			dAtA[i] = 0x20
+		}
+		if x.PrincipalSats != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.PrincipalSats))
+			i--
+			dAtA[i] = 0x18
+		}
+		if x.PendingSats != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.PendingSats))
+			i--
+			dAtA[i] = 0x10
+		}
+		if len(x.Bonder) > 0 {
+			i -= len(x.Bonder)
+			copy(dAtA[i:], x.Bonder)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.Bonder)))
+			i--
+			dAtA[i] = 0xa
+		}
+		if input.Buf != nil {
+			input.Buf = append(input.Buf, dAtA...)
+		} else {
+			input.Buf = dAtA
+		}
+		return protoiface.MarshalOutput{
+			NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+			Buf:               input.Buf,
+		}, nil
+	}
+	unmarshal := func(input protoiface.UnmarshalInput) (protoiface.UnmarshalOutput, error) {
+		x := input.Message.Interface().(*QueryNodeBonder)
+		if x == nil {
+			return protoiface.UnmarshalOutput{
+				NoUnkeyedLiterals: input.NoUnkeyedLiterals,
+				Flags:             input.Flags,
+			}, nil
+		}
+		options := runtime.UnmarshalInputToOptions(input)
+		_ = options
+		dAtA := input.Buf
+		l := len(dAtA)
+		iNdEx := 0
+		for iNdEx < l {
+			preIndex := iNdEx
+			var wire uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				wire |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			fieldNum := int32(wire >> 3)
+			wireType := int(wire & 0x7)
+			if wireType == 4 {
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryNodeBonder: wiretype end group for non-group")
+			}
+			if fieldNum <= 0 {
+				return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: QueryNodeBonder: illegal tag %d (wire type %d)", fieldNum, wire)
+			}
+			switch fieldNum {
+			case 1:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Bonder", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.Bonder = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 2:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field PendingSats", wireType)
+				}
+				x.PendingSats = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.PendingSats |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 3:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field PrincipalSats", wireType)
+				}
+				x.PrincipalSats = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.PrincipalSats |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 4:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field ClaimableFeeSats", wireType)
+				}
+				x.ClaimableFeeSats = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.ClaimableFeeSats |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 5:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field PendingFeeDepositId", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.PendingFeeDepositId = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 6:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field SaleEntitlementId", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.SaleEntitlementId = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 7:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field SalePayoutSats", wireType)
+				}
+				x.SalePayoutSats = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.SalePayoutSats |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 8:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field CreatedHeight", wireType)
+				}
+				x.CreatedHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.CreatedHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 9:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field UpdatedHeight", wireType)
+				}
+				x.UpdatedHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.UpdatedHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
 			default:
 				iNdEx = preIndex
 				skippy, err := runtime.Skip(dAtA[iNdEx:])
@@ -6996,7 +8138,7 @@ func (x *QueryNodeSlotAuctionRequest) ProtoReflect() protoreflect.Message {
 }
 
 func (x *QueryNodeSlotAuctionRequest) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_node_proto_msgTypes[10]
+	mi := &file_types_query_node_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7500,7 +8642,7 @@ func (x *QueryNodeSlotAuctionResponse) ProtoReflect() protoreflect.Message {
 }
 
 func (x *QueryNodeSlotAuctionResponse) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_node_proto_msgTypes[11]
+	mi := &file_types_query_node_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8506,7 +9648,7 @@ func (x *QueryNodeSlotAuctionsRequest) ProtoReflect() protoreflect.Message {
 }
 
 func (x *QueryNodeSlotAuctionsRequest) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_node_proto_msgTypes[12]
+	mi := &file_types_query_node_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8977,7 +10119,7 @@ func (x *QueryNodeSlotAuctionsResponse) ProtoReflect() protoreflect.Message {
 }
 
 func (x *QueryNodeSlotAuctionsResponse) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_node_proto_msgTypes[13]
+	mi := &file_types_query_node_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9422,7 +10564,7 @@ func (x *QueryNodeSlotBidRequest) ProtoReflect() protoreflect.Message {
 }
 
 func (x *QueryNodeSlotBidRequest) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_node_proto_msgTypes[14]
+	mi := &file_types_query_node_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9924,7 +11066,7 @@ func (x *QueryNodeSlotBidResponse) ProtoReflect() protoreflect.Message {
 }
 
 func (x *QueryNodeSlotBidResponse) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_node_proto_msgTypes[15]
+	mi := &file_types_query_node_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10898,7 +12040,7 @@ func (x *QueryNodeSlotAuctionBidsRequest) ProtoReflect() protoreflect.Message {
 }
 
 func (x *QueryNodeSlotAuctionBidsRequest) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_node_proto_msgTypes[16]
+	mi := &file_types_query_node_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11431,7 +12573,7 @@ func (x *QueryNodeSlotAuctionBidsResponse) ProtoReflect() protoreflect.Message {
 }
 
 func (x *QueryNodeSlotAuctionBidsResponse) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_node_proto_msgTypes[17]
+	mi := &file_types_query_node_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11876,7 +13018,7 @@ func (x *NodeJail) ProtoReflect() protoreflect.Message {
 }
 
 func (x *NodeJail) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_node_proto_msgTypes[18]
+	mi := &file_types_query_node_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12344,7 +13486,7 @@ func (x *ChainHeight) ProtoReflect() protoreflect.Message {
 }
 
 func (x *ChainHeight) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_node_proto_msgTypes[19]
+	mi := &file_types_query_node_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12814,7 +13956,7 @@ func (x *NodePreflightStatus) ProtoReflect() protoreflect.Message {
 }
 
 func (x *NodePreflightStatus) slowProtoReflect() protoreflect.Message {
-	mi := &file_types_query_node_proto_msgTypes[20]
+	mi := &file_types_query_node_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13916,21 +15058,25 @@ type QueryNodeBondResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	NodePubKey          string `protobuf:"bytes,1,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
-	OperatorPubKey      string `protobuf:"bytes,2,opt,name=operator_pub_key,json=operatorPubKey,proto3" json:"operator_pub_key,omitempty"`
-	NodeAddress         string `protobuf:"bytes,3,opt,name=node_address,json=nodeAddress,proto3" json:"node_address,omitempty"`
-	Slot                uint64 `protobuf:"varint,4,opt,name=slot,proto3" json:"slot,omitempty"`
-	PendingSats         uint64 `protobuf:"varint,5,opt,name=pending_sats,json=pendingSats,proto3" json:"pending_sats,omitempty"`
-	BondSats            uint64 `protobuf:"varint,6,opt,name=bond_sats,json=bondSats,proto3" json:"bond_sats,omitempty"`
-	FeeDebtSats         uint64 `protobuf:"varint,7,opt,name=fee_debt_sats,json=feeDebtSats,proto3" json:"fee_debt_sats,omitempty"`
-	FeeShareActive      bool   `protobuf:"varint,8,opt,name=fee_share_active,json=feeShareActive,proto3" json:"fee_share_active,omitempty"`
-	PendingFeeDepositId string `protobuf:"bytes,9,opt,name=pending_fee_deposit_id,json=pendingFeeDepositId,proto3" json:"pending_fee_deposit_id,omitempty"`
-	Sold                bool   `protobuf:"varint,10,opt,name=sold,proto3" json:"sold,omitempty"`
-	SoldAuctionId       string `protobuf:"bytes,11,opt,name=sold_auction_id,json=soldAuctionId,proto3" json:"sold_auction_id,omitempty"`
-	CreatedHeight       int64  `protobuf:"varint,12,opt,name=created_height,json=createdHeight,proto3" json:"created_height,omitempty"`
-	UpdatedHeight       int64  `protobuf:"varint,13,opt,name=updated_height,json=updatedHeight,proto3" json:"updated_height,omitempty"`
-	NodeStatus          string `protobuf:"bytes,14,opt,name=node_status,json=nodeStatus,proto3" json:"node_status,omitempty"`
-	PenaltyPoints       int64  `protobuf:"varint,15,opt,name=penalty_points,json=penaltyPoints,proto3" json:"penalty_points,omitempty"`
+	NodePubKey                  string             `protobuf:"bytes,1,opt,name=node_pub_key,json=nodePubKey,proto3" json:"node_pub_key,omitempty"`
+	OperatorPubKey              string             `protobuf:"bytes,2,opt,name=operator_pub_key,json=operatorPubKey,proto3" json:"operator_pub_key,omitempty"`
+	NodeAddress                 string             `protobuf:"bytes,3,opt,name=node_address,json=nodeAddress,proto3" json:"node_address,omitempty"`
+	Slot                        uint64             `protobuf:"varint,4,opt,name=slot,proto3" json:"slot,omitempty"`
+	PendingSats                 uint64             `protobuf:"varint,5,opt,name=pending_sats,json=pendingSats,proto3" json:"pending_sats,omitempty"`
+	BondSats                    uint64             `protobuf:"varint,6,opt,name=bond_sats,json=bondSats,proto3" json:"bond_sats,omitempty"`
+	FeeDebtSats                 uint64             `protobuf:"varint,7,opt,name=fee_debt_sats,json=feeDebtSats,proto3" json:"fee_debt_sats,omitempty"`
+	FeeShareActive              bool               `protobuf:"varint,8,opt,name=fee_share_active,json=feeShareActive,proto3" json:"fee_share_active,omitempty"`
+	PendingFeeDepositId         string             `protobuf:"bytes,9,opt,name=pending_fee_deposit_id,json=pendingFeeDepositId,proto3" json:"pending_fee_deposit_id,omitempty"`
+	Sold                        bool               `protobuf:"varint,10,opt,name=sold,proto3" json:"sold,omitempty"`
+	SoldAuctionId               string             `protobuf:"bytes,11,opt,name=sold_auction_id,json=soldAuctionId,proto3" json:"sold_auction_id,omitempty"`
+	CreatedHeight               int64              `protobuf:"varint,12,opt,name=created_height,json=createdHeight,proto3" json:"created_height,omitempty"`
+	UpdatedHeight               int64              `protobuf:"varint,13,opt,name=updated_height,json=updatedHeight,proto3" json:"updated_height,omitempty"`
+	NodeStatus                  string             `protobuf:"bytes,14,opt,name=node_status,json=nodeStatus,proto3" json:"node_status,omitempty"`
+	PenaltyPoints               int64              `protobuf:"varint,15,opt,name=penalty_points,json=penaltyPoints,proto3" json:"penalty_points,omitempty"`
+	OperatorFeeBasisPoints      uint64             `protobuf:"varint,16,opt,name=operator_fee_basis_points,json=operatorFeeBasisPoints,proto3" json:"operator_fee_basis_points,omitempty"`
+	OperatorFeeAccruedSats      uint64             `protobuf:"varint,17,opt,name=operator_fee_accrued_sats,json=operatorFeeAccruedSats,proto3" json:"operator_fee_accrued_sats,omitempty"`
+	PendingOperatorFeeDepositId string             `protobuf:"bytes,18,opt,name=pending_operator_fee_deposit_id,json=pendingOperatorFeeDepositId,proto3" json:"pending_operator_fee_deposit_id,omitempty"`
+	Bonders                     []*QueryNodeBonder `protobuf:"bytes,19,rep,name=bonders,proto3" json:"bonders,omitempty"`
 }
 
 func (x *QueryNodeBondResponse) Reset() {
@@ -14058,6 +15204,133 @@ func (x *QueryNodeBondResponse) GetPenaltyPoints() int64 {
 	return 0
 }
 
+func (x *QueryNodeBondResponse) GetOperatorFeeBasisPoints() uint64 {
+	if x != nil {
+		return x.OperatorFeeBasisPoints
+	}
+	return 0
+}
+
+func (x *QueryNodeBondResponse) GetOperatorFeeAccruedSats() uint64 {
+	if x != nil {
+		return x.OperatorFeeAccruedSats
+	}
+	return 0
+}
+
+func (x *QueryNodeBondResponse) GetPendingOperatorFeeDepositId() string {
+	if x != nil {
+		return x.PendingOperatorFeeDepositId
+	}
+	return ""
+}
+
+func (x *QueryNodeBondResponse) GetBonders() []*QueryNodeBonder {
+	if x != nil {
+		return x.Bonders
+	}
+	return nil
+}
+
+type QueryNodeBonder struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Bonder              string `protobuf:"bytes,1,opt,name=bonder,proto3" json:"bonder,omitempty"`
+	PendingSats         uint64 `protobuf:"varint,2,opt,name=pending_sats,json=pendingSats,proto3" json:"pending_sats,omitempty"`
+	PrincipalSats       uint64 `protobuf:"varint,3,opt,name=principal_sats,json=principalSats,proto3" json:"principal_sats,omitempty"`
+	ClaimableFeeSats    uint64 `protobuf:"varint,4,opt,name=claimable_fee_sats,json=claimableFeeSats,proto3" json:"claimable_fee_sats,omitempty"`
+	PendingFeeDepositId string `protobuf:"bytes,5,opt,name=pending_fee_deposit_id,json=pendingFeeDepositId,proto3" json:"pending_fee_deposit_id,omitempty"`
+	SaleEntitlementId   string `protobuf:"bytes,6,opt,name=sale_entitlement_id,json=saleEntitlementId,proto3" json:"sale_entitlement_id,omitempty"`
+	SalePayoutSats      uint64 `protobuf:"varint,7,opt,name=sale_payout_sats,json=salePayoutSats,proto3" json:"sale_payout_sats,omitempty"`
+	CreatedHeight       int64  `protobuf:"varint,8,opt,name=created_height,json=createdHeight,proto3" json:"created_height,omitempty"`
+	UpdatedHeight       int64  `protobuf:"varint,9,opt,name=updated_height,json=updatedHeight,proto3" json:"updated_height,omitempty"`
+}
+
+func (x *QueryNodeBonder) Reset() {
+	*x = QueryNodeBonder{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_types_query_node_proto_msgTypes[10]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *QueryNodeBonder) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueryNodeBonder) ProtoMessage() {}
+
+// Deprecated: Use QueryNodeBonder.ProtoReflect.Descriptor instead.
+func (*QueryNodeBonder) Descriptor() ([]byte, []int) {
+	return file_types_query_node_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *QueryNodeBonder) GetBonder() string {
+	if x != nil {
+		return x.Bonder
+	}
+	return ""
+}
+
+func (x *QueryNodeBonder) GetPendingSats() uint64 {
+	if x != nil {
+		return x.PendingSats
+	}
+	return 0
+}
+
+func (x *QueryNodeBonder) GetPrincipalSats() uint64 {
+	if x != nil {
+		return x.PrincipalSats
+	}
+	return 0
+}
+
+func (x *QueryNodeBonder) GetClaimableFeeSats() uint64 {
+	if x != nil {
+		return x.ClaimableFeeSats
+	}
+	return 0
+}
+
+func (x *QueryNodeBonder) GetPendingFeeDepositId() string {
+	if x != nil {
+		return x.PendingFeeDepositId
+	}
+	return ""
+}
+
+func (x *QueryNodeBonder) GetSaleEntitlementId() string {
+	if x != nil {
+		return x.SaleEntitlementId
+	}
+	return ""
+}
+
+func (x *QueryNodeBonder) GetSalePayoutSats() uint64 {
+	if x != nil {
+		return x.SalePayoutSats
+	}
+	return 0
+}
+
+func (x *QueryNodeBonder) GetCreatedHeight() int64 {
+	if x != nil {
+		return x.CreatedHeight
+	}
+	return 0
+}
+
+func (x *QueryNodeBonder) GetUpdatedHeight() int64 {
+	if x != nil {
+		return x.UpdatedHeight
+	}
+	return 0
+}
+
 type QueryNodeSlotAuctionRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -14070,7 +15343,7 @@ type QueryNodeSlotAuctionRequest struct {
 func (x *QueryNodeSlotAuctionRequest) Reset() {
 	*x = QueryNodeSlotAuctionRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_node_proto_msgTypes[10]
+		mi := &file_types_query_node_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -14084,7 +15357,7 @@ func (*QueryNodeSlotAuctionRequest) ProtoMessage() {}
 
 // Deprecated: Use QueryNodeSlotAuctionRequest.ProtoReflect.Descriptor instead.
 func (*QueryNodeSlotAuctionRequest) Descriptor() ([]byte, []int) {
-	return file_types_query_node_proto_rawDescGZIP(), []int{10}
+	return file_types_query_node_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *QueryNodeSlotAuctionRequest) GetAuctionId() string {
@@ -14123,7 +15396,7 @@ type QueryNodeSlotAuctionResponse struct {
 func (x *QueryNodeSlotAuctionResponse) Reset() {
 	*x = QueryNodeSlotAuctionResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_node_proto_msgTypes[11]
+		mi := &file_types_query_node_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -14137,7 +15410,7 @@ func (*QueryNodeSlotAuctionResponse) ProtoMessage() {}
 
 // Deprecated: Use QueryNodeSlotAuctionResponse.ProtoReflect.Descriptor instead.
 func (*QueryNodeSlotAuctionResponse) Descriptor() ([]byte, []int) {
-	return file_types_query_node_proto_rawDescGZIP(), []int{11}
+	return file_types_query_node_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *QueryNodeSlotAuctionResponse) GetAuctionId() string {
@@ -14235,7 +15508,7 @@ type QueryNodeSlotAuctionsRequest struct {
 func (x *QueryNodeSlotAuctionsRequest) Reset() {
 	*x = QueryNodeSlotAuctionsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_node_proto_msgTypes[12]
+		mi := &file_types_query_node_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -14249,7 +15522,7 @@ func (*QueryNodeSlotAuctionsRequest) ProtoMessage() {}
 
 // Deprecated: Use QueryNodeSlotAuctionsRequest.ProtoReflect.Descriptor instead.
 func (*QueryNodeSlotAuctionsRequest) Descriptor() ([]byte, []int) {
-	return file_types_query_node_proto_rawDescGZIP(), []int{12}
+	return file_types_query_node_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *QueryNodeSlotAuctionsRequest) GetHeight() string {
@@ -14270,7 +15543,7 @@ type QueryNodeSlotAuctionsResponse struct {
 func (x *QueryNodeSlotAuctionsResponse) Reset() {
 	*x = QueryNodeSlotAuctionsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_node_proto_msgTypes[13]
+		mi := &file_types_query_node_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -14284,7 +15557,7 @@ func (*QueryNodeSlotAuctionsResponse) ProtoMessage() {}
 
 // Deprecated: Use QueryNodeSlotAuctionsResponse.ProtoReflect.Descriptor instead.
 func (*QueryNodeSlotAuctionsResponse) Descriptor() ([]byte, []int) {
-	return file_types_query_node_proto_rawDescGZIP(), []int{13}
+	return file_types_query_node_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *QueryNodeSlotAuctionsResponse) GetAuctions() []*QueryNodeSlotAuctionResponse {
@@ -14306,7 +15579,7 @@ type QueryNodeSlotBidRequest struct {
 func (x *QueryNodeSlotBidRequest) Reset() {
 	*x = QueryNodeSlotBidRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_node_proto_msgTypes[14]
+		mi := &file_types_query_node_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -14320,7 +15593,7 @@ func (*QueryNodeSlotBidRequest) ProtoMessage() {}
 
 // Deprecated: Use QueryNodeSlotBidRequest.ProtoReflect.Descriptor instead.
 func (*QueryNodeSlotBidRequest) Descriptor() ([]byte, []int) {
-	return file_types_query_node_proto_rawDescGZIP(), []int{14}
+	return file_types_query_node_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *QueryNodeSlotBidRequest) GetBidId() string {
@@ -14358,7 +15631,7 @@ type QueryNodeSlotBidResponse struct {
 func (x *QueryNodeSlotBidResponse) Reset() {
 	*x = QueryNodeSlotBidResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_node_proto_msgTypes[15]
+		mi := &file_types_query_node_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -14372,7 +15645,7 @@ func (*QueryNodeSlotBidResponse) ProtoMessage() {}
 
 // Deprecated: Use QueryNodeSlotBidResponse.ProtoReflect.Descriptor instead.
 func (*QueryNodeSlotBidResponse) Descriptor() ([]byte, []int) {
-	return file_types_query_node_proto_rawDescGZIP(), []int{15}
+	return file_types_query_node_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *QueryNodeSlotBidResponse) GetBidId() string {
@@ -14464,7 +15737,7 @@ type QueryNodeSlotAuctionBidsRequest struct {
 func (x *QueryNodeSlotAuctionBidsRequest) Reset() {
 	*x = QueryNodeSlotAuctionBidsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_node_proto_msgTypes[16]
+		mi := &file_types_query_node_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -14478,7 +15751,7 @@ func (*QueryNodeSlotAuctionBidsRequest) ProtoMessage() {}
 
 // Deprecated: Use QueryNodeSlotAuctionBidsRequest.ProtoReflect.Descriptor instead.
 func (*QueryNodeSlotAuctionBidsRequest) Descriptor() ([]byte, []int) {
-	return file_types_query_node_proto_rawDescGZIP(), []int{16}
+	return file_types_query_node_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *QueryNodeSlotAuctionBidsRequest) GetAuctionId() string {
@@ -14506,7 +15779,7 @@ type QueryNodeSlotAuctionBidsResponse struct {
 func (x *QueryNodeSlotAuctionBidsResponse) Reset() {
 	*x = QueryNodeSlotAuctionBidsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_node_proto_msgTypes[17]
+		mi := &file_types_query_node_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -14520,7 +15793,7 @@ func (*QueryNodeSlotAuctionBidsResponse) ProtoMessage() {}
 
 // Deprecated: Use QueryNodeSlotAuctionBidsResponse.ProtoReflect.Descriptor instead.
 func (*QueryNodeSlotAuctionBidsResponse) Descriptor() ([]byte, []int) {
-	return file_types_query_node_proto_rawDescGZIP(), []int{17}
+	return file_types_query_node_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *QueryNodeSlotAuctionBidsResponse) GetBids() []*QueryNodeSlotBidResponse {
@@ -14542,7 +15815,7 @@ type NodeJail struct {
 func (x *NodeJail) Reset() {
 	*x = NodeJail{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_node_proto_msgTypes[18]
+		mi := &file_types_query_node_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -14556,7 +15829,7 @@ func (*NodeJail) ProtoMessage() {}
 
 // Deprecated: Use NodeJail.ProtoReflect.Descriptor instead.
 func (*NodeJail) Descriptor() ([]byte, []int) {
-	return file_types_query_node_proto_rawDescGZIP(), []int{18}
+	return file_types_query_node_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *NodeJail) GetReleaseHeight() int64 {
@@ -14585,7 +15858,7 @@ type ChainHeight struct {
 func (x *ChainHeight) Reset() {
 	*x = ChainHeight{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_node_proto_msgTypes[19]
+		mi := &file_types_query_node_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -14599,7 +15872,7 @@ func (*ChainHeight) ProtoMessage() {}
 
 // Deprecated: Use ChainHeight.ProtoReflect.Descriptor instead.
 func (*ChainHeight) Descriptor() ([]byte, []int) {
-	return file_types_query_node_proto_rawDescGZIP(), []int{19}
+	return file_types_query_node_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ChainHeight) GetChain() string {
@@ -14631,7 +15904,7 @@ type NodePreflightStatus struct {
 func (x *NodePreflightStatus) Reset() {
 	*x = NodePreflightStatus{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_query_node_proto_msgTypes[20]
+		mi := &file_types_query_node_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -14645,7 +15918,7 @@ func (*NodePreflightStatus) ProtoMessage() {}
 
 // Deprecated: Use NodePreflightStatus.ProtoReflect.Descriptor instead.
 func (*NodePreflightStatus) Descriptor() ([]byte, []int) {
-	return file_types_query_node_proto_rawDescGZIP(), []int{20}
+	return file_types_query_node_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *NodePreflightStatus) GetStatus() string {
@@ -14812,7 +16085,7 @@ var file_types_query_node_proto_rawDesc = []byte{
 	0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6e, 0x6f, 0x64,
 	0x65, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68,
 	0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22,
-	0xaf, 0x04, 0x0a, 0x15, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x42, 0x6f, 0x6e,
+	0x9d, 0x06, 0x0a, 0x15, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x42, 0x6f, 0x6e,
 	0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x20, 0x0a, 0x0c, 0x6e, 0x6f, 0x64,
 	0x65, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
 	0x0a, 0x6e, 0x6f, 0x64, 0x65, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x28, 0x0a, 0x10, 0x6f,
@@ -14847,117 +16120,156 @@ var file_types_query_node_proto_rawDesc = []byte{
 	0x6e, 0x6f, 0x64, 0x65, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x25, 0x0a, 0x0e, 0x70, 0x65,
 	0x6e, 0x61, 0x6c, 0x74, 0x79, 0x5f, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x73, 0x18, 0x0f, 0x20, 0x01,
 	0x28, 0x03, 0x52, 0x0d, 0x70, 0x65, 0x6e, 0x61, 0x6c, 0x74, 0x79, 0x50, 0x6f, 0x69, 0x6e, 0x74,
-	0x73, 0x22, 0x54, 0x0a, 0x1b, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c,
-	0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12,
-	0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0xd3, 0x03, 0x0a, 0x1c, 0x51, 0x75, 0x65, 0x72,
-	0x79, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x75, 0x63, 0x74,
-	0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x75,
-	0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x65, 0x6c, 0x6c, 0x65,
-	0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x65, 0x6c, 0x6c, 0x65, 0x72, 0x12,
-	0x35, 0x0a, 0x17, 0x73, 0x65, 0x6c, 0x6c, 0x65, 0x72, 0x5f, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74,
-	0x6f, 0x72, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x14, 0x73, 0x65, 0x6c, 0x6c, 0x65, 0x72, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72,
-	0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x2d, 0x0a, 0x13, 0x73, 0x65, 0x6c, 0x6c, 0x65, 0x72,
-	0x5f, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x04, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x10, 0x73, 0x65, 0x6c, 0x6c, 0x65, 0x72, 0x4e, 0x6f, 0x64, 0x65, 0x50,
-	0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x12, 0x0a, 0x04, 0x73, 0x6c, 0x6f, 0x74, 0x18, 0x05, 0x20,
-	0x01, 0x28, 0x04, 0x52, 0x04, 0x73, 0x6c, 0x6f, 0x74, 0x12, 0x2c, 0x0a, 0x12, 0x6f, 0x72, 0x69,
-	0x67, 0x69, 0x6e, 0x61, 0x6c, 0x5f, 0x62, 0x6f, 0x6e, 0x64, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18,
-	0x06, 0x20, 0x01, 0x28, 0x04, 0x52, 0x10, 0x6f, 0x72, 0x69, 0x67, 0x69, 0x6e, 0x61, 0x6c, 0x42,
-	0x6f, 0x6e, 0x64, 0x53, 0x61, 0x74, 0x73, 0x12, 0x21, 0x0a, 0x0c, 0x72, 0x65, 0x73, 0x65, 0x72,
-	0x76, 0x65, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x07, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0b, 0x72,
-	0x65, 0x73, 0x65, 0x72, 0x76, 0x65, 0x53, 0x61, 0x74, 0x73, 0x12, 0x23, 0x0a, 0x0d, 0x65, 0x78,
-	0x70, 0x69, 0x72, 0x79, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x08, 0x20, 0x01, 0x28,
-	0x03, 0x52, 0x0c, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12,
-	0x26, 0x0a, 0x0f, 0x73, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x65, 0x64, 0x5f, 0x62, 0x69, 0x64, 0x5f,
-	0x69, 0x64, 0x18, 0x09, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x73, 0x65, 0x6c, 0x65, 0x63, 0x74,
-	0x65, 0x64, 0x42, 0x69, 0x64, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75,
-	0x73, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12,
-	0x25, 0x0a, 0x0e, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68,
-	0x74, 0x18, 0x0b, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64,
-	0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x25, 0x0a, 0x0e, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65,
-	0x64, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d,
-	0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x36, 0x0a,
-	0x1c, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75,
-	0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a,
-	0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68,
-	0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x60, 0x0a, 0x1d, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f,
-	0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x3f, 0x0a, 0x08, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f,
-	0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x23, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73,
-	0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75,
-	0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x52, 0x08, 0x61,
-	0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x22, 0x48, 0x0a, 0x17, 0x51, 0x75, 0x65, 0x72, 0x79,
-	0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x42, 0x69, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x12, 0x15, 0x0a, 0x06, 0x62, 0x69, 0x64, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x05, 0x62, 0x69, 0x64, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69,
-	0x67, 0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68,
-	0x74, 0x22, 0xf8, 0x02, 0x0a, 0x18, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x53,
-	0x6c, 0x6f, 0x74, 0x42, 0x69, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x15,
-	0x0a, 0x06, 0x62, 0x69, 0x64, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05,
-	0x62, 0x69, 0x64, 0x49, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e,
-	0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x75, 0x63, 0x74, 0x69,
-	0x6f, 0x6e, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x62, 0x69, 0x64, 0x64, 0x65, 0x72, 0x18, 0x03,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x62, 0x69, 0x64, 0x64, 0x65, 0x72, 0x12, 0x28, 0x0a, 0x10,
-	0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79,
-	0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72,
-	0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x20, 0x0a, 0x0c, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x70,
-	0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6e, 0x6f,
-	0x64, 0x65, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x1d, 0x0a, 0x0a, 0x64, 0x65, 0x70, 0x6f,
-	0x73, 0x69, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x64, 0x65,
-	0x70, 0x6f, 0x73, 0x69, 0x74, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x61, 0x6d, 0x6f, 0x75, 0x6e,
-	0x74, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x07, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0a, 0x61, 0x6d,
-	0x6f, 0x75, 0x6e, 0x74, 0x53, 0x61, 0x74, 0x73, 0x12, 0x1a, 0x0a, 0x08, 0x73, 0x65, 0x6c, 0x65,
-	0x63, 0x74, 0x65, 0x64, 0x18, 0x08, 0x20, 0x01, 0x28, 0x08, 0x52, 0x08, 0x73, 0x65, 0x6c, 0x65,
-	0x63, 0x74, 0x65, 0x64, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x65, 0x74, 0x74, 0x6c, 0x65, 0x64, 0x18,
-	0x09, 0x20, 0x01, 0x28, 0x08, 0x52, 0x07, 0x73, 0x65, 0x74, 0x74, 0x6c, 0x65, 0x64, 0x12, 0x25,
-	0x0a, 0x0e, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74,
-	0x18, 0x0a, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x48,
-	0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x25, 0x0a, 0x0e, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64,
-	0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x0b, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x75,
-	0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x58, 0x0a, 0x1f,
-	0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63,
-	0x74, 0x69, 0x6f, 0x6e, 0x42, 0x69, 0x64, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
+	0x73, 0x12, 0x39, 0x0a, 0x19, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x66, 0x65,
+	0x65, 0x5f, 0x62, 0x61, 0x73, 0x69, 0x73, 0x5f, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x73, 0x18, 0x10,
+	0x20, 0x01, 0x28, 0x04, 0x52, 0x16, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x46, 0x65,
+	0x65, 0x42, 0x61, 0x73, 0x69, 0x73, 0x50, 0x6f, 0x69, 0x6e, 0x74, 0x73, 0x12, 0x39, 0x0a, 0x19,
+	0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x66, 0x65, 0x65, 0x5f, 0x61, 0x63, 0x63,
+	0x72, 0x75, 0x65, 0x64, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x11, 0x20, 0x01, 0x28, 0x04, 0x52,
+	0x16, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x46, 0x65, 0x65, 0x41, 0x63, 0x63, 0x72,
+	0x75, 0x65, 0x64, 0x53, 0x61, 0x74, 0x73, 0x12, 0x44, 0x0a, 0x1f, 0x70, 0x65, 0x6e, 0x64, 0x69,
+	0x6e, 0x67, 0x5f, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x66, 0x65, 0x65, 0x5f,
+	0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x12, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x1b, 0x70, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f,
+	0x72, 0x46, 0x65, 0x65, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x49, 0x64, 0x12, 0x30, 0x0a,
+	0x07, 0x62, 0x6f, 0x6e, 0x64, 0x65, 0x72, 0x73, 0x18, 0x13, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x16,
+	0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65,
+	0x42, 0x6f, 0x6e, 0x64, 0x65, 0x72, 0x52, 0x07, 0x62, 0x6f, 0x6e, 0x64, 0x65, 0x72, 0x73, 0x22,
+	0xfe, 0x02, 0x0a, 0x0f, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x42, 0x6f, 0x6e,
+	0x64, 0x65, 0x72, 0x12, 0x16, 0x0a, 0x06, 0x62, 0x6f, 0x6e, 0x64, 0x65, 0x72, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x06, 0x62, 0x6f, 0x6e, 0x64, 0x65, 0x72, 0x12, 0x21, 0x0a, 0x0c, 0x70,
+	0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x04, 0x52, 0x0b, 0x70, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x53, 0x61, 0x74, 0x73, 0x12, 0x25,
+	0x0a, 0x0e, 0x70, 0x72, 0x69, 0x6e, 0x63, 0x69, 0x70, 0x61, 0x6c, 0x5f, 0x73, 0x61, 0x74, 0x73,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0d, 0x70, 0x72, 0x69, 0x6e, 0x63, 0x69, 0x70, 0x61,
+	0x6c, 0x53, 0x61, 0x74, 0x73, 0x12, 0x2c, 0x0a, 0x12, 0x63, 0x6c, 0x61, 0x69, 0x6d, 0x61, 0x62,
+	0x6c, 0x65, 0x5f, 0x66, 0x65, 0x65, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x04, 0x20, 0x01, 0x28,
+	0x04, 0x52, 0x10, 0x63, 0x6c, 0x61, 0x69, 0x6d, 0x61, 0x62, 0x6c, 0x65, 0x46, 0x65, 0x65, 0x53,
+	0x61, 0x74, 0x73, 0x12, 0x33, 0x0a, 0x16, 0x70, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x5f, 0x66,
+	0x65, 0x65, 0x5f, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x05, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x13, 0x70, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x46, 0x65, 0x65, 0x44,
+	0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x49, 0x64, 0x12, 0x2e, 0x0a, 0x13, 0x73, 0x61, 0x6c, 0x65,
+	0x5f, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x6c, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x5f, 0x69, 0x64, 0x18,
+	0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x11, 0x73, 0x61, 0x6c, 0x65, 0x45, 0x6e, 0x74, 0x69, 0x74,
+	0x6c, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x49, 0x64, 0x12, 0x28, 0x0a, 0x10, 0x73, 0x61, 0x6c, 0x65,
+	0x5f, 0x70, 0x61, 0x79, 0x6f, 0x75, 0x74, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x07, 0x20, 0x01,
+	0x28, 0x04, 0x52, 0x0e, 0x73, 0x61, 0x6c, 0x65, 0x50, 0x61, 0x79, 0x6f, 0x75, 0x74, 0x53, 0x61,
+	0x74, 0x73, 0x12, 0x25, 0x0a, 0x0e, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x68, 0x65,
+	0x69, 0x67, 0x68, 0x74, 0x18, 0x08, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x63, 0x72, 0x65, 0x61,
+	0x74, 0x65, 0x64, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x25, 0x0a, 0x0e, 0x75, 0x70, 0x64,
+	0x61, 0x74, 0x65, 0x64, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x09, 0x20, 0x01, 0x28,
+	0x03, 0x52, 0x0d, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74,
+	0x22, 0x54, 0x0a, 0x1b, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f,
+	0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
 	0x1d, 0x0a, 0x0a, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x16,
 	0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06,
-	0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x57, 0x0a, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e,
-	0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0x69,
-	0x64, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x33, 0x0a, 0x04, 0x62, 0x69,
-	0x64, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1f, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73,
-	0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x42, 0x69,
-	0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x52, 0x04, 0x62, 0x69, 0x64, 0x73, 0x22,
-	0x49, 0x0a, 0x08, 0x4e, 0x6f, 0x64, 0x65, 0x4a, 0x61, 0x69, 0x6c, 0x12, 0x25, 0x0a, 0x0e, 0x72,
-	0x65, 0x6c, 0x65, 0x61, 0x73, 0x65, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x03, 0x52, 0x0d, 0x72, 0x65, 0x6c, 0x65, 0x61, 0x73, 0x65, 0x48, 0x65, 0x69, 0x67,
-	0x68, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x22, 0x52, 0x0a, 0x0b, 0x43, 0x68,
-	0x61, 0x69, 0x6e, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x1f, 0x0a, 0x05, 0x63, 0x68, 0x61,
-	0x69, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x09, 0xea, 0xde, 0x1f, 0x05, 0x63, 0x68,
-	0x61, 0x69, 0x6e, 0x52, 0x05, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x12, 0x22, 0x0a, 0x06, 0x68, 0x65,
-	0x69, 0x67, 0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x42, 0x0a, 0xea, 0xde, 0x1f, 0x06,
-	0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x7b,
-	0x0a, 0x13, 0x4e, 0x6f, 0x64, 0x65, 0x50, 0x72, 0x65, 0x66, 0x6c, 0x69, 0x67, 0x68, 0x74, 0x53,
-	0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x22, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0a, 0xea, 0xde, 0x1f, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75,
-	0x73, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x22, 0x0a, 0x06, 0x72, 0x65, 0x61,
-	0x73, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0a, 0xea, 0xde, 0x1f, 0x06, 0x72,
-	0x65, 0x61, 0x73, 0x6f, 0x6e, 0x52, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x12, 0x1c, 0x0a,
-	0x04, 0x63, 0x6f, 0x64, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x42, 0x08, 0xea, 0xde, 0x1f,
-	0x04, 0x63, 0x6f, 0x64, 0x65, 0x52, 0x04, 0x63, 0x6f, 0x64, 0x65, 0x42, 0x82, 0x01, 0x0a, 0x09,
-	0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x42, 0x0e, 0x51, 0x75, 0x65, 0x72, 0x79,
-	0x4e, 0x6f, 0x64, 0x65, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74,
-	0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f,
-	0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f,
-	0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58,
-	0xaa, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73,
-	0xe2, 0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61,
-	0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xc8, 0xe2, 0x1e, 0x01,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0xd3, 0x03, 0x0a, 0x1c, 0x51, 0x75, 0x65, 0x72, 0x79,
+	0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52,
+	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x75, 0x63, 0x74, 0x69,
+	0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x75, 0x63,
+	0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x65, 0x6c, 0x6c, 0x65, 0x72,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x65, 0x6c, 0x6c, 0x65, 0x72, 0x12, 0x35,
+	0x0a, 0x17, 0x73, 0x65, 0x6c, 0x6c, 0x65, 0x72, 0x5f, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f,
+	0x72, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x14, 0x73, 0x65, 0x6c, 0x6c, 0x65, 0x72, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x50,
+	0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x2d, 0x0a, 0x13, 0x73, 0x65, 0x6c, 0x6c, 0x65, 0x72, 0x5f,
+	0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x04, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x10, 0x73, 0x65, 0x6c, 0x6c, 0x65, 0x72, 0x4e, 0x6f, 0x64, 0x65, 0x50, 0x75,
+	0x62, 0x4b, 0x65, 0x79, 0x12, 0x12, 0x0a, 0x04, 0x73, 0x6c, 0x6f, 0x74, 0x18, 0x05, 0x20, 0x01,
+	0x28, 0x04, 0x52, 0x04, 0x73, 0x6c, 0x6f, 0x74, 0x12, 0x2c, 0x0a, 0x12, 0x6f, 0x72, 0x69, 0x67,
+	0x69, 0x6e, 0x61, 0x6c, 0x5f, 0x62, 0x6f, 0x6e, 0x64, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x06,
+	0x20, 0x01, 0x28, 0x04, 0x52, 0x10, 0x6f, 0x72, 0x69, 0x67, 0x69, 0x6e, 0x61, 0x6c, 0x42, 0x6f,
+	0x6e, 0x64, 0x53, 0x61, 0x74, 0x73, 0x12, 0x21, 0x0a, 0x0c, 0x72, 0x65, 0x73, 0x65, 0x72, 0x76,
+	0x65, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x07, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0b, 0x72, 0x65,
+	0x73, 0x65, 0x72, 0x76, 0x65, 0x53, 0x61, 0x74, 0x73, 0x12, 0x23, 0x0a, 0x0d, 0x65, 0x78, 0x70,
+	0x69, 0x72, 0x79, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x08, 0x20, 0x01, 0x28, 0x03,
+	0x52, 0x0c, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x26,
+	0x0a, 0x0f, 0x73, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x65, 0x64, 0x5f, 0x62, 0x69, 0x64, 0x5f, 0x69,
+	0x64, 0x18, 0x09, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x73, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x65,
+	0x64, 0x42, 0x69, 0x64, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73,
+	0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x25,
+	0x0a, 0x0e, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74,
+	0x18, 0x0b, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x48,
+	0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x25, 0x0a, 0x0e, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64,
+	0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x75,
+	0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x36, 0x0a, 0x1c,
+	0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63,
+	0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06,
+	0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65,
+	0x69, 0x67, 0x68, 0x74, 0x22, 0x60, 0x0a, 0x1d, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64,
+	0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x3f, 0x0a, 0x08, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e,
+	0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x23, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e,
+	0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63,
+	0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x52, 0x08, 0x61, 0x75,
+	0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x22, 0x48, 0x0a, 0x17, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e,
+	0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x42, 0x69, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x12, 0x15, 0x0a, 0x06, 0x62, 0x69, 0x64, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x05, 0x62, 0x69, 0x64, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67,
+	0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74,
+	0x22, 0xf8, 0x02, 0x0a, 0x18, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c,
+	0x6f, 0x74, 0x42, 0x69, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x15, 0x0a,
+	0x06, 0x62, 0x69, 0x64, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x62,
+	0x69, 0x64, 0x49, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f,
+	0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f,
+	0x6e, 0x49, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x62, 0x69, 0x64, 0x64, 0x65, 0x72, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x06, 0x62, 0x69, 0x64, 0x64, 0x65, 0x72, 0x12, 0x28, 0x0a, 0x10, 0x6f,
+	0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x5f, 0x70, 0x75, 0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18,
+	0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x6f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x50,
+	0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x20, 0x0a, 0x0c, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x70, 0x75,
+	0x62, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6e, 0x6f, 0x64,
+	0x65, 0x50, 0x75, 0x62, 0x4b, 0x65, 0x79, 0x12, 0x1d, 0x0a, 0x0a, 0x64, 0x65, 0x70, 0x6f, 0x73,
+	0x69, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x64, 0x65, 0x70,
+	0x6f, 0x73, 0x69, 0x74, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74,
+	0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x07, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0a, 0x61, 0x6d, 0x6f,
+	0x75, 0x6e, 0x74, 0x53, 0x61, 0x74, 0x73, 0x12, 0x1a, 0x0a, 0x08, 0x73, 0x65, 0x6c, 0x65, 0x63,
+	0x74, 0x65, 0x64, 0x18, 0x08, 0x20, 0x01, 0x28, 0x08, 0x52, 0x08, 0x73, 0x65, 0x6c, 0x65, 0x63,
+	0x74, 0x65, 0x64, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x65, 0x74, 0x74, 0x6c, 0x65, 0x64, 0x18, 0x09,
+	0x20, 0x01, 0x28, 0x08, 0x52, 0x07, 0x73, 0x65, 0x74, 0x74, 0x6c, 0x65, 0x64, 0x12, 0x25, 0x0a,
+	0x0e, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18,
+	0x0a, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x48, 0x65,
+	0x69, 0x67, 0x68, 0x74, 0x12, 0x25, 0x0a, 0x0e, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x5f,
+	0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x0b, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0d, 0x75, 0x70,
+	0x64, 0x61, 0x74, 0x65, 0x64, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x58, 0x0a, 0x1f, 0x51,
+	0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74,
+	0x69, 0x6f, 0x6e, 0x42, 0x69, 0x64, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1d,
+	0x0a, 0x0a, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x09, 0x61, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x16, 0x0a,
+	0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68,
+	0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x57, 0x0a, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f,
+	0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0x69, 0x64,
+	0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x33, 0x0a, 0x04, 0x62, 0x69, 0x64,
+	0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1f, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e,
+	0x51, 0x75, 0x65, 0x72, 0x79, 0x4e, 0x6f, 0x64, 0x65, 0x53, 0x6c, 0x6f, 0x74, 0x42, 0x69, 0x64,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x52, 0x04, 0x62, 0x69, 0x64, 0x73, 0x22, 0x49,
+	0x0a, 0x08, 0x4e, 0x6f, 0x64, 0x65, 0x4a, 0x61, 0x69, 0x6c, 0x12, 0x25, 0x0a, 0x0e, 0x72, 0x65,
+	0x6c, 0x65, 0x61, 0x73, 0x65, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x03, 0x52, 0x0d, 0x72, 0x65, 0x6c, 0x65, 0x61, 0x73, 0x65, 0x48, 0x65, 0x69, 0x67, 0x68,
+	0x74, 0x12, 0x16, 0x0a, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x22, 0x52, 0x0a, 0x0b, 0x43, 0x68, 0x61,
+	0x69, 0x6e, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x1f, 0x0a, 0x05, 0x63, 0x68, 0x61, 0x69,
+	0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x09, 0xea, 0xde, 0x1f, 0x05, 0x63, 0x68, 0x61,
+	0x69, 0x6e, 0x52, 0x05, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x12, 0x22, 0x0a, 0x06, 0x68, 0x65, 0x69,
+	0x67, 0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x42, 0x0a, 0xea, 0xde, 0x1f, 0x06, 0x68,
+	0x65, 0x69, 0x67, 0x68, 0x74, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0x7b, 0x0a,
+	0x13, 0x4e, 0x6f, 0x64, 0x65, 0x50, 0x72, 0x65, 0x66, 0x6c, 0x69, 0x67, 0x68, 0x74, 0x53, 0x74,
+	0x61, 0x74, 0x75, 0x73, 0x12, 0x22, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x42, 0x0a, 0xea, 0xde, 0x1f, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73,
+	0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x22, 0x0a, 0x06, 0x72, 0x65, 0x61, 0x73,
+	0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x42, 0x0a, 0xea, 0xde, 0x1f, 0x06, 0x72, 0x65,
+	0x61, 0x73, 0x6f, 0x6e, 0x52, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x12, 0x1c, 0x0a, 0x04,
+	0x63, 0x6f, 0x64, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x42, 0x08, 0xea, 0xde, 0x1f, 0x04,
+	0x63, 0x6f, 0x64, 0x65, 0x52, 0x04, 0x63, 0x6f, 0x64, 0x65, 0x42, 0x82, 0x01, 0x0a, 0x09, 0x63,
+	0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x42, 0x0e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x4e,
+	0x6f, 0x64, 0x65, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68,
+	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63,
+	0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f,
+	0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa,
+	0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2,
+	0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64,
+	0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xc8, 0xe2, 0x1e, 0x01, 0x62,
+	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -14972,7 +16284,7 @@ func file_types_query_node_proto_rawDescGZIP() []byte {
 	return file_types_query_node_proto_rawDescData
 }
 
-var file_types_query_node_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_types_query_node_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_types_query_node_proto_goTypes = []interface{}{
 	(*QueryNodeRequest)(nil),                 // 0: types.QueryNodeRequest
 	(*QueryNodeResponse)(nil),                // 1: types.QueryNodeResponse
@@ -14984,33 +16296,35 @@ var file_types_query_node_proto_goTypes = []interface{}{
 	(*QueryNodeSlotResponse)(nil),            // 7: types.QueryNodeSlotResponse
 	(*QueryNodeBondRequest)(nil),             // 8: types.QueryNodeBondRequest
 	(*QueryNodeBondResponse)(nil),            // 9: types.QueryNodeBondResponse
-	(*QueryNodeSlotAuctionRequest)(nil),      // 10: types.QueryNodeSlotAuctionRequest
-	(*QueryNodeSlotAuctionResponse)(nil),     // 11: types.QueryNodeSlotAuctionResponse
-	(*QueryNodeSlotAuctionsRequest)(nil),     // 12: types.QueryNodeSlotAuctionsRequest
-	(*QueryNodeSlotAuctionsResponse)(nil),    // 13: types.QueryNodeSlotAuctionsResponse
-	(*QueryNodeSlotBidRequest)(nil),          // 14: types.QueryNodeSlotBidRequest
-	(*QueryNodeSlotBidResponse)(nil),         // 15: types.QueryNodeSlotBidResponse
-	(*QueryNodeSlotAuctionBidsRequest)(nil),  // 16: types.QueryNodeSlotAuctionBidsRequest
-	(*QueryNodeSlotAuctionBidsResponse)(nil), // 17: types.QueryNodeSlotAuctionBidsResponse
-	(*NodeJail)(nil),                         // 18: types.NodeJail
-	(*ChainHeight)(nil),                      // 19: types.ChainHeight
-	(*NodePreflightStatus)(nil),              // 20: types.NodePreflightStatus
-	(*common.PubKeySet)(nil),                 // 21: common.PubKeySet
+	(*QueryNodeBonder)(nil),                  // 10: types.QueryNodeBonder
+	(*QueryNodeSlotAuctionRequest)(nil),      // 11: types.QueryNodeSlotAuctionRequest
+	(*QueryNodeSlotAuctionResponse)(nil),     // 12: types.QueryNodeSlotAuctionResponse
+	(*QueryNodeSlotAuctionsRequest)(nil),     // 13: types.QueryNodeSlotAuctionsRequest
+	(*QueryNodeSlotAuctionsResponse)(nil),    // 14: types.QueryNodeSlotAuctionsResponse
+	(*QueryNodeSlotBidRequest)(nil),          // 15: types.QueryNodeSlotBidRequest
+	(*QueryNodeSlotBidResponse)(nil),         // 16: types.QueryNodeSlotBidResponse
+	(*QueryNodeSlotAuctionBidsRequest)(nil),  // 17: types.QueryNodeSlotAuctionBidsRequest
+	(*QueryNodeSlotAuctionBidsResponse)(nil), // 18: types.QueryNodeSlotAuctionBidsResponse
+	(*NodeJail)(nil),                         // 19: types.NodeJail
+	(*ChainHeight)(nil),                      // 20: types.ChainHeight
+	(*NodePreflightStatus)(nil),              // 21: types.NodePreflightStatus
+	(*common.PubKeySet)(nil),                 // 22: common.PubKeySet
 }
 var file_types_query_node_proto_depIdxs = []int32{
-	21, // 0: types.QueryNodeResponse.pub_key_set:type_name -> common.PubKeySet
-	18, // 1: types.QueryNodeResponse.jail:type_name -> types.NodeJail
-	19, // 2: types.QueryNodeResponse.observe_chains:type_name -> types.ChainHeight
-	20, // 3: types.QueryNodeResponse.preflight_status:type_name -> types.NodePreflightStatus
+	22, // 0: types.QueryNodeResponse.pub_key_set:type_name -> common.PubKeySet
+	19, // 1: types.QueryNodeResponse.jail:type_name -> types.NodeJail
+	20, // 2: types.QueryNodeResponse.observe_chains:type_name -> types.ChainHeight
+	21, // 3: types.QueryNodeResponse.preflight_status:type_name -> types.NodePreflightStatus
 	1,  // 4: types.QueryNodesResponse.nodes:type_name -> types.QueryNodeResponse
 	9,  // 5: types.QueryNodeSlotResponse.bond:type_name -> types.QueryNodeBondResponse
-	11, // 6: types.QueryNodeSlotAuctionsResponse.auctions:type_name -> types.QueryNodeSlotAuctionResponse
-	15, // 7: types.QueryNodeSlotAuctionBidsResponse.bids:type_name -> types.QueryNodeSlotBidResponse
-	8,  // [8:8] is the sub-list for method output_type
-	8,  // [8:8] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	10, // 6: types.QueryNodeBondResponse.bonders:type_name -> types.QueryNodeBonder
+	12, // 7: types.QueryNodeSlotAuctionsResponse.auctions:type_name -> types.QueryNodeSlotAuctionResponse
+	16, // 8: types.QueryNodeSlotAuctionBidsResponse.bids:type_name -> types.QueryNodeSlotBidResponse
+	9,  // [9:9] is the sub-list for method output_type
+	9,  // [9:9] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_types_query_node_proto_init() }
@@ -15140,7 +16454,7 @@ func file_types_query_node_proto_init() {
 			}
 		}
 		file_types_query_node_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryNodeSlotAuctionRequest); i {
+			switch v := v.(*QueryNodeBonder); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -15152,7 +16466,7 @@ func file_types_query_node_proto_init() {
 			}
 		}
 		file_types_query_node_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryNodeSlotAuctionResponse); i {
+			switch v := v.(*QueryNodeSlotAuctionRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -15164,7 +16478,7 @@ func file_types_query_node_proto_init() {
 			}
 		}
 		file_types_query_node_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryNodeSlotAuctionsRequest); i {
+			switch v := v.(*QueryNodeSlotAuctionResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -15176,7 +16490,7 @@ func file_types_query_node_proto_init() {
 			}
 		}
 		file_types_query_node_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryNodeSlotAuctionsResponse); i {
+			switch v := v.(*QueryNodeSlotAuctionsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -15188,7 +16502,7 @@ func file_types_query_node_proto_init() {
 			}
 		}
 		file_types_query_node_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryNodeSlotBidRequest); i {
+			switch v := v.(*QueryNodeSlotAuctionsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -15200,7 +16514,7 @@ func file_types_query_node_proto_init() {
 			}
 		}
 		file_types_query_node_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryNodeSlotBidResponse); i {
+			switch v := v.(*QueryNodeSlotBidRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -15212,7 +16526,7 @@ func file_types_query_node_proto_init() {
 			}
 		}
 		file_types_query_node_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryNodeSlotAuctionBidsRequest); i {
+			switch v := v.(*QueryNodeSlotBidResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -15224,7 +16538,7 @@ func file_types_query_node_proto_init() {
 			}
 		}
 		file_types_query_node_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*QueryNodeSlotAuctionBidsResponse); i {
+			switch v := v.(*QueryNodeSlotAuctionBidsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -15236,7 +16550,7 @@ func file_types_query_node_proto_init() {
 			}
 		}
 		file_types_query_node_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*NodeJail); i {
+			switch v := v.(*QueryNodeSlotAuctionBidsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -15248,7 +16562,7 @@ func file_types_query_node_proto_init() {
 			}
 		}
 		file_types_query_node_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ChainHeight); i {
+			switch v := v.(*NodeJail); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -15260,6 +16574,18 @@ func file_types_query_node_proto_init() {
 			}
 		}
 		file_types_query_node_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ChainHeight); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_types_query_node_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*NodePreflightStatus); i {
 			case 0:
 				return &v.state
@@ -15278,7 +16604,7 @@ func file_types_query_node_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_types_query_node_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

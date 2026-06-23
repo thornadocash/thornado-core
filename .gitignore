@@ -1,7 +1,10 @@
 /target/
 /thornado-state.json
 *.tmp
+.env
 .DS_Store
 /build/
 /go-thornado/build/
 /go-thornado/shielder-e2e-helper
+
+/node_modules/

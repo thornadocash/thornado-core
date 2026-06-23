@@ -98,47 +98,6 @@ func TestValidateShielderRedeemPublicJSONRejectsMissingRecipient(t *testing.T) {
 	}
 }
 
-func TestBondShieldCommitmentsAreProtocolGenerated(t *testing.T) {
-	rawCommitments := []string{
-		`{"denomination_sats":1000000,"commitment":"USER_SUPPLIED_A"}`,
-		`{"denomination_sats":1000000}`,
-	}
-	notes, err := parseShielderNoteCommitments(rawCommitments, 2000000, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	deposit := types.DepositRecord{
-		DepositID:      GetRandomTxHash(),
-		AmountSats:     2000000,
-		VaultPubKey:    GetRandomPubKey(),
-		OperatorPubKey: GetRandomPubKey(),
-		NodePubKey:     "thornadovalconspub1addwnpepqwnn92m9kz5mt6q690sy3z9le56d459k5m9twe5k9uc06z6j337ssxq92g5",
-		NodeSlot:       3,
-	}
-
-	for idx, note := range notes {
-		commitment, err := shielderBondCommitment(deposit, note.DenominationSats, idx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		notes[idx].Commitment = commitment
-	}
-	if notes[0].Commitment == "USER_SUPPLIED_A" {
-		t.Fatal("bond shield used operator-supplied commitment")
-	}
-	if notes[0].Commitment == "" || notes[1].Commitment == "" || notes[0].Commitment == notes[1].Commitment {
-		t.Fatalf("unexpected generated commitments: %#v", notes)
-	}
-	root, err := ComputeShielderMerkleRoot([]string{notes[0].Commitment, notes[1].Commitment})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if root == "" {
-		t.Fatal("expected bond commitments to produce a shielder merkle root")
-	}
-}
-
 func TestUserShieldRequiresCommitments(t *testing.T) {
 	payload, err := json.Marshal(shielderNoteCommitment{DenominationSats: 100000})
 	if err != nil {
@@ -236,8 +195,26 @@ func TestWithdrawalFeeIsProtocolOnePercent(t *testing.T) {
 	if got := withdrawalFeeSats(ctx, k, 1_000_000); got != 10_000 {
 		t.Fatalf("0.01 BTC note fee should be exactly 1%%: %d", got)
 	}
-	if got := constants.NewConfigValue().GetInt64Value(constants.Withdrawal_FeeMinSats); got != 0 {
-		t.Fatalf("withdrawal min fee should be disabled: %d", got)
+	if got := withdrawalFeeSats(ctx, k, 100_000_000); got != 1_000_000 {
+		t.Fatalf("1 BTC note fee should be exactly 1%%: %d", got)
+	}
+	if err := validateShielderRedeemPublicFee(types.ShielderRedeemPolicyUserBTC, shielderRedeemPublicInputs{
+		DenominationSats: 1_000_000,
+		FeeSats:          0,
+	}); err != nil {
+		t.Fatalf("user withdrawal public fee should not be protocol-selected: %v", err)
+	}
+	if err := validateShielderRedeemPublicFee(types.ShielderRedeemPolicyUserBTC, shielderRedeemPublicInputs{
+		DenominationSats: 1_000_000,
+		FeeSats:          123,
+	}); err != nil {
+		t.Fatalf("user withdrawal public fee should be ignored by protocol: %v", err)
+	}
+	if err := validateShielderRedeemPublicFee(types.ShielderRedeemPolicyBondEscrow, shielderRedeemPublicInputs{
+		DenominationSats: 1_000_000,
+		FeeSats:          1,
+	}); err == nil {
+		t.Fatal("bond escrow public fee should still be rejected")
 	}
 }
 

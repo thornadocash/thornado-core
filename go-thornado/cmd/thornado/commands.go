@@ -115,14 +115,13 @@ func initRootCmd(
 	cfg.Seal()
 
 	rootCmd.AddCommand(
-		genutilcli.InitCmd(basicManager, app.DefaultNodeHome),
+		thornadoInitCmd(basicManager, app.DefaultNodeHome),
 		//		NewTestnetCmd(basicManager, banktypes.GenesisBalancesIterator{}),
 		debug.Cmd(),
 		confixcmd.ConfigCommand(),
 		pruning.Cmd(newApp, app.DefaultNodeHome),
 		snapshot.Cmd(newApp),
 		renderConfigCommand(),
-		cmd.GetEd25519Keys(),
 		cmd.GetPubKeyCmd(),
 	)
 

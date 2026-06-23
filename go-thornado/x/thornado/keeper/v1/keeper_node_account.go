@@ -107,7 +107,7 @@ func (k KVStore) RemoveLowBondNodeAccounts(ctx cosmos.Context) error {
 			}
 			to, err := na.BondAddress.AccAddress()
 			if err != nil {
-				return dbError(ctx, "", fmt.Errorf("fail to parse bond address(%s)", na.BondAddress))
+				return dbError(ctx, "", fmt.Errorf("fail to parse operator address(%s)", na.BondAddress))
 			}
 
 			coin := common.NewCoin(common.BTCAsset, na.Bond)
@@ -272,7 +272,7 @@ func (k KVStore) EnsureNodeKeysUnique(ctx cosmos.Context, signer cosmos.AccAddre
 		if na.PubKeySet.Contains(pubKeys.Secp256k1) {
 			return dbError(ctx, "", fmt.Errorf("%s already exist", pubKeys))
 		}
-		if na.PubKeySet.Contains(pubKeys.Ed25519) {
+		if !pubKeys.Ed25519.IsEmpty() && na.PubKeySet.Contains(pubKeys.Ed25519) {
 			return dbError(ctx, "", fmt.Errorf("%s already exist", pubKeys))
 		}
 	}

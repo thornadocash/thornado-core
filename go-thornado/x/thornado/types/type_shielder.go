@@ -66,6 +66,7 @@ type DepositSession struct {
 	Status                   string            `json:"status"`
 	DepositID                common.TxID       `json:"deposit_id,omitempty"`
 	InboundTxID              common.TxID       `json:"inbound_tx_id,omitempty"`
+	SourceVout               uint32            `json:"source_vout"`
 	BTCConfirmations         int64             `json:"btc_confirmations,omitempty"`
 	BTCConfirmationsRequired int64             `json:"btc_confirmations_required,omitempty"`
 	BTCObservedHeight        int64             `json:"btc_observed_height,omitempty"`
@@ -95,6 +96,7 @@ type DepositRecord struct {
 	DepositID                common.TxID       `json:"deposit_id"`
 	Owner                    cosmos.AccAddress `json:"owner"`
 	AmountSats               uint64            `json:"amount_sats"`
+	SweepComplete            bool              `json:"sweep_complete,omitempty"`
 	ShieldedSats             uint64            `json:"shielded_sats,omitempty"`
 	DepositAddress           common.Address    `json:"deposit_address"`
 	ReturnAddress            common.Address    `json:"return_address,omitempty"`
@@ -121,6 +123,7 @@ type DepositRecord struct {
 	PowDifficulty            int64             `json:"pow_difficulty,omitempty"`
 	Status                   string            `json:"status"`
 	InboundTxID              common.TxID       `json:"inbound_tx_id,omitempty"`
+	SourceVout               uint32            `json:"source_vout"`
 	BTCConfirmations         int64             `json:"btc_confirmations,omitempty"`
 	BTCConfirmationsRequired int64             `json:"btc_confirmations_required,omitempty"`
 	BTCObservedHeight        int64             `json:"btc_observed_height,omitempty"`
@@ -217,17 +220,36 @@ func (m DepositAddress) Key() string {
 }
 
 type ShielderNodeBond struct {
+	NodePubKey                  string            `json:"node_pub_key"`
+	OperatorPubKey              common.PubKey     `json:"operator_pub_key"`
+	NodeAddress                 cosmos.AccAddress `json:"node_address"`
+	Slot                        uint64            `json:"slot"`
+	PendingSats                 uint64            `json:"pending_sats,omitempty"`
+	BondSats                    uint64            `json:"bond_sats"`
+	FeeDebtSats                 uint64            `json:"fee_debt_sats,omitempty"`
+	FeeShareActive              bool              `json:"fee_share_active,omitempty"`
+	OperatorFeeBasisPoints      uint64            `json:"operator_fee_basis_points,omitempty"`
+	OperatorFeeAccruedSats      uint64            `json:"operator_fee_accrued_sats,omitempty"`
+	FeePerBondShare             uint64            `json:"fee_per_bond_share,omitempty"`
+	FeePerBondShareRemainder    uint64            `json:"fee_per_bond_share_remainder,omitempty"`
+	PendingFeeDepositID         common.TxID       `json:"pending_fee_deposit_id,omitempty"`
+	PendingOperatorFeeDepositID common.TxID       `json:"pending_operator_fee_deposit_id,omitempty"`
+	Bonders                     []string          `json:"bonders,omitempty"`
+	Sold                        bool              `json:"sold,omitempty"`
+	SoldAuctionID               string            `json:"sold_auction_id,omitempty"`
+	CreatedHeight               int64             `json:"created_height"`
+	UpdatedHeight               int64             `json:"updated_height"`
+}
+
+type ShielderNodeBonder struct {
 	NodePubKey          string            `json:"node_pub_key"`
-	OperatorPubKey      common.PubKey     `json:"operator_pub_key"`
-	NodeAddress         cosmos.AccAddress `json:"node_address"`
-	Slot                uint64            `json:"slot"`
+	Bonder              cosmos.AccAddress `json:"bonder"`
 	PendingSats         uint64            `json:"pending_sats,omitempty"`
-	BondSats            uint64            `json:"bond_sats"`
-	FeeDebtSats         uint64            `json:"fee_debt_sats,omitempty"`
-	FeeShareActive      bool              `json:"fee_share_active,omitempty"`
+	PrincipalSats       uint64            `json:"principal_sats"`
+	FeeDebtShare        uint64            `json:"fee_debt_share,omitempty"`
 	PendingFeeDepositID common.TxID       `json:"pending_fee_deposit_id,omitempty"`
-	Sold                bool              `json:"sold,omitempty"`
-	SoldAuctionID       string            `json:"sold_auction_id,omitempty"`
+	SaleEntitlementID   common.TxID       `json:"sale_entitlement_id,omitempty"`
+	SalePayoutSats      uint64            `json:"sale_payout_sats,omitempty"`
 	CreatedHeight       int64             `json:"created_height"`
 	UpdatedHeight       int64             `json:"updated_height"`
 }
@@ -329,6 +351,24 @@ func (m ShielderNodeBond) Valid() error {
 		return fmt.Errorf("missing shielder node node address")
 	}
 	return nil
+}
+
+func (m ShielderNodeBonder) Key() string {
+	return ShielderNodeBonderKey(m.NodePubKey, m.Bonder)
+}
+
+func (m ShielderNodeBonder) Valid() error {
+	if strings.TrimSpace(m.NodePubKey) == "" {
+		return fmt.Errorf("missing shielder node bonder node pubkey")
+	}
+	if m.Bonder.Empty() {
+		return fmt.Errorf("missing shielder node bonder address")
+	}
+	return nil
+}
+
+func ShielderNodeBonderKey(nodePubKey string, bonder cosmos.AccAddress) string {
+	return strings.TrimSpace(nodePubKey) + "/" + bonder.String()
 }
 
 type FeePool struct {

@@ -92,7 +92,7 @@ func (kg *KeyGen) GenerateNewKey(keygenBlockHeight int64, pKeys common.PubKeys, 
 		Int("members", len(participants)).
 		Strs("chains", chains.Strings()).
 		Msg("FROST keygen complete")
-	return common.NewPubKeySet(vaultPubKey, common.EmptyPubKey), nil, nil
+	return common.NewPubKeySet(vaultPubKey), nil, nil
 }
 
 type sharedFrostKeygen struct {

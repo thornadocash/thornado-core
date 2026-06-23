@@ -89,9 +89,13 @@ assert_tx_success() {
 }
 
 request_deposit() {
-  local home="$1" owner="$2" pow="$3" out
+  local home="$1" owner="$2" pow="$3" out deposit_pubkey owner_addr difficulty pow_token
   shift 3
-  out="$(thornado_tx "$home" "$owner" request-deposit "$pow" "$@")"
+  deposit_pubkey="$1"
+  owner_addr="$("$SHIELDER_HELPER" owner-address "$deposit_pubkey")"
+  difficulty="$(curl -fsS "http://127.0.0.1:1317/thornado/config" | jq -r '.int_64_values.Deposit_PowDifficultyCurrent // .int_64_values.Deposit_PowDifficultyMin // 20')"
+  pow_token="$("$SHIELDER_HELPER" pow-token "$owner_addr" "$difficulty" "$pow")"
+  out="$(thornado_tx "$home" "$owner" request-deposit "$pow_token" "$@")"
   assert_tx_success "$out" "flow2-supp request-deposit ${pow}"
   wait_blocks 2
 }
@@ -187,11 +191,11 @@ restart_bifrost1_and_verify() {
   CHAIN_API="127.0.0.1:1317" \
   CHAIN_RPC="127.0.0.1:26657" \
   BIFROST_METRICS_LISTEN_PORT="9001" \
-  BIFROST_TSS_P2P_PORT="5041" \
-  BIFROST_TSS_INFO_ADDRESS="127.0.0.1:6041" \
-  BIFROST_TSS_BOOTSTRAP_PEERS="$bootstrap" \
-  BIFROST_TSS_EXTERNAL_IP="127.0.0.1" \
-  BIFROST_TSS_ALLOW_ZERO_BOND_NODES="true" \
+  BIFROST_FROST_P2P_PORT="5041" \
+  BIFROST_FROST_INFO_ADDRESS="127.0.0.1:6041" \
+  BIFROST_FROST_BOOTSTRAP_PEERS="$bootstrap" \
+  BIFROST_FROST_EXTERNAL_IP="127.0.0.1" \
+  BIFROST_FROST_ALLOW_ZERO_BOND_NODES="true" \
   BIFROST_SIGNER_SIGNER_DB_PATH="$bhome/signer_db" \
   BIFROST_SIGNER_KEYGEN_TIMEOUT="5s" \
   BIFROST_SIGNER_KEYSIGN_TIMEOUT="5s" \
@@ -255,10 +259,12 @@ validate_expired_session() {
   [[ "$(config_value DEPOSIT_SESSIONEXPIRYBLOCKS)" == "1" ]] || die "Deposit_SessionExpiryBlocks did not become 1"
   # shellcheck source=/dev/null
   source "$RUN_ROOT/meta/node6.env"
-  local node6_addr="$address" node6_secp="$secp" node6_cons="$cons"
-  request_deposit "$RUN_ROOT/node6" validator6 flow2-expired-bond --operator-pubkey "$node6_secp" --node-pubkey "$node6_cons"
+  local deposit_pubkey deposit_owner
+  deposit_pubkey="$("$SHIELDER_HELPER" pubkey "flow2-expired-bond")"
+  deposit_owner="$("$SHIELDER_HELPER" owner-address "$deposit_pubkey")"
+  request_deposit "$RUN_ROOT/node6" validator6 flow2-expired-bond "$deposit_pubkey"
   local session deposit_address txid deposit_id start res
-  session="$(deposit_session "$node6_addr")"
+  session="$(deposit_session "$deposit_owner")"
   printf '%s\n' "$session" >"$RUN_ROOT/meta/flow2-expired-session-before.json"
   deposit_address="$(jq -r '.deposit_address' <<<"$session")"
   wait_blocks 3
@@ -278,7 +284,7 @@ validate_expired_session() {
     wait_blocks 1
     sleep 2
   done
-  deposit_session "$node6_addr" >"$RUN_ROOT/meta/flow2-expired-session-after.json"
+  deposit_session "$deposit_owner" >"$RUN_ROOT/meta/flow2-expired-session-after.json"
   jq -e '.status == "address_issued" and ((.deposit_id // "") == "")' "$RUN_ROOT/meta/flow2-expired-session-after.json" >/dev/null \
     || die "expired session changed to matched"
   if find_any_sweep_txout "$deposit_id" >"$RUN_ROOT/meta/flow2-expired-sweep-search.json"; then

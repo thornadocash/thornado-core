@@ -154,6 +154,81 @@ func (c *Client) getUtxoToSpend(pubkey common.PubKey, total btcutil.Amount, swee
 	return c.getUtxoToSpendAtPath(pubkey, common.MainVaultPathIndex, total, sweepDust)
 }
 
+func internalTxType(txType string) bool {
+	switch strings.ToLower(strings.TrimSpace(txType)) {
+	case "sweep", "migrate", "consolidate":
+		return true
+	default:
+		return false
+	}
+}
+
+func sourceInputKey(txID string, vout uint32) string {
+	return formatUtxoKey(strings.ToLower(txID), vout)
+}
+
+func filterUtxosBySourceInputs(utxos []btcjson.ListUnspentResult, inputs []stypes.TxOutInput, total btcutil.Amount) ([]btcjson.ListUnspentResult, error) {
+	if len(inputs) == 0 {
+		return nil, fmt.Errorf("missing source_inputs for internal tx")
+	}
+
+	available := make(map[string]btcjson.ListUnspentResult, len(utxos))
+	for _, item := range utxos {
+		available[sourceInputKey(item.TxID, item.Vout)] = item
+	}
+
+	seen := make(map[string]bool, len(inputs))
+	result := make([]btcjson.ListUnspentResult, 0, len(inputs))
+	var toSpend btcutil.Amount
+	for _, input := range inputs {
+		if input.TxID.IsEmpty() {
+			return nil, fmt.Errorf("empty source input tx id")
+		}
+		key := sourceInputKey(input.TxID.String(), input.Vout)
+		if seen[key] {
+			return nil, fmt.Errorf("duplicate source input %s", key)
+		}
+		seen[key] = true
+		item, ok := available[key]
+		if !ok {
+			return nil, fmt.Errorf("insufficient available UTXOs: missing source input %s", key)
+		}
+		amt, err := btcutil.NewAmount(item.Amount)
+		if err != nil {
+			return nil, fmt.Errorf("fail to convert source input amount to btcutil amount: %w", err)
+		}
+		if input.AmountSats > 0 && uint64(amt) != input.AmountSats {
+			return nil, fmt.Errorf("source input %s amount mismatch: expected %d, got %d", key, input.AmountSats, uint64(amt))
+		}
+		result = append(result, item)
+		toSpend += amt
+	}
+	if toSpend < total {
+		return nil, fmt.Errorf("insufficient available UTXOs: need %d, only have %d available from %d source inputs", total, toSpend, len(result))
+	}
+	return result, nil
+}
+
+func (c *Client) getSourceUtxosToSpendAtPath(pubkey common.PubKey, pathIndex uint64, sourceInputs []stypes.TxOutInput, total btcutil.Amount) ([]btcjson.ListUnspentResult, error) {
+	addr, err := c.getVaultAddressAtPath(pubkey, pathIndex)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get address from pubkey(%s): %w", pubkey, err)
+	}
+	utxos, err := c.rpc.ListUnspent(addr.String())
+	if err != nil {
+		return nil, fmt.Errorf("fail to get UTXOs: %w", err)
+	}
+	filtered := utxos[:0]
+	for _, item := range utxos {
+		if !c.isValidUTXO(item.ScriptPubKey) {
+			c.log.Warn().Str("script", item.ScriptPubKey).Msgf("invalid sweep source utxo, unable to spend")
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filterUtxosBySourceInputs(filtered, sourceInputs, total)
+}
+
 func formatUtxoKey(txID string, vout uint32) string {
 	return fmt.Sprintf("%s-%d", txID, vout)
 }
@@ -161,9 +236,9 @@ func formatUtxoKey(txID string, vout uint32) string {
 // vinsUnspent will return true if all the vins are unspent.
 func (c *Client) vinsUnspent(tx stypes.TxOutItem, vins []*wire.TxIn) (bool, error) {
 	// get all unspent utxos
-	addr, err := c.getVaultAddress(tx.VaultPubKey)
+	addr, err := c.getVaultAddressAtPath(tx.VaultPubKey, tx.VaultPathIndex)
 	if err != nil {
-		return false, fmt.Errorf("fail to get address from pubkey(%s): %w", tx.VaultPubKey, err)
+		return false, fmt.Errorf("fail to get address from pubkey(%s) at path %d: %w", tx.VaultPubKey, tx.VaultPathIndex, err)
 	}
 	utxos, err := c.rpc.ListUnspent(addr.String())
 	if err != nil {
@@ -247,6 +322,10 @@ func (c *Client) getSourceScript(tx stypes.TxOutItem) ([]byte, error) {
 // returns the exact virtual size (vbytes) according to BIP141.
 // For non-segwit chains, it returns the actual serialized size.
 func (c *Client) estimateTxSize(txes []btcjson.ListUnspentResult, customerScript, changeScript []byte) int64 {
+	return c.estimateTxSizeWithOutputs(txes, [][]byte{customerScript}, changeScript)
+}
+
+func (c *Client) estimateTxSizeWithOutputs(txes []btcjson.ListUnspentResult, outputScripts [][]byte, changeScript []byte) int64 {
 	tx := wire.NewMsgTx(wire.TxVersion)
 
 	// Add inputs with realistic witness/scriptSig data for size estimation
@@ -266,8 +345,9 @@ func (c *Client) estimateTxSize(txes []btcjson.ListUnspentResult, customerScript
 		tx.AddTxIn(txIn)
 	}
 
-	// Add customer output
-	tx.AddTxOut(wire.NewTxOut(0, customerScript))
+	for _, outputScript := range outputScripts {
+		tx.AddTxOut(wire.NewTxOut(0, outputScript))
+	}
 
 	// Add change output (will be added if balance > 0)
 	tx.AddTxOut(wire.NewTxOut(0, changeScript))
@@ -313,7 +393,13 @@ func (c *Client) getGasCoin(tx stypes.TxOutItem, vSize int64) common.Coin {
 }
 
 func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx, map[string]int64, error) {
-	txes, err := c.getUtxoToSpendAtPath(tx.VaultPubKey, tx.VaultPathIndex, c.getPaymentAmount(tx), false)
+	var txes []btcjson.ListUnspentResult
+	var err error
+	if internalTxType(tx.TxType) {
+		txes, err = c.getSourceUtxosToSpendAtPath(tx.VaultPubKey, tx.VaultPathIndex, tx.SourceInputs, c.getPaymentAmount(tx))
+	} else {
+		txes, err = c.getUtxoToSpendAtPath(tx.VaultPubKey, tx.VaultPathIndex, c.getPaymentAmount(tx), false)
+	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("fail to get unspent UTXO: %w", err)
 	}
@@ -386,15 +472,9 @@ func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx,
 		c.log.Err(err).Msg("fail to save gas info to UTXO storage")
 	}
 
-	outputAmount := int64(coinToCustomer.Amount.Uint64())
-	// Explicit internal tx types are custody sweeps. Spend the full selected
-	// balance so child/old vault addresses do not retain change.
-	switch tx.TxType {
-	case "consolidate", "migrate", "sweep":
-		outputAmount = totalAmt - int64(gasAmt)
-		if outputAmount <= 0 {
-			return nil, nil, fmt.Errorf("not enough balance to sweep vault path: %d", outputAmount)
-		}
+	outputAmount, err := internalTxOutputAmount(tx.TxType, totalAmt, int64(gasAmt), int64(coinToCustomer.Amount.Uint64()))
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// pay to customer
@@ -414,4 +494,147 @@ func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx,
 	}
 
 	return redeemTx, individualAmounts, nil
+}
+
+func internalTxOutputAmount(txType string, totalAmt, gasAmt, coinAmt int64) (int64, error) {
+	outputAmount := coinAmt
+	// Explicit internal tx types are custody sweeps. Spend the full selected
+	// balance so child/old vault addresses do not retain change.
+	switch strings.ToLower(strings.TrimSpace(txType)) {
+	case "consolidate", "migrate", "sweep":
+		outputAmount = totalAmt - gasAmt
+		if outputAmount <= 0 {
+			return 0, fmt.Errorf("not enough balance to sweep vault path: %d", outputAmount)
+		}
+	}
+	return outputAmount, nil
+}
+
+func batchableBaseVaultTx(tx stypes.TxOutItem) bool {
+	if !tx.Chain.Equals(common.BTCChain) {
+		return false
+	}
+	if tx.VaultPathIndex != common.MainVaultPathIndex {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(tx.TxType)) {
+	case "out", "refund", "":
+		return true
+	default:
+		return false
+	}
+}
+
+func (c *Client) buildTxBatch(txs []stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx, map[string]int64, int64, error) {
+	if len(txs) == 0 {
+		return nil, nil, 0, fmt.Errorf("empty tx batch")
+	}
+	first := txs[0]
+	if !batchableBaseVaultTx(first) {
+		return nil, nil, 0, fmt.Errorf("tx is not batchable")
+	}
+
+	outputScripts := make([][]byte, 0, len(txs))
+	totalOutput := int64(0)
+	gasRate := first.GasRate
+	for _, tx := range txs {
+		if !batchableBaseVaultTx(tx) {
+			return nil, nil, 0, fmt.Errorf("tx is not batchable: %s", tx.TxType)
+		}
+		if !tx.Chain.Equals(first.Chain) || !tx.VaultPubKey.Equals(first.VaultPubKey) || tx.VaultPathIndex != first.VaultPathIndex {
+			return nil, nil, 0, fmt.Errorf("tx batch mixes source vaults")
+		}
+		if tx.GasRate > gasRate {
+			gasRate = tx.GasRate
+		}
+		outputAddr, err := btcutil.DecodeAddress(tx.ToAddress.String(), c.getChainCfgBTC())
+		if err != nil {
+			return nil, nil, 0, fmt.Errorf("fail to decode output address: %w", err)
+		}
+		if !strings.EqualFold(outputAddr.String(), tx.ToAddress.String()) {
+			return nil, nil, 0, fmt.Errorf("output address %s cannot roundtrip", tx.ToAddress.String())
+		}
+		script, err := btctxscript.PayToAddrScript(outputAddr)
+		if err != nil {
+			return nil, nil, 0, fmt.Errorf("fail to get pay to address script: %w", err)
+		}
+		coin := tx.Coins.GetCoin(c.cfg.ChainID.GetGasAsset())
+		if coin.IsEmpty() {
+			return nil, nil, 0, fmt.Errorf("tx batch item has no gas asset coin")
+		}
+		outputScripts = append(outputScripts, script)
+		totalOutput += int64(coin.Amount.Uint64())
+	}
+
+	selectAmount := btcutil.Amount(totalOutput)
+	var txes []btcjson.ListUnspentResult
+	var err error
+	var totalSize int64
+	var gasAmt btcutil.Amount
+	feeTx := first
+	feeTx.GasRate = gasRate
+	for attempt := 0; attempt < 2; attempt++ {
+		txes, err = c.getUtxoToSpendAtPath(first.VaultPubKey, first.VaultPathIndex, selectAmount, false)
+		if err != nil {
+			return nil, nil, 0, fmt.Errorf("fail to get unspent UTXO: %w", err)
+		}
+		totalSize = c.estimateTxSizeWithOutputs(txes, outputScripts, sourceScript)
+		gasCoin := c.getGasCoin(feeTx, totalSize)
+		gasAmtSats := gasCoin.Amount.Uint64()
+		maxFeeSats := totalSize * c.getBTCConfigValue(constants.BTC_MaxSatsPerVByte, c.cfg.UTXO.MaxSatsPerVByte)
+		if gasAmtSats > uint64(maxFeeSats) {
+			gasAmtSats = uint64(maxFeeSats)
+		} else if minRelayFeeSats := c.minRelayFeeSats.Load(); gasAmtSats < minRelayFeeSats {
+			gasAmtSats = minRelayFeeSats
+		}
+		gasAmt = btcutil.Amount(gasAmtSats)
+		needed := btcutil.Amount(totalOutput) + gasAmt
+		if selectAmount >= needed {
+			break
+		}
+		selectAmount = needed
+	}
+
+	redeemTx := wire.NewMsgTx(wire.TxVersion)
+	totalInput := int64(0)
+	individualAmounts := make(map[string]int64, len(txes))
+	for _, item := range txes {
+		txID, err := chainhash.NewHashFromStr(item.TxID)
+		if err != nil {
+			return nil, nil, 0, fmt.Errorf("fail to parse txID(%s): %w", item.TxID, err)
+		}
+		outputPoint := wire.NewOutPoint(txID, item.Vout)
+		redeemTx.AddTxIn(wire.NewTxIn(outputPoint, nil, nil))
+		amt, err := btcutil.NewAmount(item.Amount)
+		if err != nil {
+			return nil, nil, 0, fmt.Errorf("fail to parse amount(%f): %w", item.Amount, err)
+		}
+		individualAmounts[formatUtxoKey(txID.String(), item.Vout)] = int64(amt)
+		totalInput += int64(amt)
+	}
+
+	for i, script := range outputScripts {
+		coin := txs[i].Coins.GetCoin(c.cfg.ChainID.GetGasAsset())
+		redeemTx.AddTxOut(wire.NewTxOut(int64(coin.Amount.Uint64()), script))
+	}
+
+	if err = c.temporalStorage.UpsertTransactionFee(gasAmt.ToBTC(), int32(totalSize)); err != nil {
+		c.log.Err(err).Msg("fail to save gas info to UTXO storage")
+	}
+
+	balance := totalInput - totalOutput - int64(gasAmt)
+	c.log.Info().
+		Int64("total", totalInput).
+		Int64("to_customers", totalOutput).
+		Int64("gas", int64(gasAmt)).
+		Int("outputs", len(outputScripts)).
+		Msg("built BTC outbound batch")
+	if balance < 0 {
+		return nil, nil, 0, fmt.Errorf("not enough balance to pay batch: %d", balance)
+	}
+	if balance > 0 {
+		redeemTx.AddTxOut(wire.NewTxOut(balance, sourceScript))
+	}
+
+	return redeemTx, individualAmounts, totalOutput, nil
 }

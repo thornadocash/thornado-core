@@ -1,6 +1,7 @@
 package thornado
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -90,6 +91,21 @@ func activeNodeAccountsSignerPriority(ctx cosmos.Context, k keeper.Keeper, signe
 	return ctx, cosmos.ErrUnauthorized(fmt.Sprintf("%+v are not authorized", signers))
 }
 
+func activeOperationalNodeSignerPriority(ctx cosmos.Context, k keeper.Keeper, signers []cosmos.AccAddress) (cosmos.Context, error) {
+	if len(signers) == 0 {
+		return ctx, cosmos.ErrUnauthorized("missing signer")
+	}
+	for _, signer := range signers {
+		if signer.Equals(k.GetModuleAccAddress(BaseName)) {
+			continue
+		}
+		if _, err := resolveActiveNodeAccountBySigner(ctx, k, signer); err != nil {
+			return ctx, cosmos.ErrUnauthorized(err.Error())
+		}
+	}
+	return ctx.WithPriority(ActiveNodePriority), nil
+}
+
 // signedByActiveNodeAccounts returns an error unless all signers are active node nodes
 func signedByActiveNodeAccount(ctx cosmos.Context, k keeper.Keeper, signer cosmos.AccAddress) error {
 	nodeAccount, err := k.GetNodeAccount(ctx, signer)
@@ -115,6 +131,147 @@ func signedByActiveNodeAccount(ctx cosmos.Context, k keeper.Keeper, signer cosmo
 	}
 
 	return nil
+}
+
+func resolveActiveNodeAccountBySigner(ctx cosmos.Context, k keeper.Keeper, signer cosmos.AccAddress) (NodeAccount, error) {
+	nodeAccount, err := resolveNodeAccountBySigner(ctx, k, signer)
+	if err != nil {
+		return NodeAccount{}, err
+	}
+	if nodeAccount.Status != NodeActive {
+		return NodeAccount{}, fmt.Errorf("node account %s not active: %s", nodeAccount.NodeAddress.String(), nodeAccount.Status)
+	}
+	return nodeAccount, nil
+}
+
+func resolveNodeAccountBySigner(ctx cosmos.Context, k keeper.Keeper, signer cosmos.AccAddress) (NodeAccount, error) {
+	var matches []NodeAccount
+	iter := k.GetShielderNodeBondIterator(ctx)
+	if iter != nil {
+		defer iter.Close()
+		for ; iter.Valid(); iter.Next() {
+			var bond types.ShielderNodeBond
+			if err := json.Unmarshal(iter.Value(), &bond); err != nil {
+				return NodeAccount{}, fmt.Errorf("unmarshal node bond: %w", err)
+			}
+			if bond.OperatorPubKey.IsEmpty() || bond.NodeAddress.Empty() {
+				continue
+			}
+			operator, err := bond.OperatorPubKey.GetThorAddress()
+			if err != nil {
+				continue
+			}
+			if !operator.Equals(signer) {
+				continue
+			}
+			candidate, err := k.GetNodeAccount(ctx, bond.NodeAddress)
+			if err != nil {
+				return NodeAccount{}, fmt.Errorf("error fetching node account: %s: %w", bond.NodeAddress.String(), err)
+			}
+			if candidate.IsEmpty() || candidate.Type != NodeTypeNode {
+				continue
+			}
+			seen := false
+			for _, match := range matches {
+				if match.NodeAddress.Equals(candidate.NodeAddress) {
+					seen = true
+					break
+				}
+			}
+			if !seen {
+				matches = append(matches, candidate)
+			}
+		}
+	}
+	switch len(matches) {
+	case 0:
+	case 1:
+		return matches[0], nil
+	default:
+		return NodeAccount{}, fmt.Errorf("operator %s controls multiple node accounts", signer.String())
+	}
+
+	nodeAccount, err := k.GetNodeAccount(ctx, signer)
+	if err != nil {
+		return NodeAccount{}, fmt.Errorf("error fetching node account: %s: %w", signer.String(), err)
+	}
+	if nodeAccount.IsEmpty() {
+		return NodeAccount{}, fmt.Errorf("node account is unexpectedly empty: %s", signer.String())
+	}
+	if nodeAccount.Type != NodeTypeNode {
+		return NodeAccount{}, fmt.Errorf("node account %s must be a node: %s", nodeAccount.NodeAddress.String(), nodeAccount.Type)
+	}
+	if _, err := resolveNodeBondForNodeAccount(ctx, k, nodeAccount); err == nil {
+		return NodeAccount{}, fmt.Errorf("%s is not the current operator for node %s", signer.String(), nodeAccount.NodeAddress.String())
+	}
+	return nodeAccount, nil
+}
+
+func resolveNodeAccountByAddressAndSigner(ctx cosmos.Context, k keeper.Keeper, nodeAddress, signer cosmos.AccAddress) (NodeAccount, error) {
+	nodeAccount, err := k.GetNodeAccount(ctx, nodeAddress)
+	if err != nil {
+		return NodeAccount{}, fmt.Errorf("error fetching node account: %s: %w", nodeAddress.String(), err)
+	}
+	if nodeAccount.IsEmpty() {
+		return NodeAccount{}, fmt.Errorf("node account is unexpectedly empty: %s", nodeAddress.String())
+	}
+	if nodeAccount.Type != NodeTypeNode {
+		return NodeAccount{}, fmt.Errorf("node account %s must be a node: %s", nodeAccount.NodeAddress.String(), nodeAccount.Type)
+	}
+	bond, err := resolveNodeBondForNodeAccount(ctx, k, nodeAccount)
+	if err != nil {
+		if signer.Equals(nodeAccount.NodeAddress) {
+			return nodeAccount, nil
+		}
+		return NodeAccount{}, err
+	}
+	operator, err := bond.OperatorPubKey.GetThorAddress()
+	if err != nil {
+		return NodeAccount{}, err
+	}
+	if operator.Equals(signer) {
+		return nodeAccount, nil
+	}
+	return NodeAccount{}, fmt.Errorf("%s is not authorized for node %s", signer.String(), nodeAccount.NodeAddress.String())
+}
+
+func resolveNodeBondForNodeAccount(ctx cosmos.Context, k keeper.Keeper, nodeAccount NodeAccount) (types.ShielderNodeBond, error) {
+	if strings.TrimSpace(nodeAccount.NodeConsPubKey) != "" {
+		bond, err := k.GetShielderNodeBond(ctx, nodeAccount.NodeConsPubKey)
+		if err == nil && !bond.NodeAddress.Empty() && bond.NodeAddress.Equals(nodeAccount.NodeAddress) {
+			return bond, nil
+		}
+	}
+	iter := k.GetShielderNodeBondIterator(ctx)
+	if iter == nil {
+		return types.ShielderNodeBond{}, fmt.Errorf("missing node bond for %s", nodeAccount.NodeAddress.String())
+	}
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		var bond types.ShielderNodeBond
+		if err := json.Unmarshal(iter.Value(), &bond); err != nil {
+			return types.ShielderNodeBond{}, fmt.Errorf("unmarshal node bond: %w", err)
+		}
+		if bond.NodeAddress.Equals(nodeAccount.NodeAddress) {
+			return bond, nil
+		}
+	}
+	return types.ShielderNodeBond{}, fmt.Errorf("missing node bond for %s", nodeAccount.NodeAddress.String())
+}
+
+func nodeOperatorAddress(ctx cosmos.Context, k keeper.Keeper, nodeAccount NodeAccount) (cosmos.AccAddress, error) {
+	bond, err := resolveNodeBondForNodeAccount(ctx, k, nodeAccount)
+	if err == nil && !bond.OperatorPubKey.IsEmpty() {
+		operator, opErr := bond.OperatorPubKey.GetThorAddress()
+		if opErr != nil {
+			return nil, opErr
+		}
+		return operator, nil
+	}
+	if !nodeAccount.BondAddress.IsEmpty() {
+		return nodeAccount.BondAddress.AccAddress()
+	}
+	return nil, err
 }
 
 func wrapError(ctx cosmos.Context, err error, wrap string) error {

@@ -3,6 +3,7 @@ package thornado
 import (
 	"errors"
 	"fmt"
+	"sort"
 
 	math "cosmossdk.io/math"
 	"github.com/thornadocash/go-thornado/common"
@@ -64,7 +65,7 @@ func (vm *NetworkMgr) processGenesisSetup(ctx cosmos.Context) error {
 			common.BTCChain,
 		}
 		pubSet := active[0].PubKeySet
-		vault := NewVaultV2(0, ActiveVault, BaseVault, pubSet.Secp256k1, supportChains.Strings(), pubSet.Ed25519)
+		vault := NewVaultV2(0, ActiveVault, BaseVault, pubSet.Secp256k1, supportChains.Strings(), common.EmptyPubKey)
 		vault.Membership = common.PubKeys{pubSet.Secp256k1}.Strings()
 		if err := vm.k.SetVault(ctx, vault); err != nil {
 			return fmt.Errorf("fail to save vault: %w", err)
@@ -177,6 +178,21 @@ func (vm *NetworkMgr) consolidateActiveBTCVaults(ctx cosmos.Context, mgr Manager
 			VaultPathIndex:   common.MainVaultPathIndex,
 			TxType:           types.TxOutTypeConsolidate,
 		}
+		item.SourceInputs = vm.btcConsolidationSourceInputs(ctx, vault, rootAddr, int(threshold))
+		if len(item.SourceInputs) < 2 {
+			continue
+		}
+		sourceAmount := cosmos.ZeroUint()
+		for _, input := range item.SourceInputs {
+			sourceAmount = sourceAmount.Add(cosmos.NewUint(input.AmountSats))
+		}
+		maxSpendable := common.SafeSub(sourceAmount, maxGasCoin.Amount)
+		if maxSpendable.IsZero() {
+			continue
+		}
+		if item.Coin.Amount.GT(maxSpendable) {
+			item.Coin.Amount = maxSpendable
+		}
 		if err := vm.k.AppendTxOut(ctx, ctx.BlockHeight(), item); err != nil {
 			return fmt.Errorf("fail to add bitcoin consolidate txout: %w", err)
 		}
@@ -186,6 +202,69 @@ func (vm *NetworkMgr) consolidateActiveBTCVaults(ctx cosmos.Context, mgr Manager
 		}
 	}
 	return nil
+}
+
+func (vm *NetworkMgr) btcConsolidationSourceInputs(ctx cosmos.Context, vault Vault, sourceAddr common.Address, maxInputs int) []types.TxOutInput {
+	if maxInputs < 2 {
+		maxInputs = 2
+	}
+	candidates := make(map[string]types.TxOutInput)
+	spent := make(map[string]struct{})
+
+	for height := int64(1); height <= ctx.BlockHeight(); height++ {
+		txOut, err := vm.k.GetTxOut(ctx, height)
+		if err != nil {
+			ctx.Logger().Error("fail to get txout while collecting consolidation source inputs", "height", height, "error", err)
+			continue
+		}
+		for _, item := range txOut.TxArray {
+			if !item.OutHash.IsEmpty() {
+				voter, err := vm.k.GetObservedTxOutVoter(ctx, item.OutHash)
+				if err == nil {
+					vm.markSpentBTCSourceInputs(spent, voter.Tx.Tx.SourceInputs)
+					for _, observed := range voter.Txs {
+						vm.markSpentBTCSourceInputs(spent, observed.Tx.SourceInputs)
+					}
+				}
+			}
+			if item.OutHash.IsEmpty() ||
+				item.GetTxType() != types.TxOutTypeSweep ||
+				!item.Chain.Equals(common.BTCChain) ||
+				!item.VaultPubKey.Equals(vault.PubKey) ||
+				!item.Coin.Asset.Equals(common.BTCAsset) ||
+				!item.ToAddress.Equals(sourceAddr) ||
+				item.Coin.Amount.IsZero() {
+				continue
+			}
+			key := btcSourceInputKey(item.OutHash, item.OutVout)
+			if _, ok := candidates[key]; ok {
+				continue
+			}
+			candidates[key] = types.TxOutInput{
+				TxId:       item.OutHash,
+				Vout:       item.OutVout,
+				AmountSats: item.Coin.Amount.Uint64(),
+			}
+		}
+	}
+
+	inputs := make([]types.TxOutInput, 0, len(candidates))
+	for key, input := range candidates {
+		if _, ok := spent[key]; ok || input.AmountSats == 0 {
+			continue
+		}
+		inputs = append(inputs, input)
+	}
+	sort.Slice(inputs, func(i, j int) bool {
+		if inputs[i].AmountSats == inputs[j].AmountSats {
+			return btcSourceInputKey(inputs[i].TxId, inputs[i].Vout) < btcSourceInputKey(inputs[j].TxId, inputs[j].Vout)
+		}
+		return inputs[i].AmountSats < inputs[j].AmountSats
+	})
+	if len(inputs) > maxInputs {
+		inputs = inputs[:maxInputs]
+	}
+	return inputs
 }
 
 func vaultHasPendingTxType(ctx cosmos.Context, k keeper.Keeper, pubkey common.PubKey, txType string) bool {
@@ -450,6 +529,28 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 				}
 				ok := false
 				if chain.Equals(common.BTCChain) {
+					sourceAddr, err := vault.GetAddress(chain)
+					if err != nil {
+						return err
+					}
+					required := toi.Coin.Amount.Add(toi.MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount)
+					toi.SourceInputs = vm.btcMigrationSourceInputs(ctx, vault, sourceAddr, required)
+					if len(toi.SourceInputs) == 0 {
+						return fmt.Errorf("fail to add bitcoin migration txout: no source inputs for retiring vault %s", vault.PubKey)
+					}
+					sourceAmount := cosmos.ZeroUint()
+					for _, input := range toi.SourceInputs {
+						sourceAmount = sourceAmount.Add(cosmos.NewUint(input.AmountSats))
+					}
+					maxGasAmount := toi.MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount
+					if sourceAmount.LTE(maxGasAmount) {
+						ctx.Logger().Info("skip bitcoin migration txout: source inputs cannot cover gas", "vault", vault.PubKey, "source_amount", sourceAmount, "max_gas", maxGasAmount)
+						continue
+					}
+					// BTC migration moves whole selected UTXOs with no change output.
+					// The round amount is only a selection target; once inputs are selected,
+					// the destination amount is the full selected value minus max gas.
+					toi.Coin.Amount = common.SafeSub(sourceAmount, maxGasAmount)
 					if err := vm.k.AppendTxOut(ctx, ctx.BlockHeight(), toi); err != nil {
 						return fmt.Errorf("fail to add bitcoin migration txout: %w", err)
 					}
@@ -477,6 +578,137 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 		}
 	}
 	return nil
+}
+
+func (vm *NetworkMgr) btcMigrationSourceInputs(ctx cosmos.Context, vault Vault, sourceAddr common.Address, required cosmos.Uint) []types.TxOutInput {
+	candidates := make(map[string]types.TxOutInput)
+	spent := make(map[string]struct{})
+
+	for height := int64(1); height <= ctx.BlockHeight(); height++ {
+		txOut, err := vm.k.GetTxOut(ctx, height)
+		if err != nil {
+			ctx.Logger().Error("fail to get txout while collecting migration source inputs", "height", height, "error", err)
+			continue
+		}
+		for _, item := range txOut.TxArray {
+			if item.Chain.Equals(common.BTCChain) && len(item.SourceInputs) > 0 {
+				for _, input := range item.SourceInputs {
+					spent[btcSourceInputKey(input.TxId, input.Vout)] = struct{}{}
+				}
+			}
+			if !item.OutHash.IsEmpty() {
+				voter, err := vm.k.GetObservedTxOutVoter(ctx, item.OutHash)
+				if err == nil {
+					vm.markSpentBTCSourceInputs(spent, voter.Tx.Tx.SourceInputs)
+					for _, observed := range voter.Txs {
+						vm.markSpentBTCSourceInputs(spent, observed.Tx.SourceInputs)
+					}
+				}
+			}
+
+			if item.OutHash.IsEmpty() ||
+				!item.Chain.Equals(common.BTCChain) ||
+				!item.VaultPubKey.Equals(vault.PubKey) ||
+				!item.Coin.Asset.Equals(common.BTCAsset) ||
+				!item.ToAddress.Equals(sourceAddr) ||
+				item.Coin.Amount.IsZero() {
+				continue
+			}
+
+			key := btcSourceInputKey(item.OutHash, item.OutVout)
+			if _, ok := candidates[key]; ok {
+				continue
+			}
+			candidates[key] = types.TxOutInput{
+				TxId:       item.OutHash,
+				Vout:       item.OutVout,
+				AmountSats: item.Coin.Amount.Uint64(),
+			}
+		}
+	}
+
+	outIter := vm.k.GetObservedTxOutVoterIterator(ctx)
+	defer outIter.Close()
+	for ; outIter.Valid(); outIter.Next() {
+		var voter ObservedTxVoter
+		if err := vm.k.Cdc().Unmarshal(outIter.Value(), &voter); err != nil {
+			ctx.Logger().Error("fail to unmarshal observed txout while collecting migration source inputs", "error", err)
+			continue
+		}
+		for _, observed := range voter.Txs {
+			tx := observed.Tx
+			if !tx.Chain.Equals(common.BTCChain) ||
+				!tx.FromAddress.Equals(sourceAddr) ||
+				!observed.ObservedPubKey.Equals(vault.PubKey) {
+				continue
+			}
+			vm.markSpentBTCSourceInputs(spent, tx.SourceInputs)
+		}
+	}
+
+	iter := vm.k.GetObservedTxInVoterIterator(ctx)
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		var voter ObservedTxVoter
+		if err := vm.k.Cdc().Unmarshal(iter.Value(), &voter); err != nil {
+			ctx.Logger().Error("fail to unmarshal observed txin while collecting migration source inputs", "error", err)
+			continue
+		}
+		tx := voter.Tx.Tx
+		if !tx.Chain.Equals(common.BTCChain) ||
+			!tx.ToAddress.Equals(sourceAddr) ||
+			tx.ID.IsEmpty() {
+			continue
+		}
+		coin := tx.Coins.GetCoin(common.BTCAsset)
+		if coin.IsEmpty() || coin.Amount.IsZero() {
+			continue
+		}
+		key := btcSourceInputKey(tx.ID, tx.SourceVout)
+		if _, ok := candidates[key]; ok {
+			continue
+		}
+		candidates[key] = types.TxOutInput{
+			TxId:       tx.ID,
+			Vout:       tx.SourceVout,
+			AmountSats: coin.Amount.Uint64(),
+		}
+	}
+
+	candidateInputs := make([]types.TxOutInput, 0, len(candidates))
+	for key, input := range candidates {
+		if _, ok := spent[key]; ok || input.AmountSats == 0 {
+			continue
+		}
+		candidateInputs = append(candidateInputs, input)
+	}
+	sort.Slice(candidateInputs, func(i, j int) bool {
+		if candidateInputs[i].AmountSats == candidateInputs[j].AmountSats {
+			return btcSourceInputKey(candidateInputs[i].TxId, candidateInputs[i].Vout) < btcSourceInputKey(candidateInputs[j].TxId, candidateInputs[j].Vout)
+		}
+		return candidateInputs[i].AmountSats > candidateInputs[j].AmountSats
+	})
+
+	var total uint64
+	inputs := make([]types.TxOutInput, 0, len(candidateInputs))
+	for _, input := range candidateInputs {
+		inputs = append(inputs, input)
+		total += input.AmountSats
+		if !required.IsZero() && cosmos.NewUint(total).GTE(required) {
+			break
+		}
+	}
+	return inputs
+}
+
+func (vm *NetworkMgr) markSpentBTCSourceInputs(spent map[string]struct{}, inputs []common.TxInput) {
+	for _, input := range inputs {
+		spent[btcSourceInputKey(input.TxID, input.Vout)] = struct{}{}
+	}
+}
+
+func btcSourceInputKey(txID common.TxID, vout uint32) string {
+	return fmt.Sprintf("%s:%d", txID.String(), vout)
 }
 
 // TriggerKeygen generate a record to instruct signer kick off keygen process
@@ -525,11 +757,12 @@ func (vm *NetworkMgr) TriggerKeygen(ctx cosmos.Context, nas NodeAccounts) error 
 	}
 	for _, vault := range active {
 		if vault.MembershipEquals(keygen.GetMembers()) {
-			ctx.Logger().Info("skip keygen due to vault already existing")
+			ctx.Logger().Info("skip keygen due to vault already existing", "members", len(members))
 			return nil
 		}
 	}
 
+	ctx.Logger().Info("triggering base vault keygen", "height", ctx.BlockHeight(), "members", len(members))
 	vm.k.SetKeygenBlock(ctx, keygenBlock)
 	// clear the init vault
 	initVaults, err := vm.k.GetBaseVaultsByStatus(ctx, InitVault)

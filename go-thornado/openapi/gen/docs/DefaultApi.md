@@ -33,7 +33,7 @@ Method | HTTP request | Description
 [**ThornadoNodeAuctionAuctionIdGet**](DefaultApi.md#ThornadoNodeAuctionAuctionIdGet) | **Get** /thornado/node/auction/{auction_id} | Node slot auction
 [**ThornadoNodeAuctionsGet**](DefaultApi.md#ThornadoNodeAuctionsGet) | **Get** /thornado/node/auctions | Node slot auctions
 [**ThornadoNodeBidBidIdGet**](DefaultApi.md#ThornadoNodeBidBidIdGet) | **Get** /thornado/node/bid/{bid_id} | Node slot bid
-[**ThornadoNodeMetricsGet**](DefaultApi.md#ThornadoNodeMetricsGet) | **Get** /thornado/node/metrics | Node metrics
+[**ThornadoNodeMetricsGet**](DefaultApi.md#ThornadoNodeMetricsGet) | **Get** /thornado/nodes/metrics | Node metrics
 [**ThornadoNodeSlotSlotGet**](DefaultApi.md#ThornadoNodeSlotSlotGet) | **Get** /thornado/node/slot/{slot} | Node slot
 [**ThornadoNodesGet**](DefaultApi.md#ThornadoNodesGet) | **Get** /thornado/nodes | Nodes
 [**ThornadoShielderNullifierNullifierHashGet**](DefaultApi.md#ThornadoShielderNullifierNullifierHashGet) | **Get** /thornado/shielder/nullifier/{nullifier_hash} | Shielder nullifier

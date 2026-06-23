@@ -3,6 +3,7 @@ package types
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/thornadocash/go-thornado/common"
@@ -19,6 +20,7 @@ type TxOutItem struct {
 	GasRate               int64          `json:"gas_rate"`
 	InHash                common.TxID    `json:"in_hash"`
 	OutHash               common.TxID    `json:"out_hash"`
+	OutVout               uint32         `json:"out_vout,omitempty"`
 	Aggregator            string         `json:"aggregator"`
 	AggregatorTargetAsset string         `json:"aggregator_target_asset,omitempty"`
 	AggregatorTargetLimit *cosmos.Uint   `json:"aggregator_target_limit,omitempty"`
@@ -27,17 +29,36 @@ type TxOutItem struct {
 	VaultPubKeyEddsa      common.PubKey  `json:"vault_pub_key_eddsa,omitempty"`
 	VaultPathIndex        uint64         `json:"vault_path_index,omitempty"`
 	TxType                string         `json:"tx_type,omitempty"`
+	SourceInputs          []TxOutInput   `json:"source_inputs"`
+}
+
+type TxOutInput struct {
+	TxID       common.TxID `json:"tx_id"`
+	Vout       uint32      `json:"vout,omitempty"`
+	AmountSats uint64      `json:"amount_sats,omitempty"`
+}
+
+func sourceInputsString(inputs []TxOutInput) string {
+	if len(inputs) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(inputs))
+	for _, input := range inputs {
+		parts = append(parts, fmt.Sprintf("%s:%d:%d", input.TxID, input.Vout, input.AmountSats))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
 }
 
 // Hash return a sha256 hash that can uniquely represent the TxOutItem
 func (tx TxOutItem) Hash() string {
-	str := fmt.Sprintf("%s|%s|%s|%s|%s", tx.Chain, tx.ToAddress, tx.VaultPubKey, tx.Coins, tx.InHash)
+	str := fmt.Sprintf("%s|%s|%s|%s|%s|%s", tx.Chain, tx.ToAddress, tx.VaultPubKey, tx.Coins, tx.InHash, sourceInputsString(tx.SourceInputs))
 	return fmt.Sprintf("%X", sha256.Sum256([]byte(str)))
 }
 
 // CacheHash return a hash that doesn't include VaultPubKey , thus this one can be used as cache key for txOutItem across different vaults
 func (tx TxOutItem) CacheHash() string {
-	str := fmt.Sprintf("%s|%s|%s|%s", tx.Chain, tx.ToAddress, tx.Coins, tx.InHash)
+	str := fmt.Sprintf("%s|%s|%s|%s|%s", tx.Chain, tx.ToAddress, tx.Coins, tx.InHash, sourceInputsString(tx.SourceInputs))
 	return fmt.Sprintf("%X", sha256.Sum256([]byte(str)))
 }
 
@@ -93,6 +114,35 @@ func (tx TxOutItem) Equals(tx2 TxOutItem) bool {
 	if tx.VaultPathIndex != tx2.VaultPathIndex {
 		return false
 	}
+	if !sourceInputsEqual(tx.SourceInputs, tx2.SourceInputs) {
+		return false
+	}
+	return true
+}
+
+func sourceInputsEqual(a, b []TxOutInput) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	aa := append([]TxOutInput(nil), a...)
+	bb := append([]TxOutInput(nil), b...)
+	sort.SliceStable(aa, func(i, j int) bool {
+		if !aa[i].TxID.Equals(aa[j].TxID) {
+			return aa[i].TxID.String() < aa[j].TxID.String()
+		}
+		return aa[i].Vout < aa[j].Vout
+	})
+	sort.SliceStable(bb, func(i, j int) bool {
+		if !bb[i].TxID.Equals(bb[j].TxID) {
+			return bb[i].TxID.String() < bb[j].TxID.String()
+		}
+		return bb[i].Vout < bb[j].Vout
+	})
+	for i := range aa {
+		if !aa[i].TxID.Equals(bb[i].TxID) || aa[i].Vout != bb[i].Vout || aa[i].AmountSats != bb[i].AmountSats {
+			return false
+		}
+	}
 	return true
 }
 
@@ -109,12 +159,14 @@ type TxArrayItem struct {
 	GasRate               int64          `json:"gas_rate,omitempty"`
 	InHash                common.TxID    `json:"in_hash,omitempty"`
 	OutHash               common.TxID    `json:"out_hash,omitempty"`
+	OutVout               uint32         `json:"out_vout,omitempty"`
 	Aggregator            string         `json:"aggregator,omitempty"`
 	AggregatorTargetAsset string         `json:"aggregator_target_asset,omitempty"`
 	AggregatorTargetLimit *cosmos.Uint   `json:"aggregator_target_limit,omitempty"`
 	VaultPubKeyEddsa      common.PubKey  `json:"vault_pub_key_eddsa,omitempty"`
 	VaultPathIndex        uint64         `json:"vault_path_index,omitempty"`
 	TxType                string         `json:"tx_type,omitempty"`
+	SourceInputs          []TxOutInput   `json:"source_inputs"`
 }
 
 // TxOutItem convert the information to TxOutItem
@@ -128,6 +180,7 @@ func (tx TxArrayItem) TxOutItem(height int64) TxOutItem {
 		GasRate:               tx.GasRate,
 		InHash:                tx.InHash,
 		OutHash:               tx.OutHash,
+		OutVout:               tx.OutVout,
 		Aggregator:            tx.Aggregator,
 		AggregatorTargetAsset: tx.AggregatorTargetAsset,
 		AggregatorTargetLimit: tx.AggregatorTargetLimit,
@@ -135,6 +188,7 @@ func (tx TxArrayItem) TxOutItem(height int64) TxOutItem {
 		VaultPubKeyEddsa:      tx.VaultPubKeyEddsa,
 		VaultPathIndex:        tx.VaultPathIndex,
 		TxType:                tx.TxType,
+		SourceInputs:          tx.SourceInputs,
 	}
 }
 

@@ -43,6 +43,7 @@ const (
 	TxOutStatusPendingBatch = types.TxOutStatusPendingBatch
 	TxOutStatusPendingSign  = types.TxOutStatusPendingSign
 	TxOutStatusPendingRetry = types.TxOutStatusPendingRetry
+	TxOutStatusCancelled    = types.TxOutStatusCancelled
 	TxOutStatusComplete     = types.TxOutStatusComplete
 
 	// Mint/Burn type
@@ -70,6 +71,7 @@ var (
 	NewKeygenBlock                 = types.NewKeygenBlock
 	NewMsgSetNodeKeys              = types.NewMsgSetNodeKeys
 	NewMsgOperatorRotate           = types.NewMsgOperatorRotate
+	NewMsgLeave                    = types.NewMsgLeave
 	NewTxOut                       = types.NewTxOut
 	NewEventBond                   = types.NewEventBond
 	NewEventGas                    = types.NewEventGas
@@ -131,6 +133,7 @@ var (
 	NewMsgShielderShield           = types.NewMsgShielderShield
 	NewMsgShielderRedeem           = types.NewMsgShielderRedeem
 	NewMsgShielderShieldFees       = types.NewMsgShielderShieldFees
+	NewMsgNodeOperatorFeeSet       = types.NewMsgNodeOperatorFeeSet
 	NewMsgNodeSlotAuctionCreate    = types.NewMsgNodeSlotAuctionCreate
 	NewMsgNodeSlotAuctionBidCreate = types.NewMsgNodeSlotAuctionBidCreate
 	NewMsgNodeSlotAuctionSelectBid = types.NewMsgNodeSlotAuctionSelectBid
@@ -156,6 +159,7 @@ type (
 	MsgSetIPAddress             = types.MsgSetIPAddress
 	MsgSetNodeKeys              = types.MsgSetNodeKeys
 	MsgMaint                    = types.MsgMaint
+	MsgLeave                    = types.MsgLeave
 	MsgObservedTxIn             = types.MsgObservedTxIn
 	MsgObservedTxOut            = types.MsgObservedTxOut
 	MsgKeygenVault              = types.MsgKeygenVault

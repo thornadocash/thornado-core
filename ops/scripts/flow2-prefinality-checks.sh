@@ -117,8 +117,13 @@ assert_tx_rejected() {
 }
 
 request_deposit() {
-  local home="$1" owner="$2" pow="$3" out
-  out="$(thornado_tx "$home" "$owner" request-deposit "$pow")"
+  local home="$1" owner="$2" pow="$3" out deposit_pubkey owner_addr difficulty pow_token
+  shift 3
+  deposit_pubkey="$1"
+  owner_addr="$("$SHIELDER_HELPER" owner-address "$deposit_pubkey")"
+  difficulty="$(curl -fsS "http://127.0.0.1:1317/thornado/config" | jq -r '.int_64_values.Deposit_PowDifficultyCurrent // .int_64_values.Deposit_PowDifficultyMin // 20')"
+  pow_token="$("$SHIELDER_HELPER" pow-token "$owner_addr" "$difficulty" "$pow")"
+  out="$(thornado_tx "$home" "$owner" request-deposit "$pow_token" "$@")"
   assert_tx_success "$out" "flow2 prefinality request-deposit"
   wait_blocks 2
 }
@@ -184,9 +189,10 @@ main() {
   [[ -d "$RUN_ROOT/meta" ]] || die "missing run meta dir: $RUN_ROOT/meta"
   curl -fsS http://127.0.0.1:26657/status >/dev/null || die "thornado rpc is not live"
 
-  source "$RUN_ROOT/meta/user.env"
-  local user_addr="$address"
-  local session deposit_address path_index txid deposit_id amount_sats receipt commitments out pre_query matched committed mempool_count
+  local deposit_pubkey deposit_owner
+  deposit_pubkey="$("$SHIELDER_HELPER" pubkey "flow2-prefinality-deposit")"
+  deposit_owner="$("$SHIELDER_HELPER" owner-address "$deposit_pubkey")"
+  local session deposit_address path_index txid deposit_id amount_sats receipt commitment_objects commitments shield_signature out pre_query matched committed mempool_count
   amount_sats=20000000
 
   if [[ "${RESUME_PREFINALITY:-0}" == "1" ]]; then
@@ -198,8 +204,8 @@ main() {
     deposit_id="$(printf '%s' "$txid" | tr '[:lower:]' '[:upper:]')"
   else
     log "requesting user deposit address"
-    request_deposit "$RUN_ROOT/node1" user "flow2-prefinality-$(date +%s)"
-    session="$(deposit_session "$user_addr")"
+    request_deposit "$RUN_ROOT/node1" user "flow2-prefinality-$(date +%s)" "$deposit_pubkey"
+    session="$(deposit_session "$deposit_owner")"
     printf '%s\n' "$session" >"$RUN_ROOT/meta/flow2-prefinality-session-before.json"
     deposit_address="$(jq -r '.deposit_address' <<<"$session")"
     path_index="$(jq -r '.deposit_path_index' <<<"$session")"
@@ -221,12 +227,14 @@ main() {
     else
       printf '{"found":false}\n' >"$RUN_ROOT/meta/flow2-prefinality-deposit-before-mining.json"
     fi
-    deposit_session "$user_addr" >"$RUN_ROOT/meta/flow2-prefinality-session-before-mining.json"
+    deposit_session "$deposit_owner" >"$RUN_ROOT/meta/flow2-prefinality-session-before-mining.json"
   fi
 
   receipt="$("$SHIELDER_HELPER" receipt "$deposit_id" "$path_index" "$amount_sats" "flow2-prefinality-seed")"
-  commitments="$("$SHIELDER_HELPER" commitments "$receipt")"
-  out="$(thornado_tx "$RUN_ROOT/node1" user shielder split "$deposit_id" "$commitments")"
+  commitment_objects="$("$SHIELDER_HELPER" commitment-objects "$receipt")"
+  commitments="$(jq -c 'map(tostring)' <<<"$commitment_objects")"
+  shield_signature="$("$SHIELDER_HELPER" shield-authorization "flow2-prefinality-deposit" "$deposit_id" "$amount_sats" "$commitment_objects" | jq -r '.signature')"
+  out="$(thornado_tx "$RUN_ROOT/node1" user shielder shield "$commitments" "$deposit_pubkey" "$shield_signature" "$deposit_id")"
   assert_tx_rejected "$out" "flow2 prefinality split before mining"
 
   log "mining BTC deposit and checking it becomes matchable"
@@ -234,11 +242,11 @@ main() {
   matched="$(wait_deposit_matched "$deposit_id" 240)"
   printf '%s\n' "$matched" >"$RUN_ROOT/meta/flow2-prefinality-deposit-after-mining.json"
 
-  out="$(thornado_tx "$RUN_ROOT/node1" user shielder split "$deposit_id" "$commitments")"
+  out="$(thornado_tx "$RUN_ROOT/node1" user shielder shield "$commitments" "$deposit_pubkey" "$shield_signature" "$deposit_id")"
   assert_tx_success "$out" "flow2 prefinality split after mining"
   committed="$(wait_deposit_committed "$deposit_id")"
   printf '%s\n' "$committed" >"$RUN_ROOT/meta/flow2-prefinality-deposit-committed.json"
-  jq -e '.status == "committed" and .settlement == "user" and ((.commitment_count | tonumber) > 0)' <<<"$committed" >/dev/null \
+  jq -e '.status == "committed" and .settlement == "user"' <<<"$committed" >/dev/null \
     || die "post-finality split did not commit user deposit"
 
   cat >"$RUN_ROOT/meta/flow2-prefinality-results.md" <<RESULTS

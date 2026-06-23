@@ -107,7 +107,7 @@ Class | Method | HTTP request | Description
 *DefaultApi* | [**ThornadoNodeAuctionAuctionIdGet**](docs/DefaultApi.md#thornadonodeauctionauctionidget) | **Get** /thornado/node/auction/{auction_id} | Node slot auction
 *DefaultApi* | [**ThornadoNodeAuctionsGet**](docs/DefaultApi.md#thornadonodeauctionsget) | **Get** /thornado/node/auctions | Node slot auctions
 *DefaultApi* | [**ThornadoNodeBidBidIdGet**](docs/DefaultApi.md#thornadonodebidbididget) | **Get** /thornado/node/bid/{bid_id} | Node slot bid
-*DefaultApi* | [**ThornadoNodeMetricsGet**](docs/DefaultApi.md#thornadonodemetricsget) | **Get** /thornado/node/metrics | Node metrics
+*DefaultApi* | [**ThornadoNodeMetricsGet**](docs/DefaultApi.md#thornadonodemetricsget) | **Get** /thornado/nodes/metrics | Node metrics
 *DefaultApi* | [**ThornadoNodeSlotSlotGet**](docs/DefaultApi.md#thornadonodeslotslotget) | **Get** /thornado/node/slot/{slot} | Node slot
 *DefaultApi* | [**ThornadoNodesGet**](docs/DefaultApi.md#thornadonodesget) | **Get** /thornado/nodes | Nodes
 *DefaultApi* | [**ThornadoShielderNullifierNullifierHashGet**](docs/DefaultApi.md#thornadoshieldernullifiernullifierhashget) | **Get** /thornado/shielder/nullifier/{nullifier_hash} | Shielder nullifier

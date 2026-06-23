@@ -214,10 +214,6 @@ func (s *PubKeyTestSuite) TestPubKeySet(c *C) {
 		Secp256k1: pk,
 	}
 	c.Check(pks.Contains(pk), Equals, true)
-	pks = PubKeySet{
-		Ed25519: pk,
-	}
-	c.Check(pks.Contains(pk), Equals, true)
 }
 
 func (s *PubKeyTestSuite) TestEquals(c *C) {

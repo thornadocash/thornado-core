@@ -3,6 +3,7 @@ package thornado
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	abci "github.com/cometbft/cometbft/abci/types"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 func ValidateGenesis(data GenesisState) error {
@@ -63,10 +65,7 @@ func validateGenesisNodeAccounts(nodeAccounts NodeAccounts) error {
 
 		secpEmpty := na.PubKeySet.Secp256k1.IsEmpty()
 		edEmpty := na.PubKeySet.Ed25519.IsEmpty()
-		if secpEmpty != edEmpty {
-			return fmt.Errorf("node account %s has incomplete pubkey set", na.NodeAddress)
-		}
-		if secpEmpty && edEmpty {
+		if secpEmpty {
 			if na.Status == NodeActive || na.Status == NodeSelected {
 				return fmt.Errorf("active node account %s cannot have empty pubkey set", na.NodeAddress)
 			}
@@ -87,11 +86,13 @@ func validateGenesisNodeAccounts(nodeAccounts NodeAccounts) error {
 		}
 		seenSecp256k1[secpKey] = na.NodeAddress.String()
 
-		edKey := na.PubKeySet.Ed25519.String()
-		if other, ok := seenEd25519[edKey]; ok {
-			return fmt.Errorf("duplicate node ed25519 pubkey %s for %s and %s", edKey, other, na.NodeAddress)
+		if !edEmpty {
+			edKey := na.PubKeySet.Ed25519.String()
+			if other, ok := seenEd25519[edKey]; ok {
+				return fmt.Errorf("duplicate node ed25519 pubkey %s for %s and %s", edKey, other, na.NodeAddress)
+			}
+			seenEd25519[edKey] = na.NodeAddress.String()
 		}
-		seenEd25519[edKey] = na.NodeAddress.String()
 	}
 
 	return nil
@@ -208,5 +209,177 @@ func initGenesis(ctx cosmos.Context, k keeper.Keeper, data GenesisState) []abci.
 }
 
 func ExportGenesis(ctx cosmos.Context, k keeper.Keeper) GenesisState {
-	return DefaultGenesisState()
+	state := DefaultGenesisState()
+
+	if network, err := k.GetNetwork(ctx); err == nil {
+		state.Network = network
+	} else {
+		ctx.Logger().Error("fail to export network genesis", "error", err)
+	}
+	if height, err := k.GetLastSignedHeight(ctx); err == nil {
+		state.LastSignedHeight = height
+	} else {
+		ctx.Logger().Error("fail to export last signed height genesis", "error", err)
+	}
+	if heights, err := k.GetLastChainHeights(ctx); err == nil {
+		for chain, height := range heights {
+			state.LastChainHeights = append(state.LastChainHeights, LastChainHeight{
+				Chain:  chain.String(),
+				Height: height,
+			})
+		}
+		sort.Slice(state.LastChainHeights, func(i, j int) bool {
+			return state.LastChainHeights[i].Chain < state.LastChainHeights[j].Chain
+		})
+	} else {
+		ctx.Logger().Error("fail to export last chain heights genesis", "error", err)
+	}
+
+	appendObservedTxVoters(ctx, k, k.GetObservedTxInVoterIterator(ctx), &state.ObservedTxInVoters, "observed tx in voter")
+	appendObservedTxVoters(ctx, k, k.GetObservedTxOutVoterIterator(ctx), &state.ObservedTxOutVoters, "observed tx out voter")
+	appendTxOuts(ctx, k, &state.TxOuts)
+	appendNodeAccounts(ctx, k, &state.NodeAccounts)
+	appendVaults(ctx, k, &state.Vaults)
+	appendNetworkFees(ctx, k, &state.NetworkFees)
+	appendConfigs(ctx, k, &state.Configs)
+	appendNodeConfigs(ctx, k, &state.NodeConfigs)
+
+	return state
+}
+
+func appendObservedTxVoters(ctx cosmos.Context, k keeper.Keeper, iter cosmos.Iterator, voters *ObservedTxVoters, label string) {
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		var voter ObservedTxVoter
+		if err := k.Cdc().Unmarshal(iter.Value(), &voter); err != nil {
+			ctx.Logger().Error("fail to export genesis record", "type", label, "key", string(iter.Key()), "error", err)
+			continue
+		}
+		*voters = append(*voters, voter)
+	}
+}
+
+func appendTxOuts(ctx cosmos.Context, k keeper.Keeper, txOuts *[]TxOut) {
+	iter := k.GetTxOutIterator(ctx)
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		var txOut TxOut
+		if err := k.Cdc().Unmarshal(iter.Value(), &txOut); err != nil {
+			ctx.Logger().Error("fail to export tx out genesis", "key", string(iter.Key()), "error", err)
+			continue
+		}
+		*txOuts = append(*txOuts, txOut)
+	}
+	sort.Slice(*txOuts, func(i, j int) bool {
+		return (*txOuts)[i].Height < (*txOuts)[j].Height
+	})
+}
+
+func appendNodeAccounts(ctx cosmos.Context, k keeper.Keeper, nodeAccounts *NodeAccounts) {
+	iter := k.GetNodeAccountIterator(ctx)
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		var node NodeAccount
+		if err := k.Cdc().Unmarshal(iter.Value(), &node); err != nil {
+			ctx.Logger().Error("fail to export node account genesis", "key", string(iter.Key()), "error", err)
+			continue
+		}
+		*nodeAccounts = append(*nodeAccounts, node)
+	}
+	sort.Slice(*nodeAccounts, func(i, j int) bool {
+		return strings.Compare((*nodeAccounts)[i].NodeAddress.String(), (*nodeAccounts)[j].NodeAddress.String()) < 0
+	})
+}
+
+func appendVaults(ctx cosmos.Context, k keeper.Keeper, vaults *Vaults) {
+	iter := k.GetVaultIterator(ctx)
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		var vault Vault
+		if err := k.Cdc().Unmarshal(iter.Value(), &vault); err != nil {
+			ctx.Logger().Error("fail to export vault genesis", "key", string(iter.Key()), "error", err)
+			continue
+		}
+		*vaults = append(*vaults, vault)
+	}
+	sort.Slice(*vaults, func(i, j int) bool {
+		return strings.Compare((*vaults)[i].PubKey.String(), (*vaults)[j].PubKey.String()) < 0
+	})
+}
+
+func appendNetworkFees(ctx cosmos.Context, k keeper.Keeper, networkFees *[]NetworkFee) {
+	iter := k.GetNetworkFeeIterator(ctx)
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		var fee NetworkFee
+		if err := k.Cdc().Unmarshal(iter.Value(), &fee); err != nil {
+			ctx.Logger().Error("fail to export network fee genesis", "key", string(iter.Key()), "error", err)
+			continue
+		}
+		*networkFees = append(*networkFees, fee)
+	}
+	sort.Slice(*networkFees, func(i, j int) bool {
+		return strings.Compare((*networkFees)[i].Chain.String(), (*networkFees)[j].Chain.String()) < 0
+	})
+}
+
+func appendConfigs(ctx cosmos.Context, k keeper.Keeper, configs *[]Config) {
+	defaults := DefaultGenesisConfigDefaults()
+	defaultValueByKey := make(map[string]int64, len(defaults))
+	canonicalKeyByUpper := make(map[string]string, len(defaults))
+	for _, cfg := range defaults {
+		defaultValueByKey[cfg.Key] = cfg.Value
+		canonicalKeyByUpper[strings.ToUpper(cfg.Key)] = cfg.Key
+	}
+
+	iter := k.GetConfigIterator(ctx)
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		var value types.ProtoInt64
+		if err := k.Cdc().Unmarshal(iter.Value(), &value); err != nil {
+			ctx.Logger().Error("fail to export config genesis", "key", string(iter.Key()), "error", err)
+			continue
+		}
+
+		key := genesisIteratorKeyName(iter.Key())
+		if canonical, ok := canonicalKeyByUpper[strings.ToUpper(key)]; ok {
+			key = canonical
+		}
+		if defaultValue, ok := defaultValueByKey[key]; ok && defaultValue == value.Value {
+			continue
+		}
+		*configs = append(*configs, Config{Key: key, Value: value.Value})
+	}
+	sort.Slice(*configs, func(i, j int) bool {
+		return (*configs)[i].Key < (*configs)[j].Key
+	})
+}
+
+func appendNodeConfigs(ctx cosmos.Context, k keeper.Keeper, nodeConfigs *[]types.NodeConfig) {
+	iter := k.GetNodeConfigIterator(ctx)
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		var configs types.NodeConfigs
+		if err := k.Cdc().Unmarshal(iter.Value(), &configs); err != nil {
+			ctx.Logger().Error("fail to export node config genesis", "key", string(iter.Key()), "error", err)
+			continue
+		}
+		*nodeConfigs = append(*nodeConfigs, configs.Configs...)
+	}
+	sort.Slice(*nodeConfigs, func(i, j int) bool {
+		left := (*nodeConfigs)[i]
+		right := (*nodeConfigs)[j]
+		if left.Key != right.Key {
+			return left.Key < right.Key
+		}
+		return left.Signer.String() < right.Signer.String()
+	})
+}
+
+func genesisIteratorKeyName(key []byte) string {
+	text := string(key)
+	if idx := strings.LastIndex(text, "/"); idx >= 0 {
+		return text[idx+1:]
+	}
+	return text
 }

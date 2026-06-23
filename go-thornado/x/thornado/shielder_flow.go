@@ -84,12 +84,16 @@ func validateNodeSlotAuctionCreate(ctx cosmos.Context, k keeper.Keeper, seller c
 	if bond.NodePubKey == "" || bond.BondSats == 0 || !bond.FeeShareActive || bond.Sold {
 		return types.ShielderNodeBond{}, fmt.Errorf("node has no active bonded slot")
 	}
+	operatorAddress, err := bond.OperatorPubKey.GetThorAddress()
+	if err != nil {
+		return types.ShielderNodeBond{}, fmt.Errorf("invalid node slot auction operator: %w", err)
+	}
+	if !operatorAddress.Equals(seller) {
+		return types.ShielderNodeBond{}, fmt.Errorf("node slot auction seller mismatch")
+	}
 	nodeAccount, err := k.GetNodeAccount(ctx, bond.NodeAddress)
 	if err != nil {
 		return types.ShielderNodeBond{}, err
-	}
-	if nodeAccount.BondAddress.String() != seller.String() {
-		return types.ShielderNodeBond{}, fmt.Errorf("node slot auction seller mismatch")
 	}
 	if nodeAccount.Status != NodeStandby {
 		return types.ShielderNodeBond{}, fmt.Errorf("node slot must be standby before auction")
@@ -226,11 +230,18 @@ func settleNodeSlotSale(ctx cosmos.Context, k keeper.Keeper, auction types.NodeS
 	if bid.AmountSats == 0 {
 		return fmt.Errorf("node slot bid has no shielded amount")
 	}
-	sellerPayout := auction.OriginalBondSats
-	if bid.AmountSats < sellerPayout {
-		sellerPayout = bid.AmountSats
+	oldBond, err := k.GetShielderNodeBond(ctx, auction.SellerNodePubKey)
+	if err != nil {
+		return err
 	}
-	protocolBondSats := bid.AmountSats - sellerPayout
+	if oldBond.NodePubKey == "" || oldBond.BondSats == 0 {
+		return fmt.Errorf("seller bond does not match auction slot")
+	}
+	recoverablePrincipal := oldBond.BondSats
+	if bid.AmountSats < recoverablePrincipal {
+		recoverablePrincipal = bid.AmountSats
+	}
+	protocolBondSats := bid.AmountSats - recoverablePrincipal
 	if protocolBondDust, err := shielderDustRemainder(ctx, k, protocolBondSats); err != nil {
 		return err
 	} else if protocolBondDust > 0 {
@@ -242,34 +253,73 @@ func settleNodeSlotSale(ctx cosmos.Context, k keeper.Keeper, auction types.NodeS
 	if err := transferNodeSlotSaleBond(ctx, k, auction, bid, bid.AmountSats); err != nil {
 		return err
 	}
-	entitlementID, err := nodeSlotSaleEntitlementID(auction.AuctionID, bid.BidID)
-	if err != nil {
-		return err
-	}
 	vault, _, err := currentBTCVaultAddress(ctx, k)
 	if err != nil {
 		return err
 	}
-	deposit := types.DepositRecord{
-		DepositID:          entitlementID,
-		Owner:              auction.Seller,
-		AmountSats:         sellerPayout,
-		DepositAddress:     common.NoopAddress,
-		VaultPubKey:        vault.PubKey,
-		Settlement:         types.DepositSettlementOperatorSale,
-		SellerPayoutSats:   sellerPayout,
-		ProtocolBondSats:   protocolBondSats,
-		NodeSlot:           auction.Slot,
-		BondConfirmed:      true,
-		MatchedHeight:      ctx.BlockHeight(),
-		CreatedHeight:      ctx.BlockHeight(),
-		Status:             types.DepositStatusSettled,
-		OperatorPubKey:     auction.SellerOperatorPubKey,
-		NodePubKey:         auction.SellerNodePubKey,
-		AuctionID:          auction.AuctionID,
-		RefundQueuedHeight: 0,
+	bonders, err := getNodeBonders(ctx, k, auction.SellerNodePubKey)
+	if err != nil {
+		return err
 	}
-	return k.SetDepositRecord(ctx, deposit)
+	remaining := recoverablePrincipal
+	remainingPrincipal := oldBond.BondSats
+	for _, bonder := range bonders {
+		if bonder.PrincipalSats == 0 {
+			continue
+		}
+		payout := uint64(0)
+		if remainingPrincipal != 0 {
+			payout = recoverablePrincipal * bonder.PrincipalSats / oldBond.BondSats
+		}
+		remainingPrincipal -= bonder.PrincipalSats
+		if remainingPrincipal == 0 {
+			payout = remaining
+		}
+		if payout > remaining {
+			payout = remaining
+		}
+		remaining -= payout
+		bonder.PrincipalSats = 0
+		bonder.SalePayoutSats = payout
+		bonder.UpdatedHeight = ctx.BlockHeight()
+		if payout == 0 {
+			if err := k.SetShielderNodeBonder(ctx, bonder); err != nil {
+				return err
+			}
+			continue
+		}
+		entitlementID, err := nodeSlotSaleEntitlementID(auction.AuctionID, bid.BidID, bonder.Bonder)
+		if err != nil {
+			return err
+		}
+		bonder.SaleEntitlementID = entitlementID
+		deposit := types.DepositRecord{
+			DepositID:          entitlementID,
+			Owner:              bonder.Bonder,
+			AmountSats:         payout,
+			DepositAddress:     common.NoopAddress,
+			VaultPubKey:        vault.PubKey,
+			Settlement:         types.DepositSettlementOperatorSale,
+			SellerPayoutSats:   payout,
+			ProtocolBondSats:   protocolBondSats,
+			NodeSlot:           auction.Slot,
+			BondConfirmed:      true,
+			MatchedHeight:      ctx.BlockHeight(),
+			CreatedHeight:      ctx.BlockHeight(),
+			Status:             types.DepositStatusSettled,
+			OperatorPubKey:     auction.SellerOperatorPubKey,
+			NodePubKey:         auction.SellerNodePubKey,
+			AuctionID:          auction.AuctionID,
+			RefundQueuedHeight: 0,
+		}
+		if err := k.SetDepositRecord(ctx, deposit); err != nil {
+			return err
+		}
+		if err := k.SetShielderNodeBonder(ctx, bonder); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func ShieldNodeSlotSaleEntitlement(ctx cosmos.Context, k keeper.Keeper, seller cosmos.AccAddress, auctionID, bidID, depositPubkey, signature string, sellerCommitments []string) (types.DepositRecord, error) {
@@ -323,9 +373,6 @@ func validateNodeSlotSaleEntitlementShield(ctx cosmos.Context, k keeper.Keeper, 
 	if auction.AuctionID == "" || auction.Status != types.NodeSlotAuctionSettled || auction.SelectedBidID != strings.TrimSpace(bidID) {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot auction sale is not settled")
 	}
-	if !auction.Seller.Equals(seller) {
-		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot auction seller mismatch")
-	}
 	bid, err := k.GetNodeSlotBid(ctx, bidID)
 	if err != nil {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, err
@@ -335,7 +382,7 @@ func validateNodeSlotSaleEntitlementShield(ctx cosmos.Context, k keeper.Keeper, 
 			return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node slot bid not found")
 		}
 	}
-	entitlementID, err := nodeSlotSaleEntitlementID(auction.AuctionID, bid.BidID)
+	entitlementID, err := nodeSlotSaleEntitlementID(auction.AuctionID, bid.BidID, seller)
 	if err != nil {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, err
 	}
@@ -345,6 +392,9 @@ func validateNodeSlotSaleEntitlementShield(ctx cosmos.Context, k keeper.Keeper, 
 	}
 	if deposit.DepositID.IsEmpty() || deposit.Status != types.DepositStatusSettled || deposit.Settlement != types.DepositSettlementOperatorSale {
 		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node sale entitlement is not shieldable")
+	}
+	if !deposit.Owner.Equals(seller) {
+		return types.NodeSlotAuction{}, types.NodeSlotBid{}, types.DepositRecord{}, fmt.Errorf("node sale entitlement owner mismatch")
 	}
 	notes, err := parseShielderNoteCommitments(sellerCommitments, deposit.AmountSats, false)
 	if err != nil {
@@ -361,6 +411,9 @@ func recordPendingShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, session 
 	if nodePubKey == "" {
 		return 0, nil
 	}
+	if session.Owner.Empty() {
+		return 0, fmt.Errorf("missing node bonder")
+	}
 	if _, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, nodePubKey); err != nil {
 		return 0, fmt.Errorf("invalid node pubkey: %w", err)
 	}
@@ -373,19 +426,19 @@ func recordPendingShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, session 
 		return 0, err
 	}
 	if bond.NodeAddress.Empty() {
+		if !session.Owner.Equals(nodeAddress) {
+			return 0, fmt.Errorf("first node bonder must be the operator")
+		}
 		slot, err := k.AllocateShielderNodeBondSlot(ctx)
 		if err != nil {
 			return 0, err
-		}
-		requiredSats := shielderBondRequiredSats(ctx, k, slot)
-		if amountSats < requiredSats {
-			return 0, fmt.Errorf("node bond below required amount: %d/%d", amountSats, requiredSats)
 		}
 		bond = types.ShielderNodeBond{
 			NodePubKey:     nodePubKey,
 			OperatorPubKey: session.OperatorPubKey,
 			NodeAddress:    nodeAddress,
 			Slot:           slot,
+			Bonders:        []string{session.Owner.String()},
 			CreatedHeight:  ctx.BlockHeight(),
 		}
 	} else if !bond.NodeAddress.Equals(nodeAddress) {
@@ -393,8 +446,27 @@ func recordPendingShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, session 
 	} else if !bond.OperatorPubKey.Equals(session.OperatorPubKey) {
 		return 0, fmt.Errorf("node bond operator pubkey mismatch")
 	}
+	bonder, err := k.GetShielderNodeBonder(ctx, nodePubKey, session.Owner)
+	if err != nil {
+		return 0, err
+	}
+	if bonder.Bonder.Empty() {
+		bonder = types.ShielderNodeBonder{
+			NodePubKey:    nodePubKey,
+			Bonder:        session.Owner,
+			FeeDebtShare:  bond.FeePerBondShare,
+			CreatedHeight: ctx.BlockHeight(),
+			UpdatedHeight: ctx.BlockHeight(),
+		}
+		bond.Bonders = appendUniqueString(bond.Bonders, session.Owner.String())
+	}
+	bonder.PendingSats += amountSats
+	bonder.UpdatedHeight = ctx.BlockHeight()
 	bond.PendingSats += amountSats
 	bond.UpdatedHeight = ctx.BlockHeight()
+	if err := k.SetShielderNodeBonder(ctx, bonder); err != nil {
+		return 0, err
+	}
 	if err := k.SetShielderNodeBond(ctx, bond); err != nil {
 		return 0, err
 	}
@@ -415,12 +487,32 @@ func confirmShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, deposit types.
 	if bond.PendingSats < deposit.AmountSats {
 		return fmt.Errorf("shielder node pending bond underflow")
 	}
-	bond.PendingSats -= deposit.AmountSats
+	requiredSats := shielderBondRequiredSats(ctx, k, bond.Slot)
+	if !bond.FeeShareActive && bond.BondSats+bond.PendingSats < requiredSats {
+		bond.UpdatedHeight = ctx.BlockHeight()
+		return k.SetShielderNodeBond(ctx, bond)
+	}
 	pool, err := distributeFeePool(ctx, k)
 	if err != nil {
 		return err
 	}
-	bond.BondSats += deposit.AmountSats
+	if err := settleNodeFeeShare(ctx, k, &bond, pool); err != nil {
+		return err
+	}
+	confirmedSats := deposit.AmountSats
+	if !bond.FeeShareActive {
+		confirmedSats = bond.PendingSats
+		bond.PendingSats = 0
+		if err := activatePendingNodeBonders(ctx, k, &bond); err != nil {
+			return err
+		}
+	} else {
+		bond.PendingSats -= deposit.AmountSats
+		if err := activatePendingNodeBonder(ctx, k, &bond, deposit.Owner, deposit.AmountSats); err != nil {
+			return err
+		}
+	}
+	bond.BondSats += confirmedSats
 	if !bond.FeeShareActive {
 		bond.FeeShareActive = true
 		bond.FeeDebtSats = pool.FeePerSlotShare
@@ -432,15 +524,19 @@ func confirmShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, deposit types.
 	if err != nil {
 		return err
 	}
-	bondAddress, err := common.NewAddress(deposit.Owner.String())
+	operatorAddress, err := bond.OperatorPubKey.GetThorAddress()
 	if err != nil {
-		return fmt.Errorf("invalid shielder operator bond address: %w", err)
+		return fmt.Errorf("invalid shielder operator address: %w", err)
+	}
+	operatorCommonAddress, err := common.NewAddress(operatorAddress.String())
+	if err != nil {
+		return fmt.Errorf("invalid shielder operator address: %w", err)
 	}
 	if nodeAccount.IsEmpty() {
-		nodeAccount = NewNodeAccount(bond.NodeAddress, NodeWhiteListed, common.EmptyPubKeySet, deposit.NodePubKey, cosmos.ZeroUint(), bondAddress, ctx.BlockHeight())
+		nodeAccount = NewNodeAccount(bond.NodeAddress, NodeWhiteListed, common.EmptyPubKeySet, deposit.NodePubKey, cosmos.ZeroUint(), operatorCommonAddress, ctx.BlockHeight())
 	}
 	nodeAccount.NodeConsPubKey = deposit.NodePubKey
-	nodeAccount.BondAddress = bondAddress
+	nodeAccount.BondAddress = operatorCommonAddress
 	nodeAccount.Bond = cosmos.NewUint(bond.BondSats)
 	if err := k.SetNodeAccount(ctx, nodeAccount); err != nil {
 		return err
@@ -452,6 +548,179 @@ func confirmShielderNodeBond(ctx cosmos.Context, k keeper.Keeper, deposit types.
 		return err
 	}
 	return nil
+}
+
+func appendUniqueString(values []string, value string) []string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return values
+	}
+	for _, existing := range values {
+		if existing == value {
+			return values
+		}
+	}
+	return append(values, value)
+}
+
+func activatePendingNodeBonders(ctx cosmos.Context, k keeper.Keeper, bond *types.ShielderNodeBond) error {
+	for _, bonderAddress := range bond.Bonders {
+		addr, err := cosmos.AccAddressFromBech32(bonderAddress)
+		if err != nil {
+			return err
+		}
+		bonder, err := k.GetShielderNodeBonder(ctx, bond.NodePubKey, addr)
+		if err != nil {
+			return err
+		}
+		if bonder.PendingSats == 0 {
+			continue
+		}
+		bonder.PrincipalSats += bonder.PendingSats
+		bonder.PendingSats = 0
+		bonder.FeeDebtShare = bond.FeePerBondShare
+		bonder.UpdatedHeight = ctx.BlockHeight()
+		if err := k.SetShielderNodeBonder(ctx, bonder); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func activatePendingNodeBonder(ctx cosmos.Context, k keeper.Keeper, bond *types.ShielderNodeBond, owner cosmos.AccAddress, amountSats uint64) error {
+	bonder, err := k.GetShielderNodeBonder(ctx, bond.NodePubKey, owner)
+	if err != nil {
+		return err
+	}
+	if bonder.Bonder.Empty() {
+		return fmt.Errorf("node bonder not found")
+	}
+	if bonder.PendingSats < amountSats {
+		return fmt.Errorf("node bonder pending bond underflow")
+	}
+	bonder.FeeDebtShare = weightedFeeDebtShare(bonder.PrincipalSats, bonder.FeeDebtShare, amountSats, bond.FeePerBondShare)
+	bonder.PrincipalSats += amountSats
+	bonder.PendingSats -= amountSats
+	bonder.UpdatedHeight = ctx.BlockHeight()
+	return k.SetShielderNodeBonder(ctx, bonder)
+}
+
+func weightedFeeDebtShare(existingPrincipal, existingDebtShare, addedPrincipal, addedDebtShare uint64) uint64 {
+	totalPrincipal := existingPrincipal + addedPrincipal
+	if totalPrincipal == 0 {
+		return addedDebtShare
+	}
+	total := new(big.Int).Mul(new(big.Int).SetUint64(existingPrincipal), new(big.Int).SetUint64(existingDebtShare))
+	added := new(big.Int).Mul(new(big.Int).SetUint64(addedPrincipal), new(big.Int).SetUint64(addedDebtShare))
+	total.Add(total, added)
+	total.Div(total, new(big.Int).SetUint64(totalPrincipal))
+	return total.Uint64()
+}
+
+func settleNodeFeeShare(ctx cosmos.Context, k keeper.Keeper, bond *types.ShielderNodeBond, pool types.FeePool) error {
+	if !bond.FeeShareActive || pool.FeePerSlotShare <= bond.FeeDebtSats {
+		return nil
+	}
+	gross := pool.FeePerSlotShare - bond.FeeDebtSats
+	operatorCut := gross * bond.OperatorFeeBasisPoints / 10_000
+	bonderCut := gross - operatorCut
+	if bond.BondSats != 0 && bonderCut != 0 {
+		scale := uint64(k.GetConfigInt64(ctx, constants.Shielder_FeeShareScale))
+		if scale == 0 {
+			scale = 1
+		}
+		scaled := new(big.Int).Mul(new(big.Int).SetUint64(bonderCut), new(big.Int).SetUint64(scale))
+		scaled.Add(scaled, new(big.Int).SetUint64(bond.FeePerBondShareRemainder))
+		divisor := new(big.Int).SetUint64(bond.BondSats)
+		increment := new(big.Int).Div(new(big.Int).Set(scaled), divisor)
+		remainder := new(big.Int).Mod(scaled, divisor)
+		bond.FeePerBondShare += increment.Uint64()
+		bond.FeePerBondShareRemainder = remainder.Uint64()
+	}
+	bond.OperatorFeeAccruedSats += operatorCut
+	bond.FeeDebtSats = pool.FeePerSlotShare
+	bond.UpdatedHeight = ctx.BlockHeight()
+	return nil
+}
+
+func nodeBonderClaimableSats(ctx cosmos.Context, k keeper.Keeper, bond types.ShielderNodeBond, bonder types.ShielderNodeBonder) uint64 {
+	if bonder.PrincipalSats == 0 || bond.FeePerBondShare <= bonder.FeeDebtShare {
+		return 0
+	}
+	scale := uint64(k.GetConfigInt64(ctx, constants.Shielder_FeeShareScale))
+	if scale == 0 {
+		scale = 1
+	}
+	delta := bond.FeePerBondShare - bonder.FeeDebtShare
+	claim := new(big.Int).Mul(new(big.Int).SetUint64(bonder.PrincipalSats), new(big.Int).SetUint64(delta))
+	claim.Div(claim, new(big.Int).SetUint64(scale))
+	return claim.Uint64()
+}
+
+func SetNodeOperatorFeeBasisPoints(ctx cosmos.Context, k keeper.Keeper, signer cosmos.AccAddress, nodePubKey string, feeBasisPoints uint64) (types.ShielderNodeBond, error) {
+	if signer.Empty() {
+		return types.ShielderNodeBond{}, fmt.Errorf("missing node operator signer")
+	}
+	if feeBasisPoints > types.MaxNodeOperatorFeeBasisPoints {
+		return types.ShielderNodeBond{}, fmt.Errorf("node operator fee basis points must be <= %d", types.MaxNodeOperatorFeeBasisPoints)
+	}
+	bond, err := k.GetShielderNodeBond(ctx, nodePubKey)
+	if err != nil {
+		return types.ShielderNodeBond{}, err
+	}
+	if strings.TrimSpace(bond.NodePubKey) == "" {
+		return types.ShielderNodeBond{}, fmt.Errorf("shielder node bond not found")
+	}
+	operatorAddress, err := nodeBondOperatorAddress(bond)
+	if err != nil {
+		return types.ShielderNodeBond{}, fmt.Errorf("invalid node operator address: %w", err)
+	}
+	if !signer.Equals(operatorAddress) {
+		return types.ShielderNodeBond{}, fmt.Errorf("node operator signer mismatch")
+	}
+	pool, err := distributeFeePool(ctx, k)
+	if err != nil {
+		return types.ShielderNodeBond{}, err
+	}
+	if err := settleNodeFeeShare(ctx, k, &bond, pool); err != nil {
+		return types.ShielderNodeBond{}, err
+	}
+	bond.OperatorFeeBasisPoints = feeBasisPoints
+	bond.UpdatedHeight = ctx.BlockHeight()
+	if err := k.SetShielderNodeBond(ctx, bond); err != nil {
+		return types.ShielderNodeBond{}, err
+	}
+	return bond, nil
+}
+
+func nodeBondOperatorAddress(bond types.ShielderNodeBond) (cosmos.AccAddress, error) {
+	operatorAddress, err := bond.OperatorPubKey.GetThorAddress()
+	if err != nil {
+		return nil, err
+	}
+	return operatorAddress, nil
+}
+
+func getNodeBonders(ctx cosmos.Context, k keeper.Keeper, nodePubKey string) ([]types.ShielderNodeBonder, error) {
+	iter := k.GetShielderNodeBonderIterator(ctx)
+	if iter == nil {
+		return nil, fmt.Errorf("missing node bonder iterator")
+	}
+	defer iter.Close()
+	bonders := make([]types.ShielderNodeBonder, 0)
+	for ; iter.Valid(); iter.Next() {
+		var bonder types.ShielderNodeBonder
+		if err := json.Unmarshal(iter.Value(), &bonder); err != nil {
+			return nil, fmt.Errorf("unmarshal node bonder: %w", err)
+		}
+		if bonder.NodePubKey == strings.TrimSpace(nodePubKey) {
+			bonders = append(bonders, bonder)
+		}
+	}
+	sort.Slice(bonders, func(i, j int) bool {
+		return bonders[i].CreatedHeight < bonders[j].CreatedHeight
+	})
+	return bonders, nil
 }
 
 // ShieldUserDepositIntoPool consumes a matched transparent user deposit into
@@ -761,20 +1030,6 @@ func shielderDustRemainder(ctx cosmos.Context, k keeper.Keeper, amountSats uint6
 	return amountSats, nil
 }
 
-func shielderBondCommitment(deposit types.DepositRecord, denominationSats uint64, index int) (string, error) {
-	raw := fmt.Sprintf("thornado:bond-commitment:v1|%s|%s|%s|%d|%d|%d|%s",
-		deposit.DepositID.String(),
-		deposit.OperatorPubKey.String(),
-		deposit.NodePubKey,
-		deposit.NodeSlot,
-		denominationSats,
-		index,
-		deposit.VaultPubKey.String(),
-	)
-	sum := sha256.Sum256([]byte(raw))
-	return ComputeProtocolShielderCommitment(strings.ToUpper(hex.EncodeToString(sum[:])), denominationSats)
-}
-
 func insertShielderCommitments(ctx cosmos.Context, k keeper.Keeper, notes []shielderNoteCommitment) error {
 	seen := make(map[string]struct{}, len(notes))
 	byDenomination := make(map[uint64][]string)
@@ -845,8 +1100,8 @@ func nodeSlotBidIDForNode(auctionID string, bidder cosmos.AccAddress, nodePubKey
 	return strings.ToUpper(hex.EncodeToString(sum[:]))
 }
 
-func nodeSlotSaleEntitlementID(auctionID, bidID string) (common.TxID, error) {
-	sum := sha256.Sum256([]byte(fmt.Sprintf("thornado:node-sale-entitlement:v1|%s|%s", strings.TrimSpace(auctionID), strings.TrimSpace(bidID))))
+func nodeSlotSaleEntitlementID(auctionID, bidID string, owner cosmos.AccAddress) (common.TxID, error) {
+	sum := sha256.Sum256([]byte(fmt.Sprintf("thornado:node-sale-entitlement:v2|%s|%s|%s", strings.TrimSpace(auctionID), strings.TrimSpace(bidID), owner.String())))
 	return common.NewTxID(strings.ToUpper(hex.EncodeToString(sum[:])))
 }
 
@@ -884,12 +1139,23 @@ func transferNodeSlotSaleBond(ctx cosmos.Context, k keeper.Keeper, auction types
 	oldBond.PendingSats = 0
 	oldBond.UpdatedHeight = ctx.BlockHeight()
 
+	oldNodeAddress := oldBond.NodeAddress
+	oldNodeAccount, err := k.GetNodeAccount(ctx, oldNodeAddress)
+	if err != nil {
+		return err
+	}
+	if !oldNodeAccount.IsEmpty() && !oldNodeAddress.Equals(newNodeAddress) {
+		oldNodeAccount.Bond = cosmos.ZeroUint()
+		oldNodeAccount.UpdateStatus(NodeWhiteListed, ctx.BlockHeight())
+	}
+
 	newBond := types.ShielderNodeBond{
 		NodePubKey:     bid.NodePubKey,
 		OperatorPubKey: bid.OperatorPubKey,
 		NodeAddress:    newNodeAddress,
 		Slot:           auction.Slot,
 		BondSats:       newBondSats,
+		Bonders:        []string{bid.Bidder.String()},
 		CreatedHeight:  ctx.BlockHeight(),
 		UpdatedHeight:  ctx.BlockHeight(),
 	}
@@ -899,20 +1165,28 @@ func transferNodeSlotSaleBond(ctx cosmos.Context, k keeper.Keeper, auction types
 	}
 	newBond.FeeShareActive = true
 	newBond.FeeDebtSats = pool.FeePerSlotShare
+	newBonder := types.ShielderNodeBonder{
+		NodePubKey:    bid.NodePubKey,
+		Bonder:        bid.Bidder,
+		PrincipalSats: newBondSats,
+		FeeDebtShare:  newBond.FeePerBondShare,
+		CreatedHeight: ctx.BlockHeight(),
+		UpdatedHeight: ctx.BlockHeight(),
+	}
 
-	bondAddress, err := common.NewAddress(bid.Bidder.String())
+	operatorCommonAddress, err := common.NewAddress(newNodeAddress.String())
 	if err != nil {
-		return fmt.Errorf("invalid bidder bond address: %w", err)
+		return fmt.Errorf("invalid bidder operator address: %w", err)
 	}
 	nodeAccount, err := k.GetNodeAccount(ctx, newNodeAddress)
 	if err != nil {
 		return err
 	}
 	if nodeAccount.IsEmpty() {
-		nodeAccount = NewNodeAccount(newNodeAddress, NodeStandby, common.EmptyPubKeySet, bid.NodePubKey, cosmos.ZeroUint(), bondAddress, ctx.BlockHeight())
+		nodeAccount = NewNodeAccount(newNodeAddress, NodeStandby, common.EmptyPubKeySet, bid.NodePubKey, cosmos.ZeroUint(), operatorCommonAddress, ctx.BlockHeight())
 	}
 	nodeAccount.NodeConsPubKey = bid.NodePubKey
-	nodeAccount.BondAddress = bondAddress
+	nodeAccount.BondAddress = operatorCommonAddress
 	nodeAccount.Bond = cosmos.NewUint(newBond.BondSats)
 	nodeAccount.UpdateStatus(NodeStandby, ctx.BlockHeight())
 	if err := k.SetShielderNodeBond(ctx, oldBond); err != nil {
@@ -921,8 +1195,16 @@ func transferNodeSlotSaleBond(ctx cosmos.Context, k keeper.Keeper, auction types
 	if err := k.SetShielderNodeBond(ctx, newBond); err != nil {
 		return err
 	}
+	if err := k.SetShielderNodeBonder(ctx, newBonder); err != nil {
+		return err
+	}
 	if err := k.SetNodeAccount(ctx, nodeAccount); err != nil {
 		return err
+	}
+	if !oldNodeAccount.IsEmpty() && !oldNodeAddress.Equals(newNodeAddress) {
+		if err := k.SetNodeAccount(ctx, oldNodeAccount); err != nil {
+			return err
+		}
 	}
 	return k.SetFeePool(ctx, pool)
 }
@@ -936,7 +1218,7 @@ func AuthorizeShielderRedeem(ctx cosmos.Context, k keeper.Keeper, req ShielderRe
 	if err := validateShielderRedeemPolicy(ctx, k, policy, publicInputs); err != nil {
 		return types.ShielderRedeem{}, err
 	}
-	if err := validateShielderRedeemProtocolFee(ctx, k, policy, publicInputs); err != nil {
+	if err := validateShielderRedeemPublicFee(policy, publicInputs); err != nil {
 		return types.ShielderRedeem{}, err
 	}
 	if err := RejectLeakyShielderRedeemProof(ctx, k, req.Proof); err != nil {
@@ -976,7 +1258,7 @@ func AuthorizeShielderRedeem(ctx cosmos.Context, k keeper.Keeper, req ShielderRe
 		BidID:           strings.TrimSpace(publicInputs.BidID),
 		NodePubKey:      strings.TrimSpace(publicInputs.NodePubKey),
 		AmountSats:      publicInputs.DenominationSats,
-		FeeSats:         publicInputs.FeeSats,
+		FeeSats:         shielderRedeemFeeSats(ctx, k, policy, publicInputs.DenominationSats),
 		InHash:          inHash,
 		VaultPubKey:     vault.PubKey,
 		RequestedHeight: ctx.BlockHeight(),
@@ -1007,13 +1289,6 @@ func BondFromShieldedNotes(ctx cosmos.Context, k keeper.Keeper, owner cosmos.Acc
 	operator, err := common.NewPubKey(operatorPubKey)
 	if err != nil {
 		return types.ShielderNodeBond{}, fmt.Errorf("invalid operator pubkey: %w", err)
-	}
-	operatorAddress, err := operator.GetThorAddress()
-	if err != nil {
-		return types.ShielderNodeBond{}, fmt.Errorf("invalid operator pubkey address: %w", err)
-	}
-	if !operatorAddress.Equals(owner) {
-		return types.ShielderNodeBond{}, fmt.Errorf("bond owner mismatch")
 	}
 	publicInputs, err := parseShielderRedeemPublicInputs(req.Public)
 	if err != nil {
@@ -1200,19 +1475,21 @@ func validateShielderRedeemPolicy(ctx cosmos.Context, k keeper.Keeper, policy st
 	return nil
 }
 
-func validateShielderRedeemProtocolFee(ctx cosmos.Context, k keeper.Keeper, policy string, publicInputs shielderRedeemPublicInputs) error {
+func validateShielderRedeemPublicFee(policy string, publicInputs shielderRedeemPublicInputs) error {
 	switch policy {
-	case types.ShielderRedeemPolicyUserBTC:
-		expected := withdrawalFeeSats(ctx, k, publicInputs.DenominationSats)
-		if publicInputs.FeeSats != expected {
-			return fmt.Errorf("invalid withdrawal fee authorization: %d/%d", publicInputs.FeeSats, expected)
-		}
 	case types.ShielderRedeemPolicyBondEscrow, types.ShielderRedeemPolicyBidDeposit:
 		if publicInputs.FeeSats != 0 {
 			return fmt.Errorf("%s redeems must not pay withdrawal fee", policy)
 		}
 	}
 	return nil
+}
+
+func shielderRedeemFeeSats(ctx cosmos.Context, k keeper.Keeper, policy string, amountSats uint64) uint64 {
+	if policy == types.ShielderRedeemPolicyUserBTC {
+		return withdrawalFeeSats(ctx, k, amountSats)
+	}
+	return 0
 }
 
 func withdrawalFeeSats(ctx cosmos.Context, k keeper.Keeper, amountSats uint64) uint64 {
@@ -1440,28 +1717,48 @@ func ShieldShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 	if bond.NodePubKey == "" || !bond.FeeShareActive {
 		return types.DepositRecord{}, fmt.Errorf("shielder node has no confirmed bond")
 	}
-	if !bond.NodeAddress.Equals(owner) {
-		return types.DepositRecord{}, fmt.Errorf("shielder fee owner mismatch")
-	}
-	if !bond.PendingFeeDepositID.IsEmpty() {
-		return types.DepositRecord{}, fmt.Errorf("shielder fee settlement already pending shield")
-	}
 	pool, err := distributeFeePool(ctx, k)
 	if err != nil {
 		return types.DepositRecord{}, err
 	}
-	accrued := pool.FeePerSlotShare
-	if accrued <= bond.FeeDebtSats {
+	if err := settleNodeFeeShare(ctx, k, &bond, pool); err != nil {
+		return types.DepositRecord{}, err
+	}
+	operatorAddress, err := nodeBondOperatorAddress(bond)
+	if err != nil {
+		return types.DepositRecord{}, fmt.Errorf("invalid node operator address: %w", err)
+	}
+	bonder, err := k.GetShielderNodeBonder(ctx, nodePubKey, owner)
+	if err != nil {
+		return types.DepositRecord{}, err
+	}
+	isBonder := !bonder.Bonder.Empty() && bonder.PrincipalSats != 0
+	isOperator := owner.Equals(operatorAddress)
+	if !isBonder && !isOperator {
+		return types.DepositRecord{}, fmt.Errorf("shielder fee owner mismatch")
+	}
+	if isBonder && !bonder.PendingFeeDepositID.IsEmpty() {
+		return types.DepositRecord{}, fmt.Errorf("shielder bonder fee settlement already pending shield")
+	}
+	if isOperator && !bond.PendingOperatorFeeDepositID.IsEmpty() {
+		return types.DepositRecord{}, fmt.Errorf("shielder operator fee settlement already pending shield")
+	}
+	bonderClaimSats := uint64(0)
+	if isBonder {
+		bonderClaimSats = nodeBonderClaimableSats(ctx, k, bond, bonder)
+	}
+	operatorClaimSats := uint64(0)
+	if isOperator {
+		operatorClaimSats = bond.OperatorFeeAccruedSats
+	}
+	claimSats := bonderClaimSats + operatorClaimSats
+	if claimSats == 0 {
 		return types.DepositRecord{}, fmt.Errorf("no shielder fees claimable")
 	}
-	claimSats := accrued - bond.FeeDebtSats
 	if pool.TotalClaimedSats > pool.TotalCollectedSats || claimSats > pool.TotalCollectedSats-pool.TotalClaimedSats {
 		return types.DepositRecord{}, fmt.Errorf("shielder fee claim exceeds available fees")
 	}
-	if claimSats <= withdrawalFeeSats(ctx, k, claimSats) {
-		return types.DepositRecord{}, fmt.Errorf("fee claim amount must be redeemable after withdrawal fee")
-	}
-	depositID, err := shielderFeeDepositID(nodePubKey, owner, accrued, ctx.BlockHeight())
+	depositID, err := shielderFeeDepositID(nodePubKey, owner, pool.FeePerSlotShare, ctx.BlockHeight())
 	if err != nil {
 		return types.DepositRecord{}, err
 	}
@@ -1497,9 +1794,13 @@ func ShieldShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 	if total != deposit.AmountSats {
 		return types.DepositRecord{}, fmt.Errorf("shielder fee commitment denominations do not match claim amount")
 	}
-	authPayload := shielderFeeClaimPayload(nodePubKey, owner, accrued, pool.FeePerSlotShare, noteCommitments, notePubKeys)
-	if err := verifySecp256K1SignaturePayload(bond.OperatorPubKey, operatorSignature, authPayload); err != nil {
-		return types.DepositRecord{}, fmt.Errorf("invalid shielder fee operator signature: %w", err)
+	if len(operatorSignature) != 0 && isOperator {
+		authPayload := shielderFeeClaimPayload(nodePubKey, owner, pool.FeePerSlotShare, pool.FeePerSlotShare, noteCommitments, notePubKeys)
+		if err := verifySecp256K1SignaturePayload(bond.OperatorPubKey, operatorSignature, authPayload); err != nil {
+			return types.DepositRecord{}, fmt.Errorf("invalid shielder fee operator signature: %w", err)
+		}
+	} else if len(operatorSignature) != 0 && !isOperator {
+		return types.DepositRecord{}, fmt.Errorf("bonder fee claims must not include an operator signature")
 	}
 	seen := make(map[string]struct{}, len(noteCommitments))
 	byDenomination := make(map[uint64][]string)
@@ -1537,7 +1838,16 @@ func ShieldShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 	if err := refreshShielderRoots(ctx, k, byDenomination); err != nil {
 		return types.DepositRecord{}, err
 	}
-	bond.FeeDebtSats = accrued
+	if isBonder && bonderClaimSats != 0 {
+		bonder.FeeDebtShare = bond.FeePerBondShare
+		bonder.UpdatedHeight = ctx.BlockHeight()
+		if err := k.SetShielderNodeBonder(ctx, bonder); err != nil {
+			return types.DepositRecord{}, err
+		}
+	}
+	if isOperator && operatorClaimSats != 0 {
+		bond.OperatorFeeAccruedSats -= operatorClaimSats
+	}
 	bond.UpdatedHeight = ctx.BlockHeight()
 	pool.TotalClaimedSats += claimSats
 	deposit.Status = types.DepositStatusCommitted
@@ -1684,6 +1994,13 @@ func queueVaultPathSweep(ctx cosmos.Context, mgr Manager, tx ObservedTx, sourceP
 		ModuleName:     BaseName,
 		VaultPathIndex: pathIndex,
 		TxType:         txType,
+		SourceInputs: []types.TxOutInput{
+			{
+				TxId:       tx.Tx.ID,
+				Vout:       tx.Tx.SourceVout,
+				AmountSats: coin.Amount.Uint64(),
+			},
+		},
 	}
 	ctx.Logger().Info("queued bitcoin vault path sweep",
 		"from", sourceAddr.String(),

@@ -152,15 +152,10 @@ func (vm *NodeMgr) churnInner(ctx cosmos.Context) error {
 		return err
 	}
 
-	// Mark bad, old, low bond, and old version nodes
+	// Mark bad, old, and old version nodes.
 	// mark someone to get churned out for bad behavior
 	_, err := vm.markBadActor(ctx, minPenaltyPointsForBadNode, redline)
 	if err != nil {
-		return err
-	}
-
-	// mark someone to get churned out for low bond only once the active set is at capacity
-	if err = vm.markLowBondActor(ctx, desiredNodeSet); err != nil {
 		return err
 	}
 
@@ -169,9 +164,15 @@ func (vm *NodeMgr) churnInner(ctx cosmos.Context) error {
 		return err
 	}
 
-	// mark someone to get churned out for age
-	if err = vm.markOldActor(ctx); err != nil {
+	activeNodes, err := vm.k.ListActiveNodes(ctx)
+	if err != nil {
 		return err
+	}
+	if int64(len(activeNodes)) >= desiredNodeSet {
+		// mark someone to get churned out for age
+		if err = vm.markOldActor(ctx); err != nil {
+			return err
+		}
 	}
 
 	// mark someone(s) for not signing blocks
@@ -183,6 +184,12 @@ func (vm *NodeMgr) churnInner(ctx cosmos.Context) error {
 	if err != nil {
 		return err
 	}
+	ctx.Logger().Info(
+		"node churn keygen decision",
+		"desired", desiredNodeSet,
+		"next_members", len(next),
+		"rotation", ok,
+	)
 	if ok {
 		if err := vm.networkMgr.TriggerKeygen(ctx, next); err != nil {
 			return err
@@ -207,27 +214,26 @@ func (vm *NodeMgr) splitNext(ctx cosmos.Context, nas NodeAccounts, baseVaultMemb
 		return nil
 	}
 
-	// we want to ensure that a single node operator (designated by bond
-	// address) doesn't get too many frost shares for a single Base vault. So we
-	// first break out our node accounts into two groups. First, duplicate bond
-	// addresses (multi-node operators), and second non-duplicate (single node
-	// operators). Then we sort the duplicate group by bond address, then by
-	// bond size (large to small). Then we sort the non-duplicate group by bond size (large
-	// to small). Then iterate over the first group into base vaults first,
-	// then the second group. In the end multi-node operators are spread out
-	// against as many base vaults as possible. This also makes it more
-	// difficult for a malicious actor to acquire enough spots in a single
-	// base to steal as enough are taken by "good actors" that they can't
-	// acquire enough frost shares.
+	// we want to ensure that a single node operator doesn't get too many frost
+	// shares for a single Base vault. So we first break out our node accounts
+	// into two groups. First, duplicate operator addresses (multi-node operators),
+	// and second non-duplicate (single node operators). Then we sort the duplicate
+	// group by operator address, then by bond size (large to small). Then we sort
+	// the non-duplicate group by bond size (large to small). Then iterate over the
+	// first group into base vaults first, then the second group. In the end
+	// multi-node operators are spread out against as many base vaults as possible.
+	// This also makes it more difficult for a malicious actor to acquire enough
+	// spots in a single base to steal as enough are taken by "good actors" that
+	// they can't acquire enough frost shares.
 
 	// Check for duplicates
-	bondAddrMap := make(map[string]int)
+	operatorAddrMap := make(map[string]int)
 	for _, na := range nas {
-		bondAddrMap[na.BondAddress.String()]++
+		operatorAddrMap[na.BondAddress.String()]++
 	}
 	var duplicateNas, nonDuplicateNas NodeAccounts
 	for _, na := range nas {
-		if bondAddrMap[na.BondAddress.String()] > 1 {
+		if operatorAddrMap[na.BondAddress.String()] > 1 {
 			duplicateNas = append(duplicateNas, na)
 		} else {
 			nonDuplicateNas = append(nonDuplicateNas, na)
@@ -235,18 +241,18 @@ func (vm *NodeMgr) splitNext(ctx cosmos.Context, nas NodeAccounts, baseVaultMemb
 	}
 
 	sort.SliceStable(duplicateNas, func(i, j int) bool {
-		// Check if the bond address counts are the same
-		if bondAddrMap[duplicateNas[i].BondAddress.String()] == bondAddrMap[duplicateNas[j].BondAddress.String()] {
-			// Check if bond addresses are the same
+		// Check if the operator address counts are the same
+		if operatorAddrMap[duplicateNas[i].BondAddress.String()] == operatorAddrMap[duplicateNas[j].BondAddress.String()] {
+			// Check if operator addresses are the same
 			if duplicateNas[i].BondAddress.String() == duplicateNas[j].BondAddress.String() {
 				// Sort by bond size
 				return duplicateNas[i].Bond.GT(duplicateNas[j].Bond)
 			}
-			// Sort by bond address
+			// Sort by operator address
 			return duplicateNas[i].BondAddress.String() < duplicateNas[j].BondAddress.String()
 		}
-		// Sort by bond address count
-		return bondAddrMap[duplicateNas[i].BondAddress.String()] > bondAddrMap[duplicateNas[j].BondAddress.String()]
+		// Sort by operator address count
+		return operatorAddrMap[duplicateNas[i].BondAddress.String()] > operatorAddrMap[duplicateNas[j].BondAddress.String()]
 	})
 
 	// sort by bond size for non-duplicates
@@ -323,11 +329,6 @@ func (vm *NodeMgr) EndBlock(ctx cosmos.Context, mgr Manager) []abci.ValidatorUpd
 	// If there's been a churn (the nodes have changed), continue; if there hasn't, end the function.
 	if len(newNodes) == 0 && len(removedNodes) == 0 {
 		return nil
-	}
-
-	// remove low bond node accounts
-	if err = vm.k.RemoveLowBondNodeAccounts(ctx); err != nil {
-		ctx.Logger().Error("fail to remove low bond node accounts", "error", err)
 	}
 
 	nodes := make([]abci.ValidatorUpdate, 0, len(newNodes)+len(removedNodes))
@@ -975,6 +976,12 @@ func (vm *NodeMgr) nextVaultNodeAccounts(ctx cosmos.Context, targetCount int) (N
 	if err != nil {
 		return nil, false, err
 	}
+	ctx.Logger().Info(
+		"evaluating next vault node accounts",
+		"target", targetCount,
+		"selected", len(ready),
+		"active", len(active),
+	)
 
 	// find out all the nodes that had been marked to leave , and update their score again , because even after a node has been marked
 	// to be churn out , they can continue to accumulate penalty points, in the scenario that an active node go offline , and consistently fail
@@ -1017,14 +1024,14 @@ func (vm *NodeMgr) nextVaultNodeAccounts(ctx cosmos.Context, targetCount int) (N
 		return active[i].LeaveScore < active[j].LeaveScore
 	})
 
-	toRemove := findCountToRemove(active)
+	minimumNodesForBFT := vm.k.GetConfigInt64(ctx, constants.Vault_BaseMembersMin)
+	toRemove := findCountToRemoveWithReplacements(active, len(ready), targetCount, minimumNodesForBFT)
 	if toRemove > 0 {
 		rotation = true
 		active = active[toRemove:]
 	}
 	// add selected nodes to become active
 	limit := toRemove + 1
-	minimumNodesForBFT := vm.k.GetConfigInt64(ctx, constants.Vault_BaseMembersMin)
 	if len(active)+limit < int(minimumNodesForBFT) {
 		limit = int(minimumNodesForBFT) - len(active)
 	}
@@ -1038,6 +1045,14 @@ func (vm *NodeMgr) nextVaultNodeAccounts(ctx cosmos.Context, targetCount int) (N
 			break
 		}
 	}
+	ctx.Logger().Info(
+		"evaluated next vault node accounts",
+		"target", targetCount,
+		"selected", len(ready),
+		"removed", toRemove,
+		"next_members", len(active),
+		"rotation", rotation,
+	)
 
 	return active, rotation, nil
 }

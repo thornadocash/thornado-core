@@ -84,7 +84,6 @@ var configDescriptions = map[string]string{
 	Vault_RetiredRecoveryAttemptsMax.String(): "Maximum recovery attempts for retired vault funds.",
 
 	Withdrawal_FeeBasisPoints.String():     "Withdrawal fee in basis points collected by core.",
-	Withdrawal_FeeMinSats.String():         "Deprecated; note withdrawals use the basis-point fee only.",
 	Withdrawal_BatchWindowMinutes.String(): "Minutes to batch withdrawal outbounds before signing.",
 
 	ConfigKeyNodePauseChainGlobal: "Global node-requested chain pause height.",

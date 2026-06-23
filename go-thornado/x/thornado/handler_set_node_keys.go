@@ -45,10 +45,11 @@ func (h SetNodeKeysHandler) validate(ctx cosmos.Context, msg MsgSetNodeKeys) err
 		return err
 	}
 
-	if err := validateNodeKeysAuth(ctx, h.mgr.Keeper(), msg.Signer); err != nil {
+	nodeAccount, err := validateNodeKeysAuth(ctx, h.mgr.Keeper(), msg.Signer)
+	if err != nil {
 		return err
 	}
-	if err := h.mgr.Keeper().EnsureNodeKeysUnique(ctx, msg.Signer, msg.NodeConsPubKey, msg.PubKeySetSet); err != nil {
+	if err := h.mgr.Keeper().EnsureNodeKeysUnique(ctx, nodeAccount.NodeAddress, msg.NodeConsPubKey, msg.PubKeySetSet); err != nil {
 		return err
 	}
 
@@ -56,7 +57,7 @@ func (h SetNodeKeysHandler) validate(ctx cosmos.Context, msg MsgSetNodeKeys) err
 	if err != nil {
 		return err
 	}
-	if !msg.Signer.Equals(addr) {
+	if !nodeAccount.NodeAddress.Equals(addr) {
 		return fmt.Errorf("node address must match secp256k1 pubkey")
 	}
 
@@ -65,7 +66,7 @@ func (h SetNodeKeysHandler) validate(ctx cosmos.Context, msg MsgSetNodeKeys) err
 
 func (h SetNodeKeysHandler) handle(ctx cosmos.Context, msg MsgSetNodeKeys) (*cosmos.Result, error) {
 	ctx.Logger().Info("handleMsgSetNodeKeys request")
-	nodeAccount, err := h.mgr.Keeper().GetNodeAccount(ctx, msg.Signer)
+	nodeAccount, err := resolveNodeAccountBySigner(ctx, h.mgr.Keeper(), msg.Signer)
 	if err != nil {
 		ctx.Logger().Error("fail to get node account", "error", err, "address", msg.Signer.String())
 		return nil, cosmos.ErrUnauthorized(fmt.Sprintf("%s is not authorized", msg.Signer))
@@ -80,7 +81,7 @@ func (h SetNodeKeysHandler) handle(ctx cosmos.Context, msg MsgSetNodeKeys) (*cos
 
 	ctx.EventManager().EmitEvent(
 		cosmos.NewEvent("set_node_keys",
-			cosmos.NewAttribute("node_address", msg.Signer.String()),
+			cosmos.NewAttribute("node_address", nodeAccount.NodeAddress.String()),
 			cosmos.NewAttribute("node_secp256k1_pubkey", msg.PubKeySetSet.Secp256k1.String()),
 			cosmos.NewAttribute("node_ed25519_pubkey", msg.PubKeySetSet.Ed25519.String()),
 			cosmos.NewAttribute("node_consensus_pub_key", msg.NodeConsPubKey)))
@@ -88,36 +89,33 @@ func (h SetNodeKeysHandler) handle(ctx cosmos.Context, msg MsgSetNodeKeys) (*cos
 	return &cosmos.Result{}, nil
 }
 
-func validateNodeKeysAuth(ctx cosmos.Context, k keeper.Keeper, signer cosmos.AccAddress) error {
-	nodeAccount, err := k.GetNodeAccount(ctx, signer)
+func validateNodeKeysAuth(ctx cosmos.Context, k keeper.Keeper, signer cosmos.AccAddress) (NodeAccount, error) {
+	nodeAccount, err := resolveNodeAccountBySigner(ctx, k, signer)
 	if err != nil {
-		return cosmos.ErrUnauthorized(fmt.Sprintf("fail to get node account(%s):%s", signer.String(), err)) // notAuthorized
-	}
-	if nodeAccount.IsEmpty() {
-		return cosmos.ErrUnauthorized(fmt.Sprintf("unauthorized account(%s)", signer))
+		return NodeAccount{}, cosmos.ErrUnauthorized(fmt.Sprintf("fail to get node account(%s):%s", signer.String(), err)) // notAuthorized
 	}
 
 	// You should not able to update node address when the node is active
 	// for example if they update observer address
 	if nodeAccount.Status == NodeActive {
-		return fmt.Errorf("node %s is active, so it can't update itself", nodeAccount.NodeAddress)
+		return NodeAccount{}, fmt.Errorf("node %s is active, so it can't update itself", nodeAccount.NodeAddress)
 	}
 	if nodeAccount.Status == NodeDisabled {
-		return fmt.Errorf("node %s is disabled, so it can't update itself", nodeAccount.NodeAddress)
+		return NodeAccount{}, fmt.Errorf("node %s is disabled, so it can't update itself", nodeAccount.NodeAddress)
 	}
 
 	if !nodeAccount.PubKeySet.IsEmpty() {
-		return fmt.Errorf("node %s already has pubkey set assigned", nodeAccount.NodeAddress)
+		return NodeAccount{}, fmt.Errorf("node %s already has pubkey set assigned", nodeAccount.NodeAddress)
 	}
 
-	return nil
+	return nodeAccount, nil
 }
 
 // SetNodeKeysAnteHandler called by the ante handler to gate mempool entry
 // and also during deliver. Store changes will persist if this function
 // succeeds, regardless of the success of the transaction.
 func SetNodeKeysAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg MsgSetNodeKeys) (cosmos.Context, error) {
-	if err := validateNodeKeysAuth(ctx, k, msg.Signer); err != nil {
+	if _, err := validateNodeKeysAuth(ctx, k, msg.Signer); err != nil {
 		return ctx, err
 	}
 

@@ -62,7 +62,7 @@ func TestTxInKeySeparatesMempoolAndBlockObservations(t *testing.T) {
 	}
 }
 
-func TestPromoteMempoolObservationCarriesPendingCommit(t *testing.T) {
+func TestPromoteMempoolObservationClearsPendingCommit(t *testing.T) {
 	storage, err := NewObserverStorage(t.TempDir(), config.LevelDBOptions{})
 	if err != nil {
 		t.Fatalf("failed to create observer storage: %v", err)
@@ -108,7 +108,7 @@ func TestPromoteMempoolObservationCarriesPendingCommit(t *testing.T) {
 	if len(observer.onDeck) != 0 {
 		t.Fatalf("mempool deck should be removed after promotion")
 	}
-	if !blockItem.CommittedUnFinalised {
-		t.Fatalf("block observation should inherit committed pending state")
+	if blockItem.CommittedUnFinalised {
+		t.Fatalf("block observation should clear committed pending state")
 	}
 }

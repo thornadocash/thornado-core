@@ -11,14 +11,7 @@ import (
 func (s *AttestationGossip) handleObservedTxAttestation(ctx context.Context, tx common.AttestTx) {
 	obsTx := tx.ObsTx
 
-	k := txKey{
-		Chain:                  obsTx.Tx.Chain,
-		ID:                     obsTx.Tx.ID,
-		UniqueHash:             obsTx.Tx.Hash(obsTx.BlockHeight),
-		AllowFutureObservation: tx.AllowFutureObservation,
-		Finalized:              obsTx.IsFinal(),
-		Inbound:                tx.Inbound,
-	}
+	k := newObservedTxKey(obsTx, tx.Inbound, tx.AllowFutureObservation)
 
 	s.mu.Lock()
 	state, ok := s.observedTxs[k]
@@ -37,8 +30,10 @@ func (s *AttestationGossip) handleObservedTxAttestation(ctx context.Context, tx 
 
 	defer state.mu.Unlock()
 
-	// Add the attestation
-	if err := state.AddAttestation(tx.Attestation); err != nil {
+	// Add the attestation. Observed tx attestations must be verified against
+	// the incoming message payload, since peers can race between non-final and
+	// final observations for the same tx id.
+	if err := ProcessAttestation(&state.attestations, &tx); err != nil {
 		s.logger.Error().Err(err).Msg("fail to add attestation")
 		return
 	}
@@ -77,6 +72,9 @@ func (s *AttestationGossip) sendObservedTxAttestationsToThornado(
 	inbound, allowFutureObservation, isQuorum bool,
 ) {
 	unsent := state.UnsentAttestations()
+	if isQuorum {
+		unsent = state.UncommittedAttestations()
+	}
 	if len(unsent) == 0 {
 		s.logger.Debug().Msg("no unsent observed tx attestations")
 		return

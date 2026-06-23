@@ -508,6 +508,13 @@ var (
 	fd_QueryShielderRedeemResponse_vault_pub_key    protoreflect.FieldDescriptor
 	fd_QueryShielderRedeemResponse_requested_height protoreflect.FieldDescriptor
 	fd_QueryShielderRedeemResponse_status           protoreflect.FieldDescriptor
+	fd_QueryShielderRedeemResponse_txout_status     protoreflect.FieldDescriptor
+	fd_QueryShielderRedeemResponse_txout_height     protoreflect.FieldDescriptor
+	fd_QueryShielderRedeemResponse_txout_epoch      protoreflect.FieldDescriptor
+	fd_QueryShielderRedeemResponse_tx_type          protoreflect.FieldDescriptor
+	fd_QueryShielderRedeemResponse_out_hash         protoreflect.FieldDescriptor
+	fd_QueryShielderRedeemResponse_out_vout         protoreflect.FieldDescriptor
+	fd_QueryShielderRedeemResponse_outpoint         protoreflect.FieldDescriptor
 )
 
 func init() {
@@ -523,6 +530,13 @@ func init() {
 	fd_QueryShielderRedeemResponse_vault_pub_key = md_QueryShielderRedeemResponse.Fields().ByName("vault_pub_key")
 	fd_QueryShielderRedeemResponse_requested_height = md_QueryShielderRedeemResponse.Fields().ByName("requested_height")
 	fd_QueryShielderRedeemResponse_status = md_QueryShielderRedeemResponse.Fields().ByName("status")
+	fd_QueryShielderRedeemResponse_txout_status = md_QueryShielderRedeemResponse.Fields().ByName("txout_status")
+	fd_QueryShielderRedeemResponse_txout_height = md_QueryShielderRedeemResponse.Fields().ByName("txout_height")
+	fd_QueryShielderRedeemResponse_txout_epoch = md_QueryShielderRedeemResponse.Fields().ByName("txout_epoch")
+	fd_QueryShielderRedeemResponse_tx_type = md_QueryShielderRedeemResponse.Fields().ByName("tx_type")
+	fd_QueryShielderRedeemResponse_out_hash = md_QueryShielderRedeemResponse.Fields().ByName("out_hash")
+	fd_QueryShielderRedeemResponse_out_vout = md_QueryShielderRedeemResponse.Fields().ByName("out_vout")
+	fd_QueryShielderRedeemResponse_outpoint = md_QueryShielderRedeemResponse.Fields().ByName("outpoint")
 }
 
 var _ protoreflect.Message = (*fastReflection_QueryShielderRedeemResponse)(nil)
@@ -650,6 +664,48 @@ func (x *fastReflection_QueryShielderRedeemResponse) Range(f func(protoreflect.F
 			return
 		}
 	}
+	if x.TxoutStatus != "" {
+		value := protoreflect.ValueOfString(x.TxoutStatus)
+		if !f(fd_QueryShielderRedeemResponse_txout_status, value) {
+			return
+		}
+	}
+	if x.TxoutHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.TxoutHeight)
+		if !f(fd_QueryShielderRedeemResponse_txout_height, value) {
+			return
+		}
+	}
+	if x.TxoutEpoch != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.TxoutEpoch)
+		if !f(fd_QueryShielderRedeemResponse_txout_epoch, value) {
+			return
+		}
+	}
+	if x.TxType != "" {
+		value := protoreflect.ValueOfString(x.TxType)
+		if !f(fd_QueryShielderRedeemResponse_tx_type, value) {
+			return
+		}
+	}
+	if x.OutHash != "" {
+		value := protoreflect.ValueOfString(x.OutHash)
+		if !f(fd_QueryShielderRedeemResponse_out_hash, value) {
+			return
+		}
+	}
+	if x.OutVout != uint32(0) {
+		value := protoreflect.ValueOfUint32(x.OutVout)
+		if !f(fd_QueryShielderRedeemResponse_out_vout, value) {
+			return
+		}
+	}
+	if x.Outpoint != "" {
+		value := protoreflect.ValueOfString(x.Outpoint)
+		if !f(fd_QueryShielderRedeemResponse_outpoint, value) {
+			return
+		}
+	}
 }
 
 // Has reports whether a field is populated.
@@ -685,6 +741,20 @@ func (x *fastReflection_QueryShielderRedeemResponse) Has(fd protoreflect.FieldDe
 		return x.RequestedHeight != int64(0)
 	case "types.QueryShielderRedeemResponse.status":
 		return x.Status != ""
+	case "types.QueryShielderRedeemResponse.txout_status":
+		return x.TxoutStatus != ""
+	case "types.QueryShielderRedeemResponse.txout_height":
+		return x.TxoutHeight != int64(0)
+	case "types.QueryShielderRedeemResponse.txout_epoch":
+		return x.TxoutEpoch != uint64(0)
+	case "types.QueryShielderRedeemResponse.tx_type":
+		return x.TxType != ""
+	case "types.QueryShielderRedeemResponse.out_hash":
+		return x.OutHash != ""
+	case "types.QueryShielderRedeemResponse.out_vout":
+		return x.OutVout != uint32(0)
+	case "types.QueryShielderRedeemResponse.outpoint":
+		return x.Outpoint != ""
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryShielderRedeemResponse"))
@@ -721,6 +791,20 @@ func (x *fastReflection_QueryShielderRedeemResponse) Clear(fd protoreflect.Field
 		x.RequestedHeight = int64(0)
 	case "types.QueryShielderRedeemResponse.status":
 		x.Status = ""
+	case "types.QueryShielderRedeemResponse.txout_status":
+		x.TxoutStatus = ""
+	case "types.QueryShielderRedeemResponse.txout_height":
+		x.TxoutHeight = int64(0)
+	case "types.QueryShielderRedeemResponse.txout_epoch":
+		x.TxoutEpoch = uint64(0)
+	case "types.QueryShielderRedeemResponse.tx_type":
+		x.TxType = ""
+	case "types.QueryShielderRedeemResponse.out_hash":
+		x.OutHash = ""
+	case "types.QueryShielderRedeemResponse.out_vout":
+		x.OutVout = uint32(0)
+	case "types.QueryShielderRedeemResponse.outpoint":
+		x.Outpoint = ""
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryShielderRedeemResponse"))
@@ -767,6 +851,27 @@ func (x *fastReflection_QueryShielderRedeemResponse) Get(descriptor protoreflect
 	case "types.QueryShielderRedeemResponse.status":
 		value := x.Status
 		return protoreflect.ValueOfString(value)
+	case "types.QueryShielderRedeemResponse.txout_status":
+		value := x.TxoutStatus
+		return protoreflect.ValueOfString(value)
+	case "types.QueryShielderRedeemResponse.txout_height":
+		value := x.TxoutHeight
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryShielderRedeemResponse.txout_epoch":
+		value := x.TxoutEpoch
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryShielderRedeemResponse.tx_type":
+		value := x.TxType
+		return protoreflect.ValueOfString(value)
+	case "types.QueryShielderRedeemResponse.out_hash":
+		value := x.OutHash
+		return protoreflect.ValueOfString(value)
+	case "types.QueryShielderRedeemResponse.out_vout":
+		value := x.OutVout
+		return protoreflect.ValueOfUint32(value)
+	case "types.QueryShielderRedeemResponse.outpoint":
+		value := x.Outpoint
+		return protoreflect.ValueOfString(value)
 	default:
 		if descriptor.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryShielderRedeemResponse"))
@@ -807,6 +912,20 @@ func (x *fastReflection_QueryShielderRedeemResponse) Set(fd protoreflect.FieldDe
 		x.RequestedHeight = value.Int()
 	case "types.QueryShielderRedeemResponse.status":
 		x.Status = value.Interface().(string)
+	case "types.QueryShielderRedeemResponse.txout_status":
+		x.TxoutStatus = value.Interface().(string)
+	case "types.QueryShielderRedeemResponse.txout_height":
+		x.TxoutHeight = value.Int()
+	case "types.QueryShielderRedeemResponse.txout_epoch":
+		x.TxoutEpoch = value.Uint()
+	case "types.QueryShielderRedeemResponse.tx_type":
+		x.TxType = value.Interface().(string)
+	case "types.QueryShielderRedeemResponse.out_hash":
+		x.OutHash = value.Interface().(string)
+	case "types.QueryShielderRedeemResponse.out_vout":
+		x.OutVout = uint32(value.Uint())
+	case "types.QueryShielderRedeemResponse.outpoint":
+		x.Outpoint = value.Interface().(string)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryShielderRedeemResponse"))
@@ -847,6 +966,20 @@ func (x *fastReflection_QueryShielderRedeemResponse) Mutable(fd protoreflect.Fie
 		panic(fmt.Errorf("field requested_height of message types.QueryShielderRedeemResponse is not mutable"))
 	case "types.QueryShielderRedeemResponse.status":
 		panic(fmt.Errorf("field status of message types.QueryShielderRedeemResponse is not mutable"))
+	case "types.QueryShielderRedeemResponse.txout_status":
+		panic(fmt.Errorf("field txout_status of message types.QueryShielderRedeemResponse is not mutable"))
+	case "types.QueryShielderRedeemResponse.txout_height":
+		panic(fmt.Errorf("field txout_height of message types.QueryShielderRedeemResponse is not mutable"))
+	case "types.QueryShielderRedeemResponse.txout_epoch":
+		panic(fmt.Errorf("field txout_epoch of message types.QueryShielderRedeemResponse is not mutable"))
+	case "types.QueryShielderRedeemResponse.tx_type":
+		panic(fmt.Errorf("field tx_type of message types.QueryShielderRedeemResponse is not mutable"))
+	case "types.QueryShielderRedeemResponse.out_hash":
+		panic(fmt.Errorf("field out_hash of message types.QueryShielderRedeemResponse is not mutable"))
+	case "types.QueryShielderRedeemResponse.out_vout":
+		panic(fmt.Errorf("field out_vout of message types.QueryShielderRedeemResponse is not mutable"))
+	case "types.QueryShielderRedeemResponse.outpoint":
+		panic(fmt.Errorf("field outpoint of message types.QueryShielderRedeemResponse is not mutable"))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryShielderRedeemResponse"))
@@ -879,6 +1012,20 @@ func (x *fastReflection_QueryShielderRedeemResponse) NewField(fd protoreflect.Fi
 	case "types.QueryShielderRedeemResponse.requested_height":
 		return protoreflect.ValueOfInt64(int64(0))
 	case "types.QueryShielderRedeemResponse.status":
+		return protoreflect.ValueOfString("")
+	case "types.QueryShielderRedeemResponse.txout_status":
+		return protoreflect.ValueOfString("")
+	case "types.QueryShielderRedeemResponse.txout_height":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryShielderRedeemResponse.txout_epoch":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryShielderRedeemResponse.tx_type":
+		return protoreflect.ValueOfString("")
+	case "types.QueryShielderRedeemResponse.out_hash":
+		return protoreflect.ValueOfString("")
+	case "types.QueryShielderRedeemResponse.out_vout":
+		return protoreflect.ValueOfUint32(uint32(0))
+	case "types.QueryShielderRedeemResponse.outpoint":
 		return protoreflect.ValueOfString("")
 	default:
 		if fd.IsExtension() {
@@ -986,6 +1133,31 @@ func (x *fastReflection_QueryShielderRedeemResponse) ProtoMethods() *protoiface.
 		if l > 0 {
 			n += 1 + l + runtime.Sov(uint64(l))
 		}
+		l = len(x.TxoutStatus)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.TxoutHeight != 0 {
+			n += 1 + runtime.Sov(uint64(x.TxoutHeight))
+		}
+		if x.TxoutEpoch != 0 {
+			n += 1 + runtime.Sov(uint64(x.TxoutEpoch))
+		}
+		l = len(x.TxType)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		l = len(x.OutHash)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.OutVout != 0 {
+			n += 2 + runtime.Sov(uint64(x.OutVout))
+		}
+		l = len(x.Outpoint)
+		if l > 0 {
+			n += 2 + l + runtime.Sov(uint64(l))
+		}
 		if x.unknownFields != nil {
 			n += len(x.unknownFields)
 		}
@@ -1014,6 +1186,53 @@ func (x *fastReflection_QueryShielderRedeemResponse) ProtoMethods() *protoiface.
 		if x.unknownFields != nil {
 			i -= len(x.unknownFields)
 			copy(dAtA[i:], x.unknownFields)
+		}
+		if len(x.Outpoint) > 0 {
+			i -= len(x.Outpoint)
+			copy(dAtA[i:], x.Outpoint)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.Outpoint)))
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0x8a
+		}
+		if x.OutVout != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.OutVout))
+			i--
+			dAtA[i] = 0x1
+			i--
+			dAtA[i] = 0x80
+		}
+		if len(x.OutHash) > 0 {
+			i -= len(x.OutHash)
+			copy(dAtA[i:], x.OutHash)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.OutHash)))
+			i--
+			dAtA[i] = 0x7a
+		}
+		if len(x.TxType) > 0 {
+			i -= len(x.TxType)
+			copy(dAtA[i:], x.TxType)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.TxType)))
+			i--
+			dAtA[i] = 0x72
+		}
+		if x.TxoutEpoch != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.TxoutEpoch))
+			i--
+			dAtA[i] = 0x68
+		}
+		if x.TxoutHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.TxoutHeight))
+			i--
+			dAtA[i] = 0x60
+		}
+		if len(x.TxoutStatus) > 0 {
+			i -= len(x.TxoutStatus)
+			copy(dAtA[i:], x.TxoutStatus)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.TxoutStatus)))
+			i--
+			dAtA[i] = 0x5a
 		}
 		if len(x.Status) > 0 {
 			i -= len(x.Status)
@@ -1408,6 +1627,191 @@ func (x *fastReflection_QueryShielderRedeemResponse) ProtoMethods() *protoiface.
 					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
 				}
 				x.Status = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 11:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field TxoutStatus", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.TxoutStatus = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 12:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field TxoutHeight", wireType)
+				}
+				x.TxoutHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.TxoutHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 13:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field TxoutEpoch", wireType)
+				}
+				x.TxoutEpoch = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.TxoutEpoch |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 14:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field TxType", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.TxType = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 15:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field OutHash", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.OutHash = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 16:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field OutVout", wireType)
+				}
+				x.OutVout = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.OutVout |= uint32(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 17:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Outpoint", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.Outpoint = string(dAtA[iNdEx:postIndex])
 				iNdEx = postIndex
 			default:
 				iNdEx = preIndex
@@ -1929,10 +2333,21 @@ func (x *fastReflection_QueryShielderNullifierRequest) ProtoMethods() *protoifac
 }
 
 var (
-	md_QueryShielderNullifierResponse                protoreflect.MessageDescriptor
-	fd_QueryShielderNullifierResponse_nullifier_hash protoreflect.FieldDescriptor
-	fd_QueryShielderNullifierResponse_spent          protoreflect.FieldDescriptor
-	fd_QueryShielderNullifierResponse_withdrawal_id  protoreflect.FieldDescriptor
+	md_QueryShielderNullifierResponse                   protoreflect.MessageDescriptor
+	fd_QueryShielderNullifierResponse_nullifier_hash    protoreflect.FieldDescriptor
+	fd_QueryShielderNullifierResponse_spent             protoreflect.FieldDescriptor
+	fd_QueryShielderNullifierResponse_withdrawal_id     protoreflect.FieldDescriptor
+	fd_QueryShielderNullifierResponse_withdrawal_status protoreflect.FieldDescriptor
+	fd_QueryShielderNullifierResponse_amount_sats       protoreflect.FieldDescriptor
+	fd_QueryShielderNullifierResponse_fee_sats          protoreflect.FieldDescriptor
+	fd_QueryShielderNullifierResponse_in_hash           protoreflect.FieldDescriptor
+	fd_QueryShielderNullifierResponse_txout_status      protoreflect.FieldDescriptor
+	fd_QueryShielderNullifierResponse_txout_height      protoreflect.FieldDescriptor
+	fd_QueryShielderNullifierResponse_txout_epoch       protoreflect.FieldDescriptor
+	fd_QueryShielderNullifierResponse_tx_type           protoreflect.FieldDescriptor
+	fd_QueryShielderNullifierResponse_out_hash          protoreflect.FieldDescriptor
+	fd_QueryShielderNullifierResponse_out_vout          protoreflect.FieldDescriptor
+	fd_QueryShielderNullifierResponse_outpoint          protoreflect.FieldDescriptor
 )
 
 func init() {
@@ -1941,6 +2356,17 @@ func init() {
 	fd_QueryShielderNullifierResponse_nullifier_hash = md_QueryShielderNullifierResponse.Fields().ByName("nullifier_hash")
 	fd_QueryShielderNullifierResponse_spent = md_QueryShielderNullifierResponse.Fields().ByName("spent")
 	fd_QueryShielderNullifierResponse_withdrawal_id = md_QueryShielderNullifierResponse.Fields().ByName("withdrawal_id")
+	fd_QueryShielderNullifierResponse_withdrawal_status = md_QueryShielderNullifierResponse.Fields().ByName("withdrawal_status")
+	fd_QueryShielderNullifierResponse_amount_sats = md_QueryShielderNullifierResponse.Fields().ByName("amount_sats")
+	fd_QueryShielderNullifierResponse_fee_sats = md_QueryShielderNullifierResponse.Fields().ByName("fee_sats")
+	fd_QueryShielderNullifierResponse_in_hash = md_QueryShielderNullifierResponse.Fields().ByName("in_hash")
+	fd_QueryShielderNullifierResponse_txout_status = md_QueryShielderNullifierResponse.Fields().ByName("txout_status")
+	fd_QueryShielderNullifierResponse_txout_height = md_QueryShielderNullifierResponse.Fields().ByName("txout_height")
+	fd_QueryShielderNullifierResponse_txout_epoch = md_QueryShielderNullifierResponse.Fields().ByName("txout_epoch")
+	fd_QueryShielderNullifierResponse_tx_type = md_QueryShielderNullifierResponse.Fields().ByName("tx_type")
+	fd_QueryShielderNullifierResponse_out_hash = md_QueryShielderNullifierResponse.Fields().ByName("out_hash")
+	fd_QueryShielderNullifierResponse_out_vout = md_QueryShielderNullifierResponse.Fields().ByName("out_vout")
+	fd_QueryShielderNullifierResponse_outpoint = md_QueryShielderNullifierResponse.Fields().ByName("outpoint")
 }
 
 var _ protoreflect.Message = (*fastReflection_QueryShielderNullifierResponse)(nil)
@@ -2026,6 +2452,72 @@ func (x *fastReflection_QueryShielderNullifierResponse) Range(f func(protoreflec
 			return
 		}
 	}
+	if x.WithdrawalStatus != "" {
+		value := protoreflect.ValueOfString(x.WithdrawalStatus)
+		if !f(fd_QueryShielderNullifierResponse_withdrawal_status, value) {
+			return
+		}
+	}
+	if x.AmountSats != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.AmountSats)
+		if !f(fd_QueryShielderNullifierResponse_amount_sats, value) {
+			return
+		}
+	}
+	if x.FeeSats != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.FeeSats)
+		if !f(fd_QueryShielderNullifierResponse_fee_sats, value) {
+			return
+		}
+	}
+	if x.InHash != "" {
+		value := protoreflect.ValueOfString(x.InHash)
+		if !f(fd_QueryShielderNullifierResponse_in_hash, value) {
+			return
+		}
+	}
+	if x.TxoutStatus != "" {
+		value := protoreflect.ValueOfString(x.TxoutStatus)
+		if !f(fd_QueryShielderNullifierResponse_txout_status, value) {
+			return
+		}
+	}
+	if x.TxoutHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.TxoutHeight)
+		if !f(fd_QueryShielderNullifierResponse_txout_height, value) {
+			return
+		}
+	}
+	if x.TxoutEpoch != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.TxoutEpoch)
+		if !f(fd_QueryShielderNullifierResponse_txout_epoch, value) {
+			return
+		}
+	}
+	if x.TxType != "" {
+		value := protoreflect.ValueOfString(x.TxType)
+		if !f(fd_QueryShielderNullifierResponse_tx_type, value) {
+			return
+		}
+	}
+	if x.OutHash != "" {
+		value := protoreflect.ValueOfString(x.OutHash)
+		if !f(fd_QueryShielderNullifierResponse_out_hash, value) {
+			return
+		}
+	}
+	if x.OutVout != uint32(0) {
+		value := protoreflect.ValueOfUint32(x.OutVout)
+		if !f(fd_QueryShielderNullifierResponse_out_vout, value) {
+			return
+		}
+	}
+	if x.Outpoint != "" {
+		value := protoreflect.ValueOfString(x.Outpoint)
+		if !f(fd_QueryShielderNullifierResponse_outpoint, value) {
+			return
+		}
+	}
 }
 
 // Has reports whether a field is populated.
@@ -2047,6 +2539,28 @@ func (x *fastReflection_QueryShielderNullifierResponse) Has(fd protoreflect.Fiel
 		return x.Spent != false
 	case "types.QueryShielderNullifierResponse.withdrawal_id":
 		return x.WithdrawalId != ""
+	case "types.QueryShielderNullifierResponse.withdrawal_status":
+		return x.WithdrawalStatus != ""
+	case "types.QueryShielderNullifierResponse.amount_sats":
+		return x.AmountSats != uint64(0)
+	case "types.QueryShielderNullifierResponse.fee_sats":
+		return x.FeeSats != uint64(0)
+	case "types.QueryShielderNullifierResponse.in_hash":
+		return x.InHash != ""
+	case "types.QueryShielderNullifierResponse.txout_status":
+		return x.TxoutStatus != ""
+	case "types.QueryShielderNullifierResponse.txout_height":
+		return x.TxoutHeight != int64(0)
+	case "types.QueryShielderNullifierResponse.txout_epoch":
+		return x.TxoutEpoch != uint64(0)
+	case "types.QueryShielderNullifierResponse.tx_type":
+		return x.TxType != ""
+	case "types.QueryShielderNullifierResponse.out_hash":
+		return x.OutHash != ""
+	case "types.QueryShielderNullifierResponse.out_vout":
+		return x.OutVout != uint32(0)
+	case "types.QueryShielderNullifierResponse.outpoint":
+		return x.Outpoint != ""
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryShielderNullifierResponse"))
@@ -2069,6 +2583,28 @@ func (x *fastReflection_QueryShielderNullifierResponse) Clear(fd protoreflect.Fi
 		x.Spent = false
 	case "types.QueryShielderNullifierResponse.withdrawal_id":
 		x.WithdrawalId = ""
+	case "types.QueryShielderNullifierResponse.withdrawal_status":
+		x.WithdrawalStatus = ""
+	case "types.QueryShielderNullifierResponse.amount_sats":
+		x.AmountSats = uint64(0)
+	case "types.QueryShielderNullifierResponse.fee_sats":
+		x.FeeSats = uint64(0)
+	case "types.QueryShielderNullifierResponse.in_hash":
+		x.InHash = ""
+	case "types.QueryShielderNullifierResponse.txout_status":
+		x.TxoutStatus = ""
+	case "types.QueryShielderNullifierResponse.txout_height":
+		x.TxoutHeight = int64(0)
+	case "types.QueryShielderNullifierResponse.txout_epoch":
+		x.TxoutEpoch = uint64(0)
+	case "types.QueryShielderNullifierResponse.tx_type":
+		x.TxType = ""
+	case "types.QueryShielderNullifierResponse.out_hash":
+		x.OutHash = ""
+	case "types.QueryShielderNullifierResponse.out_vout":
+		x.OutVout = uint32(0)
+	case "types.QueryShielderNullifierResponse.outpoint":
+		x.Outpoint = ""
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryShielderNullifierResponse"))
@@ -2093,6 +2629,39 @@ func (x *fastReflection_QueryShielderNullifierResponse) Get(descriptor protorefl
 		return protoreflect.ValueOfBool(value)
 	case "types.QueryShielderNullifierResponse.withdrawal_id":
 		value := x.WithdrawalId
+		return protoreflect.ValueOfString(value)
+	case "types.QueryShielderNullifierResponse.withdrawal_status":
+		value := x.WithdrawalStatus
+		return protoreflect.ValueOfString(value)
+	case "types.QueryShielderNullifierResponse.amount_sats":
+		value := x.AmountSats
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryShielderNullifierResponse.fee_sats":
+		value := x.FeeSats
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryShielderNullifierResponse.in_hash":
+		value := x.InHash
+		return protoreflect.ValueOfString(value)
+	case "types.QueryShielderNullifierResponse.txout_status":
+		value := x.TxoutStatus
+		return protoreflect.ValueOfString(value)
+	case "types.QueryShielderNullifierResponse.txout_height":
+		value := x.TxoutHeight
+		return protoreflect.ValueOfInt64(value)
+	case "types.QueryShielderNullifierResponse.txout_epoch":
+		value := x.TxoutEpoch
+		return protoreflect.ValueOfUint64(value)
+	case "types.QueryShielderNullifierResponse.tx_type":
+		value := x.TxType
+		return protoreflect.ValueOfString(value)
+	case "types.QueryShielderNullifierResponse.out_hash":
+		value := x.OutHash
+		return protoreflect.ValueOfString(value)
+	case "types.QueryShielderNullifierResponse.out_vout":
+		value := x.OutVout
+		return protoreflect.ValueOfUint32(value)
+	case "types.QueryShielderNullifierResponse.outpoint":
+		value := x.Outpoint
 		return protoreflect.ValueOfString(value)
 	default:
 		if descriptor.IsExtension() {
@@ -2120,6 +2689,28 @@ func (x *fastReflection_QueryShielderNullifierResponse) Set(fd protoreflect.Fiel
 		x.Spent = value.Bool()
 	case "types.QueryShielderNullifierResponse.withdrawal_id":
 		x.WithdrawalId = value.Interface().(string)
+	case "types.QueryShielderNullifierResponse.withdrawal_status":
+		x.WithdrawalStatus = value.Interface().(string)
+	case "types.QueryShielderNullifierResponse.amount_sats":
+		x.AmountSats = value.Uint()
+	case "types.QueryShielderNullifierResponse.fee_sats":
+		x.FeeSats = value.Uint()
+	case "types.QueryShielderNullifierResponse.in_hash":
+		x.InHash = value.Interface().(string)
+	case "types.QueryShielderNullifierResponse.txout_status":
+		x.TxoutStatus = value.Interface().(string)
+	case "types.QueryShielderNullifierResponse.txout_height":
+		x.TxoutHeight = value.Int()
+	case "types.QueryShielderNullifierResponse.txout_epoch":
+		x.TxoutEpoch = value.Uint()
+	case "types.QueryShielderNullifierResponse.tx_type":
+		x.TxType = value.Interface().(string)
+	case "types.QueryShielderNullifierResponse.out_hash":
+		x.OutHash = value.Interface().(string)
+	case "types.QueryShielderNullifierResponse.out_vout":
+		x.OutVout = uint32(value.Uint())
+	case "types.QueryShielderNullifierResponse.outpoint":
+		x.Outpoint = value.Interface().(string)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryShielderNullifierResponse"))
@@ -2146,6 +2737,28 @@ func (x *fastReflection_QueryShielderNullifierResponse) Mutable(fd protoreflect.
 		panic(fmt.Errorf("field spent of message types.QueryShielderNullifierResponse is not mutable"))
 	case "types.QueryShielderNullifierResponse.withdrawal_id":
 		panic(fmt.Errorf("field withdrawal_id of message types.QueryShielderNullifierResponse is not mutable"))
+	case "types.QueryShielderNullifierResponse.withdrawal_status":
+		panic(fmt.Errorf("field withdrawal_status of message types.QueryShielderNullifierResponse is not mutable"))
+	case "types.QueryShielderNullifierResponse.amount_sats":
+		panic(fmt.Errorf("field amount_sats of message types.QueryShielderNullifierResponse is not mutable"))
+	case "types.QueryShielderNullifierResponse.fee_sats":
+		panic(fmt.Errorf("field fee_sats of message types.QueryShielderNullifierResponse is not mutable"))
+	case "types.QueryShielderNullifierResponse.in_hash":
+		panic(fmt.Errorf("field in_hash of message types.QueryShielderNullifierResponse is not mutable"))
+	case "types.QueryShielderNullifierResponse.txout_status":
+		panic(fmt.Errorf("field txout_status of message types.QueryShielderNullifierResponse is not mutable"))
+	case "types.QueryShielderNullifierResponse.txout_height":
+		panic(fmt.Errorf("field txout_height of message types.QueryShielderNullifierResponse is not mutable"))
+	case "types.QueryShielderNullifierResponse.txout_epoch":
+		panic(fmt.Errorf("field txout_epoch of message types.QueryShielderNullifierResponse is not mutable"))
+	case "types.QueryShielderNullifierResponse.tx_type":
+		panic(fmt.Errorf("field tx_type of message types.QueryShielderNullifierResponse is not mutable"))
+	case "types.QueryShielderNullifierResponse.out_hash":
+		panic(fmt.Errorf("field out_hash of message types.QueryShielderNullifierResponse is not mutable"))
+	case "types.QueryShielderNullifierResponse.out_vout":
+		panic(fmt.Errorf("field out_vout of message types.QueryShielderNullifierResponse is not mutable"))
+	case "types.QueryShielderNullifierResponse.outpoint":
+		panic(fmt.Errorf("field outpoint of message types.QueryShielderNullifierResponse is not mutable"))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.QueryShielderNullifierResponse"))
@@ -2164,6 +2777,28 @@ func (x *fastReflection_QueryShielderNullifierResponse) NewField(fd protoreflect
 	case "types.QueryShielderNullifierResponse.spent":
 		return protoreflect.ValueOfBool(false)
 	case "types.QueryShielderNullifierResponse.withdrawal_id":
+		return protoreflect.ValueOfString("")
+	case "types.QueryShielderNullifierResponse.withdrawal_status":
+		return protoreflect.ValueOfString("")
+	case "types.QueryShielderNullifierResponse.amount_sats":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryShielderNullifierResponse.fee_sats":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryShielderNullifierResponse.in_hash":
+		return protoreflect.ValueOfString("")
+	case "types.QueryShielderNullifierResponse.txout_status":
+		return protoreflect.ValueOfString("")
+	case "types.QueryShielderNullifierResponse.txout_height":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.QueryShielderNullifierResponse.txout_epoch":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.QueryShielderNullifierResponse.tx_type":
+		return protoreflect.ValueOfString("")
+	case "types.QueryShielderNullifierResponse.out_hash":
+		return protoreflect.ValueOfString("")
+	case "types.QueryShielderNullifierResponse.out_vout":
+		return protoreflect.ValueOfUint32(uint32(0))
+	case "types.QueryShielderNullifierResponse.outpoint":
 		return protoreflect.ValueOfString("")
 	default:
 		if fd.IsExtension() {
@@ -2245,6 +2880,45 @@ func (x *fastReflection_QueryShielderNullifierResponse) ProtoMethods() *protoifa
 		if l > 0 {
 			n += 1 + l + runtime.Sov(uint64(l))
 		}
+		l = len(x.WithdrawalStatus)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.AmountSats != 0 {
+			n += 1 + runtime.Sov(uint64(x.AmountSats))
+		}
+		if x.FeeSats != 0 {
+			n += 1 + runtime.Sov(uint64(x.FeeSats))
+		}
+		l = len(x.InHash)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		l = len(x.TxoutStatus)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.TxoutHeight != 0 {
+			n += 1 + runtime.Sov(uint64(x.TxoutHeight))
+		}
+		if x.TxoutEpoch != 0 {
+			n += 1 + runtime.Sov(uint64(x.TxoutEpoch))
+		}
+		l = len(x.TxType)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		l = len(x.OutHash)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.OutVout != 0 {
+			n += 1 + runtime.Sov(uint64(x.OutVout))
+		}
+		l = len(x.Outpoint)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
 		if x.unknownFields != nil {
 			n += len(x.unknownFields)
 		}
@@ -2273,6 +2947,73 @@ func (x *fastReflection_QueryShielderNullifierResponse) ProtoMethods() *protoifa
 		if x.unknownFields != nil {
 			i -= len(x.unknownFields)
 			copy(dAtA[i:], x.unknownFields)
+		}
+		if len(x.Outpoint) > 0 {
+			i -= len(x.Outpoint)
+			copy(dAtA[i:], x.Outpoint)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.Outpoint)))
+			i--
+			dAtA[i] = 0x72
+		}
+		if x.OutVout != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.OutVout))
+			i--
+			dAtA[i] = 0x68
+		}
+		if len(x.OutHash) > 0 {
+			i -= len(x.OutHash)
+			copy(dAtA[i:], x.OutHash)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.OutHash)))
+			i--
+			dAtA[i] = 0x62
+		}
+		if len(x.TxType) > 0 {
+			i -= len(x.TxType)
+			copy(dAtA[i:], x.TxType)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.TxType)))
+			i--
+			dAtA[i] = 0x5a
+		}
+		if x.TxoutEpoch != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.TxoutEpoch))
+			i--
+			dAtA[i] = 0x50
+		}
+		if x.TxoutHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.TxoutHeight))
+			i--
+			dAtA[i] = 0x48
+		}
+		if len(x.TxoutStatus) > 0 {
+			i -= len(x.TxoutStatus)
+			copy(dAtA[i:], x.TxoutStatus)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.TxoutStatus)))
+			i--
+			dAtA[i] = 0x42
+		}
+		if len(x.InHash) > 0 {
+			i -= len(x.InHash)
+			copy(dAtA[i:], x.InHash)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.InHash)))
+			i--
+			dAtA[i] = 0x3a
+		}
+		if x.FeeSats != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.FeeSats))
+			i--
+			dAtA[i] = 0x30
+		}
+		if x.AmountSats != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.AmountSats))
+			i--
+			dAtA[i] = 0x28
+		}
+		if len(x.WithdrawalStatus) > 0 {
+			i -= len(x.WithdrawalStatus)
+			copy(dAtA[i:], x.WithdrawalStatus)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.WithdrawalStatus)))
+			i--
+			dAtA[i] = 0x22
 		}
 		if len(x.WithdrawalId) > 0 {
 			i -= len(x.WithdrawalId)
@@ -2430,6 +3171,293 @@ func (x *fastReflection_QueryShielderNullifierResponse) ProtoMethods() *protoifa
 					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
 				}
 				x.WithdrawalId = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 4:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field WithdrawalStatus", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.WithdrawalStatus = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 5:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field AmountSats", wireType)
+				}
+				x.AmountSats = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.AmountSats |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 6:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field FeeSats", wireType)
+				}
+				x.FeeSats = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.FeeSats |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 7:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field InHash", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.InHash = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 8:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field TxoutStatus", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.TxoutStatus = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 9:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field TxoutHeight", wireType)
+				}
+				x.TxoutHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.TxoutHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 10:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field TxoutEpoch", wireType)
+				}
+				x.TxoutEpoch = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.TxoutEpoch |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 11:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field TxType", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.TxType = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 12:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field OutHash", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.OutHash = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 13:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field OutVout", wireType)
+				}
+				x.OutVout = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.OutVout |= uint32(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 14:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Outpoint", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.Outpoint = string(dAtA[iNdEx:postIndex])
 				iNdEx = postIndex
 			default:
 				iNdEx = preIndex
@@ -2935,9 +3963,20 @@ func (x *fastReflection_ShielderNoteRecord) ProtoMethods() *protoiface.Methods {
 }
 
 var (
-	md_ShielderSpentNullifier                protoreflect.MessageDescriptor
-	fd_ShielderSpentNullifier_nullifier_hash protoreflect.FieldDescriptor
-	fd_ShielderSpentNullifier_withdrawal_id  protoreflect.FieldDescriptor
+	md_ShielderSpentNullifier                   protoreflect.MessageDescriptor
+	fd_ShielderSpentNullifier_nullifier_hash    protoreflect.FieldDescriptor
+	fd_ShielderSpentNullifier_withdrawal_id     protoreflect.FieldDescriptor
+	fd_ShielderSpentNullifier_withdrawal_status protoreflect.FieldDescriptor
+	fd_ShielderSpentNullifier_amount_sats       protoreflect.FieldDescriptor
+	fd_ShielderSpentNullifier_fee_sats          protoreflect.FieldDescriptor
+	fd_ShielderSpentNullifier_in_hash           protoreflect.FieldDescriptor
+	fd_ShielderSpentNullifier_txout_status      protoreflect.FieldDescriptor
+	fd_ShielderSpentNullifier_txout_height      protoreflect.FieldDescriptor
+	fd_ShielderSpentNullifier_txout_epoch       protoreflect.FieldDescriptor
+	fd_ShielderSpentNullifier_tx_type           protoreflect.FieldDescriptor
+	fd_ShielderSpentNullifier_out_hash          protoreflect.FieldDescriptor
+	fd_ShielderSpentNullifier_out_vout          protoreflect.FieldDescriptor
+	fd_ShielderSpentNullifier_outpoint          protoreflect.FieldDescriptor
 )
 
 func init() {
@@ -2945,6 +3984,17 @@ func init() {
 	md_ShielderSpentNullifier = File_types_query_shielder_proto.Messages().ByName("ShielderSpentNullifier")
 	fd_ShielderSpentNullifier_nullifier_hash = md_ShielderSpentNullifier.Fields().ByName("nullifier_hash")
 	fd_ShielderSpentNullifier_withdrawal_id = md_ShielderSpentNullifier.Fields().ByName("withdrawal_id")
+	fd_ShielderSpentNullifier_withdrawal_status = md_ShielderSpentNullifier.Fields().ByName("withdrawal_status")
+	fd_ShielderSpentNullifier_amount_sats = md_ShielderSpentNullifier.Fields().ByName("amount_sats")
+	fd_ShielderSpentNullifier_fee_sats = md_ShielderSpentNullifier.Fields().ByName("fee_sats")
+	fd_ShielderSpentNullifier_in_hash = md_ShielderSpentNullifier.Fields().ByName("in_hash")
+	fd_ShielderSpentNullifier_txout_status = md_ShielderSpentNullifier.Fields().ByName("txout_status")
+	fd_ShielderSpentNullifier_txout_height = md_ShielderSpentNullifier.Fields().ByName("txout_height")
+	fd_ShielderSpentNullifier_txout_epoch = md_ShielderSpentNullifier.Fields().ByName("txout_epoch")
+	fd_ShielderSpentNullifier_tx_type = md_ShielderSpentNullifier.Fields().ByName("tx_type")
+	fd_ShielderSpentNullifier_out_hash = md_ShielderSpentNullifier.Fields().ByName("out_hash")
+	fd_ShielderSpentNullifier_out_vout = md_ShielderSpentNullifier.Fields().ByName("out_vout")
+	fd_ShielderSpentNullifier_outpoint = md_ShielderSpentNullifier.Fields().ByName("outpoint")
 }
 
 var _ protoreflect.Message = (*fastReflection_ShielderSpentNullifier)(nil)
@@ -3024,6 +4074,72 @@ func (x *fastReflection_ShielderSpentNullifier) Range(f func(protoreflect.FieldD
 			return
 		}
 	}
+	if x.WithdrawalStatus != "" {
+		value := protoreflect.ValueOfString(x.WithdrawalStatus)
+		if !f(fd_ShielderSpentNullifier_withdrawal_status, value) {
+			return
+		}
+	}
+	if x.AmountSats != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.AmountSats)
+		if !f(fd_ShielderSpentNullifier_amount_sats, value) {
+			return
+		}
+	}
+	if x.FeeSats != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.FeeSats)
+		if !f(fd_ShielderSpentNullifier_fee_sats, value) {
+			return
+		}
+	}
+	if x.InHash != "" {
+		value := protoreflect.ValueOfString(x.InHash)
+		if !f(fd_ShielderSpentNullifier_in_hash, value) {
+			return
+		}
+	}
+	if x.TxoutStatus != "" {
+		value := protoreflect.ValueOfString(x.TxoutStatus)
+		if !f(fd_ShielderSpentNullifier_txout_status, value) {
+			return
+		}
+	}
+	if x.TxoutHeight != int64(0) {
+		value := protoreflect.ValueOfInt64(x.TxoutHeight)
+		if !f(fd_ShielderSpentNullifier_txout_height, value) {
+			return
+		}
+	}
+	if x.TxoutEpoch != uint64(0) {
+		value := protoreflect.ValueOfUint64(x.TxoutEpoch)
+		if !f(fd_ShielderSpentNullifier_txout_epoch, value) {
+			return
+		}
+	}
+	if x.TxType != "" {
+		value := protoreflect.ValueOfString(x.TxType)
+		if !f(fd_ShielderSpentNullifier_tx_type, value) {
+			return
+		}
+	}
+	if x.OutHash != "" {
+		value := protoreflect.ValueOfString(x.OutHash)
+		if !f(fd_ShielderSpentNullifier_out_hash, value) {
+			return
+		}
+	}
+	if x.OutVout != uint32(0) {
+		value := protoreflect.ValueOfUint32(x.OutVout)
+		if !f(fd_ShielderSpentNullifier_out_vout, value) {
+			return
+		}
+	}
+	if x.Outpoint != "" {
+		value := protoreflect.ValueOfString(x.Outpoint)
+		if !f(fd_ShielderSpentNullifier_outpoint, value) {
+			return
+		}
+	}
 }
 
 // Has reports whether a field is populated.
@@ -3043,6 +4159,28 @@ func (x *fastReflection_ShielderSpentNullifier) Has(fd protoreflect.FieldDescrip
 		return x.NullifierHash != ""
 	case "types.ShielderSpentNullifier.withdrawal_id":
 		return x.WithdrawalId != ""
+	case "types.ShielderSpentNullifier.withdrawal_status":
+		return x.WithdrawalStatus != ""
+	case "types.ShielderSpentNullifier.amount_sats":
+		return x.AmountSats != uint64(0)
+	case "types.ShielderSpentNullifier.fee_sats":
+		return x.FeeSats != uint64(0)
+	case "types.ShielderSpentNullifier.in_hash":
+		return x.InHash != ""
+	case "types.ShielderSpentNullifier.txout_status":
+		return x.TxoutStatus != ""
+	case "types.ShielderSpentNullifier.txout_height":
+		return x.TxoutHeight != int64(0)
+	case "types.ShielderSpentNullifier.txout_epoch":
+		return x.TxoutEpoch != uint64(0)
+	case "types.ShielderSpentNullifier.tx_type":
+		return x.TxType != ""
+	case "types.ShielderSpentNullifier.out_hash":
+		return x.OutHash != ""
+	case "types.ShielderSpentNullifier.out_vout":
+		return x.OutVout != uint32(0)
+	case "types.ShielderSpentNullifier.outpoint":
+		return x.Outpoint != ""
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.ShielderSpentNullifier"))
@@ -3063,6 +4201,28 @@ func (x *fastReflection_ShielderSpentNullifier) Clear(fd protoreflect.FieldDescr
 		x.NullifierHash = ""
 	case "types.ShielderSpentNullifier.withdrawal_id":
 		x.WithdrawalId = ""
+	case "types.ShielderSpentNullifier.withdrawal_status":
+		x.WithdrawalStatus = ""
+	case "types.ShielderSpentNullifier.amount_sats":
+		x.AmountSats = uint64(0)
+	case "types.ShielderSpentNullifier.fee_sats":
+		x.FeeSats = uint64(0)
+	case "types.ShielderSpentNullifier.in_hash":
+		x.InHash = ""
+	case "types.ShielderSpentNullifier.txout_status":
+		x.TxoutStatus = ""
+	case "types.ShielderSpentNullifier.txout_height":
+		x.TxoutHeight = int64(0)
+	case "types.ShielderSpentNullifier.txout_epoch":
+		x.TxoutEpoch = uint64(0)
+	case "types.ShielderSpentNullifier.tx_type":
+		x.TxType = ""
+	case "types.ShielderSpentNullifier.out_hash":
+		x.OutHash = ""
+	case "types.ShielderSpentNullifier.out_vout":
+		x.OutVout = uint32(0)
+	case "types.ShielderSpentNullifier.outpoint":
+		x.Outpoint = ""
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.ShielderSpentNullifier"))
@@ -3084,6 +4244,39 @@ func (x *fastReflection_ShielderSpentNullifier) Get(descriptor protoreflect.Fiel
 		return protoreflect.ValueOfString(value)
 	case "types.ShielderSpentNullifier.withdrawal_id":
 		value := x.WithdrawalId
+		return protoreflect.ValueOfString(value)
+	case "types.ShielderSpentNullifier.withdrawal_status":
+		value := x.WithdrawalStatus
+		return protoreflect.ValueOfString(value)
+	case "types.ShielderSpentNullifier.amount_sats":
+		value := x.AmountSats
+		return protoreflect.ValueOfUint64(value)
+	case "types.ShielderSpentNullifier.fee_sats":
+		value := x.FeeSats
+		return protoreflect.ValueOfUint64(value)
+	case "types.ShielderSpentNullifier.in_hash":
+		value := x.InHash
+		return protoreflect.ValueOfString(value)
+	case "types.ShielderSpentNullifier.txout_status":
+		value := x.TxoutStatus
+		return protoreflect.ValueOfString(value)
+	case "types.ShielderSpentNullifier.txout_height":
+		value := x.TxoutHeight
+		return protoreflect.ValueOfInt64(value)
+	case "types.ShielderSpentNullifier.txout_epoch":
+		value := x.TxoutEpoch
+		return protoreflect.ValueOfUint64(value)
+	case "types.ShielderSpentNullifier.tx_type":
+		value := x.TxType
+		return protoreflect.ValueOfString(value)
+	case "types.ShielderSpentNullifier.out_hash":
+		value := x.OutHash
+		return protoreflect.ValueOfString(value)
+	case "types.ShielderSpentNullifier.out_vout":
+		value := x.OutVout
+		return protoreflect.ValueOfUint32(value)
+	case "types.ShielderSpentNullifier.outpoint":
+		value := x.Outpoint
 		return protoreflect.ValueOfString(value)
 	default:
 		if descriptor.IsExtension() {
@@ -3109,6 +4302,28 @@ func (x *fastReflection_ShielderSpentNullifier) Set(fd protoreflect.FieldDescrip
 		x.NullifierHash = value.Interface().(string)
 	case "types.ShielderSpentNullifier.withdrawal_id":
 		x.WithdrawalId = value.Interface().(string)
+	case "types.ShielderSpentNullifier.withdrawal_status":
+		x.WithdrawalStatus = value.Interface().(string)
+	case "types.ShielderSpentNullifier.amount_sats":
+		x.AmountSats = value.Uint()
+	case "types.ShielderSpentNullifier.fee_sats":
+		x.FeeSats = value.Uint()
+	case "types.ShielderSpentNullifier.in_hash":
+		x.InHash = value.Interface().(string)
+	case "types.ShielderSpentNullifier.txout_status":
+		x.TxoutStatus = value.Interface().(string)
+	case "types.ShielderSpentNullifier.txout_height":
+		x.TxoutHeight = value.Int()
+	case "types.ShielderSpentNullifier.txout_epoch":
+		x.TxoutEpoch = value.Uint()
+	case "types.ShielderSpentNullifier.tx_type":
+		x.TxType = value.Interface().(string)
+	case "types.ShielderSpentNullifier.out_hash":
+		x.OutHash = value.Interface().(string)
+	case "types.ShielderSpentNullifier.out_vout":
+		x.OutVout = uint32(value.Uint())
+	case "types.ShielderSpentNullifier.outpoint":
+		x.Outpoint = value.Interface().(string)
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.ShielderSpentNullifier"))
@@ -3133,6 +4348,28 @@ func (x *fastReflection_ShielderSpentNullifier) Mutable(fd protoreflect.FieldDes
 		panic(fmt.Errorf("field nullifier_hash of message types.ShielderSpentNullifier is not mutable"))
 	case "types.ShielderSpentNullifier.withdrawal_id":
 		panic(fmt.Errorf("field withdrawal_id of message types.ShielderSpentNullifier is not mutable"))
+	case "types.ShielderSpentNullifier.withdrawal_status":
+		panic(fmt.Errorf("field withdrawal_status of message types.ShielderSpentNullifier is not mutable"))
+	case "types.ShielderSpentNullifier.amount_sats":
+		panic(fmt.Errorf("field amount_sats of message types.ShielderSpentNullifier is not mutable"))
+	case "types.ShielderSpentNullifier.fee_sats":
+		panic(fmt.Errorf("field fee_sats of message types.ShielderSpentNullifier is not mutable"))
+	case "types.ShielderSpentNullifier.in_hash":
+		panic(fmt.Errorf("field in_hash of message types.ShielderSpentNullifier is not mutable"))
+	case "types.ShielderSpentNullifier.txout_status":
+		panic(fmt.Errorf("field txout_status of message types.ShielderSpentNullifier is not mutable"))
+	case "types.ShielderSpentNullifier.txout_height":
+		panic(fmt.Errorf("field txout_height of message types.ShielderSpentNullifier is not mutable"))
+	case "types.ShielderSpentNullifier.txout_epoch":
+		panic(fmt.Errorf("field txout_epoch of message types.ShielderSpentNullifier is not mutable"))
+	case "types.ShielderSpentNullifier.tx_type":
+		panic(fmt.Errorf("field tx_type of message types.ShielderSpentNullifier is not mutable"))
+	case "types.ShielderSpentNullifier.out_hash":
+		panic(fmt.Errorf("field out_hash of message types.ShielderSpentNullifier is not mutable"))
+	case "types.ShielderSpentNullifier.out_vout":
+		panic(fmt.Errorf("field out_vout of message types.ShielderSpentNullifier is not mutable"))
+	case "types.ShielderSpentNullifier.outpoint":
+		panic(fmt.Errorf("field outpoint of message types.ShielderSpentNullifier is not mutable"))
 	default:
 		if fd.IsExtension() {
 			panic(fmt.Errorf("proto3 declared messages do not support extensions: types.ShielderSpentNullifier"))
@@ -3149,6 +4386,28 @@ func (x *fastReflection_ShielderSpentNullifier) NewField(fd protoreflect.FieldDe
 	case "types.ShielderSpentNullifier.nullifier_hash":
 		return protoreflect.ValueOfString("")
 	case "types.ShielderSpentNullifier.withdrawal_id":
+		return protoreflect.ValueOfString("")
+	case "types.ShielderSpentNullifier.withdrawal_status":
+		return protoreflect.ValueOfString("")
+	case "types.ShielderSpentNullifier.amount_sats":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.ShielderSpentNullifier.fee_sats":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.ShielderSpentNullifier.in_hash":
+		return protoreflect.ValueOfString("")
+	case "types.ShielderSpentNullifier.txout_status":
+		return protoreflect.ValueOfString("")
+	case "types.ShielderSpentNullifier.txout_height":
+		return protoreflect.ValueOfInt64(int64(0))
+	case "types.ShielderSpentNullifier.txout_epoch":
+		return protoreflect.ValueOfUint64(uint64(0))
+	case "types.ShielderSpentNullifier.tx_type":
+		return protoreflect.ValueOfString("")
+	case "types.ShielderSpentNullifier.out_hash":
+		return protoreflect.ValueOfString("")
+	case "types.ShielderSpentNullifier.out_vout":
+		return protoreflect.ValueOfUint32(uint32(0))
+	case "types.ShielderSpentNullifier.outpoint":
 		return protoreflect.ValueOfString("")
 	default:
 		if fd.IsExtension() {
@@ -3227,6 +4486,45 @@ func (x *fastReflection_ShielderSpentNullifier) ProtoMethods() *protoiface.Metho
 		if l > 0 {
 			n += 1 + l + runtime.Sov(uint64(l))
 		}
+		l = len(x.WithdrawalStatus)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.AmountSats != 0 {
+			n += 1 + runtime.Sov(uint64(x.AmountSats))
+		}
+		if x.FeeSats != 0 {
+			n += 1 + runtime.Sov(uint64(x.FeeSats))
+		}
+		l = len(x.InHash)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		l = len(x.TxoutStatus)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.TxoutHeight != 0 {
+			n += 1 + runtime.Sov(uint64(x.TxoutHeight))
+		}
+		if x.TxoutEpoch != 0 {
+			n += 1 + runtime.Sov(uint64(x.TxoutEpoch))
+		}
+		l = len(x.TxType)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		l = len(x.OutHash)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
+		if x.OutVout != 0 {
+			n += 1 + runtime.Sov(uint64(x.OutVout))
+		}
+		l = len(x.Outpoint)
+		if l > 0 {
+			n += 1 + l + runtime.Sov(uint64(l))
+		}
 		if x.unknownFields != nil {
 			n += len(x.unknownFields)
 		}
@@ -3255,6 +4553,73 @@ func (x *fastReflection_ShielderSpentNullifier) ProtoMethods() *protoiface.Metho
 		if x.unknownFields != nil {
 			i -= len(x.unknownFields)
 			copy(dAtA[i:], x.unknownFields)
+		}
+		if len(x.Outpoint) > 0 {
+			i -= len(x.Outpoint)
+			copy(dAtA[i:], x.Outpoint)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.Outpoint)))
+			i--
+			dAtA[i] = 0x6a
+		}
+		if x.OutVout != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.OutVout))
+			i--
+			dAtA[i] = 0x60
+		}
+		if len(x.OutHash) > 0 {
+			i -= len(x.OutHash)
+			copy(dAtA[i:], x.OutHash)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.OutHash)))
+			i--
+			dAtA[i] = 0x5a
+		}
+		if len(x.TxType) > 0 {
+			i -= len(x.TxType)
+			copy(dAtA[i:], x.TxType)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.TxType)))
+			i--
+			dAtA[i] = 0x52
+		}
+		if x.TxoutEpoch != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.TxoutEpoch))
+			i--
+			dAtA[i] = 0x48
+		}
+		if x.TxoutHeight != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.TxoutHeight))
+			i--
+			dAtA[i] = 0x40
+		}
+		if len(x.TxoutStatus) > 0 {
+			i -= len(x.TxoutStatus)
+			copy(dAtA[i:], x.TxoutStatus)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.TxoutStatus)))
+			i--
+			dAtA[i] = 0x3a
+		}
+		if len(x.InHash) > 0 {
+			i -= len(x.InHash)
+			copy(dAtA[i:], x.InHash)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.InHash)))
+			i--
+			dAtA[i] = 0x32
+		}
+		if x.FeeSats != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.FeeSats))
+			i--
+			dAtA[i] = 0x28
+		}
+		if x.AmountSats != 0 {
+			i = runtime.EncodeVarint(dAtA, i, uint64(x.AmountSats))
+			i--
+			dAtA[i] = 0x20
+		}
+		if len(x.WithdrawalStatus) > 0 {
+			i -= len(x.WithdrawalStatus)
+			copy(dAtA[i:], x.WithdrawalStatus)
+			i = runtime.EncodeVarint(dAtA, i, uint64(len(x.WithdrawalStatus)))
+			i--
+			dAtA[i] = 0x1a
 		}
 		if len(x.WithdrawalId) > 0 {
 			i -= len(x.WithdrawalId)
@@ -3382,6 +4747,293 @@ func (x *fastReflection_ShielderSpentNullifier) ProtoMethods() *protoiface.Metho
 					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
 				}
 				x.WithdrawalId = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 3:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field WithdrawalStatus", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.WithdrawalStatus = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 4:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field AmountSats", wireType)
+				}
+				x.AmountSats = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.AmountSats |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 5:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field FeeSats", wireType)
+				}
+				x.FeeSats = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.FeeSats |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 6:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field InHash", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.InHash = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 7:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field TxoutStatus", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.TxoutStatus = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 8:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field TxoutHeight", wireType)
+				}
+				x.TxoutHeight = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.TxoutHeight |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 9:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field TxoutEpoch", wireType)
+				}
+				x.TxoutEpoch = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.TxoutEpoch |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 10:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field TxType", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.TxType = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 11:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field OutHash", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.OutHash = string(dAtA[iNdEx:postIndex])
+				iNdEx = postIndex
+			case 12:
+				if wireType != 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field OutVout", wireType)
+				}
+				x.OutVout = 0
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					x.OutVout |= uint32(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+			case 13:
+				if wireType != 2 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, fmt.Errorf("proto: wrong wireType = %d for field Outpoint", wireType)
+				}
+				var stringLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLen |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLen := int(stringLen)
+				if intStringLen < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				postIndex := iNdEx + intStringLen
+				if postIndex < 0 {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, runtime.ErrInvalidLength
+				}
+				if postIndex > l {
+					return protoiface.UnmarshalOutput{NoUnkeyedLiterals: input.NoUnkeyedLiterals, Flags: input.Flags}, io.ErrUnexpectedEOF
+				}
+				x.Outpoint = string(dAtA[iNdEx:postIndex])
 				iNdEx = postIndex
 			default:
 				iNdEx = preIndex
@@ -6373,6 +8025,13 @@ type QueryShielderRedeemResponse struct {
 	VaultPubKey     string `protobuf:"bytes,8,opt,name=vault_pub_key,json=vaultPubKey,proto3" json:"vault_pub_key,omitempty"`
 	RequestedHeight int64  `protobuf:"varint,9,opt,name=requested_height,json=requestedHeight,proto3" json:"requested_height,omitempty"`
 	Status          string `protobuf:"bytes,10,opt,name=status,proto3" json:"status,omitempty"`
+	TxoutStatus     string `protobuf:"bytes,11,opt,name=txout_status,json=txoutStatus,proto3" json:"txout_status,omitempty"`
+	TxoutHeight     int64  `protobuf:"varint,12,opt,name=txout_height,json=txoutHeight,proto3" json:"txout_height,omitempty"`
+	TxoutEpoch      uint64 `protobuf:"varint,13,opt,name=txout_epoch,json=txoutEpoch,proto3" json:"txout_epoch,omitempty"`
+	TxType          string `protobuf:"bytes,14,opt,name=tx_type,json=txType,proto3" json:"tx_type,omitempty"`
+	OutHash         string `protobuf:"bytes,15,opt,name=out_hash,json=outHash,proto3" json:"out_hash,omitempty"`
+	OutVout         uint32 `protobuf:"varint,16,opt,name=out_vout,json=outVout,proto3" json:"out_vout,omitempty"`
+	Outpoint        string `protobuf:"bytes,17,opt,name=outpoint,proto3" json:"outpoint,omitempty"`
 }
 
 func (x *QueryShielderRedeemResponse) Reset() {
@@ -6465,6 +8124,55 @@ func (x *QueryShielderRedeemResponse) GetStatus() string {
 	return ""
 }
 
+func (x *QueryShielderRedeemResponse) GetTxoutStatus() string {
+	if x != nil {
+		return x.TxoutStatus
+	}
+	return ""
+}
+
+func (x *QueryShielderRedeemResponse) GetTxoutHeight() int64 {
+	if x != nil {
+		return x.TxoutHeight
+	}
+	return 0
+}
+
+func (x *QueryShielderRedeemResponse) GetTxoutEpoch() uint64 {
+	if x != nil {
+		return x.TxoutEpoch
+	}
+	return 0
+}
+
+func (x *QueryShielderRedeemResponse) GetTxType() string {
+	if x != nil {
+		return x.TxType
+	}
+	return ""
+}
+
+func (x *QueryShielderRedeemResponse) GetOutHash() string {
+	if x != nil {
+		return x.OutHash
+	}
+	return ""
+}
+
+func (x *QueryShielderRedeemResponse) GetOutVout() uint32 {
+	if x != nil {
+		return x.OutVout
+	}
+	return 0
+}
+
+func (x *QueryShielderRedeemResponse) GetOutpoint() string {
+	if x != nil {
+		return x.Outpoint
+	}
+	return ""
+}
+
 type QueryShielderNullifierRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -6513,9 +8221,20 @@ type QueryShielderNullifierResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	NullifierHash string `protobuf:"bytes,1,opt,name=nullifier_hash,json=nullifierHash,proto3" json:"nullifier_hash,omitempty"`
-	Spent         bool   `protobuf:"varint,2,opt,name=spent,proto3" json:"spent,omitempty"`
-	WithdrawalId  string `protobuf:"bytes,3,opt,name=withdrawal_id,json=withdrawalId,proto3" json:"withdrawal_id,omitempty"`
+	NullifierHash    string `protobuf:"bytes,1,opt,name=nullifier_hash,json=nullifierHash,proto3" json:"nullifier_hash,omitempty"`
+	Spent            bool   `protobuf:"varint,2,opt,name=spent,proto3" json:"spent,omitempty"`
+	WithdrawalId     string `protobuf:"bytes,3,opt,name=withdrawal_id,json=withdrawalId,proto3" json:"withdrawal_id,omitempty"`
+	WithdrawalStatus string `protobuf:"bytes,4,opt,name=withdrawal_status,json=withdrawalStatus,proto3" json:"withdrawal_status,omitempty"`
+	AmountSats       uint64 `protobuf:"varint,5,opt,name=amount_sats,json=amountSats,proto3" json:"amount_sats,omitempty"`
+	FeeSats          uint64 `protobuf:"varint,6,opt,name=fee_sats,json=feeSats,proto3" json:"fee_sats,omitempty"`
+	InHash           string `protobuf:"bytes,7,opt,name=in_hash,json=inHash,proto3" json:"in_hash,omitempty"`
+	TxoutStatus      string `protobuf:"bytes,8,opt,name=txout_status,json=txoutStatus,proto3" json:"txout_status,omitempty"`
+	TxoutHeight      int64  `protobuf:"varint,9,opt,name=txout_height,json=txoutHeight,proto3" json:"txout_height,omitempty"`
+	TxoutEpoch       uint64 `protobuf:"varint,10,opt,name=txout_epoch,json=txoutEpoch,proto3" json:"txout_epoch,omitempty"`
+	TxType           string `protobuf:"bytes,11,opt,name=tx_type,json=txType,proto3" json:"tx_type,omitempty"`
+	OutHash          string `protobuf:"bytes,12,opt,name=out_hash,json=outHash,proto3" json:"out_hash,omitempty"`
+	OutVout          uint32 `protobuf:"varint,13,opt,name=out_vout,json=outVout,proto3" json:"out_vout,omitempty"`
+	Outpoint         string `protobuf:"bytes,14,opt,name=outpoint,proto3" json:"outpoint,omitempty"`
 }
 
 func (x *QueryShielderNullifierResponse) Reset() {
@@ -6555,6 +8274,83 @@ func (x *QueryShielderNullifierResponse) GetSpent() bool {
 func (x *QueryShielderNullifierResponse) GetWithdrawalId() string {
 	if x != nil {
 		return x.WithdrawalId
+	}
+	return ""
+}
+
+func (x *QueryShielderNullifierResponse) GetWithdrawalStatus() string {
+	if x != nil {
+		return x.WithdrawalStatus
+	}
+	return ""
+}
+
+func (x *QueryShielderNullifierResponse) GetAmountSats() uint64 {
+	if x != nil {
+		return x.AmountSats
+	}
+	return 0
+}
+
+func (x *QueryShielderNullifierResponse) GetFeeSats() uint64 {
+	if x != nil {
+		return x.FeeSats
+	}
+	return 0
+}
+
+func (x *QueryShielderNullifierResponse) GetInHash() string {
+	if x != nil {
+		return x.InHash
+	}
+	return ""
+}
+
+func (x *QueryShielderNullifierResponse) GetTxoutStatus() string {
+	if x != nil {
+		return x.TxoutStatus
+	}
+	return ""
+}
+
+func (x *QueryShielderNullifierResponse) GetTxoutHeight() int64 {
+	if x != nil {
+		return x.TxoutHeight
+	}
+	return 0
+}
+
+func (x *QueryShielderNullifierResponse) GetTxoutEpoch() uint64 {
+	if x != nil {
+		return x.TxoutEpoch
+	}
+	return 0
+}
+
+func (x *QueryShielderNullifierResponse) GetTxType() string {
+	if x != nil {
+		return x.TxType
+	}
+	return ""
+}
+
+func (x *QueryShielderNullifierResponse) GetOutHash() string {
+	if x != nil {
+		return x.OutHash
+	}
+	return ""
+}
+
+func (x *QueryShielderNullifierResponse) GetOutVout() uint32 {
+	if x != nil {
+		return x.OutVout
+	}
+	return 0
+}
+
+func (x *QueryShielderNullifierResponse) GetOutpoint() string {
+	if x != nil {
+		return x.Outpoint
 	}
 	return ""
 }
@@ -6607,8 +8403,19 @@ type ShielderSpentNullifier struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	NullifierHash string `protobuf:"bytes,1,opt,name=nullifier_hash,json=nullifierHash,proto3" json:"nullifier_hash,omitempty"`
-	WithdrawalId  string `protobuf:"bytes,2,opt,name=withdrawal_id,json=withdrawalId,proto3" json:"withdrawal_id,omitempty"`
+	NullifierHash    string `protobuf:"bytes,1,opt,name=nullifier_hash,json=nullifierHash,proto3" json:"nullifier_hash,omitempty"`
+	WithdrawalId     string `protobuf:"bytes,2,opt,name=withdrawal_id,json=withdrawalId,proto3" json:"withdrawal_id,omitempty"`
+	WithdrawalStatus string `protobuf:"bytes,3,opt,name=withdrawal_status,json=withdrawalStatus,proto3" json:"withdrawal_status,omitempty"`
+	AmountSats       uint64 `protobuf:"varint,4,opt,name=amount_sats,json=amountSats,proto3" json:"amount_sats,omitempty"`
+	FeeSats          uint64 `protobuf:"varint,5,opt,name=fee_sats,json=feeSats,proto3" json:"fee_sats,omitempty"`
+	InHash           string `protobuf:"bytes,6,opt,name=in_hash,json=inHash,proto3" json:"in_hash,omitempty"`
+	TxoutStatus      string `protobuf:"bytes,7,opt,name=txout_status,json=txoutStatus,proto3" json:"txout_status,omitempty"`
+	TxoutHeight      int64  `protobuf:"varint,8,opt,name=txout_height,json=txoutHeight,proto3" json:"txout_height,omitempty"`
+	TxoutEpoch       uint64 `protobuf:"varint,9,opt,name=txout_epoch,json=txoutEpoch,proto3" json:"txout_epoch,omitempty"`
+	TxType           string `protobuf:"bytes,10,opt,name=tx_type,json=txType,proto3" json:"tx_type,omitempty"`
+	OutHash          string `protobuf:"bytes,11,opt,name=out_hash,json=outHash,proto3" json:"out_hash,omitempty"`
+	OutVout          uint32 `protobuf:"varint,12,opt,name=out_vout,json=outVout,proto3" json:"out_vout,omitempty"`
+	Outpoint         string `protobuf:"bytes,13,opt,name=outpoint,proto3" json:"outpoint,omitempty"`
 }
 
 func (x *ShielderSpentNullifier) Reset() {
@@ -6641,6 +8448,83 @@ func (x *ShielderSpentNullifier) GetNullifierHash() string {
 func (x *ShielderSpentNullifier) GetWithdrawalId() string {
 	if x != nil {
 		return x.WithdrawalId
+	}
+	return ""
+}
+
+func (x *ShielderSpentNullifier) GetWithdrawalStatus() string {
+	if x != nil {
+		return x.WithdrawalStatus
+	}
+	return ""
+}
+
+func (x *ShielderSpentNullifier) GetAmountSats() uint64 {
+	if x != nil {
+		return x.AmountSats
+	}
+	return 0
+}
+
+func (x *ShielderSpentNullifier) GetFeeSats() uint64 {
+	if x != nil {
+		return x.FeeSats
+	}
+	return 0
+}
+
+func (x *ShielderSpentNullifier) GetInHash() string {
+	if x != nil {
+		return x.InHash
+	}
+	return ""
+}
+
+func (x *ShielderSpentNullifier) GetTxoutStatus() string {
+	if x != nil {
+		return x.TxoutStatus
+	}
+	return ""
+}
+
+func (x *ShielderSpentNullifier) GetTxoutHeight() int64 {
+	if x != nil {
+		return x.TxoutHeight
+	}
+	return 0
+}
+
+func (x *ShielderSpentNullifier) GetTxoutEpoch() uint64 {
+	if x != nil {
+		return x.TxoutEpoch
+	}
+	return 0
+}
+
+func (x *ShielderSpentNullifier) GetTxType() string {
+	if x != nil {
+		return x.TxType
+	}
+	return ""
+}
+
+func (x *ShielderSpentNullifier) GetOutHash() string {
+	if x != nil {
+		return x.OutHash
+	}
+	return ""
+}
+
+func (x *ShielderSpentNullifier) GetOutVout() uint32 {
+	if x != nil {
+		return x.OutVout
+	}
+	return 0
+}
+
+func (x *ShielderSpentNullifier) GetOutpoint() string {
+	if x != nil {
+		return x.Outpoint
 	}
 	return ""
 }
@@ -6941,7 +8825,7 @@ var file_types_query_shielder_proto_rawDesc = []byte{
 	0x77, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x0c, 0x77, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x49,
 	0x64, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0xe4, 0x02, 0x0a, 0x1b, 0x51, 0x75,
+	0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0xb6, 0x04, 0x0a, 0x1b, 0x51, 0x75,
 	0x65, 0x72, 0x79, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x52, 0x65, 0x64, 0x65, 0x65,
 	0x6d, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x23, 0x0a, 0x0d, 0x77, 0x69, 0x74,
 	0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
@@ -6964,102 +8848,158 @@ var file_types_query_shielder_proto_rawDesc = []byte{
 	0x74, 0x18, 0x09, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0f, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x65, 0x64, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74,
 	0x75, 0x73, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73,
-	0x22, 0x5e, 0x0a, 0x1d, 0x51, 0x75, 0x65, 0x72, 0x79, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65,
-	0x72, 0x4e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x12, 0x25, 0x0a, 0x0e, 0x6e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x5f, 0x68,
-	0x61, 0x73, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x6e, 0x75, 0x6c, 0x6c, 0x69,
-	0x66, 0x69, 0x65, 0x72, 0x48, 0x61, 0x73, 0x68, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67,
-	0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74,
-	0x22, 0x82, 0x01, 0x0a, 0x1e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64,
-	0x65, 0x72, 0x4e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x12, 0x25, 0x0a, 0x0e, 0x6e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72,
+	0x12, 0x21, 0x0a, 0x0c, 0x74, 0x78, 0x6f, 0x75, 0x74, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73,
+	0x18, 0x0b, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x74, 0x78, 0x6f, 0x75, 0x74, 0x53, 0x74, 0x61,
+	0x74, 0x75, 0x73, 0x12, 0x21, 0x0a, 0x0c, 0x74, 0x78, 0x6f, 0x75, 0x74, 0x5f, 0x68, 0x65, 0x69,
+	0x67, 0x68, 0x74, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0b, 0x74, 0x78, 0x6f, 0x75, 0x74,
+	0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x1f, 0x0a, 0x0b, 0x74, 0x78, 0x6f, 0x75, 0x74, 0x5f,
+	0x65, 0x70, 0x6f, 0x63, 0x68, 0x18, 0x0d, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0a, 0x74, 0x78, 0x6f,
+	0x75, 0x74, 0x45, 0x70, 0x6f, 0x63, 0x68, 0x12, 0x17, 0x0a, 0x07, 0x74, 0x78, 0x5f, 0x74, 0x79,
+	0x70, 0x65, 0x18, 0x0e, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x74, 0x78, 0x54, 0x79, 0x70, 0x65,
+	0x12, 0x19, 0x0a, 0x08, 0x6f, 0x75, 0x74, 0x5f, 0x68, 0x61, 0x73, 0x68, 0x18, 0x0f, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x07, 0x6f, 0x75, 0x74, 0x48, 0x61, 0x73, 0x68, 0x12, 0x19, 0x0a, 0x08, 0x6f,
+	0x75, 0x74, 0x5f, 0x76, 0x6f, 0x75, 0x74, 0x18, 0x10, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x07, 0x6f,
+	0x75, 0x74, 0x56, 0x6f, 0x75, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x6f, 0x75, 0x74, 0x70, 0x6f, 0x69,
+	0x6e, 0x74, 0x18, 0x11, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x6f, 0x75, 0x74, 0x70, 0x6f, 0x69,
+	0x6e, 0x74, 0x22, 0x5e, 0x0a, 0x1d, 0x51, 0x75, 0x65, 0x72, 0x79, 0x53, 0x68, 0x69, 0x65, 0x6c,
+	0x64, 0x65, 0x72, 0x4e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x12, 0x25, 0x0a, 0x0e, 0x6e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72,
 	0x5f, 0x68, 0x61, 0x73, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x6e, 0x75, 0x6c,
-	0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x48, 0x61, 0x73, 0x68, 0x12, 0x14, 0x0a, 0x05, 0x73, 0x70,
-	0x65, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05, 0x73, 0x70, 0x65, 0x6e, 0x74,
+	0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x48, 0x61, 0x73, 0x68, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65,
+	0x69, 0x67, 0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67,
+	0x68, 0x74, 0x22, 0xd6, 0x03, 0x0a, 0x1e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x53, 0x68, 0x69, 0x65,
+	0x6c, 0x64, 0x65, 0x72, 0x4e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x25, 0x0a, 0x0e, 0x6e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69,
+	0x65, 0x72, 0x5f, 0x68, 0x61, 0x73, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x6e,
+	0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x48, 0x61, 0x73, 0x68, 0x12, 0x14, 0x0a, 0x05,
+	0x73, 0x70, 0x65, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05, 0x73, 0x70, 0x65,
+	0x6e, 0x74, 0x12, 0x23, 0x0a, 0x0d, 0x77, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c,
+	0x5f, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x77, 0x69, 0x74, 0x68, 0x64,
+	0x72, 0x61, 0x77, 0x61, 0x6c, 0x49, 0x64, 0x12, 0x2b, 0x0a, 0x11, 0x77, 0x69, 0x74, 0x68, 0x64,
+	0x72, 0x61, 0x77, 0x61, 0x6c, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x04, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x10, 0x77, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x53, 0x74,
+	0x61, 0x74, 0x75, 0x73, 0x12, 0x1f, 0x0a, 0x0b, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x73,
+	0x61, 0x74, 0x73, 0x18, 0x05, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0a, 0x61, 0x6d, 0x6f, 0x75, 0x6e,
+	0x74, 0x53, 0x61, 0x74, 0x73, 0x12, 0x19, 0x0a, 0x08, 0x66, 0x65, 0x65, 0x5f, 0x73, 0x61, 0x74,
+	0x73, 0x18, 0x06, 0x20, 0x01, 0x28, 0x04, 0x52, 0x07, 0x66, 0x65, 0x65, 0x53, 0x61, 0x74, 0x73,
+	0x12, 0x17, 0x0a, 0x07, 0x69, 0x6e, 0x5f, 0x68, 0x61, 0x73, 0x68, 0x18, 0x07, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x06, 0x69, 0x6e, 0x48, 0x61, 0x73, 0x68, 0x12, 0x21, 0x0a, 0x0c, 0x74, 0x78, 0x6f,
+	0x75, 0x74, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x08, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x0b, 0x74, 0x78, 0x6f, 0x75, 0x74, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x21, 0x0a, 0x0c,
+	0x74, 0x78, 0x6f, 0x75, 0x74, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x09, 0x20, 0x01,
+	0x28, 0x03, 0x52, 0x0b, 0x74, 0x78, 0x6f, 0x75, 0x74, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12,
+	0x1f, 0x0a, 0x0b, 0x74, 0x78, 0x6f, 0x75, 0x74, 0x5f, 0x65, 0x70, 0x6f, 0x63, 0x68, 0x18, 0x0a,
+	0x20, 0x01, 0x28, 0x04, 0x52, 0x0a, 0x74, 0x78, 0x6f, 0x75, 0x74, 0x45, 0x70, 0x6f, 0x63, 0x68,
+	0x12, 0x17, 0x0a, 0x07, 0x74, 0x78, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x18, 0x0b, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x06, 0x74, 0x78, 0x54, 0x79, 0x70, 0x65, 0x12, 0x19, 0x0a, 0x08, 0x6f, 0x75, 0x74,
+	0x5f, 0x68, 0x61, 0x73, 0x68, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6f, 0x75, 0x74,
+	0x48, 0x61, 0x73, 0x68, 0x12, 0x19, 0x0a, 0x08, 0x6f, 0x75, 0x74, 0x5f, 0x76, 0x6f, 0x75, 0x74,
+	0x18, 0x0d, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x07, 0x6f, 0x75, 0x74, 0x56, 0x6f, 0x75, 0x74, 0x12,
+	0x1a, 0x0a, 0x08, 0x6f, 0x75, 0x74, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x18, 0x0e, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x08, 0x6f, 0x75, 0x74, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x22, 0x61, 0x0a, 0x12, 0x53,
+	0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x4e, 0x6f, 0x74, 0x65, 0x52, 0x65, 0x63, 0x6f, 0x72,
+	0x64, 0x12, 0x1e, 0x0a, 0x0a, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e, 0x74, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e,
+	0x74, 0x12, 0x2b, 0x0a, 0x11, 0x64, 0x65, 0x6e, 0x6f, 0x6d, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f,
+	0x6e, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x04, 0x52, 0x10, 0x64, 0x65,
+	0x6e, 0x6f, 0x6d, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x61, 0x74, 0x73, 0x22, 0xb8,
+	0x03, 0x0a, 0x16, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x53, 0x70, 0x65, 0x6e, 0x74,
+	0x4e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x12, 0x25, 0x0a, 0x0e, 0x6e, 0x75, 0x6c,
+	0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x5f, 0x68, 0x61, 0x73, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x0d, 0x6e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x48, 0x61, 0x73, 0x68,
 	0x12, 0x23, 0x0a, 0x0d, 0x77, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x5f, 0x69,
-	0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x77, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61,
-	0x77, 0x61, 0x6c, 0x49, 0x64, 0x22, 0x61, 0x0a, 0x12, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65,
-	0x72, 0x4e, 0x6f, 0x74, 0x65, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x12, 0x1e, 0x0a, 0x0a, 0x63,
-	0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x0a, 0x63, 0x6f, 0x6d, 0x6d, 0x69, 0x74, 0x6d, 0x65, 0x6e, 0x74, 0x12, 0x2b, 0x0a, 0x11, 0x64,
-	0x65, 0x6e, 0x6f, 0x6d, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x73, 0x61, 0x74, 0x73,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x04, 0x52, 0x10, 0x64, 0x65, 0x6e, 0x6f, 0x6d, 0x69, 0x6e, 0x61,
-	0x74, 0x69, 0x6f, 0x6e, 0x53, 0x61, 0x74, 0x73, 0x22, 0x64, 0x0a, 0x16, 0x53, 0x68, 0x69, 0x65,
-	0x6c, 0x64, 0x65, 0x72, 0x53, 0x70, 0x65, 0x6e, 0x74, 0x4e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69,
-	0x65, 0x72, 0x12, 0x25, 0x0a, 0x0e, 0x6e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x5f,
-	0x68, 0x61, 0x73, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x6e, 0x75, 0x6c, 0x6c,
-	0x69, 0x66, 0x69, 0x65, 0x72, 0x48, 0x61, 0x73, 0x68, 0x12, 0x23, 0x0a, 0x0d, 0x77, 0x69, 0x74,
-	0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x0c, 0x77, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x49, 0x64, 0x22, 0xbb,
-	0x01, 0x0a, 0x18, 0x51, 0x75, 0x65, 0x72, 0x79, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72,
-	0x53, 0x79, 0x6e, 0x63, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x68,
-	0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69,
-	0x67, 0x68, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x6c, 0x69, 0x6d, 0x69, 0x74, 0x18, 0x02, 0x20, 0x01,
-	0x28, 0x04, 0x52, 0x05, 0x6c, 0x69, 0x6d, 0x69, 0x74, 0x12, 0x25, 0x0a, 0x0e, 0x64, 0x65, 0x70,
-	0x6f, 0x73, 0x69, 0x74, 0x5f, 0x63, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x18, 0x03, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x0d, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x43, 0x75, 0x72, 0x73, 0x6f, 0x72,
-	0x12, 0x1f, 0x0a, 0x0b, 0x6e, 0x6f, 0x74, 0x65, 0x5f, 0x63, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x18,
-	0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6e, 0x6f, 0x74, 0x65, 0x43, 0x75, 0x72, 0x73, 0x6f,
-	0x72, 0x12, 0x29, 0x0a, 0x10, 0x6e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x5f, 0x63,
-	0x75, 0x72, 0x73, 0x6f, 0x72, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0f, 0x6e, 0x75, 0x6c,
-	0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x43, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x22, 0xe0, 0x03, 0x0a,
-	0x19, 0x51, 0x75, 0x65, 0x72, 0x79, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x53, 0x79,
-	0x6e, 0x63, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2f, 0x0a, 0x05, 0x6e, 0x6f,
-	0x74, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x74, 0x79, 0x70, 0x65,
-	0x73, 0x2e, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x4e, 0x6f, 0x74, 0x65, 0x52, 0x65,
-	0x63, 0x6f, 0x72, 0x64, 0x52, 0x05, 0x6e, 0x6f, 0x74, 0x65, 0x73, 0x12, 0x3d, 0x0a, 0x0a, 0x6e,
-	0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32,
-	0x1d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72,
-	0x53, 0x70, 0x65, 0x6e, 0x74, 0x4e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x52, 0x0a,
-	0x6e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x73, 0x12, 0x37, 0x0a, 0x08, 0x64, 0x65,
-	0x70, 0x6f, 0x73, 0x69, 0x74, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1b, 0x2e, 0x74,
-	0x79, 0x70, 0x65, 0x73, 0x2e, 0x51, 0x75, 0x65, 0x72, 0x79, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69,
-	0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x52, 0x08, 0x64, 0x65, 0x70, 0x6f, 0x73,
-	0x69, 0x74, 0x73, 0x12, 0x2e, 0x0a, 0x13, 0x6e, 0x65, 0x78, 0x74, 0x5f, 0x64, 0x65, 0x70, 0x6f,
-	0x73, 0x69, 0x74, 0x5f, 0x63, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x11, 0x6e, 0x65, 0x78, 0x74, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x43, 0x75, 0x72,
-	0x73, 0x6f, 0x72, 0x12, 0x28, 0x0a, 0x10, 0x6e, 0x65, 0x78, 0x74, 0x5f, 0x6e, 0x6f, 0x74, 0x65,
-	0x5f, 0x63, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x6e,
-	0x65, 0x78, 0x74, 0x4e, 0x6f, 0x74, 0x65, 0x43, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x12, 0x32, 0x0a,
-	0x15, 0x6e, 0x65, 0x78, 0x74, 0x5f, 0x6e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x5f,
-	0x63, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x13, 0x6e, 0x65,
-	0x78, 0x74, 0x4e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x43, 0x75, 0x72, 0x73, 0x6f,
-	0x72, 0x12, 0x19, 0x0a, 0x08, 0x68, 0x61, 0x73, 0x5f, 0x6d, 0x6f, 0x72, 0x65, 0x18, 0x07, 0x20,
-	0x01, 0x28, 0x08, 0x52, 0x07, 0x68, 0x61, 0x73, 0x4d, 0x6f, 0x72, 0x65, 0x12, 0x25, 0x0a, 0x0e,
-	0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x73, 0x18, 0x08,
-	0x20, 0x01, 0x28, 0x04, 0x52, 0x0d, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x44, 0x65, 0x70, 0x6f, 0x73,
-	0x69, 0x74, 0x73, 0x12, 0x1f, 0x0a, 0x0b, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x6e, 0x6f, 0x74,
-	0x65, 0x73, 0x18, 0x09, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0a, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x4e,
-	0x6f, 0x74, 0x65, 0x73, 0x12, 0x29, 0x0a, 0x10, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x6e, 0x75,
-	0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x73, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0f,
-	0x74, 0x6f, 0x74, 0x61, 0x6c, 0x4e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x73, 0x22,
-	0x5a, 0x0a, 0x1f, 0x51, 0x75, 0x65, 0x72, 0x79, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72,
-	0x52, 0x65, 0x64, 0x65, 0x65, 0x6d, 0x51, 0x75, 0x6f, 0x74, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x12, 0x1f, 0x0a, 0x0b, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x73, 0x61, 0x74,
-	0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0a, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x53,
-	0x61, 0x74, 0x73, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0xc5, 0x01, 0x0a, 0x20,
-	0x51, 0x75, 0x65, 0x72, 0x79, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x52, 0x65, 0x64,
-	0x65, 0x65, 0x6d, 0x51, 0x75, 0x6f, 0x74, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x12, 0x1f, 0x0a, 0x0b, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0a, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x53, 0x61, 0x74,
-	0x73, 0x12, 0x19, 0x0a, 0x08, 0x66, 0x65, 0x65, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x04, 0x52, 0x07, 0x66, 0x65, 0x65, 0x53, 0x61, 0x74, 0x73, 0x12, 0x19, 0x0a, 0x08,
-	0x6e, 0x65, 0x74, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x04, 0x52, 0x07,
-	0x6e, 0x65, 0x74, 0x53, 0x61, 0x74, 0x73, 0x12, 0x28, 0x0a, 0x10, 0x66, 0x65, 0x65, 0x5f, 0x62,
-	0x61, 0x73, 0x69, 0x73, 0x5f, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x73, 0x18, 0x04, 0x20, 0x01, 0x28,
-	0x04, 0x52, 0x0e, 0x66, 0x65, 0x65, 0x42, 0x61, 0x73, 0x69, 0x73, 0x50, 0x6f, 0x69, 0x6e, 0x74,
-	0x73, 0x12, 0x20, 0x0a, 0x0c, 0x66, 0x65, 0x65, 0x5f, 0x6d, 0x69, 0x6e, 0x5f, 0x73, 0x61, 0x74,
-	0x73, 0x18, 0x05, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0a, 0x66, 0x65, 0x65, 0x4d, 0x69, 0x6e, 0x53,
-	0x61, 0x74, 0x73, 0x42, 0x82, 0x01, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65,
-	0x73, 0x42, 0x12, 0x51, 0x75, 0x65, 0x72, 0x79, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72,
-	0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
-	0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68,
-	0x2f, 0x67, 0x6f, 0x2d, 0x74, 0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70, 0x69,
-	0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x05, 0x54,
-	0x79, 0x70, 0x65, 0x73, 0xca, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2, 0x02, 0x11, 0x54,
-	0x79, 0x70, 0x65, 0x73, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
-	0xea, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x77, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61,
+	0x77, 0x61, 0x6c, 0x49, 0x64, 0x12, 0x2b, 0x0a, 0x11, 0x77, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61,
+	0x77, 0x61, 0x6c, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x10, 0x77, 0x69, 0x74, 0x68, 0x64, 0x72, 0x61, 0x77, 0x61, 0x6c, 0x53, 0x74, 0x61, 0x74,
+	0x75, 0x73, 0x12, 0x1f, 0x0a, 0x0b, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x73, 0x61, 0x74,
+	0x73, 0x18, 0x04, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0a, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x53,
+	0x61, 0x74, 0x73, 0x12, 0x19, 0x0a, 0x08, 0x66, 0x65, 0x65, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18,
+	0x05, 0x20, 0x01, 0x28, 0x04, 0x52, 0x07, 0x66, 0x65, 0x65, 0x53, 0x61, 0x74, 0x73, 0x12, 0x17,
+	0x0a, 0x07, 0x69, 0x6e, 0x5f, 0x68, 0x61, 0x73, 0x68, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x06, 0x69, 0x6e, 0x48, 0x61, 0x73, 0x68, 0x12, 0x21, 0x0a, 0x0c, 0x74, 0x78, 0x6f, 0x75, 0x74,
+	0x5f, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x07, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x74,
+	0x78, 0x6f, 0x75, 0x74, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x21, 0x0a, 0x0c, 0x74, 0x78,
+	0x6f, 0x75, 0x74, 0x5f, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x08, 0x20, 0x01, 0x28, 0x03,
+	0x52, 0x0b, 0x74, 0x78, 0x6f, 0x75, 0x74, 0x48, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x1f, 0x0a,
+	0x0b, 0x74, 0x78, 0x6f, 0x75, 0x74, 0x5f, 0x65, 0x70, 0x6f, 0x63, 0x68, 0x18, 0x09, 0x20, 0x01,
+	0x28, 0x04, 0x52, 0x0a, 0x74, 0x78, 0x6f, 0x75, 0x74, 0x45, 0x70, 0x6f, 0x63, 0x68, 0x12, 0x17,
+	0x0a, 0x07, 0x74, 0x78, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x06, 0x74, 0x78, 0x54, 0x79, 0x70, 0x65, 0x12, 0x19, 0x0a, 0x08, 0x6f, 0x75, 0x74, 0x5f, 0x68,
+	0x61, 0x73, 0x68, 0x18, 0x0b, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6f, 0x75, 0x74, 0x48, 0x61,
+	0x73, 0x68, 0x12, 0x19, 0x0a, 0x08, 0x6f, 0x75, 0x74, 0x5f, 0x76, 0x6f, 0x75, 0x74, 0x18, 0x0c,
+	0x20, 0x01, 0x28, 0x0d, 0x52, 0x07, 0x6f, 0x75, 0x74, 0x56, 0x6f, 0x75, 0x74, 0x12, 0x1a, 0x0a,
+	0x08, 0x6f, 0x75, 0x74, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x18, 0x0d, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x08, 0x6f, 0x75, 0x74, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x22, 0xbb, 0x01, 0x0a, 0x18, 0x51, 0x75,
+	0x65, 0x72, 0x79, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x53, 0x79, 0x6e, 0x63, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x16, 0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x12, 0x14,
+	0x0a, 0x05, 0x6c, 0x69, 0x6d, 0x69, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x04, 0x52, 0x05, 0x6c,
+	0x69, 0x6d, 0x69, 0x74, 0x12, 0x25, 0x0a, 0x0e, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x5f,
+	0x63, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x64, 0x65,
+	0x70, 0x6f, 0x73, 0x69, 0x74, 0x43, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x12, 0x1f, 0x0a, 0x0b, 0x6e,
+	0x6f, 0x74, 0x65, 0x5f, 0x63, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x0a, 0x6e, 0x6f, 0x74, 0x65, 0x43, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x12, 0x29, 0x0a, 0x10,
+	0x6e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x5f, 0x63, 0x75, 0x72, 0x73, 0x6f, 0x72,
+	0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0f, 0x6e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65,
+	0x72, 0x43, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x22, 0xe0, 0x03, 0x0a, 0x19, 0x51, 0x75, 0x65, 0x72,
+	0x79, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x53, 0x79, 0x6e, 0x63, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2f, 0x0a, 0x05, 0x6e, 0x6f, 0x74, 0x65, 0x73, 0x18, 0x01,
+	0x20, 0x03, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x53, 0x68, 0x69,
+	0x65, 0x6c, 0x64, 0x65, 0x72, 0x4e, 0x6f, 0x74, 0x65, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x52,
+	0x05, 0x6e, 0x6f, 0x74, 0x65, 0x73, 0x12, 0x3d, 0x0a, 0x0a, 0x6e, 0x75, 0x6c, 0x6c, 0x69, 0x66,
+	0x69, 0x65, 0x72, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x74, 0x79, 0x70,
+	0x65, 0x73, 0x2e, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x53, 0x70, 0x65, 0x6e, 0x74,
+	0x4e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x52, 0x0a, 0x6e, 0x75, 0x6c, 0x6c, 0x69,
+	0x66, 0x69, 0x65, 0x72, 0x73, 0x12, 0x37, 0x0a, 0x08, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74,
+	0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1b, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e,
+	0x51, 0x75, 0x65, 0x72, 0x79, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x52, 0x08, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x73, 0x12, 0x2e,
+	0x0a, 0x13, 0x6e, 0x65, 0x78, 0x74, 0x5f, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x5f, 0x63,
+	0x75, 0x72, 0x73, 0x6f, 0x72, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x11, 0x6e, 0x65, 0x78,
+	0x74, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x43, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x12, 0x28,
+	0x0a, 0x10, 0x6e, 0x65, 0x78, 0x74, 0x5f, 0x6e, 0x6f, 0x74, 0x65, 0x5f, 0x63, 0x75, 0x72, 0x73,
+	0x6f, 0x72, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x6e, 0x65, 0x78, 0x74, 0x4e, 0x6f,
+	0x74, 0x65, 0x43, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x12, 0x32, 0x0a, 0x15, 0x6e, 0x65, 0x78, 0x74,
+	0x5f, 0x6e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x5f, 0x63, 0x75, 0x72, 0x73, 0x6f,
+	0x72, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x13, 0x6e, 0x65, 0x78, 0x74, 0x4e, 0x75, 0x6c,
+	0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x43, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x12, 0x19, 0x0a, 0x08,
+	0x68, 0x61, 0x73, 0x5f, 0x6d, 0x6f, 0x72, 0x65, 0x18, 0x07, 0x20, 0x01, 0x28, 0x08, 0x52, 0x07,
+	0x68, 0x61, 0x73, 0x4d, 0x6f, 0x72, 0x65, 0x12, 0x25, 0x0a, 0x0e, 0x74, 0x6f, 0x74, 0x61, 0x6c,
+	0x5f, 0x64, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x73, 0x18, 0x08, 0x20, 0x01, 0x28, 0x04, 0x52,
+	0x0d, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x44, 0x65, 0x70, 0x6f, 0x73, 0x69, 0x74, 0x73, 0x12, 0x1f,
+	0x0a, 0x0b, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x6e, 0x6f, 0x74, 0x65, 0x73, 0x18, 0x09, 0x20,
+	0x01, 0x28, 0x04, 0x52, 0x0a, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x4e, 0x6f, 0x74, 0x65, 0x73, 0x12,
+	0x29, 0x0a, 0x10, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x6e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69,
+	0x65, 0x72, 0x73, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0f, 0x74, 0x6f, 0x74, 0x61, 0x6c,
+	0x4e, 0x75, 0x6c, 0x6c, 0x69, 0x66, 0x69, 0x65, 0x72, 0x73, 0x22, 0x5a, 0x0a, 0x1f, 0x51, 0x75,
+	0x65, 0x72, 0x79, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x52, 0x65, 0x64, 0x65, 0x65,
+	0x6d, 0x51, 0x75, 0x6f, 0x74, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1f, 0x0a,
+	0x0b, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x04, 0x52, 0x0a, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x53, 0x61, 0x74, 0x73, 0x12, 0x16,
+	0x0a, 0x06, 0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06,
+	0x68, 0x65, 0x69, 0x67, 0x68, 0x74, 0x22, 0xc5, 0x01, 0x0a, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79,
+	0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x52, 0x65, 0x64, 0x65, 0x65, 0x6d, 0x51, 0x75,
+	0x6f, 0x74, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1f, 0x0a, 0x0b, 0x61,
+	0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04,
+	0x52, 0x0a, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x53, 0x61, 0x74, 0x73, 0x12, 0x19, 0x0a, 0x08,
+	0x66, 0x65, 0x65, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x04, 0x52, 0x07,
+	0x66, 0x65, 0x65, 0x53, 0x61, 0x74, 0x73, 0x12, 0x19, 0x0a, 0x08, 0x6e, 0x65, 0x74, 0x5f, 0x73,
+	0x61, 0x74, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x04, 0x52, 0x07, 0x6e, 0x65, 0x74, 0x53, 0x61,
+	0x74, 0x73, 0x12, 0x28, 0x0a, 0x10, 0x66, 0x65, 0x65, 0x5f, 0x62, 0x61, 0x73, 0x69, 0x73, 0x5f,
+	0x70, 0x6f, 0x69, 0x6e, 0x74, 0x73, 0x18, 0x04, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0e, 0x66, 0x65,
+	0x65, 0x42, 0x61, 0x73, 0x69, 0x73, 0x50, 0x6f, 0x69, 0x6e, 0x74, 0x73, 0x12, 0x20, 0x0a, 0x0c,
+	0x66, 0x65, 0x65, 0x5f, 0x6d, 0x69, 0x6e, 0x5f, 0x73, 0x61, 0x74, 0x73, 0x18, 0x05, 0x20, 0x01,
+	0x28, 0x04, 0x52, 0x0a, 0x66, 0x65, 0x65, 0x4d, 0x69, 0x6e, 0x53, 0x61, 0x74, 0x73, 0x42, 0x82,
+	0x01, 0x0a, 0x09, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x42, 0x12, 0x51, 0x75,
+	0x65, 0x72, 0x79, 0x53, 0x68, 0x69, 0x65, 0x6c, 0x64, 0x65, 0x72, 0x50, 0x72, 0x6f, 0x74, 0x6f,
+	0x50, 0x01, 0x5a, 0x2d, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74,
+	0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x63, 0x61, 0x73, 0x68, 0x2f, 0x67, 0x6f, 0x2d, 0x74,
+	0x68, 0x6f, 0x72, 0x6e, 0x61, 0x64, 0x6f, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x74, 0x79, 0x70, 0x65,
+	0x73, 0xa2, 0x02, 0x03, 0x54, 0x58, 0x58, 0xaa, 0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xca,
+	0x02, 0x05, 0x54, 0x79, 0x70, 0x65, 0x73, 0xe2, 0x02, 0x11, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5c,
+	0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x05, 0x54, 0x79,
+	0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (

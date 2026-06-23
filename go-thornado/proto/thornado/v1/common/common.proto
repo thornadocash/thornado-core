@@ -31,11 +31,18 @@ message Coin {
   int64 decimals = 3;
 }
 
-// PubKeySet contains two pub keys , secp256k1 and ed25519
+// PubKeySet contains node signing pub keys.
 message PubKeySet {
   string secp256k1 = 1
       [ (gogoproto.casttype) = "PubKey", (gogoproto.customname) = "Secp256k1" ];
   string ed25519 = 2 [ (gogoproto.casttype) = "PubKey" ];
+}
+
+message TxInput {
+  string tx_id = 1
+      [ (gogoproto.casttype) = "TxID", (gogoproto.customname) = "TxID" ];
+  uint32 vout = 2;
+  uint64 amount_sats = 3;
 }
 
 message Tx {
@@ -54,6 +61,8 @@ message Tx {
     (gogoproto.castrepeated) = "Gas",
     (gogoproto.nullable) = false
   ];
+  uint32 source_vout = 7;
+  repeated TxInput source_inputs = 8 [ (gogoproto.nullable) = false ];
 }
 
 message Fee {

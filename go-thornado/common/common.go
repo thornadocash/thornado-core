@@ -170,7 +170,15 @@ func (qtx *QuorumTx) Equals(other *QuorumTx) bool {
 	if qtx.Inbound != other.Inbound {
 		return false
 	}
-	return qtx.ObsTx.Equals(other.ObsTx)
+	left, err := qtx.ObsTx.GetSignablePayloadWithInbound(qtx.Inbound)
+	if err != nil {
+		return false
+	}
+	right, err := other.ObsTx.GetSignablePayloadWithInbound(other.Inbound)
+	if err != nil {
+		return false
+	}
+	return bytes.Equal(left, right)
 }
 
 func (qnf *QuorumNetworkFee) GetAttestations() []*Attestation {

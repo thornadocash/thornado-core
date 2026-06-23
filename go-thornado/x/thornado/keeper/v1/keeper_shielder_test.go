@@ -148,6 +148,9 @@ func (KeeperTestSuit) TestShielderInvariants(c *C) {
 		PowToken:      "pow-token",
 		CreatedHeight: ctx.BlockHeight(),
 	}), IsNil)
+	vault := NewVaultV2(ctx.BlockHeight(), ActiveVault, BaseVault, vaultPubKey, common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	vault.AddFunds(common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(100_000_000))))
+	c.Assert(k.SetVault(ctx, vault), IsNil)
 
 	bondAddress, err := common.NewAddress(owner.String())
 	c.Assert(err, IsNil)
@@ -159,11 +162,19 @@ func (KeeperTestSuit) TestShielderInvariants(c *C) {
 		BondSats:       100_000_000,
 		FeeDebtSats:    0,
 		FeeShareActive: true,
+		Bonders:        []string{owner.String()},
 		CreatedHeight:  ctx.BlockHeight(),
 		UpdatedHeight:  ctx.BlockHeight(),
 	}
 	c.Assert(k.SetNodeAccount(ctx, NewNodeAccount(owner, NodeStandby, common.EmptyPubKeySet, bond.NodePubKey, cosmos.NewUint(bond.BondSats), bondAddress, ctx.BlockHeight())), IsNil)
 	c.Assert(k.SetShielderNodeBond(ctx, bond), IsNil)
+	c.Assert(k.SetShielderNodeBonder(ctx, types.ShielderNodeBonder{
+		NodePubKey:    bond.NodePubKey,
+		Bonder:        owner,
+		PrincipalSats: bond.BondSats,
+		CreatedHeight: ctx.BlockHeight(),
+		UpdatedHeight: ctx.BlockHeight(),
+	}), IsNil)
 	c.Assert(k.SetFeePool(ctx, types.FeePool{TotalSlots: 1}), IsNil)
 
 	for _, route := range k.InvariantRoutes() {
@@ -175,4 +186,180 @@ func (KeeperTestSuit) TestShielderInvariants(c *C) {
 	msg, broken := ShielderVaultAddressInvariant(k)(ctx)
 	c.Check(broken, Equals, true)
 	c.Check(len(msg) > 0, Equals, true)
+}
+
+func (KeeperTestSuit) TestVaultBackingInvariantDetectsDeficit(c *C) {
+	ctx, k := setupKeeperForTest(c)
+	c.Assert(k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+		Commitment:       "NOTE_A",
+		DenominationSats: 100_000,
+	}), IsNil)
+
+	msg, broken := VaultBackingInvariant(k)(ctx)
+	c.Check(broken, Equals, true)
+	c.Check(len(msg) > 0, Equals, true)
+
+	vault := NewVaultV2(ctx.BlockHeight(), ActiveVault, BaseVault, GetRandomPubKey(), common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	vault.AddFunds(common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(100_000))))
+	c.Assert(k.SetVault(ctx, vault), IsNil)
+
+	msg, broken = VaultBackingInvariant(k)(ctx)
+	c.Check(broken, Equals, false, Commentf("%v", msg))
+}
+
+func (KeeperTestSuit) TestVaultBackingInvariantCountsDepositsAndInternalInflight(c *C) {
+	ctx, k := setupKeeperForTest(c)
+	owner := GetRandomBech32Addr()
+	vaultPubKey := GetRandomPubKey()
+	depositID := GetRandomTxHash()
+
+	c.Assert(k.SetDepositRecord(ctx, types.DepositRecord{
+		DepositID:        depositID,
+		Owner:            owner,
+		AmountSats:       100_000,
+		ShieldedSats:     100_000,
+		DepositAddress:   GetRandomBTCAddress(),
+		VaultPubKey:      vaultPubKey,
+		DepositPathIndex: 1,
+		MatchedHeight:    ctx.BlockHeight(),
+		Status:           types.DepositStatusCommitted,
+	}), IsNil)
+	c.Assert(k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+		Commitment:       "NOTE_SWEEP_INFLIGHT",
+		DenominationSats: 100_000,
+	}), IsNil)
+	c.Assert(k.SetTxOut(ctx, &TxOut{
+		Height: ctx.BlockHeight(),
+		TxArray: []TxOutItem{
+			{
+				Chain:       common.BTCChain,
+				Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(99_000)),
+				TxType:      types.TxOutTypeSweep,
+				InHash:      depositID,
+				ToAddress:   GetRandomBTCAddress(),
+				VaultPubKey: vaultPubKey,
+				GasRate:     1,
+				MaxGas:      common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(1_000))},
+			},
+		},
+	}), IsNil)
+
+	msg, broken := VaultBackingInvariant(k)(ctx)
+	c.Check(broken, Equals, false, Commentf("%v", msg))
+}
+
+func (KeeperTestSuit) TestVaultBackingInvariantCountsIncompleteInternalOutHashAsInflight(c *C) {
+	ctx, k := setupKeeperForTest(c)
+	vaultPubKey := GetRandomPubKey()
+	outHash := GetRandomTxHash()
+
+	c.Assert(k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+		Commitment:       "NOTE_INTERNAL_OUTHASH_INFLIGHT",
+		DenominationSats: 100_000,
+	}), IsNil)
+	c.Assert(k.SetTxOut(ctx, &TxOut{
+		Height: ctx.BlockHeight(),
+		TxArray: []TxOutItem{
+			{
+				Chain:       common.BTCChain,
+				Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(99_000)),
+				TxType:      types.TxOutTypeSweep,
+				InHash:      GetRandomTxHash(),
+				ToAddress:   GetRandomBTCAddress(),
+				VaultPubKey: vaultPubKey,
+				OutHash:     outHash,
+				MaxGas:      common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(1_000))},
+			},
+		},
+	}), IsNil)
+
+	msg, broken := VaultBackingInvariant(k)(ctx)
+	c.Check(broken, Equals, false, Commentf("%v", msg))
+}
+
+func (KeeperTestSuit) TestVaultBackingInvariantCountsCompletedInternalOutHashAsControlled(c *C) {
+	ctx, k := setupKeeperForTest(c)
+	vaultPubKey := GetRandomPubKey()
+	outHash := GetRandomTxHash()
+	toAddress := GetRandomBTCAddress()
+
+	c.Assert(k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+		Commitment:       "NOTE_COMPLETED_INTERNAL",
+		DenominationSats: 100_000,
+	}), IsNil)
+	c.Assert(k.SetTxOut(ctx, &TxOut{
+		Height: ctx.BlockHeight(),
+		TxArray: []TxOutItem{
+			{
+				Chain:       common.BTCChain,
+				Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(99_000)),
+				TxType:      types.TxOutTypeMigrate,
+				InHash:      GetRandomTxHash(),
+				ToAddress:   toAddress,
+				VaultPubKey: vaultPubKey,
+				OutHash:     outHash,
+				MaxGas:      common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(1_000))},
+				SourceInputs: []types.TxOutInput{
+					{TxId: GetRandomTxHash(), Vout: 0, AmountSats: 100_000},
+				},
+			},
+		},
+	}), IsNil)
+	tx := common.NewTx(
+		outHash,
+		GetRandomBTCAddress(),
+		toAddress,
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(99_000))),
+		common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(1_000))},
+	)
+	observed := common.NewObservedTx(tx, 1, vaultPubKey, 1)
+	voter := NewObservedTxVoter(outHash, ObservedTxs{observed})
+	voter.Tx = observed
+	k.SetObservedTxOutVoter(ctx, voter)
+
+	msg, broken := VaultBackingInvariant(k)(ctx)
+	c.Check(broken, Equals, false, Commentf("%v", msg))
+}
+
+func (KeeperTestSuit) TestVaultBackingInvariantCountsCompletedExternalGas(c *C) {
+	ctx, k := setupKeeperForTest(c)
+	vaultPubKey := GetRandomPubKey()
+	outHash := GetRandomTxHash()
+
+	vault := NewVaultV2(ctx.BlockHeight(), ActiveVault, BaseVault, vaultPubKey, common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	vault.AddFunds(common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(99_000))))
+	c.Assert(k.SetVault(ctx, vault), IsNil)
+	c.Assert(k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+		Commitment:       "NOTE_EXTERNAL_GAS",
+		DenominationSats: 100_000,
+	}), IsNil)
+	c.Assert(k.SetTxOut(ctx, &TxOut{
+		Height: ctx.BlockHeight(),
+		TxArray: []TxOutItem{
+			{
+				Chain:       common.BTCChain,
+				Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(99_000)),
+				TxType:      types.TxOutTypeOut,
+				InHash:      GetRandomTxHash(),
+				ToAddress:   GetRandomBTCAddress(),
+				VaultPubKey: vaultPubKey,
+				OutHash:     outHash,
+				OutVout:     0,
+			},
+		},
+	}), IsNil)
+	tx := common.NewTx(
+		outHash,
+		GetRandomBTCAddress(),
+		GetRandomBTCAddress(),
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(99_000))),
+		common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(1_000))},
+	)
+	observed := common.NewObservedTx(tx, 1, vaultPubKey, 1)
+	voter := NewObservedTxVoter(outHash, ObservedTxs{observed})
+	voter.Tx = observed
+	k.SetObservedTxOutVoter(ctx, voter)
+
+	msg, broken := VaultBackingInvariant(k)(ctx)
+	c.Check(broken, Equals, false, Commentf("%v", msg))
 }

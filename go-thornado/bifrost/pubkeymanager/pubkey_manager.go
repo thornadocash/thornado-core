@@ -193,7 +193,7 @@ func (pkm *PubKeyManager) addPubKeyInternal(pk common.PubKey, signer bool, algo 
 
 	if newSecpKey {
 		pkm.fireCallback(pk)
-		pkm.addDepositAddressLookahead(pk)
+		go pkm.addDepositAddressLookahead(pk)
 	}
 }
 
@@ -389,10 +389,47 @@ func (pkm *PubKeyManager) getPubkeys() ([]thornadoclient.PubKeyAddressPair, erro
 // RegisterCallback register a call back that will be fired when a new key get added into the local memory storage
 func (pkm *PubKeyManager) RegisterCallback(callback OnNewPubKey) {
 	pkm.callback = append(pkm.callback, callback)
+	for _, pk := range pkm.secpPubKeySnapshot() {
+		if err := callback(pk); err != nil {
+			pkm.logger.Err(err).Msg("fail to call callback")
+		}
+	}
 }
 
 func (pkm *PubKeyManager) RegisterPathCallback(callback OnNewPubKeyPath) {
 	pkm.pathCallback = append(pkm.pathCallback, callback)
+	for _, pk := range pkm.secpPubKeySnapshot() {
+		go pkm.fireDepositAddressLookaheadToCallback(pk, callback)
+	}
+}
+
+func (pkm *PubKeyManager) secpPubKeySnapshot() common.PubKeys {
+	pkm.rwMutex.RLock()
+	defer pkm.rwMutex.RUnlock()
+
+	pubkeys := make(common.PubKeys, 0)
+	for _, pk := range pkm.pubkeys {
+		if pk.NodeAccount || pk.Algo != common.SigningAlgoSecp256k1 {
+			continue
+		}
+		pubkeys = append(pubkeys, pk.PubKey)
+	}
+	return pubkeys
+}
+
+func (pkm *PubKeyManager) fireDepositAddressLookaheadToCallback(pk common.PubKey, callback OnNewPubKeyPath) {
+	for _, pathType := range []common.VaultDepositPathType{common.VaultDepositPathUser, common.VaultDepositPathNode} {
+		pathIndexes, err := common.VaultDepositLookaheadPathIndexes(pathType)
+		if err != nil {
+			pkm.logger.Error().Err(err).Str("pubkey", pk.String()).Str("path_type", string(pathType)).Msg("fail to derive deposit path lookahead")
+			continue
+		}
+		for _, pathIndex := range pathIndexes {
+			if err := callback(pk, pathIndex); err != nil {
+				pkm.logger.Err(err).Uint64("path_index", pathIndex).Msg("fail to call path callback")
+			}
+		}
+	}
 }
 
 func (pkm *PubKeyManager) fireCallback(pk common.PubKey) {

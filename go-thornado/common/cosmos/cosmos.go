@@ -17,6 +17,7 @@ import (
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/crypto"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/cosmos/cosmos-sdk/crypto/hd"
 	ckeys "github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -144,6 +145,7 @@ type KeybaseStore struct {
 	Keybase      ckeys.Keyring
 	SignerName   string
 	SignerPasswd string
+	SignerPrivKey cryptotypes.PrivKey
 }
 
 type passwordReader struct {
@@ -183,6 +185,9 @@ func withNonInteractiveStdin(fn func() error) error {
 }
 
 func (kbs KeybaseStore) Sign(buf []byte) ([]byte, error) {
+	if kbs.SignerPrivKey != nil {
+		return kbs.SignerPrivKey.Sign(buf)
+	}
 	if kbs.Keybase == nil {
 		return nil, fmt.Errorf("keybase is not configured")
 	}
@@ -247,11 +252,27 @@ func GetKeybase(thornadoHome string) (KeybaseStore, error) {
 	kb, err := ckeys.New(KeyringServiceName(), ckeys.BackendFile, cliDir, buf, cdc, func(options *ckeys.Options) {
 		options.SupportedAlgos = ckeys.SigningAlgoList{hd.Secp256k1, ed25519.Ed25519}
 	})
+	if err != nil {
+		return KeybaseStore{}, err
+	}
+	var privKeyArmor string
+	if err := withNonInteractiveStdin(func() error {
+		var err error
+		privKeyArmor, err = kb.ExportPrivKeyArmor(username, password)
+		return err
+	}); err != nil {
+		return KeybaseStore{}, err
+	}
+	privKey, _, err := crypto.UnarmorDecryptPrivKey(privKeyArmor, password)
+	if err != nil {
+		return KeybaseStore{}, err
+	}
 	return KeybaseStore{
-		SignerName:   username,
-		SignerPasswd: password,
-		Keybase:      kb,
-	}, err
+		SignerName:    username,
+		SignerPasswd:  password,
+		SignerPrivKey: privKey,
+		Keybase:       kb,
+	}, nil
 }
 
 // SafeUintFromInt64 create a new Uint from an int64. It is expected that the int64 is

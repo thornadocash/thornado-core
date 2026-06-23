@@ -19,6 +19,7 @@ var _ = Suite(&BaseCacheTestSuite{})
 type mockBaseBridge struct {
 	thornadoclient.ThornadoBridge
 	basePubKeys []thornadoclient.PubKeyAddressPair
+	depositAddr common.Address
 	err         error
 	calls       int
 }
@@ -29,6 +30,10 @@ func (m *mockBaseBridge) GetBasePubKeys() ([]thornadoclient.PubKeyAddressPair, e
 		return nil, m.err
 	}
 	return m.basePubKeys, nil
+}
+
+func (m *mockBaseBridge) IsVaultDepositAddress(address common.Address) bool {
+	return !m.depositAddr.IsEmpty() && m.depositAddr.Equals(address)
 }
 
 func makeBasePubKeyPair(c *C) thornadoclient.PubKeyAddressPair {

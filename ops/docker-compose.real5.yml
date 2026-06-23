@@ -1,0 +1,82 @@
+name: thornado-real5
+
+services:
+  bitcoind:
+    image: bitcoin/bitcoin:27
+    command:
+      - -regtest=1
+      - -server=1
+      - -txindex=1
+      - -fallbackfee=0.0001
+      - -deprecatedrpc=create_bdb
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -rpcuser=thornado
+      - -rpcpassword=thornado
+    ports:
+      - "24645:18443"
+      - "24646:18444"
+    volumes:
+      - real5-bitcoin:/home/bitcoin/.bitcoin
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/bitcoin-27.2/bin/bitcoin-cli -regtest -rpcconnect=127.0.0.1 -rpcuser=thornado -rpcpassword=thornado getblockchaininfo >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+
+  cluster:
+    build:
+      context: ..
+      dockerfile: ops/docker/Dockerfile.real
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+    environment:
+      SKIP_BUILD: "1"
+      RUN_ROOT: /var/lib/thornado/real5
+      KEEP_ARTIFACTS: "1"
+      KEEP_RUNNING: "1"
+      FLOW_MODE: ${FLOW_MODE:-node5_churn}
+      FLOW_LIMIT: ${FLOW_LIMIT:-7}
+      BTC_USE_LOCAL: "1"
+      BTC_EXTERNAL: "1"
+      BTC_RPC_HOST: bitcoind
+      BTC_RPC_PORT: "18443"
+      BTC_P2P_PORT: "18444"
+      BTC_AUTO_MINE: "1"
+      BTC_AUTO_MINE_INTERVAL: "20"
+      API_BASE: "1316"
+      GRPC_BASE: "9090"
+      RPC_BASE: "26656"
+      P2P_BASE: "26650"
+      EBIFROST_BASE: "50050"
+      FROST_P2P_BASE: "5040"
+      FROST_INFO_BASE: "6040"
+      METRICS_BASE: "9000"
+    ports:
+      - "25171:1317"
+      - "25172:1318"
+      - "25173:1319"
+      - "25174:1320"
+      - "25175:1321"
+      - "25176:1322"
+      - "36657:26657"
+      - "36658:26658"
+      - "36659:26659"
+      - "36660:26660"
+      - "36661:26661"
+      - "36662:26662"
+      - "16041:6041"
+      - "16042:6042"
+      - "16043:6043"
+      - "16044:6044"
+      - "16045:6045"
+      - "16046:6046"
+    volumes:
+      - real5-run:/var/lib/thornado
+      - ./scripts/real-4node-e2e.sh:/workspace/ops/scripts/real-4node-e2e.sh:ro
+      - ./scripts/tty-expect.py:/workspace/ops/scripts/tty-expect.py:ro
+
+volumes:
+  real5-bitcoin:
+  real5-run:

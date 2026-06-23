@@ -26,6 +26,9 @@ const (
 	Msg_NetworkFee_FullMethodName               = "/types.Msg/NetworkFee"
 	Msg_NetworkFeeQuorum_FullMethodName         = "/types.Msg/NetworkFeeQuorum"
 	Msg_NodePauseChain_FullMethodName           = "/types.Msg/NodePauseChain"
+	Msg_OperatorRotate_FullMethodName           = "/types.Msg/OperatorRotate"
+	Msg_Maint_FullMethodName                    = "/types.Msg/Maint"
+	Msg_Leave_FullMethodName                    = "/types.Msg/Leave"
 	Msg_ObservedTxIn_FullMethodName             = "/types.Msg/ObservedTxIn"
 	Msg_ObservedTxOut_FullMethodName            = "/types.Msg/ObservedTxOut"
 	Msg_ObservedTxQuorum_FullMethodName         = "/types.Msg/ObservedTxQuorum"
@@ -44,6 +47,7 @@ const (
 	Msg_ShielderShield_FullMethodName           = "/types.Msg/ShielderShield"
 	Msg_ShielderRedeem_FullMethodName           = "/types.Msg/ShielderRedeem"
 	Msg_ShielderShieldFees_FullMethodName       = "/types.Msg/ShielderShieldFees"
+	Msg_NodeOperatorFeeSet_FullMethodName       = "/types.Msg/NodeOperatorFeeSet"
 	Msg_NodeSlotAuctionCreate_FullMethodName    = "/types.Msg/NodeSlotAuctionCreate"
 	Msg_NodeSlotAuctionBidCreate_FullMethodName = "/types.Msg/NodeSlotAuctionBidCreate"
 	Msg_NodeSlotAuctionSelectBid_FullMethodName = "/types.Msg/NodeSlotAuctionSelectBid"
@@ -62,6 +66,9 @@ type MsgClient interface {
 	NetworkFee(ctx context.Context, in *MsgNetworkFee, opts ...grpc.CallOption) (*MsgEmpty, error)
 	NetworkFeeQuorum(ctx context.Context, in *MsgNetworkFeeQuorum, opts ...grpc.CallOption) (*MsgEmpty, error)
 	NodePauseChain(ctx context.Context, in *MsgNodePauseChain, opts ...grpc.CallOption) (*MsgEmpty, error)
+	OperatorRotate(ctx context.Context, in *MsgOperatorRotate, opts ...grpc.CallOption) (*MsgEmpty, error)
+	Maint(ctx context.Context, in *MsgMaint, opts ...grpc.CallOption) (*MsgEmpty, error)
+	Leave(ctx context.Context, in *MsgLeave, opts ...grpc.CallOption) (*MsgEmpty, error)
 	ObservedTxIn(ctx context.Context, in *MsgObservedTxIn, opts ...grpc.CallOption) (*MsgEmpty, error)
 	ObservedTxOut(ctx context.Context, in *MsgObservedTxOut, opts ...grpc.CallOption) (*MsgEmpty, error)
 	ObservedTxQuorum(ctx context.Context, in *MsgObservedTxQuorum, opts ...grpc.CallOption) (*MsgEmpty, error)
@@ -80,6 +87,7 @@ type MsgClient interface {
 	ShielderShield(ctx context.Context, in *MsgShielderShield, opts ...grpc.CallOption) (*MsgShielderShieldResponse, error)
 	ShielderRedeem(ctx context.Context, in *MsgShielderRedeem, opts ...grpc.CallOption) (*MsgShielderRedeemResponse, error)
 	ShielderShieldFees(ctx context.Context, in *MsgShielderShieldFees, opts ...grpc.CallOption) (*MsgShielderShieldFeesResponse, error)
+	NodeOperatorFeeSet(ctx context.Context, in *MsgNodeOperatorFeeSet, opts ...grpc.CallOption) (*MsgEmpty, error)
 	NodeSlotAuctionCreate(ctx context.Context, in *MsgNodeSlotAuctionCreate, opts ...grpc.CallOption) (*MsgNodeSlotAuctionCreateResponse, error)
 	NodeSlotAuctionBidCreate(ctx context.Context, in *MsgNodeSlotAuctionBidCreate, opts ...grpc.CallOption) (*MsgNodeSlotAuctionBidCreateResponse, error)
 	NodeSlotAuctionSelectBid(ctx context.Context, in *MsgNodeSlotAuctionSelectBid, opts ...grpc.CallOption) (*MsgEmpty, error)
@@ -152,6 +160,33 @@ func (c *msgClient) NetworkFeeQuorum(ctx context.Context, in *MsgNetworkFeeQuoru
 func (c *msgClient) NodePauseChain(ctx context.Context, in *MsgNodePauseChain, opts ...grpc.CallOption) (*MsgEmpty, error) {
 	out := new(MsgEmpty)
 	err := c.cc.Invoke(ctx, Msg_NodePauseChain_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) OperatorRotate(ctx context.Context, in *MsgOperatorRotate, opts ...grpc.CallOption) (*MsgEmpty, error) {
+	out := new(MsgEmpty)
+	err := c.cc.Invoke(ctx, Msg_OperatorRotate_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) Maint(ctx context.Context, in *MsgMaint, opts ...grpc.CallOption) (*MsgEmpty, error) {
+	out := new(MsgEmpty)
+	err := c.cc.Invoke(ctx, Msg_Maint_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) Leave(ctx context.Context, in *MsgLeave, opts ...grpc.CallOption) (*MsgEmpty, error) {
+	out := new(MsgEmpty)
+	err := c.cc.Invoke(ctx, Msg_Leave_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -320,6 +355,15 @@ func (c *msgClient) ShielderShieldFees(ctx context.Context, in *MsgShielderShiel
 	return out, nil
 }
 
+func (c *msgClient) NodeOperatorFeeSet(ctx context.Context, in *MsgNodeOperatorFeeSet, opts ...grpc.CallOption) (*MsgEmpty, error) {
+	out := new(MsgEmpty)
+	err := c.cc.Invoke(ctx, Msg_NodeOperatorFeeSet_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *msgClient) NodeSlotAuctionCreate(ctx context.Context, in *MsgNodeSlotAuctionCreate, opts ...grpc.CallOption) (*MsgNodeSlotAuctionCreateResponse, error) {
 	out := new(MsgNodeSlotAuctionCreateResponse)
 	err := c.cc.Invoke(ctx, Msg_NodeSlotAuctionCreate_FullMethodName, in, out, opts...)
@@ -376,6 +420,9 @@ type MsgServer interface {
 	NetworkFee(context.Context, *MsgNetworkFee) (*MsgEmpty, error)
 	NetworkFeeQuorum(context.Context, *MsgNetworkFeeQuorum) (*MsgEmpty, error)
 	NodePauseChain(context.Context, *MsgNodePauseChain) (*MsgEmpty, error)
+	OperatorRotate(context.Context, *MsgOperatorRotate) (*MsgEmpty, error)
+	Maint(context.Context, *MsgMaint) (*MsgEmpty, error)
+	Leave(context.Context, *MsgLeave) (*MsgEmpty, error)
 	ObservedTxIn(context.Context, *MsgObservedTxIn) (*MsgEmpty, error)
 	ObservedTxOut(context.Context, *MsgObservedTxOut) (*MsgEmpty, error)
 	ObservedTxQuorum(context.Context, *MsgObservedTxQuorum) (*MsgEmpty, error)
@@ -394,6 +441,7 @@ type MsgServer interface {
 	ShielderShield(context.Context, *MsgShielderShield) (*MsgShielderShieldResponse, error)
 	ShielderRedeem(context.Context, *MsgShielderRedeem) (*MsgShielderRedeemResponse, error)
 	ShielderShieldFees(context.Context, *MsgShielderShieldFees) (*MsgShielderShieldFeesResponse, error)
+	NodeOperatorFeeSet(context.Context, *MsgNodeOperatorFeeSet) (*MsgEmpty, error)
 	NodeSlotAuctionCreate(context.Context, *MsgNodeSlotAuctionCreate) (*MsgNodeSlotAuctionCreateResponse, error)
 	NodeSlotAuctionBidCreate(context.Context, *MsgNodeSlotAuctionBidCreate) (*MsgNodeSlotAuctionBidCreateResponse, error)
 	NodeSlotAuctionSelectBid(context.Context, *MsgNodeSlotAuctionSelectBid) (*MsgEmpty, error)
@@ -426,6 +474,15 @@ func (UnimplementedMsgServer) NetworkFeeQuorum(context.Context, *MsgNetworkFeeQu
 }
 func (UnimplementedMsgServer) NodePauseChain(context.Context, *MsgNodePauseChain) (*MsgEmpty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NodePauseChain not implemented")
+}
+func (UnimplementedMsgServer) OperatorRotate(context.Context, *MsgOperatorRotate) (*MsgEmpty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method OperatorRotate not implemented")
+}
+func (UnimplementedMsgServer) Maint(context.Context, *MsgMaint) (*MsgEmpty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Maint not implemented")
+}
+func (UnimplementedMsgServer) Leave(context.Context, *MsgLeave) (*MsgEmpty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Leave not implemented")
 }
 func (UnimplementedMsgServer) ObservedTxIn(context.Context, *MsgObservedTxIn) (*MsgEmpty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ObservedTxIn not implemented")
@@ -480,6 +537,9 @@ func (UnimplementedMsgServer) ShielderRedeem(context.Context, *MsgShielderRedeem
 }
 func (UnimplementedMsgServer) ShielderShieldFees(context.Context, *MsgShielderShieldFees) (*MsgShielderShieldFeesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShielderShieldFees not implemented")
+}
+func (UnimplementedMsgServer) NodeOperatorFeeSet(context.Context, *MsgNodeOperatorFeeSet) (*MsgEmpty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NodeOperatorFeeSet not implemented")
 }
 func (UnimplementedMsgServer) NodeSlotAuctionCreate(context.Context, *MsgNodeSlotAuctionCreate) (*MsgNodeSlotAuctionCreateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NodeSlotAuctionCreate not implemented")
@@ -631,6 +691,60 @@ func _Msg_NodePauseChain_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MsgServer).NodePauseChain(ctx, req.(*MsgNodePauseChain))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_OperatorRotate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgOperatorRotate)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).OperatorRotate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_OperatorRotate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).OperatorRotate(ctx, req.(*MsgOperatorRotate))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_Maint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgMaint)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).Maint(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_Maint_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).Maint(ctx, req.(*MsgMaint))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_Leave_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgLeave)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).Leave(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_Leave_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).Leave(ctx, req.(*MsgLeave))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -959,6 +1073,24 @@ func _Msg_ShielderShieldFees_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_NodeOperatorFeeSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgNodeOperatorFeeSet)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).NodeOperatorFeeSet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_NodeOperatorFeeSet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).NodeOperatorFeeSet(ctx, req.(*MsgNodeOperatorFeeSet))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Msg_NodeSlotAuctionCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MsgNodeSlotAuctionCreate)
 	if err := dec(in); err != nil {
@@ -1085,6 +1217,18 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Msg_NodePauseChain_Handler,
 		},
 		{
+			MethodName: "OperatorRotate",
+			Handler:    _Msg_OperatorRotate_Handler,
+		},
+		{
+			MethodName: "Maint",
+			Handler:    _Msg_Maint_Handler,
+		},
+		{
+			MethodName: "Leave",
+			Handler:    _Msg_Leave_Handler,
+		},
+		{
 			MethodName: "ObservedTxIn",
 			Handler:    _Msg_ObservedTxIn_Handler,
 		},
@@ -1155,6 +1299,10 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ShielderShieldFees",
 			Handler:    _Msg_ShielderShieldFees_Handler,
+		},
+		{
+			MethodName: "NodeOperatorFeeSet",
+			Handler:    _Msg_NodeOperatorFeeSet_Handler,
 		},
 		{
 			MethodName: "NodeSlotAuctionCreate",

@@ -79,7 +79,7 @@ func TestRegisterSwaggerAPIDisabled(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		rr := httptest.NewRecorder()
 		rtr.ServeHTTP(rr, req)
-		require.Equal(t, http.StatusOK, rr.Code, "expected UI route %s when swagger disabled", path)
+		require.Equal(t, http.StatusNotFound, rr.Code, "expected no embedded UI route %s when swagger disabled", path)
 	}
 
 	// swagger doc routes should NOT be registered when disabled
@@ -100,7 +100,7 @@ func TestRegisterSwaggerAPIEnabled(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		rr := httptest.NewRecorder()
 		rtr.ServeHTTP(rr, req)
-		require.Equal(t, http.StatusOK, rr.Code, "expected UI route %s when swagger enabled", path)
+		require.Equal(t, http.StatusNotFound, rr.Code, "expected no embedded UI route %s when swagger enabled", path)
 	}
 
 	// swagger doc routes should be registered when enabled

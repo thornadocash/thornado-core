@@ -295,18 +295,21 @@ func (qs queryServer) queryNode(ctx cosmos.Context, req *types.QueryNodeRequest)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get node jail: %w", err)
 	}
+	operatorAddress, err := nodeOperatorAddress(ctx, qs.mgr.Keeper(), nodeAcc)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get node operator address: %w", err)
+	}
 
 	result := types.QueryNodeResponse{
 		NodeAddress: nodeAcc.NodeAddress.String(),
 		Status:      nodeAcc.Status.String(),
 		PubKeySet: common.PubKeySet{
 			Secp256k1: common.PubKey(nodeAcc.PubKeySet.Secp256k1.String()),
-			Ed25519:   common.PubKey(nodeAcc.PubKeySet.Ed25519.String()),
 		},
 		NodeConsPubKey:      nodeAcc.NodeConsPubKey,
 		ActiveBlockHeight:   nodeAcc.ActiveBlockHeight,
 		StatusSince:         nodeAcc.StatusSince,
-		NodeOperatorAddress: nodeAcc.BondAddress.String(),
+		NodeOperatorAddress: operatorAddress.String(),
 		TotalBond:           nodeAcc.Bond.String(),
 		SignerMembership:    nodeAcc.GetSignerMembership().Strings(),
 		RequestedToLeave:    nodeAcc.RequestedToLeave,
@@ -415,18 +418,21 @@ func (qs queryServer) queryNodes(ctx cosmos.Context, _ *types.QueryNodesRequest)
 		if err != nil {
 			return nil, fmt.Errorf("fail to get node penalty points: %w", err)
 		}
+		operatorAddress, err := nodeOperatorAddress(ctx, qs.mgr.Keeper(), na)
+		if err != nil {
+			return nil, fmt.Errorf("fail to get node operator address: %w", err)
+		}
 
 		result[i] = &types.QueryNodeResponse{
 			NodeAddress: na.NodeAddress.String(),
 			Status:      na.Status.String(),
 			PubKeySet: common.PubKeySet{
 				Secp256k1: common.PubKey(na.PubKeySet.Secp256k1.String()),
-				Ed25519:   common.PubKey(na.PubKeySet.Ed25519.String()),
 			},
 			NodeConsPubKey:      na.NodeConsPubKey,
 			ActiveBlockHeight:   na.ActiveBlockHeight,
 			StatusSince:         na.StatusSince,
-			NodeOperatorAddress: na.BondAddress.String(),
+			NodeOperatorAddress: operatorAddress.String(),
 			TotalBond:           na.Bond.String(),
 			SignerMembership:    na.GetSignerMembership().Strings(),
 			RequestedToLeave:    na.RequestedToLeave,
@@ -556,20 +562,31 @@ func extractVoter(ctx cosmos.Context, tx_id string, mgr *Mgrs) (common.TxID, Obs
 	return hash, voter, nil
 }
 
+func selectQueryObservedTxVoter(inboundVoter, outboundVoter ObservedTxVoter) ObservedTxVoter {
+	if len(inboundVoter.Txs) == 0 {
+		return outboundVoter
+	}
+	if len(outboundVoter.Txs) == 0 {
+		return inboundVoter
+	}
+	if outboundVoter.FinalisedHeight > 0 || !outboundVoter.Tx.IsEmpty() || len(outboundVoter.Actions) > 0 || len(outboundVoter.OutTxs) > 0 {
+		return outboundVoter
+	}
+	return inboundVoter
+}
+
 func (qs queryServer) queryTxVoters(ctx cosmos.Context, req *types.QueryTxVotersRequest) (*types.QueryObservedTxVoter, error) {
 	hash, voter, err := extractVoter(ctx, req.TxId, qs.mgr)
 	if err != nil {
 		return nil, err
 	}
-	// when tx in voter doesn't exist , double check tx out voter
+	outVoter, err := qs.mgr.Keeper().GetObservedTxOutVoter(ctx, hash)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get observed tx out voter: %w", err)
+	}
+	voter = selectQueryObservedTxVoter(voter, outVoter)
 	if len(voter.Txs) == 0 {
-		voter, err = qs.mgr.Keeper().GetObservedTxOutVoter(ctx, hash)
-		if err != nil {
-			return nil, fmt.Errorf("fail to get observed tx out voter: %w", err)
-		}
-		if len(voter.Txs) == 0 {
-			return nil, fmt.Errorf("tx: %s doesn't exist", hash)
-		}
+		return nil, fmt.Errorf("tx: %s doesn't exist", hash)
 	}
 
 	var txs []types.QueryObservedTx
@@ -788,14 +805,13 @@ func (qs queryServer) queryTx(ctx cosmos.Context, req *types.QueryTxRequest) (*t
 	if err != nil {
 		return nil, err
 	}
+	outVoter, err := qs.mgr.Keeper().GetObservedTxOutVoter(ctx, hash)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get observed tx out voter: %w", err)
+	}
+	voter = selectQueryObservedTxVoter(voter, outVoter)
 	if len(voter.Txs) == 0 {
-		voter, err = qs.mgr.Keeper().GetObservedTxOutVoter(ctx, hash)
-		if err != nil {
-			return nil, fmt.Errorf("fail to get observed tx out voter: %w", err)
-		}
-		if len(voter.Txs) == 0 {
-			return nil, fmt.Errorf("tx: %s doesn't exist", hash)
-		}
+		return nil, fmt.Errorf("tx: %s doesn't exist", hash)
 	}
 
 	nodeAccounts, err := qs.mgr.Keeper().ListActiveNodes(ctx)
@@ -964,7 +980,7 @@ func (qs queryServer) queryShielderRedeem(ctx cosmos.Context, req *types.QuerySh
 	if strings.TrimSpace(withdrawal.WithdrawalID) == "" {
 		return nil, errors.New("shielder redeem not found")
 	}
-	return shielderRedeemResponse(withdrawal), nil
+	return shielderRedeemResponse(ctx, qs.mgr.Keeper(), withdrawal), nil
 }
 
 func (qs queryServer) queryShielderNullifier(ctx cosmos.Context, req *types.QueryShielderNullifierRequest) (*types.QueryShielderNullifierResponse, error) {
@@ -973,12 +989,7 @@ func (qs queryServer) queryShielderNullifier(ctx cosmos.Context, req *types.Quer
 	if err != nil {
 		return nil, err
 	}
-	resp := &types.QueryShielderNullifierResponse{
-		NullifierHash: nullifier,
-		Spent:         strings.TrimSpace(withdrawal.WithdrawalID) != "",
-		WithdrawalId:  withdrawal.WithdrawalID,
-	}
-	return resp, nil
+	return shielderNullifierResponse(ctx, qs.mgr.Keeper(), nullifier, withdrawal), nil
 }
 
 func (qs queryServer) queryShielderSync(ctx cosmos.Context, req *types.QueryShielderSyncRequest) (*types.QueryShielderSyncResponse, error) {
@@ -1122,10 +1133,8 @@ func queryShielderSyncNullifiers(ctx cosmos.Context, k keeper.Keeper, cursor str
 		if err := json.Unmarshal(iter.Value(), &withdrawalID); err != nil {
 			return nil, "", 0, false, err
 		}
-		nullifiers = append(nullifiers, &types.ShielderSpentNullifier{
-			NullifierHash: strings.TrimSpace(nullifier),
-			WithdrawalId:  strings.TrimSpace(withdrawalID),
-		})
+		withdrawal, _ := k.GetShielderRedeem(ctx, strings.TrimSpace(withdrawalID))
+		nullifiers = append(nullifiers, shielderSpentNullifierResponse(ctx, k, strings.TrimSpace(nullifier), strings.TrimSpace(withdrawalID), withdrawal))
 		last = nullifier
 	}
 	sort.Slice(nullifiers, func(i, j int) bool {
@@ -1155,7 +1164,7 @@ func (qs queryServer) queryShielderRedeemQuote(ctx cosmos.Context, req *types.Qu
 }
 
 func (qs queryServer) queryFeePool(ctx cosmos.Context, _ *types.QueryFeePoolRequest) (*types.QueryFeePoolResponse, error) {
-	pool, err := qs.mgr.Keeper().GetFeePool(ctx)
+	pool, err := distributeFeePool(ctx, qs.mgr.Keeper())
 	if err != nil {
 		return nil, err
 	}
@@ -1201,6 +1210,63 @@ func (qs queryServer) queryDepositSession(ctx cosmos.Context, req *types.QueryDe
 	}, nil
 }
 
+func (qs queryServer) queryDepositAddressTxs(ctx cosmos.Context, req *types.QueryDepositAddressTxsRequest) (*types.QueryDepositAddressTxsResponse, error) {
+	address, err := common.NewAddress(req.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	iter := qs.mgr.Keeper().GetObservedTxInVoterIterator(ctx)
+	defer iter.Close()
+
+	resp := &types.QueryDepositAddressTxsResponse{
+		Address: address.String(),
+		Txs:     make([]*types.QueryTxResponse, 0),
+	}
+	seen := make(map[string]bool)
+	for ; iter.Valid(); iter.Next() {
+		var voter ObservedTxVoter
+		if err := qs.mgr.Keeper().Cdc().Unmarshal(iter.Value(), &voter); err != nil {
+			return nil, err
+		}
+		if !voterHasDepositAddress(voter, address) {
+			continue
+		}
+		txid := voter.TxID.String()
+		if seen[txid] {
+			continue
+		}
+		seen[txid] = true
+		tx, err := qs.queryTx(ctx, &types.QueryTxRequest{TxId: txid})
+		if err != nil {
+			return nil, err
+		}
+		resp.Txs = append(resp.Txs, tx)
+	}
+
+	sort.SliceStable(resp.Txs, func(i, j int) bool {
+		left := resp.Txs[i]
+		right := resp.Txs[j]
+		if left.ObservedTx.BlockHeight == right.ObservedTx.BlockHeight {
+			return left.ObservedTx.Tx.ID.String() < right.ObservedTx.Tx.ID.String()
+		}
+		return left.ObservedTx.BlockHeight < right.ObservedTx.BlockHeight
+	})
+	return resp, nil
+}
+
+func voterHasDepositAddress(voter ObservedTxVoter, address common.Address) bool {
+	if !voter.Tx.IsEmpty() && voter.Tx.Tx.ToAddress.Equals(address) {
+		return true
+	}
+	for _, tx := range voter.Txs {
+		if tx.Tx.ToAddress.Equals(address) {
+			return true
+		}
+	}
+	return false
+}
+
 func (qs queryServer) queryNodeBond(ctx cosmos.Context, req *types.QueryNodeBondRequest) (*types.QueryNodeBondResponse, error) {
 	bond, err := qs.mgr.Keeper().GetShielderNodeBond(ctx, req.NodePubKey)
 	if err != nil {
@@ -1221,22 +1287,51 @@ func (qs queryServer) shielderBondResponse(ctx cosmos.Context, bond types.Shield
 	if err != nil {
 		return nil, err
 	}
+	pool, err := qs.mgr.Keeper().GetFeePool(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := settleNodeFeeShare(ctx, qs.mgr.Keeper(), &bond, pool); err != nil {
+		return nil, err
+	}
+	bonders, err := getNodeBonders(ctx, qs.mgr.Keeper(), bond.NodePubKey)
+	if err != nil {
+		return nil, err
+	}
+	bonderResponses := make([]*types.QueryNodeBonder, 0, len(bonders))
+	for _, bonder := range bonders {
+		bonderResponses = append(bonderResponses, &types.QueryNodeBonder{
+			Bonder:              bonder.Bonder.String(),
+			PendingSats:         bonder.PendingSats,
+			PrincipalSats:       bonder.PrincipalSats,
+			ClaimableFeeSats:    nodeBonderClaimableSats(ctx, qs.mgr.Keeper(), bond, bonder),
+			PendingFeeDepositId: bonder.PendingFeeDepositID.String(),
+			SaleEntitlementId:   bonder.SaleEntitlementID.String(),
+			SalePayoutSats:      bonder.SalePayoutSats,
+			CreatedHeight:       bonder.CreatedHeight,
+			UpdatedHeight:       bonder.UpdatedHeight,
+		})
+	}
 	return &types.QueryNodeBondResponse{
-		NodePubKey:          bond.NodePubKey,
-		OperatorPubKey:      bond.OperatorPubKey.String(),
-		NodeAddress:         bond.NodeAddress.String(),
-		Slot:                bond.Slot,
-		PendingSats:         bond.PendingSats,
-		BondSats:            bond.BondSats,
-		FeeDebtSats:         bond.FeeDebtSats,
-		FeeShareActive:      bond.FeeShareActive,
-		PendingFeeDepositId: bond.PendingFeeDepositID.String(),
-		Sold:                bond.Sold,
-		SoldAuctionId:       bond.SoldAuctionID,
-		CreatedHeight:       bond.CreatedHeight,
-		UpdatedHeight:       bond.UpdatedHeight,
-		NodeStatus:          node.Status.String(),
-		PenaltyPoints:       penaltyPoints,
+		NodePubKey:                  bond.NodePubKey,
+		OperatorPubKey:              bond.OperatorPubKey.String(),
+		NodeAddress:                 bond.NodeAddress.String(),
+		Slot:                        bond.Slot,
+		PendingSats:                 bond.PendingSats,
+		BondSats:                    bond.BondSats,
+		FeeDebtSats:                 bond.FeeDebtSats,
+		FeeShareActive:              bond.FeeShareActive,
+		PendingFeeDepositId:         bond.PendingFeeDepositID.String(),
+		Sold:                        bond.Sold,
+		SoldAuctionId:               bond.SoldAuctionID,
+		CreatedHeight:               bond.CreatedHeight,
+		UpdatedHeight:               bond.UpdatedHeight,
+		NodeStatus:                  node.Status.String(),
+		PenaltyPoints:               penaltyPoints,
+		OperatorFeeBasisPoints:      bond.OperatorFeeBasisPoints,
+		OperatorFeeAccruedSats:      bond.OperatorFeeAccruedSats,
+		PendingOperatorFeeDepositId: bond.PendingOperatorFeeDepositID.String(),
+		Bonders:                     bonderResponses,
 	}, nil
 }
 
@@ -1376,15 +1471,26 @@ func (qs queryServer) shielderFeeEntitlementResponse(ctx cosmos.Context, bond ty
 	if err != nil {
 		return nil, err
 	}
-	accrued := pool.FeePerSlotShare
+	if err := settleNodeFeeShare(ctx, qs.mgr.Keeper(), &bond, pool); err != nil {
+		return nil, err
+	}
+	bonders, err := getNodeBonders(ctx, qs.mgr.Keeper(), bond.NodePubKey)
+	if err != nil {
+		return nil, err
+	}
 	claimable := uint64(0)
-	if bond.FeeShareActive && accrued > bond.FeeDebtSats && bond.PendingFeeDepositID.IsEmpty() {
-		claimable = accrued - bond.FeeDebtSats
+	if bond.FeeShareActive {
+		claimable += bond.OperatorFeeAccruedSats
+		for _, bonder := range bonders {
+			if bonder.PendingFeeDepositID.IsEmpty() {
+				claimable += nodeBonderClaimableSats(ctx, qs.mgr.Keeper(), bond, bonder)
+			}
+		}
 	}
 	return &types.QueryNodeFeeEntitlementResponse{
 		NodePubKey:          bond.NodePubKey,
 		ClaimableSats:       claimable,
-		AccruedSats:         accrued,
+		AccruedSats:         pool.FeePerSlotShare,
 		FeeDebtSats:         bond.FeeDebtSats,
 		FeePerSlotShare:     pool.FeePerSlotShare,
 		FeeShareActive:      bond.FeeShareActive,
@@ -2140,7 +2246,20 @@ func castObservedTxs(observedTxs ObservedTxs) []types.QueryObservedTx {
 	return result
 }
 
-func shielderRedeemResponse(withdrawal types.ShielderRedeem) *types.QueryShielderRedeemResponse {
+type shielderWithdrawalTxOutLink struct {
+	Status           string
+	Height           int64
+	Epoch            uint64
+	TxType           string
+	OutHash          string
+	OutVout          uint32
+	Outpoint         string
+	SigningAttempt   uint64
+	RetryUntilHeight int64
+}
+
+func shielderRedeemResponse(ctx cosmos.Context, k keeper.Keeper, withdrawal types.ShielderRedeem) *types.QueryShielderRedeemResponse {
+	link := shielderWithdrawalTxOut(ctx, k, withdrawal)
 	return &types.QueryShielderRedeemResponse{
 		WithdrawalId:    withdrawal.WithdrawalID,
 		NullifierHash:   withdrawal.NullifierHash,
@@ -2152,7 +2271,105 @@ func shielderRedeemResponse(withdrawal types.ShielderRedeem) *types.QueryShielde
 		VaultPubKey:     withdrawal.VaultPubKey.String(),
 		RequestedHeight: withdrawal.RequestedHeight,
 		Status:          withdrawal.Status,
+		TxoutStatus:     link.Status,
+		TxoutHeight:     link.Height,
+		TxoutEpoch:      link.Epoch,
+		TxType:          link.TxType,
+		OutHash:         link.OutHash,
+		OutVout:         link.OutVout,
+		Outpoint:        link.Outpoint,
 	}
+}
+
+func shielderNullifierResponse(ctx cosmos.Context, k keeper.Keeper, nullifier string, withdrawal types.ShielderRedeem) *types.QueryShielderNullifierResponse {
+	resp := &types.QueryShielderNullifierResponse{
+		NullifierHash: strings.TrimSpace(nullifier),
+		Spent:         strings.TrimSpace(withdrawal.WithdrawalID) != "",
+		WithdrawalId:  strings.TrimSpace(withdrawal.WithdrawalID),
+	}
+	if !resp.Spent {
+		return resp
+	}
+	link := shielderWithdrawalTxOut(ctx, k, withdrawal)
+	resp.WithdrawalStatus = withdrawal.Status
+	resp.AmountSats = withdrawal.AmountSats
+	resp.FeeSats = withdrawal.FeeSats
+	resp.InHash = withdrawal.InHash.String()
+	resp.TxoutStatus = link.Status
+	resp.TxoutHeight = link.Height
+	resp.TxoutEpoch = link.Epoch
+	resp.TxType = link.TxType
+	resp.OutHash = link.OutHash
+	resp.OutVout = link.OutVout
+	resp.Outpoint = link.Outpoint
+	return resp
+}
+
+func shielderSpentNullifierResponse(ctx cosmos.Context, k keeper.Keeper, nullifier, withdrawalID string, withdrawal types.ShielderRedeem) *types.ShielderSpentNullifier {
+	resp := &types.ShielderSpentNullifier{
+		NullifierHash: strings.TrimSpace(nullifier),
+		WithdrawalId:  strings.TrimSpace(withdrawalID),
+	}
+	if strings.TrimSpace(withdrawal.WithdrawalID) == "" {
+		return resp
+	}
+	link := shielderWithdrawalTxOut(ctx, k, withdrawal)
+	resp.WithdrawalStatus = withdrawal.Status
+	resp.AmountSats = withdrawal.AmountSats
+	resp.FeeSats = withdrawal.FeeSats
+	resp.InHash = withdrawal.InHash.String()
+	resp.TxoutStatus = link.Status
+	resp.TxoutHeight = link.Height
+	resp.TxoutEpoch = link.Epoch
+	resp.TxType = link.TxType
+	resp.OutHash = link.OutHash
+	resp.OutVout = link.OutVout
+	resp.Outpoint = link.Outpoint
+	return resp
+}
+
+func shielderWithdrawalTxOut(ctx cosmos.Context, k keeper.Keeper, withdrawal types.ShielderRedeem) shielderWithdrawalTxOutLink {
+	withdrawalID := strings.TrimSpace(withdrawal.WithdrawalID)
+	inHash := strings.TrimSpace(withdrawal.InHash.String())
+	if withdrawalID == "" && inHash == "" {
+		return shielderWithdrawalTxOutLink{}
+	}
+	var pending shielderWithdrawalTxOutLink
+	iterator := k.GetTxOutIterator(ctx)
+	defer iterator.Close()
+	for ; iterator.Valid(); iterator.Next() {
+		var txOut TxOut
+		if err := k.Cdc().Unmarshal(iterator.Value(), &txOut); err != nil {
+			continue
+		}
+		for _, item := range txOut.TxArray {
+			itemInHash := strings.TrimSpace(item.InHash.String())
+			if itemInHash == "" {
+				continue
+			}
+			if !strings.EqualFold(itemInHash, withdrawalID) && !strings.EqualFold(itemInHash, inHash) {
+				continue
+			}
+			link := shielderWithdrawalTxOutLink{
+				Status:           txOut.Status,
+				Height:           txOut.Height,
+				Epoch:            txOut.Epoch,
+				TxType:           item.GetTxType(),
+				OutHash:          strings.TrimSpace(item.OutHash.String()),
+				OutVout:          item.OutVout,
+				SigningAttempt:   txOut.SigningAttempt,
+				RetryUntilHeight: txOut.RetryUntilHeight,
+			}
+			if link.OutHash != "" {
+				link.Outpoint = fmt.Sprintf("%s:%d", link.OutHash, link.OutVout)
+				return link
+			}
+			if pending.Status == "" {
+				pending = link
+			}
+		}
+	}
+	return pending
 }
 
 func blockEvent(e sdk.Event) *types.BlockEvent {

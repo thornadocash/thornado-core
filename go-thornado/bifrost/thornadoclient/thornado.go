@@ -38,23 +38,24 @@ import (
 
 // Endpoint urls
 const (
-	AuthAccountEndpoint      = "/cosmos/auth/v1beta1/accounts"
-	BroadcastTxsEndpoint     = "/"
-	KeygenEndpoint           = "/thornado/keygen"
-	KeysignEndpoint          = "/thornado/keysign"
-	LastBlockEndpoint        = "/thornado/lastblock"
-	NodeAccountEndpoint      = "/thornado/node"
-	NodeAccountsEndpoint     = "/thornado/nodes"
-	SignerMembershipEndpoint = "/thornado/vaults/%s/signers"
-	StatusEndpoint           = "/status"
-	VaultEndpoint            = "/thornado/vault/%s"
-	BaseVaultEndpoint        = "/thornado/vaults/base"
-	PubKeysEndpoint          = "/thornado/vaults/pubkeys"
-	ConfigEndpoint           = "/thornado/config"
-	ConfigDefaultsEndpoint   = "/thornado/config/defaults"
-	ChainVersionEndpoint     = "/thornado/version"
-	NetworkFeeEndpoint       = "/thornado/network_fee"
-	TxOutEndpoint            = "/thornado/txout/out"
+	AuthAccountEndpoint         = "/cosmos/auth/v1beta1/accounts"
+	BroadcastTxsEndpoint        = "/"
+	KeygenEndpoint              = "/thornado/keygen"
+	KeysignEndpoint             = "/thornado/keysign"
+	LastBlockEndpoint           = "/thornado/lastblock"
+	NodeAccountEndpoint         = "/thornado/node"
+	NodeAccountsEndpoint        = "/thornado/nodes"
+	SignerMembershipEndpoint    = "/thornado/vaults/%s/signers"
+	StatusEndpoint              = "/status"
+	VaultEndpoint               = "/thornado/vault/%s"
+	BaseVaultEndpoint           = "/thornado/vaults/base"
+	PubKeysEndpoint             = "/thornado/vaults/pubkeys"
+	ConfigEndpoint              = "/thornado/config"
+	ConfigDefaultsEndpoint      = "/thornado/config/defaults"
+	ChainVersionEndpoint        = "/thornado/version"
+	NetworkFeeEndpoint          = "/thornado/network_fee"
+	TxOutEndpoint               = "/thornado/txout"
+	VaultDepositAddressEndpoint = "/thornado/deposit/address/%s"
 )
 
 // thornadoBridge will be used to send tx to Thornado
@@ -89,6 +90,7 @@ type ThornadoBridge interface {
 	GetInboundOutbound(txIns common.ObservedTxs) (common.ObservedTxs, common.ObservedTxs, error)
 	GetPubKeys() ([]PubKeyAddressPair, error)
 	GetBasePubKeys() ([]PubKeyAddressPair, error)
+	IsVaultDepositAddress(address common.Address) bool
 	GetSolvencyMsg(height int64, chain common.Chain, pubKey common.PubKey, coins common.Coins) *stypes.MsgSolvency
 	GetThornadoVersion() (semver.Version, error)
 	IsCatchingUp() (bool, error)
@@ -105,6 +107,7 @@ type ThornadoBridge interface {
 	BroadcastWithBlocking(msgs ...sdk.Msg) (common.TxID, error)
 	GetKeysign(blockHeight int64, pk string) (types.TxOut, error)
 	GetPendingTxOutKeysigns() ([]types.TxOut, error)
+	GetAllTxOutKeysigns() ([]types.TxOut, error)
 	GetNodeAccount(string) (*stypes.NodeAccount, error)
 	GetNodeAccounts() ([]*stypes.QueryNodeResponse, error)
 	GetKeygenBlock(int64, string) (stypes.KeygenBlock, error)
@@ -740,6 +743,22 @@ func (b *thornadoBridge) GetBasePubKeys() ([]PubKeyAddressPair, error) {
 		addressPairs = append(addressPairs, kp)
 	}
 	return addressPairs, nil
+}
+
+func (b *thornadoBridge) IsVaultDepositAddress(address common.Address) bool {
+	if address.IsEmpty() {
+		return false
+	}
+	buf, status, err := b.getWithPath(fmt.Sprintf(VaultDepositAddressEndpoint, address.String()))
+	if err != nil || status != http.StatusOK {
+		return false
+	}
+	var result stypes.QueryVaultDepositAddressResponse
+	if err := json.Unmarshal(buf, &result); err != nil {
+		b.logger.Debug().Err(err).Str("address", address.String()).Msg("fail to unmarshal vault deposit address")
+		return false
+	}
+	return strings.EqualFold(result.Address, address.String()) && result.VaultPubKey != ""
 }
 
 // PostNetworkFee send network fee message to Thornado

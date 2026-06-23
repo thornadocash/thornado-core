@@ -13,4 +13,5 @@ message MsgOperatorRotate {
       [ (gogoproto.casttype) =
             "github.com/cosmos/cosmos-sdk/types.AccAddress" ];
   common.Coin coin = 3 [ (gogoproto.nullable) = false ];
+  string operator_pub_key = 4;
 }

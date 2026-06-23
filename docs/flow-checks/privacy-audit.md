@@ -84,5 +84,5 @@ cd circuits/tornado && npm ci && npm run download-artifacts && npm run audit:dif
 
 # FFI + Go wrapper
 cargo build --release -p thornado-ffi
-cd go-thornado && go test ./go-wrappers/shielder/... ./x/thornado/ -run 'Shielder|RejectLeaky|ValidateShielder|BondShield|Recipient'
+cd go-thornado && go test ./go-wrappers/shielder/... ./x/thornado/ -run 'Shielder|RejectLeaky|ValidateShielder|BondFromNotes|Recipient'
 ```

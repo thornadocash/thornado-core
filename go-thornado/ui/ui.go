@@ -56,6 +56,7 @@ func RegisterBrowserAPI(rtr *mux.Router, moduleName string, clientCtx client.Con
 	rtr.HandleFunc(fmt.Sprintf("/%s/browser/node/sale-shield", moduleName), browserHandler(clientCtx, nodeSaleShieldMsg)).Methods(http.MethodPost, http.MethodOptions)
 	rtr.HandleFunc(fmt.Sprintf("/%s/browser/node/pause-chain", moduleName), browserHandler(clientCtx, nodePauseChainMsg)).Methods(http.MethodPost, http.MethodOptions)
 	rtr.HandleFunc(fmt.Sprintf("/%s/browser/node/resume-chain", moduleName), browserHandler(clientCtx, nodeResumeChainMsg)).Methods(http.MethodPost, http.MethodOptions)
+	rtr.HandleFunc(fmt.Sprintf("/%s/browser/config/vote", moduleName), browserHandler(clientCtx, configVoteMsg)).Methods(http.MethodPost, http.MethodOptions)
 	rtr.HandleFunc(fmt.Sprintf("/%s/browser/upgrade/propose", moduleName), browserHandler(clientCtx, upgradeProposeMsg)).Methods(http.MethodPost, http.MethodOptions)
 	rtr.HandleFunc(fmt.Sprintf("/%s/browser/upgrade/approve", moduleName), browserHandler(clientCtx, upgradeApproveMsg)).Methods(http.MethodPost, http.MethodOptions)
 	rtr.HandleFunc(fmt.Sprintf("/%s/browser/upgrade/reject", moduleName), browserHandler(clientCtx, upgradeRejectMsg)).Methods(http.MethodPost, http.MethodOptions)
@@ -402,6 +403,26 @@ func nodeResumeChainMsg(r *http.Request) (sdk.Msg, string, error) {
 		return nil, "", err
 	}
 	return types.NewMsgNodePauseChain(-1, signer), signer.String(), nil
+}
+
+func configVoteMsg(r *http.Request) (sdk.Msg, string, error) {
+	var req struct {
+		Key    string `json:"key"`
+		Value  string `json:"value"`
+		Signer string `json:"signer"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, "", err
+	}
+	signer, err := parseSigner(req.Signer)
+	if err != nil {
+		return nil, "", err
+	}
+	value, err := parseIntJSON(req.Value, "value")
+	if err != nil {
+		return nil, "", err
+	}
+	return types.NewMsgConfig(strings.TrimSpace(req.Key), value, signer), signer.String(), nil
 }
 
 func upgradeProposeMsg(r *http.Request) (sdk.Msg, string, error) {

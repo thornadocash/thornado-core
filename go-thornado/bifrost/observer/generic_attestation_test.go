@@ -565,6 +565,36 @@ func TestMarkAttestationsSent(t *testing.T) {
 	}
 }
 
+func TestUncommittedAttestationsIncludesSentPendingQuorum(t *testing.T) {
+	state := AttestationState[*attestableObservedTx]{
+		Item: &attestableObservedTx{ObservedTx: &common.ObservedTx{}},
+	}
+	state.attestations = []attestationSentState{
+		{
+			attestation: &common.Attestation{PubKey: []byte("pubkey1"), Signature: []byte("sig1")},
+			sent:        true,
+			committed:   false,
+		},
+		{
+			attestation: &common.Attestation{PubKey: []byte("pubkey2"), Signature: []byte("sig2")},
+			sent:        false,
+			committed:   false,
+		},
+		{
+			attestation: &common.Attestation{PubKey: []byte("pubkey3"), Signature: []byte("sig3")},
+			sent:        true,
+			committed:   true,
+		},
+	}
+
+	require.Len(t, state.UnsentAttestations(), 1)
+
+	atts := state.UncommittedAttestations()
+	require.Len(t, atts, 2)
+	require.Equal(t, []byte("pubkey1"), atts[0].PubKey)
+	require.Equal(t, []byte("pubkey2"), atts[1].PubKey)
+}
+
 // TestVerifySignature tests the signature verification function
 func TestVerifySignature(t *testing.T) {
 	// Create a key pair for testing

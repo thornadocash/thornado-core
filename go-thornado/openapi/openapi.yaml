@@ -34,7 +34,7 @@ paths:
       responses:
         "200":
           description: Nodes response
-  /thornado/node/metrics:
+  /thornado/nodes/metrics:
     get:
       summary: Node metrics
       responses:

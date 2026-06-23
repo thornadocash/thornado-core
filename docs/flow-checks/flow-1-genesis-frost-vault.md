@@ -19,9 +19,9 @@ Goal: prove a fresh 4-validator genesis automatically produces the first FROST B
 ## Setup And Genesis State
 
 - check: genesis has exactly four CometBFT validators; desired_result: validator set contains node1-node4 only, equal voting power, no node5/node6 consensus entry; validated: true
-- check: Thornado genesis has exactly four node accounts; desired_result: node1-node4 are `Active`, each has secp256k1 node key, ed25519 node key, consensus pubkey, version, and zero Thornado bond; validated: true
+- check: Thornado genesis has exactly four node accounts; desired_result: node1-node4 are `Active`, each has secp256k1 node key, consensus pubkey, version, and zero Thornado bond; validated: true
 - check: genesis node accounts have `bond:"0"` and bond address equal to node operator address; desired_result: genesis does not depend on shielder bond deposits; validated: true
-- check: node key roles are distinct; desired_result: secp256k1 key is vault/signing membership identity, ed25519 key is node key-set identity, consensus key is CometBFT validator identity; validated: true
+- check: node key roles are distinct; desired_result: secp256k1 key is vault/signing membership identity, consensus key is CometBFT validator identity; validated: true
 - check: genesis has no initial active vault; desired_result: app genesis `vaults` is empty and the first base vault is created only after automatic keygen; validated: true
 - check: FROST is the only BTC keygen/keysign path; desired_result: no `EnableFrostBTC` config exists and no legacy feature flag is required; validated: true
 - check: genesis config uses `Node_SetDesired=4` and `Vault_BaseMembersMin=4`; desired_result: initial keygen membership resolves to exactly four genesis node secp keys; validated: true

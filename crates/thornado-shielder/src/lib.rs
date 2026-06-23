@@ -66,6 +66,14 @@ pub struct ShieldAuthorization {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct FeeClaimAuthorization {
+    pub receipt: ShieldReceipt,
+    pub commitments: Vec<NoteCommitment>,
+    pub fee_note_pubkeys: Vec<String>,
+    pub operator_signature: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NoteReceipt {
     pub deposit_id: String,
     #[serde(default = "default_deposit_type")]
@@ -302,6 +310,63 @@ pub fn shield_authorization_for_deposit_type(
         signature: hex::encode(signature.to_der().as_bytes()),
         deposit_pubkey,
     }
+}
+
+pub fn fee_claim_authorization_for_deposit_type(
+    client_seed: &str,
+    signer_deposit_type: &str,
+    signer_deposit_index: u64,
+    note_deposit_type: &str,
+    note_deposit_index: u64,
+    claim_ref: &str,
+    node_pubkey: &str,
+    owner: &str,
+    accrued_sats: u64,
+    fee_per_slot_share_sats: u64,
+    amount_sats: u64,
+) -> Result<FeeClaimAuthorization> {
+    let receipt = derive_shield_receipt_for_deposit_type(
+        claim_ref,
+        note_deposit_type,
+        note_deposit_index,
+        amount_sats,
+        client_seed,
+    )?;
+    let commitments = receipt.commitments();
+    let fee_note_pubkeys = receipt
+        .notes
+        .iter()
+        .map(|note| {
+            deposit_pubkey_from_secret(&note_child_secret_for_deposit_type(
+                client_seed,
+                note_deposit_type,
+                note_deposit_index,
+                claim_ref,
+                note.index + 1,
+            ))
+        })
+        .collect::<Vec<_>>();
+    let payload = fee_claim_payload(
+        node_pubkey,
+        owner,
+        accrued_sats,
+        fee_per_slot_share_sats,
+        &commitments,
+        &fee_note_pubkeys,
+    );
+    let secret_key =
+        deposit_secret_key_for_type(client_seed, signer_deposit_type, signer_deposit_index);
+    let signing_key = SigningKey::from(secret_key);
+    let signature: SecpSignature = signing_key
+        .sign_prehash(&payload)
+        .expect("32-byte fee claim digest should sign");
+    let signature = signature.normalize_s().unwrap_or(signature);
+    Ok(FeeClaimAuthorization {
+        receipt,
+        commitments,
+        fee_note_pubkeys,
+        operator_signature: hex::encode(signature.to_bytes()),
+    })
 }
 
 pub fn verify_shield_authorization(
@@ -570,6 +635,32 @@ fn shield_authorization_message(
         &commitments_json,
     ]);
     digest
+}
+
+fn fee_claim_payload(
+    node_pubkey: &str,
+    owner: &str,
+    accrued: u64,
+    fee_per_slot_share: u64,
+    notes: &[NoteCommitment],
+    note_pubkeys: &[String],
+) -> Vec<u8> {
+    let mut parts = vec![
+        "thornado:fee-claim:v1".to_string(),
+        node_pubkey.trim().to_string(),
+        owner.trim().to_string(),
+        accrued.to_string(),
+        fee_per_slot_share.to_string(),
+    ];
+    for (note, pubkey) in notes.iter().zip(note_pubkeys.iter()) {
+        parts.push(format!(
+            "{}:{}:{}",
+            note.denomination_sats,
+            note.commitment.trim(),
+            pubkey.trim()
+        ));
+    }
+    Sha256::digest(parts.join("|").as_bytes()).to_vec()
 }
 
 fn deposit_root_secret_for_deposit_type(

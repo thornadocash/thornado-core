@@ -43,6 +43,7 @@ func getInternalHandlerMapping(mgr Manager) map[string]MsgHandler {
 	m := make(map[string]MsgHandler)
 	m[sdk.MsgTypeURL(&MsgOutboundTx{})] = NewOutboundTxHandler(mgr)
 	m[sdk.MsgTypeURL(&MsgMaint{})] = NewMaintHandler(mgr)
+	m[sdk.MsgTypeURL(&MsgLeave{})] = NewLeaveHandler(mgr)
 	m[sdk.MsgTypeURL(&MsgMigrate{})] = NewMigrateHandler(mgr)
 	m[sdk.MsgTypeURL(&MsgNoOp{})] = NewNoOpHandler(mgr)
 	m[sdk.MsgTypeURL(&MsgConsolidate{})] = NewConsolidateHandler(mgr)

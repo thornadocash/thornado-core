@@ -63,7 +63,7 @@ func (h VersionHandler) validate(ctx cosmos.Context, msg MsgSetVersion) error {
 func (h VersionHandler) handle(ctx cosmos.Context, msg MsgSetVersion) error {
 	ctx.Logger().Info("handleMsgSetVersion request", "Version:", msg.Version)
 
-	nodeAccount, err := h.mgr.Keeper().GetNodeAccount(ctx, msg.Signer)
+	nodeAccount, err := resolveNodeAccountBySigner(ctx, h.mgr.Keeper(), msg.Signer)
 	if err != nil {
 		return cosmos.ErrUnauthorized(fmt.Errorf("unable to find account(%s):%w", msg.Signer, err).Error())
 	}
@@ -83,7 +83,7 @@ func (h VersionHandler) handle(ctx cosmos.Context, msg MsgSetVersion) error {
 
 	ctx.EventManager().EmitEvent(
 		cosmos.NewEvent("set_version",
-			cosmos.NewAttribute("node_address", msg.Signer.String()),
+			cosmos.NewAttribute("node_address", nodeAccount.NodeAddress.String()),
 			cosmos.NewAttribute("version", msg.Version)))
 
 	if nodeAccount.Status == NodeActive {
@@ -95,13 +95,9 @@ func (h VersionHandler) handle(ctx cosmos.Context, msg MsgSetVersion) error {
 }
 
 func validateVersionAuth(ctx cosmos.Context, k keeper.Keeper, signer cosmos.AccAddress) error {
-	nodeAccount, err := k.GetNodeAccount(ctx, signer)
+	nodeAccount, err := resolveNodeAccountBySigner(ctx, k, signer)
 	if err != nil {
 		ctx.Logger().Error("fail to get node account", "error", err, "address", signer.String())
-		return cosmos.ErrUnauthorized(fmt.Sprintf("%s is not authorized", signer))
-	}
-	if nodeAccount.IsEmpty() {
-		ctx.Logger().Error("unauthorized account", "address", signer.String())
 		return cosmos.ErrUnauthorized(fmt.Sprintf("%s is not authorized", signer))
 	}
 	if nodeAccount.Type != NodeTypeNode {
