@@ -390,9 +390,11 @@ function txOutpointLink(txid, vout, outpoint = "") {
   const suffix = Number.isInteger(parsedVout) && parsedVout >= 0
     ? `:${parsedVout}`
     : String(outpoint || "").startsWith(`${value}:`)
-      ? `:${escapeHtml(String(outpoint).slice(value.length + 1))}`
+      ? `:${String(outpoint).slice(value.length + 1)}`
       : "";
-  return `${txHashLink(value)}${suffix}`;
+  const safeTitle = escapeHtml(suffix ? `${value}${suffix}` : value);
+  const label = `${short(value, 6, 8)}${suffix}`;
+  return `<a class="tx-link" href="${btcExplorerUrl(value)}" target="_blank" rel="noopener" title="${safeTitle}">${escapeHtml(label)}</a>`;
 }
 
 function btcAddressExplorerUrl(address) {
