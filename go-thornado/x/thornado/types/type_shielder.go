@@ -401,6 +401,7 @@ func (m DepositAddress) Valid() error {
 type StoredShielderNoteRecord struct {
 	Commitment       string `json:"commitment"`
 	DenominationSats uint64 `json:"denomination_sats"`
+	CreatedHeight    int64  `json:"created_height,omitempty"`
 }
 
 func (m StoredShielderNoteRecord) Key() string {
@@ -413,6 +414,19 @@ func (m StoredShielderNoteRecord) Valid() error {
 	}
 	if m.DenominationSats == 0 {
 		return fmt.Errorf("missing shielder note denomination")
+	}
+	return nil
+}
+
+type StoredShielderNullifierRecord struct {
+	NullifierHash string `json:"nullifier_hash,omitempty"`
+	WithdrawalID  string `json:"withdrawal_id"`
+	CreatedHeight int64  `json:"created_height,omitempty"`
+}
+
+func (m StoredShielderNullifierRecord) Valid() error {
+	if strings.TrimSpace(m.WithdrawalID) == "" {
+		return fmt.Errorf("missing shielder redeem id")
 	}
 	return nil
 }

@@ -55,6 +55,7 @@ message QueryShielderNullifierResponse {
 message ShielderNoteRecord {
   string commitment = 1;
   uint64 denomination_sats = 2;
+  int64 created_height = 3;
 }
 
 message ShielderSpentNullifier {
@@ -71,6 +72,7 @@ message ShielderSpentNullifier {
   string out_hash = 11;
   uint32 out_vout = 12;
   string outpoint = 13;
+  int64 created_height = 14;
 }
 
 message QueryShielderSyncRequest {
@@ -79,6 +81,7 @@ message QueryShielderSyncRequest {
   string deposit_cursor = 3;
   string note_cursor = 4;
   string nullifier_cursor = 5;
+  int64 from_height = 6;
 }
 
 message QueryShielderSyncResponse {
@@ -92,6 +95,7 @@ message QueryShielderSyncResponse {
   uint64 total_deposits = 8;
   uint64 total_notes = 9;
   uint64 total_nullifiers = 10;
+  int64 from_height = 11;
 }
 
 message QueryShielderRedeemQuoteRequest {

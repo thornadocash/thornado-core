@@ -158,11 +158,12 @@ p {
 }
 
 .top-status {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 14px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .status-menu {
@@ -170,10 +171,12 @@ p {
 }
 
 .shielded-summary {
-  flex-basis: 100%;
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
   display: flex;
   justify-content: flex-end;
-  margin-top: 48px;
+  margin: 0;
 }
 
 .shielded-summary[hidden] {
@@ -189,21 +192,25 @@ p {
 .shielded-summary-menu {
   right: 0;
   top: calc(100% + 10px);
-  min-width: 250px;
+  min-width: 238px;
+  padding: 10px;
 }
 
 .shielded-summary-list {
   display: grid;
   gap: 0;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .shielded-summary-row {
   display: flex;
   justify-content: space-between;
   gap: 18px;
-  padding: 8px 0;
+  padding: 8px 2px;
   border-bottom: 1px solid rgba(98, 78, 42, 0.14);
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.2;
 }
 
 .shielded-summary-row span {
@@ -212,6 +219,7 @@ p {
 
 .shielded-summary-row strong {
   color: var(--ink);
+  font-weight: 700;
 }
 
 .status-chip {
@@ -322,10 +330,15 @@ p {
   border-radius: 8px;
   background: var(--paper-raised);
   box-shadow: 0 16px 36px rgba(67, 47, 13, 0.12);
+  color: var(--ink);
 }
 
 .status-dropdown-wide {
   min-width: 330px;
+}
+
+.status-dropdown-wide.shielded-summary-menu {
+  min-width: 238px;
 }
 
 .status-dropdown button {
@@ -338,6 +351,39 @@ p {
   font-size: 13px;
   font-weight: 800;
   text-align: left;
+}
+
+.status-dropdown button:hover,
+.status-dropdown button:focus-visible {
+  background: var(--paper-warm);
+  color: var(--accent);
+}
+
+.shielded-summary-menu button {
+  min-height: 36px;
+  padding: 0 12px;
+  background: var(--accent);
+  color: #fff8e7;
+  text-align: center;
+}
+
+.shielded-summary-menu button:hover,
+.shielded-summary-menu button:focus-visible {
+  background: #9a6a0d;
+  color: #fff8e7;
+}
+
+.shielded-summary-menu button.secondary {
+  margin-top: 8px;
+  background: transparent;
+  color: var(--accent-strong);
+  border-color: var(--line);
+}
+
+.shielded-summary-menu button.secondary:hover,
+.shielded-summary-menu button.secondary:focus-visible {
+  background: var(--paper-warm);
+  color: var(--accent);
 }
 
 .status-dropdown button:disabled {
@@ -1035,6 +1081,12 @@ aside > * {
   align-items: stretch;
 }
 
+.secret-birthday {
+  color: var(--gold-dark);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
 .secret-help {
   color: var(--muted);
   font-size: 12px;
@@ -1409,7 +1461,7 @@ aside > * {
 
 .deposit-selected {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 12px;
   align-items: center;
   width: 100%;
@@ -1427,6 +1479,12 @@ aside > * {
   box-shadow: none;
 }
 
+.deposit-selected > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .deposit-selected:hover,
 .deposit-selected:focus-visible {
   border-color: rgba(169, 122, 21, 0.34);
@@ -1434,48 +1492,33 @@ aside > * {
   box-shadow: none;
 }
 
-.deposit-mark {
+.deposit-chevron {
   position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
+  display: block;
+  width: 12px;
+  height: 12px;
   flex: 0 0 auto;
   border: 0;
-  border-radius: 8px;
-  background: rgba(116, 80, 15, 0.08);
   color: var(--accent-strong);
-  box-shadow: inset 0 0 0 1px rgba(116, 80, 15, 0.08);
-  transform: none;
 }
 
-.deposit-mark::before {
+.deposit-chevron::before {
   content: "";
-  width: 7px;
-  height: 7px;
+  position: absolute;
+  inset: 1px;
   border-right: 2px solid currentColor;
   border-bottom: 2px solid currentColor;
   transform: translateY(-1px) rotate(45deg);
   transition: transform 0.15s ease;
 }
 
-.deposit-mark::after {
-  content: none;
-}
-
-.deposit-selected[aria-expanded="true"] .deposit-mark {
-  transform: none;
-}
-
-.deposit-selected[aria-expanded="true"] .deposit-mark::before {
+.deposit-selected[aria-expanded="true"] .deposit-chevron::before {
   transform: translateY(2px) rotate(225deg);
 }
 
-.deposit-selected:hover .deposit-mark,
-.deposit-selected:focus-visible .deposit-mark {
+.deposit-selected:hover .deposit-chevron,
+.deposit-selected:focus-visible .deposit-chevron {
   color: var(--accent);
-  background: rgba(116, 80, 15, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(116, 80, 15, 0.14);
 }
 
 .deposit-menu {
@@ -2850,6 +2893,14 @@ button:disabled {
     grid-row: 2;
     width: 100%;
     justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .shielded-summary {
+    position: static;
+    flex: 0 0 100%;
+    justify-content: flex-start;
+    margin: 0 0 4px;
   }
 
   .status-menu {

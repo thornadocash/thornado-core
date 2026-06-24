@@ -1003,16 +1003,20 @@ func (qs queryServer) queryShielderSync(ctx cosmos.Context, req *types.QueryShie
 	if limit > 2000 {
 		limit = 2000
 	}
+	fromHeight := req.GetFromHeight()
+	if fromHeight < 0 {
+		fromHeight = 0
+	}
 
-	deposits, nextDepositCursor, totalDeposits, moreDeposits, err := queryShielderSyncDeposits(ctx, k, strings.TrimSpace(req.GetDepositCursor()), limit, legacyFullSync)
+	deposits, nextDepositCursor, totalDeposits, moreDeposits, err := queryShielderSyncDeposits(ctx, k, strings.TrimSpace(req.GetDepositCursor()), limit, legacyFullSync, fromHeight)
 	if err != nil {
 		return nil, err
 	}
-	notes, nextNoteCursor, totalNotes, moreNotes, err := queryShielderSyncNotes(ctx, k, strings.TrimSpace(req.GetNoteCursor()), limit, legacyFullSync)
+	notes, nextNoteCursor, totalNotes, moreNotes, err := queryShielderSyncNotes(ctx, k, strings.TrimSpace(req.GetNoteCursor()), limit, legacyFullSync, fromHeight)
 	if err != nil {
 		return nil, err
 	}
-	nullifiers, nextNullifierCursor, totalNullifiers, moreNullifiers, err := queryShielderSyncNullifiers(ctx, k, strings.TrimSpace(req.GetNullifierCursor()), limit, legacyFullSync)
+	nullifiers, nextNullifierCursor, totalNullifiers, moreNullifiers, err := queryShielderSyncNullifiers(ctx, k, strings.TrimSpace(req.GetNullifierCursor()), limit, legacyFullSync, fromHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -1028,15 +1032,15 @@ func (qs queryServer) queryShielderSync(ctx cosmos.Context, req *types.QueryShie
 		TotalDeposits:       totalDeposits,
 		TotalNotes:          totalNotes,
 		TotalNullifiers:     totalNullifiers,
+		FromHeight:          fromHeight,
 	}, nil
 }
 
-func queryShielderSyncDeposits(ctx cosmos.Context, k keeper.Keeper, cursor string, limit int, full bool) ([]*types.QueryDepositResponse, string, uint64, bool, error) {
-	iter := k.GetDepositRecordIterator(ctx)
+func queryShielderSyncDeposits(ctx cosmos.Context, k keeper.Keeper, cursor string, limit int, full bool, fromHeight int64) ([]*types.QueryDepositResponse, string, uint64, bool, error) {
+	iter := k.GetDepositRecordIteratorAfter(ctx, cursor)
 	defer iter.Close()
 
 	deposits := make([]*types.QueryDepositResponse, 0)
-	var total uint64
 	var last string
 	more := false
 	for ; iter.Valid(); iter.Next() {
@@ -1048,13 +1052,12 @@ func queryShielderSyncDeposits(ctx cosmos.Context, k keeper.Keeper, cursor strin
 		if key == "" {
 			continue
 		}
-		total++
-		if cursor != "" && key <= cursor {
+		if !syncRecordInBirthday(depositSyncHeight(deposit), fromHeight) {
 			continue
 		}
 		if !full && len(deposits) >= limit {
 			more = true
-			continue
+			break
 		}
 		deposits = append(deposits, depositQueryResponse(deposit))
 		last = key
@@ -1062,15 +1065,14 @@ func queryShielderSyncDeposits(ctx cosmos.Context, k keeper.Keeper, cursor strin
 	if !more {
 		last = ""
 	}
-	return deposits, last, total, more, nil
+	return deposits, last, shielderSyncPageTotal(len(deposits), more), more, nil
 }
 
-func queryShielderSyncNotes(ctx cosmos.Context, k keeper.Keeper, cursor string, limit int, full bool) ([]*types.ShielderNoteRecord, string, uint64, bool, error) {
-	iter := k.GetShielderNoteRecordIterator(ctx)
+func queryShielderSyncNotes(ctx cosmos.Context, k keeper.Keeper, cursor string, limit int, full bool, fromHeight int64) ([]*types.ShielderNoteRecord, string, uint64, bool, error) {
+	iter := k.GetShielderNoteRecordIteratorAfter(ctx, cursor)
 	defer iter.Close()
 
 	notes := make([]*types.ShielderNoteRecord, 0)
-	var total uint64
 	var last string
 	more := false
 	for ; iter.Valid(); iter.Next() {
@@ -1082,38 +1084,32 @@ func queryShielderSyncNotes(ctx cosmos.Context, k keeper.Keeper, cursor string, 
 		if key == "" {
 			continue
 		}
-		total++
-		if cursor != "" && key <= cursor {
+		if !syncRecordInBirthday(record.CreatedHeight, fromHeight) {
 			continue
 		}
 		if !full && len(notes) >= limit {
 			more = true
-			continue
+			break
 		}
 		notes = append(notes, &types.ShielderNoteRecord{
 			Commitment:       strings.TrimSpace(record.Commitment),
 			DenominationSats: record.DenominationSats,
+			CreatedHeight:    record.CreatedHeight,
 		})
 		last = key
 	}
-	sort.Slice(notes, func(i, j int) bool {
-		if notes[i].DenominationSats == notes[j].DenominationSats {
-			return notes[i].Commitment < notes[j].Commitment
-		}
-		return notes[i].DenominationSats < notes[j].DenominationSats
-	})
 	if !more {
 		last = ""
 	}
-	return notes, last, total, more, nil
+	return notes, last, shielderSyncPageTotal(len(notes), more), more, nil
 }
 
-func queryShielderSyncNullifiers(ctx cosmos.Context, k keeper.Keeper, cursor string, limit int, full bool) ([]*types.ShielderSpentNullifier, string, uint64, bool, error) {
-	iter := k.GetShielderNullifierIterator(ctx)
+func queryShielderSyncNullifiers(ctx cosmos.Context, k keeper.Keeper, cursor string, limit int, full bool, fromHeight int64) ([]*types.ShielderSpentNullifier, string, uint64, bool, error) {
+	iter := k.GetShielderNullifierIteratorAfter(ctx, cursor)
 	defer iter.Close()
 
-	nullifiers := make([]*types.ShielderSpentNullifier, 0)
-	var total uint64
+	records := make([]shielderSyncNullifierRecord, 0)
+	txOutLookupKeys := make(map[string]bool)
 	var last string
 	more := false
 	for ; iter.Valid(); iter.Next() {
@@ -1121,29 +1117,102 @@ func queryShielderSyncNullifiers(ctx cosmos.Context, k keeper.Keeper, cursor str
 		if nullifier == "" {
 			continue
 		}
-		total++
-		if cursor != "" && nullifier <= cursor {
-			continue
-		}
-		if !full && len(nullifiers) >= limit {
-			more = true
-			continue
-		}
-		var withdrawalID string
-		if err := json.Unmarshal(iter.Value(), &withdrawalID); err != nil {
+		record, err := decodeShielderSyncNullifierRecord(nullifier, iter.Value())
+		if err != nil {
 			return nil, "", 0, false, err
 		}
-		withdrawal, _ := k.GetShielderRedeem(ctx, strings.TrimSpace(withdrawalID))
-		nullifiers = append(nullifiers, shielderSpentNullifierResponse(ctx, k, strings.TrimSpace(nullifier), strings.TrimSpace(withdrawalID), withdrawal))
+		withdrawal := types.ShielderRedeem{}
+		if record.CreatedHeight == 0 && fromHeight > 0 {
+			withdrawal, _ = k.GetShielderRedeem(ctx, strings.TrimSpace(record.WithdrawalID))
+			record.CreatedHeight = withdrawal.RequestedHeight
+		}
+		if !syncRecordInBirthday(record.CreatedHeight, fromHeight) {
+			continue
+		}
+		if !full && len(records) >= limit {
+			more = true
+			break
+		}
+		if strings.TrimSpace(withdrawal.WithdrawalID) == "" {
+			withdrawal, _ = k.GetShielderRedeem(ctx, strings.TrimSpace(record.WithdrawalID))
+		}
+		for _, key := range shielderWithdrawalTxOutLookupKeys(withdrawal) {
+			txOutLookupKeys[key] = true
+		}
+		records = append(records, shielderSyncNullifierRecord{
+			nullifier:     strings.TrimSpace(nullifier),
+			withdrawalID:  strings.TrimSpace(record.WithdrawalID),
+			withdrawal:    withdrawal,
+			createdHeight: record.CreatedHeight,
+		})
 		last = nullifier
 	}
-	sort.Slice(nullifiers, func(i, j int) bool {
-		return nullifiers[i].NullifierHash < nullifiers[j].NullifierHash
-	})
 	if !more {
 		last = ""
 	}
-	return nullifiers, last, total, more, nil
+	txOutLinks := shielderWithdrawalTxOutLinks(ctx, k, txOutLookupKeys)
+	nullifiers := make([]*types.ShielderSpentNullifier, 0, len(records))
+	for _, record := range records {
+		nullifiers = append(nullifiers, shielderSpentNullifierResponseWithLink(
+			record.nullifier,
+			record.withdrawalID,
+			record.withdrawal,
+			record.createdHeight,
+			shielderWithdrawalTxOutLinkFromMap(txOutLinks, record.withdrawal),
+		))
+	}
+	return nullifiers, last, shielderSyncPageTotal(len(nullifiers), more), more, nil
+}
+
+type shielderSyncNullifierRecord struct {
+	nullifier     string
+	withdrawalID  string
+	withdrawal    types.ShielderRedeem
+	createdHeight int64
+}
+
+func shielderSyncPageTotal(count int, more bool) uint64 {
+	if more {
+		return uint64(count + 1)
+	}
+	return uint64(count)
+}
+
+func syncRecordInBirthday(createdHeight, fromHeight int64) bool {
+	return fromHeight <= 0 || createdHeight >= fromHeight
+}
+
+func depositSyncHeight(deposit types.DepositRecord) int64 {
+	height := deposit.CreatedHeight
+	for _, candidate := range []int64{
+		deposit.MatchedHeight,
+		deposit.BTCObservedHeight,
+		deposit.RefundEligibleHeight,
+		deposit.RefundQueuedHeight,
+	} {
+		if candidate > height {
+			height = candidate
+		}
+	}
+	return height
+}
+
+func decodeShielderSyncNullifierRecord(nullifier string, raw []byte) (types.StoredShielderNullifierRecord, error) {
+	var record types.StoredShielderNullifierRecord
+	if err := json.Unmarshal(raw, &record); err == nil && strings.TrimSpace(record.WithdrawalID) != "" {
+		if strings.TrimSpace(record.NullifierHash) == "" {
+			record.NullifierHash = strings.TrimSpace(nullifier)
+		}
+		return record, nil
+	}
+	var withdrawalID string
+	if err := json.Unmarshal(raw, &withdrawalID); err != nil {
+		return types.StoredShielderNullifierRecord{}, err
+	}
+	return types.StoredShielderNullifierRecord{
+		NullifierHash: strings.TrimSpace(nullifier),
+		WithdrawalID:  strings.TrimSpace(withdrawalID),
+	}, nil
 }
 
 func (qs queryServer) queryShielderRedeemQuote(ctx cosmos.Context, req *types.QueryShielderRedeemQuoteRequest) (*types.QueryShielderRedeemQuoteResponse, error) {
@@ -1677,9 +1746,6 @@ func (qs queryServer) queryLastBlockHeights(ctx cosmos.Context, chain string) (*
 	}
 	var result []*types.ChainsLastBlock
 	for _, c := range chains {
-		if c == common.BTCChain {
-			continue
-		}
 		chainHeight, err := qs.mgr.Keeper().GetLastChainHeight(ctx, c)
 		if err != nil {
 			return nil, fmt.Errorf("fail to get last chain height: %w", err)
@@ -2305,15 +2371,19 @@ func shielderNullifierResponse(ctx cosmos.Context, k keeper.Keeper, nullifier st
 	return resp
 }
 
-func shielderSpentNullifierResponse(ctx cosmos.Context, k keeper.Keeper, nullifier, withdrawalID string, withdrawal types.ShielderRedeem) *types.ShielderSpentNullifier {
+func shielderSpentNullifierResponse(ctx cosmos.Context, k keeper.Keeper, nullifier, withdrawalID string, withdrawal types.ShielderRedeem, createdHeight int64) *types.ShielderSpentNullifier {
+	return shielderSpentNullifierResponseWithLink(nullifier, withdrawalID, withdrawal, createdHeight, shielderWithdrawalTxOut(ctx, k, withdrawal))
+}
+
+func shielderSpentNullifierResponseWithLink(nullifier, withdrawalID string, withdrawal types.ShielderRedeem, createdHeight int64, link shielderWithdrawalTxOutLink) *types.ShielderSpentNullifier {
 	resp := &types.ShielderSpentNullifier{
 		NullifierHash: strings.TrimSpace(nullifier),
 		WithdrawalId:  strings.TrimSpace(withdrawalID),
+		CreatedHeight: createdHeight,
 	}
 	if strings.TrimSpace(withdrawal.WithdrawalID) == "" {
 		return resp
 	}
-	link := shielderWithdrawalTxOut(ctx, k, withdrawal)
 	resp.WithdrawalStatus = withdrawal.Status
 	resp.AmountSats = withdrawal.AmountSats
 	resp.FeeSats = withdrawal.FeeSats
@@ -2329,12 +2399,43 @@ func shielderSpentNullifierResponse(ctx cosmos.Context, k keeper.Keeper, nullifi
 }
 
 func shielderWithdrawalTxOut(ctx cosmos.Context, k keeper.Keeper, withdrawal types.ShielderRedeem) shielderWithdrawalTxOutLink {
+	wanted := make(map[string]bool)
+	for _, key := range shielderWithdrawalTxOutLookupKeys(withdrawal) {
+		wanted[key] = true
+	}
+	return shielderWithdrawalTxOutLinkFromMap(shielderWithdrawalTxOutLinks(ctx, k, wanted), withdrawal)
+}
+
+func shielderWithdrawalTxOutLookupKeys(withdrawal types.ShielderRedeem) []string {
 	withdrawalID := strings.TrimSpace(withdrawal.WithdrawalID)
 	inHash := strings.TrimSpace(withdrawal.InHash.String())
 	if withdrawalID == "" && inHash == "" {
-		return shielderWithdrawalTxOutLink{}
+		return nil
 	}
-	var pending shielderWithdrawalTxOutLink
+	keys := make([]string, 0, 2)
+	if withdrawalID != "" {
+		keys = append(keys, strings.ToLower(withdrawalID))
+	}
+	if inHash != "" && !strings.EqualFold(inHash, withdrawalID) {
+		keys = append(keys, strings.ToLower(inHash))
+	}
+	return keys
+}
+
+func shielderWithdrawalTxOutLinkFromMap(links map[string]shielderWithdrawalTxOutLink, withdrawal types.ShielderRedeem) shielderWithdrawalTxOutLink {
+	for _, key := range shielderWithdrawalTxOutLookupKeys(withdrawal) {
+		if link, ok := links[key]; ok {
+			return link
+		}
+	}
+	return shielderWithdrawalTxOutLink{}
+}
+
+func shielderWithdrawalTxOutLinks(ctx cosmos.Context, k keeper.Keeper, wanted map[string]bool) map[string]shielderWithdrawalTxOutLink {
+	links := make(map[string]shielderWithdrawalTxOutLink)
+	if len(wanted) == 0 {
+		return links
+	}
 	iterator := k.GetTxOutIterator(ctx)
 	defer iterator.Close()
 	for ; iterator.Valid(); iterator.Next() {
@@ -2347,7 +2448,8 @@ func shielderWithdrawalTxOut(ctx cosmos.Context, k keeper.Keeper, withdrawal typ
 			if itemInHash == "" {
 				continue
 			}
-			if !strings.EqualFold(itemInHash, withdrawalID) && !strings.EqualFold(itemInHash, inHash) {
+			itemKey := strings.ToLower(itemInHash)
+			if !wanted[itemKey] {
 				continue
 			}
 			link := shielderWithdrawalTxOutLink{
@@ -2362,14 +2464,25 @@ func shielderWithdrawalTxOut(ctx cosmos.Context, k keeper.Keeper, withdrawal typ
 			}
 			if link.OutHash != "" {
 				link.Outpoint = fmt.Sprintf("%s:%d", link.OutHash, link.OutVout)
-				return link
 			}
-			if pending.Status == "" {
-				pending = link
-			}
+			mergeShielderWithdrawalTxOutLink(links, itemKey, link)
 		}
 	}
-	return pending
+	return links
+}
+
+func mergeShielderWithdrawalTxOutLink(links map[string]shielderWithdrawalTxOutLink, key string, link shielderWithdrawalTxOutLink) {
+	current, ok := links[key]
+	if !ok {
+		links[key] = link
+		return
+	}
+	if current.OutHash != "" {
+		return
+	}
+	if link.OutHash != "" || current.Status == "" {
+		links[key] = link
+	}
 }
 
 func blockEvent(e sdk.Event) *types.BlockEvent {

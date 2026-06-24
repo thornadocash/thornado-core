@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	storetypes "cosmossdk.io/core/store"
+	corestoretypes "cosmossdk.io/core/store"
+	storetypes "cosmossdk.io/store/types"
 	upgradekeeper "cosmossdk.io/x/upgrade/keeper"
 	"github.com/blang/semver"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -95,13 +96,13 @@ type KVStore struct {
 	coinKeeper    bankkeeper.Keeper
 	accountKeeper authkeeper.AccountKeeper
 	upgradeKeeper *upgradekeeper.Keeper
-	storeService  storetypes.KVStoreService
+	storeService  corestoretypes.KVStoreService
 	version       semver.Version
 	constAccessor constants.ConfigValues
 }
 
 // NewKVStore creates new instances of the thornado Keeper
-func NewKVStore(cdc codec.BinaryCodec, storeService storetypes.KVStoreService, coinKeeper bankkeeper.Keeper, accountKeeper authkeeper.AccountKeeper, upgradeKeeper *upgradekeeper.Keeper, version semver.Version) KVStore {
+func NewKVStore(cdc codec.BinaryCodec, storeService corestoretypes.KVStoreService, coinKeeper bankkeeper.Keeper, accountKeeper authkeeper.AccountKeeper, upgradeKeeper *upgradekeeper.Keeper, version semver.Version) KVStore {
 	return KVStore{
 		coinKeeper:    coinKeeper,
 		accountKeeper: accountKeeper,
@@ -114,7 +115,7 @@ func NewKVStore(cdc codec.BinaryCodec, storeService storetypes.KVStoreService, c
 }
 
 // NewKeeper creates new instances of the thornado Keeper
-func NewKeeper(cdc codec.BinaryCodec, storeService storetypes.KVStoreService, coinKeeper bankkeeper.Keeper, accountKeeper authkeeper.AccountKeeper, upgradeKeeper *upgradekeeper.Keeper) keeper.Keeper {
+func NewKeeper(cdc codec.BinaryCodec, storeService corestoretypes.KVStoreService, coinKeeper bankkeeper.Keeper, accountKeeper authkeeper.AccountKeeper, upgradeKeeper *upgradekeeper.Keeper) keeper.Keeper {
 	version := semver.MustParse("0.0.0")
 	return NewKVStore(cdc, storeService, coinKeeper, accountKeeper, upgradeKeeper, version)
 }
@@ -150,6 +151,15 @@ func (k KVStore) GetKey(prefix types.DbPrefix, key string, other ...string) []by
 func (k KVStore) getIterator(ctx cosmos.Context, prefix types.DbPrefix) cosmos.Iterator {
 	store := runtime.KVStoreAdapter(k.storeService.OpenKVStore(ctx))
 	return cosmos.KVStorePrefixIterator(store, []byte(prefix))
+}
+
+func (k KVStore) getIteratorAfter(ctx cosmos.Context, prefix types.DbPrefix, cursor string) cosmos.Iterator {
+	store := runtime.KVStoreAdapter(k.storeService.OpenKVStore(ctx))
+	start := []byte(prefix)
+	if cursor = strings.TrimSpace(cursor); cursor != "" {
+		start = append(k.GetKey(prefix, cursor), 0)
+	}
+	return store.Iterator(start, storetypes.PrefixEndBytes([]byte(prefix)))
 }
 
 func (k KVStore) DeleteKey(ctx cosmos.Context, key []byte) {

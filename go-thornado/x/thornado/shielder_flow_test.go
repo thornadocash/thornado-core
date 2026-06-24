@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"sort"
 	"strings"
 	"testing"
 
@@ -26,6 +27,8 @@ type shielderFlowTestKeeper struct {
 	feePool       types.FeePool
 	deposits      map[string]types.DepositRecord
 	commitments   map[string]bool
+	noteRecords   map[string]types.StoredShielderNoteRecord
+	nullifiers    map[string][]byte
 	denominations map[uint64][]string
 	merkleRoots   map[uint64]string
 	redeems       map[string]types.ShielderRedeem
@@ -49,6 +52,8 @@ func newShielderFlowTestKeeper() *shielderFlowTestKeeper {
 	return &shielderFlowTestKeeper{
 		deposits:      make(map[string]types.DepositRecord),
 		commitments:   make(map[string]bool),
+		noteRecords:   make(map[string]types.StoredShielderNoteRecord),
+		nullifiers:    make(map[string][]byte),
 		denominations: make(map[uint64][]string),
 		merkleRoots:   make(map[uint64]string),
 		redeems:       make(map[string]types.ShielderRedeem),
@@ -73,6 +78,18 @@ func (k *shielderFlowTestKeeper) GetConfigInt64(_ cosmos.Context, key constants.
 func (k *shielderFlowTestKeeper) SetDepositRecord(_ cosmos.Context, deposit types.DepositRecord) error {
 	k.deposits[deposit.DepositID.String()] = deposit
 	return nil
+}
+
+func (k *shielderFlowTestKeeper) GetDepositRecordIteratorAfter(ctx cosmos.Context, cursor string) cosmos.Iterator {
+	iter := keeper.NewDummyIterator()
+	for id, deposit := range k.deposits {
+		if strings.TrimSpace(cursor) != "" && id <= cursor {
+			continue
+		}
+		value, _ := json.Marshal(deposit)
+		iter.AddItem([]byte(id), value)
+	}
+	return iter
 }
 
 func (k *shielderFlowTestKeeper) GetDepositRecord(_ cosmos.Context, depositID common.TxID) (types.DepositRecord, error) {
@@ -124,8 +141,26 @@ func (k *shielderFlowTestKeeper) ShielderCommitmentExists(_ cosmos.Context, comm
 	return ok
 }
 
-func (k *shielderFlowTestKeeper) SetShielderNoteRecord(_ cosmos.Context, _ types.StoredShielderNoteRecord) error {
+func (k *shielderFlowTestKeeper) SetShielderNoteRecord(_ cosmos.Context, record types.StoredShielderNoteRecord) error {
+	k.noteRecords[record.Key()] = record
 	return nil
+}
+
+func (k *shielderFlowTestKeeper) GetShielderNoteRecordIteratorAfter(_ cosmos.Context, cursor string) cosmos.Iterator {
+	iter := keeper.NewDummyIterator()
+	keys := make([]string, 0, len(k.noteRecords))
+	for key := range k.noteRecords {
+		if strings.TrimSpace(cursor) != "" && key <= cursor {
+			continue
+		}
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		value, _ := json.Marshal(k.noteRecords[key])
+		iter.AddItem([]byte(key), value)
+	}
+	return iter
 }
 
 func (k *shielderFlowTestKeeper) SetShielderDenominationCommitment(_ cosmos.Context, denominationSats uint64, commitment string) error {
@@ -149,6 +184,10 @@ func (k *shielderFlowTestKeeper) ShielderMerkleRootExists(_ cosmos.Context, deno
 func (k *shielderFlowTestKeeper) SetShielderRedeem(_ cosmos.Context, redeem types.ShielderRedeem) error {
 	k.redeems[redeem.WithdrawalID] = redeem
 	return nil
+}
+
+func (k *shielderFlowTestKeeper) GetShielderRedeem(_ cosmos.Context, withdrawalID string) (types.ShielderRedeem, error) {
+	return k.redeems[withdrawalID], nil
 }
 
 func (k *shielderFlowTestKeeper) AppendTxOut(_ cosmos.Context, _ int64, item TxOutItem) error {
@@ -179,6 +218,32 @@ func (k *shielderFlowTestKeeper) GetShielderNodeBondIterator(_ cosmos.Context) c
 	for nodePubKey, bond := range k.nodeBonds {
 		value, _ := json.Marshal(bond)
 		iter.AddItem([]byte(nodePubKey), value)
+	}
+	return iter
+}
+
+func (k *shielderFlowTestKeeper) SetShielderNullifierSpent(_ cosmos.Context, nullifierHash string, withdrawalID string) error {
+	record := types.StoredShielderNullifierRecord{
+		NullifierHash: nullifierHash,
+		WithdrawalID:  withdrawalID,
+	}
+	value, _ := json.Marshal(record)
+	k.nullifiers[nullifierHash] = value
+	return nil
+}
+
+func (k *shielderFlowTestKeeper) GetShielderNullifierIteratorAfter(_ cosmos.Context, cursor string) cosmos.Iterator {
+	iter := keeper.NewDummyIterator()
+	keys := make([]string, 0, len(k.nullifiers))
+	for key := range k.nullifiers {
+		if strings.TrimSpace(cursor) != "" && key <= cursor {
+			continue
+		}
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		iter.AddItem([]byte("shielder_nullifier//"+key), k.nullifiers[key])
 	}
 	return iter
 }

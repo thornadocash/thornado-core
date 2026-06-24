@@ -3,6 +3,7 @@ package keeperv1
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
@@ -572,8 +573,8 @@ func backingSpentNoteSats(ctx cosmos.Context, k KVStore) (uint64, []string, bool
 	defer iterator.Close()
 
 	for ; iterator.Valid(); iterator.Next() {
-		var withdrawalID string
-		if err := json.Unmarshal(iterator.Value(), &withdrawalID); err != nil {
+		withdrawalID, err := invariantNullifierWithdrawalID(iterator.Value())
+		if err != nil {
 			msg = append(msg, fmt.Sprintf("invalid nullifier encoding: %s", string(iterator.Key())))
 			broken = true
 			continue
@@ -593,6 +594,18 @@ func backingSpentNoteSats(ctx cosmos.Context, k KVStore) (uint64, []string, bool
 	}
 
 	return total, msg, broken
+}
+
+func invariantNullifierWithdrawalID(raw []byte) (string, error) {
+	var record types.StoredShielderNullifierRecord
+	if err := json.Unmarshal(raw, &record); err == nil && strings.TrimSpace(record.WithdrawalID) != "" {
+		return strings.TrimSpace(record.WithdrawalID), nil
+	}
+	var withdrawalID string
+	if err := json.Unmarshal(raw, &withdrawalID); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(withdrawalID), nil
 }
 
 func backingFeeLiabilitySats(ctx cosmos.Context, k KVStore) (uint64, []string, bool) {

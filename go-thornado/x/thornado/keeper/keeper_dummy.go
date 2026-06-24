@@ -577,6 +577,9 @@ func (k KVStoreDummy) GetDepositRecord(_ cosmos.Context, _ common.TxID) (types.D
 func (k KVStoreDummy) GetDepositRecordIterator(_ cosmos.Context) cosmos.Iterator {
 	return NewDummyIterator()
 }
+func (k KVStoreDummy) GetDepositRecordIteratorAfter(_ cosmos.Context, _ string) cosmos.Iterator {
+	return NewDummyIterator()
+}
 func (k KVStoreDummy) SetShielderCommitment(_ cosmos.Context, _ string) error {
 	return nil
 }
@@ -585,6 +588,9 @@ func (k KVStoreDummy) SetShielderNoteRecord(_ cosmos.Context, _ types.StoredShie
 	return nil
 }
 func (k KVStoreDummy) GetShielderNoteRecordIterator(_ cosmos.Context) cosmos.Iterator {
+	return NewDummyIterator()
+}
+func (k KVStoreDummy) GetShielderNoteRecordIteratorAfter(_ cosmos.Context, _ string) cosmos.Iterator {
 	return NewDummyIterator()
 }
 func (k KVStoreDummy) SetShielderDenominationCommitment(_ cosmos.Context, _ uint64, _ string) error {
@@ -616,6 +622,9 @@ func (k KVStoreDummy) SetShielderNullifierSpent(_ cosmos.Context, _, _ string) e
 }
 func (k KVStoreDummy) ShielderNullifierSpent(_ cosmos.Context, _ string) bool { return false }
 func (k KVStoreDummy) GetShielderNullifierIterator(_ cosmos.Context) cosmos.Iterator {
+	return NewDummyIterator()
+}
+func (k KVStoreDummy) GetShielderNullifierIteratorAfter(_ cosmos.Context, _ string) cosmos.Iterator {
 	return NewDummyIterator()
 }
 

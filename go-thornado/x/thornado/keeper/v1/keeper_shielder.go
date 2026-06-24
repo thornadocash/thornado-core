@@ -183,6 +183,10 @@ func (k KVStore) GetDepositRecordIterator(ctx cosmos.Context) cosmos.Iterator {
 	return k.getIterator(ctx, prefixDepositRecord)
 }
 
+func (k KVStore) GetDepositRecordIteratorAfter(ctx cosmos.Context, cursor string) cosmos.Iterator {
+	return k.getIteratorAfter(ctx, prefixDepositRecord, cursor)
+}
+
 func (k KVStore) SetShielderCommitment(ctx cosmos.Context, commitment string) error {
 	commitment = strings.TrimSpace(commitment)
 	if commitment == "" {
@@ -204,6 +208,10 @@ func (k KVStore) SetShielderNoteRecord(ctx cosmos.Context, record types.StoredSh
 
 func (k KVStore) GetShielderNoteRecordIterator(ctx cosmos.Context) cosmos.Iterator {
 	return k.getIterator(ctx, prefixShielderNotePubKey)
+}
+
+func (k KVStore) GetShielderNoteRecordIteratorAfter(ctx cosmos.Context, cursor string) cosmos.Iterator {
+	return k.getIteratorAfter(ctx, prefixShielderNotePubKey, cursor)
 }
 
 func (k KVStore) SetShielderDenominationCommitment(ctx cosmos.Context, denominationSats uint64, commitment string) error {
@@ -289,15 +297,14 @@ func (k KVStore) GetShielderRedeem(ctx cosmos.Context, withdrawalID string) (typ
 }
 
 func (k KVStore) GetShielderRedeemByNullifier(ctx cosmos.Context, nullifierHash string) (types.ShielderRedeem, error) {
-	var withdrawalID string
-	found, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderNullifier, strings.TrimSpace(nullifierHash)), &withdrawalID)
+	record, found, err := k.getShielderNullifierRecord(ctx, strings.TrimSpace(nullifierHash))
 	if err != nil {
 		return types.ShielderRedeem{}, err
 	}
-	if !found || withdrawalID == "" {
+	if !found || strings.TrimSpace(record.WithdrawalID) == "" {
 		return types.ShielderRedeem{}, nil
 	}
-	return k.GetShielderRedeem(ctx, withdrawalID)
+	return k.GetShielderRedeem(ctx, record.WithdrawalID)
 }
 
 func (k KVStore) SetShielderNullifierSpent(ctx cosmos.Context, nullifierHash string, withdrawalID string) error {
@@ -308,7 +315,15 @@ func (k KVStore) SetShielderNullifierSpent(ctx cosmos.Context, nullifierHash str
 	if strings.TrimSpace(withdrawalID) == "" {
 		return fmt.Errorf("missing shielder redeem id")
 	}
-	return k.setShielderJSON(ctx, k.GetKey(prefixShielderNullifier, nullifierHash), withdrawalID)
+	createdHeight := ctx.BlockHeight()
+	if withdrawal, err := k.GetShielderRedeem(ctx, strings.TrimSpace(withdrawalID)); err == nil && withdrawal.RequestedHeight > 0 {
+		createdHeight = withdrawal.RequestedHeight
+	}
+	return k.setShielderJSON(ctx, k.GetKey(prefixShielderNullifier, nullifierHash), types.StoredShielderNullifierRecord{
+		NullifierHash: nullifierHash,
+		WithdrawalID:  strings.TrimSpace(withdrawalID),
+		CreatedHeight: createdHeight,
+	})
 }
 
 func (k KVStore) ShielderNullifierSpent(ctx cosmos.Context, nullifierHash string) bool {
@@ -317,6 +332,37 @@ func (k KVStore) ShielderNullifierSpent(ctx cosmos.Context, nullifierHash string
 
 func (k KVStore) GetShielderNullifierIterator(ctx cosmos.Context) cosmos.Iterator {
 	return k.getIterator(ctx, prefixShielderNullifier)
+}
+
+func (k KVStore) GetShielderNullifierIteratorAfter(ctx cosmos.Context, cursor string) cosmos.Iterator {
+	return k.getIteratorAfter(ctx, prefixShielderNullifier, cursor)
+}
+
+func (k KVStore) getShielderNullifierRecord(ctx cosmos.Context, nullifierHash string) (types.StoredShielderNullifierRecord, bool, error) {
+	key := k.GetKey(prefixShielderNullifier, strings.TrimSpace(nullifierHash))
+	store := runtime.KVStoreAdapter(k.storeService.OpenKVStore(ctx))
+	if !store.Has(key) {
+		return types.StoredShielderNullifierRecord{}, false, nil
+	}
+	raw := store.Get(key)
+	var record types.StoredShielderNullifierRecord
+	if err := json.Unmarshal(raw, &record); err == nil && strings.TrimSpace(record.WithdrawalID) != "" {
+		if strings.TrimSpace(record.NullifierHash) == "" {
+			record.NullifierHash = strings.TrimSpace(nullifierHash)
+		}
+		return record, true, nil
+	}
+	var withdrawalID string
+	if err := json.Unmarshal(raw, &withdrawalID); err != nil {
+		return types.StoredShielderNullifierRecord{}, true, dbError(ctx, fmt.Sprintf("unmarshal shielder nullifier record: %s", key), err)
+	}
+	if strings.TrimSpace(withdrawalID) == "" {
+		return types.StoredShielderNullifierRecord{}, true, nil
+	}
+	return types.StoredShielderNullifierRecord{
+		NullifierHash: strings.TrimSpace(nullifierHash),
+		WithdrawalID:  strings.TrimSpace(withdrawalID),
+	}, true, nil
 }
 
 func (k KVStore) GetNextShielderNodeBondSlot(ctx cosmos.Context) (uint64, error) {

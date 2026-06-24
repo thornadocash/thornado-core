@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Thornado</title>
-  <link rel="stylesheet" href="/thornado/ui/styles.css?v=sell-button-size-v1">
+  <link rel="stylesheet" href="/thornado/ui/styles.css?v=withdraw-outpoint-v1">
 </head>
 <body>
   <main>
@@ -35,6 +35,7 @@
           <div id="shieldedSummaryMenu" class="status-dropdown status-dropdown-wide shielded-summary-menu" role="menu" hidden>
             <div id="shieldedSummaryList" class="shielded-summary-list"></div>
             <button id="shieldedSummaryWithdraw" type="button" role="menuitem">Withdraw</button>
+            <button id="shieldedSummaryRevealSecret" class="secondary" type="button" role="menuitem">Reveal Secret</button>
           </div>
         </div>
         <div id="routeStatus" class="status-menu">
@@ -114,6 +115,7 @@
                 <div id="secretValue" class="secret-value"></div>
                 <button id="copySecret" class="copy-button" type="button">Copy</button>
               </div>
+              <div id="secretBirthday" class="secret-birthday" hidden></div>
               <div id="secretHelp" class="secret-help" hidden>Save this secret to withdraw your deposit later.</div>
               <div id="secretActions" class="actions" hidden>
                 <button id="useCustomSecret" class="secondary" type="button">Use Custom Secret</button>
@@ -721,6 +723,6 @@
     </div>
   </div>
 
-  <script type="module" src="/thornado/ui/app.js?v=sell-button-size-v1"></script>
+  <script type="module" src="/thornado/ui/app.js?v=withdraw-outpoint-v1"></script>
 </body>
 </html>

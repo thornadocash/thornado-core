@@ -1057,6 +1057,7 @@ func insertShielderCommitments(ctx cosmos.Context, k keeper.Keeper, notes []shie
 		if err := k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
 			Commitment:       note.Commitment,
 			DenominationSats: note.DenominationSats,
+			CreatedHeight:    ctx.BlockHeight(),
 		}); err != nil {
 			return err
 		}
@@ -1830,6 +1831,7 @@ func ShieldShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 		if err := k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
 			Commitment:       note.Commitment,
 			DenominationSats: note.DenominationSats,
+			CreatedHeight:    ctx.BlockHeight(),
 		}); err != nil {
 			return types.DepositRecord{}, err
 		}
