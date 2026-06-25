@@ -15,6 +15,21 @@ message QueryFeePoolResponse {
   uint64 total_claimed_sats = 5;
 }
 
+message QueryGasRequest {
+  string height = 1;
+}
+
+message QueryGasBreakdown {
+  string tx_type = 1;
+  uint64 gas_sats = 2;
+  uint64 tx_count = 3;
+}
+
+message QueryGasResponse {
+  uint64 total_sats = 1;
+  repeated QueryGasBreakdown breakdown = 2;
+}
+
 message QueryNodeFeeEntitlementRequest {
   string node_pub_key = 1;
   string height = 2;

@@ -1246,6 +1246,99 @@ func (qs queryServer) queryFeePool(ctx cosmos.Context, _ *types.QueryFeePoolRequ
 	}, nil
 }
 
+func (qs queryServer) queryGas(ctx cosmos.Context, _ *types.QueryGasRequest) (*types.QueryGasResponse, error) {
+	return queryProtocolGasSpent(ctx, qs.mgr.Keeper())
+}
+
+type protocolGasBucket struct {
+	gasSats uint64
+	txCount uint64
+}
+
+const protocolGasTxOutBucket = "txout"
+
+func queryProtocolGasSpent(ctx cosmos.Context, k keeper.Keeper) (*types.QueryGasResponse, error) {
+	buckets := map[string]*protocolGasBucket{
+		types.TxOutTypeSweep:       {},
+		types.TxOutTypeMigrate:     {},
+		types.TxOutTypeConsolidate: {},
+		protocolGasTxOutBucket:     {},
+	}
+	countedTxOutHashes := make(map[common.TxID]struct{})
+
+	iterator := k.GetTxOutIterator(ctx)
+	defer iterator.Close()
+
+	for ; iterator.Valid(); iterator.Next() {
+		var txOut TxOut
+		if err := k.Cdc().Unmarshal(iterator.Value(), &txOut); err != nil {
+			return nil, fmt.Errorf("invalid txout encoding for gas accounting at %s: %w", string(iterator.Key()), err)
+		}
+		for _, item := range txOut.TxArray {
+			if !item.Chain.Equals(common.BTCChain) || item.OutHash.IsEmpty() {
+				continue
+			}
+			switch {
+			case types.IsInternalTxOutType(item.GetTxType()):
+				voter, err := k.GetObservedTxOutVoter(ctx, item.OutHash)
+				if err != nil || !voter.Tx.Tx.Chain.Equals(common.BTCChain) || !voter.Tx.IsFinal() {
+					continue
+				}
+				txType := item.GetTxType()
+				bucket, ok := buckets[txType]
+				if !ok {
+					bucket = &protocolGasBucket{}
+					buckets[txType] = bucket
+				}
+				bucket.gasSats += txOutObservedInternalGasSpent(item, voter.Tx)
+				bucket.txCount++
+			case types.IsBatchableTxOutType(item.GetTxType()):
+				if _, counted := countedTxOutHashes[item.OutHash]; counted {
+					continue
+				}
+				voter, err := k.GetObservedTxOutVoter(ctx, item.OutHash)
+				if err != nil || !voter.Tx.Tx.Chain.Equals(common.BTCChain) || !voter.Tx.IsFinal() {
+					continue
+				}
+				countedTxOutHashes[item.OutHash] = struct{}{}
+				buckets[protocolGasTxOutBucket].gasSats += voter.Tx.Tx.Gas.ToCoins().GetCoin(common.BTCAsset).Amount.Uint64()
+				buckets[protocolGasTxOutBucket].txCount++
+			}
+		}
+	}
+
+	order := []string{types.TxOutTypeSweep, types.TxOutTypeMigrate, types.TxOutTypeConsolidate, protocolGasTxOutBucket}
+	resp := &types.QueryGasResponse{}
+	for _, txType := range order {
+		bucket := buckets[txType]
+		resp.TotalSats += bucket.gasSats
+		resp.Breakdown = append(resp.Breakdown, &types.QueryGasBreakdown{
+			TxType:  txType,
+			GasSats: bucket.gasSats,
+			TxCount: bucket.txCount,
+		})
+	}
+	return resp, nil
+}
+
+func txOutObservedInternalGasSpent(item TxOutItem, tx common.ObservedTx) uint64 {
+	if gas := txOutInternalGasSpentForQuery(item); gas > 0 {
+		return gas
+	}
+	return tx.Tx.Gas.ToCoins().GetCoin(common.BTCAsset).Amount.Uint64()
+}
+
+func txOutInternalGasSpentForQuery(item TxOutItem) uint64 {
+	var sourceTotal uint64
+	for _, input := range item.SourceInputs {
+		sourceTotal += input.AmountSats
+	}
+	if sourceTotal <= item.Coin.Amount.Uint64() {
+		return 0
+	}
+	return sourceTotal - item.Coin.Amount.Uint64()
+}
+
 func (qs queryServer) queryDepositSession(ctx cosmos.Context, req *types.QueryDepositSessionRequest) (*types.QueryDepositSessionResponse, error) {
 	owner, err := cosmos.AccAddressFromBech32(req.Owner)
 	if err != nil {

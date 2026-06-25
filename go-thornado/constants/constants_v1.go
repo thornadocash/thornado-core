@@ -36,7 +36,6 @@ func NewConfigValue() *ConfigVals {
 			Deposit_PowSamplesMin:             8,
 			Deposit_PowTargetPercentile:       90,
 			Deposit_PowTargetSeconds:          10,
-			Deposit_SessionExpiryMinutes:      0,
 			Deposit_SweepRetryIntervalMinutes: 72,
 			Deposit_RefundIfForgottenDays:     30,
 

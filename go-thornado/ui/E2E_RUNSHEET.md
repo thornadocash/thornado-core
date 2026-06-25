@@ -117,7 +117,7 @@ UI improvements executed in this run:
 - Deposit expiry is calculated per selected batch instead of leaking stale global expiry across addresses.
 - Debug derivation path labels now use `tc84'/btc'/${depositType}'/${depositIndex}'/${noteIndex}'`.
 - Browser prover now uses the production `withdraw.json` with a queued witness executor, avoiding the recursive `snarkjs-old` stack overflow while staying compatible with the production proving key.
-- Local E2E genesis sets `Deposit_SessionExpiryMinutes=10`; deposit address expiry no longer races the 20-block churn interval.
+- Deposit address expiry is the next churn height; purge remains a separate 30-day monitoring cleanup.
 
 Current blocker:
 - None for the browser E2E paths tested above.

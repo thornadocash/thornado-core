@@ -583,16 +583,7 @@ func purgeLegacyRefundTxOutForDeposit(ctx cosmos.Context, k keeper.Keeper, depos
 }
 
 func nextDepositAddressExpiryHeight(ctx cosmos.Context, k keeper.Keeper) int64 {
-	churnHeight := nextChurnHeightAfter(ctx, k, ctx.BlockHeight())
-	sessionBlocks := getConfigDurationBlocks(ctx, k, constants.Deposit_SessionExpiryMinutes)
-	if sessionBlocks <= 0 {
-		return churnHeight
-	}
-	sessionHeight := ctx.BlockHeight() + sessionBlocks
-	if churnHeight > sessionHeight {
-		return churnHeight
-	}
-	return sessionHeight
+	return nextChurnHeightAfter(ctx, k, ctx.BlockHeight())
 }
 
 func depositAddressPurgeHeight(ctx cosmos.Context, k keeper.Keeper, createdHeight int64) int64 {

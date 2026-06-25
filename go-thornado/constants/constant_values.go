@@ -38,7 +38,6 @@ const (
 	Deposit_PowSamplesMin
 	Deposit_PowTargetPercentile
 	Deposit_PowTargetSeconds
-	Deposit_SessionExpiryMinutes
 	Deposit_SweepRetryIntervalMinutes
 	Deposit_RefundIfForgottenDays
 

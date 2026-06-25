@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Thornado</title>
-  <link rel="stylesheet" href="/thornado/ui/styles.css?v=withdraw-outpoint-v2">
+  <link rel="stylesheet" href="/thornado/ui/styles.css?v=recover-without-session-v1">
 </head>
 <body>
   <main>
@@ -28,14 +28,24 @@
         <button id="tabHow" class="tab-button" type="button">How it works</button>
       </nav>
       <div class="top-status">
-        <div id="shieldedSummary" class="status-menu shielded-summary" hidden>
-          <button id="shieldedSummaryButton" class="status-chip shielded-summary-button" type="button" aria-expanded="false" aria-haspopup="menu">
+        <div id="shieldedSummary" class="status-menu shielded-summary wallet-summary">
+          <button id="shieldedSummaryButton" class="status-chip shielded-summary-button wallet-summary-button" type="button" aria-expanded="false" aria-haspopup="menu" aria-label="Open wallet balance">
+            <span class="wallet-token-icon bitcoin-icon" aria-hidden="true">₿</span>
             <span id="shieldedSummaryAmount">0 BTC</span>
           </button>
           <div id="shieldedSummaryMenu" class="status-dropdown status-dropdown-wide shielded-summary-menu" role="menu" hidden>
-            <div id="shieldedSummaryList" class="shielded-summary-list"></div>
-            <button id="shieldedSummaryWithdraw" type="button" role="menuitem">Withdraw</button>
             <button id="shieldedSummaryRevealSecret" class="secondary" type="button" role="menuitem">Reveal Secret</button>
+            <div id="walletSummaryQr" class="wallet-summary-qr-panel"></div>
+            <div id="walletSummaryUnshielded" class="wallet-summary-detail-row" hidden>
+              <span>Deposit</span>
+              <strong id="walletSummaryUnshieldedAmount">0 BTC</strong>
+              <button id="walletSummaryShield" type="button" role="menuitem">Shield</button>
+            </div>
+            <div id="walletSummaryShielded" class="wallet-summary-detail-row" hidden>
+              <span>Shielded</span>
+              <strong id="walletSummaryShieldedAmount">0 BTC</strong>
+              <button id="shieldedSummaryWithdraw" type="button" role="menuitem">Withdraw</button>
+            </div>
           </div>
         </div>
         <div id="routeStatus" class="status-menu">
@@ -93,7 +103,7 @@
             </div>
             <div class="stage-heading">
               <h2>Get Address</h2>
-              <button class="stage-toggle" type="button" data-stage-toggle="stageDeposit" aria-label="Toggle get address">+</button>
+              <button class="stage-toggle" type="button" data-stage-toggle="stageDeposit" aria-label="Toggle get address"></button>
             </div>
             <div id="depositSummary" class="stage-summary">No deposit yet</div>
             <textarea id="walletRoot" hidden spellcheck="false"></textarea>
@@ -152,7 +162,7 @@
             </div>
             <div class="stage-heading">
               <h2>Deposit</h2>
-              <button class="stage-toggle" type="button" data-stage-toggle="stageDepositTrack" aria-label="Toggle deposit tracking">+</button>
+              <button class="stage-toggle" type="button" data-stage-toggle="stageDepositTrack" aria-label="Toggle deposit tracking"></button>
             </div>
             <div id="depositTrackSummary" class="stage-summary">No deposits tracked</div>
             <div id="depositBatchList" class="batch-list"></div>
@@ -163,7 +173,7 @@
           <div id="stageShield" class="stage-card locked">
             <div class="stage-heading">
               <h2>Shield</h2>
-              <button class="stage-toggle" type="button" data-stage-toggle="stageShield" aria-label="Toggle shield">+</button>
+              <button class="stage-toggle" type="button" data-stage-toggle="stageShield" aria-label="Toggle shield"></button>
             </div>
             <div class="card-tools">
               <button id="shieldInfoButton" class="icon-button" type="button" aria-label="Shield help">?</button>
@@ -194,7 +204,7 @@
             </div>
             <div class="stage-heading">
               <h2>Wait</h2>
-              <button class="stage-toggle" type="button" data-stage-toggle="stageWait" aria-label="Toggle wait">+</button>
+              <button class="stage-toggle" type="button" data-stage-toggle="stageWait" aria-label="Toggle wait"></button>
             </div>
             <div id="waitSummary" class="stage-summary">Waiting for note maturity</div>
             <div id="waitClock" class="wait-clock">--:--:--</div>
@@ -213,7 +223,7 @@
             </div>
             <div class="stage-heading">
               <h2>Withdraw</h2>
-              <button class="stage-toggle" type="button" data-stage-toggle="stageWithdraw" aria-label="Toggle withdraw">+</button>
+              <button class="stage-toggle" type="button" data-stage-toggle="stageWithdraw" aria-label="Toggle withdraw"></button>
             </div>
             <div id="withdrawSummary" class="stage-summary">Withdrawal ready</div>
             <div id="notes" class="notes notes-table"></div>
@@ -284,6 +294,17 @@
             <div class="row"><span>Pending outbounds</span><strong id="networkVaultPending">unavailable</strong></div>
           </div>
           <div id="networkVaultsList" class="explorer-table"></div>
+        </section>
+
+        <section class="surface-section">
+          <h2>Gas</h2>
+          <div class="panel-list explorer-list">
+            <div class="row"><span>Total</span><strong id="networkGasTotal">unavailable</strong></div>
+            <div class="row"><span>Sweeps</span><strong id="networkGasSweep">unavailable</strong></div>
+            <div class="row"><span>Migrations</span><strong id="networkGasMigrate">unavailable</strong></div>
+            <div class="row"><span>Consolidations</span><strong id="networkGasConsolidate">unavailable</strong></div>
+            <div class="row"><span>TxOut</span><strong id="networkGasTxOut">unavailable</strong></div>
+          </div>
         </section>
 
         <section class="surface-section">
@@ -493,7 +514,6 @@
                       <option value="Deposit_PowSamplesMin">PoW samples minimum</option>
                       <option value="Deposit_PowTargetPercentile">PoW target percentile</option>
                       <option value="Deposit_PowTargetSeconds">PoW target seconds</option>
-                      <option value="Deposit_SessionExpiryMinutes">Session expiry minutes</option>
                       <option value="Deposit_SweepRetryIntervalMinutes">Sweep retry minutes</option>
                       <option value="Deposit_RefundIfForgottenDays">Forgotten refund days</option>
                     </optgroup>
@@ -723,6 +743,6 @@
     </div>
   </div>
 
-  <script type="module" src="/thornado/ui/app.js?v=withdraw-outpoint-v2"></script>
+  <script type="module" src="/thornado/ui/app.js?v=recover-without-session-v1"></script>
 </body>
 </html>

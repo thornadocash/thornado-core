@@ -3,6 +3,7 @@ package thornado
 import (
 	"testing"
 
+	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
@@ -58,5 +59,16 @@ func TestDepositMatchedAfterAddressExpiry(t *testing.T) {
 				t.Fatalf("depositMatchedAfterAddressExpiry() = %t, want %t", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestNextDepositAddressExpiryHeightUsesNextChurnOnly(t *testing.T) {
+	ctx := flowTestContext().WithBlockHeight(99)
+	k := newShielderFlowTestKeeper()
+	k.configs[constants.Chain_BlockTimeSeconds] = 6
+	k.configs[constants.Churn_IntervalMinutes] = 10
+
+	if got, want := nextDepositAddressExpiryHeight(ctx, k), int64(100); got != want {
+		t.Fatalf("nextDepositAddressExpiryHeight() = %d, want next churn height %d", got, want)
 	}
 }

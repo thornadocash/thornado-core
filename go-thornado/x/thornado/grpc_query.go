@@ -286,6 +286,14 @@ func (s *queryServer) FeePool(c context.Context, req *types.QueryFeePoolRequest)
 	return s.queryFeePool(ctx, req)
 }
 
+func (s *queryServer) Gas(c context.Context, req *types.QueryGasRequest) (*types.QueryGasResponse, error) {
+	if err := checkHeightParam(req.Height); err != nil {
+		return nil, err
+	}
+	ctx := s.unwrapSdkContext(c)
+	return s.queryGas(ctx, req)
+}
+
 func (s *queryServer) DepositSession(c context.Context, req *types.QueryDepositSessionRequest) (*types.QueryDepositSessionResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err

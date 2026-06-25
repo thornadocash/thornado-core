@@ -83,6 +83,202 @@ func TestShielderSyncBirthdayAndCursor(t *testing.T) {
 	}
 }
 
+func TestQueryProtocolGasSpentBreakdown(t *testing.T) {
+	ctx := flowTestContext()
+	k := newShielderFlowTestKeeper()
+	vaultPubKey := GetRandomPubKey()
+	from := common.Address("bcrt1pfrom")
+	to := common.Address("bcrt1pto")
+	sweepHash := common.TxID("1000000000000000000000000000000000000000000000000000000000000001")
+	migrateHash := common.TxID("1000000000000000000000000000000000000000000000000000000000000002")
+	consolidateHash := common.TxID("1000000000000000000000000000000000000000000000000000000000000003")
+	txOutHash := common.TxID("1000000000000000000000000000000000000000000000000000000000000004")
+
+	k.SetObservedTxOutVoter(ctx, observedGasVoter(sweepHash, from, to, vaultPubKey, 900, 100))
+	k.SetObservedTxOutVoter(ctx, observedGasVoter(migrateHash, from, to, vaultPubKey, 800, 200))
+	k.SetObservedTxOutVoter(ctx, observedGasVoter(consolidateHash, from, to, vaultPubKey, 700, 300))
+	k.SetObservedTxOutVoter(ctx, observedGasVoter(txOutHash, from, to, vaultPubKey, 1_000, 1_000))
+
+	if err := k.SetTxOut(ctx, &TxOut{
+		Height: 100,
+		Status: TxOutStatusComplete,
+		TxArray: []TxOutItem{
+			gasTestInternalTxOut(types.TxOutTypeSweep, sweepHash, 1_000, 900),
+			gasTestInternalTxOut(types.TxOutTypeMigrate, migrateHash, 1_000, 800),
+			gasTestInternalTxOut(types.TxOutTypeConsolidate, consolidateHash, 1_000, 700),
+			{
+				Chain:       common.BTCChain,
+				ToAddress:   to,
+				VaultPubKey: vaultPubKey,
+				Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(600)),
+				OutHash:     txOutHash,
+				TxType:      types.TxOutTypeOut,
+			},
+			{
+				Chain:       common.BTCChain,
+				ToAddress:   common.Address("bcrt1prefund"),
+				VaultPubKey: vaultPubKey,
+				Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(400)),
+				OutHash:     txOutHash,
+				TxType:      types.TxOutTypeRefund,
+			},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	resp, err := queryProtocolGasSpent(ctx, k)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.TotalSats != 1_600 {
+		t.Fatalf("total gas = %d", resp.TotalSats)
+	}
+	got := map[string]*types.QueryGasBreakdown{}
+	for _, row := range resp.Breakdown {
+		got[row.TxType] = row
+	}
+	assertGasBreakdown(t, got, types.TxOutTypeSweep, 100, 1)
+	assertGasBreakdown(t, got, types.TxOutTypeMigrate, 200, 1)
+	assertGasBreakdown(t, got, types.TxOutTypeConsolidate, 300, 1)
+	assertGasBreakdown(t, got, protocolGasTxOutBucket, 1_000, 1)
+}
+
+func TestCalculateNetworkSolvencyReportsLatestSolvencyAmount(t *testing.T) {
+	ctx := flowTestContext()
+	k := newShielderFlowTestKeeper()
+	vault := solvencyTestVault(1_000)
+	k.baseVaults = Vaults{vault}
+	k.SetSolvencyVoter(ctx, solvencyTestVoter(
+		"1000000000000000000000000000000000000000000000000000000000000011",
+		vault.PubKey,
+		900,
+		10,
+		20,
+	))
+	k.SetSolvencyVoter(ctx, solvencyTestVoter(
+		"1000000000000000000000000000000000000000000000000000000000000012",
+		vault.PubKey,
+		950,
+		11,
+		21,
+	))
+
+	amounts, err := newNetworkMgr(k, nil, nil).calculateNetworkSolvency(ctx, newShielderFlowTestManager(k))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(amounts) != 1 || !amounts[0].Asset.Equals(common.BTCAsset) {
+		t.Fatalf("unexpected solvency rows: %+v", amounts)
+	}
+	if got, want := amounts[0].Amount.Int64(), int64(950); got != want {
+		t.Fatalf("solvency amount = %d, want %d", got, want)
+	}
+}
+
+func TestCalculateNetworkSolvencyReturnsZeroWithoutReport(t *testing.T) {
+	ctx := flowTestContext()
+	k := newShielderFlowTestKeeper()
+	k.baseVaults = Vaults{solvencyTestVault(100)}
+
+	amounts, err := newNetworkMgr(k, nil, nil).calculateNetworkSolvency(ctx, newShielderFlowTestManager(k))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := amounts[0].Amount.Int64(), int64(0); got != want {
+		t.Fatalf("solvency amount = %d, want %d", got, want)
+	}
+}
+
+func TestCalculateNetworkSolvencyIgnoresInactiveVaultReports(t *testing.T) {
+	ctx := flowTestContext()
+	k := newShielderFlowTestKeeper()
+	inactive := solvencyTestVaultWithStatus(10_000, InactiveVault)
+	active := solvencyTestVaultWithStatus(1_000, ActiveVault)
+	k.baseVaults = Vaults{inactive, active}
+	k.SetSolvencyVoter(ctx, solvencyTestVoter(
+		"1000000000000000000000000000000000000000000000000000000000000021",
+		inactive.PubKey,
+		10_000,
+		20,
+		30,
+	))
+	k.SetSolvencyVoter(ctx, solvencyTestVoter(
+		"1000000000000000000000000000000000000000000000000000000000000022",
+		active.PubKey,
+		900,
+		20,
+		30,
+	))
+
+	amounts, err := newNetworkMgr(k, nil, nil).calculateNetworkSolvency(ctx, newShielderFlowTestManager(k))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := amounts[0].Amount.Int64(), int64(900); got != want {
+		t.Fatalf("solvency amount = %d, want %d", got, want)
+	}
+}
+
+func solvencyTestVault(sats uint64) Vault {
+	return solvencyTestVaultWithStatus(sats, ActiveVault)
+}
+
+func solvencyTestVaultWithStatus(sats uint64, status VaultStatus) Vault {
+	vault := NewVaultV2(1, status, BaseVault, GetRandomPubKey(), common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	vault.AddFunds(common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(sats))))
+	return vault
+}
+
+func solvencyTestVoter(id string, pubKey common.PubKey, sats uint64, height, consensusHeight int64) types.SolvencyVoter {
+	return types.SolvencyVoter{
+		Id:                   common.TxID(id),
+		Chain:                common.BTCChain,
+		PubKey:               pubKey,
+		Coins:                common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(sats))),
+		Height:               height,
+		ConsensusBlockHeight: consensusHeight,
+		Signers:              []string{GetRandomBech32Addr().String()},
+	}
+}
+
+func observedGasVoter(txID common.TxID, from, to common.Address, pubKey common.PubKey, amountSats, gasSats uint64) ObservedTxVoter {
+	tx := common.NewTx(
+		txID,
+		from,
+		to,
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(amountSats))),
+		common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(gasSats))},
+	)
+	observed := common.NewObservedTx(tx, 100, pubKey, 100)
+	return ObservedTxVoter{TxID: txID, Tx: observed, Txs: common.ObservedTxs{observed}}
+}
+
+func gasTestInternalTxOut(txType string, outHash common.TxID, sourceSats, outputSats uint64) TxOutItem {
+	return TxOutItem{
+		Chain:       common.BTCChain,
+		ToAddress:   common.Address("bcrt1pinternal"),
+		VaultPubKey: GetRandomPubKey(),
+		Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(outputSats)),
+		OutHash:     outHash,
+		TxType:      txType,
+		SourceInputs: []types.TxOutInput{
+			{TxId: common.TxID(outHash.String()[:63] + "0"), Vout: 0, AmountSats: sourceSats},
+		},
+	}
+}
+
+func assertGasBreakdown(t *testing.T, got map[string]*types.QueryGasBreakdown, txType string, gasSats, txCount uint64) {
+	t.Helper()
+	row, ok := got[txType]
+	if !ok {
+		t.Fatalf("missing gas row %s", txType)
+	}
+	if row.GasSats != gasSats || row.TxCount != txCount {
+		t.Fatalf("gas row %s = gas %d count %d", txType, row.GasSats, row.TxCount)
+	}
+}
+
 func BenchmarkShielderSync1000NotesAndNullifiers(b *testing.B) {
 	ctx, k := setupShielderSyncBenchmark(b, false)
 

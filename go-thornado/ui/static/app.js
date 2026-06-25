@@ -108,6 +108,8 @@ const state = {
   noteRecoveryStatus: "idle",
   noteRecoveryBatchKey: "",
   noteRecoveryProgress: null,
+  depositDiscoveryPending: false,
+  depositDiscoveryProgress: null,
   appStarted: false,
   moreOpen: false,
   moreSettled: false,
@@ -117,6 +119,7 @@ const state = {
   nodeConnected: false,
   nodeStatusText: "connecting",
   nodeCount: null,
+  networkRefreshPending: false,
   routeMode: "local",
   onionAddress: "",
   nodeWorkflow: "new",
@@ -224,37 +227,186 @@ function firstTopbarWithdrawCandidate(items = shieldedNoteItems()) {
     null;
 }
 
+function shieldedDepositTxIds(batch) {
+  const txs = mergeDepositTxs(batch?.depositTxs);
+  const ids = new Set();
+  for (const note of batch?.receipt?.notes || []) {
+    const id = String(note.deposit_id || "").toUpperCase();
+    if (id) {
+      ids.add(id);
+    }
+  }
+  if (!ids.size && batch?.receipt?.notes?.length && txs.length === 1) {
+    ids.add(String(txs[0].txid || "").toUpperCase());
+  }
+  return ids;
+}
+
+function unshieldedDepositSats() {
+  return (state.batches || []).reduce((sum, batch) => {
+    const txRows = mergeDepositTxs(batch.depositTxs).filter((tx) => depositTxShieldable(tx));
+    if (txRows.length) {
+      const shieldedTxIds = shieldedDepositTxIds(batch);
+      return sum + txRows
+        .filter((tx) => !shieldedTxIds.has(String(tx.txid || "").toUpperCase()))
+        .reduce((txSum, tx) => txSum + Number(tx.amountSats || 0), 0);
+    }
+    if (!batch?.receipt?.notes?.length && batchHasDepositValue(batch) && (batchConfirmed(batch) || batchFinalised(batch))) {
+      return sum + Number(batch.amountSats || 0);
+    }
+    return sum;
+  }, 0);
+}
+
+function topbarDepositBatch() {
+  const active = activeBatch();
+  if (active?.depositAddress) {
+    return active;
+  }
+  return [...(state.batches || [])].reverse().find((batch) => batch.depositAddress) || null;
+}
+
+function firstUnshieldedDepositTx() {
+  for (const batch of [...(state.batches || [])].reverse()) {
+    const shieldedTxIds = shieldedDepositTxIds(batch);
+    const tx = finalisedDepositTxs(batch)
+      .find((row) => !shieldedTxIds.has(String(row.txid || "").toUpperCase()));
+    if (tx) {
+      return { batch, tx };
+    }
+  }
+  return null;
+}
+
 function renderShieldedSummary() {
   const root = $("shieldedSummary");
   const button = $("shieldedSummaryButton");
   const amount = $("shieldedSummaryAmount");
   const menu = $("shieldedSummaryMenu");
-  const list = $("shieldedSummaryList");
+  const qrPanel = $("walletSummaryQr");
+  const unshieldedRow = $("walletSummaryUnshielded");
+  const unshieldedAmount = $("walletSummaryUnshieldedAmount");
+  const shieldButton = $("walletSummaryShield");
+  const shieldedRow = $("walletSummaryShielded");
+  const shieldedAmount = $("walletSummaryShieldedAmount");
   const withdraw = $("shieldedSummaryWithdraw");
-  if (!root || !button || !amount || !menu || !list || !withdraw) {
+  if (!root || !button || !amount || !menu || !qrPanel || !unshieldedRow || !unshieldedAmount || !shieldButton || !shieldedRow || !shieldedAmount || !withdraw) {
     return;
   }
   const items = shieldedNoteItems();
   const spendable = items.filter((item) => !item.spent);
-  const total = spendable.reduce((sum, item) => sum + item.denomination, 0);
-  root.hidden = total <= 0;
+  const shieldedTotal = spendable.reduce((sum, item) => sum + item.denomination, 0);
+  const unshieldedTotal = unshieldedDepositSats();
+  const total = shieldedTotal + unshieldedTotal;
+  const depositBatch = topbarDepositBatch();
+  const depositAddress = depositBatch?.depositAddress || $("depositAddress")?.textContent?.trim() || "";
+  const currentKey = depositBatch ? batchKey(depositBatch) : "";
+  const remainingMs = depositBatch ? batchExpiryRemainingMs(depositBatch) : depositRemainingMs();
+  const expired = Boolean(depositAddress && (
+    batchExpired(depositBatch) ||
+    (currentKey && currentKey === String(state.activeBatchKey || "") && depositExpired()) ||
+    remainingMs === 0
+  ));
+
+  root.hidden = !depositAddress && unshieldedTotal <= 0 && total <= 0;
   if (root.hidden) {
+    state.shieldedSummaryOpen = false;
     menu.hidden = true;
     button.setAttribute("aria-expanded", "false");
     return;
   }
+  root.classList.toggle("has-address", Boolean(depositAddress));
+  root.classList.toggle("address-expired", expired);
+  root.classList.toggle("has-unshielded", unshieldedTotal > 0);
+  root.classList.toggle("has-shielded", shieldedTotal > 0);
+
+  qrPanel.textContent = "";
+  qrPanel.hidden = !depositAddress;
+  qrPanel.classList.toggle("expired", expired);
+  qrPanel.classList.remove("action-only");
+  if (depositAddress) {
+    if (expired) {
+      qrPanel.classList.add("action-only");
+      const getAddress = document.createElement("button");
+      getAddress.id = "walletSummaryGetAddress";
+      getAddress.type = "button";
+      getAddress.textContent = "Get Address";
+      qrPanel.append(getAddress);
+    } else {
+      const qr = document.createElement("div");
+      qr.className = "wallet-summary-qr-code";
+      qr.innerHTML = qrMarkup(depositAddress);
+      const meta = document.createElement("div");
+      meta.className = "wallet-summary-qr-meta";
+      meta.textContent = remainingMs === null
+        ? depositAddress
+        : `${formatExpiryHuman(remainingMs)} · ${depositAddress}`;
+      qrPanel.append(qr, meta);
+    }
+  }
+
+  unshieldedAmount.textContent = btcAmount(unshieldedTotal);
+  unshieldedRow.hidden = unshieldedTotal <= 0;
+  const unshieldedTarget = firstUnshieldedDepositTx();
+  shieldButton.disabled = !unshieldedTarget || state.shieldPending;
+  shieldButton.dataset.batchKey = unshieldedTarget ? batchKey(unshieldedTarget.batch) : "";
+  shieldButton.dataset.txid = unshieldedTarget?.tx?.txid || "";
+  shieldButton.textContent = "Shield";
+
+  shieldedAmount.textContent = btcAmount(shieldedTotal);
+  shieldedRow.hidden = shieldedTotal <= 0;
+
   amount.textContent = btcAmount(total);
+  button.hidden = false;
+  button.disabled = false;
+  button.classList.toggle("empty", total <= 0);
+  if (total <= 0) {
+    state.shieldedSummaryOpen = false;
+  }
   menu.hidden = !state.shieldedSummaryOpen;
   button.setAttribute("aria-expanded", state.shieldedSummaryOpen ? "true" : "false");
-  list.textContent = "";
-  for (const item of spendable) {
-    const row = document.createElement("div");
-    row.className = "shielded-summary-row";
-    row.innerHTML = `<span>${btcAmount(item.denomination)}</span><strong>${item.mature ? "Mature" : "Maturing"}</strong>`;
-    list.append(row);
-  }
   const candidate = firstTopbarWithdrawCandidate(spendable);
   withdraw.disabled = !candidate;
+}
+
+function openTopbarDepositAddress() {
+  const batch = topbarDepositBatch();
+  markAppStarted(false);
+  state.currentTab = "user";
+  if (batch) {
+    state.paneBatchKeys.deposit = batchKey(batch);
+    activateDepositBatch(batch);
+    state.addressPaneFocusKey = batchKey(batch);
+  }
+  state.stageUserToggled.stageDeposit = true;
+  state.stageUserToggled.stageDepositTrack = true;
+  $("stageDeposit").dataset.expanded = "1";
+  $("stageDepositTrack").dataset.expanded = "1";
+  state.shieldedSummaryOpen = false;
+  showTab("user");
+  updateDashboard();
+  $("stageDeposit")?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function openTopbarUnshielded() {
+  const target = firstUnshieldedDepositTx();
+  const batch = target?.batch || visibleDepositBatches({ includeExpired: true, includeIssued: true })
+    .find((item) => !item.receipt?.notes?.length && (batchHasDepositValue(item) || mergeDepositTxs(item.depositTxs).length));
+  markAppStarted(false);
+  state.currentTab = "user";
+  if (batch) {
+    state.paneBatchKeys.deposit = batchKey(batch);
+    activateDepositBatch(batch);
+    state.paneBatchKeys.shield = batchKey(batch);
+  }
+  state.stageUserToggled.stageDepositTrack = true;
+  state.stageUserToggled.stageShield = true;
+  $("stageDepositTrack").dataset.expanded = "1";
+  $("stageShield").dataset.expanded = "1";
+  state.shieldedSummaryOpen = false;
+  showTab("user");
+  updateDashboard();
+  $("stageDepositTrack")?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 function openTopbarWithdraw() {
@@ -454,15 +606,12 @@ function setStage(id, status) {
   el.classList.toggle("expanded", expanded);
   const toggle = el.querySelector(".stage-toggle");
   if (toggle) {
-    const stageIndex = Array.from(document.querySelectorAll(".stage-card"))
-      .filter((stage) => stage.closest(".flow-stage") && !stage.classList.contains("locked"))
-      .indexOf(el) + 1;
-    toggle.textContent = expanded && stageIndex > 0 ? String(stageIndex).padStart(2, "0") : "+";
+    toggle.textContent = "";
     toggle.setAttribute("aria-label", expanded ? "Collapse pane" : "Open pane");
   }
   const wrapper = el.closest(".flow-stage");
   if (wrapper) {
-    wrapper.hidden = status === "locked";
+    wrapper.hidden = (state.currentTab === "user" && !state.appStarted) || status === "locked";
   }
 }
 
@@ -614,7 +763,7 @@ function interpolatedBlockHeight() {
 function walletBirthdayWord(ms = state.walletBirthdayMs) {
   const timestamp = Number(ms || 0);
   if (!Number.isFinite(timestamp) || timestamp <= 0) {
-    return "000000";
+    return walletBirthdayWord(Date.now());
   }
   const date = new Date(timestamp);
   const dd = String(date.getDate()).padStart(2, "0");
@@ -623,13 +772,28 @@ function walletBirthdayWord(ms = state.walletBirthdayMs) {
   return `${dd}${mm}${yy}`;
 }
 
+function localDayStartMs(ms = Date.now()) {
+  const date = new Date(Number(ms || Date.now()));
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+function walletBirthdayHeightFromMs(ms = state.walletBirthdayMs) {
+  const height = interpolatedBlockHeight();
+  const blockMs = Number(state.observedBlockMs || blocksToMs(1));
+  const birthdayMs = Number(ms || 0);
+  if (!Number.isFinite(height) || !Number.isFinite(blockMs) || blockMs <= 0 || !Number.isFinite(birthdayMs) || birthdayMs <= 0) {
+    return 0;
+  }
+  const blocksSince = Math.max(0, (Date.now() - birthdayMs) / blockMs);
+  return Math.max(1, Math.floor(height - blocksSince) - 2);
+}
+
 function setWalletBirthdayNow(force = false) {
   if (force || !state.walletBirthdayMs) {
-    state.walletBirthdayMs = Date.now();
+    state.walletBirthdayMs = localDayStartMs();
   }
   if (force || !state.walletBirthdayHeight) {
-    const height = Math.floor(interpolatedBlockHeight());
-    state.walletBirthdayHeight = Number.isFinite(height) && height > 0 ? Math.max(1, height - 2) : 0;
+    state.walletBirthdayHeight = walletBirthdayHeightFromMs(state.walletBirthdayMs);
   }
 }
 
@@ -638,14 +802,26 @@ function walletBirthdayStartHeight() {
   if (Number.isFinite(storedHeight) && storedHeight > 0) {
     return Math.max(1, Math.floor(storedHeight));
   }
-  const birthdayMs = Number(state.walletBirthdayMs || 0);
-  const currentHeight = interpolatedBlockHeight();
-  const blockMs = Number(state.observedBlockMs || blocksToMs(1));
-  if (!Number.isFinite(birthdayMs) || birthdayMs <= 0 || !Number.isFinite(currentHeight) || !Number.isFinite(blockMs) || blockMs <= 0) {
-    return 0;
+  return walletBirthdayHeightFromMs(state.walletBirthdayMs);
+}
+
+function depositRecoveryStartHeight() {
+  const heights = [walletBirthdayStartHeight()];
+  for (const batch of state.batches) {
+    for (const record of [batch.session, batch.deposit, batch]) {
+      const height = readNumber(
+        record?.created_height,
+        record?.createdHeight,
+        record?.btc_observed_height,
+        record?.BTCObservedHeight
+      );
+      if (height !== null && height > 0) {
+        heights.push(Math.max(1, Math.floor(height) - 10));
+      }
+    }
   }
-  const blocksSince = Math.max(0, (Date.now() - birthdayMs) / blockMs);
-  return Math.max(1, Math.floor(currentHeight - blocksSince) - 2);
+  const positive = heights.filter((height) => Number.isFinite(height) && height > 0);
+  return positive.length ? Math.min(...positive) : 0;
 }
 
 function msUntilBlockHeight(height) {
@@ -895,7 +1071,7 @@ function activateDepositBatch(batch) {
   state.activeBatchKey = batchKey(batch);
   state.depositPurpose = normalizeDepositType(batch.depositType);
   state.depositOwner = batch.owner || null;
-  state.activeIntentId = batch.pubkey || batch.depositId || null;
+  state.activeIntentId = batch.pubkey || batch.depositId || batch.owner || null;
   $("intentId").value = state.activeIntentId || "";
   $("amountSats").value = String(batch.amountSats || 0);
   $("depositAddress").textContent = batch.depositAddress || "";
@@ -939,7 +1115,7 @@ function depositFinalised(session = {}, deposit = {}, txStatus = null) {
 }
 
 function batchFinalised(batch) {
-  if (batch?.status === "committed") {
+  if (batch?.status === "committed" || batchConfirmed(batch)) {
     return true;
   }
   return finalisedDepositTxs(batch).length > 0;
@@ -1639,7 +1815,7 @@ function renderDepositExpiry() {
     el.innerHTML = `<strong>Deposit address expired</strong><span>Request a new address.</span>`;
     return;
   }
-  el.innerHTML = `<strong>Address expires in ${formatExpiryHuman(remaining)}</strong>`;
+  el.innerHTML = `<strong>Address expires at next churn in ${formatExpiryHuman(remaining)}</strong>`;
 }
 
 function renderSecret() {
@@ -1691,6 +1867,8 @@ function resetDepositState() {
   state.noteRecoveryStatus = "idle";
   state.noteRecoveryBatchKey = "";
   state.noteRecoveryProgress = null;
+  state.depositDiscoveryPending = false;
+  state.depositDiscoveryProgress = null;
   state.paneBatchKeys = { deposit: "", shield: "", withdraw: "" };
   state.stageUserToggled = {};
   state.stageSelectionKey = "";
@@ -1712,6 +1890,9 @@ function renderDepositHistory() {
     return;
   }
   el.textContent = "";
+  if (state.depositDiscoveryPending && state.depositDiscoveryProgress) {
+    el.append(renderDepositDiscoveryRow());
+  }
   const batches = visibleDepositBatches({ includeExpired: true, includeIssued: true });
   if (!batches.length) {
     return;
@@ -2065,6 +2246,24 @@ async function api(path, options = {}) {
     }
     throw new Error(message);
   }
+}
+
+async function apiMeta(path, options = {}) {
+  const response = await fetch(new URL(path, nodeOrigin()), {
+    headers: options.body ? { "content-type": "application/json" } : undefined,
+    ...options,
+    body: options.body ? JSON.stringify(options.body) : undefined
+  });
+  const text = await response.text();
+  const payload = text ? JSON.parse(text) : null;
+  if (!response.ok) {
+    let message = payload && payload.error ? payload.error : response.statusText;
+    if (payload && payload.raw_log) {
+      message = payload.raw_log;
+    }
+    throw new Error(message);
+  }
+  return { payload, headers: response.headers };
 }
 
 function invalidateShielderSyncCache() {
@@ -2708,7 +2907,8 @@ function renderMoreNav() {
     intro.classList.toggle("quote-writing", state.quoteWriting && !state.moreOpen);
   }
   button.setAttribute("aria-expanded", state.moreOpen ? "true" : "false");
-  button.textContent = state.moreOpen ? "Hide" : "Menu";
+  button.textContent = state.moreOpen ? "×" : "☰";
+  button.setAttribute("aria-label", state.moreOpen ? "Hide menu" : "Show menu");
 }
 
 function toggleMoreNav() {
@@ -2838,13 +3038,23 @@ async function restoreWalletSecret() {
     $("walletPassphrase").value = payload.passphrase || "";
     state.walletBirthdayMs = Number(payload.birthday_ms || 0);
     state.walletBirthdayHeight = Number(payload.birthday_height || 0);
+    if (!state.walletBirthdayMs) {
+      setWalletBirthdayNow(true);
+      await persistWalletSecret();
+    } else {
+      const normalizedBirthdayMs = localDayStartMs(state.walletBirthdayMs);
+      if (normalizedBirthdayMs !== state.walletBirthdayMs) {
+        state.walletBirthdayMs = normalizedBirthdayMs;
+        state.walletBirthdayHeight = walletBirthdayHeightFromMs(normalizedBirthdayMs);
+        await persistWalletSecret();
+      }
+    }
     state.secretMode = "hidden";
     updateDashboard();
     return true;
   } catch (error) {
-    localStorage.removeItem(SECRET_STORE_NAME);
     log("secret/restore", { error: error.message });
-    return false;
+    throw new Error(`Saved secret could not be restored: ${error.message}`);
   }
 }
 
@@ -3469,12 +3679,35 @@ async function readDepositTxRecord(id, cache = null) {
   return record;
 }
 
+function depositTxRecordFromStatus(txStatus = null) {
+  const tx = txStatus?.observed_tx?.tx || txStatus?.txs?.[0]?.tx || {};
+  if (!tx?.id && !tx?.to_address) {
+    return null;
+  }
+  const progress = depositConfirmationProgress({}, {}, txStatus);
+  return {
+    txid: String(tx.id || "").toUpperCase(),
+    amountSats: txAmountSats(txStatus),
+    progress,
+    txStatus,
+    deposit: null,
+    status: progress.current >= progress.required ? "deposit_matched" : progress.seen ? "deposit_observed" : "address_issued"
+  };
+}
+
 async function depositTxsForAddress(address, seedTxIds = [], scanCache = null) {
   const wanted = String(address || "").trim();
   if (!wanted) {
     return [];
   }
   const records = [...(scanCache?.txsByAddress?.get(wanted) || [])];
+  const direct = await api(`/thornado/deposit/address/${encodeURIComponent(wanted)}/txs`).catch(() => null);
+  for (const txStatus of direct?.txs || []) {
+    const record = depositTxRecordFromStatus(txStatus);
+    if (record && !records.some((item) => item.txid === record.txid)) {
+      records.push(record);
+    }
+  }
   const ids = new Set(seedTxIds.filter(Boolean).map((value) => String(value).toUpperCase()));
   for (const id of scanCache?.ids || []) {
     ids.add(id);
@@ -3589,6 +3822,11 @@ function recoverNotesOffThread(seedHex, sync, depositIndexes, fingerprint) {
         const wasm = await import(WASM_URL);
         await wasm.default(WASM_BINARY_URL);
         const knownDepositIndexes = new Set((depositIndexes || []).map((value) => Number(value || 0)));
+        if (!knownDepositIndexes.size) {
+          for (let index = 0; index < 32; index += 1) {
+            knownDepositIndexes.add(index);
+          }
+        }
         const candidates = JSON.parse(wasm.note_recovery_candidates_json(seedHex, BigInt(32), BigInt(128)))
           .filter((candidate) => knownDepositIndexes.has(Number(candidate.deposit_index || 0)));
         const spentNullifiers = new Map((sync.nullifiers || []).map((item) => [
@@ -3719,6 +3957,28 @@ function recoverNotesOffThread(seedHex, sync, depositIndexes, fingerprint) {
   });
 }
 
+function setDepositDiscoveryProgress(scanType, depositIndex, label = "Checking deposit address") {
+  const typeOffset = scanType === "node" ? 32 : 0;
+  const current = typeOffset + Math.max(0, Number(depositIndex || 0)) + 1;
+  const total = 64;
+  state.depositDiscoveryPending = true;
+  state.depositDiscoveryProgress = {
+    scanType,
+    depositIndex,
+    current,
+    total,
+    percent: Math.floor((current / total) * 100),
+    label: `${label} ${scanType} ${depositIndex + 1}`
+  };
+  renderDepositHistory();
+}
+
+function clearDepositDiscoveryProgress() {
+  state.depositDiscoveryPending = false;
+  state.depositDiscoveryProgress = null;
+  renderDepositHistory();
+}
+
 async function discoverDepositBatches(options = {}) {
   const recoverNotes = options.recoverNotes !== false;
   const preserveSelection = options.preserveSelection === true;
@@ -3735,69 +3995,85 @@ async function discoverDepositBatches(options = {}) {
     return state.batches;
   }
   const nextByType = { user: 0, node: 0 };
-  const scanCache = await buildDepositTxScanCache();
-  for (const scanType of ["user", "node"]) {
-    for (let depositIndex = 0; depositIndex < 32; depositIndex += 1) {
-      const depositPubkey = await clientPubkeyFromSeed(seedHex, depositIndex, scanType);
-      const owner = await ownerAddressFromCompressedPubkey(depositPubkey);
-      const session = await api(`/thornado/deposit/session/${owner}`).catch(() => null);
-      if (!session?.deposit_address) {
-        nextByType[scanType] = depositIndex;
-        break;
+  state.depositDiscoveryPending = true;
+  state.depositDiscoveryProgress = {
+    current: 0,
+    total: 64,
+    percent: 0,
+    label: "Checking recent chain transactions"
+  };
+  renderDepositHistory();
+  try {
+    const scanCache = await buildDepositTxScanCache();
+    for (const scanType of ["user", "node"]) {
+      for (let depositIndex = 0; depositIndex < 32; depositIndex += 1) {
+        setDepositDiscoveryProgress(scanType, depositIndex, "Deriving key");
+        const depositPubkey = await clientPubkeyFromSeed(seedHex, depositIndex, scanType);
+        const owner = await ownerAddressFromCompressedPubkey(depositPubkey);
+        setDepositDiscoveryProgress(scanType, depositIndex, "Checking address");
+        const session = await api(`/thornado/deposit/session/${owner}`).catch(() => null);
+        if (!session?.deposit_address) {
+          nextByType[scanType] = depositIndex;
+          break;
+        }
+        let amountSats = Number(session.amount_sats || 0);
+        let status = session.status || "address_issued";
+        let depositType = scanType;
+        let deposit = null;
+        let txStatus = null;
+        let observedTxId = inboundTxId(session);
+        if (session.deposit_id) {
+          deposit = await api(`/thornado/deposit/${session.deposit_id}`).catch(() => null);
+          observedTxId = inboundTxId(session, deposit) || session.deposit_id;
+        }
+        if (observedTxId) {
+          txStatus = await api(`/thornado/tx/${observedTxId}`).catch(() => null);
+        }
+        if (!observedTxId && session.inbound_tx_id) {
+          observedTxId = session.inbound_tx_id;
+        }
+        if (deposit) {
+          amountSats = Number(deposit?.amount_sats || amountSats || 0);
+          status = deposit?.status || status;
+        }
+        if (!amountSats) {
+          amountSats = txAmountSats(txStatus);
+        }
+        setDepositDiscoveryProgress(scanType, depositIndex, "Matching chain txs");
+        const depositTxs = await depositTxsForAddress(session.deposit_address, [observedTxId], scanCache);
+        if (depositTxs.length) {
+          amountSats = Number(depositTxs[depositTxs.length - 1].amountSats || amountSats || 0);
+          observedTxId = depositTxs[depositTxs.length - 1].txid;
+          txStatus = depositTxs[depositTxs.length - 1].txStatus || txStatus;
+          status = depositTxs[depositTxs.length - 1].status || status;
+        }
+        const progress = depositConfirmationProgress(session, deposit, txStatus);
+        if (!deposit?.status && progress.seen && progress.current < progress.required) {
+          status = "deposit_observed";
+        }
+        const baseBatch = {
+          depositIndex,
+          owner,
+          pubkey: depositPubkey,
+          depositType,
+          depositId: session.deposit_id || "",
+          inboundTxId: observedTxId,
+          depositAddress: session.deposit_address,
+          amountSats,
+          status,
+          session,
+          deposit,
+          txStatus,
+          settlement: deposit?.settlement || "",
+          nodePubKey: session.node_pub_key || deposit?.node_pub_key || ""
+        };
+        upsertBatch(applyDepositTxAggregate(baseBatch, depositTxs));
+        renderDepositHistory();
+        nextByType[scanType] = depositIndex + 1;
       }
-      let amountSats = Number(session.amount_sats || 0);
-      let status = session.status || "address_issued";
-      let depositType = scanType;
-      let deposit = null;
-      let txStatus = null;
-      let observedTxId = inboundTxId(session);
-      if (session.deposit_id) {
-        deposit = await api(`/thornado/deposit/${session.deposit_id}`).catch(() => null);
-        observedTxId = inboundTxId(session, deposit) || session.deposit_id;
-      }
-      if (observedTxId) {
-        txStatus = await api(`/thornado/tx/${observedTxId}`).catch(() => null);
-      }
-      if (!observedTxId && session.inbound_tx_id) {
-        observedTxId = session.inbound_tx_id;
-      }
-      if (deposit) {
-        amountSats = Number(deposit?.amount_sats || amountSats || 0);
-        status = deposit?.status || status;
-      }
-      if (!amountSats) {
-        amountSats = txAmountSats(txStatus);
-      }
-      const depositTxs = await depositTxsForAddress(session.deposit_address, [observedTxId], scanCache);
-      if (depositTxs.length) {
-        amountSats = Number(depositTxs[depositTxs.length - 1].amountSats || amountSats || 0);
-        observedTxId = depositTxs[depositTxs.length - 1].txid;
-        txStatus = depositTxs[depositTxs.length - 1].txStatus || txStatus;
-        status = depositTxs[depositTxs.length - 1].status || status;
-      }
-      const progress = depositConfirmationProgress(session, deposit, txStatus);
-      if (!deposit?.status && progress.seen && progress.current < progress.required) {
-        status = "deposit_observed";
-      }
-      const baseBatch = {
-        depositIndex,
-        owner,
-        pubkey: depositPubkey,
-        depositType,
-        depositId: session.deposit_id || "",
-        inboundTxId: observedTxId,
-        depositAddress: session.deposit_address,
-        amountSats,
-        status,
-        session,
-        deposit,
-        txStatus,
-        settlement: deposit?.settlement || "",
-        nodePubKey: session.node_pub_key || deposit?.node_pub_key || ""
-      };
-      upsertBatch(applyDepositTxAggregate(baseBatch, depositTxs));
-      nextByType[scanType] = depositIndex + 1;
     }
+  } finally {
+    clearDepositDiscoveryProgress();
   }
   state.nextDepositIndexByType = nextByType;
   state.nextDepositIndex = Number(nextByType[requestedPurpose] || 0);
@@ -3833,7 +4109,7 @@ async function discoverDepositBatches(options = {}) {
       state.noteRecoveryBatchKey = state.paneBatchKeys.deposit || state.activeBatchKey || "";
       state.noteRecoveryProgress = { percent: 0, loaded: 0, total: 0 };
       updateDashboard();
-      const recoveryFromHeight = walletBirthdayStartHeight();
+      const recoveryFromHeight = depositRecoveryStartHeight();
       sync = await shielderSync({
         force: true,
         fromHeight: recoveryFromHeight,
@@ -4188,6 +4464,11 @@ function renderShieldBatches() {
   const txRows = mergeDepositTxs(selectedBatch.depositTxs);
   const finalisedTxRows = finalisedDepositTxs(selectedBatch);
   const shieldableTxRows = txRows.filter((tx) => depositTxShieldable(tx));
+  const confirmedTxRows = shieldableTxRows.filter((tx) => {
+    const txProgress = tx.progress || depositConfirmationProgress(selectedBatch.session, tx.deposit, tx.txStatus);
+    return Number(txProgress.current || 0) >= Number(txProgress.required || minConfirmations());
+  });
+  const readyTxRows = finalisedTxRows.length ? finalisedTxRows : confirmedTxRows;
   const fallbackTxid = shieldableTxRows[0]?.txid || (!txRows.length ? selectedBatch.inboundTxId || selectedBatch.depositId || "" : "");
 
   const appendDepositTxRows = () => {
@@ -4251,7 +4532,7 @@ function renderShieldBatches() {
       }
     }
     const shieldedTxIds = new Set([...groups.keys()].map((txid) => String(txid || "").toUpperCase()));
-    for (const tx of finalisedTxRows.filter((row) => !shieldedTxIds.has(String(row.txid || "").toUpperCase()))) {
+    for (const tx of readyTxRows.filter((row) => !shieldedTxIds.has(String(row.txid || "").toUpperCase()))) {
       const header = document.createElement("div");
       header.className = "shield-summary-row";
       header.innerHTML = `<span>${txHashLink(tx.txid)}</span><strong>${btcAmount(Number(tx.amountSats || 0))}</strong>`;
@@ -4279,7 +4560,7 @@ function renderShieldBatches() {
     card.append(row);
   } else if (batchFinalised(selectedBatch)) {
     appendDepositTxRows();
-    if (finalisedTxRows.length || !txRows.length) {
+    if (readyTxRows.length || !txRows.length) {
       const actionRow = document.createElement("div");
       actionRow.className = "batch-note-row";
       const button = document.createElement("button");
@@ -4288,7 +4569,7 @@ function renderShieldBatches() {
       button.innerHTML = state.shieldPending && batchKey(selectedBatch) === String(state.activeBatchKey || "")
         ? '<span class="button-spinner" aria-hidden="true"></span>Shielding'
         : "Shield Deposit";
-      button.addEventListener("click", () => run(() => shieldDeposit(batchKey(selectedBatch), finalisedTxRows[0]?.txid || "")));
+      button.addEventListener("click", () => run(() => shieldDeposit(batchKey(selectedBatch), readyTxRows[0]?.txid || "")));
       actionRow.innerHTML = "<span></span>";
       actionRow.append(button);
       card.append(actionRow);
@@ -4321,6 +4602,24 @@ function renderScanProgressRow(label) {
     <div class="scan-progress-copy">
       <span>${label}</span>
       <strong>${detail}</strong>
+    </div>
+    <div class="scan-progress-track" aria-hidden="true"><span style="width:${percent}%"></span></div>
+  `;
+  return row;
+}
+
+function renderDepositDiscoveryRow() {
+  const progress = state.depositDiscoveryProgress || {};
+  const percent = Math.max(0, Math.min(100, Number(progress.percent || 0)));
+  const current = Number(progress.current || 0);
+  const total = Number(progress.total || 0);
+  const detail = total > 0 ? `${Math.min(current, total)} / ${total}` : `${percent}%`;
+  const row = document.createElement("div");
+  row.className = "scan-progress-row deposit-discovery-progress";
+  row.innerHTML = `
+    <div class="scan-progress-copy">
+      <span>${escapeHtml(progress.label || "Checking deposit addresses")}</span>
+      <strong>${escapeHtml(detail)}</strong>
     </div>
     <div class="scan-progress-track" aria-hidden="true"><span style="width:${percent}%"></span></div>
   `;
@@ -4515,7 +4814,9 @@ async function requestDeposit() {
     log("deposit/request", { batch: batchLabel({ depositIndex }), user_pubkey: userPubkey, owner, pow: mined, response: payload, session });
     setMessage("Deposit address committed on-chain.", "ok");
     autoConfirmDeposit();
-    queueDepositRecovery();
+    if (changed) {
+      queueDepositRecovery();
+    }
   } finally {
     state.depositRequestPending = false;
     stopPowVisual();
@@ -4549,7 +4850,11 @@ function queueDepositRecovery() {
 }
 
 async function confirmDeposit() {
-  const expectedIntentId = state.activeIntentId || activeBatch()?.pubkey || activeBatch()?.depositId || "";
+  const trackingCandidate = activeBatch() || state.batches.find((item) => item.owner && item.owner === state.depositOwner) || null;
+  if (!state.depositOwner && trackingCandidate?.owner) {
+    state.depositOwner = trackingCandidate.owner;
+  }
+  const expectedIntentId = state.activeIntentId || trackingCandidate?.pubkey || trackingCandidate?.depositId || trackingCandidate?.owner || state.depositOwner || "";
   const intentId = $("intentId").value.trim() || expectedIntentId;
   if (!expectedIntentId) {
     throw new Error("Request a deposit address before observing a deposit.");
@@ -4563,11 +4868,13 @@ async function confirmDeposit() {
   }
   const trackingBatch = state.batches.find((batch) => batch.owner && batch.owner === state.depositOwner);
   const trackingDepositIndex = Number(trackingBatch?.depositIndex ?? state.activeBatchIndex ?? 0);
+  const previousTxCount = depositTxCount(trackingBatch);
+  const previousProgress = batchConfirmationProgress(trackingBatch);
   const session = await api(`/thornado/deposit/session/${state.depositOwner}`);
   if (!session?.deposit_address) {
     throw new Error("deposit session was not found");
   }
-  $("intentId").value = state.activeIntentId;
+  $("intentId").value = expectedIntentId;
   const deposit = session.deposit_id
     ? await api(`/thornado/deposit/${session.deposit_id}`).catch(() => null)
     : null;
@@ -4590,6 +4897,8 @@ async function confirmDeposit() {
   const baseBatch = {
     depositIndex: trackingDepositIndex,
     owner: state.depositOwner,
+    pubkey: trackingBatch?.pubkey || trackingCandidate?.pubkey || "",
+    depositType: trackingBatch?.depositType || trackingCandidate?.depositType || activeDepositPurpose(),
     depositId: session.deposit_id,
     inboundTxId: observedTxId,
     depositAddress: session.deposit_address,
@@ -4616,12 +4925,18 @@ async function confirmDeposit() {
   log("deposit/status", { session, deposit, txStatus, progress });
   setConfirmationProgress(progress.current, progress.required, progress.seen);
   renderDepositHistory();
+  const currentTxCount = depositTxCount(activeBatch());
+  const changed = currentTxCount !== previousTxCount
+    || Number(progress.current || 0) !== Number(previousProgress.current || 0)
+    || Number(progress.required || 0) !== Number(previousProgress.required || 0);
   if (progress.current >= progress.required) {
     const batch = activeBatch();
-    if (batch?.status === "committed") {
-      setMessage(`Deposit confirmed and shielded into ${batch.receipt?.notes?.length || 0} notes.`, "ok", 2, 15000);
-    } else {
-      setMessage("Deposit confirmed.", "ok", 2, 15000);
+    if (changed) {
+      if (batch?.status === "committed") {
+        setMessage(`Deposit confirmed and shielded into ${batch.receipt?.notes?.length || 0} notes.`, "ok", 2, 15000);
+      } else {
+        setMessage("Deposit confirmed.", "ok", 2, 15000);
+      }
     }
     queueDepositRecovery();
   } else if (progress.seen) {
@@ -5238,39 +5553,60 @@ function configValue(configs, key) {
 }
 
 async function refreshNetworkExplorer() {
+  if (state.networkRefreshPending) {
+    return;
+  }
+  state.networkRefreshPending = true;
+  try {
   const results = await Promise.allSettled([
     api("/thornado/block"),
-    api("/thornado/lastblock"),
+    apiMeta("/thornado/lastblock"),
     api("/thornado/nodes"),
     apiFirst(["/thornado/nodes/metrics", "/thornado/node/metrics"]),
-    api("/thornado/vaults/base"),
-    api("/thornado/vaults/solvency"),
-    api("/thornado/fees"),
-    api("/thornado/shielder/sync?limit=2000"),
-    api("/thornado/node/auctions"),
-    apiFirst(["/thornado/config", "/thornado/config/nodes"]).catch(() => null)
-  ]);
+	    api("/thornado/vaults/base"),
+	    api("/thornado/vaults/solvency"),
+	    api("/thornado/fees"),
+	    api("/thornado/gas"),
+	    api("/thornado/shielder/sync?limit=2000"),
+	    api("/thornado/node/auctions"),
+	    apiFirst(["/thornado/config", "/thornado/config/nodes"]).catch(() => null),
+	    api("/cosmos/base/tendermint/v1beta1/node_info").catch(() => null)
+	  ]);
   const value = (index) => results[index].status === "fulfilled" ? results[index].value : null;
   const block = value(0);
-  const lastBlocks = value(1);
+  const lastBlocksMeta = value(1);
+  const lastBlocks = lastBlocksMeta?.payload;
   const nodes = nodesFromPayload(value(2));
   const metrics = value(3);
   const vaults = vaultsFromPayload(value(4));
-  const solvency = value(5);
-  const fees = value(6);
-  const sync = value(7);
-  const auctions = Array.isArray(value(8)?.auctions) ? value(8).auctions : [];
-  const configs = value(9);
+	  const solvency = value(5);
+	  const fees = value(6);
+	  const gas = value(7);
+	  const sync = value(8);
+	  const auctions = Array.isArray(value(9)?.auctions) ? value(9).auctions : [];
+	  const configs = value(10);
+	  const nodeInfo = value(11);
 
+  const lastBlockRows = Array.isArray(lastBlocks)
+    ? lastBlocks
+    : (lastBlocks?.last_blocks || lastBlocks?.lastBlocks || []);
+  const btcLast = lastBlockRows.find((item) => String(item.chain || "").toUpperCase() === "BTC");
   const header = block?.header || block?.block?.header || {};
   const blockId = block?.id || block?.block_id || block?.blockId || {};
-  setExplorerText("networkExplorerHeight", intLabel(header.height));
-  setExplorerText("networkChainId", header.chain_id || header.chainId);
-  setExplorerText("networkBlockHash", shortHash(blockId.hash));
-  setExplorerText("networkBlockTime", header.time ? new Date(header.time).toLocaleString() : "unavailable");
-  setExplorerText("networkTxCount", intLabel((block?.txs || []).length));
+  const metaHeight = Number(lastBlocksMeta?.headers?.get("grpc-metadata-x-cosmos-block-height"));
+  const metaServerTime = Number(lastBlocksMeta?.headers?.get("x-server-time"));
+  const chainId = header.chain_id
+    || header.chainId
+    || nodeInfo?.default_node_info?.network
+    || nodeInfo?.node_info?.network;
+  setExplorerText("networkExplorerHeight", intLabel(header.height ?? btcLast?.thornado ?? metaHeight));
+  setExplorerText("networkChainId", chainId || "not reported");
+  setExplorerText("networkBlockHash", blockId.hash ? shortHash(blockId.hash) : "not reported");
+  setExplorerText("networkBlockTime", header.time
+    ? new Date(header.time).toLocaleString()
+    : (Number.isFinite(metaServerTime) && metaServerTime > 0 ? new Date(metaServerTime * 1000).toLocaleString() : "not reported"));
+  setExplorerText("networkTxCount", block ? intLabel((block?.txs || []).length) : "not reported");
 
-  const btcLast = (lastBlocks?.last_blocks || lastBlocks?.lastBlocks || []).find((item) => String(item.chain || "").toUpperCase() === "BTC");
   setExplorerText("networkBtcObserved", btcLast ? intLabel(btcLast.last_observed_in ?? btcLast.lastObservedIn) : "not reported");
   setExplorerText("networkBtcSigned", btcLast ? intLabel(btcLast.last_signed_out ?? btcLast.lastSignedOut) : "not reported");
 
@@ -5282,13 +5618,21 @@ async function refreshNetworkExplorer() {
   setExplorerText("networkVaultCount", intLabel(vaults.length));
   setExplorerText("networkVaultInbounds", intLabel(inboundCount));
   setExplorerText("networkVaultOutbounds", intLabel(outboundCount));
-  setExplorerText("networkVaultPending", intLabel(pendingCount));
-  const solvencyAssets = solvency?.assets || [];
-  const btcSolvency = solvencyAssets.find((item) => String(item.asset || "").toUpperCase().includes("BTC"));
-  setExplorerText("networkSolvency", btcSolvency ? btcLabelFromSats(btcSolvency.amount) : "unavailable");
-  renderExplorerRows("networkVaultsList", vaults.slice(0, 8).map((vault) => `
-    <span>${escapeHtml(shortHash(vault.pub_key || vault.pubKey))}</span>
-    <strong>${escapeHtml(vault.status || "unknown")}</strong>
+	  setExplorerText("networkVaultPending", intLabel(pendingCount));
+	  const solvencyAssets = solvency?.assets || [];
+	  const btcSolvency = solvencyAssets.find((item) => String(item.asset || "").toUpperCase().includes("BTC"));
+	  setExplorerText("networkSolvency", btcSolvency ? btcLabelFromSats(btcSolvency.amount) : "unavailable");
+	  const gasBreakdown = Array.isArray(gas?.breakdown) ? gas.breakdown : [];
+	  const gasRow = (txType) => gasBreakdown.find((row) => String(row.tx_type ?? row.txType).toLowerCase() === txType);
+	  const gasLabel = (row) => row ? `${btcLabelFromSats(row.gas_sats ?? row.gasSats)} · ${intLabel(row.tx_count ?? row.txCount)} txs` : "unavailable";
+	  setExplorerText("networkGasTotal", gas ? btcLabelFromSats(gas.total_sats ?? gas.totalSats) : "unavailable");
+	  setExplorerText("networkGasSweep", gasLabel(gasRow("sweep")));
+	  setExplorerText("networkGasMigrate", gasLabel(gasRow("migrate")));
+	  setExplorerText("networkGasConsolidate", gasLabel(gasRow("consolidate")));
+	  setExplorerText("networkGasTxOut", gasLabel(gasRow("txout")));
+	  renderExplorerRows("networkVaultsList", vaults.slice(0, 8).map((vault) => `
+	    <span>${escapeHtml(shortHash(vault.pub_key || vault.pubKey))}</span>
+	    <strong>${escapeHtml(vault.status || "unknown")}</strong>
     <em>${btcLabelFromSats((vault.coins || []).reduce((sum, coin) => sum + coinAmountSats(coin), 0))}</em>
   `), "No base vaults");
 
@@ -5325,6 +5669,9 @@ async function refreshNetworkExplorer() {
     vaults: vaults.length,
     sync: Boolean(sync)
   });
+  } finally {
+    state.networkRefreshPending = false;
+  }
 }
 
 function nodeStatusValue(node) {
@@ -6128,6 +6475,10 @@ async function run(action) {
 }
 
 function revealSecret() {
+  if (!state.walletBirthdayMs) {
+    setWalletBirthdayNow(true);
+    persistWalletSecret().catch((error) => log("secret/save", { error: error.message }));
+  }
   state.secretMode = "revealed";
   renderSecret();
 }
@@ -6381,6 +6732,17 @@ $("shieldedSummaryButton").addEventListener("click", (event) => {
   event.stopPropagation();
   toggleShieldedSummary();
 });
+$("walletSummaryQr").addEventListener("click", (event) => {
+  if (event.target?.id !== "walletSummaryGetAddress") {
+    return;
+  }
+  event.stopPropagation();
+  openTopbarDepositAddress();
+});
+$("walletSummaryShield").addEventListener("click", (event) => {
+  event.stopPropagation();
+  openTopbarUnshielded();
+});
 $("shieldedSummaryWithdraw").addEventListener("click", (event) => {
   event.stopPropagation();
   openTopbarWithdraw();
@@ -6613,8 +6975,6 @@ renderMoreNav();
   }
   if (!restoredSecret) {
     await generateWalletRoot();
-  } else {
-    markAppStarted(false);
   }
   renderNodeEndpoint();
   updateNodeSecretStatus();
@@ -6631,7 +6991,12 @@ renderMoreNav();
             setMessage("Deposits synced. Searching commitments...", "ok", 1, 10000);
             queueDepositRecovery();
           } else {
-            setMessage(state.batches.length ? "Deposits synced." : "No previous deposits found.", state.batches.length ? "ok" : "", 1, 10000);
+            setMessage("Searching shielded notes...", "", 1, 10000);
+            return discoverDepositBatches({ recoverNotes: true, preserveSelection: true })
+              .then(() => {
+                updateDashboard();
+                setMessage(state.batches.length ? "Deposits synced." : "No deposits or notes found for this secret.", state.batches.length ? "ok" : "", 1, 10000);
+              });
           }
         })
         .catch((error) => {
@@ -6662,8 +7027,9 @@ setInterval(() => {
 setInterval(() => {
   const progress = confirmationProgressFromUi();
   const batch = activeBatch();
-  const hasTrackableDeposit = Boolean(state.depositOwner && (state.activeIntentId || batch?.pubkey || batch?.depositId));
-  if (hasTrackableDeposit && !state.depositAutoConfirming && progress.current < progress.required) {
+  const hasTrackableDeposit = Boolean(state.depositOwner && (state.activeIntentId || batch?.pubkey || batch?.depositId || batch?.owner || batch?.depositAddress));
+  const hasReusableAddress = Boolean(batch?.depositAddress && !batchExpired(batch));
+  if (hasTrackableDeposit && !state.depositAutoConfirming && (progress.current < progress.required || hasReusableAddress)) {
     autoConfirmDeposit();
   }
 }, 5000);
@@ -6698,3 +7064,9 @@ setInterval(() => {
 setInterval(() => {
   refreshNodeCount().catch((error) => log("node/count", { error: error?.message || String(error) }));
 }, 15000);
+setInterval(() => {
+  if (state.currentTab !== "network") {
+    return;
+  }
+  refreshNetworkExplorer().catch((error) => log("network/explorer", { error: errorText(error) }));
+}, 10000);

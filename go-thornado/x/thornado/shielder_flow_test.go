@@ -24,54 +24,65 @@ import (
 type shielderFlowTestKeeper struct {
 	keeper.KVStoreDummy
 
-	feePool       types.FeePool
-	deposits      map[string]types.DepositRecord
-	commitments   map[string]bool
-	noteRecords   map[string]types.StoredShielderNoteRecord
-	nullifiers    map[string][]byte
-	denominations map[uint64][]string
-	merkleRoots   map[uint64]string
-	redeems       map[string]types.ShielderRedeem
-	nodeBonds     map[string]types.ShielderNodeBond
-	nodeBonders   map[string]types.ShielderNodeBonder
-	nodeAccounts  map[string]NodeAccount
-	auctions      map[string]types.NodeSlotAuction
-	bids          map[string]types.NodeSlotBid
-	baseVaults    Vaults
-	feeNotePubKey map[string]bool
-	txOuts        []TxOutItem
-	txOutByHeight map[int64]TxOut
-	sessions      map[string]types.DepositSession
-	powSessions   map[string]types.DepositSession
-	addresses     map[string]types.DepositAddress
-	pathNonces    map[string]uint64
-	nextSlot      uint64
+	feePool        types.FeePool
+	deposits       map[string]types.DepositRecord
+	commitments    map[string]bool
+	noteRecords    map[string]types.StoredShielderNoteRecord
+	nullifiers     map[string][]byte
+	denominations  map[uint64][]string
+	merkleRoots    map[uint64]string
+	redeems        map[string]types.ShielderRedeem
+	nodeBonds      map[string]types.ShielderNodeBond
+	nodeBonders    map[string]types.ShielderNodeBonder
+	nodeAccounts   map[string]NodeAccount
+	auctions       map[string]types.NodeSlotAuction
+	bids           map[string]types.NodeSlotBid
+	baseVaults     Vaults
+	feeNotePubKey  map[string]bool
+	txOuts         []TxOutItem
+	txOutByHeight  map[int64]TxOut
+	txInVoters     map[string]ObservedTxVoter
+	txOutVoters    map[string]ObservedTxVoter
+	solvencyVoters map[string]types.SolvencyVoter
+	sessions       map[string]types.DepositSession
+	powSessions    map[string]types.DepositSession
+	addresses      map[string]types.DepositAddress
+	pathNonces     map[string]uint64
+	configs        map[constants.ConfigName]int64
+	nextSlot       uint64
 }
 
 func newShielderFlowTestKeeper() *shielderFlowTestKeeper {
 	return &shielderFlowTestKeeper{
-		deposits:      make(map[string]types.DepositRecord),
-		commitments:   make(map[string]bool),
-		noteRecords:   make(map[string]types.StoredShielderNoteRecord),
-		nullifiers:    make(map[string][]byte),
-		denominations: make(map[uint64][]string),
-		merkleRoots:   make(map[uint64]string),
-		redeems:       make(map[string]types.ShielderRedeem),
-		nodeBonds:     make(map[string]types.ShielderNodeBond),
-		nodeBonders:   make(map[string]types.ShielderNodeBonder),
-		nodeAccounts:  make(map[string]NodeAccount),
-		auctions:      make(map[string]types.NodeSlotAuction),
-		bids:          make(map[string]types.NodeSlotBid),
-		feeNotePubKey: make(map[string]bool),
-		txOutByHeight: make(map[int64]TxOut),
-		sessions:      make(map[string]types.DepositSession),
-		powSessions:   make(map[string]types.DepositSession),
-		addresses:     make(map[string]types.DepositAddress),
-		pathNonces:    make(map[string]uint64),
+		deposits:       make(map[string]types.DepositRecord),
+		commitments:    make(map[string]bool),
+		noteRecords:    make(map[string]types.StoredShielderNoteRecord),
+		nullifiers:     make(map[string][]byte),
+		denominations:  make(map[uint64][]string),
+		merkleRoots:    make(map[uint64]string),
+		redeems:        make(map[string]types.ShielderRedeem),
+		nodeBonds:      make(map[string]types.ShielderNodeBond),
+		nodeBonders:    make(map[string]types.ShielderNodeBonder),
+		nodeAccounts:   make(map[string]NodeAccount),
+		auctions:       make(map[string]types.NodeSlotAuction),
+		bids:           make(map[string]types.NodeSlotBid),
+		feeNotePubKey:  make(map[string]bool),
+		txOutByHeight:  make(map[int64]TxOut),
+		txInVoters:     make(map[string]ObservedTxVoter),
+		txOutVoters:    make(map[string]ObservedTxVoter),
+		solvencyVoters: make(map[string]types.SolvencyVoter),
+		sessions:       make(map[string]types.DepositSession),
+		powSessions:    make(map[string]types.DepositSession),
+		addresses:      make(map[string]types.DepositAddress),
+		pathNonces:     make(map[string]uint64),
+		configs:        make(map[constants.ConfigName]int64),
 	}
 }
 
 func (k *shielderFlowTestKeeper) GetConfigInt64(_ cosmos.Context, key constants.ConfigName) int64 {
+	if value, ok := k.configs[key]; ok {
+		return value
+	}
 	return constants.NewConfigValue().GetInt64Value(key)
 }
 
@@ -90,6 +101,10 @@ func (k *shielderFlowTestKeeper) GetDepositRecordIteratorAfter(ctx cosmos.Contex
 		iter.AddItem([]byte(id), value)
 	}
 	return iter
+}
+
+func (k *shielderFlowTestKeeper) GetDepositRecordIterator(ctx cosmos.Context) cosmos.Iterator {
+	return k.GetDepositRecordIteratorAfter(ctx, "")
 }
 
 func (k *shielderFlowTestKeeper) GetDepositRecord(_ cosmos.Context, depositID common.TxID) (types.DepositRecord, error) {
@@ -161,6 +176,10 @@ func (k *shielderFlowTestKeeper) GetShielderNoteRecordIteratorAfter(_ cosmos.Con
 		iter.AddItem([]byte(key), value)
 	}
 	return iter
+}
+
+func (k *shielderFlowTestKeeper) GetShielderNoteRecordIterator(ctx cosmos.Context) cosmos.Iterator {
+	return k.GetShielderNoteRecordIteratorAfter(ctx, "")
 }
 
 func (k *shielderFlowTestKeeper) SetShielderDenominationCommitment(_ cosmos.Context, denominationSats uint64, commitment string) error {
@@ -248,6 +267,10 @@ func (k *shielderFlowTestKeeper) GetShielderNullifierIteratorAfter(_ cosmos.Cont
 	return iter
 }
 
+func (k *shielderFlowTestKeeper) GetShielderNullifierIterator(ctx cosmos.Context) cosmos.Iterator {
+	return k.GetShielderNullifierIteratorAfter(ctx, "")
+}
+
 func (k *shielderFlowTestKeeper) SetShielderNodeBonder(_ cosmos.Context, bonder types.ShielderNodeBonder) error {
 	k.nodeBonders[bonder.Key()] = bonder
 	return nil
@@ -284,6 +307,27 @@ func (k *shielderFlowTestKeeper) SetNodeAccount(_ cosmos.Context, account NodeAc
 
 func (k *shielderFlowTestKeeper) GetNodeAccount(_ cosmos.Context, addr cosmos.AccAddress) (NodeAccount, error) {
 	return k.nodeAccounts[addr.String()], nil
+}
+
+func (k *shielderFlowTestKeeper) GetNodeAccountPenaltyPoints(_ cosmos.Context, _ cosmos.AccAddress) (int64, error) {
+	return 0, nil
+}
+
+func (k *shielderFlowTestKeeper) ListNodesByStatus(_ cosmos.Context, status NodeStatus) (NodeAccounts, error) {
+	var accounts NodeAccounts
+	for _, account := range k.nodeAccounts {
+		if account.Status == status {
+			accounts = append(accounts, account)
+		}
+	}
+	sort.SliceStable(accounts, func(i, j int) bool {
+		return accounts[i].NodeAddress.String() < accounts[j].NodeAddress.String()
+	})
+	return accounts, nil
+}
+
+func (k *shielderFlowTestKeeper) ListActiveNodes(ctx cosmos.Context) (NodeAccounts, error) {
+	return k.ListNodesByStatus(ctx, NodeActive)
 }
 
 func (k *shielderFlowTestKeeper) SetNodeSlotAuction(_ cosmos.Context, auction types.NodeSlotAuction) error {
@@ -349,6 +393,7 @@ func (k *shielderFlowTestKeeper) GetBaseVaultsByStatus(_ cosmos.Context, status 
 type shielderFlowTestManager struct {
 	k        *shielderFlowTestKeeper
 	gas      shielderFlowTestGasManager
+	obs      shielderFlowTestObserverManager
 	txOut    shielderFlowTestTxOutStore
 	version  semver.Version
 	constant constants.ConfigValues
@@ -371,8 +416,17 @@ func (m *shielderFlowTestManager) EventMgr() EventManager               { return
 func (m *shielderFlowTestManager) TxOutStore() TxOutStore               { return &m.txOut }
 func (m *shielderFlowTestManager) NetworkMgr() NetworkManager           { return nil }
 func (m *shielderFlowTestManager) NodeMgr() NodeManager                 { return nil }
-func (m *shielderFlowTestManager) ObMgr() ObserverManager               { return nil }
+func (m *shielderFlowTestManager) ObMgr() ObserverManager               { return &m.obs }
 func (m *shielderFlowTestManager) PenaltyManager() PenaltyManager       { return nil }
+
+type shielderFlowTestObserverManager struct{}
+
+func (m *shielderFlowTestObserverManager) BeginBlock() {}
+func (m *shielderFlowTestObserverManager) EndBlock(cosmos.Context, keeper.Keeper) {
+}
+func (m *shielderFlowTestObserverManager) AppendObserver(common.Chain, []cosmos.AccAddress) {
+}
+func (m *shielderFlowTestObserverManager) List() []cosmos.AccAddress { return nil }
 
 type shielderFlowTestGasManager struct {
 	maxGas common.Coin
