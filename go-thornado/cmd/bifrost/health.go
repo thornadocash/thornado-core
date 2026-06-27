@@ -17,6 +17,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients"
+	"github.com/thornadocash/go-thornado/bifrost/signer"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
@@ -90,6 +91,7 @@ type HealthServer struct {
 	localPeerID     string
 	chains          map[common.Chain]chainclients.ChainClient
 	providerPayload []byte
+	signer          *signer.Signer
 }
 
 // NewHealthServer create a new instance of health server
@@ -125,6 +127,10 @@ func NewHealthServer(addr string, localPeerID string, chains map[common.Chain]ch
 	return hs
 }
 
+func (s *HealthServer) SetSigner(sign *signer.Signer) {
+	s.signer = sign
+}
+
 func (s *HealthServer) newHandler() http.Handler {
 	router := mux.NewRouter()
 	router.Handle("/ping", http.HandlerFunc(s.pingHandler)).Methods(http.MethodGet)
@@ -134,7 +140,28 @@ func (s *HealthServer) newHandler() http.Handler {
 	router.Handle("/status/provider", http.HandlerFunc(s.providerStatus)).Methods(http.MethodGet)
 	router.Handle("/status/signing", http.HandlerFunc(s.currentSigning)).Methods(http.MethodGet)
 	router.Handle("/version", http.HandlerFunc(s.versionHandler)).Methods(http.MethodGet)
+	router.Handle("/debug/health/full", http.HandlerFunc(s.debugFullHealth)).Methods(http.MethodGet)
+	router.Handle("/debug/signer/txouts", http.HandlerFunc(s.debugSignerTxOuts)).Methods(http.MethodGet)
+	router.Handle("/debug/signer/txout/{in_hash}", http.HandlerFunc(s.debugSignerTxOut)).Methods(http.MethodGet)
+	router.Handle("/debug/btc/txout/{in_hash}", http.HandlerFunc(s.debugBTCTxOut)).Methods(http.MethodGet)
+	router.Handle("/debug/vaults/local", http.HandlerFunc(s.debugLocalVaults)).Methods(http.MethodGet)
 	return router
+}
+
+func writeJSON(w http.ResponseWriter, logger zerolog.Logger, status int, value interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		logger.Error().Err(err).Msg("fail to write JSON response")
+	}
+}
+
+func (s *HealthServer) requireSigner(w http.ResponseWriter) (*signer.Signer, bool) {
+	if s.signer == nil {
+		writeJSON(w, s.logger, http.StatusServiceUnavailable, map[string]string{"error": "signer not ready"})
+		return nil, false
+	}
+	return s.signer, true
 }
 
 func (s *HealthServer) pingHandler(w http.ResponseWriter, _ *http.Request) {
@@ -160,6 +187,76 @@ func (s *HealthServer) getP2pIDHandler(w http.ResponseWriter, _ *http.Request) {
 	if err != nil {
 		s.logger.Error().Err(err).Msg("fail to write to response")
 	}
+}
+
+func (s *HealthServer) debugFullHealth(w http.ResponseWriter, _ *http.Request) {
+	sign, ok := s.requireSigner(w)
+	if !ok {
+		return
+	}
+	resp := struct {
+		LocalPeerID string                     `json:"local_peer_id"`
+		Signer      signer.DebugHealth         `json:"signer"`
+		Chains      map[string]ScannerResponse `json:"chains"`
+	}{
+		LocalPeerID: s.localPeerID,
+		Signer:      sign.DebugHealth(),
+		Chains:      s.debugScannerSnapshot(),
+	}
+	writeJSON(w, s.logger, http.StatusOK, resp)
+}
+
+func (s *HealthServer) debugSignerTxOuts(w http.ResponseWriter, _ *http.Request) {
+	sign, ok := s.requireSigner(w)
+	if !ok {
+		return
+	}
+	writeJSON(w, s.logger, http.StatusOK, sign.DebugTxOuts())
+}
+
+func (s *HealthServer) debugSignerTxOut(w http.ResponseWriter, r *http.Request) {
+	sign, ok := s.requireSigner(w)
+	if !ok {
+		return
+	}
+	inHash := mux.Vars(r)["in_hash"]
+	txout, found := sign.DebugTxOutByInHash(inHash)
+	if !found {
+		writeJSON(w, s.logger, http.StatusNotFound, map[string]string{"error": "txout not found"})
+		return
+	}
+	writeJSON(w, s.logger, http.StatusOK, txout)
+}
+
+func (s *HealthServer) debugBTCTxOut(w http.ResponseWriter, r *http.Request) {
+	sign, ok := s.requireSigner(w)
+	if !ok {
+		return
+	}
+	inHash := mux.Vars(r)["in_hash"]
+	state, found, err := sign.DebugChainTxOut(inHash)
+	if err != nil {
+		writeJSON(w, s.logger, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	if !found {
+		writeJSON(w, s.logger, http.StatusNotFound, map[string]string{"error": "txout not found"})
+		return
+	}
+	writeJSON(w, s.logger, http.StatusOK, state)
+}
+
+func (s *HealthServer) debugLocalVaults(w http.ResponseWriter, _ *http.Request) {
+	sign, ok := s.requireSigner(w)
+	if !ok {
+		return
+	}
+	vaults, err := sign.DebugLocalVaults()
+	if err != nil {
+		writeJSON(w, s.logger, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, s.logger, http.StatusOK, vaults)
 }
 
 func (s *HealthServer) p2pStatus(w http.ResponseWriter, _ *http.Request) {
@@ -278,8 +375,44 @@ func (s *HealthServer) currentSigning(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *HealthServer) chainScanner(w http.ResponseWriter, _ *http.Request) {
-	res := make(map[string]ScannerResponse)
+	res := s.debugScannerSnapshot()
 
+	// Fetch thornado height
+	thornado := config.GetBifrost().Thornado.ChainHost
+	url := fmt.Sprintf("http://%s/thornado/lastblock", thornado)
+	resp, err := http.Get(url)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("fail to get thornado status")
+	} else {
+		defer resp.Body.Close()
+		var height int64
+		height, err = strconv.ParseInt(resp.Header.Get("grpc-metadata-x-cosmos-block-height"), 10, 64)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("fail to parse thornado height")
+		}
+		res[common.BTCChain.String()] = ScannerResponse{
+			Chain:              common.BTCChain.String(),
+			ChainHeight:        height,
+			BlockScannerHeight: -1, // TODO: pending for thornado
+			ScannerHeightDiff:  -1,
+		}
+	}
+
+	// write the response
+	jsonBytes, err := json.MarshalIndent(res, "", "  ")
+	if err != nil {
+		s.logger.Error().Err(err).Msg("fail to write to response")
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		_, err = w.Write(jsonBytes)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("fail to write to response")
+		}
+	}
+}
+
+func (s *HealthServer) debugScannerSnapshot() map[string]ScannerResponse {
+	res := make(map[string]ScannerResponse)
 	// Iterate through each chain client
 	mu := sync.Mutex{}
 	wg := sync.WaitGroup{}
@@ -323,39 +456,7 @@ func (s *HealthServer) chainScanner(w http.ResponseWriter, _ *http.Request) {
 		}()
 	}
 	wg.Wait()
-
-	// Fetch thornado height
-	thornado := config.GetBifrost().Thornado.ChainHost
-	url := fmt.Sprintf("http://%s/thornado/lastblock", thornado)
-	resp, err := http.Get(url)
-	if err != nil {
-		s.logger.Error().Err(err).Msg("fail to get thornado status")
-	} else {
-		defer resp.Body.Close()
-		var height int64
-		height, err = strconv.ParseInt(resp.Header.Get("grpc-metadata-x-cosmos-block-height"), 10, 64)
-		if err != nil {
-			s.logger.Error().Err(err).Msg("fail to parse thornado height")
-		}
-		res[common.BTCChain.String()] = ScannerResponse{
-			Chain:              common.BTCChain.String(),
-			ChainHeight:        height,
-			BlockScannerHeight: -1, // TODO: pending for thornado
-			ScannerHeightDiff:  -1,
-		}
-	}
-
-	// write the response
-	jsonBytes, err := json.MarshalIndent(res, "", "  ")
-	if err != nil {
-		s.logger.Error().Err(err).Msg("fail to write to response")
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		_, err = w.Write(jsonBytes)
-		if err != nil {
-			s.logger.Error().Err(err).Msg("fail to write to response")
-		}
-	}
+	return res
 }
 
 func (s *HealthServer) providerStatus(w http.ResponseWriter, _ *http.Request) {

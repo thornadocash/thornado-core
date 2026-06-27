@@ -36,6 +36,10 @@ type networkFeeUpdateOptOut interface {
 	NetworkFeeUpdateEnabled() bool
 }
 
+type scannerStartHeightProvider interface {
+	GetScannerStartHeight() (int64, error)
+}
+
 type Block struct {
 	Height int64
 	Txs    []string
@@ -90,9 +94,6 @@ func NewBlockScanner(cfg config.BifrostBlockScannerConfiguration, scannerStorage
 	}
 
 	scanner.previousBlock, err = scanner.GetStartHeight()
-	if err == nil && cfg.StartBlockHeight > 0 {
-		scanner.previousBlock = cfg.StartBlockHeight - 1
-	}
 	logger.Info().Int64("block height", scanner.previousBlock).Msg("block scanner last fetch height")
 	return scanner, err
 }
@@ -177,16 +178,11 @@ func (b *BlockScanner) GetMessages() <-chan int64 {
 func (b *BlockScanner) Start(globalTxsQueue chan types.TxIn, globalNetworkFeeQueue chan common.NetworkFee) {
 	b.globalTxsQueue = globalTxsQueue
 	b.globalNetworkFeeQueue = globalNetworkFeeQueue
-	// Only use persisted scan position if no explicit start height was configured.
-	// When StartBlockHeight is set, it should always take precedence so operators
-	// can force a rescan from a specific height.
-	if b.cfg.StartBlockHeight <= 0 {
-		currentPos, err := b.scannerStorage.GetScanPos()
-		if err != nil {
-			b.logger.Error().Err(err).Msgf("fail to get current block scan pos, %s will start from %d", b.cfg.ChainID, b.previousBlock)
-		} else if currentPos > b.previousBlock {
-			b.previousBlock = currentPos
-		}
+	currentPos, err := b.scannerStorage.GetScanPos()
+	if err != nil {
+		b.logger.Error().Err(err).Msgf("fail to get current block scan pos, %s will start from %d", b.cfg.ChainID, b.previousBlock)
+	} else if currentPos > b.previousBlock {
+		b.previousBlock = currentPos
 	}
 	b.wg.Add(2)
 	go b.scanBlocks()
@@ -455,12 +451,12 @@ func (b *BlockScanner) updateStaleNetworkFee(currentBlock int64) {
 		Msg("sent timed network fee to BTCChain")
 }
 
-// GetStartHeight determines the height to start scanning:
-//  1. Use the config start height if set.
-//  2. If last consensus inbound height (lastblock) is available:
+// GetStartHeight determines the previous height before scanning:
+//  1. If last consensus inbound height (lastblock) is available:
 //     a) Use local scanner storage height if available, up to the max lag from lastblock.
 //     b) Otherwise, use lastblock.
-//  3. Otherwise, use local scanner storage height if available.
+//  2. Otherwise, use local scanner storage height if available.
+//  3. Otherwise, use config start height as a first-boot seed.
 //  4. Otherwise, use the last height from the chain itself.
 func (b *BlockScanner) GetStartHeight() (int64, error) {
 	// get scanner storage height
@@ -468,26 +464,57 @@ func (b *BlockScanner) GetStartHeight() (int64, error) {
 
 	clog := b.logger.With().Stringer("chain", b.cfg.ChainID).Logger()
 
-	// 1. Use the config start height if set.
-	if b.cfg.StartBlockHeight > 0 {
-		clog.Info().
-			Int64("start_height", b.cfg.StartBlockHeight).
-			Msg("using configured start block height")
-		return b.cfg.StartBlockHeight, nil
-	}
-
 	// wait for thornado to be caught up first
 	if err := b.thornadoBridge.WaitToCatchUp(); err != nil {
 		clog.Info().Err(err).Msg("waiting for thornado to catch up")
 		return 0, err
 	}
 
+	if startHeightProvider, ok := b.chainScanner.(scannerStartHeightProvider); ok {
+		height, err := startHeightProvider.GetScannerStartHeight()
+		if err != nil {
+			return 0, err
+		}
+		clog.Info().
+			Int64("start_height", height).
+			Msg("using scanner-specific start height")
+		return height, nil
+	}
+
+	fetcherHeight, fetcherErr := b.chainScanner.GetHeight()
+	if fetcherErr == nil && fetcherHeight > 0 && currentPos > fetcherHeight {
+		// Persisted scan position can outrun the fetcher's tip when the scanner shares a
+		// foreign chain ID (Thornado txout scanner uses BTC) but scans Thornado blocks.
+		start := fetcherHeight - 2
+		if start < 1 {
+			start = 1
+		}
+		clog.Info().
+			Int64("start_height", start-1).
+			Int64("stored_pos", currentPos).
+			Int64("fetcher_tip", fetcherHeight).
+			Msg("clamping scan position ahead of fetcher tip")
+		return start - 1, nil
+	}
+
 	if b.thornadoBridge != nil {
 		height, _ := b.thornadoBridge.GetLastObservedInHeight(b.cfg.ChainID)
+		heightCapped := false
+		if fetcherErr == nil && fetcherHeight > 0 && height > fetcherHeight {
+			height = fetcherHeight
+			heightCapped = true
+		}
 		if height > 0 {
 
 			// 2.a) Use local scanner storage height if available, up to the max lag from lastblock.
 			if currentPos > 0 {
+				if heightCapped && currentPos < height {
+					clog.Info().
+						Int64("start_height", currentPos).
+						Int64("fetcher_tip", fetcherHeight).
+						Msg("using local scanner storage height behind capped consensus height")
+					return currentPos, nil
+				}
 				// calculate the max lag
 				maxLagBlocks := b.cfg.MaxResumeBlockLag.Milliseconds() / b.cfg.ChainID.ApproximateBlockMilliseconds()
 
@@ -516,12 +543,21 @@ func (b *BlockScanner) GetStartHeight() (int64, error) {
 		}
 	}
 
-	//  3. Otherwise, use local scanner storage height if available.
+	//  2. Otherwise, use local scanner storage height if available.
 	if currentPos > 0 {
 		clog.Info().
 			Int64("start_height", currentPos).
 			Msg("using local scanner storage height")
 		return currentPos, nil
+	}
+
+	// 3. Otherwise, use config start height as a first-boot seed. Store the
+	// previous height so the scanner's next block is the configured start.
+	if b.cfg.StartBlockHeight > 0 {
+		clog.Info().
+			Int64("start_height", b.cfg.StartBlockHeight).
+			Msg("using configured start block height")
+		return b.cfg.StartBlockHeight - 1, nil
 	}
 
 	//  4. Otherwise, use the last height from the chain itself.

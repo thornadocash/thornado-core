@@ -330,6 +330,13 @@ func (c *Client) updateNetworkInfo() {
 	c.minRelayFeeSats.Store(uint64(amt.ToUnit(btcutil.AmountSatoshi)))
 }
 
+func (c *Client) estimatedAverageTxSize() uint64 {
+	if c.cfg.UTXO.EstimatedAverageTxSize > 0 {
+		return c.cfg.UTXO.EstimatedAverageTxSize
+	}
+	return 1000
+}
+
 func (c *Client) sendNetworkFee(height int64) error {
 	hash, err := c.rpc.GetBlockHash(height)
 	if err != nil {
@@ -349,9 +356,10 @@ func (c *Client) sendNetworkFee(height int64) error {
 	defer c.networkFeeLock.Unlock()
 
 	minRelayFeeSats := c.minRelayFeeSats.Load()
-	if c.cfg.UTXO.EstimatedAverageTxSize*feeRate < minRelayFeeSats {
-		feeRate = minRelayFeeSats / c.cfg.UTXO.EstimatedAverageTxSize
-		if feeRate*c.cfg.UTXO.EstimatedAverageTxSize < minRelayFeeSats {
+	transactionSize := c.estimatedAverageTxSize()
+	if transactionSize*feeRate < minRelayFeeSats {
+		feeRate = minRelayFeeSats / transactionSize
+		if feeRate*transactionSize < minRelayFeeSats {
 			feeRate++
 		}
 	}
@@ -373,7 +381,11 @@ func (c *Client) sendNetworkFee(height int64) error {
 		}
 	}
 
-	c.m.GetGauge(metrics.GasPrice(c.cfg.ChainID)).Set(float64(feeRate))
+	if c.m != nil {
+		if gauge := c.m.GetGauge(metrics.GasPrice(c.cfg.ChainID)); gauge != nil {
+			gauge.Set(float64(feeRate))
+		}
+	}
 
 	// skip update if fee has not changed
 	if c.lastFeeRate.Load() == feeRate {
@@ -381,12 +393,16 @@ func (c *Client) sendNetworkFee(height int64) error {
 	}
 
 	c.lastFeeRate.Store(feeRate)
-	c.m.GetCounter(metrics.GasPriceChange(c.cfg.ChainID)).Inc()
+	if c.m != nil {
+		if counter := c.m.GetCounter(metrics.GasPriceChange(c.cfg.ChainID)); counter != nil {
+			counter.Inc()
+		}
+	}
 
 	c.globalNetworkFeeQueue <- common.NetworkFee{
 		Chain:           c.cfg.ChainID,
 		Height:          height,
-		TransactionSize: c.cfg.UTXO.EstimatedAverageTxSize,
+		TransactionSize: transactionSize,
 		TransactionRate: feeRate,
 	}
 
@@ -410,7 +426,7 @@ func (c *Client) sendNetworkFeeFromBlock(blockResult *btcjson.GetBlockVerboseTxR
 		}
 	}
 
-	transactionSize := c.cfg.UTXO.EstimatedAverageTxSize
+	transactionSize := c.estimatedAverageTxSize()
 	var feeRateSats uint64
 
 	// skip updating network fee if there are no utxos (except coinbase) in the block
@@ -599,10 +615,7 @@ func (c *Client) getBatchOutboundTxIn(tx *btcjson.TxRawResult, sender string, he
 	if err != nil {
 		return types.TxInItem{}, false, fmt.Errorf("fail to get gas from tx: %w", err)
 	}
-	sourceInputs := observedSourceInputsWithAmounts(tx, nil)
-	if len(sourceInputs) > 0 {
-		sourceInputs = c.observedSourceInputsFromRPC(tx)
-	}
+	sourceInputs := c.observedSourceInputsFromRPC(tx)
 	return types.TxInItem{
 		BlockHeight:  height,
 		Tx:           tx.Txid,
@@ -980,6 +993,13 @@ func (c *Client) getBlockRequiredConfirmation(txIn types.TxIn, height int64) (in
 	if err != nil {
 		c.log.Err(err).Msgf("fail to get conf multiplier config value for %s", c.GetChain().String())
 	}
+	minConfirmations, err := c.bridge.GetConfigValue(constants.BTC_ConfirmationsMin.String())
+	if err != nil || minConfirmations <= 0 {
+		minConfirmations = int64(c.cfg.MinConfirmations)
+	}
+	if minConfirmations <= 0 {
+		minConfirmations = 1
+	}
 	if totalFeeAndSubsidy == 0 {
 		var cbValue btcutil.Amount
 		cbValue, err = btcutil.NewAmount(c.cfg.ChainID.DefaultCoinbase())
@@ -989,14 +1009,18 @@ func (c *Client) getBlockRequiredConfirmation(txIn types.TxIn, height int64) (in
 		totalFeeAndSubsidy = int64(cbValue)
 	}
 	confValue := common.GetUncappedShare(confMul, cosmos.NewUint(constants.MaxBasisPts), cosmos.SafeUintFromInt64(totalFeeAndSubsidy))
+	if confValue.IsZero() {
+		c.log.Warn().
+			Uint64("conf_multiplier_basis_points", confMul.Uint64()).
+			Int64("total_fee_and_subsidy", totalFeeAndSubsidy).
+			Int64("min_confirmations", minConfirmations).
+			Msg("BTC confirmation denominator is zero; using minimum confirmations")
+		return minConfirmations, nil
+	}
 	confirm := totalTxValue.Quo(confValue).Uint64()
 	confirm, err = MaxConfAdjustment(confirm, c.GetChain().String(), c.bridge)
 	if err != nil {
 		c.log.Err(err).Msgf("fail to get max conf value adjustment for %s", c.GetChain().String())
-	}
-	minConfirmations, err := c.bridge.GetConfigValue(constants.BTC_ConfirmationsMin.String())
-	if err != nil || minConfirmations <= 0 {
-		minConfirmations = int64(c.cfg.MinConfirmations)
 	}
 	if confirm < uint64(minConfirmations) {
 		confirm = uint64(minConfirmations)

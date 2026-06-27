@@ -87,7 +87,6 @@ const (
 	Upgrade_ProposalCountMax
 
 	Vault_MigrationIntervalMinutes
-	Vault_MigrationRounds
 	Vault_RetiredRecoveryAttemptsMax
 
 	Withdrawal_FeeBasisPoints

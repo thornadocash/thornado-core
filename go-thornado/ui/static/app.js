@@ -79,10 +79,11 @@ const state = {
   publicNoteBuckets: {},
   publicNoteBucketsPending: false,
   refundTxByInHash: new Map(),
+  relatedTxoutByInHash: new Map(),
   refundTxoutPending: false,
   shielderSyncCache: null,
   shielderSyncPending: null,
-  shielderSyncPendingFromHeight: 0,
+  shielderSyncPendingKey: "",
   churnCycleMs: DEFAULT_CHURN_CYCLE_MS,
   churnServerDeltaMs: 0,
   waitStartedAt: null,
@@ -120,6 +121,8 @@ const state = {
   nodeStatusText: "connecting",
   nodeCount: null,
   networkRefreshPending: false,
+  networkDetailOpen: false,
+  networkExplorerData: null,
   routeMode: "local",
   onionAddress: "",
   nodeWorkflow: "new",
@@ -1522,23 +1525,41 @@ function txoutBatches(payload = {}) {
   return [];
 }
 
-function cacheRefundTxouts(payload = {}) {
+function preferTxoutRecord(existing, next) {
+  if (!existing) return next;
+  if (!existing.out_hash && next.out_hash) return next;
+  if (existing.txType !== "refund" && next.txType === "refund" && next.out_hash) return next;
+  return existing;
+}
+
+function cacheRefundTxouts(...payloads) {
   const byInHash = new Map();
-  for (const txout of txoutBatches(payload)) {
-    for (const item of txout.tx_array || []) {
-      if (String(item.tx_type || "").toLowerCase() !== "refund" || !item.in_hash) {
-        continue;
+  const relatedByInHash = new Map();
+  for (const payload of payloads) {
+    for (const txout of txoutBatches(payload)) {
+      for (const item of txout.tx_array || []) {
+        const txType = String(item.tx_type || "").toLowerCase();
+        if (!item.in_hash || (txType !== "refund" && txType !== "sweep")) {
+          continue;
+        }
+        const inHash = String(item.in_hash).toUpperCase();
+        const record = {
+          ...item,
+          txType,
+          height: txout.height || item.height || "",
+          status: txout.status || item.status || "",
+          signingTransactionId: txout.signing_transaction_id || ""
+        };
+        relatedByInHash.set(inHash, preferTxoutRecord(relatedByInHash.get(inHash), record));
+        if (txType !== "refund") {
+          continue;
+        }
+        byInHash.set(inHash, preferTxoutRecord(byInHash.get(inHash), record));
       }
-      const inHash = String(item.in_hash).toUpperCase();
-      byInHash.set(inHash, {
-        ...item,
-        height: txout.height || item.height || "",
-        status: txout.status || item.status || "",
-        signingTransactionId: txout.signing_transaction_id || ""
-      });
     }
   }
   state.refundTxByInHash = byInHash;
+  state.relatedTxoutByInHash = relatedByInHash;
   return byInHash;
 }
 
@@ -1548,8 +1569,23 @@ async function refreshRefundTxouts() {
   }
   state.refundTxoutPending = true;
   try {
-    cacheRefundTxouts(await api("/thornado/txout"));
-    renderDepositHistory();
+    const results = await Promise.allSettled([
+      api("/thornado/txout"),
+      api("/thornado/txout/all")
+    ]);
+    const payloads = results
+      .filter((result) => result.status === "fulfilled")
+      .map((result) => result.value);
+    if (payloads.length) {
+      cacheRefundTxouts(...payloads);
+      renderDepositHistory();
+    }
+    for (const result of results) {
+      if (result.status === "rejected") {
+        log("refund/txout", { error: result.reason?.message || String(result.reason) });
+        continue;
+      }
+    }
   } finally {
     state.refundTxoutPending = false;
   }
@@ -1916,12 +1952,21 @@ function renderDepositHistory() {
       const rowStatus = String(tx.deposit?.status || selectedBatch.status || "").toLowerCase();
       const rowErrata = rowStatus === "errata" || rowStatus === "reverted" || rowStatus === "removed";
       const rowRefunding = depositTxRefunding(tx);
-      const refundTx = rowRefunding ? state.refundTxByInHash.get(String(tx.txid || "").toUpperCase()) : null;
+      const inHash = String(tx.txid || "").toUpperCase();
+      const refundTx = rowRefunding ? state.refundTxByInHash.get(inHash) : null;
+      const relatedTx = rowRefunding ? state.relatedTxoutByInHash.get(inHash) : null;
       const refundHash = String(refundTx?.out_hash || "").trim();
+      const relatedHash = String(relatedTx?.out_hash || "").trim();
+      const refundLabel = refundHash ? "Refunded" : relatedHash ? "Swept" : "Refund pending";
+      const refundDetail = refundHash
+        ? txHashLink(refundHash)
+        : relatedHash
+          ? `${txHashLink(relatedHash)} · refund pending`
+          : "pending signature";
       const refundStatus = `
         <span class="deposit-refund-status">
-          <strong>Refunded</strong>
-          <small>${refundHash ? txHashLink(refundHash) : "pending signature"}</small>
+          <strong>${refundLabel}</strong>
+          <small>${refundDetail}</small>
         </span>
       `;
       detailRows.push(`
@@ -1946,7 +1991,7 @@ function renderDepositHistory() {
 }
 
 function hasRecoverableDepositBatch() {
-  return state.batches.some((batch) => batchConfirmed(batch) || batchFinalised(batch) || String(batch?.status || "").toLowerCase() === "committed");
+  return state.batches.length > 0;
 }
 
 function noteRecoveryInPhase(phase) {
@@ -2269,7 +2314,7 @@ async function apiMeta(path, options = {}) {
 function invalidateShielderSyncCache() {
   state.shielderSyncCache = null;
   state.shielderSyncPending = null;
-  state.shielderSyncPendingFromHeight = 0;
+  state.shielderSyncPendingKey = "";
 }
 
 function setNoteRecoveryProgress(progress = null) {
@@ -2338,21 +2383,41 @@ function shielderSyncHasMore(page, cursors) {
   return Boolean(cursors.deposit || cursors.note || cursors.nullifier);
 }
 
+function shielderSyncStreams(options = {}) {
+  const explicit = ["includeDeposits", "includeNotes", "includeNullifiers"].some((key) => Object.prototype.hasOwnProperty.call(options, key));
+  return {
+    includeDeposits: explicit ? options.includeDeposits === true : true,
+    includeNotes: explicit ? options.includeNotes === true : true,
+    includeNullifiers: explicit ? options.includeNullifiers === true : true
+  };
+}
+
+function shielderSyncCacheKey(fromHeight, streams) {
+  return [
+    fromHeight,
+    streams.includeDeposits ? "deposits" : "",
+    streams.includeNotes ? "notes" : "",
+    streams.includeNullifiers ? "nullifiers" : ""
+  ].join(":");
+}
+
 async function shielderSync(options = {}) {
   const force = Boolean(options.force);
   const onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
   const fromHeight = Math.max(0, Math.floor(Number(options.fromHeight || 0)));
+  const streams = shielderSyncStreams(options);
+  const cacheKey = shielderSyncCacheKey(fromHeight, streams);
   const now = Date.now();
-  if (!force && state.shielderSyncCache && state.shielderSyncCache.fromHeight === fromHeight && now - state.shielderSyncCache.fetchedAt < POOL_REFRESH_MS) {
+  if (!force && state.shielderSyncCache && state.shielderSyncCache.cacheKey === cacheKey && now - state.shielderSyncCache.fetchedAt < POOL_REFRESH_MS) {
     if (onProgress) {
       onProgress({ percent: 100, done: true, ...state.shielderSyncCache.stats });
     }
     return state.shielderSyncCache.payload;
   }
-  if (!force && state.shielderSyncPending && state.shielderSyncPendingFromHeight === fromHeight) {
+  if (!force && state.shielderSyncPending && state.shielderSyncPendingKey === cacheKey) {
     return state.shielderSyncPending;
   }
-  state.shielderSyncPendingFromHeight = fromHeight;
+  state.shielderSyncPendingKey = cacheKey;
   state.shielderSyncPending = (async () => {
     const payload = { notes: [], nullifiers: [], deposits: [] };
     const cursors = { deposit: "", note: "", nullifier: "" };
@@ -2362,6 +2427,11 @@ async function shielderSync(options = {}) {
     do {
       const params = new URLSearchParams({ limit: String(SHIELDER_SYNC_PAGE_LIMIT) });
       if (fromHeight > 0) params.set("from_height", String(fromHeight));
+      if (!streams.includeDeposits || !streams.includeNotes || !streams.includeNullifiers) {
+        if (streams.includeDeposits) params.set("include_deposits", "true");
+        if (streams.includeNotes) params.set("include_notes", "true");
+        if (streams.includeNullifiers) params.set("include_nullifiers", "true");
+      }
       if (cursors.deposit) params.set("deposit_cursor", cursors.deposit);
       if (cursors.note) params.set("note_cursor", cursors.note);
       if (cursors.nullifier) params.set("nullifier_cursor", cursors.nullifier);
@@ -2427,30 +2497,32 @@ async function shielderSync(options = {}) {
     });
     payload.nullifiers.sort((a, b) => String(a.nullifier_hash || "").localeCompare(String(b.nullifier_hash || "")));
     payload.deposits.sort((a, b) => String(a.deposit_id || "").localeCompare(String(b.deposit_id || "")));
-      const notesByDenomination = new Map();
-      for (const note of payload?.notes || []) {
-        const denomination = Number(note.denomination_sats || 0);
-        if (!denomination || !note.commitment) {
-          continue;
-        }
-        const leaves = notesByDenomination.get(denomination) || [];
-        leaves.push(note.commitment);
-        notesByDenomination.set(denomination, leaves);
+    const notesByDenomination = new Map();
+    for (const note of payload?.notes || []) {
+      const denomination = Number(note.denomination_sats || 0);
+      if (!denomination || !note.commitment) {
+        continue;
       }
-      const normalized = {
-        notes: payload?.notes || [],
-        nullifiers: payload?.nullifiers || [],
-        deposits: payload?.deposits || [],
-        notesByDenomination,
-        nullifierSet: new Set((payload?.nullifiers || []).map((item) => String(item.nullifier_hash || "").trim()).filter(Boolean))
-      };
-      state.shielderSyncCache = { fetchedAt: Date.now(), payload: normalized, stats, fromHeight };
+      const leaves = notesByDenomination.get(denomination) || [];
+      leaves.push(note.commitment);
+      notesByDenomination.set(denomination, leaves);
+    }
+    const normalized = {
+      notes: payload?.notes || [],
+      nullifiers: payload?.nullifiers || [],
+      deposits: payload?.deposits || [],
+      notesByDenomination,
+      nullifierSet: new Set((payload?.nullifiers || []).map((item) => String(item.nullifier_hash || "").trim()).filter(Boolean))
+    };
+    if (streams.includeNotes) {
+      state.shielderSyncCache = { fetchedAt: Date.now(), payload: normalized, stats, fromHeight, cacheKey };
       updatePublicNoteBuckets(normalized);
-      return normalized;
+    }
+    return normalized;
   })().finally(() => {
-      state.shielderSyncPending = null;
-      state.shielderSyncPendingFromHeight = 0;
-    });
+    state.shielderSyncPending = null;
+    state.shielderSyncPendingKey = "";
+  });
   return state.shielderSyncPending;
 }
 
@@ -2459,10 +2531,32 @@ async function refreshHash() {
   try {
     payload = await api("/thornado/block");
   } catch (error) {
-    state.nodeConnected = false;
-    state.nodeStatusText = "disconnected";
+    const lastBlocks = await api("/thornado/lastblock");
+    const rows = Array.isArray(lastBlocks)
+      ? lastBlocks
+      : (lastBlocks?.last_blocks || lastBlocks?.lastBlocks || []);
+    const btcLast = rows.find((item) => String(item.chain || "").toUpperCase() === "BTC");
+    const height = Number(btcLast?.thornado || rows[0]?.thornado || 0);
+    if (!Number.isFinite(height) || height <= 0) {
+      state.nodeConnected = false;
+      state.nodeStatusText = "disconnected";
+      renderStatusControls();
+      throw error;
+    }
+    state.nodeConnected = true;
+    state.nodeStatusText = "connected";
+    updateObservedBlockTiming(height, NaN);
+    state.latestBlockHeight = height;
+    state.latestBlockSeenAtMs = Date.now();
+    $("blockHeight").textContent = String(height);
+    $("blockProducer").textContent = "not reported";
+    $("blockProducer").title = "Block producer not reported by /thornado/lastblock";
     renderStatusControls();
-    throw error;
+    renderDepositExpiry();
+    if (hasPendingWithdrawalPayouts()) {
+      renderNotes();
+    }
+    return;
   }
   const height = payload?.id?.height || payload?.header?.height || payload?.block?.header?.height || "latest";
   const producer = payload?.header?.proposer_address || payload?.block?.header?.proposer_address || "unknown";
@@ -2879,6 +2973,7 @@ function markAppStarted(persist = true) {
 function renderIntroGate() {
   const intro = $("introGate");
   const stage = $("getAddressStage");
+  const overview = $("overview");
   const panel = $("userPanel");
   if (!intro || !stage) {
     return;
@@ -2888,6 +2983,9 @@ function renderIntroGate() {
   $("startFlow").hidden = !isUserTab || state.appStarted;
   if (panel && isUserTab) {
     panel.hidden = !state.appStarted;
+  }
+  if (overview && isUserTab) {
+    overview.hidden = !state.appStarted;
   }
   stage.hidden = isUserTab && !state.appStarted;
 }
@@ -3282,6 +3380,39 @@ async function recoverKnownDepositReceipts(seedHex, sync, fingerprint) {
   return { recovered, withdrawn };
 }
 
+function recoveredNoteCount(recovery = {}) {
+  return (recovery.recovered || []).reduce((sum, batch) => sum + (batch.receipt?.notes || []).length, 0);
+}
+
+function applyNullifiersToRecoveredNotes(recovery = {}, nullifiers = []) {
+  const spentNullifiers = new Map((nullifiers || []).map((item) => [
+    String(item.nullifier_hash || ""),
+    item
+  ]));
+  const withdrawn = [];
+  for (const batch of recovery.recovered || []) {
+    for (const note of batch.receipt?.notes || []) {
+      const spent = spentNullifiers.get(String(note.nullifier_hash || ""));
+      note.spent = Boolean(spent);
+      if (!spent) {
+        continue;
+      }
+      withdrawn.push({
+        key: noteKey(note),
+        txhash: spent.withdrawal_id || spent.withdrawalId,
+        withdrawalID: spent.withdrawal_id || spent.withdrawalId,
+        outHash: spent.out_hash || spent.outHash,
+        outVout: outboundVout(spent),
+        outpoint: outboundOutpoint(spent),
+        status: "spent",
+        nullifierHash: note.nullifier_hash
+      });
+    }
+  }
+  recovery.withdrawn = withdrawn;
+  return recovery;
+}
+
 async function shieldAuthorization(seedHex, depositId, amountSats, noteCommitments, depositIndex = state.activeBatchIndex || 0) {
   const wasm = await thornadoWasm();
   const depositType = normalizeDepositType(activeBatch()?.depositType || state.depositPurpose);
@@ -3567,11 +3698,11 @@ function depositConfirmationProgress(session = {}, deposit = {}, txStatus = null
   );
   const targetHeight = readNumber(countedStage.external_confirmation_delay_height);
   let current = readNumber(
+    observedStage.final_count,
     session.btc_confirmations,
     session.BTCConfirmations,
     deposit.btc_confirmations,
-    deposit.BTCConfirmations,
-    observedStage.final_count
+    deposit.BTCConfirmations
   );
   const hasExplicitProgress = current !== null;
   if (current === null) {
@@ -4103,6 +4234,16 @@ async function discoverDepositBatches(options = {}) {
   let knownRecovery = { recovered: [], withdrawn: [] };
   let sync = { notes: [], nullifiers: [] };
   if (recoverNotes) {
+    if (!state.batches.length) {
+      state.noteRecoveryPending = false;
+      state.noteRecoveryQueued = false;
+      state.noteRecoveryStatus = "idle";
+      state.noteRecoveryProgress = null;
+      renderDepositHistory();
+      renderNotes();
+      setMessage("No previous deposits found for this secret.", "", 1, 10000);
+      return state.batches;
+    }
     try {
       state.noteRecoveryPending = true;
       state.noteRecoveryStatus = "searching_commitments";
@@ -4110,14 +4251,17 @@ async function discoverDepositBatches(options = {}) {
       state.noteRecoveryProgress = { percent: 0, loaded: 0, total: 0 };
       updateDashboard();
       const recoveryFromHeight = depositRecoveryStartHeight();
-      sync = await shielderSync({
+      const noteSync = await shielderSync({
         force: true,
         fromHeight: recoveryFromHeight,
+        includeDeposits: false,
+        includeNotes: true,
+        includeNullifiers: false,
         onProgress: (progress) => {
           setNoteRecoveryProgress(commitmentProgress(progress));
         }
       });
-      await pruneMissingDepositTxs(sync);
+      sync = { notes: noteSync.notes || [], nullifiers: [] };
       state.noteRecoveryStatus = "searching_commitments";
       state.noteRecoveryProgress = {
         phase: "local",
@@ -4128,6 +4272,23 @@ async function discoverDepositBatches(options = {}) {
         nullifiers: sync.nullifiers?.length || 0
       };
       updateDashboard();
+      if (!sync.notes.length) {
+        state.noteRecoveryStatus = "done";
+        state.noteRecoveryProgress = {
+          phase: "local",
+          percent: 100,
+          loaded: 0,
+          total: 0,
+          notes: 0,
+          nullifiers: 0,
+          done: true
+        };
+        updateDashboard();
+        renderDepositHistory();
+        renderNotes();
+        setMessage("Deposits synced. No shielded notes found yet.", "", 1, 10000);
+        return state.batches;
+      }
       const fingerprint = await rootFingerprint(seedHex);
       knownRecovery = await recoverKnownDepositReceipts(seedHex, sync, fingerprint);
       if (!knownRecovery.recovered.length) {
@@ -4143,17 +4304,41 @@ async function discoverDepositBatches(options = {}) {
           withdrawn: workerRecovery.withdrawnNotes || []
         };
       }
-      state.noteRecoveryStatus = "searching_nullifiers";
-      state.noteRecoveryProgress = {
-        phase: "local",
-        loaded: sync.nullifiers?.length || 0,
-        total: sync.nullifiers?.length || 0,
-        percent: 100,
-        notes: sync.notes?.length || 0,
-        nullifiers: sync.nullifiers?.length || 0,
-        done: true
-      };
-      updateDashboard();
+      if (recoveredNoteCount(knownRecovery) > 0) {
+        state.noteRecoveryStatus = "searching_nullifiers";
+        state.noteRecoveryProgress = {
+          phase: "public",
+          loaded: 0,
+          total: 0,
+          percent: 0,
+          notes: sync.notes?.length || 0,
+          nullifiers: 0
+        };
+        updateDashboard();
+        const nullifierSync = await shielderSync({
+          force: true,
+          fromHeight: recoveryFromHeight,
+          includeDeposits: false,
+          includeNotes: false,
+          includeNullifiers: true,
+          onProgress: (progress) => {
+            setNoteRecoveryProgress(nullifierProgress(progress));
+          }
+        });
+        sync = { ...sync, nullifiers: nullifierSync.nullifiers || [] };
+        applyNullifiersToRecoveredNotes(knownRecovery, sync.nullifiers);
+        state.noteRecoveryStatus = "searching_nullifiers";
+        state.noteRecoveryProgress = {
+          phase: "local",
+          loaded: sync.nullifiers?.length || 0,
+          total: sync.nullifiers?.length || 0,
+          percent: 100,
+          notes: sync.notes?.length || 0,
+          nullifiers: sync.nullifiers?.length || 0,
+          done: true
+        };
+        updateDashboard();
+      }
       for (const item of knownRecovery.withdrawn || []) {
         state.withdrawnNotes[item.key] = {
           txhash: item.txhash,
@@ -4764,7 +4949,7 @@ async function requestDeposit() {
     setMessage(`Deriving the next ${depositType === "node" ? "node lifecycle" : "user"} deposit key...`, "");
     const userPubkey = await refreshClientPubkey(depositIndex);
     const owner = await ownerAddressFromCompressedPubkey(userPubkey);
-    setMessage("Finding deposit proof...", "");
+    setMessage("Generating Proof of Work", "");
     const mined = await mineDepositPow("browser", owner, await currentPowDifficultyBits());
     $("powResult").hidden = true;
     $("powResult").textContent = `PoW ${mined.token}`;
@@ -5302,6 +5487,24 @@ function vaultsFromPayload(payload) {
           : [];
 }
 
+function vaultBtcAddress(vault) {
+  if (!vault) return "";
+  if (vault.btc_address || vault.btcAddress || vault.address) {
+    return vault.btc_address || vault.btcAddress || vault.address;
+  }
+  const addresses = Array.isArray(vault.addresses) ? vault.addresses : [];
+  const btc = addresses.find((item) => String(item?.chain || "").toUpperCase() === "BTC");
+  return btc?.address || "";
+}
+
+function vaultProtocolPubKey(vault) {
+  return vault?.vault_pub_key || vault?.vaultPubKey || vault?.pub_key || vault?.pubKey || "";
+}
+
+function vaultDisplayId(vault) {
+  return vaultBtcAddress(vault) || vaultProtocolPubKey(vault);
+}
+
 function nodesFromPayload(payload) {
   return Array.isArray(payload?.nodes) ? payload.nodes : Array.isArray(payload) ? payload : [];
 }
@@ -5322,11 +5525,118 @@ function renderExplorerRows(id, rows, emptyText) {
     return;
   }
   for (const row of rows) {
+    const spec = typeof row === "string" ? { html: row } : row;
     const item = document.createElement("div");
     item.className = "explorer-row";
-    item.innerHTML = row;
+    item.innerHTML = spec.html || "";
+    if (spec.onClick) {
+      item.classList.add("network-drillable");
+      item.tabIndex = 0;
+      item.setAttribute("role", "button");
+      if (spec.title) {
+        item.setAttribute("title", spec.title);
+      }
+      item.addEventListener("click", () => run(spec.onClick));
+      item.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          run(spec.onClick);
+        }
+      });
+    }
     root.append(item);
   }
+}
+
+function closeNetworkDetailPage() {
+  state.networkDetailOpen = false;
+  const detail = $("networkDetailPage");
+  if (detail) {
+    detail.hidden = true;
+  }
+  document.querySelectorAll("#networkPanel .flow > section").forEach((section) => {
+    if (section.id !== "networkDetailPage") {
+      section.hidden = false;
+    }
+  });
+}
+
+function networkDetailRow(label, value) {
+  const row = document.createElement("div");
+  row.className = "row";
+  row.innerHTML = `<span>${escapeHtml(label)}</span><strong>${escapeHtml(value === undefined || value === null || value === "" ? "unavailable" : String(value))}</strong>`;
+  return row;
+}
+
+function networkDetailTable(columns, rows, emptyText = "No rows") {
+  const table = document.createElement("div");
+  table.className = "network-detail-table";
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "pane-empty";
+    empty.textContent = emptyText;
+    table.append(empty);
+    return table;
+  }
+  const header = document.createElement("div");
+  header.className = "network-detail-table-row network-detail-table-head";
+  header.style.gridTemplateColumns = `repeat(${columns.length}, minmax(0, 1fr))`;
+  header.innerHTML = columns.map((column) => `<span>${escapeHtml(column)}</span>`).join("");
+  table.append(header);
+  rows.forEach((values) => {
+    const row = document.createElement("div");
+    row.className = "network-detail-table-row";
+    row.style.gridTemplateColumns = `repeat(${columns.length}, minmax(0, 1fr))`;
+    row.innerHTML = values.map((value) => `<strong>${escapeHtml(value === undefined || value === null || value === "" ? "unavailable" : String(value))}</strong>`).join("");
+    table.append(row);
+  });
+  return table;
+}
+
+function openNetworkDetailPage(title, subtitle, rows, raw = null, extra = null) {
+  const page = $("networkDetailPage");
+  const titleEl = $("networkDetailTitle");
+  const subtitleEl = $("networkDetailSubtitle");
+  const body = $("networkDetailBody");
+  if (!page || !titleEl || !subtitleEl || !body) return;
+  document.querySelectorAll("#networkPanel .flow > section").forEach((section) => {
+    section.hidden = section.id !== "networkDetailPage";
+  });
+  state.networkDetailOpen = true;
+  titleEl.textContent = title || "Network Detail";
+  subtitleEl.textContent = subtitle || "";
+  body.textContent = "";
+  const summary = document.createElement("div");
+  summary.className = "panel-list explorer-list";
+  rows.forEach(([label, value]) => summary.append(networkDetailRow(label, value)));
+  body.append(summary);
+  if (extra) {
+    body.append(extra);
+  }
+  if (raw) {
+    const pre = document.createElement("pre");
+    pre.className = "explorer-detail-raw";
+    pre.textContent = JSON.stringify(raw, null, 2);
+    body.append(pre);
+  }
+  page.hidden = false;
+  page.scrollIntoView({ block: "start" });
+}
+
+function wireNetworkDrill(id, action) {
+  const value = $(id);
+  const target = value?.closest(".network-metric, .row");
+  if (!target) return;
+  target.classList.add("network-drillable");
+  target.tabIndex = 0;
+  target.setAttribute("role", "button");
+  target.onclick = () => run(action);
+  target.onkeydown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      run(action);
+    }
+  };
 }
 
 function closeExplorerDetail() {
@@ -5423,17 +5733,41 @@ function looksLikeBtcAddress(query) {
 }
 
 async function renderNetworkAddressDetail(query, preferNode = false) {
-  const [accountResult, depositResult, nodeResult] = await Promise.allSettled([
-    api(`/auth/accounts/${encodeURIComponent(query)}`),
-    api(`/thornado/deposit/address/txs?address=${encodeURIComponent(query)}`),
-    api(`/thornado/node/${encodeURIComponent(query)}`)
-  ]);
-  const account = accountResult.status === "fulfilled" ? accountResult.value : null;
-  const deposits = depositResult.status === "fulfilled" ? depositResult.value : null;
-  const node = nodeResult.status === "fulfilled" ? nodeResult.value : null;
+  const knownNode = (state.networkExplorerData?.nodes || []).find((item) => {
+    const address = item?.node_address || item?.nodeAddress || "";
+    return String(address).toLowerCase() === String(query || "").toLowerCase();
+  });
+  if (knownNode) {
+    const rows = [
+      ["Node", knownNode.node_address || knownNode.nodeAddress || query],
+      ["Status", knownNode.status || "unknown"],
+      ["Bond", btcLabelFromSats(knownNode.total_bond ?? knownNode.totalBond ?? knownNode.bond)],
+      ["Version", knownNode.version || "unknown"],
+      ["Operator", knownNode.node_operator_address || knownNode.nodeOperatorAddress],
+      ["IP", knownNode.ip_address || knownNode.ipAddress]
+    ];
+    setExplorerResult("networkExploreResult", rows, knownNode, { kind: "Node", subject: query });
+    openNetworkDetailPage("Node", query, rows, knownNode);
+    return;
+  }
+  let account = null;
+  let deposits = null;
+  let node = null;
+  if (looksLikeBtcAddress(query)) {
+    deposits = await api(`/thornado/deposit/address/txs?address=${encodeURIComponent(query)}`).catch(() => null);
+  } else if (preferNode || /^tthor/i.test(query)) {
+    const [nodeResult, accountResult] = await Promise.allSettled([
+      api(`/thornado/node/${encodeURIComponent(query)}`),
+      api(`/auth/accounts/${encodeURIComponent(query)}`)
+    ]);
+    node = nodeResult.status === "fulfilled" ? nodeResult.value : null;
+    account = accountResult.status === "fulfilled" ? accountResult.value : null;
+  } else {
+    account = await api(`/auth/accounts/${encodeURIComponent(query)}`).catch(() => null);
+  }
   const txs = deposits?.txs || [];
   const isNode = Boolean(node?.node_address || node?.nodeAddress || node?.status || node?.total_bond || node?.totalBond);
-  if (preferNode && isNode) {
+  if (isNode) {
     const preflight = node?.preflight_status || node?.preflightStatus || {};
     const rows = [
       ["Node", shortHash(node.node_address || node.nodeAddress || query)],
@@ -5446,7 +5780,7 @@ async function renderNetworkAddressDetail(query, preferNode = false) {
       ["Missing blocks", intLabel(node.missing_blocks ?? node.missingBlocks)]
     ];
     setExplorerResult("networkExploreResult", rows, node, { kind: "Node", subject: query });
-    openExplorerDetail("Node", query, rows, node);
+    openNetworkDetailPage("Node", query, rows, node);
     return;
   }
   const rows = [
@@ -5460,10 +5794,19 @@ async function renderNetworkAddressDetail(query, preferNode = false) {
   const kind = looksLikeBtcAddress(query) ? "BTC Address" : "Address";
   const raw = { account, deposits, node };
   setExplorerResult("networkExploreResult", rows, raw, { kind, subject: query });
-  openExplorerDetail(kind, query, rows, raw);
+  openNetworkDetailPage(kind, query, rows, raw);
 }
 
 async function renderNetworkTxDetail(query) {
+  const currentBlockHash = String(state.networkExplorerData?.blockId?.hash || "").toLowerCase();
+  if (currentBlockHash && currentBlockHash === String(query || "").toLowerCase()) {
+    setExplorerResult("networkExploreResult", [
+      ["Hash", shortHash(query)],
+      ["Type", "Block"]
+    ]);
+    openBlockDetail();
+    return;
+  }
   const tx = await apiFirst([
     `/thornado/tx/${encodeURIComponent(query)}`,
     `/cosmos/tx/v1beta1/txs/${encodeURIComponent(query)}`
@@ -5481,7 +5824,7 @@ async function renderNetworkTxDetail(query) {
     ["Stage", stages.status || stages.current || (tx?.tx_response?.code === 0 ? "committed" : "")]
   ];
   setExplorerResult("networkExploreResult", rows, tx, { kind: "Transaction", subject: query });
-  openExplorerDetail("Transaction", query, rows, tx);
+  openNetworkDetailPage("Transaction", query, rows, tx);
 }
 
 async function searchNetworkExplore() {
@@ -5527,6 +5870,188 @@ function bindExplorerSearch(inputId, buttonId, handler) {
       }
     });
   }
+}
+
+function networkData() {
+  return state.networkExplorerData || {};
+}
+
+function openBlockDetail() {
+  const data = networkData();
+  const header = data.header || {};
+  const blockId = data.blockId || {};
+  openNetworkDetailPage("Latest Block", blockId.hash || "", [
+    ["Height", intLabel(header.height ?? data.btcLast?.thornado ?? data.metaHeight)],
+    ["Chain ID", data.chainId || "not reported"],
+    ["Block hash", blockId.hash || "not reported"],
+    ["Block time", header.time ? new Date(header.time).toLocaleString() : "not reported"],
+    ["Transactions", intLabel((data.block?.txs || []).length)],
+    ["BTC observed", data.btcLast ? intLabel(data.btcLast.last_observed_in ?? data.btcLast.lastObservedIn) : "not reported"],
+    ["BTC signed", data.btcLast ? intLabel(data.btcLast.last_signed_out ?? data.btcLast.lastSignedOut) : "not reported"]
+  ], { block: data.block, last_blocks: data.lastBlocks });
+}
+
+function openChainDetail() {
+  const data = networkData();
+  openNetworkDetailPage("Chain", data.chainId || "not reported", [
+    ["Chain ID", data.chainId || "not reported"],
+    ["Latest height", intLabel(data.header?.height ?? data.btcLast?.thornado ?? data.metaHeight)],
+    ["Block hash", data.blockId?.hash || "not reported"],
+    ["Block time", data.header?.time ? new Date(data.header.time).toLocaleString() : "not reported"],
+    ["Transactions", intLabel((data.block?.txs || []).length)]
+  ], { block: data.block, node_info: data.nodeInfo });
+}
+
+function openBlockTransactionsDetail() {
+  const data = networkData();
+  const txs = data.block?.txs || [];
+  openNetworkDetailPage("Block Transactions", data.blockId?.hash || "", [
+    ["Block", intLabel(data.header?.height)],
+    ["Transactions", intLabel(txs.length)]
+  ], data.block, networkDetailTable(["Tx"], txs.map((tx) => [typeof tx === "string" ? shortHash(tx) : shortHash(tx?.hash || tx?.txhash)]), "No transactions in latest block"));
+}
+
+function openBtcTrackerDetail() {
+  const data = networkData();
+  openNetworkDetailPage("BTC Tracker", "Observed and signed Bitcoin heights", [
+    ["Observed height", data.btcLast ? intLabel(data.btcLast.last_observed_in ?? data.btcLast.lastObservedIn) : "not reported"],
+    ["Signed height", data.btcLast ? intLabel(data.btcLast.last_signed_out ?? data.btcLast.lastSignedOut) : "not reported"],
+    ["THORNado height", data.btcLast ? intLabel(data.btcLast.thornado) : "not reported"]
+  ], data.btcLast || data.lastBlocks);
+}
+
+function openVaultsDetail() {
+  const data = networkData();
+  const vaults = data.vaults || [];
+  const rows = vaults.map((vault) => [
+    shortHash(vaultDisplayId(vault)),
+    vault.status || "unknown",
+    btcLabelFromSats((vault.coins || []).reduce((sum, coin) => sum + coinAmountSats(coin), 0)),
+    intLabel(vault.inbound_tx_count ?? vault.inboundTxCount),
+    intLabel(vault.outbound_tx_count ?? vault.outboundTxCount)
+  ]);
+  openNetworkDetailPage("Vaults", "Base vault set", [
+    ["Base Vault BTC", btcLabelFromSats(data.vaultSats)],
+    ["Active Vaults", intLabel(vaults.length)],
+    ["Inbound txs", intLabel(data.inboundCount)],
+    ["Outbound txs", intLabel(data.outboundCount)],
+    ["Pending outbounds", intLabel(data.pendingCount)],
+    ["Solvency", data.btcSolvency ? btcLabelFromSats(data.btcSolvency.amount) : "unavailable"]
+  ], { vaults, solvency: data.solvency }, networkDetailTable(["Vault", "Status", "BTC", "Inbound", "Outbound"], rows, "No vaults"));
+}
+
+function openGasDetail() {
+  const data = networkData();
+  const breakdown = data.gasBreakdown || [];
+  openNetworkDetailPage("Gas", "Bitcoin gas spend by operation", [
+    ["Total", data.gas ? btcLabelFromSats(data.gas.total_sats ?? data.gas.totalSats) : "unavailable"],
+    ["Rows", intLabel(breakdown.length)]
+  ], data.gas, networkDetailTable(["Type", "Gas", "Txs"], breakdown.map((row) => [
+    row.tx_type ?? row.txType,
+    btcLabelFromSats(row.gas_sats ?? row.gasSats),
+    intLabel(row.tx_count ?? row.txCount)
+  ]), "No gas rows"));
+}
+
+function noteBucketRows(notes, nullifiers) {
+  const spentByDenom = new Map();
+  nullifiers.forEach((item) => {
+    const sats = numberValue(item.amount_sats ?? item.amountSats);
+    spentByDenom.set(sats, (spentByDenom.get(sats) || 0) + 1);
+  });
+  const buckets = new Map();
+  notes.forEach((note) => {
+    const sats = numberValue(note.denomination_sats ?? note.denominationSats);
+    const bucket = buckets.get(sats) || { total: 0, spent: 0 };
+    bucket.total += 1;
+    buckets.set(sats, bucket);
+  });
+  spentByDenom.forEach((count, sats) => {
+    const bucket = buckets.get(sats) || { total: 0, spent: 0 };
+    bucket.spent = count;
+    buckets.set(sats, bucket);
+  });
+  return Array.from(buckets.entries())
+    .sort((a, b) => b[0] - a[0])
+    .map(([sats, bucket]) => [
+      btcLabelFromSats(sats),
+      intLabel(bucket.total),
+      intLabel(bucket.spent),
+      intLabel(Math.max(0, bucket.total - bucket.spent))
+    ]);
+}
+
+function openPrivacyDetail() {
+  const data = networkData();
+  const sync = data.sync || {};
+  const notes = sync.notes || [];
+  const nullifiers = sync.nullifiers || [];
+  openNetworkDetailPage("Privacy Set", "Public deposits, notes, and nullifiers", [
+    ["Deposits", intLabel(sync.total_deposits ?? sync.totalDeposits)],
+    ["Notes", intLabel(sync.total_notes ?? sync.totalNotes)],
+    ["Spent notes", intLabel(sync.total_nullifiers ?? sync.totalNullifiers)],
+    ["Shielded BTC", btcLabelFromSats(Math.max(0, data.noteSats - data.spentSats))],
+    ["Fee bucket", btcLabelFromSats(data.fees?.pending_sats ?? data.fees?.pendingSats)]
+  ], sync, networkDetailTable(["Denomination", "Notes", "Spent", "Unspent"], noteBucketRows(notes, nullifiers), "No notes"));
+}
+
+function openNodesDetail(filter = "all") {
+  const data = networkData();
+  const nodes = filter === "active" ? data.activeNodes || [] : filter === "standby" ? data.standbyNodes || [] : data.nodes || [];
+  openNetworkDetailPage(filter === "all" ? "Node Set" : `${filter[0].toUpperCase()}${filter.slice(1)} Nodes`, "Registered THORNado nodes", [
+    ["Nodes", intLabel(nodes.length)],
+    ["Bonded BTC", btcLabelFromSats(data.metrics?.confirmed_bond_sats ?? data.metrics?.confirmedBondSats ?? data.totalBondSats)],
+    ["Next slot bond", btcLabelFromSats(data.metrics?.next_slot_bond_required_sats ?? data.metrics?.nextSlotBondRequiredSats)]
+  ], { nodes, metrics: data.metrics }, networkDetailTable(["Node", "Status", "Bond", "Version"], nodes.map((node) => [
+    shortHash(node.node_address || node.nodeAddress),
+    node.status || "unknown",
+    btcLabelFromSats(node.total_bond ?? node.totalBond ?? node.bond),
+    node.version || "unknown"
+  ]), "No nodes"));
+}
+
+function openChurnDetail() {
+  const data = networkData();
+  openNetworkDetailPage("Churn", "Current node churn settings", [
+    ["Cycle", data.churnMinutes ? `${data.churnMinutes.toLocaleString()} min` : "unavailable"],
+    ["Active nodes", intLabel(data.metrics?.active_slots ?? data.metrics?.activeSlots ?? data.activeNodes?.length)],
+    ["Standby nodes", intLabel(data.metrics?.standby_slots ?? data.metrics?.standbySlots ?? data.standbyNodes?.length)],
+    ["Next slot bond", btcLabelFromSats(data.metrics?.next_slot_bond_required_sats ?? data.metrics?.nextSlotBondRequiredSats)],
+    ["Slot auctions", intLabel((data.auctions || []).length)]
+  ], { configs: data.configs, metrics: data.metrics, auctions: data.auctions });
+}
+
+function wireNetworkDrilldowns() {
+  wireNetworkDrill("networkChainId", openChainDetail);
+  wireNetworkDrill("networkExplorerHeight", openBlockDetail);
+  wireNetworkDrill("networkBlockHash", openBlockDetail);
+  wireNetworkDrill("networkBlockTime", openBlockDetail);
+  wireNetworkDrill("networkTxCount", openBlockTransactionsDetail);
+  wireNetworkDrill("networkBtcObserved", openBtcTrackerDetail);
+  wireNetworkDrill("networkBtcSigned", openBtcTrackerDetail);
+  wireNetworkDrill("networkVaultBtc", openVaultsDetail);
+  wireNetworkDrill("networkVaultCount", openVaultsDetail);
+  wireNetworkDrill("networkSolvency", openVaultsDetail);
+  wireNetworkDrill("networkVaultInbounds", openVaultsDetail);
+  wireNetworkDrill("networkVaultOutbounds", openVaultsDetail);
+  wireNetworkDrill("networkVaultPending", openVaultsDetail);
+  wireNetworkDrill("networkGasTotal", openGasDetail);
+  wireNetworkDrill("networkGasSweep", openGasDetail);
+  wireNetworkDrill("networkGasMigrate", openGasDetail);
+  wireNetworkDrill("networkGasConsolidate", openGasDetail);
+  wireNetworkDrill("networkGasTxOut", openGasDetail);
+  wireNetworkDrill("networkShieldedBtc", openPrivacyDetail);
+  wireNetworkDrill("networkDepositCount", openPrivacyDetail);
+  wireNetworkDrill("networkNoteCount", openPrivacyDetail);
+  wireNetworkDrill("networkNullifierCount", openPrivacyDetail);
+  wireNetworkDrill("networkFeeBucket", openPrivacyDetail);
+  wireNetworkDrill("networkNodeTotal", () => openNodesDetail("all"));
+  wireNetworkDrill("networkActiveNodes", () => openNodesDetail("active"));
+  wireNetworkDrill("networkStandbyNodes", () => openNodesDetail("standby"));
+  wireNetworkDrill("networkBondedBtc", () => openNodesDetail("all"));
+  wireNetworkDrill("networkNextSlotBond", openChurnDetail);
+  wireNetworkDrill("networkAuctionCount", openChurnDetail);
+  wireNetworkDrill("networkChurnCycle", openChurnDetail);
 }
 
 function configValue(configs, key) {
@@ -5630,11 +6155,23 @@ async function refreshNetworkExplorer() {
 	  setExplorerText("networkGasMigrate", gasLabel(gasRow("migrate")));
 	  setExplorerText("networkGasConsolidate", gasLabel(gasRow("consolidate")));
 	  setExplorerText("networkGasTxOut", gasLabel(gasRow("txout")));
-	  renderExplorerRows("networkVaultsList", vaults.slice(0, 8).map((vault) => `
-	    <span>${escapeHtml(shortHash(vault.pub_key || vault.pubKey))}</span>
+	  renderExplorerRows("networkVaultsList", vaults.slice(0, 8).map((vault) => ({
+    html: `
+	    <span>${escapeHtml(shortHash(vaultDisplayId(vault)))}</span>
 	    <strong>${escapeHtml(vault.status || "unknown")}</strong>
     <em>${btcLabelFromSats((vault.coins || []).reduce((sum, coin) => sum + coinAmountSats(coin), 0))}</em>
-  `), "No base vaults");
+  `,
+    title: "Open vault detail",
+    onClick: () => openNetworkDetailPage("Vault", vaultDisplayId(vault) || "Vault", [
+      ["BTC address", vaultBtcAddress(vault) || "unavailable"],
+      ["Vault pubkey", vaultProtocolPubKey(vault) || "unavailable"],
+      ["Status", vault.status || "unknown"],
+      ["BTC", btcLabelFromSats((vault.coins || []).reduce((sum, coin) => sum + coinAmountSats(coin), 0))],
+      ["Inbound txs", intLabel(vault.inbound_tx_count ?? vault.inboundTxCount)],
+      ["Outbound txs", intLabel(vault.outbound_tx_count ?? vault.outboundTxCount)],
+      ["Pending heights", intLabel((vault.pending_tx_block_heights || vault.pendingTxBlockHeights || []).length)]
+    ], vault)
+  })), "No base vaults");
 
   const notes = sync?.notes || [];
   const nullifiers = sync?.nullifiers || [];
@@ -5657,11 +6194,57 @@ async function refreshNetworkExplorer() {
   setExplorerText("networkAuctionCount", intLabel(auctions.length));
   const churnMinutes = configValue(configs, "Churn_IntervalMinutes");
   setExplorerText("networkChurnCycle", churnMinutes ? `${churnMinutes.toLocaleString()} min cycle` : "unavailable");
-  renderExplorerRows("networkNodesList", nodes.slice(0, 10).map((node) => `
+  renderExplorerRows("networkNodesList", nodes.slice(0, 10).map((node) => ({
+    html: `
     <span>${escapeHtml(shortHash(node.node_address || node.nodeAddress))}</span>
     <strong>${escapeHtml(node.status || "unknown")}</strong>
     <em>${btcLabelFromSats(node.total_bond ?? node.totalBond ?? node.bond)}</em>
-  `), "No nodes");
+  `,
+    title: "Open node detail",
+    onClick: () => openNetworkDetailPage("Node", node.node_address || node.nodeAddress || "Node", [
+      ["Node", node.node_address || node.nodeAddress],
+      ["Status", node.status || "unknown"],
+      ["Bond", btcLabelFromSats(node.total_bond ?? node.totalBond ?? node.bond)],
+      ["Version", node.version || "unknown"],
+      ["Operator", node.node_operator_address || node.nodeOperatorAddress],
+      ["IP", node.ip_address || node.ipAddress]
+    ], node)
+  })), "No nodes");
+
+  state.networkExplorerData = {
+    block,
+    lastBlocks,
+    lastBlocksMeta,
+    btcLast,
+    nodes,
+    metrics,
+    vaults,
+    solvency,
+    fees,
+    gas,
+    sync,
+    auctions,
+    configs,
+    nodeInfo,
+    activeNodes,
+    standbyNodes,
+    gasBreakdown,
+    chainId,
+    header,
+    blockId,
+    metaHeight,
+    metaServerTime,
+    vaultSats,
+    inboundCount,
+    outboundCount,
+    pendingCount,
+    btcSolvency,
+    noteSats,
+    spentSats,
+    totalBondSats,
+    churnMinutes
+  };
+  wireNetworkDrilldowns();
 
   log("network/explorer", {
     block: Boolean(block),
@@ -6779,6 +7362,7 @@ window.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !$("flowModal").hidden) closeFlowHelp();
   if (event.key === "Escape" && !$("withdrawAddressModal").hidden) closeWithdrawAddressModal();
   if (event.key === "Escape" && !$("explorerDetailModal").hidden) closeExplorerDetail();
+  if (event.key === "Escape" && state.networkDetailOpen) closeNetworkDetailPage();
 });
 document.querySelectorAll("[data-stage-toggle]").forEach((button) => {
   button.addEventListener("click", () => toggleStage(button.dataset.stageToggle));
@@ -6874,6 +7458,7 @@ $("explorerDetailClose").addEventListener("click", closeExplorerDetail);
 $("explorerDetailModal").addEventListener("click", (event) => {
   if (event.target === $("explorerDetailModal")) closeExplorerDetail();
 });
+$("networkDetailBack")?.addEventListener("click", closeNetworkDetailPage);
 $("confirmWithdrawAddress").addEventListener("click", () => run(confirmWithdrawAddress));
 $("withdrawRecipientInput").addEventListener("input", updateWithdrawAddressModal);
 $("withdrawRecipientInput").addEventListener("keydown", (event) => {
@@ -6987,16 +7572,11 @@ renderMoreNav();
       discoverDepositBatches({ recoverNotes: false })
         .then(() => {
           updateDashboard();
-          if (hasRecoverableDepositBatch()) {
+          if (state.batches.length) {
             setMessage("Deposits synced. Searching commitments...", "ok", 1, 10000);
             queueDepositRecovery();
           } else {
-            setMessage("Searching shielded notes...", "", 1, 10000);
-            return discoverDepositBatches({ recoverNotes: true, preserveSelection: true })
-              .then(() => {
-                updateDashboard();
-                setMessage(state.batches.length ? "Deposits synced." : "No deposits or notes found for this secret.", state.batches.length ? "ok" : "", 1, 10000);
-              });
+            setMessage("No previous deposits found for this secret.", "", 1, 10000);
           }
         })
         .catch((error) => {

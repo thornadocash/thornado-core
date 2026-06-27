@@ -92,7 +92,6 @@ func NewConfigValue() *ConfigVals {
 			UTXO_MaxSpendCount:               15,
 			Upgrade_ProposalCountMax:         3,
 			Vault_MigrationIntervalMinutes:   36,
-			Vault_MigrationRounds:            2,
 			Vault_RetiredRecoveryAttemptsMax: 100,
 
 			// Withdrawal

@@ -3,10 +3,12 @@ package observer
 import (
 	"testing"
 
+	"github.com/thornadocash/go-thornado/bifrost/metrics"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/config"
+	stypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 func TestFinaliseHeightCountsObservedBlockAsFirstConfirmation(t *testing.T) {
@@ -110,5 +112,50 @@ func TestPromoteMempoolObservationClearsPendingCommit(t *testing.T) {
 	}
 	if blockItem.CommittedUnFinalised {
 		t.Fatalf("block observation should clear committed pending state")
+	}
+}
+
+func TestFinalizedMempoolObservationUsesFinaliseHeight(t *testing.T) {
+	stypes.SetupConfigForTest()
+	pubKey := stypes.GetRandomPubKey()
+	sender, err := pubKey.GetAddress(common.BTCChain)
+	if err != nil {
+		t.Fatalf("failed to derive sender: %v", err)
+	}
+	item := types.NewTxInItem(
+		0,
+		"1c58e7cbd9a61e79b48ebe17b26bcff7c39b605e180ac5a0eb348c6e2760d718",
+		sender.String(),
+		stypes.GetRandomBTCAddress().String(),
+		common.Coins{common.NewCoin(common.BTCAsset, cosmos.NewUint(100_000))},
+		common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(1_000))},
+		pubKey,
+		"",
+		"",
+		nil,
+	)
+	deck := &types.TxIn{
+		Chain:                common.BTCChain,
+		TxArray:              []*types.TxInItem{item},
+		MemPool:              true,
+		ConfirmationRequired: 1,
+	}
+	observer := &Observer{frostKeysignMetricMgr: metrics.NewFrostKeysignMetricMgr()}
+
+	txs, invalid, err := observer.getThornadoTxIns(deck, true, 864)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(invalid) != 0 {
+		t.Fatalf("unexpected invalid indices: %v", invalid)
+	}
+	if len(txs) != 1 {
+		t.Fatalf("expected one observed tx, got %d", len(txs))
+	}
+	if txs[0].BlockHeight != 864 || txs[0].FinaliseHeight != 864 {
+		t.Fatalf("expected final observation at 864, got block=%d finalise=%d", txs[0].BlockHeight, txs[0].FinaliseHeight)
+	}
+	if !txs[0].IsFinal() {
+		t.Fatalf("expected emitted observation to be final")
 	}
 }

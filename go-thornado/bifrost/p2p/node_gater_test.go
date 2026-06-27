@@ -140,6 +140,9 @@ func (m *MockThornadoBridge) GetPubKeys() ([]thornadoclient.PubKeyAddressPair, e
 func (m *MockThornadoBridge) GetBasePubKeys() ([]thornadoclient.PubKeyAddressPair, error) {
 	return nil, nil
 }
+func (m *MockThornadoBridge) IsVaultDepositAddress(address common.Address) bool {
+	return false
+}
 
 func (m *MockThornadoBridge) GetSolvencyMsg(height int64, chain common.Chain, pubKey common.PubKey, coins common.Coins) *types.MsgSolvency {
 	return nil
@@ -177,6 +180,12 @@ func (m *MockThornadoBridge) BroadcastWithBlocking(msgs ...sdk.Msg) (common.TxID
 
 func (m *MockThornadoBridge) GetKeysign(blockHeight int64, pk string) (tctypes.TxOut, error) {
 	return tctypes.TxOut{}, nil
+}
+func (m *MockThornadoBridge) GetPendingTxOutKeysigns() ([]tctypes.TxOut, error) {
+	return nil, nil
+}
+func (m *MockThornadoBridge) GetAllTxOutKeysigns() ([]tctypes.TxOut, error) {
+	return nil, nil
 }
 func (m *MockThornadoBridge) GetNodeAccount(string) (*types.NodeAccount, error) { return nil, nil }
 func (m *MockThornadoBridge) GetKeygenBlock(int64, string) (types.KeygenBlock, error) {

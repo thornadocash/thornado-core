@@ -45,6 +45,7 @@ services:
       BTC_P2P_PORT: "18444"
       BTC_AUTO_MINE: "1"
       BTC_AUTO_MINE_INTERVAL: "20"
+      API_BIND_HOST: "0.0.0.0"
       API_BASE: "1316"
       GRPC_BASE: "9090"
       RPC_BASE: "26656"

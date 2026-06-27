@@ -35,8 +35,12 @@ func (m *mockBridge) GetBasePubKeys() ([]thornadoclient.PubKeyAddressPair, error
 
 func (m *mockBridge) GetConfigValue(key string) (int64, error) {
 	switch key {
-	case constants.BTC_ConfMultiplierBasisPoints.String(), constants.BTC_MaxConfirmations.String():
+	case constants.BTC_ConfMultiplierBasisPoints.String():
+		return int64(constants.MaxBasisPts), nil
+	case constants.BTC_ConfirmationsMin.String():
 		return 1, nil
+	case constants.BTC_MaxConfirmations.String():
+		return 0, nil
 	default:
 		return 0, nil
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
+	"github.com/thornadocash/go-thornado/config"
 	ttypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
@@ -110,18 +111,45 @@ func (s *SignerSuite) TestCompletedTxOutItemUsesHeightScopedHistory(c *C) {
 	c.Assert(matchedOutHash.Equals(outHash), Equals, true)
 }
 
-func (s *SignerSuite) TestTxOutIsStaleKeepsLegacyRescheduleBuffer(c *C) {
-	c.Assert(txOutIsStale(831, 675, 300, 144, false), Equals, false)
-	c.Assert(txOutIsStale(832, 675, 300, 144, false), Equals, true)
+func (s *SignerSuite) TestTxOutBatchTerminalStatus(c *C) {
+	c.Assert(txOutBatchTerminalStatus(ttypes.TxOutStatusComplete), Equals, true)
+	c.Assert(txOutBatchTerminalStatus(ttypes.TxOutStatusCancelled), Equals, true)
+	c.Assert(txOutBatchTerminalStatus(ttypes.TxOutStatusPendingSign), Equals, false)
+	c.Assert(txOutBatchTerminalStatus(ttypes.TxOutStatusPendingRetry), Equals, false)
 }
 
-func (s *SignerSuite) TestTxOutIsStaleAllowsFrostSignerRotation(c *C) {
-	c.Assert(txOutIsStale(831, 675, 300, 144, true), Equals, false)
-	c.Assert(txOutIsStale(1119, 675, 300, 144, true), Equals, false)
-	c.Assert(txOutIsStale(1120, 675, 300, 144, true), Equals, true)
+func (s *SignerSuite) TestMergeStoredTxOutItemPreservesRetryState(c *C) {
+	storage, err := NewSignerStore("", config.LevelDBOptions{}, "")
+	c.Assert(err, IsNil)
+	defer storage.Close()
+
+	item := NewTxOutStoreItem(3997, types.TxOutItem{TxType: ttypes.TxOutTypeRefund}, 0)
+	c.Assert(storage.Set(TxOutStoreItem{
+		TxOutItem:           item.TxOutItem,
+		Height:              item.Height,
+		Index:               item.Index,
+		DeferredUntilHeight: 1_010_189,
+		Round7Retry:         true,
+		Checkpoint:          []byte("checkpoint"),
+	}), IsNil)
+
+	merged := mergeStoredTxOutItem(storage, item)
+	c.Assert(merged.DeferredUntilHeight, Equals, int64(1_010_189))
+	c.Assert(merged.Round7Retry, Equals, true)
+	c.Assert(merged.Checkpoint, DeepEquals, []byte("checkpoint"))
+
 }
 
-func (s *SignerSuite) TestTxOutIsStaleIgnoresInvalidSigningPeriod(c *C) {
-	c.Assert(txOutIsStale(831, 675, 0, 144, false), Equals, false)
-	c.Assert(txOutIsStale(831, 675, 0, 144, true), Equals, false)
+func (s *SignerSuite) TestInternalTxOutIgnoresFutureDeferral(c *C) {
+	item := TxOutStoreItem{
+		TxOutItem:           types.TxOutItem{TxType: ttypes.TxOutTypeSweep},
+		DeferredUntilHeight: 1_000,
+	}
+	c.Assert(txOutDeferredPast(item, 10), Equals, false)
+
+	item.TxOutItem.TxType = ttypes.TxOutTypeMigrate
+	c.Assert(txOutDeferredPast(item, 10), Equals, false)
+
+	item.TxOutItem.TxType = ttypes.TxOutTypeOut
+	c.Assert(txOutDeferredPast(item, 10), Equals, true)
 }

@@ -82,6 +82,9 @@ message QueryShielderSyncRequest {
   string note_cursor = 4;
   string nullifier_cursor = 5;
   int64 from_height = 6;
+  bool include_deposits = 7;
+  bool include_notes = 8;
+  bool include_nullifiers = 9;
 }
 
 message QueryShielderSyncResponse {

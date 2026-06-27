@@ -8,10 +8,10 @@ use base64::Engine;
 use frost_secp256k1_tr as frost;
 use frost_secp256k1_tr::keys::dkg;
 use frost_secp256k1_tr::keys::{
-    IdentifierList, KeyPackage, PublicKeyPackage, SigningShare, Tweak, VerifyingShare,
+    KeyPackage, PublicKeyPackage, SigningShare, Tweak, VerifyingShare,
 };
 use frost_secp256k1_tr::{
-    Ciphersuite, Field, Group, Identifier, Signature, SigningPackage, VerifyingKey,
+    Ciphersuite, Field, Group, Identifier, SigningPackage, VerifyingKey,
 };
 use once_cell::sync::Lazy;
 use rand::rngs::OsRng;
@@ -41,25 +41,15 @@ enum WrapperError {
 }
 
 #[derive(Debug, Deserialize)]
-struct KeygenInput {
-    participants: Vec<String>,
-    min_signers: Option<u16>,
-}
-
-#[derive(Debug, Serialize)]
-struct KeygenOutput {
-    shares: BTreeMap<String, String>,
-    pub_key_compressed: String,
-}
-
-#[derive(Debug, Deserialize)]
 struct SessionInput {
     participants: Vec<String>,
     local: String,
     min_signers: Option<u16>,
     share: Option<String>,
     message: Option<String>,
+    taproot_key_path: Option<bool>,
     merkle_root: Option<String>,
+    child_tweak: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -74,28 +64,6 @@ struct StoredShare {
     public_key_compressed: String,
     key_package: String,
     public_key_package: String,
-    #[serde(default)]
-    all_key_packages: BTreeMap<String, String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SignInput {
-    share: String,
-    message: String,
-    merkle_root: Option<String>,
-    child_tweak: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-struct SignOutput {
-    signature: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct VerifyInput {
-    public_key_package: String,
-    message: String,
-    signature: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -119,6 +87,34 @@ struct KeygenSession {
     result: Option<Vec<u8>>,
 }
 
+#[derive(Clone)]
+enum SigningTweakMode {
+    Plain,
+    TaprootKeyPath,
+    TaprootScript(Vec<u8>),
+}
+
+fn signing_tweak_mode(merkle_root: Option<Vec<u8>>, taproot_key_path: bool) -> SigningTweakMode {
+    if let Some(root) = merkle_root {
+        if root.is_empty() {
+            return SigningTweakMode::TaprootKeyPath;
+        }
+        return SigningTweakMode::TaprootScript(root);
+    }
+    if taproot_key_path {
+        return SigningTweakMode::TaprootKeyPath;
+    }
+    SigningTweakMode::Plain
+}
+
+fn frost_merkle_arg(mode: &SigningTweakMode) -> Option<Option<&[u8]>> {
+    match mode {
+        SigningTweakMode::Plain => None,
+        SigningTweakMode::TaprootKeyPath => Some(None),
+        SigningTweakMode::TaprootScript(root) => Some(Some(root.as_slice())),
+    }
+}
+
 struct SignSession {
     local: String,
     participants: Vec<String>,
@@ -126,10 +122,11 @@ struct SignSession {
     message: Vec<u8>,
     key_package: KeyPackage,
     public_key_package: PublicKeyPackage,
-    merkle_root: Option<Vec<u8>>,
+    tweak_mode: SigningTweakMode,
     nonces: Option<frost::round1::SigningNonces>,
     commitments: BTreeMap<Identifier, frost::round1::SigningCommitments>,
     signature_shares: BTreeMap<Identifier, frost::round2::SignatureShare>,
+    pending_shares: BTreeMap<Identifier, frost::round2::SignatureShare>,
     outputs: Vec<Vec<u8>>,
     result: Option<Vec<u8>>,
 }
@@ -318,71 +315,6 @@ fn queue_msg(
     Ok(())
 }
 
-fn keygen(input: KeygenInput) -> Result<KeygenOutput, WrapperError> {
-    let participants = normalize_participants(input.participants);
-    let max_signers = participants.len() as u16;
-    let min_signers = input.min_signers.unwrap_or((max_signers * 2 / 3) + 1);
-    let identifiers = (1..=max_signers)
-        .map(identifier)
-        .collect::<Result<Vec<_>, _>>()?;
-    let (secret_shares, public_key_package) = frost::keys::generate_with_dealer(
-        max_signers,
-        min_signers,
-        IdentifierList::Custom(&identifiers),
-        OsRng,
-    )
-    .map_err(frost_error("keygen"))?;
-
-    let public_key_package_bytes = public_key_package
-        .serialize()
-        .map_err(frost_error("keygen"))?;
-    let public_key_package_b64 = B64.encode(public_key_package_bytes);
-    let pub_key_compressed = public_key_package
-        .verifying_key()
-        .serialize()
-        .map_err(frost_error("keygen"))
-        .map(hex::encode)?;
-
-    let mut all_key_packages = BTreeMap::new();
-    let mut keyed_packages = Vec::new();
-    for (i, participant) in participants.iter().enumerate() {
-        let id = identifier((i + 1) as u16)?;
-        let secret_share = secret_shares
-            .get(&id)
-            .ok_or_else(|| WrapperError::Message("missing secret share".to_string()))?;
-        let key_package =
-            KeyPackage::try_from(secret_share.clone()).map_err(frost_error("keygen"))?;
-        let encoded = B64.encode(key_package.serialize().map_err(frost_error("keygen"))?);
-        all_key_packages.insert(participant.clone(), encoded.clone());
-        keyed_packages.push(((i + 1) as u16, participant.clone(), encoded));
-    }
-
-    let mut shares = BTreeMap::new();
-    for (participant_index, participant, key_package) in keyed_packages {
-        let stored = StoredShare {
-            version: 1,
-            engine: "frost".to_string(),
-            participant: participant.clone(),
-            participants: participants.clone(),
-            participant_index,
-            min_signers,
-            max_signers,
-            public_key_compressed: pub_key_compressed.clone(),
-            key_package,
-            public_key_package: public_key_package_b64.clone(),
-            all_key_packages: all_key_packages.clone(),
-        };
-        let bytes =
-            serde_json::to_vec(&stored).map_err(|e| WrapperError::Message(e.to_string()))?;
-        shares.insert(participant, B64.encode(bytes));
-    }
-
-    Ok(KeygenOutput {
-        shares,
-        pub_key_compressed,
-    })
-}
-
 fn keygen_session_new(input: SessionInput) -> Result<SessionKind, WrapperError> {
     let participants = normalize_participants(input.participants);
     let max_signers = participants.len() as u16;
@@ -426,12 +358,12 @@ fn sign_session_new(input: SessionInput) -> Result<SessionKind, WrapperError> {
         .map_err(|e| WrapperError::Message(e.to_string()))?;
     let stored: StoredShare =
         serde_json::from_slice(&share_bytes).map_err(|e| WrapperError::Message(e.to_string()))?;
-    let key_package = KeyPackage::deserialize(
+    let mut key_package = KeyPackage::deserialize(
         &B64.decode(&stored.key_package)
             .map_err(|e| WrapperError::Message(e.to_string()))?,
     )
     .map_err(frost_error("keysign"))?;
-    let public_key_package = PublicKeyPackage::deserialize(
+    let mut public_key_package = PublicKeyPackage::deserialize(
         &B64.decode(&stored.public_key_package)
             .map_err(|e| WrapperError::Message(e.to_string()))?,
     )
@@ -450,6 +382,12 @@ fn sign_session_new(input: SessionInput) -> Result<SessionKind, WrapperError> {
         )));
     }
     let merkle_root = decode_merkle_root(input.merkle_root)?;
+    let taproot_key_path = input.taproot_key_path.unwrap_or(false);
+    let tweak_mode = signing_tweak_mode(merkle_root, taproot_key_path);
+    let child_tweak = decode_child_tweak(input.child_tweak)?;
+    key_package = apply_child_tweak_to_key_package(key_package, child_tweak);
+    public_key_package =
+        apply_child_tweak_to_public_package(public_key_package, child_tweak, stored.min_signers);
     let (nonces, commitments) = frost::round1::commit(key_package.signing_share(), &mut OsRng);
     let mut outputs = Vec::new();
     queue_msg(
@@ -467,10 +405,11 @@ fn sign_session_new(input: SessionInput) -> Result<SessionKind, WrapperError> {
         message,
         key_package,
         public_key_package,
-        merkle_root,
+        tweak_mode,
         nonces: Some(nonces),
         commitments: BTreeMap::new(),
         signature_shares: BTreeMap::new(),
+        pending_shares: BTreeMap::new(),
         outputs,
         result: None,
     }))
@@ -553,7 +492,6 @@ impl KeygenSession {
                         key_package: B64
                             .encode(key_package.serialize().map_err(frost_error("keygen"))?),
                         public_key_package: public_key_package_b64,
-                        all_key_packages: BTreeMap::new(),
                     };
                     self.result = Some(
                         serde_json::to_vec(&stored)
@@ -573,6 +511,46 @@ impl KeygenSession {
 }
 
 impl SignSession {
+    fn merge_pending_shares(&mut self) {
+        for (id, share) in std::mem::take(&mut self.pending_shares) {
+            self.signature_shares.entry(id).or_insert(share);
+        }
+    }
+
+    fn try_aggregate(&mut self) -> Result<(), WrapperError> {
+        if self.result.is_some()
+            || self.commitments.len() != self.participants.len()
+            || self.signature_shares.len() != self.participants.len()
+        {
+            return Ok(());
+        }
+        let signing_package = SigningPackage::new(self.commitments.clone(), &self.message);
+        let signature = match frost_merkle_arg(&self.tweak_mode) {
+            None => frost::aggregate(
+                &signing_package,
+                &self.signature_shares,
+                &self.public_key_package,
+            ),
+            Some(merkle) => frost::aggregate_with_tweak(
+                &signing_package,
+                &self.signature_shares,
+                &self.public_key_package,
+                merkle,
+            ),
+        }
+        .map_err(frost_error("keysign"))?;
+        let verifying_package = match frost_merkle_arg(&self.tweak_mode) {
+            None => self.public_key_package.clone(),
+            Some(merkle) => self.public_key_package.clone().tweak(merkle),
+        };
+        verifying_package
+            .verifying_key()
+            .verify(&self.message, &signature)
+            .map_err(frost_error("verify"))?;
+        self.result = Some(signature.serialize().map_err(frost_error("keysign"))?);
+        Ok(())
+    }
+
     fn input(&mut self, bytes: &[u8]) -> Result<bool, WrapperError> {
         if self.result.is_some() {
             return Ok(true);
@@ -588,22 +566,21 @@ impl SignSession {
                 let commitments = frost::round1::SigningCommitments::deserialize(&payload)
                     .map_err(frost_error("keysign"))?;
                 self.commitments.entry(from_id).or_insert(commitments);
-                if self.commitments.len() == self.participants.len()
-                    && self.signature_shares.is_empty()
-                {
+                if self.commitments.len() == self.participants.len() && self.nonces.is_some() {
+                    self.merge_pending_shares();
                     let signing_package =
                         SigningPackage::new(self.commitments.clone(), &self.message);
                     let nonces = self.nonces.take().ok_or_else(|| {
                         WrapperError::Message("missing signing nonces".to_string())
                     })?;
-                    let share = match self.merkle_root.as_deref() {
-                        Some(root) => frost::round2::sign_with_tweak(
+                    let share = match frost_merkle_arg(&self.tweak_mode) {
+                        None => frost::round2::sign(&signing_package, &nonces, &self.key_package),
+                        Some(merkle) => frost::round2::sign_with_tweak(
                             &signing_package,
                             &nonces,
                             &self.key_package,
-                            Some(root),
+                            merkle,
                         ),
-                        None => frost::round2::sign(&signing_package, &nonces, &self.key_package),
                     }
                     .map_err(frost_error("keysign"))?;
                     queue_msg(
@@ -618,33 +595,11 @@ impl SignSession {
             "sign_round2" => {
                 let share = frost::round2::SignatureShare::deserialize(&payload)
                     .map_err(frost_error("keysign"))?;
-                self.signature_shares.entry(from_id).or_insert(share);
-                if self.signature_shares.len() == self.participants.len() && self.result.is_none() {
-                    let signing_package =
-                        SigningPackage::new(self.commitments.clone(), &self.message);
-                    let signature = match self.merkle_root.as_deref() {
-                        Some(root) => frost::aggregate_with_tweak(
-                            &signing_package,
-                            &self.signature_shares,
-                            &self.public_key_package,
-                            Some(root),
-                        ),
-                        None => frost::aggregate(
-                            &signing_package,
-                            &self.signature_shares,
-                            &self.public_key_package,
-                        ),
-                    }
-                    .map_err(frost_error("keysign"))?;
-                    let verifying_package = match self.merkle_root.as_deref() {
-                        Some(root) => self.public_key_package.clone().tweak(Some(root)),
-                        None => self.public_key_package.clone(),
-                    };
-                    verifying_package
-                        .verifying_key()
-                        .verify(&self.message, &signature)
-                        .map_err(frost_error("verify"))?;
-                    self.result = Some(signature.serialize().map_err(frost_error("keysign"))?);
+                if self.commitments.len() < self.participants.len() {
+                    self.pending_shares.entry(from_id).or_insert(share);
+                } else {
+                    self.signature_shares.entry(from_id).or_insert(share);
+                    self.try_aggregate()?;
                 }
             }
             _ => {
@@ -656,127 +611,6 @@ impl SignSession {
         }
         Ok(self.result.is_some())
     }
-}
-
-fn sign(input: SignInput) -> Result<SignOutput, WrapperError> {
-    if B64
-        .decode(&input.message)
-        .map_err(|e| WrapperError::Message(e.to_string()))?
-        .len()
-        != 32
-    {
-        return Err(WrapperError::Message(
-            "FROST messages must be 32 bytes".to_string(),
-        ));
-    }
-    let message = B64
-        .decode(&input.message)
-        .map_err(|e| WrapperError::Message(e.to_string()))?;
-    let share_bytes = B64
-        .decode(&input.share)
-        .map_err(|e| WrapperError::Message(e.to_string()))?;
-    let share: StoredShare =
-        serde_json::from_slice(&share_bytes).map_err(|e| WrapperError::Message(e.to_string()))?;
-    if share.all_key_packages.is_empty() {
-        return Err(WrapperError::Message(
-            "one-shot signing is unavailable for distributed FROST keyshares".to_string(),
-        ));
-    }
-    let public_key_package = PublicKeyPackage::deserialize(
-        &B64.decode(&share.public_key_package)
-            .map_err(|e| WrapperError::Message(e.to_string()))?,
-    )
-    .map_err(frost_error("keysign"))?;
-    let merkle_root = decode_merkle_root(input.merkle_root)?;
-    let child_tweak = decode_child_tweak(input.child_tweak)?;
-    let public_key_package =
-        apply_child_tweak_to_public_package(public_key_package, child_tweak, share.min_signers);
-
-    let mut commitments_map = BTreeMap::new();
-    let mut nonces_map = BTreeMap::new();
-    let mut key_packages = BTreeMap::new();
-
-    for (i, participant) in share
-        .participants
-        .iter()
-        .take(share.min_signers as usize)
-        .enumerate()
-    {
-        let id = identifier((i + 1) as u16)?;
-        let key_package_b64 = share
-            .all_key_packages
-            .get(participant)
-            .ok_or_else(|| WrapperError::Message("missing signing key package".to_string()))?;
-        let key_package = KeyPackage::deserialize(
-            &B64.decode(key_package_b64)
-                .map_err(|e| WrapperError::Message(e.to_string()))?,
-        )
-        .map_err(frost_error("keysign"))?;
-        let key_package = apply_child_tweak_to_key_package(key_package, child_tweak);
-        let (nonces, commitments) = frost::round1::commit(key_package.signing_share(), &mut OsRng);
-        commitments_map.insert(id, commitments);
-        nonces_map.insert(id, nonces);
-        key_packages.insert(id, key_package);
-    }
-
-    let signing_package = SigningPackage::new(commitments_map, &message);
-    let mut signature_shares = BTreeMap::new();
-    for (id, key_package) in key_packages.iter() {
-        let nonces = nonces_map
-            .get(id)
-            .ok_or_else(|| WrapperError::Message("missing nonces".to_string()))?;
-        let sig_share = match merkle_root.as_deref() {
-            Some(root) => {
-                frost::round2::sign_with_tweak(&signing_package, nonces, key_package, Some(root))
-            }
-            None => frost::round2::sign(&signing_package, nonces, key_package),
-        }
-        .map_err(frost_error("keysign"))?;
-        signature_shares.insert(*id, sig_share);
-    }
-
-    let signature = match merkle_root.as_deref() {
-        Some(root) => frost::aggregate_with_tweak(
-            &signing_package,
-            &signature_shares,
-            &public_key_package,
-            Some(root),
-        ),
-        None => frost::aggregate(&signing_package, &signature_shares, &public_key_package),
-    }
-    .map_err(frost_error("keysign"))?;
-    let verifying_package = match merkle_root.as_deref() {
-        Some(root) => public_key_package.clone().tweak(Some(root)),
-        None => public_key_package,
-    };
-    verifying_package
-        .verifying_key()
-        .verify(&message, &signature)
-        .map_err(frost_error("verify"))?;
-
-    Ok(SignOutput {
-        signature: B64.encode(signature.serialize().map_err(frost_error("keysign"))?),
-    })
-}
-
-fn verify(input: VerifyInput) -> Result<(), WrapperError> {
-    let public_key_package = PublicKeyPackage::deserialize(
-        &B64.decode(&input.public_key_package)
-            .map_err(|e| WrapperError::Message(e.to_string()))?,
-    )
-    .map_err(frost_error("verify"))?;
-    let message = B64
-        .decode(&input.message)
-        .map_err(|e| WrapperError::Message(e.to_string()))?;
-    let signature = Signature::deserialize(
-        &B64.decode(&input.signature)
-            .map_err(|e| WrapperError::Message(e.to_string()))?,
-    )
-    .map_err(frost_error("verify"))?;
-    public_key_package
-        .verifying_key()
-        .verify(&message, &signature)
-        .map_err(frost_error("verify"))
 }
 
 fn frost_error(phase: &'static str) -> impl Fn(frost::Error) -> WrapperError {
@@ -830,42 +664,6 @@ fn with_session<T>(
         .and_then(Option::as_mut)
         .ok_or_else(|| WrapperError::Message(format!("invalid frost session handle {handle}")))?;
     f(session)
-}
-
-#[no_mangle]
-pub extern "C" fn gofrost_keygen(ptr: *const u8, len: usize, out: *mut GoFrostBuf) -> i32 {
-    match read_json::<KeygenInput>(ptr, len).and_then(keygen) {
-        Ok(value) => write_json(&value, out),
-        Err(err) => write_error(err, out),
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn gofrost_sign(ptr: *const u8, len: usize, out: *mut GoFrostBuf) -> i32 {
-    match read_json::<SignInput>(ptr, len).and_then(sign) {
-        Ok(value) => write_json(&value, out),
-        Err(err) => write_error(err, out),
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn gofrost_sign_taproot_tweak(
-    ptr: *const u8,
-    len: usize,
-    out: *mut GoFrostBuf,
-) -> i32 {
-    match read_json::<SignInput>(ptr, len).and_then(sign) {
-        Ok(value) => write_json(&value, out),
-        Err(err) => write_error(err, out),
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn gofrost_verify(ptr: *const u8, len: usize, out: *mut GoFrostBuf) -> i32 {
-    match read_json::<VerifyInput>(ptr, len).and_then(|input| verify(input).map(|_| ())) {
-        Ok(()) => write_json(&serde_json::json!({"ok": true}), out),
-        Err(err) => write_error(err, out),
-    }
 }
 
 #[no_mangle]

@@ -180,30 +180,46 @@ func (pc *PartyCoordinator) HandleStreamWithLeader(stream network.Stream) {
 	}
 }
 
-func (pc *PartyCoordinator) removePeerGroup(messageID string) {
+func (pc *PartyCoordinator) releaseJoinPartyGroup(messageID string) {
 	pc.joinPartyGroupLock.Lock()
 	defer pc.joinPartyGroupLock.Unlock()
-	delete(pc.peersGroup, messageID)
+	peerGroup, ok := pc.peersGroup[messageID]
+	if !ok {
+		return
+	}
+	peerGroup.peerStatusLock.Lock()
+	peerGroup.joiners--
+	remaining := peerGroup.joiners
+	peerGroup.peerStatusLock.Unlock()
+	if remaining <= 0 {
+		delete(pc.peersGroup, messageID)
+	}
 }
 
-func (pc *PartyCoordinator) createJoinPartyGroups(messageID string, leaderID peer.ID, peerIDs []peer.ID, threshold int) (*peerStatus, error) {
+func (pc *PartyCoordinator) acquireJoinPartyGroup(messageID string, leaderID peer.ID, peerIDs []peer.ID, threshold int) (*peerStatus, error) {
 	pc.joinPartyGroupLock.Lock()
 	defer pc.joinPartyGroupLock.Unlock()
-	peerStatus := newPeerStatus(peerIDs, pc.host.ID(), leaderID, threshold)
-	pc.peersGroup[messageID] = peerStatus
-	return peerStatus, nil
+	if existing, ok := pc.peersGroup[messageID]; ok {
+		existing.peerStatusLock.Lock()
+		existing.joiners++
+		existing.peerStatusLock.Unlock()
+		return existing, nil
+	}
+	peerGroup := newPeerStatus(peerIDs, pc.host.ID(), leaderID, threshold)
+	peerGroup.joiners = 1
+	pc.peersGroup[messageID] = peerGroup
+	return peerGroup, nil
 }
 
 func (pc *PartyCoordinator) getPeerIDs(ids []string) ([]peer.ID, error) {
-	result := make([]peer.ID, len(ids))
-	for i, item := range ids {
-		pid, err := peer.Decode(item)
-		if err != nil {
-			return nil, fmt.Errorf("fail to decode peer id(%s):%w", item, err)
-		}
-		result[i] = pid
+	return conversion.GetPeerIDs(ids)
+}
+
+func peerIDFromPartyIdentity(id string) (peer.ID, error) {
+	if pid, err := peer.Decode(id); err == nil {
+		return pid, nil
 	}
-	return result, nil
+	return conversion.GetPeerIDFromPubKey(id)
 }
 
 func (pc *PartyCoordinator) sendResponseToAll(msg *messages.JoinPartyLeaderComm, peers []peer.ID) {
@@ -388,9 +404,8 @@ func (pc *PartyCoordinator) joinPartyLeader(msgID string, peerGroup *peerStatus,
 		pc.logger.Debug().Msg("leader's party coordinator stopped")
 	case <-peerGroup.notify:
 		pc.logger.Debug().Msg("we have enough participants")
-	case <-time.After(pc.timeout * 9 / 10):
-		// timeout, reporting to peers before their timeout
-		pc.logger.Debug().Msgf("leader timedout waiting for peers after %s", pc.timeout/2)
+	case <-time.After(pc.timeout):
+		pc.logger.Debug().Msgf("leader timedout waiting for peers after %s", pc.timeout)
 	case result := <-sigChan:
 		sigNotify = result
 	}
@@ -401,9 +416,14 @@ func (pc *PartyCoordinator) joinPartyLeader(msgID string, peerGroup *peerStatus,
 	onlinePeers, _ := peerGroup.getPeersStatus()
 	onlinePeers = append(onlinePeers, pc.host.ID())
 
-	frostNodes := make([]string, len(onlinePeers))
-	for i, el := range onlinePeers {
-		frostNodes[i] = el.String()
+	frostNodes := make([]string, 0, len(onlinePeers))
+	for _, el := range onlinePeers {
+		pubKey, err := conversion.GetPubKeyFromPeerID(el.String())
+		if err != nil {
+			pc.logger.Error().Err(err).Str("peer_id", el.String()).Msg("fail to convert online peer to pubkey")
+			continue
+		}
+		frostNodes = append(frostNodes, pubKey)
 	}
 
 	msg := messages.JoinPartyLeaderComm{
@@ -427,11 +447,28 @@ func (pc *PartyCoordinator) joinPartyLeader(msgID string, peerGroup *peerStatus,
 }
 
 func (pc *PartyCoordinator) JoinPartyWithLeader(msgID string, blockHeight int64, peers []string, threshold int, sigChan chan string) ([]peer.ID, string, error) {
-	leader, err := LeaderNode(msgID, blockHeight, peers)
-	if err != nil {
-		return nil, "", err
+	return pc.joinPartyWithLeader(msgID, blockHeight, peers, threshold, sigChan, "")
+}
+
+// JoinPartyWithLeaderInitiator coordinates a party where initiator is the leader.
+// Keysign uses this because only the designated signer joins the party; keygen keeps
+// the hash-selected leader so all participants can rendezvous concurrently.
+func (pc *PartyCoordinator) JoinPartyWithLeaderInitiator(msgID string, blockHeight int64, peers []string, threshold int, sigChan chan string, initiator string) ([]peer.ID, string, error) {
+	return pc.joinPartyWithLeader(msgID, blockHeight, peers, threshold, sigChan, initiator)
+}
+
+func (pc *PartyCoordinator) joinPartyWithLeader(msgID string, blockHeight int64, peers []string, threshold int, sigChan chan string, initiator string) ([]peer.ID, string, error) {
+	var leader string
+	var err error
+	if initiator != "" {
+		leader = initiator
+	} else {
+		leader, err = LeaderNode(msgID, blockHeight, peers)
+		if err != nil {
+			return nil, "", err
+		}
 	}
-	leaderID, err := peer.Decode(leader)
+	leaderID, err := peerIDFromPartyIdentity(leader)
 	if err != nil {
 		return nil, "", err
 	}
@@ -440,12 +477,12 @@ func (pc *PartyCoordinator) JoinPartyWithLeader(msgID string, blockHeight int64,
 		return nil, "", err
 	}
 
-	peerGroup, err := pc.createJoinPartyGroups(msgID, leaderID, peerIDs, threshold)
+	peerGroup, err := pc.acquireJoinPartyGroup(msgID, leaderID, peerIDs, threshold)
 	if err != nil {
 		pc.logger.Error().Err(err).Msg("error creating peerStatus")
 		return nil, leader, err
 	}
-	defer pc.removePeerGroup(msgID)
+	defer pc.releaseJoinPartyGroup(msgID)
 
 	var onlines []peer.ID
 	if pc.host.ID() == leaderID {
@@ -473,12 +510,12 @@ func (pc *PartyCoordinator) JoinPartyWithRetry(msgID string, peers []string) ([]
 		return nil, err
 	}
 
-	peerGroup, err := pc.createJoinPartyGroups(msg.ID, "NONE", peerIDs, 1)
+	peerGroup, err := pc.acquireJoinPartyGroup(msg.ID, "NONE", peerIDs, 1)
 	if err != nil {
 		pc.logger.Error().Err(err).Msg("fail to create the join party group")
 		return nil, err
 	}
-	defer pc.removePeerGroup(msg.ID)
+	defer pc.releaseJoinPartyGroup(msg.ID)
 	_, offline := peerGroup.getPeersStatus()
 	var wg sync.WaitGroup
 	done := make(chan struct{})

@@ -7,7 +7,7 @@ ENV PATH=/root/.cargo/bin:/opt/bitcoin/bin:$PATH
 ENV LD_LIBRARY_PATH=/workspace/target/release:/workspace/go-thornado/go-wrappers/frost/includes/linux/amd64:/workspace/go-thornado/go-wrappers/frost/includes/linux/arm64
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    bash ca-certificates clang curl git jq libssl-dev nodejs pkg-config procps python3 ripgrep sed xxd \
+    bash ca-certificates clang curl git jq libssl-dev nodejs npm pkg-config procps python3 ripgrep sed xxd \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=bitcoin /opt/bitcoin-27.2 /opt/bitcoin
@@ -17,7 +17,10 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
 WORKDIR /workspace
 COPY . .
 
-RUN cargo build -p thornado-ffi --release --features proof-tests \
+RUN cd circuits/tornado \
+  && npm ci --omit=dev \
+  && cd /workspace \
+  && cargo build -p thornado-ffi --release --features proof-tests \
   && ./go-thornado/go-wrappers/frost/build-libgofrost.sh \
   && mkdir -p build \
   && cd go-thornado \

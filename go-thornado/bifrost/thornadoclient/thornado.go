@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -506,14 +507,78 @@ func (b *thornadoBridge) FetchNodeStatus() (stypes.NodeStatus, error) {
 func (b *thornadoBridge) GetKeysignParty(vaultPubKey common.PubKey) (common.PubKeys, error) {
 	p := fmt.Sprintf(SignerMembershipEndpoint, vaultPubKey.String())
 	result, _, err := b.getWithPath(p)
-	if err != nil {
-		return common.PubKeys{}, fmt.Errorf("fail to get key sign party from thornado: %w", err)
+	if err == nil {
+		var keys common.PubKeys
+		if err = json.Unmarshal(result, &keys); err != nil {
+			return common.PubKeys{}, fmt.Errorf("fail to unmarshal result to pubkeys:%w", err)
+		}
+		if len(keys) > 0 {
+			return keys, nil
+		}
 	}
-	var keys common.PubKeys
-	if err = json.Unmarshal(result, &keys); err != nil {
-		return common.PubKeys{}, fmt.Errorf("fail to unmarshal result to pubkeys:%w", err)
+
+	keys, deriveErr := b.deriveKeysignParty(vaultPubKey)
+	if deriveErr != nil {
+		if err != nil {
+			return common.PubKeys{}, fmt.Errorf("fail to get key sign party from thornado: %w", err)
+		}
+		return common.PubKeys{}, deriveErr
 	}
 	return keys, nil
+}
+
+func (b *thornadoBridge) deriveKeysignParty(vaultPubKey common.PubKey) (common.PubKeys, error) {
+	vault, err := b.GetVault(vaultPubKey.String())
+	if err != nil {
+		return common.PubKeys{}, fmt.Errorf("fail to derive key sign party for vault %s: %w", vaultPubKey, err)
+	}
+
+	nodes, err := b.GetNodeAccounts()
+	if err != nil {
+		return common.PubKeys{}, fmt.Errorf("fail to derive key sign party for vault %s: %w", vaultPubKey, err)
+	}
+
+	vaultMembers := make(map[string]struct{}, len(vault.Membership))
+	for _, member := range vault.Membership {
+		vaultMembers[member] = struct{}{}
+	}
+
+	keys := make(common.PubKeys, 0, len(nodes))
+	for _, node := range nodes {
+		if node == nil || node.Status != stypes.NodeStatus_Active.String() {
+			continue
+		}
+		pubKey := node.PubKeySet.Secp256k1.String()
+		if pubKey == "" {
+			continue
+		}
+		if len(vaultMembers) > 0 {
+			if _, ok := vaultMembers[pubKey]; !ok {
+				continue
+			}
+		}
+		hasSignerMembership := false
+		for _, membership := range node.SignerMembership {
+			if strings.EqualFold(membership, vaultPubKey.String()) {
+				hasSignerMembership = true
+				break
+			}
+		}
+		if !hasSignerMembership {
+			continue
+		}
+		keys = append(keys, common.PubKey(pubKey))
+	}
+	if len(keys) == 0 {
+		return common.PubKeys{}, fmt.Errorf("no active key sign party members for vault %s", vaultPubKey)
+	}
+	strs := keys.Strings()
+	sort.Strings(strs)
+	sorted := make(common.PubKeys, len(strs))
+	for i, s := range strs {
+		sorted[i] = common.PubKey(s)
+	}
+	return sorted, nil
 }
 
 // IsCatchingUp returns bool for if thornado is catching up to the rest of the
@@ -753,7 +818,10 @@ func (b *thornadoBridge) IsVaultDepositAddress(address common.Address) bool {
 	if err != nil || status != http.StatusOK {
 		return false
 	}
-	var result stypes.QueryVaultDepositAddressResponse
+	var result struct {
+		Address     string `json:"address"`
+		VaultPubKey string `json:"vault_pub_key"`
+	}
 	if err := json.Unmarshal(buf, &result); err != nil {
 		b.logger.Debug().Err(err).Str("address", address.String()).Msg("fail to unmarshal vault deposit address")
 		return false

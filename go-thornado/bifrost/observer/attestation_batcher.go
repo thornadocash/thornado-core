@@ -125,6 +125,16 @@ func (b *AttestationBatcher) setActiveValGetter(getter func() map[peer.ID]bool) 
 	b.getActiveValidators = getter
 }
 
+func (b *AttestationBatcher) Clear() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.observedTxBatch = b.observedTxBatch[:0]
+	b.networkFeeBatch = b.networkFeeBatch[:0]
+	b.solvencyBatch = b.solvencyBatch[:0]
+	b.errataTxBatch = b.errataTxBatch[:0]
+}
+
 // updateMaxBatchSize updates the maximum batch size at runtime.
 func (b *AttestationBatcher) updateMaxBatchSize(newSize int64) {
 	if newSize <= 0 {

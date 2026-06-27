@@ -16,6 +16,7 @@ BTC_RPC_PORT="${BTC_RPC_PORT:-24645}"
 BTC_RPC_HOST="${BTC_RPC_HOST:-127.0.0.1}"
 BTC_START_BLOCK_HEIGHT="${BTC_START_BLOCK_HEIGHT:-0}"
 API_BASE="${API_BASE:-2370}"
+API_BIND_HOST="${API_BIND_HOST:-127.0.0.1}"
 GRPC_BASE="${GRPC_BASE:-13380}"
 RPC_BASE="${RPC_BASE:-33360}"
 P2P_BASE="${P2P_BASE:-33380}"
@@ -32,6 +33,29 @@ ebifrost_port() { echo $((EBIFROST_BASE + $1)); }
 frost_p2p_port() { echo $((FROST_P2P_BASE + $1)); }
 frost_info_port() { echo $((FROST_INFO_BASE + $1)); }
 metrics_port() { echo $((METRICS_BASE + $1)); }
+
+saved_bifrost_bootstrap() {
+  cat "$RUN_ROOT/meta/bifrost-bootstrap-all" 2>/dev/null || cat "$RUN_ROOT/meta/bifrost-bootstrap" 2>/dev/null || true
+}
+
+live_bifrost_bootstrap() {
+  local self="$1" i peer peers=()
+  shopt -s nullglob
+  for env in "$RUN_ROOT"/meta/node*.env; do
+    i="${env##*/node}"
+    i="${i%.env}"
+    [[ "$i" == "$self" ]] && continue
+    if peer="$(curl --connect-timeout 1 --max-time 2 -fsS "http://127.0.0.1:$(frost_info_port "$i")/p2pid" 2>/dev/null)"; then
+      [[ -n "$peer" ]] && peers+=("/ip4/127.0.0.1/tcp/$(frost_p2p_port "$i")/p2p/$peer")
+    fi
+  done
+  shopt -u nullglob
+  if ((${#peers[@]})); then
+    (IFS=,; printf '%s\n' "${peers[*]}")
+    return 0
+  fi
+  saved_bifrost_bootstrap
+}
 
 stop_all() {
   local pid_file pid cmd
@@ -80,7 +104,7 @@ start_thornado() {
   SIGNER_NAME="validator${i}" SIGNER_PASSWD="$PASS" CHAIN_HOME_FOLDER="$home" \
     "$THORNADO" start \
       --home "$home" \
-      --api.enable=true --api.address "tcp://127.0.0.1:$(api_port "$i")" \
+      --api.enable=true --api.address "tcp://${API_BIND_HOST}:$(api_port "$i")" \
       --grpc.enable=true --grpc.address "127.0.0.1:$(grpc_port "$i")" \
       --rpc.laddr "tcp://127.0.0.1:$(rpc_port "$i")" \
       --p2p.laddr "tcp://127.0.0.1:$(p2p_port "$i")" \
@@ -93,7 +117,8 @@ start_thornado() {
 
 start_bifrost() {
   local i="$1" home="$RUN_ROOT/node${i}" bhome="$RUN_ROOT/bifrost${i}" bootstrap start_block
-  bootstrap="$(cat "$RUN_ROOT/meta/bifrost-bootstrap-all" 2>/dev/null || cat "$RUN_ROOT/meta/bifrost-bootstrap")"
+  bootstrap="$(live_bifrost_bootstrap "$i")"
+  printf '%s\n' "$bootstrap" >"$RUN_ROOT/meta/bifrost-bootstrap-live"
   start_block=1
   if [[ "$i" == "5" ]]; then
     start_block="$(cat "$RUN_ROOT/meta/flow2-node5-churn-bifrost5-signer-start-height.txt" 2>/dev/null || echo 1)"
@@ -117,12 +142,12 @@ start_bifrost() {
     BIFROST_FROST_EXTERNAL_IP="127.0.0.1" BIFROST_FROST_ALLOW_ZERO_BOND_NODES="true" \
     PEER="$bootstrap" EXTERNAL_IP="127.0.0.1" \
     BIFROST_SIGNER_SIGNER_DB_PATH="$bhome/signer_db" \
-    BIFROST_SIGNER_KEYGEN_TIMEOUT="5s" BIFROST_SIGNER_KEYSIGN_TIMEOUT="5s" \
-    BIFROST_SIGNER_PARTY_TIMEOUT="5s" BIFROST_SIGNER_PRE_PARAM_TIMEOUT="5s" \
+    BIFROST_SIGNER_KEYGEN_TIMEOUT="45s" BIFROST_SIGNER_KEYSIGN_TIMEOUT="45s" \
+    BIFROST_SIGNER_PARTY_TIMEOUT="45s" BIFROST_SIGNER_PRE_PARAM_TIMEOUT="5m" \
     BIFROST_SIGNER_BLOCK_SCANNER_START_BLOCK_HEIGHT="$start_block" \
     BIFROST_SIGNER_BLOCK_SCANNER_BLOCK_HEIGHT_DISCOVER_BACK_OFF="100ms" \
     BIFROST_SIGNER_BLOCK_SCANNER_PREFETCH_BLOCKS="1" BIFROST_SIGNER_BACKUP_KEYSHARES="false" \
-    BIFROST_FROST_SHARED_DEALER_DIR="$RUN_ROOT/frost-dealer" \
+
     BIFROST_CHAINS_BTC_BLOCK_SCANNER_DB_PATH="$bhome/btc_observer" \
     BIFROST_CHAINS_BTC_BLOCK_SCANNER_MAX_HEALTHY_LAG="24h" \
     BIFROST_CHAINS_BTC_SCANNER_LEVELDB_DB_PATH="$bhome/btc_scanner" \

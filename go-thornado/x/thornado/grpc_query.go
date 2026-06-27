@@ -198,6 +198,14 @@ func (s *queryServer) VaultSolvency(c context.Context, req *types.QueryVaultSolv
 	return s.queryVaultSolvency(ctx, req)
 }
 
+func (s *queryServer) VaultSigners(c context.Context, req *types.QueryVaultSignersRequest) (*types.QueryVaultSignersResponse, error) {
+	if err := checkHeightParam(req.Height); err != nil {
+		return nil, err
+	}
+	ctx := s.unwrapSdkContext(c)
+	return s.queryVaultSigners(ctx, req)
+}
+
 func (s *queryServer) Tx(c context.Context, req *types.QueryTxRequest) (*types.QueryTxResponse, error) {
 	if err := checkHeightParam(req.Height); err != nil {
 		return nil, err

@@ -321,8 +321,6 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 		vaultsAvailableCoins[vault.PubKey] = common.NewCoins(vault.Coins...)
 	}
 
-	migrationRounds := vm.k.GetConfigInt64(ctx, constants.Vault_MigrationRounds)
-
 	signingTransactionPeriod := getConfigDurationBlocks(ctx, mgr.Keeper(), constants.Keysign_PeriodMinutes)
 	startHeight := ctx.BlockHeight() - signingTransactionPeriod
 	if startHeight < 1 {
@@ -430,38 +428,10 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 					continue
 				}
 
-				// figure the nth time, we've sent migration txs from this vault
-				nth := (ctx.BlockHeight()-vault.StatusSince)/migrateInterval + 1
-
-				// for the last migration round, only migrate the final amount
-				// of non-gas assets. For the last migration round + 1, then
-				// transfer all of the remaining gas assets. This was added
-				// because of a rare condition where during the last migration
-				// round one of the txns failed (ie stuck txn) but the other
-				// did not (ie gas asset). This left the vault with some
-				// non-gas asset but no gas asset to transfer them, hence
-				// getting churn into a stuck position until someone donated
-				// ETH to resolve it.
-				// Here we await for all non-gas assets to have left the vault
-				// before we transfer the remaining gas asset to stop this
-				// scenario from happening
-				if nth >= migrationRounds && vault.CoinLengthByChain(coin.Asset.GetChain()) > 1 && coin.Asset.IsGasAsset() {
-					continue
-				}
-
 				// Default amount set to total remaining amount. Relies on the
 				// signer, to successfully send these funds while respecting
 				// gas requirements (so it'll actually send slightly less)
 				amt := coin.Amount
-				if nth < migrationRounds { // migrate partial funds prior to the final round
-					// each round of migration, about the same amount is sent.  For example, if 5 rounds:
-					// Round 1 = 1/5 ( 20% of current, 20% of start)
-					// Round 2 = 1/4 ( 25% of current, 20% of start)
-					// Round 3 = 1/3 ( 33% of current, 20% of start)
-					// Round 4 = 1/2 ( 50% of current, 20% of start)
-					// Round 5 = 1/1 (100% of current, 20% of start)
-					amt = amt.QuoUint64(uint64(1 + migrationRounds - nth)) // as nth < migrationRounds, the denominator is never zero
-				}
 				amt = cosmos.RoundToDecimal(amt, coin.Decimals)
 
 				chain := coin.Asset.GetChain()
@@ -494,7 +464,7 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 					// burn the remainder if amount after deducting gas is below dust threshold
 					dustThreshold := chain.DustThreshold()
 
-					if amt.LTE(dustThreshold) && nth > migrationRounds {
+					if amt.LTE(dustThreshold) {
 						// No migration should be attempted, but only burn dust if there are no pending outbounds.
 						// (That is, truly only dust remaining in the vault for this Coin.)
 						if !coin.Amount.Equal(vault.Coins.GetCoin(coin.Asset).Amount) {
@@ -583,6 +553,7 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 func (vm *NetworkMgr) btcMigrationSourceInputs(ctx cosmos.Context, vault Vault, sourceAddr common.Address, required cosmos.Uint) []types.TxOutInput {
 	candidates := make(map[string]types.TxOutInput)
 	spent := make(map[string]struct{})
+	usedOutVouts := make(map[string]map[uint32]struct{})
 
 	for height := int64(1); height <= ctx.BlockHeight(); height++ {
 		txOut, err := vm.k.GetTxOut(ctx, height)
@@ -597,6 +568,11 @@ func (vm *NetworkMgr) btcMigrationSourceInputs(ctx cosmos.Context, vault Vault, 
 				}
 			}
 			if !item.OutHash.IsEmpty() {
+				key := item.OutHash.String()
+				if usedOutVouts[key] == nil {
+					usedOutVouts[key] = make(map[uint32]struct{})
+				}
+				usedOutVouts[key][item.OutVout] = struct{}{}
 				voter, err := vm.k.GetObservedTxOutVoter(ctx, item.OutHash)
 				if err == nil {
 					vm.markSpentBTCSourceInputs(spent, voter.Tx.Tx.SourceInputs)
@@ -643,6 +619,23 @@ func (vm *NetworkMgr) btcMigrationSourceInputs(ctx cosmos.Context, vault Vault, 
 				continue
 			}
 			vm.markSpentBTCSourceInputs(spent, tx.SourceInputs)
+			if len(tx.SourceInputs) == 0 || tx.ToAddress.Equals(sourceAddr) || tx.ID.IsEmpty() {
+				continue
+			}
+			change := btcObservedOutboundChangeAmount(tx)
+			if change == 0 {
+				continue
+			}
+			vout := nextBTCChangeVout(usedOutVouts[tx.ID.String()])
+			key := btcSourceInputKey(tx.ID, vout)
+			if _, ok := candidates[key]; ok {
+				continue
+			}
+			candidates[key] = types.TxOutInput{
+				TxId:       tx.ID,
+				Vout:       vout,
+				AmountSats: change,
+			}
 		}
 	}
 
@@ -699,6 +692,32 @@ func (vm *NetworkMgr) btcMigrationSourceInputs(ctx cosmos.Context, vault Vault, 
 		}
 	}
 	return inputs
+}
+
+func btcObservedOutboundChangeAmount(tx common.Tx) uint64 {
+	sourceTotal := uint64(0)
+	for _, input := range tx.SourceInputs {
+		sourceTotal += input.AmountSats
+	}
+	if sourceTotal == 0 {
+		return 0
+	}
+	btcCoin := tx.Coins.GetCoin(common.BTCAsset).Amount.Uint64()
+	btcGas := tx.Gas.ToCoins().GetCoin(common.BTCAsset).Amount.Uint64()
+	if sourceTotal <= btcCoin+btcGas {
+		return 0
+	}
+	return sourceTotal - btcCoin - btcGas
+}
+
+func nextBTCChangeVout(used map[uint32]struct{}) uint32 {
+	var vout uint32
+	for {
+		if _, ok := used[vout]; !ok {
+			return vout
+		}
+		vout++
+	}
 }
 
 func (vm *NetworkMgr) markSpentBTCSourceInputs(spent map[string]struct{}, inputs []common.TxInput) {
@@ -862,8 +881,78 @@ func (vm *NetworkMgr) UpdateNetwork(ctx cosmos.Context, constAccessor constants.
 	return vm.k.SetNetwork(ctx, network)
 }
 
-// calculateNetworkSolvency calculates the aggregate solvency across all active vaults
-// Returns a list of assets with their solvency amounts (positive = over-solvent, negative = under-solvent)
+// calculateNetworkSolvency reports the latest on-chain wallet amount reported by Bifrost solvency.
 func (vm *NetworkMgr) calculateNetworkSolvency(ctx cosmos.Context, mgr Manager) ([]assetAmount, error) {
-	return nil, nil
+	amounts, err := vm.calculateLatestReportedSolvency(ctx, mgr)
+	if err != nil {
+		return nil, err
+	}
+	if len(amounts) == 0 {
+		return []assetAmount{{
+			Asset:  common.BTCAsset,
+			Amount: math.ZeroInt(),
+		}}, nil
+	}
+	return amounts, nil
+}
+
+func (vm *NetworkMgr) calculateLatestReportedSolvency(ctx cosmos.Context, mgr Manager) ([]assetAmount, error) {
+	liveVaults := make(map[string]struct{})
+	for _, status := range []VaultStatus{ActiveVault, RetiringVault} {
+		vaults, err := vm.k.GetBaseVaultsByStatus(ctx, status)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get %s base vaults: %w", status.String(), err)
+		}
+		for _, vault := range vaults {
+			liveVaults[vault.PubKey.String()] = struct{}{}
+		}
+	}
+
+	latest := make(map[string]types.SolvencyVoter)
+	iter := mgr.Keeper().GetSolvencyVoterIterator(ctx)
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		var voter types.SolvencyVoter
+		if err := mgr.Keeper().Cdc().Unmarshal(iter.Value(), &voter); err != nil {
+			return nil, fmt.Errorf("invalid solvency voter encoding: %s: %w", string(iter.Key()), err)
+		}
+		if voter.ConsensusBlockHeight <= 0 {
+			continue
+		}
+		if _, ok := liveVaults[voter.PubKey.String()]; !ok {
+			continue
+		}
+		key := voter.PubKey.String()
+		if prev, ok := latest[key]; !ok ||
+			voter.Height > prev.Height ||
+			(voter.Height == prev.Height && voter.ConsensusBlockHeight > prev.ConsensusBlockHeight) {
+			latest[key] = voter
+		}
+	}
+
+	totals := make(map[string]assetAmount)
+	for _, voter := range latest {
+		for _, coin := range voter.Coins {
+			if coin.IsEmpty() {
+				continue
+			}
+			key := coin.Asset.String()
+			total := totals[key]
+			if total.Asset.IsEmpty() {
+				total.Asset = coin.Asset
+				total.Amount = math.ZeroInt()
+			}
+			total.Amount = total.Amount.Add(math.NewIntFromUint64(coin.Amount.Uint64()))
+			totals[key] = total
+		}
+	}
+
+	result := make([]assetAmount, 0, len(totals))
+	for _, total := range totals {
+		result = append(result, total)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Asset.String() < result[j].Asset.String()
+	})
+	return result, nil
 }

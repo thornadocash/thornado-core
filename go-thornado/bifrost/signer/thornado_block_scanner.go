@@ -95,6 +95,28 @@ func (b *ThornadoBlockScan) GetHeight() (int64, error) {
 	return height - scannerLagBlocks, nil
 }
 
+func (b *ThornadoBlockScan) GetScannerStartHeight() (int64, error) {
+	currentPos, _ := b.scannerStorage.GetScanPos()
+	fetcherHeight, err := b.GetHeight()
+	if err != nil {
+		return 0, err
+	}
+	if currentPos > 0 {
+		if fetcherHeight > 0 && currentPos > fetcherHeight {
+			start := fetcherHeight - 2
+			if start < 0 {
+				return 0, nil
+			}
+			return start, nil
+		}
+		return currentPos, nil
+	}
+	if b.cfg.StartBlockHeight > 0 {
+		return b.cfg.StartBlockHeight - 1, nil
+	}
+	return 0, nil
+}
+
 func (b *ThornadoBlockScan) NetworkFeeUpdateEnabled() bool {
 	return false
 }

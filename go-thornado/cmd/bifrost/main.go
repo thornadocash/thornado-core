@@ -16,6 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 	flag "github.com/spf13/pflag"
 
+	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/bifrost/p2p"
 
 	"github.com/thornadocash/go-thornado/app"
@@ -150,7 +151,17 @@ func main() {
 			chainCfg.RPCHost = fmt.Sprintf("http://%s", chainCfg.RPCHost)
 		}
 	}
-	chains, restart := chainclients.LoadChains(k, cfgChains, thornadoBridge, stateManager, m, pubkeyMgr)
+	partyCoordinator := p2p.NewPartyCoordinator(comm.GetHost(), cfg.Signer.PartyTimeout)
+	defer partyCoordinator.Stop()
+	sessionCoordinator := frost.NewP2PSessionCoordinator(
+		comm,
+		partyCoordinator,
+		cfg.Signer.KeygenTimeout,
+		cfg.Signer.KeysignTimeout,
+	)
+	sessionCoordinator.SetLogger(log.With().Str("module", "frost_p2p").Logger())
+
+	chains, restart := chainclients.LoadChains(k, cfgChains, thornadoBridge, stateManager, m, pubkeyMgr, sessionCoordinator)
 	if len(chains) == 0 {
 		log.Fatal().Msg("fail to load any chains")
 	}
@@ -182,10 +193,11 @@ func main() {
 	ag.SetObserverHandleObservedTxCommitted(obs)
 
 	// start signer
-	sign, err := signer.NewSigner(cfg, thornadoBridge, k, stateManager, pubkeyMgr, chains, m, frostKeysignMetricMgr, obs)
+	sign, err := signer.NewSigner(cfg, thornadoBridge, k, stateManager, pubkeyMgr, chains, m, frostKeysignMetricMgr, obs, sessionCoordinator)
 	if err != nil {
 		log.Fatal().Err(err).Msg("fail to create instance of signer")
 	}
+	healthServer.SetSigner(sign)
 	if err = sign.Start(); err != nil {
 		log.Fatal().Err(err).Msg("fail to start signer")
 	}

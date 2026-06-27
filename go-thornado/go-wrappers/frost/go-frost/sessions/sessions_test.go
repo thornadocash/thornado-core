@@ -4,32 +4,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"testing"
+
+	btcschnorr "github.com/btcsuite/btcd/btcec/v2/schnorr"
+	cmtsecp256k1 "github.com/cometbft/cometbft/crypto/secp256k1"
+	"github.com/thornadocash/go-thornado/common"
 )
-
-func TestKeygenSignVerify(t *testing.T) {
-	testDealerSignVerify(t, []string{"thorpub-c", "thorpub-a", "thorpub-b"}, 2)
-	testDealerSignVerify(t, []string{"a", "b", "c", "d", "e"}, 3)
-}
-
-func testDealerSignVerify(t *testing.T, participants []string, minSigners uint16) {
-	t.Helper()
-	shares, pubKey, err := KeygenWithThreshold(participants, minSigners)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(shares) != len(participants) {
-		t.Fatalf("expected %d shares, got %d", len(participants), len(shares))
-	}
-
-	msg := sha256.Sum256([]byte("taproot-test-message"))
-	sig, err := Sign(shares[participants[0]], msg[:])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := Verify(pubKey, msg[:], sig); err != nil {
-		t.Fatal(err)
-	}
-}
 
 func TestSessionKeygenSignVerify(t *testing.T) {
 	testSessionSignVerify(t, []string{"thorpub-c", "thorpub-a", "thorpub-b"}, 2)
@@ -57,6 +36,43 @@ func TestSessionKeygenSignVerifyAllParticipants(t *testing.T) {
 		if err := Verify(pubKey, msg[:], sig); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func TestSessionTaprootKeyPathSignVerify(t *testing.T) {
+	participants := []string{"node-a", "node-b", "node-c"}
+	shares := runKeygenSessions(t, participants, 2)
+	first, err := DecodeKeyshare(shares[participants[0]])
+	if err != nil {
+		t.Fatal(err)
+	}
+	msg := sha256.Sum256([]byte("taproot-session-test-message"))
+	sig, err := runTaprootSignSession(t, participants[:2], shares, msg[:], nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pubKeyBytes, err := hex.DecodeString(first.PublicKeyCompressed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vaultPubKey, err := common.NewPubKeyFromCrypto(cmtsecp256k1.PubKey(pubKeyBytes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tweaked, err := common.DeriveBTCTaprootPubKey(vaultPubKey, common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsedPub, err := btcschnorr.ParsePubKey(tweaked)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsedSig, err := btcschnorr.ParseSignature(sig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !parsedSig.Verify(msg[:], parsedPub) {
+		t.Fatal("taproot key-path signature verification failed")
 	}
 }
 
@@ -139,6 +155,21 @@ func runSignSessions(t *testing.T, participants []string, shares map[string][]by
 	return sigs
 }
 
+func runTaprootSignSession(t *testing.T, participants []string, shares map[string][]byte, msg, childTweak []byte) ([]byte, error) {
+	t.Helper()
+	handles := make(map[string]Handle)
+	for _, p := range participants {
+		h, err := SignSessionNewWithTweak(participants, p, shares[p], msg, true, nil, childTweak)
+		if err != nil {
+			return nil, err
+		}
+		defer func(h Handle) { _ = SessionFree(h) }(h)
+		handles[p] = h
+	}
+	runSessions(t, participants, handles)
+	return SessionFinish(handles[participants[0]])
+}
+
 func runSessions(t *testing.T, participants []string, handles map[string]Handle) {
 	t.Helper()
 	for i := 0; i < 1000; i++ {
@@ -185,10 +216,8 @@ func runSessions(t *testing.T, participants []string, handles map[string]Handle)
 }
 
 func TestKeygenParticipantOrderIsDeterministic(t *testing.T) {
-	shares, _, err := Keygen([]string{"b", "a", "c"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	participants := []string{"b", "a", "c"}
+	shares := runKeygenSessions(t, participants, 2)
 	share, err := DecodeKeyshare(shares["a"])
 	if err != nil {
 		t.Fatal(err)
@@ -202,11 +231,9 @@ func TestKeygenParticipantOrderIsDeterministic(t *testing.T) {
 }
 
 func TestSignRejectsNonDigestMessage(t *testing.T) {
-	shares, _, err := Keygen([]string{"a", "b", "c"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := Sign(shares["a"], []byte("not-a-32-byte-digest")); err == nil {
+	participants := []string{"a", "b", "c"}
+	shares := runKeygenSessions(t, participants, 2)
+	if _, err := SignSessionNew(participants[:2], "a", shares["a"], []byte("not-a-32-byte-digest")); err == nil {
 		t.Fatal("expected non-32-byte message to fail")
 	}
 }

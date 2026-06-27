@@ -410,12 +410,37 @@ func depositSweepCompleted(ctx cosmos.Context, k keeper.Keeper, deposit types.De
 	if deposit.MatchedHeight <= 0 {
 		return false
 	}
-	txOut, err := k.GetTxOut(ctx, deposit.MatchedHeight)
-	if err != nil {
-		ctx.Logger().Debug("unable to get deposit sweep txout", "error", err, "height", deposit.MatchedHeight, "deposit_id", deposit.DepositID.String())
+	return txOutHasCompletedDepositSweepAtOrAfterMatchedHeight(ctx, k, deposit)
+}
+
+func txOutHasCompletedDepositSweepAtOrAfterMatchedHeight(ctx cosmos.Context, k keeper.Keeper, deposit types.DepositRecord) bool {
+	if deposit.MatchedHeight <= 0 || deposit.MatchedHeight > ctx.BlockHeight() {
 		return false
 	}
-	return txOutHasCompletedDepositSweep(txOut, deposit)
+	iter := k.GetTxOutIterator(ctx)
+	defer func() {
+		if err := iter.Close(); shouldLogIteratorError(err) {
+			ctx.Logger().Error("fail to close txout iterator", "error", err)
+		}
+	}()
+
+	for ; iter.Valid(); iter.Next() {
+		var txOut TxOut
+		if err := k.Cdc().Unmarshal(iter.Value(), &txOut); err != nil {
+			ctx.Logger().Error("fail to unmarshal txout", "error", err)
+			continue
+		}
+		if txOut.Height < deposit.MatchedHeight || txOut.Height > ctx.BlockHeight() {
+			continue
+		}
+		if txOutHasCompletedDepositSweep(&txOut, deposit) {
+			return true
+		}
+	}
+	if err := iter.Error(); shouldLogIteratorError(err) {
+		ctx.Logger().Error("txout iterator ended with error", "error", err)
+	}
+	return false
 }
 
 func txOutHasCompletedDepositSweep(txOut *TxOut, deposit types.DepositRecord) bool {

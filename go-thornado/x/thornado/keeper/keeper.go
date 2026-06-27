@@ -303,6 +303,7 @@ type KeeperObservedNetworkFeeVoter interface {
 type KeeperSolvencyVoter interface {
 	SetSolvencyVoter(_ cosmos.Context, _ SolvencyVoter)
 	GetSolvencyVoter(_ cosmos.Context, _ common.TxID, _ common.Chain) (SolvencyVoter, error)
+	GetSolvencyVoterIterator(_ cosmos.Context) cosmos.Iterator
 }
 
 type KeeperOracle interface {

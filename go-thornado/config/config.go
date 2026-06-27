@@ -185,6 +185,13 @@ func InitBifrost() {
 	// set signer password explicitly from environment variable
 	config.Bifrost.Thornado.SignerPasswd = os.Getenv("SIGNER_PASSWD")
 
+	if bootstrapPeers := os.Getenv("BIFROST_FROST_BOOTSTRAP_PEERS"); strings.TrimSpace(bootstrapPeers) != "" {
+		config.Bifrost.FROST.BootstrapPeers = []string{bootstrapPeers}
+	} else if bootstrapPeers := os.Getenv("PEER"); strings.TrimSpace(bootstrapPeers) != "" {
+		config.Bifrost.FROST.BootstrapPeers = []string{bootstrapPeers}
+	}
+	config.Bifrost.FROST.BootstrapPeers = expandBootstrapPeers(config.Bifrost.FROST.BootstrapPeers)
+
 	// set bootstrap peers from seeds endpoint if unset
 	if len(config.Bifrost.FROST.BootstrapPeers) == 0 {
 		config.Bifrost.FROST.BootstrapPeers = resolveAddrs(getSeedAddrs())
@@ -797,11 +804,24 @@ type WhitelistCosmosAsset struct {
 	ThornadoSymbol string `mapstructure:"symbol"`
 }
 
+func expandBootstrapPeers(peers []string) []string {
+	expanded := make([]string, 0, len(peers))
+	for _, peer := range peers {
+		for _, part := range strings.Split(peer, ",") {
+			part = strings.TrimSpace(part)
+			if part != "" {
+				expanded = append(expanded, part)
+			}
+		}
+	}
+	return expanded
+}
+
 // GetBootstrapPeers return the internal bootstrap peers in a slice of maddr.Multiaddr
 func (c BifrostFROSTConfiguration) GetBootstrapPeers() ([]maddr.Multiaddr, error) {
 	var addrs []maddr.Multiaddr
 
-	for _, bootstrapPeer := range c.BootstrapPeers {
+	for _, bootstrapPeer := range expandBootstrapPeers(c.BootstrapPeers) {
 		if strings.HasPrefix(bootstrapPeer, "/") {
 			addr, err := maddr.NewMultiaddr(bootstrapPeer)
 			if err != nil {
@@ -814,7 +834,7 @@ func (c BifrostFROSTConfiguration) GetBootstrapPeers() ([]maddr.Multiaddr, error
 	}
 
 	var seedHosts []string
-	for _, bootstrapPeer := range c.BootstrapPeers {
+	for _, bootstrapPeer := range expandBootstrapPeers(c.BootstrapPeers) {
 		if !strings.HasPrefix(bootstrapPeer, "/") {
 			seedHosts = append(seedHosts, bootstrapPeer)
 		}

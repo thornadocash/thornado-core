@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
 	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/btc"
@@ -26,6 +27,7 @@ func LoadChains(thorKeys *thornadoclient.Keys,
 	localState storage.LocalStateManager,
 	m *metrics.Metrics,
 	pubKeyValidator pubkeymanager.PubKeyValidator,
+	coordinator frost.SessionCoordinator,
 ) (chains map[common.Chain]ChainClient, restart chan struct{}) {
 	logger := log.Logger.With().Str("module", "bifrost").Logger()
 
@@ -37,7 +39,7 @@ func LoadChains(thorKeys *thornadoclient.Keys,
 		if chain.ChainID != common.BTCChain {
 			return nil, fmt.Errorf("chain %s is not supported by thornado bifrost", chain.ChainID)
 		}
-		return btc.NewClient(thorKeys, chain, thornadoBridge, localState, m)
+		return btc.NewClient(thorKeys, chain, thornadoBridge, localState, m, coordinator)
 	}
 
 	for _, chain := range cfg {

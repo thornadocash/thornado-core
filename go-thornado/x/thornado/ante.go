@@ -2,6 +2,7 @@ package thornado
 
 import (
 	math "math"
+	"reflect"
 	"strings"
 
 	"github.com/blang/semver"
@@ -301,6 +302,12 @@ func ErrataTxQuorumAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Ke
 func reserveObservedTxAttestations(ctx cosmos.Context, k keeper.Keeper, voter types.ObservedTxVoter, tx common.ObservedTx, signers []cosmos.AccAddress, inbound bool) error {
 	for _, signer := range signers {
 		if !voter.Add(tx, signer) {
+			if !inbound && isFinalBTCSourceInputReplay(voter, tx, signer) {
+				continue
+			}
+			if inbound && isFinalBTCMigrationInboundRepair(ctx, k, voter, tx, signer) {
+				continue
+			}
 			return cosmos.ErrUnknownRequest("observed tx attestation already submitted")
 		}
 	}
@@ -313,6 +320,53 @@ func reserveObservedTxAttestations(ctx cosmos.Context, k keeper.Keeper, voter ty
 		k.SetObservedTxOutVoter(ctx, voter)
 	}
 	return nil
+}
+
+func isFinalBTCSourceInputReplay(voter types.ObservedTxVoter, tx common.ObservedTx, signer cosmos.AccAddress) bool {
+	if !tx.IsFinal() ||
+		!tx.Tx.Chain.Equals(common.BTCChain) ||
+		len(tx.Tx.SourceInputs) == 0 {
+		return false
+	}
+	if matchingFinalBTCSourceInputReplay(voter.Tx, tx, signer) {
+		return true
+	}
+	for _, existing := range voter.Txs {
+		if matchingFinalBTCSourceInputReplay(existing, tx, signer) {
+			return true
+		}
+	}
+	return false
+}
+
+func isFinalBTCMigrationInboundRepair(ctx cosmos.Context, k keeper.Keeper, voter types.ObservedTxVoter, tx common.ObservedTx, signer cosmos.AccAddress) bool {
+	if !tx.IsFinal() ||
+		voter.FinalisedHeight == 0 ||
+		!matchingFinalBTCSourceInputReplay(voter.Tx, tx, signer) {
+		return false
+	}
+	item, txOutHeight, ok := findMatchingBTCMigrationTxOut(ctx, k, tx)
+	if !ok {
+		return false
+	}
+	sourceVault, err := k.GetVault(ctx, item.VaultPubKey)
+	if err != nil || sourceVault.Status != RetiringVault || !sourceVault.HasFunds() {
+		return false
+	}
+	for _, pendingHeight := range sourceVault.PendingTxBlockHeights {
+		if pendingHeight == txOutHeight {
+			return true
+		}
+	}
+	return false
+}
+
+func matchingFinalBTCSourceInputReplay(existing, tx common.ObservedTx, signer cosmos.AccAddress) bool {
+	return existing.IsFinal() &&
+		existing.HasSigned(signer) &&
+		existing.ObservedPubKey.Equals(tx.ObservedPubKey) &&
+		existing.Tx.EqualsEx(tx.Tx) &&
+		reflect.DeepEqual(existing.Tx.SourceInputs, tx.Tx.SourceInputs)
 }
 
 func reserveNetworkFeeAttestations(ctx cosmos.Context, k keeper.Keeper, voter types.ObservedNetworkFeeVoter, signers []cosmos.AccAddress) error {

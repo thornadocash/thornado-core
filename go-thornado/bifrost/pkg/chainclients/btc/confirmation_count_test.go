@@ -8,8 +8,19 @@ import (
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/config"
+	"github.com/thornadocash/go-thornado/constants"
 	ttypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
+
+func TestConfirmationMultiplierDefaultsToFullBasisPoints(t *testing.T) {
+	got, err := GetConfMulBasisPoint(common.BTCChain.String(), &mockBridge{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Equal(cosmos.NewUint(constants.MaxBasisPts)) {
+		t.Fatalf("confirmation multiplier = %s, want %d", got.String(), constants.MaxBasisPts)
+	}
+}
 
 func TestGetConfirmationCountProtocolControlledTxRequiresOneConfirmation(t *testing.T) {
 	pubkey := ttypes.GetRandomPubKey()

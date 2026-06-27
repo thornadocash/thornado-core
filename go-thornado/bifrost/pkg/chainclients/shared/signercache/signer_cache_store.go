@@ -34,6 +34,7 @@ const (
 // explicitly via RemoveSigned, after the caller confirms the recorded broadcast
 // is absent from the chain.
 const signedExpiryBytes = 8
+const noExpiryUnixMs = int64(1<<63 - 1)
 
 // CacheStore manage the key value store used to store what tx out items have been signed before
 type CacheStore struct {
@@ -153,12 +154,32 @@ func (s *CacheStore) RemoveSigned(transactionHash string) error {
 // SetTransactionHashMap map a transaction hash to a tx out item hash
 func (s *CacheStore) SetTransactionHashMap(txOutItemHash, transactionHash string) error {
 	key := s.getMapKey(transactionHash)
-	return s.db.Put([]byte(key), []byte(txOutItemHash), nil)
+	if err := s.db.Put([]byte(key), []byte(txOutItemHash), nil); err != nil {
+		return err
+	}
+	if transactionHash == "" {
+		return nil
+	}
+	signedKey := s.getSignedKey(txOutItemHash)
+	value, err := s.db.Get([]byte(signedKey), nil)
+	if err != nil {
+		if errors.Is(err, leveldb.ErrNotFound) {
+			return nil
+		}
+		return err
+	}
+	if len(value) != 1 {
+		return nil
+	}
+	buf := make([]byte, signedExpiryBytes+len(transactionHash))
+	binary.BigEndian.PutUint64(buf[:signedExpiryBytes], uint64(noExpiryUnixMs))
+	copy(buf[signedExpiryBytes:], transactionHash)
+	return s.db.Put([]byte(signedKey), buf, nil)
 }
 
 // GetSignedTxHash returns the broadcast transaction hash recorded for the given tx out
-// item hash, or ("", false) if none is recorded. Only entries written by
-// SetSignedWithExpiry carry a tx hash; legacy SetSigned entries return ("", false).
+// item hash, or ("", false) if none is recorded. Legacy SetSigned entries that
+// predate the transaction hash map return ("", false).
 func (s *CacheStore) GetSignedTxHash(txOutItemHash string) (string, bool) {
 	key := s.getSignedKey(txOutItemHash)
 	value, err := s.db.Get([]byte(key), nil)

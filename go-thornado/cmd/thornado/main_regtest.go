@@ -4,6 +4,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -27,6 +28,7 @@ func main() {
 	case <-sig:
 	case err := <-syn:
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "failure when running app: %v\n", err)
 			os.Exit(1)
 		}
 	}

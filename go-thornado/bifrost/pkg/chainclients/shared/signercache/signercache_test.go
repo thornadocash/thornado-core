@@ -382,6 +382,9 @@ func (s *SignerCacheSuite) TestCacheManagerSetSignedAndHasSigned(c *C) {
 
 	// Now should be signed
 	c.Assert(mgr.HasSigned(txOutItemHash), Equals, true)
+	sig, ok := mgr.GetSignedTxHash(txOutItemHash)
+	c.Assert(ok, Equals, true)
+	c.Assert(sig, Equals, transactionHash)
 }
 
 func (s *SignerCacheSuite) TestCacheManagerGetLatestRecordedTx(c *C) {

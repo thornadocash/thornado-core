@@ -31,7 +31,7 @@ inspect_remote() {
 }
 
 sync_remote() {
-  "${ssh_cmd[@]}" "mkdir -p '$REMOTE_ROOT/ops/scripts' '$REMOTE_ROOT/docs' '$REMOTE_ROOT/go-thornado/x/thornado' '$REMOTE_ROOT/go-thornado/bifrost/observer' '$REMOTE_ROOT/go-thornado/bifrost/pkg/chainclients/btc' '$REMOTE_ROOT/go-thornado/bifrost/pubkeymanager' '$REMOTE_ROOT/go-thornado/bifrost/thornadoclient'"
+  "${ssh_cmd[@]}" "mkdir -p '$REMOTE_ROOT/ops/scripts' '$REMOTE_ROOT/ops/docker' '$REMOTE_ROOT/docs' '$REMOTE_ROOT/circuits/tornado' '$REMOTE_ROOT/go-thornado/x/thornado' '$REMOTE_ROOT/go-thornado/bifrost/observer' '$REMOTE_ROOT/go-thornado/bifrost/pkg/chainclients/btc' '$REMOTE_ROOT/go-thornado/bifrost/pubkeymanager' '$REMOTE_ROOT/go-thornado/bifrost/thornadoclient'"
   scp -q -o UserKnownHostsFile="$KNOWN_HOSTS" -o StrictHostKeyChecking=accept-new \
     "$ROOT_DIR/ops/scripts/real-4node-e2e.sh" \
     "$ROOT_DIR/ops/scripts/docker-real5-node5-churn.sh" \
@@ -41,12 +41,21 @@ sync_remote() {
     "$ROOT_DIR/docs/hcloud-bonded-rotation4-runbook.md" \
     "root@$SERVER_IP:$REMOTE_ROOT/docs/"
   scp -q -o UserKnownHostsFile="$KNOWN_HOSTS" -o StrictHostKeyChecking=accept-new \
+    "$ROOT_DIR/ops/docker/Dockerfile.real" \
+    "root@$SERVER_IP:$REMOTE_ROOT/ops/docker/"
+  scp -q -o UserKnownHostsFile="$KNOWN_HOSTS" -o StrictHostKeyChecking=accept-new \
+    "$ROOT_DIR/circuits/tornado/package.json" \
+    "$ROOT_DIR/circuits/tornado/package-lock.json" \
+    "root@$SERVER_IP:$REMOTE_ROOT/circuits/tornado/"
+  scp -q -o UserKnownHostsFile="$KNOWN_HOSTS" -o StrictHostKeyChecking=accept-new \
     "$ROOT_DIR/go-thornado/x/thornado/manager_validator.go" \
     "$ROOT_DIR/go-thornado/x/thornado/manager_validator_current.go" \
     "$ROOT_DIR/go-thornado/x/thornado/manager_validator_test.go" \
     "$ROOT_DIR/go-thornado/x/thornado/manager_network_current.go" \
+    "$ROOT_DIR/go-thornado/x/thornado/ante.go" \
     "$ROOT_DIR/go-thornado/x/thornado/handler_observed_tx_helpers.go" \
     "$ROOT_DIR/go-thornado/x/thornado/handler_observed_tx_helpers_test.go" \
+    "$ROOT_DIR/go-thornado/x/thornado/shielder_flow_test.go" \
     "root@$SERVER_IP:$REMOTE_ROOT/go-thornado/x/thornado/"
   scp -q -o UserKnownHostsFile="$KNOWN_HOSTS" -o StrictHostKeyChecking=accept-new \
     "$ROOT_DIR/go-thornado/bifrost/observer/attestation_gossip.go" \

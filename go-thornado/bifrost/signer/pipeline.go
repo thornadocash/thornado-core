@@ -22,6 +22,10 @@ type vaultChain struct {
 
 type semaphore chan struct{}
 
+func txOutDeferredPast(item TxOutStoreItem, blockHeight int64) bool {
+	return item.DeferredUntilHeight > blockHeight && !types.IsInternalTxOutType(item.TxOutItem.TxType)
+}
+
 // acquire will asynchronously acquire all available capacity from the semaphore.
 func (s semaphore) acquire() int {
 	count := 0
@@ -111,7 +115,7 @@ func (p *pipeline) SpawnSignings(s pipelineSigner, bridge thornadoclient.Thornad
 	// gather all vault/chain combinations with an out item in retry
 	retryItems := make(map[vaultChain][]TxOutStoreItem)
 	for _, item := range allItems {
-		if item.DeferredUntilHeight > blockHeight {
+		if txOutDeferredPast(item, blockHeight) {
 			continue
 		}
 		if item.Round7Retry || len(item.SignedTx) > 0 {
@@ -139,7 +143,7 @@ func (p *pipeline) SpawnSignings(s pipelineSigner, bridge thornadoclient.Thornad
 
 	// add all items from vault/chains with no items in retry
 	for _, item := range allItems {
-		if item.DeferredUntilHeight > blockHeight {
+		if txOutDeferredPast(item, blockHeight) {
 			continue
 		}
 		vc := vaultChain{item.TxOutItem.VaultPubKey, item.TxOutItem.Chain}

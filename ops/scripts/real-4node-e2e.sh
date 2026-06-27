@@ -14,6 +14,8 @@ BTC_RPC_HOST="${BTC_RPC_HOST:-127.0.0.1}"
 BTC_RPC_PORT="${BTC_RPC_PORT:-18445}"
 BTC_P2P_PORT="${BTC_P2P_PORT:-18446}"
 API_BASE="${API_BASE:-1316}"
+API_BIND_HOST="${API_BIND_HOST:-127.0.0.1}"
+P2P_BIND_HOST="${P2P_BIND_HOST:-127.0.0.1}"
 GRPC_BASE="${GRPC_BASE:-9090}"
 RPC_BASE="${RPC_BASE:-26656}"
 P2P_BASE="${P2P_BASE:-26650}"
@@ -27,6 +29,13 @@ KEEP_ARTIFACTS="${KEEP_ARTIFACTS:-1}"
 BTC_AUTO_MINE="${BTC_AUTO_MINE:-${KEEP_RUNNING:-0}}"
 BTC_AUTO_MINE_INTERVAL="${BTC_AUTO_MINE_INTERVAL:-60}"
 TX_INCLUSION_TIMEOUT="${TX_INCLUSION_TIMEOUT:-1200}"
+THORNADO_BLOCK_TIME_SECONDS="${THORNADO_BLOCK_TIME_SECONDS:-6}"
+GENESIS_NODE_BOND_START_AMOUNT_SATS="${GENESIS_NODE_BOND_START_AMOUNT_SATS:-0}"
+GENESIS_CHURN_INTERVAL_MINUTES="${GENESIS_CHURN_INTERVAL_MINUTES:-1}"
+GENESIS_CHURN_RETRY_INTERVAL_MINUTES="${GENESIS_CHURN_RETRY_INTERVAL_MINUTES:-2}"
+GENESIS_HALT_CHURNING="${GENESIS_HALT_CHURNING:-0}"
+GENESIS_BTC_CONFIRMATIONS_MIN="${GENESIS_BTC_CONFIRMATIONS_MIN:-1}"
+GENESIS_BTC_CONF_MULTIPLIER_BASIS_POINTS="${GENESIS_BTC_CONF_MULTIPLIER_BASIS_POINTS:-10000}"
 
 THORNADO="${BUILD_DIR}/thornado"
 BIFROST="${BUILD_DIR}/bifrost"
@@ -305,6 +314,26 @@ key_show_pub_bech() {
   "$THORNADO" pubkey "$pub_json"
 }
 
+add_genesis_auth_account() {
+  local home="$1" addr="$2" gen tmp
+  gen="$home/config/genesis.json"
+  tmp="${gen}.tmp"
+  jq --arg addr "$addr" '
+    if any(.app_state.auth.accounts[]?; .address == $addr) then
+      .
+    else
+      .app_state.auth.accounts += [{
+        "@type": "/cosmos.auth.v1beta1.BaseAccount",
+        "address": $addr,
+        "pub_key": null,
+        "account_number": ((.app_state.auth.accounts | length) | tostring),
+        "sequence": "0"
+      }]
+    end
+  ' "$gen" >"$tmp"
+  mv "$tmp" "$gen"
+}
+
 key_export_hex() {
   local home="$1" name="$2"
   printf '%s\n' "$PASS" | timeout 20 "$THORNADO" keys export "$name" \
@@ -337,12 +366,13 @@ btc_cli() {
 thornado_tx() {
   local home="$1" from="$2"
   shift 2
-  local from_addr out status
+  local from_addr out status node_rpc
   if [[ "$from" == tthor1* ]]; then
     from_addr="$from"
   else
     from_addr="$(key_show_addr "$home" "$from")"
   fi
+  node_rpc="${THORNADO_TX_NODE:-tcp://127.0.0.1:$(rpc_port 1)}"
   set +e
   out="$(printf '%s\n' "$PASS" | timeout "${THORNADO_TX_TIMEOUT:-45}" "$THORNADO" tx thornado "$@" \
     --home "$home" \
@@ -350,9 +380,9 @@ thornado_tx() {
     --keyring-backend file \
     --keyring-dir "$home" \
     --chain-id "$CHAIN_ID" \
-    --node tcp://127.0.0.1:$(rpc_port 1) \
+    --node "$node_rpc" \
     --gas 2500000 \
-    --fees 0stake \
+    --fees 0btc \
     --broadcast-mode sync \
     --yes \
     --output json \
@@ -514,19 +544,9 @@ request_deposit() {
 
 mine_to_registered_deposit() {
   local address="$1" amount_btc="$2"
-  local utxo in_txid in_vout utxo_amount change_address change_amount inputs outputs raw signed txid
-  utxo="$(btc_cli -rpcwallet=miner listunspent 1 9999999 | jq -c 'map(select(.spendable == true and .amount > 1))[0]')"
-  [[ -n "$utxo" && "$utxo" != "null" ]] || die "miner wallet has no spendable UTXO"
-  in_txid="$(jq -r '.txid' <<<"$utxo")"
-  in_vout="$(jq -r '.vout' <<<"$utxo")"
-  utxo_amount="$(jq -r '.amount' <<<"$utxo")"
-  change_address="$(btc_cli -rpcwallet=miner getrawchangeaddress)"
-  change_amount="$(awk -v u="$utxo_amount" -v a="$amount_btc" 'BEGIN {c = u - a - 0.00002000; if (c <= 0) exit 1; printf "%.8f", c}')"
-  inputs="$(jq -nc --arg txid "$in_txid" --argjson vout "$in_vout" '[{txid:$txid,vout:$vout}]')"
-  outputs="$(jq -nc --arg address "$address" --argjson amount "$amount_btc" --arg change "$change_address" --argjson change_amount "$change_amount" '[{($address):$amount},{($change):$change_amount}]')"
-  raw="$(btc_cli -rpcwallet=miner createrawtransaction "$inputs" "$outputs")"
-  signed="$(btc_cli -rpcwallet=miner signrawtransactionwithwallet "$raw" | jq -r '.hex')"
-  txid="$(btc_cli -rpcwallet=miner sendrawtransaction "$signed")"
+  local txid
+  [[ "$amount_btc" =~ ^[0-9]+(\.[0-9]{1,8})?$ ]] || die "invalid BTC deposit amount: ${amount_btc}"
+  txid="$(btc_cli -rpcwallet=miner sendtoaddress "$address" "$amount_btc" "" "" false true)"
   mine_regtest_blocks 2
   echo "$txid"
 }
@@ -601,7 +621,7 @@ node_query() {
 
 node_index_by_cons() {
   local target_cons="$1" i
-  for i in 1 2 3 4 5 6 7 8; do
+  for i in 1 2 3 4 5 6 7 8 9; do
     [[ -f "$RUN_ROOT/meta/node${i}.env" ]] || continue
     # shellcheck disable=SC1090
     source "$RUN_ROOT/meta/node${i}.env"
@@ -789,13 +809,13 @@ start_bitcoind() {
     log "starting local regtest bitcoind on ${BTC_RPC_PORT}"
     local btc_home="$RUN_ROOT/bitcoind"
     mkdir -p "$btc_home"
-    bitcoind \
+    nohup bitcoind \
       -datadir="$btc_home" -regtest=1 -server=1 -txindex=1 -fallbackfee=0.0001 \
       -deprecatedrpc=create_bdb \
       -rpcbind=127.0.0.1 -rpcallowip=127.0.0.1 \
       -rpcport="$BTC_RPC_PORT" -port="$BTC_P2P_PORT" \
       -rpcuser=thornado -rpcpassword=thornado \
-      >"$RUN_ROOT/logs/bitcoind.log" 2>&1 &
+      >"$RUN_ROOT/logs/bitcoind.log" 2>&1 </dev/null &
     echo $! >"$RUN_ROOT/pids/bitcoind.pid"
   else
     log "starting regtest bitcoind on ${BTC_RPC_PORT}"
@@ -815,7 +835,7 @@ start_bitcoind() {
   done
   btc_cli loadwallet miner >/dev/null 2>&1 || true
   btc_cli createwallet miner >/dev/null 2>&1 || btc_cli loadwallet miner >/dev/null 2>&1 || true
-  for i in 1 2 3 4 5 6 7 8; do
+  for i in 1 2 3 4 5 6 7 8 9; do
     btc_cli loadwallet "bifrost${i}" >/dev/null 2>&1 || true
     btc_cli createwallet "bifrost${i}" true true "" false true >/dev/null 2>&1 || btc_cli loadwallet "bifrost${i}" >/dev/null 2>&1 || true
   done
@@ -845,13 +865,10 @@ init_genesis() {
     cons_raw[$i]="$(jq -r '.pub_key.value' "$home/config/priv_validator_key.json")"
     ids[$i]="$(node_id "$home")"
     peers[$i]="${ids[$i]}@127.0.0.1:$(p2p_port "$i")"
-    "$THORNADO" genesis add-genesis-account "${addrs[$i]}" 100000000000000stake --home "$home" >/dev/null
-    if [[ "$i" != "1" ]]; then
-      "$THORNADO" genesis add-genesis-account "${addrs[$i]}" 100000000000000stake --home "$RUN_ROOT/node1" >/dev/null
-    fi
+    add_genesis_auth_account "$RUN_ROOT/node1" "${addrs[$i]}"
   done
 
-  for i in 5 6 7 8; do
+  for i in 5 6 7 8 9; do
     local home="$RUN_ROOT/node${i}"
     SIGNER_PASSWD="$PASS" "$THORNADO" init "node${i}" --chain-id "$CHAIN_ID" --home "$home" --operator-name "validator${i}" --overwrite >/dev/null
     sed -i.bak \
@@ -863,13 +880,13 @@ init_genesis() {
     addrs[$i]="$(key_show_addr "$home" "validator${i}")"
     secp[$i]="$(key_show_pub_bech "$home" "validator${i}")"
     cons[$i]="$(cons_pub_bech "$home")"
-    "$THORNADO" genesis add-genesis-account "${addrs[$i]}" 100000000000000stake --home "$RUN_ROOT/node1" >/dev/null
+    add_genesis_auth_account "$RUN_ROOT/node1" "${addrs[$i]}"
   done
 
   local user_json user_addr
   user_json="$(key_add_file "$RUN_ROOT/node1" "user")"
   user_addr="$(key_show_addr "$RUN_ROOT/node1" "user")"
-  "$THORNADO" genesis add-genesis-account "$user_addr" 100000000000000stake --home "$RUN_ROOT/node1" >/dev/null
+  add_genesis_auth_account "$RUN_ROOT/node1" "$user_addr"
 
   for i in 2 3 4; do
     cp "$gen" "$RUN_ROOT/node${i}/config/genesis.json"
@@ -912,27 +929,12 @@ init_genesis() {
       {"address":"","pub_key":{"type":"tendermint/PubKeyEd25519","value":$c4raw},"power":"1","name":"node4"}
     ] |
     .app_state.genutil.gen_txs = [] |
-    .app_state.bank.balances += [{"address":"tthor1fl48vsnmsdzcv85q5d2q4z5ajdha8yu3htpy4d","coins":[{"denom":"stake","amount":"4000000000000"}]}] |
-    .app_state.bank.supply = [{"denom":"stake","amount":"904000000000000"}] |
-    .app_state.staking.last_total_power = "4" |
-    .app_state.staking.last_validator_powers = [
-      {"address":$v1,"power":"1"},
-      {"address":$v2,"power":"1"},
-      {"address":$v3,"power":"1"},
-      {"address":$v4,"power":"1"}
-    ] |
-    .app_state.staking.validators = [
-      {"operator_address":$v1,"consensus_pubkey":{"@type":"/cosmos.crypto.ed25519.PubKey","key":$c1raw},"jailed":false,"status":"BOND_STATUS_BONDED","tokens":"1000000000000","delegator_shares":"1000000000000.000000000000000000","description":{"moniker":"node1","identity":"","website":"","security_contact":"","details":""},"unbonding_height":"0","unbonding_time":"1970-01-01T00:00:00Z","commission":{"commission_rates":{"rate":"0.100000000000000000","max_rate":"0.200000000000000000","max_change_rate":"0.010000000000000000"},"update_time":"1970-01-01T00:00:00Z"},"min_self_delegation":"1","unbonding_on_hold_ref_count":"0","unbonding_ids":[]},
-      {"operator_address":$v2,"consensus_pubkey":{"@type":"/cosmos.crypto.ed25519.PubKey","key":$c2raw},"jailed":false,"status":"BOND_STATUS_BONDED","tokens":"1000000000000","delegator_shares":"1000000000000.000000000000000000","description":{"moniker":"node2","identity":"","website":"","security_contact":"","details":""},"unbonding_height":"0","unbonding_time":"1970-01-01T00:00:00Z","commission":{"commission_rates":{"rate":"0.100000000000000000","max_rate":"0.200000000000000000","max_change_rate":"0.010000000000000000"},"update_time":"1970-01-01T00:00:00Z"},"min_self_delegation":"1","unbonding_on_hold_ref_count":"0","unbonding_ids":[]},
-      {"operator_address":$v3,"consensus_pubkey":{"@type":"/cosmos.crypto.ed25519.PubKey","key":$c3raw},"jailed":false,"status":"BOND_STATUS_BONDED","tokens":"1000000000000","delegator_shares":"1000000000000.000000000000000000","description":{"moniker":"node3","identity":"","website":"","security_contact":"","details":""},"unbonding_height":"0","unbonding_time":"1970-01-01T00:00:00Z","commission":{"commission_rates":{"rate":"0.100000000000000000","max_rate":"0.200000000000000000","max_change_rate":"0.010000000000000000"},"update_time":"1970-01-01T00:00:00Z"},"min_self_delegation":"1","unbonding_on_hold_ref_count":"0","unbonding_ids":[]},
-      {"operator_address":$v4,"consensus_pubkey":{"@type":"/cosmos.crypto.ed25519.PubKey","key":$c4raw},"jailed":false,"status":"BOND_STATUS_BONDED","tokens":"1000000000000","delegator_shares":"1000000000000.000000000000000000","description":{"moniker":"node4","identity":"","website":"","security_contact":"","details":""},"unbonding_height":"0","unbonding_time":"1970-01-01T00:00:00Z","commission":{"commission_rates":{"rate":"0.100000000000000000","max_rate":"0.200000000000000000","max_change_rate":"0.010000000000000000"},"update_time":"1970-01-01T00:00:00Z"},"min_self_delegation":"1","unbonding_on_hold_ref_count":"0","unbonding_ids":[]}
-    ] |
-    .app_state.staking.delegations = [
-      {"delegator_address":$a1,"validator_address":$v1,"shares":"1000000000000.000000000000000000"},
-      {"delegator_address":$a2,"validator_address":$v2,"shares":"1000000000000.000000000000000000"},
-      {"delegator_address":$a3,"validator_address":$v3,"shares":"1000000000000.000000000000000000"},
-      {"delegator_address":$a4,"validator_address":$v4,"shares":"1000000000000.000000000000000000"}
-    ] |
+    .app_state.bank.balances = [] |
+    del(.app_state.bank.supply) |
+    .app_state.staking.last_total_power = "0" |
+    .app_state.staking.last_validator_powers = [] |
+    .app_state.staking.validators = [] |
+    .app_state.staking.delegations = [] |
     .app_state.thornado = {
       observed_tx_in_voters: [],
       observed_tx_out_voters: [],
@@ -947,13 +949,17 @@ init_genesis() {
         {"key":"NodePauseChainGlobal","value":0},
         {"key":"Node_SetDesired","value":4},
         {"key":"Vault_BaseMembersMin","value":4},
-        {"key":"Node_BondStartAmountSats","value":0},
+        {"key":"Node_BondStartAmountSats","value":'"$GENESIS_NODE_BOND_START_AMOUNT_SATS"'},
         {"key":"Node_BondSlotIncrementSats","value":100000000},
-        {"key":"Churn_IntervalMinutes","value":1},
-        {"key":"Churn_RetryIntervalMinutes","value":2},
+        {"key":"Chain_BlockTimeSeconds","value":'"$THORNADO_BLOCK_TIME_SECONDS"'},
+        {"key":"Churn_IntervalMinutes","value":'"$GENESIS_CHURN_INTERVAL_MINUTES"'},
+        {"key":"Churn_RetryIntervalMinutes","value":'"$GENESIS_CHURN_RETRY_INTERVAL_MINUTES"'},
         {"key":"Deposit_SessionExpiryMinutes","value":10},
         {"key":"Keysign_PeriodMinutes","value":5},
+        {"key":"BTC_ConfirmationsMin","value":'"$GENESIS_BTC_CONFIRMATIONS_MIN"'},
+        {"key":"BTC_ConfMultiplierBasisPoints","value":'"$GENESIS_BTC_CONF_MULTIPLIER_BASIS_POINTS"'},
         {"key":"BTC_MaxConfirmations","value":1},
+        {"key":"Halt_Churning","value":'"$GENESIS_HALT_CHURNING"'},
         {"key":"HaltSigningBTC","value":0},
         {"key":"Withdrawal_FeeMinSats","value":100000},
         {"key":"Keygen_RetryIntervalMinutes","value":2}
@@ -980,7 +986,7 @@ init_genesis() {
     mv "$RUN_ROOT/genesis-forged-vault.json" "$RUN_ROOT/genesis.json"
   fi
 
-  for i in 1 2 3 4 5 6 7 8; do
+  for i in 1 2 3 4 5 6 7 8 9; do
     cp "$RUN_ROOT/genesis.json" "$RUN_ROOT/node${i}/config/genesis.json"
   done
   if ! "$THORNADO" genesis validate "$RUN_ROOT/node1/config/genesis.json" --home "$RUN_ROOT/node1" >"$RUN_ROOT/meta/genesis-validate.log" 2>&1; then
@@ -1009,7 +1015,7 @@ init_genesis() {
       echo "cons=${cons[$i]}"
     } >"$RUN_ROOT/meta/node${i}.env"
   done
-  for i in 5 6 7 8; do
+  for i in 5 6 7 8 9; do
     {
       echo "address=${addrs[$i]}"
       echo "secp=${secp[$i]}"
@@ -1034,16 +1040,16 @@ start_thornado_nodes() {
     "$THORNADO" start \
       --home "$home" \
       --api.enable=true \
-      --api.address "tcp://127.0.0.1:$(api_port "$i")" \
+      --api.address "tcp://${API_BIND_HOST}:$(api_port "$i")" \
       --grpc.enable=true \
       --grpc.address "127.0.0.1:$(grpc_port "$i")" \
       --rpc.laddr "tcp://127.0.0.1:$(rpc_port "$i")" \
-      --p2p.laddr "tcp://127.0.0.1:$(p2p_port "$i")" \
+      --p2p.laddr "tcp://${P2P_BIND_HOST}:$(p2p_port "$i")" \
       --p2p.persistent_peers "$peers" \
       --p2p.pex=false \
       --ebifrost.enable=true \
       --ebifrost.address "127.0.0.1:$(ebifrost_port "$i")" \
-      --minimum-gas-prices "0stake" \
+      --minimum-gas-prices "0btc" \
       --log_level "info" \
       >"$RUN_ROOT/logs/thornado-${i}.log" 2>&1 &
     echo "$!" >"$RUN_ROOT/pids/thornado-${i}.pid"
@@ -1120,16 +1126,16 @@ restart_thornado_node() {
   "$THORNADO" start \
     --home "$home" \
     --api.enable=true \
-    --api.address "tcp://127.0.0.1:$(api_port "$i")" \
+    --api.address "tcp://${API_BIND_HOST}:$(api_port "$i")" \
     --grpc.enable=true \
     --grpc.address "127.0.0.1:$(grpc_port "$i")" \
     --rpc.laddr "tcp://127.0.0.1:$(rpc_port "$i")" \
-    --p2p.laddr "tcp://127.0.0.1:$(p2p_port "$i")" \
+    --p2p.laddr "tcp://${P2P_BIND_HOST}:$(p2p_port "$i")" \
     --p2p.persistent_peers "$peers" \
     --p2p.pex=false \
     --ebifrost.enable=true \
     --ebifrost.address "127.0.0.1:$(ebifrost_port "$i")" \
-    --minimum-gas-prices "0stake" \
+    --minimum-gas-prices "0btc" \
     --log_level "info" \
     >"$RUN_ROOT/logs/thornado-${i}-restart.log" 2>&1 &
   echo "$!" >"$RUN_ROOT/pids/thornado-${i}.pid"
@@ -1148,16 +1154,16 @@ start_thornado_extra_node() {
   "$THORNADO" start \
     --home "$home" \
     --api.enable=true \
-    --api.address "tcp://127.0.0.1:$(api_port "$i")" \
+    --api.address "tcp://${API_BIND_HOST}:$(api_port "$i")" \
     --grpc.enable=true \
     --grpc.address "127.0.0.1:$(grpc_port "$i")" \
     --rpc.laddr "tcp://127.0.0.1:$(rpc_port "$i")" \
-    --p2p.laddr "tcp://127.0.0.1:$(p2p_port "$i")" \
+    --p2p.laddr "tcp://${P2P_BIND_HOST}:$(p2p_port "$i")" \
     --p2p.persistent_peers "$peers" \
     --p2p.pex=false \
     --ebifrost.enable=true \
     --ebifrost.address "127.0.0.1:$(ebifrost_port "$i")" \
-    --minimum-gas-prices "0stake" \
+    --minimum-gas-prices "0btc" \
     --log_level "info" \
     >"$RUN_ROOT/logs/thornado-${i}.log" 2>&1 &
   echo "$!" >"$RUN_ROOT/pids/thornado-${i}.pid"
@@ -1193,6 +1199,35 @@ start_thornado_node8() {
   start_thornado_extra_node 8
 }
 
+start_thornado_node9() {
+  start_thornado_extra_node 9
+}
+
+stop_existing_bifrost_nodes() {
+  local i pid
+  for i in 1 2 3 4; do
+    if [[ ",${FLOW1_SKIP_BIFROST_NODES}," == *",${i},"* ]]; then
+      continue
+    fi
+    pid="$(cat "$RUN_ROOT/pids/bifrost-${i}.pid" 2>/dev/null || true)"
+    if [[ -n "$pid" ]] && kill -0 "$pid" >/dev/null 2>&1; then
+      log "stopping bifrost-${i} pid=${pid}"
+      kill "$pid" >/dev/null 2>&1 || true
+    fi
+  done
+  sleep 2
+  for i in 1 2 3 4; do
+    if [[ ",${FLOW1_SKIP_BIFROST_NODES}," == *",${i},"* ]]; then
+      continue
+    fi
+    pid="$(cat "$RUN_ROOT/pids/bifrost-${i}.pid" 2>/dev/null || true)"
+    if [[ -n "$pid" ]] && kill -0 "$pid" >/dev/null 2>&1; then
+      log "force-stopping bifrost-${i} pid=${pid}"
+      kill -9 "$pid" >/dev/null 2>&1 || true
+    fi
+  done
+}
+
 wait_bifrost_health() {
   local i="$1" timeout="${2:-120}" start
   start="$(date +%s)"
@@ -1215,7 +1250,23 @@ wait_bifrost_health() {
 
 start_bifrost_nodes() {
   log "starting Bifrost signers"
+  local frost_bind="${FROST_BIND_HOST:-127.0.0.1}"
+  local frost_external="${FROST_EXTERNAL_IP:-127.0.0.1}"
   local bootstrap=""
+  if [[ -f "$RUN_ROOT/meta/bifrost-bootstrap-all" ]] || [[ "${BIFROST_FORCE_RESTART:-}" == "1" ]]; then
+    stop_existing_bifrost_nodes
+  fi
+  if [[ -f "$RUN_ROOT/meta/bifrost-bootstrap-all" ]]; then
+    bootstrap="$(tr -d '\n' <"$RUN_ROOT/meta/bifrost-bootstrap-all")"
+  elif [[ -n "${FROST_BOOTSTRAP_PEERS:-}" ]]; then
+    bootstrap="$FROST_BOOTSTRAP_PEERS"
+  fi
+  if [[ -n "$bootstrap" ]]; then
+    log "using ${#bootstrap} byte FROST bootstrap peer list"
+  else
+    log "no cached FROST bootstrap peers; will discover from /p2pid"
+  fi
+  local bootstrap_peer
   for i in 1 2 3 4; do
     if [[ ",${FLOW1_SKIP_BIFROST_NODES}," == *",${i},"* ]]; then
       log "skipping bifrost-${i} for scenario"
@@ -1239,43 +1290,43 @@ start_bifrost_nodes() {
     CHAIN_RPC="127.0.0.1:$(rpc_port "$i")" \
     BIFROST_METRICS_LISTEN_PORT="$(metrics_port "$i")" \
     BIFROST_FROST_P2P_PORT="$(frost_p2p_port "$i")" \
-    BIFROST_FROST_INFO_ADDRESS="127.0.0.1:$(frost_info_port "$i")" \
+    BIFROST_FROST_INFO_ADDRESS="${frost_bind}:$(frost_info_port "$i")" \
     BIFROST_FROST_BOOTSTRAP_PEERS="$bootstrap" \
-    BIFROST_FROST_EXTERNAL_IP="127.0.0.1" \
+    BIFROST_FROST_EXTERNAL_IP="${frost_external}" \
     BIFROST_FROST_ALLOW_ZERO_BOND_NODES="true" \
     PEER="$bootstrap" \
-    EXTERNAL_IP="127.0.0.1" \
+    EXTERNAL_IP="${frost_external}" \
     BIFROST_SIGNER_SIGNER_DB_PATH="$bhome/signer_db" \
-    BIFROST_SIGNER_KEYGEN_TIMEOUT="5s" \
-    BIFROST_SIGNER_KEYSIGN_TIMEOUT="5s" \
-    BIFROST_SIGNER_PARTY_TIMEOUT="5s" \
-    BIFROST_SIGNER_PRE_PARAM_TIMEOUT="5s" \
+    BIFROST_SIGNER_KEYGEN_TIMEOUT="${BIFROST_SIGNER_KEYGEN_TIMEOUT:-45s}" \
+    BIFROST_SIGNER_KEYSIGN_TIMEOUT="${BIFROST_SIGNER_KEYSIGN_TIMEOUT:-45s}" \
+    BIFROST_SIGNER_PARTY_TIMEOUT="${BIFROST_SIGNER_PARTY_TIMEOUT:-45s}" \
+    BIFROST_SIGNER_PRE_PARAM_TIMEOUT="${BIFROST_SIGNER_PRE_PARAM_TIMEOUT:-5m}" \
     BIFROST_SIGNER_BLOCK_SCANNER_START_BLOCK_HEIGHT="1" \
     BIFROST_SIGNER_BLOCK_SCANNER_BLOCK_HEIGHT_DISCOVER_BACK_OFF="100ms" \
     BIFROST_SIGNER_BLOCK_SCANNER_PREFETCH_BLOCKS="1" \
     BIFROST_SIGNER_BACKUP_KEYSHARES="false" \
-    BIFROST_FROST_SHARED_DEALER_DIR="$RUN_ROOT/frost-dealer" \
     BIFROST_CHAINS_BTC_BLOCK_SCANNER_DB_PATH="$bhome/btc_observer" \
     BIFROST_CHAINS_BTC_BLOCK_SCANNER_MAX_HEALTHY_LAG="24h" \
     BIFROST_CHAINS_BTC_SCANNER_LEVELDB_DB_PATH="$bhome/btc_scanner" \
     BIFROST_CHAINS_BTC_USERNAME="thornado" \
     BIFROST_CHAINS_BTC_PASSWORD="thornado" \
     BIFROST_CHAINS_BTC_RPC_HOST="${BTC_RPC_HOST}:${BTC_RPC_PORT}/wallet/bifrost${i}" \
+    BIFROST_CHAINS_BTC_CHAIN_ID="BTC" \
+    BIFROST_CHAINS_BTC_BLOCK_SCANNER_CHAIN_ID="BTC" \
     BIFROST_CHAINS_BTC_CHAIN_NETWORK="regtest" \
     BIFROST_CHAINS_BTC_BLOCK_SCANNER_START_BLOCK_HEIGHT="0" \
     BTC_HOST="${BTC_RPC_HOST}:${BTC_RPC_PORT}/wallet/bifrost" \
     BTC_START_BLOCK_HEIGHT="0" \
     "$BIFROST" --log-level debug >"$RUN_ROOT/logs/bifrost-${i}.log" 2>&1 &
     echo "$!" >"$RUN_ROOT/pids/bifrost-${i}.pid"
-    sleep 2
     wait_bifrost_health "$i" 120
     if [[ -z "$bootstrap" ]]; then
       for _ in {1..60}; do
         if curl -fsS "http://127.0.0.1:$(frost_info_port "$i")/p2pid" >/tmp/bifrost-p2pid.txt 2>/dev/null; then
-          local peer
           peer="$(tr -d '[:space:]' </tmp/bifrost-p2pid.txt)"
           if [[ -n "$peer" ]]; then
-            bootstrap="/ip4/127.0.0.1/tcp/$(frost_p2p_port "$i")/p2p/${peer}"
+            bootstrap_peer="/ip4/${frost_external}/tcp/$(frost_p2p_port "$i")/p2p/${peer}"
+            bootstrap="$bootstrap_peer"
             printf '%s\n' "$bootstrap" >"$RUN_ROOT/meta/bifrost-bootstrap"
             break
           fi
@@ -1286,25 +1337,44 @@ start_bifrost_nodes() {
         fi
         sleep 1
       done
+    else
+      for _ in {1..60}; do
+        if curl -fsS "http://127.0.0.1:$(frost_info_port "$i")/p2pid" >/tmp/bifrost-p2pid.txt 2>/dev/null; then
+          peer="$(tr -d '[:space:]' </tmp/bifrost-p2pid.txt)"
+          if [[ -n "$peer" ]]; then
+            bootstrap_peer="/ip4/${frost_external}/tcp/$(frost_p2p_port "$i")/p2p/${peer}"
+            if [[ ",${bootstrap}," != *",${bootstrap_peer},"* ]]; then
+              bootstrap="${bootstrap},${bootstrap_peer}"
+            fi
+            printf '%s\n' "$bootstrap" >"$RUN_ROOT/meta/bifrost-bootstrap"
+            printf '%s\n' "$bootstrap" >"$RUN_ROOT/meta/bifrost-bootstrap-all"
+            break
+          fi
+        fi
+        if ! kill -0 "$(cat "$RUN_ROOT/pids/bifrost-${i}.pid")" >/dev/null 2>&1; then
+          tail -n 80 "$RUN_ROOT/logs/bifrost-${i}.log" >&2 || true
+          die "bifrost-${i} exited before bootstrap was recorded"
+        fi
+        sleep 1
+      done
     fi
     if [[ "$FLOW1_SCENARIO" == "mid_keygen_restart" && "$i" == "2" ]]; then
       log "restarting thornado-1 during Flow 1 keygen"
       restart_thornado_node 1
     fi
   done
-  for i in 1 2 3 4; do
-    if [[ ",${FLOW1_SKIP_BIFROST_NODES}," == *",${i},"* ]]; then
-      continue
-    fi
-    wait_bifrost_health "$i" 120
-  done
+  local warmup="${BIFROST_SIGNER_WARMUP_SECONDS:-20}"
+  if [[ "$warmup" -gt 0 ]]; then
+    log "waiting ${warmup}s for bifrost signer/P2P warmup before keysign"
+    sleep "$warmup"
+  fi
   local peers=()
   for i in 1 2 3 4; do
     if curl -fsS "http://127.0.0.1:$(frost_info_port "$i")/p2pid" >/tmp/bifrost-p2pid.txt 2>/dev/null; then
       local peer
       peer="$(tr -d '[:space:]' </tmp/bifrost-p2pid.txt)"
       if [[ -n "$peer" ]]; then
-        peers+=("/ip4/127.0.0.1/tcp/$(frost_p2p_port "$i")/p2p/${peer}")
+        peers+=("/ip4/${frost_external}/tcp/$(frost_p2p_port "$i")/p2p/${peer}")
       fi
     fi
   done
@@ -1317,7 +1387,7 @@ start_bifrost_node_for_flow1() {
   local i="$1" start_height="${2:-1}" home bhome bootstrap
   home="$RUN_ROOT/node${i}"
   bhome="$RUN_ROOT/bifrost${i}"
-  bootstrap="$(cat "$RUN_ROOT/meta/bifrost-bootstrap" 2>/dev/null || true)"
+  bootstrap="$(cat "$RUN_ROOT/meta/bifrost-bootstrap-all" 2>/dev/null || cat "$RUN_ROOT/meta/bifrost-bootstrap" 2>/dev/null || true)"
   mkdir -p "$bhome"
   SIGNER_NAME="validator${i}" \
   SIGNER_PASSWD="$PASS" \
@@ -1341,15 +1411,14 @@ start_bifrost_node_for_flow1() {
   PEER="$bootstrap" \
   EXTERNAL_IP="127.0.0.1" \
   BIFROST_SIGNER_SIGNER_DB_PATH="$bhome/signer_db" \
-  BIFROST_SIGNER_KEYGEN_TIMEOUT="5s" \
-  BIFROST_SIGNER_KEYSIGN_TIMEOUT="5s" \
-  BIFROST_SIGNER_PARTY_TIMEOUT="5s" \
-  BIFROST_SIGNER_PRE_PARAM_TIMEOUT="5s" \
+  BIFROST_SIGNER_KEYGEN_TIMEOUT="${BIFROST_SIGNER_KEYGEN_TIMEOUT:-45s}" \
+  BIFROST_SIGNER_KEYSIGN_TIMEOUT="${BIFROST_SIGNER_KEYSIGN_TIMEOUT:-45s}" \
+  BIFROST_SIGNER_PARTY_TIMEOUT="${BIFROST_SIGNER_PARTY_TIMEOUT:-45s}" \
+  BIFROST_SIGNER_PRE_PARAM_TIMEOUT="${BIFROST_SIGNER_PRE_PARAM_TIMEOUT:-5m}" \
   BIFROST_SIGNER_BLOCK_SCANNER_START_BLOCK_HEIGHT="$start_height" \
   BIFROST_SIGNER_BLOCK_SCANNER_BLOCK_HEIGHT_DISCOVER_BACK_OFF="100ms" \
   BIFROST_SIGNER_BLOCK_SCANNER_PREFETCH_BLOCKS="1" \
   BIFROST_SIGNER_BACKUP_KEYSHARES="false" \
-  BIFROST_FROST_SHARED_DEALER_DIR="$RUN_ROOT/frost-dealer" \
   BIFROST_CHAINS_BTC_BLOCK_SCANNER_DB_PATH="$bhome/btc_observer" \
   BIFROST_CHAINS_BTC_BLOCK_SCANNER_MAX_HEALTHY_LAG="24h" \
   BIFROST_CHAINS_BTC_SCANNER_LEVELDB_DB_PATH="$bhome/btc_scanner" \
@@ -1381,7 +1450,7 @@ start_bifrost_node_for_flow1() {
 }
 
 start_bifrost_extra_node() {
-  local i="$1" flow="$2" home bhome bootstrap start_block
+  local i="$1" flow="$2" home bhome bootstrap start_block attempt start pid
   home="$RUN_ROOT/node${i}"
   bhome="$RUN_ROOT/bifrost${i}"
   log "starting Bifrost signer for node${i}"
@@ -1393,65 +1462,72 @@ start_bifrost_extra_node() {
   fi
   printf '%s\n' "$start_block" >"$RUN_ROOT/meta/${flow}-bifrost${i}-signer-start-height.txt"
   mkdir -p "$bhome"
-  SIGNER_NAME="validator${i}" \
-  SIGNER_PASSWD="$PASS" \
-  BIFROST_THORNADO_CHAIN_ID="$CHAIN_ID" \
-  BIFROST_THORNADO_CHAIN_HOST="127.0.0.1:$(api_port "$i")" \
-  BIFROST_THORNADO_CHAIN_RPC="127.0.0.1:$(rpc_port "$i")" \
-  BIFROST_THORNADO_CHAIN_EBIFROST="127.0.0.1:$(ebifrost_port "$i")" \
-  BIFROST_THORNADO_CHAIN_HOME_FOLDER="$home" \
-  BIFROST_THORNADO_SIGNER_NAME="validator${i}" \
-  THOR_BLOCK_TIME="100ms" \
-  BLOCK_SCANNER_BACKOFF="100ms" \
-  CHAIN_ID="$CHAIN_ID" \
-  CHAIN_API="127.0.0.1:$(api_port "$i")" \
-  CHAIN_RPC="127.0.0.1:$(rpc_port "$i")" \
-  BIFROST_METRICS_LISTEN_PORT="$(metrics_port "$i")" \
-  BIFROST_FROST_P2P_PORT="$(frost_p2p_port "$i")" \
-  BIFROST_FROST_INFO_ADDRESS="127.0.0.1:$(frost_info_port "$i")" \
-  BIFROST_FROST_BOOTSTRAP_PEERS="$bootstrap" \
-  BIFROST_FROST_EXTERNAL_IP="127.0.0.1" \
-  BIFROST_FROST_ALLOW_ZERO_BOND_NODES="true" \
-  PEER="$bootstrap" \
-  EXTERNAL_IP="127.0.0.1" \
-  BIFROST_SIGNER_SIGNER_DB_PATH="$bhome/signer_db" \
-  BIFROST_SIGNER_KEYGEN_TIMEOUT="5s" \
-  BIFROST_SIGNER_KEYSIGN_TIMEOUT="5s" \
-  BIFROST_SIGNER_PARTY_TIMEOUT="5s" \
-  BIFROST_SIGNER_PRE_PARAM_TIMEOUT="5s" \
-  BIFROST_SIGNER_BLOCK_SCANNER_START_BLOCK_HEIGHT="$start_block" \
-  BIFROST_SIGNER_BLOCK_SCANNER_BLOCK_HEIGHT_DISCOVER_BACK_OFF="100ms" \
-  BIFROST_SIGNER_BLOCK_SCANNER_PREFETCH_BLOCKS="1" \
-  BIFROST_SIGNER_BACKUP_KEYSHARES="false" \
-  BIFROST_FROST_SHARED_DEALER_DIR="$RUN_ROOT/frost-dealer" \
-  BIFROST_CHAINS_BTC_BLOCK_SCANNER_DB_PATH="$bhome/btc_observer" \
-  BIFROST_CHAINS_BTC_BLOCK_SCANNER_MAX_HEALTHY_LAG="24h" \
-  BIFROST_CHAINS_BTC_SCANNER_LEVELDB_DB_PATH="$bhome/btc_scanner" \
-  BIFROST_CHAINS_BTC_USERNAME="thornado" \
-  BIFROST_CHAINS_BTC_PASSWORD="thornado" \
-  BIFROST_CHAINS_BTC_RPC_HOST="${BTC_RPC_HOST}:${BTC_RPC_PORT}/wallet/bifrost${i}" \
-  BIFROST_CHAINS_BTC_CHAIN_NETWORK="regtest" \
-  BIFROST_CHAINS_BTC_BLOCK_SCANNER_START_BLOCK_HEIGHT="0" \
-  BTC_HOST="${BTC_RPC_HOST}:${BTC_RPC_PORT}/wallet/bifrost" \
-  BTC_START_BLOCK_HEIGHT="0" \
-  "$BIFROST" --log-level debug >"$RUN_ROOT/logs/bifrost-${i}.log" 2>&1 &
-  echo "$!" >"$RUN_ROOT/pids/bifrost-${i}.pid"
-  local start
-  start="$(date +%s)"
-  while true; do
-    if curl -fsS "http://127.0.0.1:$(frost_info_port "$i")/ping" >/dev/null 2>&1; then
-      log "bifrost-${i} health ready"
-      break
-    fi
-    if ! kill -0 "$(cat "$RUN_ROOT/pids/bifrost-${i}.pid")" >/dev/null 2>&1; then
-      tail -n 80 "$RUN_ROOT/logs/bifrost-${i}.log" >&2 || true
-      die "bifrost-${i} exited before health was ready"
-    fi
-    if (( "$(date +%s)" - start >= 120 )); then
-      die "timed out waiting for bifrost-${i} health"
-    fi
-    sleep 1
+  for attempt in 1 2 3 4 5; do
+    log "starting Bifrost signer for node${i} attempt ${attempt}"
+    SIGNER_NAME="validator${i}" \
+    SIGNER_PASSWD="$PASS" \
+    BIFROST_THORNADO_CHAIN_ID="$CHAIN_ID" \
+    BIFROST_THORNADO_CHAIN_HOST="127.0.0.1:$(api_port "$i")" \
+    BIFROST_THORNADO_CHAIN_RPC="127.0.0.1:$(rpc_port "$i")" \
+    BIFROST_THORNADO_CHAIN_EBIFROST="127.0.0.1:$(ebifrost_port "$i")" \
+    BIFROST_THORNADO_CHAIN_HOME_FOLDER="$home" \
+    BIFROST_THORNADO_SIGNER_NAME="validator${i}" \
+    THOR_BLOCK_TIME="100ms" \
+    BLOCK_SCANNER_BACKOFF="100ms" \
+    CHAIN_ID="$CHAIN_ID" \
+    CHAIN_API="127.0.0.1:$(api_port "$i")" \
+    CHAIN_RPC="127.0.0.1:$(rpc_port "$i")" \
+    BIFROST_METRICS_LISTEN_PORT="$(metrics_port "$i")" \
+    BIFROST_FROST_P2P_PORT="$(frost_p2p_port "$i")" \
+    BIFROST_FROST_INFO_ADDRESS="127.0.0.1:$(frost_info_port "$i")" \
+    BIFROST_FROST_BOOTSTRAP_PEERS="$bootstrap" \
+    BIFROST_FROST_EXTERNAL_IP="127.0.0.1" \
+    BIFROST_FROST_ALLOW_ZERO_BOND_NODES="true" \
+    PEER="$bootstrap" \
+    EXTERNAL_IP="127.0.0.1" \
+    BIFROST_SIGNER_SIGNER_DB_PATH="$bhome/signer_db" \
+    BIFROST_SIGNER_KEYGEN_TIMEOUT="${BIFROST_SIGNER_KEYGEN_TIMEOUT:-45s}" \
+    BIFROST_SIGNER_KEYSIGN_TIMEOUT="${BIFROST_SIGNER_KEYSIGN_TIMEOUT:-45s}" \
+    BIFROST_SIGNER_PARTY_TIMEOUT="${BIFROST_SIGNER_PARTY_TIMEOUT:-45s}" \
+    BIFROST_SIGNER_PRE_PARAM_TIMEOUT="${BIFROST_SIGNER_PRE_PARAM_TIMEOUT:-5m}" \
+    BIFROST_SIGNER_BLOCK_SCANNER_START_BLOCK_HEIGHT="$start_block" \
+    BIFROST_SIGNER_BLOCK_SCANNER_BLOCK_HEIGHT_DISCOVER_BACK_OFF="100ms" \
+    BIFROST_SIGNER_BLOCK_SCANNER_PREFETCH_BLOCKS="1" \
+    BIFROST_SIGNER_BACKUP_KEYSHARES="false" \
+    BIFROST_CHAINS_BTC_BLOCK_SCANNER_DB_PATH="$bhome/btc_observer" \
+    BIFROST_CHAINS_BTC_BLOCK_SCANNER_MAX_HEALTHY_LAG="24h" \
+    BIFROST_CHAINS_BTC_SCANNER_LEVELDB_DB_PATH="$bhome/btc_scanner" \
+    BIFROST_CHAINS_BTC_USERNAME="thornado" \
+    BIFROST_CHAINS_BTC_PASSWORD="thornado" \
+    BIFROST_CHAINS_BTC_RPC_HOST="${BTC_RPC_HOST}:${BTC_RPC_PORT}/wallet/bifrost${i}" \
+    BIFROST_CHAINS_BTC_CHAIN_NETWORK="regtest" \
+    BIFROST_CHAINS_BTC_BLOCK_SCANNER_START_BLOCK_HEIGHT="0" \
+    BTC_HOST="${BTC_RPC_HOST}:${BTC_RPC_PORT}/wallet/bifrost" \
+    BTC_START_BLOCK_HEIGHT="0" \
+    "$BIFROST" --log-level debug >"$RUN_ROOT/logs/bifrost-${i}.log" 2>&1 &
+    echo "$!" >"$RUN_ROOT/pids/bifrost-${i}.pid"
+
+    start="$(date +%s)"
+    while true; do
+      if curl -fsS "http://127.0.0.1:$(frost_info_port "$i")/ping" >/dev/null 2>&1; then
+        log "bifrost-${i} health ready"
+        return 0
+      fi
+      pid="$(cat "$RUN_ROOT/pids/bifrost-${i}.pid")"
+      if ! kill -0 "$pid" >/dev/null 2>&1; then
+        tail -n 80 "$RUN_ROOT/logs/bifrost-${i}.log" >&2 || true
+        break
+      fi
+      if (( "$(date +%s)" - start >= 120 )); then
+        kill "$pid" >/dev/null 2>&1 || true
+        tail -n 80 "$RUN_ROOT/logs/bifrost-${i}.log" >&2 || true
+        break
+      fi
+      sleep 1
+    done
+    sleep 5
   done
+  die "bifrost-${i} exited before health was ready"
 }
 
 start_bifrost_node5() {
@@ -1468,6 +1544,10 @@ start_bifrost_node7() {
 
 start_bifrost_node8() {
   start_bifrost_extra_node 8 flow8-node8-churn
+}
+
+start_bifrost_node9() {
+  start_bifrost_extra_node 9 distributed-node9
 }
 
 wait_bifrost_ready_for_keygen() {
@@ -1617,7 +1697,7 @@ validate_flow1_forged_vault_state() {
   BIFROST_FROST_EXTERNAL_IP="127.0.0.1" \
   EXTERNAL_IP="127.0.0.1" \
   BIFROST_SIGNER_SIGNER_DB_PATH="$bhome/signer_db" \
-  BIFROST_FROST_SHARED_DEALER_DIR="$RUN_ROOT/frost-dealer" \
+
   BIFROST_CHAINS_BTC_BLOCK_SCANNER_DB_PATH="$bhome/btc_observer" \
   BIFROST_CHAINS_BTC_BLOCK_SCANNER_MAX_HEALTHY_LAG="24h" \
   BIFROST_CHAINS_BTC_SCANNER_LEVELDB_DB_PATH="$bhome/btc_scanner" \
@@ -1755,9 +1835,9 @@ validate_flow2_node5_churn() {
   curl -fsS "http://127.0.0.1:$(frost_info_port 5)/status/signing" >"$RUN_ROOT/meta/flow2-node5-bifrost-signing-before-churn.json"
 
   set_config_from_active_nodes Vault_MigrationIntervalMinutes 1
-  set_config_from_active_nodes Vault_MigrationRounds 1
-  set_config_from_active_nodes Churn_IntervalMinutes 1
-  set_config_from_active_nodes Churn_RetryIntervalMinutes 1
+  set_config_from_active_nodes Chain_BlockTimeSeconds "$THORNADO_BLOCK_TIME_SECONDS"
+  set_config_from_active_nodes Churn_IntervalMinutes "${CHURN_INTERVAL_MINUTES:-1}"
+  set_config_from_active_nodes Churn_RetryIntervalMinutes "${CHURN_RETRY_INTERVAL_MINUTES:-1}"
   set_config_from_active_nodes Halt_SolvencyCheck 0
   set_config_from_active_nodes HaltSigningBTC 0
   set_config_from_active_nodes Node_SetDesired 5
@@ -1878,14 +1958,17 @@ validate_flow2_node5_churn() {
 validate_flow3() {
   log "Flow 3: validating user deposit, split, redeem, fee, txout, and BTC outbound"
   source "$RUN_ROOT/meta/user.env"
-  local user_account_addr="$address" deposit_pubkey user_addr
-  deposit_pubkey="$("$SHIELDER_HELPER" pubkey "user-flow-3-deposit-pubkey")"
+  local user_account_addr="$address" deposit_pubkey user_addr flow3_label flow3_deposit_seed flow3_note_seed
+  flow3_label="${FLOW3_LABEL:-user-flow-3}"
+  flow3_deposit_seed="${flow3_label}-deposit-pubkey"
+  flow3_note_seed="${flow3_label}-seed"
+  deposit_pubkey="$("$SHIELDER_HELPER" pubkey "$flow3_deposit_seed")"
   user_addr="$("$SHIELDER_HELPER" owner-address "$deposit_pubkey")"
   if [[ "${FLOW3_MAIN_ONLY:-0}" != "1" ]]; then
     assert_tx_or_cli_rejected "flow3 request amount arg" "Usage:" thornado_tx "$RUN_ROOT/node1" "user" request-deposit "user-flow-3-amount" "$deposit_pubkey" "20000000"
   fi
-  request_deposit "$RUN_ROOT/node1" "user" "user-flow-3" "$deposit_pubkey" >"$RUN_ROOT/meta/flow3-request-deposit.json"
-  local session deposit_address txid deposit_id amount_sats path_index receipt commitment_objects commitments shield_signature out committed matched sweep_txout
+  request_deposit "$RUN_ROOT/node1" "user" "$flow3_label" "$deposit_pubkey" >"$RUN_ROOT/meta/flow3-request-deposit.json"
+  local session deposit_address txid child_vout deposit_id amount_sats path_index receipt commitment_objects commitments shield_signature out committed matched sweep_txout
   session="$(deposit_session "$user_addr")"
   printf '%s\n' "$session" >"$RUN_ROOT/meta/flow3-session-before-deposit.json"
   deposit_address="$(jq -r '.deposit_address' <<<"$session")"
@@ -1893,25 +1976,31 @@ validate_flow3() {
   jq -e '.owner == "'"${user_addr}"'" and (.deposit_address | length) > 0 and (.vault_pub_key | length) > 0 and (.deposit_path_index | tonumber) > 0 and ((.amount_sats // "") == "" or (.amount_sats // "0") == "0")' \
     "$RUN_ROOT/meta/flow3-session-before-deposit.json" >/dev/null || die "flow3 deposit session unexpectedly contains amount or missing identity"
   txid="$(mine_to_registered_deposit "$deposit_address" "0.20000000")"
-  btc_cli -rpcwallet=bifrost1 listunspent 1 9999999 "[\"${deposit_address}\"]" >"$RUN_ROOT/meta/flow3-child-utxo-before-sweep.json"
-  jq -e 'map(select((.amount * 100000000 | floor) == 20000000)) | length == 1' "$RUN_ROOT/meta/flow3-child-utxo-before-sweep.json" >/dev/null \
-    || die "flow3 child deposit UTXO was not visible before sweep"
+  btc_cli getrawtransaction "$txid" true >"$RUN_ROOT/meta/flow3-child-deposit-tx.json"
+  child_vout="$(jq -r --arg addr "$deposit_address" '
+    [.vout[] | select(.scriptPubKey.address == $addr and (((.value * 100000000 + 0.5) | floor) == 20000000))][0].n // ""
+  ' "$RUN_ROOT/meta/flow3-child-deposit-tx.json")"
+  [[ -n "$child_vout" ]] || die "flow3 child deposit output was not visible before sweep"
+  btc_cli gettxout "$txid" "$child_vout" true >"$RUN_ROOT/meta/flow3-child-utxo-before-sweep.json"
+  jq -e --arg addr "$deposit_address" '(.scriptPubKey.address == $addr) and (((.value * 100000000 + 0.5) | floor) == 20000000)' "$RUN_ROOT/meta/flow3-child-utxo-before-sweep.json" >/dev/null \
+    || die "flow3 child deposit UTXO was not unspent before sweep"
   matched="$(wait_owner_deposit_matched "$user_addr")"
   deposit_id="$(jq -r '.deposit_id' <<<"$matched")"
   printf '%s\n' "$matched" >"$RUN_ROOT/meta/flow3-deposit-matched.json"
   sweep_txout="$(wait_sweep_signed "$deposit_id" 420)"
   printf '%s\n' "$sweep_txout" >"$RUN_ROOT/meta/flow3-sweep-txout.json"
-  btc_cli -rpcwallet=bifrost1 listunspent 0 9999999 "[\"${deposit_address}\"]" >"$RUN_ROOT/meta/flow3-child-utxo-after-sweep.json"
-  jq -e 'length == 0' "$RUN_ROOT/meta/flow3-child-utxo-after-sweep.json" >/dev/null || die "flow3 child deposit UTXO remained spendable after sweep"
+  btc_cli gettxout "$txid" "$child_vout" true >"$RUN_ROOT/meta/flow3-child-utxo-after-sweep.json" || true
+  [[ ! -s "$RUN_ROOT/meta/flow3-child-utxo-after-sweep.json" ]] || jq -e '. == null' "$RUN_ROOT/meta/flow3-child-utxo-after-sweep.json" >/dev/null \
+    || die "flow3 child deposit UTXO remained spendable after sweep"
   amount_sats="$(curl -fsS "$(api_url 1)/thornado/deposit/${deposit_id}" | jq -r '.amount_sats')"
   [[ "$amount_sats" == "20000000" ]] || die "flow3 observed deposit amount was not the actual BTC amount"
-  receipt="$("$SHIELDER_HELPER" receipt "$deposit_id" "$path_index" "$amount_sats" "user-flow-3-seed")"
+  receipt="$("$SHIELDER_HELPER" receipt "$deposit_id" "$path_index" "$amount_sats" "$flow3_note_seed")"
   printf '%s\n' "$receipt" >"$RUN_ROOT/meta/flow3-receipt.json"
   commitment_objects="$("$SHIELDER_HELPER" commitment-objects "$receipt")"
   printf '%s\n' "$commitment_objects" >"$RUN_ROOT/meta/flow3-commitment-objects.json"
   commitments="$(jq -c 'map(tostring)' <<<"$commitment_objects")"
   printf '%s\n' "$commitments" >"$RUN_ROOT/meta/flow3-commitments.json"
-  shield_signature="$("$SHIELDER_HELPER" shield-authorization "user-flow-3-deposit-pubkey" "$deposit_id" "$amount_sats" "$commitment_objects" | jq -r '.signature')"
+  shield_signature="$("$SHIELDER_HELPER" shield-authorization "$flow3_deposit_seed" "$deposit_id" "$amount_sats" "$commitment_objects" | jq -r '.signature')"
   printf '%s\n' "$shield_signature" >"$RUN_ROOT/meta/flow3-shield-signature.txt"
   out="$(thornado_tx "$RUN_ROOT/node1" "user" shielder shield "$commitments" "$deposit_pubkey" "$shield_signature" "$deposit_id")"
   printf '%s\n' "$out" >"$RUN_ROOT/meta/flow3-split.json"
@@ -1934,7 +2023,7 @@ validate_flow3() {
   curl -fsS "$(api_url 1)/thornado/shielder/redeem/quote/$(jq -r '.denomination_sats' <<<"$note")" >"$RUN_ROOT/meta/flow3-redeem-quote.json"
   fee="$(jq -r '.fee_sats' "$RUN_ROOT/meta/flow3-redeem-quote.json")"
   (( fee > 0 )) || die "flow3 redeem quote returned zero fee"
-  withdrawal="$("$SHIELDER_HELPER" withdrawal "$note" "user-flow-3-seed" "$leaves" "$recipient" "$fee")"
+  withdrawal="$("$SHIELDER_HELPER" withdrawal "$note" "$flow3_note_seed" "$leaves" "$recipient" "$fee")"
   printf '%s\n' "$withdrawal" >"$RUN_ROOT/meta/flow3-withdrawal.json"
   prefix="$RUN_ROOT/meta/flow3-withdrawal"
   "$SHIELDER_HELPER" shield-withdrawal "$withdrawal" "$prefix"
@@ -2411,7 +2500,7 @@ validate_flow6() {
     "$RUN_ROOT/meta/flow6-node6-pre-churn.json" >/dev/null || die "flow6 node6 pre-churn status/version invalid"
 
   set_config_from_active_nodes Vault_MigrationIntervalMinutes 1
-  set_config_from_active_nodes Vault_MigrationRounds 1
+  set_config_from_active_nodes Chain_BlockTimeSeconds "$THORNADO_BLOCK_TIME_SECONDS"
   set_config_from_active_nodes Churn_IntervalMinutes 1
   set_config_from_active_nodes Churn_RetryIntervalMinutes 1
   set_config_from_active_nodes Halt_SolvencyCheck 0
@@ -2681,7 +2770,10 @@ wait_all_signed_txouts_finalized() {
   while true; do
     txouts="$(curl_json_quiet "$(api_url 1)/thornado/txout/all" || true)"
     if [[ -n "$txouts" ]]; then
-      mapfile -t hashes < <(jq -r '(if type == "array" then .[] else .txouts[]? end).tx_array[]? | select((.out_hash // "") != "") | .out_hash' <<<"$txouts" | sort -u)
+      hashes=()
+      while IFS= read -r hash; do
+        [[ -n "$hash" ]] && hashes+=("$hash")
+      done < <(jq -r '(if type == "array" then .[] else .txouts[]? end).tx_array[]? | select((.out_hash // "") != "") | .out_hash' <<<"$txouts" | sort -u)
       missing=0
       for hash in "${hashes[@]}"; do
         if ! curl -fsS "$(api_url 1)/thornado/tx/${hash}" >/tmp/thornado-tx-final.json 2>/dev/null ||
@@ -2750,7 +2842,7 @@ wait_confirmed_btc_output() {
     if raw="$(btc_cli getrawtransaction "$txid" true 2>/dev/null)" && [[ -n "$raw" ]]; then
       raw="$(jq '.' <<<"$raw")"
     else
-      for wallet in bifrost1 bifrost2 bifrost3 bifrost4 bifrost5 bifrost6 bifrost7 bifrost8; do
+      for wallet in bifrost1 bifrost2 bifrost3 bifrost4 bifrost5 bifrost6 bifrost7 bifrost8 bifrost9; do
         if tx="$(btc_cli -rpcwallet="$wallet" gettransaction "$txid" true 2>/dev/null)" &&
           hex="$(jq -r '.hex // empty' <<<"$tx")" &&
           [[ -n "$hex" ]]; then
@@ -2785,7 +2877,7 @@ set_config_from_active_nodes() {
     return 0
   fi
 
-  for i in 1 2 3 4 5 6 7 8; do
+  for i in 1 2 3 4 5 6 7 8 9; do
     [[ -f "$RUN_ROOT/meta/node${i}.env" ]] || continue
     source "$RUN_ROOT/meta/node${i}.env"
     node_json="$(curl_json_quiet "$(api_url 1)/thornado/node/${address}" || true)"
@@ -2841,7 +2933,7 @@ protocol_snapshot() {
   curl_json_quiet "$(api_url 1)/thornado/config" >"$dir/config.json" || printf '{}\n' >"$dir/config.json"
   curl_json_quiet "$(api_url 1)/thornado/shielder/sync?limit=5000" >"$dir/shielder.json" || printf '{}\n' >"$dir/shielder.json"
   printf '[]\n' >"$dir/extra-nodes.json"
-  for i in 5 6 7 8; do
+  for i in 5 6 7 8 9; do
     if [[ -f "$RUN_ROOT/meta/node${i}.env" ]]; then
       source "$RUN_ROOT/meta/node${i}.env"
       bond_json="$(curl_json_quiet "$(api_url 1)/thornado/bond/${cons}" || printf '{}')"
@@ -2914,7 +3006,7 @@ btc_protocol_snapshot() {
     btc_cli getrawmempool | jq -S '.'
     printf ',"wallets":{'
     local first=1
-    for wallet in bifrost1 bifrost2 bifrost3 bifrost4 bifrost5 bifrost6 bifrost7 bifrost8; do
+    for wallet in bifrost1 bifrost2 bifrost3 bifrost4 bifrost5 bifrost6 bifrost7 bifrost8 bifrost9; do
       utxos="$(btc_cli -rpcwallet="$wallet" listunspent 0 9999999 2>/dev/null | jq -S 'map({txid,vout,address,amount,solvable,desc}) | sort_by(.txid, .vout)' || printf '[]')"
       if (( first == 0 )); then printf ','; fi
       first=0
@@ -2963,7 +3055,7 @@ assert_live_nodes_app_hash_converged() {
     max_height=0
     min_height=0
     app_hashes=""
-    for i in 1 2 3 4 5 6 7 8; do
+    for i in 1 2 3 4 5 6 7 8 9; do
       status="$(curl_json_quiet "$(rpc_url "$i")/status" || true)"
       if [[ -z "$status" ]] || ! jq -e '.result.sync_info.latest_block_height' <<<"$status" >/dev/null 2>&1; then
         continue
@@ -2974,13 +3066,13 @@ assert_live_nodes_app_hash_converged() {
       (( min_height == 0 || latest < min_height )) && min_height="$latest"
       app_hashes+=$'\n'"$(jq -r '.result.sync_info.latest_app_hash' <<<"$status")"
     done
-    if (( live >= 4 && max_height - min_height <= 2 )) &&
+    if (( live >= 4 && max_height == min_height )) &&
       [[ "$(printf '%s\n' "$app_hashes" | sed '/^$/d' | sort -u | wc -l | tr -d ' ')" == "1" ]]; then
       printf '%s\n' "$app_hashes" | sed '/^$/d' | sort -u >"$RUN_ROOT/meta/${label// /-}-app-hash.txt"
       return 0
     fi
     if (( "$(date +%s)" - start >= timeout )); then
-      for i in 1 2 3 4 5 6 7 8; do
+      for i in 1 2 3 4 5 6 7 8 9; do
         curl_json_quiet "$(rpc_url "$i")/status" >"$RUN_ROOT/meta/${label// /-}-node${i}-status.json" || true
       done
       die "${label} app_hash did not converge across live nodes"
@@ -3006,14 +3098,15 @@ sats_to_btc() {
 
 register_extra_node() {
   local node="$1" label="$2"
-  local node_addr node_pubkey operator_pubkey out raw_log status
+  local node_addr node_pubkey operator_pubkey node_ip out raw_log status
   # shellcheck disable=SC1090
   source "$RUN_ROOT/meta/node${node}.env"
   node_addr="$address"
   node_pubkey="$cons"
   operator_pubkey="$secp"
+  node_ip="${NODE_IP_ADDRESS:-127.0.0.1}"
 
-  out="$(thornado_tx "$RUN_ROOT/node${node}" "validator${node}" set-ip-address "127.0.0.1")"
+  out="$(thornado_tx "$RUN_ROOT/node${node}" "validator${node}" set-ip-address "$node_ip")"
   printf '%s\n' "$out" >"$RUN_ROOT/meta/${label}-set-ip-address.json"
   assert_tx_success "$out" "${label} set-ip-address"
 
@@ -3026,7 +3119,7 @@ register_extra_node() {
     fi
   fi
 
-  set_and_assert_node_version "$node" "$label" "$(cat "$RUN_ROOT/meta/network-node-version.txt")" >/dev/null
+  set_and_assert_node_version "$node" "$label" "$(cat "$RUN_ROOT/meta/network-node-version.txt" 2>/dev/null || printf '3.17.0')" >/dev/null
   wait_blocks 2
   node_query "$node_addr" >"$RUN_ROOT/meta/${label}-registered-node.json"
   status="$(jq -r '(.node.status // .status) | ascii_downcase' "$RUN_ROOT/meta/${label}-registered-node.json")"
@@ -3049,32 +3142,47 @@ bond_extra_node_from_notes() {
 
   deposit_pubkey="$("$SHIELDER_HELPER" pubkey "${label}-deposit-pubkey")"
   deposit_owner="$("$SHIELDER_HELPER" owner-address "$deposit_pubkey")"
-  log "${label}: requesting bond deposit for node${node} amount_sats=${amount_sats}"
-  request_deposit "$RUN_ROOT/node${node}" "validator${node}" "${label}" "$deposit_pubkey" >"$RUN_ROOT/meta/${label}-request-deposit.json"
-  session="$(deposit_session "$deposit_owner")"
-  printf '%s\n' "$session" >"$RUN_ROOT/meta/${label}-deposit-session.json"
-  deposit_address="$(jq -r '.deposit_address' <<<"$session")"
-  log "${label}: funding bond deposit address"
-  txid="$(mine_to_registered_deposit "$deposit_address" "$amount_btc")"
-  printf '%s\n' "$txid" >"$RUN_ROOT/meta/${label}-btc-deposit-txid.txt"
-  log "${label}: waiting for bond deposit match"
-  matched="$(wait_owner_deposit_matched "$deposit_owner" 420)"
-  printf '%s\n' "$matched" >"$RUN_ROOT/meta/${label}-deposit-matched.json"
-  deposit_id="$(jq -r '.deposit_id' <<<"$matched")"
-  jq -e '.status == "deposit_matched" and (.deposit_id | length) > 0' \
-    "$RUN_ROOT/meta/${label}-deposit-matched.json" >/dev/null || die "${label} deposit did not match"
+  if [[ -s "$RUN_ROOT/meta/${label}-receipt.json" ]]; then
+    log "${label}: resuming from existing shielder receipt"
+    receipt="$(cat "$RUN_ROOT/meta/${label}-receipt.json")"
+  else
+    if [[ -s "$RUN_ROOT/meta/${label}-deposit-session.json" ]]; then
+      log "${label}: resuming from existing bond deposit session"
+      session="$(cat "$RUN_ROOT/meta/${label}-deposit-session.json")"
+    else
+      log "${label}: requesting bond deposit for node${node} amount_sats=${amount_sats}"
+      request_deposit "$RUN_ROOT/node${node}" "validator${node}" "${label}" "$deposit_pubkey" >"$RUN_ROOT/meta/${label}-request-deposit.json"
+      session="$(deposit_session "$deposit_owner")"
+      printf '%s\n' "$session" >"$RUN_ROOT/meta/${label}-deposit-session.json"
+    fi
+    deposit_address="$(jq -r '.deposit_address' <<<"$session")"
+    log "${label}: waiting for bond deposit match"
+    if matched="$(wait_owner_deposit_matched "$deposit_owner" 5 2>/dev/null)"; then
+      log "${label}: existing bond deposit matched"
+    else
+      log "${label}: funding bond deposit address"
+      txid="$(mine_to_registered_deposit "$deposit_address" "$amount_btc")"
+      printf '%s\n' "$txid" >"$RUN_ROOT/meta/${label}-btc-deposit-txid.txt"
+      log "${label}: waiting for funded bond deposit match"
+      matched="$(wait_owner_deposit_matched "$deposit_owner" 420)"
+    fi
+    printf '%s\n' "$matched" >"$RUN_ROOT/meta/${label}-deposit-matched.json"
+    deposit_id="$(jq -r '.deposit_id' <<<"$matched")"
+    jq -e '.status == "deposit_matched" and (.deposit_id | length) > 0' \
+      "$RUN_ROOT/meta/${label}-deposit-matched.json" >/dev/null || die "${label} deposit did not match"
 
-  receipt="$("$SHIELDER_HELPER" receipt "$deposit_id" "$(jq -r '.deposit_path_index' <<<"$session")" "$amount_sats" "${label}-note-seed")"
-  printf '%s\n' "$receipt" >"$RUN_ROOT/meta/${label}-receipt.json"
-  commitment_objects="$("$SHIELDER_HELPER" commitment-objects "$receipt")"
-  commitments="$(jq -c 'map(tostring)' <<<"$commitment_objects")"
-  shield_signature="$("$SHIELDER_HELPER" shield-authorization "${label}-deposit-pubkey" "$deposit_id" "$amount_sats" "$commitment_objects" | jq -r '.signature')"
-  out="$(thornado_tx "$RUN_ROOT/node${node}" "validator${node}" shielder shield "$commitments" "$deposit_pubkey" "$shield_signature" "$deposit_id")"
-  printf '%s\n' "$out" >"$RUN_ROOT/meta/${label}-shield.json"
-  assert_tx_success "$out" "${label} shield"
-  log "${label}: shielded bond deposit"
-  assert_shielder_receipt_committed "$RUN_ROOT/meta/${label}-receipt.json" "${label}-note"
-  record_shielder_notes "$receipt"
+    receipt="$("$SHIELDER_HELPER" receipt "$deposit_id" "$(jq -r '.deposit_path_index' <<<"$session")" "$amount_sats" "${label}-note-seed")"
+    printf '%s\n' "$receipt" >"$RUN_ROOT/meta/${label}-receipt.json"
+    commitment_objects="$("$SHIELDER_HELPER" commitment-objects "$receipt")"
+    commitments="$(jq -c 'map(tostring)' <<<"$commitment_objects")"
+    shield_signature="$("$SHIELDER_HELPER" shield-authorization "${label}-deposit-pubkey" "$deposit_id" "$amount_sats" "$commitment_objects" | jq -r '.signature')"
+    out="$(thornado_tx "$RUN_ROOT/node${node}" "validator${node}" shielder shield "$commitments" "$deposit_pubkey" "$shield_signature" "$deposit_id")"
+    printf '%s\n' "$out" >"$RUN_ROOT/meta/${label}-shield.json"
+    assert_tx_success "$out" "${label} shield"
+    log "${label}: shielded bond deposit"
+    assert_shielder_receipt_committed "$RUN_ROOT/meta/${label}-receipt.json" "${label}-note"
+    record_shielder_notes "$receipt"
+  fi
 
   note_count="$(jq -r '.notes | length' "$RUN_ROOT/meta/${label}-receipt.json")"
   spent_total=0
@@ -3198,7 +3306,7 @@ churn_extra_node_with_migration() {
 
   log "${label}: unhalting churn target_active=${target_active}"
   set_config_from_active_nodes Vault_MigrationIntervalMinutes 1
-  set_config_from_active_nodes Vault_MigrationRounds 1
+  set_config_from_active_nodes Chain_BlockTimeSeconds "$THORNADO_BLOCK_TIME_SECONDS"
   set_config_from_active_nodes Churn_IntervalMinutes 1
   set_config_from_active_nodes Churn_RetryIntervalMinutes 1
   set_config_from_active_nodes Halt_SolvencyCheck 0
@@ -3382,17 +3490,17 @@ validate_bonded_rotation4() {
   set_config_from_active_nodes HaltSigningBTC 0
   set_config_from_active_nodes Halt_SolvencyCheck 0
   set_config_from_active_nodes Node_SetDesired 4
+  set_config_from_active_nodes Chain_BlockTimeSeconds "$THORNADO_BLOCK_TIME_SECONDS"
   set_config_from_active_nodes Churn_IntervalMinutes 1
   set_config_from_active_nodes Churn_RetryIntervalMinutes 1
   set_config_from_active_nodes Vault_MigrationIntervalMinutes 1
-  set_config_from_active_nodes Vault_MigrationRounds 1
 
   wait_api_json_file "$(api_url 1)/thornado/nodes" "$RUN_ROOT/meta/rotation4-initial-nodes.json" "rotation4 initial nodes" 120
   active_count="$(jq '[((if type == "array" then . else .nodes end)[]?) | select((.status | ascii_downcase) == "active")] | length' "$RUN_ROOT/meta/rotation4-initial-nodes.json")"
   [[ "$active_count" == "4" ]] || die "bonded rotation expected 4 genesis active nodes, got ${active_count}"
 
-  standby_node=5
   for round in 1 2 3 4; do
+    standby_node=$((round + 4))
     label="rotation4-round${round}-node${standby_node}"
     [[ -f "$RUN_ROOT/meta/node${standby_node}.env" ]] || die "${label} key material missing"
     wait_all_signed_txouts_finalized "${label}-pre-bond" 900
@@ -3408,7 +3516,7 @@ validate_bonded_rotation4() {
     removed_cons="$(head -n1 "$RUN_ROOT/meta/${label}-churn-removed-cons.txt")"
     removed_node="$(node_index_by_cons "$removed_cons")" || die "${label} could not map removed node ${removed_cons}"
     printf '%s\n' "$removed_node" >"$RUN_ROOT/meta/${label}-removed-node.txt"
-    standby_node="$removed_node"
+    [[ "$removed_node" -ge 1 && "$removed_node" -le 4 ]] || die "${label} expected a genesis node to churn out, got node${removed_node}"
   done
 
   wait_api_json_file "$(api_url 1)/thornado/nodes" "$RUN_ROOT/meta/rotation4-final-nodes.json" "rotation4 final nodes" 120
@@ -3417,6 +3525,11 @@ validate_bonded_rotation4() {
 
   jq -r '((if type == "array" then . else .nodes end)[]?) | select((.status | ascii_downcase) == "active") | .node_cons_pub_key' \
     "$RUN_ROOT/meta/rotation4-final-nodes.json" >"$RUN_ROOT/meta/rotation4-final-active-cons.txt"
+  while IFS= read -r removed_cons; do
+    [[ -n "$removed_cons" ]] || continue
+    removed_node="$(node_index_by_cons "$removed_cons")" || die "rotation4 final could not map active node ${removed_cons}"
+    [[ "$removed_node" -ge 5 && "$removed_node" -le 8 ]] || die "rotation4 final active set still includes genesis node${removed_node}"
+  done <"$RUN_ROOT/meta/rotation4-final-active-cons.txt"
   bonded_count=0
   while IFS= read -r removed_cons; do
     [[ -n "$removed_cons" ]] || continue
@@ -3857,6 +3970,10 @@ main() {
       ;;
   esac
   start_bifrost_nodes
+  wait_bifrost_ready_for_keygen 1
+  wait_bifrost_ready_for_keygen 2
+  wait_bifrost_ready_for_keygen 3
+  wait_bifrost_ready_for_keygen 4
   validate_flow1
   if [[ "$flow_mode" == "bonded_rotation4" ]]; then
     validate_bonded_rotation4
@@ -3870,6 +3987,13 @@ main() {
     validate_flow2_node5_churn
     log "Node5 churn spike passed at ${RUN_ROOT}"
     write_run_summary "PASS" "node5 churn spike passed"
+    keep_running_if_requested
+    return 0
+  fi
+  if [[ "$flow_mode" == "bonded_standby" ]]; then
+    FLOW2_DEFER_NODE5_PREFLIGHT=1 validate_flow2
+    log "Bonded standby cluster ready at ${RUN_ROOT}"
+    write_run_summary "PASS" "bonded standby cluster ready"
     keep_running_if_requested
     return 0
   fi

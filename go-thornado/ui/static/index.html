@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Thornado</title>
-  <link rel="stylesheet" href="/thornado/ui/styles.css?v=recover-without-session-v1">
+  <link rel="stylesheet" href="/thornado/ui/styles.css?v=intro-start-gate-v1">
 </head>
 <body>
   <main>
@@ -75,7 +75,7 @@
       </div>
     </header>
 
-    <div class="overview">
+    <div id="overview" class="overview" hidden>
       <div class="metric">
         <span>Wallet</span>
         <strong id="walletMetric">Generating mnemonic</strong>
@@ -94,7 +94,7 @@
       </div>
     </div>
 
-    <div id="userPanel" class="tab-panel app-layout">
+    <div id="userPanel" class="tab-panel app-layout" hidden>
       <section class="app-board" aria-label="Thornado app flow">
         <div id="getAddressStage" class="flow-stage">
           <div id="stageDeposit" class="stage-card">
@@ -251,6 +251,13 @@
       <div class="flow">
         <section class="page-hero">
           <h2>Network</h2>
+        </section>
+
+        <section id="networkDetailPage" class="surface-section network-detail-page" hidden>
+          <button id="networkDetailBack" class="secondary network-back-button" type="button">Back</button>
+          <h2 id="networkDetailTitle">Network Detail</h2>
+          <div id="networkDetailSubtitle" class="explorer-detail-subtitle"></div>
+          <div id="networkDetailBody" class="explorer-detail-body"></div>
         </section>
 
         <section class="surface-section network-overview">
@@ -567,7 +574,6 @@
                       <option value="Config_OperationalVotesMin">Operational votes minimum</option>
                       <option value="Upgrade_ProposalCountMax">Upgrade proposal count max</option>
                       <option value="Vault_MigrationIntervalMinutes">Vault migration interval minutes</option>
-                      <option value="Vault_MigrationRounds">Vault migration rounds</option>
                       <option value="Vault_RetiredRecoveryAttemptsMax">Retired vault recovery attempts max</option>
                     </optgroup>
                   </select>
@@ -743,6 +749,6 @@
     </div>
   </div>
 
-  <script type="module" src="/thornado/ui/app.js?v=recover-without-session-v1"></script>
+  <script type="module" src="/thornado/ui/app.js?v=intro-start-gate-v1"></script>
 </body>
 </html>

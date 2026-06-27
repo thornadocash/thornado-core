@@ -2,18 +2,18 @@
   "assets": [
     {
       "path": "index.html",
-      "sha256": "59dfdb62ee2c6514fcfd0fe416334fdf735fdb7efa94251d4f9b01939785067a",
-      "bytes": 39651
+      "sha256": "01a9f73a6101836d152a383e23c09c27661573d8a79e2098f43046b91caf3002",
+      "bytes": 39853
     },
     {
       "path": "styles.css",
-      "sha256": "94858ce26f5540d86dbd0614b997e3e7b26d63e804ccbb30958c7537c939d7f2",
-      "bytes": 51119
+      "sha256": "d57e6563e48932e81c0ff2a7e779838ff0b3a93aa1c87d2022971df579407518",
+      "bytes": 52487
     },
     {
       "path": "app.js",
-      "sha256": "9f872393792c401018fc2957ca29377942c532fffe29bf1ea90756ec39121f4c",
-      "bytes": 262876
+      "sha256": "e244069913326d7ab9a31e1f8925ff986051efa82a2d372e5b7291b947fec195",
+      "bytes": 277242
     },
     {
       "path": "modules/api.js",

@@ -156,6 +156,14 @@ func handleObservedTxInQuorum(
 			// update the observing addresses
 			mgr.ObMgr().AppendObserver(tx.Tx.Chain, observers)
 		}
+		if voter.FinalisedHeight > 0 && tx.IsFinal() && observedBTCMigrationInbound(ctx, mgr.Keeper(), tx) {
+			if settleBTCMigrationSourceVault(ctx, mgr, tx) {
+				ctx.Logger().Info("repaired BTC migration source vault from inbound observation",
+					"tx_id", tx.Tx.ID.String(),
+					"coins", tx.Tx.Coins.String(),
+				)
+			}
+		}
 		return nil
 	}
 
@@ -175,14 +183,20 @@ func handleObservedTxInQuorum(
 	}
 
 	hasFinalised := voter.HasFinalised(activeNodeAccounts)
+	btcMigrationCreditedByOutbound := false
+	if tx.Tx.Chain.Equals(common.BTCChain) && observedBTCMigrationInbound(ctx, k, tx) {
+		btcMigrationCreditedByOutbound = btcMigrationDestinationCreditedByOutbound(ctx, k, tx)
+	}
 
 	if hasFinalised {
 		if vault.IsBase() && !voter.UpdatedVault {
-			if !tx.Tx.FromAddress.Equals(tx.Tx.ToAddress) {
+			if btcMigrationCreditedByOutbound {
+				voter.UpdatedVault = true
+			} else if !tx.Tx.FromAddress.Equals(tx.Tx.ToAddress) {
 				vault.AddFunds(tx.Tx.Coins)
 				vault.InboundTxCount++
+				voter.UpdatedVault = true
 			}
-			voter.UpdatedVault = true
 		}
 	}
 	if creditBTCMigrationInboundDestination(ctx, mgr, &vault, &voter, tx) {
@@ -191,6 +205,14 @@ func handleObservedTxInQuorum(
 			"tx_id", tx.Tx.ID.String(),
 			"coins", tx.Tx.Coins.String(),
 		)
+	}
+	if hasFinalised && observedBTCMigrationInbound(ctx, k, tx) {
+		if settleBTCMigrationSourceVault(ctx, mgr, tx) {
+			ctx.Logger().Info("settled BTC migration source vault from inbound observation",
+				"tx_id", tx.Tx.ID.String(),
+				"coins", tx.Tx.Coins.String(),
+			)
+		}
 	}
 	if tx.BlockHeight > 0 {
 		if err = k.SetLastChainHeight(ctx, tx.Tx.Chain, tx.BlockHeight); err != nil {
@@ -552,7 +574,10 @@ func handleObservedTxOutQuorum(
 			mgr.ObMgr().AppendObserver(tx.Tx.Chain, observers)
 		}
 		if voter.FinalisedHeight > 0 {
-			_ = markObservedOutboundTxOut(ctx, mgr, txForOutboundReplayMatch(voter, tx))
+			replayTx := txForOutboundReplayMatch(voter, tx)
+			if markObservedOutboundTxOut(ctx, mgr, replayTx) || len(replayTx.Tx.SourceInputs) > 0 {
+				repairBTCInternalOutboundReplay(ctx, mgr, replayTx)
+			}
 		} else if tx.IsFinal() {
 			_ = markObservedOutboundTxOut(ctx, mgr, tx)
 		}
@@ -595,12 +620,18 @@ func handleObservedTxOutQuorum(
 		}
 	}
 
-	matchedTxOut, newlyMatchedTxOut := markObservedOutboundTxOutStatus(ctx, mgr, tx)
+	matchedTxOut, _ := markObservedOutboundTxOutStatus(ctx, mgr, tx)
 	migrationSourceSettled := false
 	if matchedTxOut {
+		if creditBTCMigrationDestination(ctx, mgr, &voter, tx) {
+			ctx.Logger().Info("credited BTC migration destination vault from outbound",
+				"tx_id", tx.Tx.ID.String(),
+				"coins", tx.Tx.Coins.String(),
+			)
+		}
 		migrationSourceSettled = settleBTCMigrationSourceVault(ctx, mgr, tx)
 	}
-	if shouldSkipAlreadyProcessedObservedOutbound(voter, matchedTxOut, newlyMatchedTxOut, tx) {
+	if shouldSkipAlreadyProcessedObservedOutbound(voter, matchedTxOut, tx) {
 		ctx.Logger().Debug("observed outbound already matched to txout",
 			"tx_id", tx.Tx.ID.String(),
 			"chain", tx.Tx.Chain.String(),
@@ -682,12 +713,37 @@ func handleObservedTxOutQuorum(
 	return nil
 }
 
-func creditBTCMigrationDestination(ctx cosmos.Context, mgr Manager, tx ObservedTx) {
-	// BTC vault-to-vault migrations are observed twice: as an inbound to the
-	// destination vault and as an outbound from the source vault. Destination
-	// accounting is owned by the inbound path; outbound handling only settles
-	// the source vault. Keeping this as a no-op preserves old test call sites
-	// while preventing double credits.
+func creditBTCMigrationDestination(ctx cosmos.Context, mgr Manager, voter *ObservedTxVoter, tx ObservedTx) bool {
+	if voter == nil ||
+		!tx.Tx.Chain.Equals(common.BTCChain) ||
+		tx.Tx.ID.IsEmpty() ||
+		!tx.IsFinal() ||
+		voter.UpdatedVault {
+		return false
+	}
+	k := mgr.Keeper()
+	if btcMigrationDestinationAlreadyCredited(ctx, k, tx) {
+		voter.UpdatedVault = true
+		return false
+	}
+	item, _, ok := findMatchingBTCMigrationTxOut(ctx, k, tx)
+	if !ok {
+		return false
+	}
+	destVault, ok := btcMigrationDestinationVault(ctx, k, item)
+	if !ok {
+		return false
+	}
+	if !tx.Tx.FromAddress.Equals(tx.Tx.ToAddress) {
+		destVault.AddFunds(tx.Tx.Coins)
+		destVault.InboundTxCount++
+	}
+	if err := k.SetVault(ctx, destVault); err != nil {
+		ctx.Logger().Error("fail to save BTC migration destination vault", "error", err, "vault", destVault.PubKey.String(), "tx_id", tx.Tx.ID.String())
+		return false
+	}
+	voter.UpdatedVault = true
+	return true
 }
 
 func creditBTCMigrationInboundDestination(ctx cosmos.Context, mgr Manager, vault *Vault, voter *ObservedTxVoter, tx ObservedTx) bool {
@@ -699,12 +755,56 @@ func creditBTCMigrationInboundDestination(ctx cosmos.Context, mgr Manager, vault
 	if !observedBTCMigrationInbound(ctx, mgr.Keeper(), tx) {
 		return false
 	}
+	if btcMigrationDestinationCreditedByOutbound(ctx, mgr.Keeper(), tx) {
+		voter.UpdatedVault = true
+		return false
+	}
 	if !tx.Tx.FromAddress.Equals(tx.Tx.ToAddress) {
 		vault.AddFunds(tx.Tx.Coins)
 		vault.InboundTxCount++
 	}
 	voter.UpdatedVault = true
 	return true
+}
+
+func btcMigrationDestinationAlreadyCredited(ctx cosmos.Context, k keeper.Keeper, tx ObservedTx) bool {
+	if btcMigrationDestinationCreditedByInbound(ctx, k, tx) {
+		return true
+	}
+	return btcMigrationDestinationCreditedByOutbound(ctx, k, tx)
+}
+
+func btcMigrationDestinationCreditedByInbound(ctx cosmos.Context, k keeper.Keeper, tx ObservedTx) bool {
+	voter, err := k.GetObservedTxInVoter(ctx, tx.Tx.ID)
+	return err == nil && voter.UpdatedVault
+}
+
+func btcMigrationDestinationCreditedByOutbound(ctx cosmos.Context, k keeper.Keeper, tx ObservedTx) bool {
+	voter, err := k.GetObservedTxOutVoter(ctx, tx.Tx.ID)
+	return err == nil && voter.UpdatedVault
+}
+
+func btcMigrationDestinationVault(ctx cosmos.Context, k keeper.Keeper, item TxOutItem) (Vault, bool) {
+	if item.TxType != types.TxOutTypeMigrate ||
+		!item.Chain.Equals(common.BTCChain) ||
+		!item.Coin.Asset.Equals(common.BTCAsset) ||
+		item.ToAddress.IsEmpty() {
+		return Vault{}, false
+	}
+	vaults, err := k.GetBaseVaults(ctx)
+	if err != nil {
+		return Vault{}, false
+	}
+	for _, vault := range vaults {
+		addr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
+		if err != nil {
+			continue
+		}
+		if addr.Equals(item.ToAddress) {
+			return vault, true
+		}
+	}
+	return Vault{}, false
 }
 
 func observedBTCMigrationInbound(ctx cosmos.Context, k keeper.Keeper, tx ObservedTx) bool {
@@ -746,27 +846,40 @@ func settleBTCMigrationSourceVault(ctx cosmos.Context, mgr Manager, tx ObservedT
 }
 
 func findMatchingBTCMigrationTxOut(ctx cosmos.Context, k keeper.Keeper, tx ObservedTx) (TxOutItem, int64, bool) {
-	signingPeriod := getConfigDurationBlocks(ctx, k, constants.Keysign_PeriodMinutes)
-	earliestHeight := ctx.BlockHeight() - signingPeriod
-	if earliestHeight < 1 {
-		earliestHeight = 1
-	}
-	for height := ctx.BlockHeight(); height >= earliestHeight; height-- {
+	for height := ctx.BlockHeight(); height >= 1; height-- {
 		txOut, err := k.GetTxOut(ctx, height)
 		if err != nil {
 			continue
 		}
 		for _, item := range txOut.TxArray {
 			if item.TxType != types.TxOutTypeMigrate ||
-				item.OutHash.IsEmpty() ||
-				!item.OutHash.Equals(tx.Tx.ID) ||
-				!observedOutboundMatchesSettledTxOut(tx, item) {
+				!observedBTCMigrationMatchesTxOut(tx, item) {
 				continue
 			}
 			return item, txOut.Height, true
 		}
 	}
 	return TxOutItem{}, 0, false
+}
+
+func observedBTCMigrationMatchesTxOut(tx ObservedTx, item TxOutItem) bool {
+	if item.TxType != types.TxOutTypeMigrate ||
+		item.OutHash.IsEmpty() ||
+		!item.OutHash.Equals(tx.Tx.ID) ||
+		!tx.Tx.Chain.Equals(common.BTCChain) ||
+		!item.Chain.Equals(common.BTCChain) ||
+		!tx.Tx.ToAddress.Equals(item.ToAddress) ||
+		!item.Coin.Asset.Equals(common.BTCAsset) {
+		return false
+	}
+	if len(item.SourceInputs) > 0 && !observedTxSpentTxOutInputs(tx.Tx.SourceInputs, item.SourceInputs) {
+		return false
+	}
+	sourceAddr, err := common.DeriveBTCTaprootAddress(item.VaultPubKey, item.VaultPathIndex)
+	if err != nil || !tx.Tx.FromAddress.Equals(sourceAddr) {
+		return false
+	}
+	return true
 }
 
 func settleBTCMigrationSourceVaultItem(ctx cosmos.Context, mgr Manager, txOutHeight int64, item TxOutItem) bool {
@@ -844,8 +957,8 @@ func observedTxMatchesTxOutType(ctx cosmos.Context, k keeper.Keeper, tx Observed
 	return false
 }
 
-func shouldSkipAlreadyProcessedObservedOutbound(voter ObservedTxVoter, matchedTxOut, newlyMatchedTxOut bool, tx ObservedTx) bool {
-	if !matchedTxOut || newlyMatchedTxOut || !observedOutboundRequiresTxOutMatch(tx) {
+func shouldSkipAlreadyProcessedObservedOutbound(voter ObservedTxVoter, matchedTxOut bool, tx ObservedTx) bool {
+	if !matchedTxOut || !observedOutboundRequiresTxOutMatch(tx) {
 		return false
 	}
 	if voter.Tx.Status == common.Status_done {
@@ -868,6 +981,69 @@ func txForOutboundReplayMatch(voter ObservedTxVoter, tx ObservedTx) ObservedTx {
 		return tx
 	}
 	return voter.Tx
+}
+
+func repairBTCInternalOutboundReplay(ctx cosmos.Context, mgr Manager, tx ObservedTx) bool {
+	if !tx.IsFinal() ||
+		!tx.Tx.Chain.Equals(common.BTCChain) ||
+		len(tx.Tx.SourceInputs) == 0 {
+		return false
+	}
+	item, _, ok := findMatchingBTCInternalTxOut(ctx, mgr.Keeper(), tx)
+	if !ok {
+		return false
+	}
+	if types.IsInternalTxOutType(item.TxType) && item.TxType == types.TxOutTypeMigrate {
+		return settleBTCMigrationSourceVault(ctx, mgr, tx)
+	}
+	if !types.IsInternalTxOutType(item.TxType) {
+		return false
+	}
+	k := mgr.Keeper()
+	vault, err := k.GetVault(ctx, tx.ObservedPubKey)
+	if err != nil {
+		ctx.Logger().Error("fail to get vault for BTC internal outbound replay repair", "error", err, "vault", tx.ObservedPubKey.String(), "tx_id", tx.Tx.ID.String())
+		return false
+	}
+	if !tx.Tx.FromAddress.Equals(tx.Tx.ToAddress) && !isBTCChildSweepToRoot(tx, vault.PubKey) {
+		if !isOutboundFakeGasTx(tx) {
+			vault.SubFunds(tx.Tx.Coins)
+		}
+		vault.OutboundTxCount++
+	}
+	if !vault.HasFunds() && vault.Status == RetiringVault {
+		vault.UpdateStatus(InactiveVault, ctx.BlockHeight())
+	}
+	if err := k.SetVault(ctx, vault); err != nil {
+		ctx.Logger().Error("fail to save vault after BTC internal outbound replay repair", "error", err, "vault", vault.PubKey.String(), "tx_id", tx.Tx.ID.String())
+		return false
+	}
+	ctx.Logger().Info("repaired BTC internal outbound replay vault accounting",
+		"vault", vault.PubKey.String(),
+		"tx_id", tx.Tx.ID.String(),
+		"tx_type", item.TxType,
+		"coins", tx.Tx.Coins.String(),
+	)
+	return true
+}
+
+func findMatchingBTCInternalTxOut(ctx cosmos.Context, k keeper.Keeper, tx ObservedTx) (TxOutItem, int64, bool) {
+	for height := ctx.BlockHeight(); height >= 1; height-- {
+		txOut, err := k.GetTxOut(ctx, height)
+		if err != nil {
+			continue
+		}
+		for _, item := range txOut.TxArray {
+			if !types.IsInternalTxOutType(item.TxType) ||
+				item.OutHash.IsEmpty() ||
+				!item.OutHash.Equals(tx.Tx.ID) ||
+				!observedOutboundMatchesSettledTxOut(tx, item) {
+				continue
+			}
+			return item, txOut.Height, true
+		}
+	}
+	return TxOutItem{}, 0, false
 }
 
 func markObservedOutboundTxOut(ctx cosmos.Context, mgr Manager, tx ObservedTx) bool {
@@ -895,7 +1071,7 @@ func markObservedOutboundTxOutStatus(ctx cosmos.Context, mgr Manager, tx Observe
 		}
 		for i, item := range txOut.TxArray {
 			if !observedOutboundMatchesTxOut(tx, item) {
-				ctx.Logger().Info("observed outbound did not match txout item",
+				ctx.Logger().Debug("observed outbound did not match txout item",
 					"height", height,
 					"tx_id", tx.Tx.ID.String(),
 					"tx_chain", tx.Tx.Chain.String(),
@@ -929,6 +1105,118 @@ func markObservedOutboundTxOutStatus(ctx cosmos.Context, mgr Manager, tx Observe
 			settledItem := txOut.TxArray[i]
 			if err := mgr.Keeper().SetTxOut(ctx, txOut); err != nil {
 				ctx.Logger().Error("fail to save tx out", "error", err)
+			}
+			markMatchedTxOutItemSettled(ctx, mgr, settledItem, tx)
+			return true, true
+		}
+	}
+	if item, height, ok := findMatchingBTCInternalTxOut(ctx, mgr.Keeper(), tx); ok {
+		ctx.Logger().Info("matched observed outbound to completed internal txout item",
+			"height", height,
+			"tx_id", tx.Tx.ID.String(),
+			"in_hash", item.InHash.String(),
+			"tx_type", item.TxType,
+		)
+		return true, false
+	}
+	if matched, newlyMatched := markObservedBTCInternalHistoricalTxOut(ctx, mgr, tx, earliestHeight-1); matched {
+		return matched, newlyMatched
+	}
+	if matched, newlyMatched := markObservedOpenBTCOutboundOutsideSigningWindow(ctx, mgr, tx, earliestHeight-1); matched {
+		return matched, newlyMatched
+	}
+	return false, false
+}
+
+func markObservedOpenBTCOutboundOutsideSigningWindow(ctx cosmos.Context, mgr Manager, tx ObservedTx, latestHeight int64) (bool, bool) {
+	if latestHeight < 1 ||
+		!tx.IsFinal() ||
+		!tx.Tx.Chain.Equals(common.BTCChain) ||
+		!observedOutboundRequiresTxOutMatch(tx) {
+		return false, false
+	}
+
+	iterator := mgr.Keeper().GetTxOutIterator(ctx)
+	defer func() {
+		if err := iterator.Close(); shouldLogIteratorError(err) {
+			ctx.Logger().Error("fail to close txout iterator", "error", err)
+		}
+	}()
+
+	var bestTxOut *TxOut
+	bestIndex := -1
+	for ; iterator.Valid(); iterator.Next() {
+		var txOut TxOut
+		if err := mgr.Keeper().Cdc().Unmarshal(iterator.Value(), &txOut); err != nil {
+			ctx.Logger().Error("fail to unmarshal txout while matching observed outbound", "error", err)
+			continue
+		}
+		if txOut.Height > latestHeight || txOut.IsEmpty() || !txOutHasPendingItems(txOut) {
+			continue
+		}
+		for i, item := range txOut.TxArray {
+			if !item.OutHash.IsEmpty() || !observedOutboundMatchesTxOut(tx, item) {
+				continue
+			}
+			if bestTxOut == nil || txOut.Height > bestTxOut.Height {
+				copyTxOut := txOut
+				bestTxOut = &copyTxOut
+				bestIndex = i
+			}
+		}
+	}
+	if err := iterator.Error(); shouldLogIteratorError(err) {
+		ctx.Logger().Error("txout iterator ended with error", "error", err)
+	}
+	if bestTxOut == nil || bestIndex < 0 {
+		return false, false
+	}
+
+	ctx.Logger().Info("matched observed outbound to still-open txout outside signing window",
+		"height", bestTxOut.Height,
+		"tx_id", tx.Tx.ID.String(),
+		"in_hash", bestTxOut.TxArray[bestIndex].InHash.String(),
+	)
+	bestTxOut.TxArray[bestIndex].OutHash = tx.Tx.ID
+	bestTxOut.TxArray[bestIndex].OutVout = 0
+	settledItem := bestTxOut.TxArray[bestIndex]
+	if err := mgr.Keeper().SetTxOut(ctx, bestTxOut); err != nil {
+		ctx.Logger().Error("fail to save historical open tx out", "error", err)
+		return false, false
+	}
+	markMatchedTxOutItemSettled(ctx, mgr, settledItem, tx)
+	return true, true
+}
+
+func markObservedBTCInternalHistoricalTxOut(ctx cosmos.Context, mgr Manager, tx ObservedTx, latestHeight int64) (bool, bool) {
+	if latestHeight < 1 ||
+		!tx.IsFinal() ||
+		!tx.Tx.Chain.Equals(common.BTCChain) ||
+		len(tx.Tx.SourceInputs) == 0 {
+		return false, false
+	}
+	for height := latestHeight; height >= 1; height-- {
+		txOut, err := mgr.Keeper().GetTxOut(ctx, height)
+		if err != nil {
+			continue
+		}
+		for i, item := range txOut.TxArray {
+			if !types.IsInternalTxOutType(item.TxType) ||
+				!item.OutHash.IsEmpty() ||
+				!observedOutboundMatchesTxOut(tx, item) {
+				continue
+			}
+			ctx.Logger().Info("matched historical BTC internal outbound to txout item", "height", height, "tx_id", tx.Tx.ID.String(), "in_hash", item.InHash.String(), "tx_type", item.TxType)
+			txOut.TxArray[i].OutHash = tx.Tx.ID
+			txOut.TxArray[i].OutVout = 0
+			observedCoin := tx.Tx.Coins.GetCoin(common.BTCAsset)
+			if !observedCoin.IsEmpty() && !observedCoin.Amount.IsZero() {
+				txOut.TxArray[i].Coin = observedCoin
+			}
+			settledItem := txOut.TxArray[i]
+			if err := mgr.Keeper().SetTxOut(ctx, txOut); err != nil {
+				ctx.Logger().Error("fail to save historical BTC migration tx out", "error", err)
+				return false, false
 			}
 			markMatchedTxOutItemSettled(ctx, mgr, settledItem, tx)
 			return true, true

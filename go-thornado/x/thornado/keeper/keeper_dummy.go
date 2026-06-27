@@ -477,6 +477,9 @@ func (k KVStoreDummy) SetSolvencyVoter(_ cosmos.Context, _ SolvencyVoter) {}
 func (k KVStoreDummy) GetSolvencyVoter(_ cosmos.Context, _ common.TxID, _ common.Chain) (SolvencyVoter, error) {
 	return SolvencyVoter{}, kaboom
 }
+func (k KVStoreDummy) GetSolvencyVoterIterator(_ cosmos.Context) cosmos.Iterator {
+	return NewDummyIterator()
+}
 
 func (k KVStoreDummy) InvariantRoutes() []common.InvariantRoute {
 	return nil

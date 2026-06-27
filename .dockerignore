@@ -1,6 +1,11 @@
 .git
 /build
 /target
+/node_modules
+/circuits/tornado/node_modules
+/go-thornado/build
+/go-thornado/thornado
+/go-thornado/thornado-ui
 /tmp
 .DS_Store
 **/*.log

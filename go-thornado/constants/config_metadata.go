@@ -78,8 +78,7 @@ var configDescriptions = map[string]string{
 
 	Upgrade_ProposalCountMax.String(): "Maximum active upgrade proposals.",
 
-	Vault_MigrationIntervalMinutes.String():   "Minutes between vault migration rounds.",
-	Vault_MigrationRounds.String():            "Number of migration rounds for retiring vaults.",
+	Vault_MigrationIntervalMinutes.String():   "Minutes between vault migration attempts.",
 	Vault_RetiredRecoveryAttemptsMax.String(): "Maximum recovery attempts for retired vault funds.",
 
 	Withdrawal_FeeBasisPoints.String():     "Withdrawal fee in basis points collected by core.",

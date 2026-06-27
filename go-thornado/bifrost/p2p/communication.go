@@ -178,6 +178,16 @@ func (c *Communication) Broadcast(peers []peer.ID, msg []byte, msgID string) {
 	go c.broadcastToPeers(peers, msg, msgID)
 }
 
+// BroadcastSync delivers a FROST session message and blocks until all peer
+// writes finish or fail.
+func (c *Communication) BroadcastSync(peers []peer.ID, msg []byte, msgID string) {
+	if len(peers) == 0 {
+		return
+	}
+	c.wg.Add(1)
+	c.broadcastToPeers(peers, msg, msgID)
+}
+
 func (c *Communication) broadcastToPeers(peers []peer.ID, msg []byte, msgID string) {
 	defer c.wg.Done()
 	defer func() {
@@ -317,6 +327,13 @@ func (c *Communication) bootStrapConnectivityCheck() error {
 		c.logger.Info().Msgf("we have successfully ping pong %d nodes", onlineNodes)
 		return nil
 	}
+	for _, el := range bootstrapPeers {
+		peerInfo, err := peer.AddrInfoFromP2pAddr(el)
+		if err == nil && peerInfo.ID == c.host.ID() {
+			c.logger.Info().Msg("bootstrap list includes self; skipping remote bootstrap ping check")
+			return nil
+		}
+	}
 	c.logger.Error().Msg("fail to ping any bootstrap node")
 	return errors.New("the node cannot ping any bootstrap node")
 }
@@ -420,19 +437,22 @@ func (c *Communication) connectToBootstrapPeers() error {
 		return nil
 	}
 	var wg sync.WaitGroup
+	selfBootstrap := false
+	remoteBootstrap := 0
 	connRet := make(chan bool, len(bootstrapPeers))
 	for _, peerAddr := range bootstrapPeers {
 		pi, err := peer.AddrInfoFromP2pAddr(peerAddr)
 		if err != nil {
 			return fmt.Errorf("fail to add peer: %w", err)
 		}
-		// Skip connecting to ourselves
 		if pi.ID == c.host.ID() {
+			selfBootstrap = true
 			c.logger.Debug().Msgf("skipping connection to self: %s", pi.ID)
 			continue
 		}
+		remoteBootstrap++
 		wg.Add(1)
-		go func(connRet chan bool) {
+		go func(pi *peer.AddrInfo) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(context.Background(), TimeoutConnecting)
 			defer cancel()
@@ -443,15 +463,27 @@ func (c *Communication) connectToBootstrapPeers() error {
 			}
 			connRet <- true
 			c.logger.Info().Msgf("Connection established with bootstrap node: %s", *pi)
-		}(connRet)
+		}(pi)
 	}
 	wg.Wait()
-	for i := 0; i < len(bootstrapPeers); i++ {
+	connected := 0
+	for i := 0; i < remoteBootstrap; i++ {
 		if <-connRet {
-			return nil
+			connected++
 		}
 	}
-	return errors.New("fail to connect to any peer")
+	if connected == 0 {
+		if selfBootstrap || remoteBootstrap == 0 {
+			c.logger.Info().
+				Bool("self_bootstrap", selfBootstrap).
+				Int("remote_bootstrap", remoteBootstrap).
+				Msg("continuing without remote bootstrap connections")
+			return nil
+		}
+		return errors.New("fail to connect to any peer")
+	}
+	c.logger.Info().Int("connected", connected).Int("bootstrap_peers", len(bootstrapPeers)).Msg("connected bootstrap peers")
+	return nil
 }
 
 // Start will start the communication

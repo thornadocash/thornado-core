@@ -25,7 +25,6 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
-	"github.com/thornadocash/go-thornado/constants"
 	stypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
@@ -558,17 +557,10 @@ func (o *Observer) sendToQuorumChecker(deck *types.TxIn, finalised bool, finalis
 		return invalidIndices
 	}
 
-	if !o.chainObservationHalted(deck.Chain) {
-		for _, tx := range inbound {
-			if err := o.attestationGossip.AttestObservedTx(context.Background(), &tx, true); err != nil {
-				o.logger.Err(err).Msg("fail to send inbound tx to thornado")
-			}
+	for _, tx := range inbound {
+		if err := o.attestationGossip.AttestObservedTx(context.Background(), &tx, true); err != nil {
+			o.logger.Err(err).Msg("fail to send inbound tx to thornado")
 		}
-	} else if len(inbound) > 0 {
-		o.logger.Info().
-			Stringer("chain", deck.Chain).
-			Int("inbound", len(inbound)).
-			Msg("chain halted, skipping inbound observations")
 	}
 
 	for _, tx := range outbound {
@@ -578,32 +570,6 @@ func (o *Observer) sendToQuorumChecker(deck *types.TxIn, finalised bool, finalis
 	}
 
 	return invalidIndices
-}
-
-func (o *Observer) chainObservationHalted(chain common.Chain) bool {
-	height, err := o.thornadoBridge.GetBlockHeight()
-	if err != nil {
-		o.logger.Error().Err(err).Stringer("chain", chain).Msg("fail to get thornado height for halted observation check")
-		return false
-	}
-
-	for _, key := range []string{constants.Halt_ChainGlobal.String(), constants.Halt_SolvencyCheck.String()} {
-		haltHeight, err := o.thornadoBridge.GetConfigValue(key)
-		if err != nil {
-			o.logger.Error().Err(err).Str("config", key).Msg("fail to get halt config")
-			continue
-		}
-		if haltHeight > 0 && height >= haltHeight {
-			return true
-		}
-	}
-
-	nodePauseHeight, err := o.thornadoBridge.GetConfigValue(constants.ConfigKeyNodePauseChainGlobal)
-	if err != nil {
-		o.logger.Error().Err(err).Str("config", constants.ConfigKeyNodePauseChainGlobal).Msg("fail to get node pause config")
-		return false
-	}
-	return nodePauseHeight > 0 && height <= nodePauseHeight
 }
 
 func (o *Observer) processTxIns() {
@@ -948,6 +914,9 @@ func (o *Observer) getThornadoTxIns(txIn *types.TxIn, finalized bool, finaliseHe
 		height := item.BlockHeight
 		if txIn.MemPool && !finalized && !txIn.AllowFutureObservation {
 			height = 0
+		}
+		if finalized && height == 0 {
+			height = finaliseHeight
 		}
 		// Strip out any empty Coin from Coins and Gas, as even one empty Coin will make a MsgObservedTxIn for instance fail validation.
 		tx := common.NewTx(txID, sender, to, item.Coins.NoneEmpty(), item.Gas.NoneEmpty())

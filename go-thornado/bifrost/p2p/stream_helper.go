@@ -49,14 +49,23 @@ func (sm *StreamMgr) ReleaseStream(msgID string) {
 	usedStreams, okStream := sm.unusedStreams[msgID]
 	unknownStreams, okUnknown := sm.unusedStreams[StreamUnknown]
 	sm.streamLocker.RUnlock()
-	streams := append(usedStreams, unknownStreams...) // nolint:gocritic
-	if okStream || okUnknown {
-		for _, el := range streams {
+	if okStream {
+		for _, el := range usedStreams {
+			err := el.Close()
+			if err != nil {
+				sm.logger.Error().Err(err).Msg("fail to close the stream,skip it")
+			}
+		}
+	}
+	if okUnknown {
+		for _, el := range unknownStreams {
 			err := el.Reset()
 			if err != nil {
 				sm.logger.Error().Err(err).Msg("fail to reset the stream,skip it")
 			}
 		}
+	}
+	if okStream || okUnknown {
 		sm.streamLocker.Lock()
 		delete(sm.unusedStreams, msgID)
 		delete(sm.unusedStreams, StreamUnknown)

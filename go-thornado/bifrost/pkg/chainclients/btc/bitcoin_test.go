@@ -20,6 +20,7 @@ import (
 	cKeys "github.com/cosmos/cosmos-sdk/crypto/keyring"
 	. "gopkg.in/check.v1"
 
+	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
 	p2pstorage "github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
@@ -205,7 +206,7 @@ func (s *BitcoinSuite) SetUpTest(c *C) {
 	s.bridge, err = thornadoclient.NewThornadoBridge(cfg, s.m, s.keys)
 	c.Assert(err, IsNil)
 	s.cfg.RPCHost = s.server.Listener.Addr().String()
-	s.client, err = NewClient(s.keys, s.cfg, s.bridge, &p2pstorage.MockLocalStateManager{}, s.m)
+	s.client, err = NewClient(s.keys, s.cfg, s.bridge, &p2pstorage.MockLocalStateManager{}, s.m, &frost.InProcessSessionCoordinator{})
 	s.client.disableVinZeroBatch = true
 	s.client.globalNetworkFeeQueue = make(chan common.NetworkFee, 1)
 	c.Assert(err, IsNil)

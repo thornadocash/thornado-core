@@ -87,7 +87,7 @@ func TestObservedTxValidateBasicAllowsInboundMempoolHeight(t *testing.T) {
 	require.NoError(t, quorumMsg.ValidateBasic())
 }
 
-func TestObservedTxValidateBasicRejectsOutboundMempoolHeight(t *testing.T) {
+func TestObservedTxValidateBasicAllowsOutboundMempoolHeight(t *testing.T) {
 	SetupConfigForTest()
 
 	pubKey := GetRandomPubKey()
@@ -104,14 +104,14 @@ func TestObservedTxValidateBasicRejectsOutboundMempoolHeight(t *testing.T) {
 	observedTx := common.NewObservedTx(tx, 0, pubKey, 10)
 
 	outboundMsg := NewMsgObservedTxOut(common.ObservedTxs{observedTx}, GetRandomBech32Addr())
-	require.ErrorContains(t, outboundMsg.ValidateBasic(), "block height can't be zero")
+	require.NoError(t, outboundMsg.ValidateBasic())
 
 	quorumMsg := NewMsgObservedTxQuorum(&common.QuorumTx{
 		ObsTx:        observedTx,
 		Inbound:      false,
 		Attestations: []*common.Attestation{{PubKey: []byte{1}}},
 	}, GetRandomBech32Addr())
-	require.ErrorContains(t, quorumMsg.ValidateBasic(), "block height can't be zero")
+	require.NoError(t, quorumMsg.ValidateBasic())
 }
 
 func TestObservedTxValidateBasicRejectsMultipleCoinsOrGasCoins(t *testing.T) {

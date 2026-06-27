@@ -12,7 +12,17 @@ import (
 func InitGenesis(ctx cosmos.Context, keeper keeper.Keeper, data GenesisState) []abci.ValidatorUpdate {
 	nodes := initGenesis(ctx, keeper, data)
 	if len(nodes) == 0 {
-		return nodes
+		for _, na := range data.NodeAccounts {
+			if na.Status != NodeActive || na.NodeConsPubKey == "" {
+				continue
+			}
+			pk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeConsPub, na.NodeConsPubKey)
+			if err != nil {
+				ctx.Logger().Error("fail to parse genesis consensus public key", "node", na.NodeAddress.String(), "key", na.NodeConsPubKey, "error", err)
+				continue
+			}
+			nodes = append(nodes, abci.Ed25519ValidatorUpdate(pk.Bytes(), 100))
+		}
 	}
-	return nodes[:1]
+	return nodes
 }

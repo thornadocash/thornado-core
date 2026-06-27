@@ -199,3 +199,97 @@ func TestCommittedNonFinalObservedTxKeepsExistingDeckRemovalBehavior(t *testing.
 		Attestations: make([]*common.Attestation, 1),
 	}))
 }
+
+func TestActiveValidatorSetChangeClearsAttestationState(t *testing.T) {
+	oldPeer := peer.ID("old")
+	newPeer := peer.ID("new")
+	tx := common.ObservedTx{
+		Tx: common.Tx{
+			ID:    common.TxID("ABC123"),
+			Chain: common.BTCChain,
+		},
+	}
+	obsKey := newObservedTxKey(tx, true, false)
+	networkFee := common.NetworkFee{Height: 1, Chain: common.BTCChain}
+	solvencyID := common.TxID("SOLVENCY")
+	errata := common.ErrataTx{Id: common.TxID("ERRATA"), Chain: common.BTCChain}
+
+	gossip := &AttestationGossip{
+		activeVals: map[peer.ID]bool{oldPeer: true},
+		observedTxs: map[txKey]*AttestationState[*attestableObservedTx]{
+			obsKey: {
+				Item: &attestableObservedTx{ObservedTx: &tx, inbound: true},
+			},
+		},
+		networkFees: map[common.NetworkFee]*AttestationState[*common.NetworkFee]{
+			networkFee: {Item: &networkFee},
+		},
+		solvencies: map[common.TxID]*AttestationState[*common.Solvency]{
+			solvencyID: {Item: &common.Solvency{Id: solvencyID, Chain: common.BTCChain}},
+		},
+		errataTxs: map[common.ErrataTx]*AttestationState[*common.ErrataTx]{
+			errata: {Item: &errata},
+		},
+		observedTxsPool: NewAttestationStatePool[*attestableObservedTx](),
+		networkFeesPool: NewAttestationStatePool[*common.NetworkFee](),
+		solvenciesPool:  NewAttestationStatePool[*common.Solvency](),
+		errataTxsPool:   NewAttestationStatePool[*common.ErrataTx](),
+		batcher: &AttestationBatcher{
+			observedTxBatch: []*common.AttestTx{{ObsTx: tx}},
+			networkFeeBatch: []*common.AttestNetworkFee{{NetworkFee: &networkFee}},
+			solvencyBatch:   []*common.AttestSolvency{{Solvency: &common.Solvency{Id: solvencyID, Chain: common.BTCChain}}},
+			errataTxBatch:   []*common.AttestErrataTx{{ErrataTx: &errata}},
+		},
+		stateInitPeers: map[peer.ID]bool{oldPeer: true},
+	}
+
+	gossip.setActiveValidatorPeers(map[peer.ID]bool{newPeer: true})
+
+	require.Equal(t, map[peer.ID]bool{newPeer: true}, gossip.activeVals)
+	require.Empty(t, gossip.observedTxs)
+	require.Empty(t, gossip.networkFees)
+	require.Empty(t, gossip.solvencies)
+	require.Empty(t, gossip.errataTxs)
+	require.Empty(t, gossip.batcher.observedTxBatch)
+	require.Empty(t, gossip.batcher.networkFeeBatch)
+	require.Empty(t, gossip.batcher.solvencyBatch)
+	require.Empty(t, gossip.batcher.errataTxBatch)
+	require.Nil(t, gossip.stateInitPeers)
+}
+
+func TestActiveValidatorSetUnchangedKeepsAttestationState(t *testing.T) {
+	activePeer := peer.ID("active")
+	tx := common.ObservedTx{
+		Tx: common.Tx{
+			ID:    common.TxID("ABC123"),
+			Chain: common.BTCChain,
+		},
+	}
+	obsKey := newObservedTxKey(tx, true, false)
+
+	gossip := &AttestationGossip{
+		activeVals: map[peer.ID]bool{activePeer: true},
+		observedTxs: map[txKey]*AttestationState[*attestableObservedTx]{
+			obsKey: {
+				Item: &attestableObservedTx{ObservedTx: &tx, inbound: true},
+			},
+		},
+		networkFees:     make(map[common.NetworkFee]*AttestationState[*common.NetworkFee]),
+		solvencies:      make(map[common.TxID]*AttestationState[*common.Solvency]),
+		errataTxs:       make(map[common.ErrataTx]*AttestationState[*common.ErrataTx]),
+		observedTxsPool: NewAttestationStatePool[*attestableObservedTx](),
+		networkFeesPool: NewAttestationStatePool[*common.NetworkFee](),
+		solvenciesPool:  NewAttestationStatePool[*common.Solvency](),
+		errataTxsPool:   NewAttestationStatePool[*common.ErrataTx](),
+		batcher: &AttestationBatcher{
+			observedTxBatch: []*common.AttestTx{{ObsTx: tx}},
+		},
+		stateInitPeers: map[peer.ID]bool{activePeer: true},
+	}
+
+	gossip.setActiveValidatorPeers(map[peer.ID]bool{activePeer: true})
+
+	require.Len(t, gossip.observedTxs, 1)
+	require.Len(t, gossip.batcher.observedTxBatch, 1)
+	require.Equal(t, map[peer.ID]bool{activePeer: true}, gossip.stateInitPeers)
+}

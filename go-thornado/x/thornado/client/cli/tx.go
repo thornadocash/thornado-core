@@ -607,7 +607,11 @@ func observeTxs(outbound bool) func(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to encode message: %w", err)
 		}
 
-		return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		if err = tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg); err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "failed to generate or broadcast observed tx: %v\n", err)
+			return err
+		}
+		return nil
 	}
 }
 

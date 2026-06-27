@@ -152,7 +152,7 @@ func (vm *NodeMgr) churnInner(ctx cosmos.Context) error {
 		return err
 	}
 
-	// Mark bad, old, and old version nodes.
+	// Mark bad, low version, and missing nodes before normal rotation.
 	// mark someone to get churned out for bad behavior
 	_, err := vm.markBadActor(ctx, minPenaltyPointsForBadNode, redline)
 	if err != nil {
@@ -164,20 +164,32 @@ func (vm *NodeMgr) churnInner(ctx cosmos.Context) error {
 		return err
 	}
 
+	// mark someone(s) for not signing blocks
+	if err = vm.markMissingActors(ctx); err != nil {
+		return err
+	}
+
 	activeNodes, err := vm.k.ListActiveNodes(ctx)
 	if err != nil {
 		return err
 	}
-	if int64(len(activeNodes)) >= desiredNodeSet {
+	if int64(len(activeNodes)) >= desiredNodeSet && !hasLeaveCandidate(activeNodes) {
+		marked, err := vm.markLowBondActor(ctx, desiredNodeSet)
+		if err != nil {
+			return err
+		}
+		if marked {
+			activeNodes, err = vm.k.ListActiveNodes(ctx)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	if int64(len(activeNodes)) >= desiredNodeSet && !hasLeaveCandidate(activeNodes) {
 		// mark someone to get churned out for age
 		if err = vm.markOldActor(ctx); err != nil {
 			return err
 		}
-	}
-
-	// mark someone(s) for not signing blocks
-	if err = vm.markMissingActors(ctx); err != nil {
-		return err
 	}
 
 	next, ok, err := vm.nextVaultNodeAccounts(ctx, int(desiredNodeSet))
@@ -753,25 +765,45 @@ func (vm *NodeMgr) markOldActor(ctx cosmos.Context) error {
 }
 
 // Mark a low bond actor to be churned out once the active set is at capacity.
-func (vm *NodeMgr) markLowBondActor(ctx cosmos.Context, desiredNodeSet int64) error {
+func (vm *NodeMgr) markLowBondActor(ctx cosmos.Context, desiredNodeSet int64) (bool, error) {
 	if desiredNodeSet > 0 {
 		nas, err := vm.k.ListActiveNodes(ctx)
 		if err != nil {
-			return err
+			return false, err
 		}
 		if int64(len(nas)) < desiredNodeSet {
-			return nil
+			return false, nil
 		}
 	}
 
 	na, err := vm.findLowBondActor(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
+	if na.IsEmpty() {
+		return false, nil
+	}
+
+	selected, err := vm.k.ListNodesByStatus(ctx, NodeSelected)
+	if err != nil {
+		return false, err
+	}
+	if len(selected) > 0 {
+		bestReplacementBond := selected[0].Bond
+		for _, item := range selected[1:] {
+			if item.Bond.GT(bestReplacementBond) {
+				bestReplacementBond = item.Bond
+			}
+		}
+		if bestReplacementBond.LT(na.Bond) {
+			return false, nil
+		}
+	}
+
 	if err := vm.markActor(ctx, na, "for low bond"); err != nil {
-		return err
+		return false, err
 	}
-	return nil
+	return true, nil
 }
 
 // Mark a bad actor to be churned out

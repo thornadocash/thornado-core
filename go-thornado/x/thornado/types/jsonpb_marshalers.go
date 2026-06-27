@@ -43,6 +43,7 @@ var (
 	_ jsonpb.JSONPBMarshaler = &QueryUpgradeProposalsResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryUpgradeVotesResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryVaultResponse{}
+	_ jsonpb.JSONPBMarshaler = &QueryVaultSignersResponse{}
 	_ jsonpb.JSONPBMarshaler = &QueryVersionResponse{}
 
 	// Query responses that do not require a json marshaler override
@@ -61,7 +62,11 @@ func jsonify(r any) ([]byte, error) {
 }
 
 func (m *QueryBaseVaultsResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
-	return jsonify(m.BaseVaults)
+	vaults := make([]map[string]any, 0, len(m.BaseVaults))
+	for _, vault := range m.BaseVaults {
+		vaults = append(vaults, vaultJSON(vault))
+	}
+	return jsonify(vaults)
 }
 
 // QueryBalanceModuleResponse
@@ -248,7 +253,57 @@ func (m *QueryUpgradeVotesResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, 
 
 // QueryVaultResponse
 func (m *QueryVaultResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
-	return jsonify(m)
+	return jsonify(vaultJSON(m))
+}
+
+// QueryVaultSignersResponse returns a raw JSON array for bifrost compatibility.
+func (m *QueryVaultSignersResponse) MarshalJSONPB(_ *jsonpb.Marshaler) ([]byte, error) {
+	if m == nil {
+		return json.Marshal([]string{})
+	}
+	return json.Marshal(m.Signers)
+}
+
+func vaultBTCAddress(m *QueryVaultResponse) string {
+	if m == nil {
+		return ""
+	}
+	for _, address := range m.Addresses {
+		if address != nil && address.Chain == "BTC" {
+			return address.Address
+		}
+	}
+	return ""
+}
+
+func vaultJSON(m *QueryVaultResponse) map[string]any {
+	if m == nil {
+		return nil
+	}
+	btcAddress := vaultBTCAddress(m)
+	primary := btcAddress
+	if primary == "" {
+		primary = m.PubKey
+	}
+	return map[string]any{
+		"block_height":             m.BlockHeight,
+		"pub_key":                  primary,
+		"vault_pub_key":            m.PubKey,
+		"address":                  btcAddress,
+		"btc_address":              btcAddress,
+		"coins":                    m.Coins,
+		"type":                     m.Type,
+		"status":                   m.Status,
+		"status_since":             m.StatusSince,
+		"membership":               m.Membership,
+		"chains":                   m.Chains,
+		"inbound_tx_count":         m.InboundTxCount,
+		"outbound_tx_count":        m.OutboundTxCount,
+		"pending_tx_block_heights": m.PendingTxBlockHeights,
+		"addresses":                m.Addresses,
+		"frozen":                   m.Frozen,
+		"pub_key_eddsa":            m.PubKeyEddsa,
+	}
 }
 
 // QueryVaultsPubkeysResponse

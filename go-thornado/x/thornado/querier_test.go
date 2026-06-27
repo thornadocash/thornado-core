@@ -83,6 +83,56 @@ func TestShielderSyncBirthdayAndCursor(t *testing.T) {
 	}
 }
 
+func TestShielderSyncStreamSelection(t *testing.T) {
+	ctx := flowTestContext()
+	k := newShielderFlowTestKeeper()
+	qs := queryServer{mgr: &Mgrs{K: k}}
+
+	_ = k.SetDepositRecord(ctx, types.DepositRecord{
+		DepositID:     common.TxID("0100000000000000000000000000000000000000000000000000000000000000"),
+		AmountSats:    1_000_000,
+		CreatedHeight: 10,
+		Status:        "matched",
+	})
+	_ = k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+		Commitment:       "AA",
+		DenominationSats: 1_000_000,
+		CreatedHeight:    10,
+	})
+	_ = k.SetShielderRedeem(ctx, types.ShielderRedeem{WithdrawalID: "withdraw-1", RequestedHeight: 10})
+	_ = k.SetShielderNullifierSpent(ctx, "N1", "withdraw-1")
+
+	notesOnly, err := qs.queryShielderSync(ctx, &types.QueryShielderSyncRequest{
+		Limit:        10,
+		IncludeNotes: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(notesOnly.Notes) != 1 || len(notesOnly.Deposits) != 0 || len(notesOnly.Nullifiers) != 0 {
+		t.Fatalf("notes-only sync included wrong streams: deposits=%d notes=%d nullifiers=%d", len(notesOnly.Deposits), len(notesOnly.Notes), len(notesOnly.Nullifiers))
+	}
+
+	nullifiersOnly, err := qs.queryShielderSync(ctx, &types.QueryShielderSyncRequest{
+		Limit:             10,
+		IncludeNullifiers: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(nullifiersOnly.Nullifiers) != 1 || len(nullifiersOnly.Deposits) != 0 || len(nullifiersOnly.Notes) != 0 {
+		t.Fatalf("nullifier-only sync included wrong streams: deposits=%d notes=%d nullifiers=%d", len(nullifiersOnly.Deposits), len(nullifiersOnly.Notes), len(nullifiersOnly.Nullifiers))
+	}
+
+	full, err := qs.queryShielderSync(ctx, &types.QueryShielderSyncRequest{Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(full.Deposits) != 1 || len(full.Notes) != 1 || len(full.Nullifiers) != 1 {
+		t.Fatalf("full sync lost legacy streams: deposits=%d notes=%d nullifiers=%d", len(full.Deposits), len(full.Notes), len(full.Nullifiers))
+	}
+}
+
 func TestQueryProtocolGasSpentBreakdown(t *testing.T) {
 	ctx := flowTestContext()
 	k := newShielderFlowTestKeeper()

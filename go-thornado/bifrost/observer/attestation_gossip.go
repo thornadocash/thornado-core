@@ -306,8 +306,6 @@ func normalizeConfig(config *config.BifrostAttestationGossipConfig) {
 
 // Set the active validators list
 func (s *AttestationGossip) setActiveValidators(activeVals common.PubKeys) {
-	s.avMu.Lock()
-	defer s.avMu.Unlock()
 	activePeers := make(map[peer.ID]bool, len(activeVals))
 	for _, pub := range activeVals {
 		pk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, pub.String())
@@ -323,7 +321,67 @@ func (s *AttestationGossip) setActiveValidators(activeVals common.PubKeys) {
 		activePeers[peerID] = true
 	}
 
+	s.setActiveValidatorPeers(activePeers)
+}
+
+func (s *AttestationGossip) setActiveValidatorPeers(activePeers map[peer.ID]bool) {
+	s.avMu.Lock()
+	changed := !samePeerSet(s.activeVals, activePeers)
 	s.activeVals = activePeers
+	s.avMu.Unlock()
+
+	if changed {
+		s.clearAttestationState()
+	}
+}
+
+func samePeerSet(a, b map[peer.ID]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for p := range a {
+		if !b[p] {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *AttestationGossip) clearAttestationState() {
+	s.mu.Lock()
+	for k, state := range s.observedTxs {
+		delete(s.observedTxs, k)
+		state.mu.Lock()
+		s.observedTxsPool.PutAttestationState(state)
+		state.mu.Unlock()
+	}
+	for k, state := range s.networkFees {
+		delete(s.networkFees, k)
+		state.mu.Lock()
+		s.networkFeesPool.PutAttestationState(state)
+		state.mu.Unlock()
+	}
+	for k, state := range s.solvencies {
+		delete(s.solvencies, k)
+		state.mu.Lock()
+		s.solvenciesPool.PutAttestationState(state)
+		state.mu.Unlock()
+	}
+	for k, state := range s.errataTxs {
+		delete(s.errataTxs, k)
+		state.mu.Lock()
+		s.errataTxsPool.PutAttestationState(state)
+		state.mu.Unlock()
+	}
+	s.mu.Unlock()
+
+	if s.batcher != nil {
+		s.batcher.Clear()
+	}
+
+	s.stateInitMu.Lock()
+	s.stateInitPeers = nil
+	s.stateInitMu.Unlock()
 }
 
 // Get the number of active validators

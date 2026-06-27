@@ -44,3 +44,7 @@ func (k KVStore) GetSolvencyVoter(ctx cosmos.Context, txID common.TxID, chain co
 	_, err := k.getSolvencyVoter(ctx, k.GetKey(prefixSolvencyVoter, key), &solvencyVoter)
 	return solvencyVoter, err
 }
+
+func (k KVStore) GetSolvencyVoterIterator(ctx cosmos.Context) cosmos.Iterator {
+	return k.getIterator(ctx, prefixSolvencyVoter)
+}

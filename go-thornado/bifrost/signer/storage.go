@@ -2,6 +2,7 @@ package signer
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -27,10 +28,9 @@ const (
 type TxStatus int
 
 const (
-	TxUnknown TxStatus = iota
-	TxAvailable
-	TxUnavailable
-	TxSpent
+	TxUnknown   TxStatus = 0
+	TxAvailable TxStatus = 1
+	TxSpent     TxStatus = 3
 )
 
 type TxOutStoreItem struct {
@@ -58,6 +58,26 @@ func NewTxOutStoreItem(height int64, item types.TxOutItem, idx int64) TxOutStore
 		Status:    TxAvailable,
 		Index:     idx,
 	}
+}
+
+// mergeStoredTxOutItem preserves signer-local retry state when the block scanner
+// re-ingests the same queued txout.
+func mergeStoredTxOutItem(storage SignerStorage, item TxOutStoreItem) TxOutStoreItem {
+	key := item.Key()
+	if !storage.Has(key) {
+		return item
+	}
+	existing, err := storage.Get(key)
+	if err != nil {
+		return item
+	}
+	item.Status = existing.Status
+	item.DeferredUntilHeight = existing.DeferredUntilHeight
+	item.Round7Retry = existing.Round7Retry
+	item.Checkpoint = existing.Checkpoint
+	item.SignedTx = existing.SignedTx
+	item.Observation = existing.Observation
+	return item
 }
 
 func (s *TxOutStoreItem) Key() string {
@@ -98,6 +118,11 @@ type SignerStore struct {
 	passphrase string
 }
 
+type namespacedScannerStorage struct {
+	db     *leveldb.DB
+	prefix string
+}
+
 // NewSignerStore create a new instance of SignerStore. If no folder is given,
 // an in memory implementation is used.
 func NewSignerStore(levelDbFolder string, opts config.LevelDBOptions, passphrase string) (*SignerStore, error) {
@@ -116,6 +141,81 @@ func NewSignerStore(levelDbFolder string, opts config.LevelDBOptions, passphrase
 		db:                    ldb,
 		passphrase:            passphrase,
 	}, nil
+}
+
+func NewNamespacedScannerStorage(db *leveldb.DB, prefix string) blockscanner.ScannerStorage {
+	return &namespacedScannerStorage{db: db, prefix: prefix}
+}
+
+func (s *namespacedScannerStorage) scanPosKey() []byte {
+	return []byte(s.prefix + blockscanner.ScanPosKey)
+}
+
+func (s *namespacedScannerStorage) blockStatusKey(block int64) []byte {
+	return []byte(fmt.Sprintf("%sblock-process-status-%d", s.prefix, block))
+}
+
+func (s *namespacedScannerStorage) blockStatusPrefix() []byte {
+	return []byte(s.prefix + "block-process-status-")
+}
+
+func (s *namespacedScannerStorage) GetScanPos() (int64, error) {
+	buf, err := s.db.Get(s.scanPosKey(), nil)
+	if err != nil {
+		return 0, err
+	}
+	pos, _ := binary.Varint(buf)
+	return pos, nil
+}
+
+func (s *namespacedScannerStorage) SetScanPos(block int64) error {
+	buf := make([]byte, 8)
+	n := binary.PutVarint(buf, block)
+	return s.db.Put(s.scanPosKey(), buf[:n], nil)
+}
+
+func (s *namespacedScannerStorage) SetBlockScanStatus(block blockscanner.Block, status blockscanner.BlockScanStatus) error {
+	blockStatusItem := blockscanner.BlockStatusItem{
+		Block:  block,
+		Status: status,
+	}
+	buf, err := json.Marshal(blockStatusItem)
+	if err != nil {
+		return fmt.Errorf("fail to marshal BlockStatusItem to json: %w", err)
+	}
+	return s.db.Put(s.blockStatusKey(block.Height), buf, nil)
+}
+
+func (s *namespacedScannerStorage) RemoveBlockStatus(block int64) error {
+	return s.db.Delete(s.blockStatusKey(block), nil)
+}
+
+func (s *namespacedScannerStorage) GetBlocksForRetry(failedOnly bool) ([]blockscanner.Block, error) {
+	iterator := s.db.NewIterator(util.BytesPrefix(s.blockStatusPrefix()), nil)
+	defer iterator.Release()
+	var results []blockscanner.Block
+	for iterator.Next() {
+		buf := iterator.Value()
+		if len(buf) == 0 {
+			continue
+		}
+		var blockStatusItem blockscanner.BlockStatusItem
+		if err := json.Unmarshal(buf, &blockStatusItem); err != nil {
+			return nil, fmt.Errorf("fail to unmarshal to block status item: %w", err)
+		}
+		if !failedOnly || blockStatusItem.Status == blockscanner.Failed {
+			results = append(results, blockStatusItem.Block)
+		}
+	}
+	return results, iterator.Error()
+}
+
+func (s *namespacedScannerStorage) GetInternalDb() *leveldb.DB {
+	return s.db
+}
+
+func (s *namespacedScannerStorage) Close() error {
+	return nil
 }
 
 func (s *SignerStore) Set(item TxOutStoreItem) error {

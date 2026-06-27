@@ -109,6 +109,10 @@ service Query {
     option (google.api.http).get = "/thornado/vaults/solvency";
   }
 
+  rpc VaultSigners(QueryVaultSignersRequest) returns (QueryVaultSignersResponse) {
+    option (google.api.http).get = "/thornado/vaults/{pub_key}/signers";
+  }
+
   rpc Tx(QueryTxRequest) returns (QueryTxResponse) {
     option (google.api.http).get = "/thornado/tx/{tx_id}";
   }

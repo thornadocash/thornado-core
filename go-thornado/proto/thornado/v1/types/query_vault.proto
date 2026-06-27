@@ -79,3 +79,12 @@ message VaultSolvencyAsset {
 message QueryVaultSolvencyResponse {
   repeated VaultSolvencyAsset assets = 1 [ (gogoproto.jsontag) = "assets" ];
 }
+
+message QueryVaultSignersRequest {
+  string pub_key = 1;
+  string height = 2;
+}
+
+message QueryVaultSignersResponse {
+  repeated string signers = 1;
+}

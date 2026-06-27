@@ -19,6 +19,7 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcutil"
+	cmtsecp256k1 "github.com/cometbft/cometbft/crypto/secp256k1"
 
 	"github.com/thornadocash/go-thornado/bifrost/blockscanner"
 	btypes "github.com/thornadocash/go-thornado/bifrost/blockscanner/types"
@@ -105,6 +106,7 @@ func NewClient(
 	bridge thornadoclient.ThornadoBridge,
 	localState p2pstorage.LocalStateManager,
 	m *metrics.Metrics,
+	coordinator frost.SessionCoordinator,
 ) (*Client, error) {
 	// verify the chain is supported
 	supported := map[common.Chain]bool{
@@ -134,14 +136,17 @@ func NewClient(
 		return nil, fmt.Errorf("fail to create rpc client: %w", err)
 	}
 
-	// node key setup
-	frostKeysign, err := newVaultSigner(bridge, localState, logger)
-	if err != nil {
-		return nil, fmt.Errorf("fail to create vault signer: %w", err)
-	}
 	thorPrivateKey, err := thorKeys.GetPrivateKey()
 	if err != nil {
 		return nil, fmt.Errorf("fail to get Thornado private key: %w", err)
+	}
+	localParty, err := common.NewPubKeyFromCrypto(cmtsecp256k1.PubKey(thorPrivateKey.PubKey().Bytes()))
+	if err != nil {
+		return nil, fmt.Errorf("fail to derive local FROST party key: %w", err)
+	}
+	frostKeysign, err := newVaultSigner(bridge, localState, logger, coordinator, localParty.String())
+	if err != nil {
+		return nil, fmt.Errorf("fail to create vault signer: %w", err)
 	}
 	nodePrivKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), thorPrivateKey.Bytes())
 	nodePubKey, err := bech32AccountPubKey(nodePrivKey)
@@ -212,6 +217,20 @@ func (c *Client) GetChain() common.Chain {
 	return c.cfg.ChainID
 }
 
+// SetFrostPartyLeader pins the designated signer as the FROST party coordinator leader.
+func (c *Client) SetFrostPartyLeader(leader string) {
+	if setter, ok := c.frostKeySigner.(interface{ SetPartyLeader(string) }); ok {
+		setter.SetPartyLeader(leader)
+	}
+}
+
+// ClearFrostPartyLeader clears the pinned party leader after a multi-UTXO sign completes.
+func (c *Client) ClearFrostPartyLeader() {
+	if clearer, ok := c.frostKeySigner.(interface{ ClearPartyLeader() }); ok {
+		clearer.ClearPartyLeader()
+	}
+}
+
 // IsBlockScannerHealthy returns true if the block scanner is healthy.
 func (c *Client) IsBlockScannerHealthy() bool {
 	return c.blockScanner.IsHealthy()
@@ -263,7 +282,7 @@ func (c *Client) ObserveTxIn(txid string) (types.TxIn, error) {
 
 // GetNetworkFee returns current chain network fee according to Bifrost.
 func (c *Client) GetNetworkFee() (transactionSize, transactionFeeRate uint64) {
-	transactionSize = c.cfg.UTXO.EstimatedAverageTxSize
+	transactionSize = c.estimatedAverageTxSize()
 	return transactionSize, c.lastFeeRate.Load()
 }
 
@@ -448,14 +467,14 @@ func (c *Client) registeredVaultPaths(pubkey common.PubKey) []uint64 {
 
 // GetAccount returns the account details for the given public key.
 func (c *Client) GetAccount(pubkey common.PubKey, height *big.Int) (common.Account, error) {
-	return c.getAccountForPaths(pubkey, c.registeredVaultPathsWithMain(pubkey))
+	return c.getAccountForPaths(pubkey, c.registeredVaultPathsWithMain(pubkey), false)
 }
 
 func (c *Client) getSolvencyAccount(pubkey common.PubKey) (common.Account, error) {
-	return c.getAccountForPaths(pubkey, c.solvencyVaultPaths(pubkey))
+	return c.getAccountForPaths(pubkey, c.solvencyVaultPaths(pubkey), true)
 }
 
-func (c *Client) getAccountForPaths(pubkey common.PubKey, pathIndexes []uint64) (common.Account, error) {
+func (c *Client) getAccountForPaths(pubkey common.PubKey, pathIndexes []uint64, includeMempool bool) (common.Account, error) {
 	acct := common.Account{}
 	if pubkey.IsEmpty() {
 		return acct, errors.New("pubkey can't be empty")
@@ -472,18 +491,7 @@ func (c *Client) getAccountForPaths(pubkey common.PubKey, pathIndexes []uint64) 
 			return acct, fmt.Errorf("fail to get UTXOs: %w", err)
 		}
 
-		for _, item := range utxos {
-			if !c.isValidUTXO(item.ScriptPubKey) {
-				continue
-			}
-			if item.Confirmations == 0 {
-				// pending tx in mempool, only count sends from base
-				if !c.isSelfTransaction(item.TxID) && !c.isFromBase(item.TxID) {
-					continue
-				}
-			}
-			total += item.Amount
-		}
+		total += c.sumAccountUtxos(utxos, includeMempool)
 	}
 	totalAmt, err := btcutil.NewAmount(total)
 	if err != nil {
@@ -493,6 +501,23 @@ func (c *Client) getAccountForPaths(pubkey common.PubKey, pathIndexes []uint64) 
 		common.Coins{
 			common.NewCoin(c.cfg.ChainID.GetGasAsset(), cosmos.NewUint(uint64(totalAmt))),
 		}), nil
+}
+
+func (c *Client) sumAccountUtxos(utxos []btcjson.ListUnspentResult, includeMempool bool) float64 {
+	total := 0.0
+	for _, item := range utxos {
+		if !c.isValidUTXO(item.ScriptPubKey) {
+			continue
+		}
+		if !includeMempool && item.Confirmations == 0 {
+			// pending tx in mempool, only count sends from base
+			if !c.isSelfTransaction(item.TxID) && !c.isFromBase(item.TxID) {
+				continue
+			}
+		}
+		total += item.Amount
+	}
+	return total
 }
 
 func (c *Client) solvencyVaultPaths(pubkey common.PubKey) []uint64 {
@@ -1007,10 +1032,8 @@ func (c *Client) ReportSolvency(height int64) error {
 		return fmt.Errorf("fail to get baseVaults: %w", err)
 	}
 
-	currentGasFee := cosmos.NewUint(3 * c.cfg.UTXO.EstimatedAverageTxSize * c.lastFeeRate.Load())
+	currentGasFee := cosmos.NewUint(3 * c.estimatedAverageTxSize() * c.lastFeeRate.Load())
 
-	// report insolvent base vaults,
-	// or else all if the chain is halted and all are solvent
 	chainVaults := baseVaults[:0]
 	for _, base := range baseVaults {
 		if base.HasFundsForChain(c.cfg.ChainID) {
@@ -1019,8 +1042,6 @@ func (c *Client) ReportSolvency(height int64) error {
 	}
 
 	msgs := make([]types.Solvency, 0, len(chainVaults))
-	solventMsgs := make([]types.Solvency, 0, len(chainVaults))
-	processedVaults := 0
 	for i := range chainVaults {
 		var acct common.Account
 		acct, err = c.getSolvencyAccount(chainVaults[i].PubKey)
@@ -1035,35 +1056,17 @@ func (c *Client) ReportSolvency(height int64) error {
 			PubKey: chainVaults[i].PubKey,
 			Coins:  acct.Coins,
 		}
-		processedVaults++
+		solvent := runners.IsVaultSolvent(c.cfg.ChainID, acct, chainVaults[i], currentGasFee)
+		msgs = append(msgs, msg)
 
-		if runners.IsVaultSolvent(c.cfg.ChainID, acct, chainVaults[i], currentGasFee) {
-			solventMsgs = append(solventMsgs, msg) // Solvent-vault message
-			continue
-		}
-		msgs = append(msgs, msg) // Insolvent-vault message
-	}
-
-	// Only if the block scanner is unhealthy (e.g. solvency-halted) and all chain-specific vaults are solvent,
-	// report that all the chain-specific vaults are solvent.
-	// If there are any insolvent vaults, report only them.
-	// Not reporting both solvent and insolvent vaults is to avoid noise (spam):
-	// Reporting both could halt-and-unhalt SolvencyHalt in the same Thornado block
-	// (resetting its height), plus making it harder to know at a glance from solvency reports which vaults were insolvent.
-	solvent := false
-	allVaultsProcessed := len(chainVaults) > 0 && processedVaults == len(chainVaults)
-	if !c.IsBlockScannerHealthy() && allVaultsProcessed && len(solventMsgs) == processedVaults {
-		msgs = solventMsgs
-		solvent = true
+		c.log.Info().
+			Stringer("base", msg.PubKey).
+			Interface("coins", msg.Coins).
+			Bool("solvent", solvent).
+			Msg("reporting solvency")
 	}
 
 	for i := range msgs {
-		c.log.Info().
-			Stringer("base", msgs[i].PubKey).
-			Interface("coins", msgs[i].Coins).
-			Bool("solvent", solvent).
-			Msg("reporting solvency")
-
 		// send solvency to thornado via global queue consumed by the observer
 		select {
 		case c.globalSolvencyQueue <- msgs[i]:

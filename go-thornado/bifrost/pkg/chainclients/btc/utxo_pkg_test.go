@@ -65,6 +65,38 @@ func httpTestHandler(c *C, rw http.ResponseWriter, fixture string) {
 	}
 }
 
+func TestSolvencyAccountUtxosIncludeMempool(t *testing.T) {
+	client := &Client{
+		cfg: config.BifrostChainConfiguration{
+			ChainID: common.BTCChain,
+		},
+	}
+	utxos := []btcjson.ListUnspentResult{
+		{
+			TxID:          "confirmed",
+			Amount:        1.25,
+			Confirmations: 6,
+			ScriptPubKey:  "00140653096f54ae1ae2d73291d15854aef08ebcfa8c",
+		},
+		{
+			TxID:          "mempool",
+			Amount:        0.75,
+			Confirmations: 0,
+			ScriptPubKey:  "00140653096f54ae1ae2d73291d15854aef08ebcfa8c",
+		},
+		{
+			TxID:          "invalid",
+			Amount:        99,
+			Confirmations: 0,
+			ScriptPubKey:  "51210281feb90c058c3436f8bc361930ae99fcfb530a699cdad141d7244bfcad521a1f51ae",
+		},
+	}
+
+	if got := client.sumAccountUtxos(utxos, true); got != 2.0 {
+		t.Fatalf("expected confirmed and mempool UTXOs to total 2.0 BTC, got %f", got)
+	}
+}
+
 // assertSenderUTXOValidation verifies that Client.getSender rejects bare
 // multisig sender UTXOs. This guards against the sender-spoofing attack where
 // an attacker crafts a bare multisig [victim_pubkey, attacker_pubkey] and signs

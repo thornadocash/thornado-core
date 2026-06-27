@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -35,16 +36,32 @@ var (
 )
 
 func initTendermint() {
-	// get tendermint port from config
-	portSplit := strings.Split(config.GetThornado().Tendermint.RPC.ListenAddress, ":")
-	port := portSplit[len(portSplit)-1]
-
-	// setup tendermint client
 	var err error
-	tendermintClient, err = tmhttp.New(fmt.Sprintf("tcp://localhost:%s", port), "/websocket")
+	tendermintClient, err = tmhttp.New(tendermintRPCListenAddress(), "/websocket")
 	if err != nil {
 		log.Fatal().Err(err).Msg("fail to create tendermint client")
 	}
+}
+
+func tendermintRPCListenAddress() string {
+	for i, arg := range os.Args {
+		if strings.HasPrefix(arg, "--rpc.laddr=") {
+			return strings.TrimPrefix(arg, "--rpc.laddr=")
+		}
+		if arg == "--rpc.laddr" && i+1 < len(os.Args) {
+			return os.Args[i+1]
+		}
+	}
+
+	if address := os.Getenv("THORNADO_TENDERMINT_RPC_LISTEN_ADDRESS"); address != "" {
+		return address
+	}
+
+	address := config.GetThornado().Tendermint.RPC.ListenAddress
+	if address == "" {
+		address = "tcp://127.0.0.1:26657"
+	}
+	return strings.Replace(address, "localhost:", "127.0.0.1:", 1)
 }
 
 func getPeerIDFromPubKey(pubkey common.PubKey) string {
@@ -239,6 +256,64 @@ func (qs queryServer) queryNetworkFee(ctx cosmos.Context, _ *types.QueryNetworkF
 		return nil, fmt.Errorf("fail to get BTC network fee: %w", err)
 	}
 	return &fee, nil
+}
+
+func (qs queryServer) queryVaultSigners(ctx cosmos.Context, req *types.QueryVaultSignersRequest) (*types.QueryVaultSignersResponse, error) {
+	if len(req.PubKey) < 1 {
+		return nil, errors.New("missing vault pub_key parameter")
+	}
+	vaultPubKey, err := common.NewPubKey(req.PubKey)
+	if err != nil {
+		return nil, fmt.Errorf("%s is invalid pubkey", req.PubKey)
+	}
+
+	vault, err := qs.mgr.Keeper().GetVault(ctx, vaultPubKey)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get vault with pubkey(%s): %w", vaultPubKey, err)
+	}
+	if vault.IsEmpty() {
+		return nil, errors.New("vault not found")
+	}
+
+	active, err := qs.mgr.Keeper().ListActiveNodes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("fail to list active nodes: %w", err)
+	}
+
+	vaultMembers := make(map[string]struct{}, len(vault.Membership))
+	for _, member := range vault.Membership {
+		vaultMembers[member] = struct{}{}
+	}
+
+	signers := make([]string, 0, len(active))
+	for _, node := range active {
+		pubKey := node.PubKeySet.Secp256k1.String()
+		if pubKey == "" {
+			continue
+		}
+		if len(vaultMembers) > 0 {
+			if _, ok := vaultMembers[pubKey]; !ok {
+				continue
+			}
+		} else {
+			member := false
+			for _, membership := range node.SignerMembership {
+				if strings.EqualFold(membership, vaultPubKey.String()) {
+					member = true
+					break
+				}
+			}
+			if !member {
+				continue
+			}
+		}
+		signers = append(signers, pubKey)
+	}
+	if len(signers) == 0 {
+		return nil, fmt.Errorf("no active signers found for vault %s", vaultPubKey)
+	}
+	sort.Strings(signers)
+	return &types.QueryVaultSignersResponse{Signers: signers}, nil
 }
 
 func (qs queryServer) queryVaultSolvency(ctx cosmos.Context, _ *types.QueryVaultSolvencyRequest) (*types.QueryVaultSolvencyResponse, error) {
@@ -678,16 +753,18 @@ func newTxStagesResponse(ctx cosmos.Context, voter ObservedTxVoter) (result type
 			confCount.ExternalObservedHeight = extObsHeight
 			confCount.ExternalConfirmationDelayHeight = extConfDelayHeight
 
-			estConfMs := voter.Tx.Tx.Chain.ApproximateBlockMilliseconds() * (extConfDelayHeight - extObsHeight)
-			if currentHeight > countStartHeight {
-				estConfMs -= (currentHeight - countStartHeight) * common.BTCChain.ApproximateBlockMilliseconds()
+			if extObsHeight > 0 {
+				estConfMs := voter.Tx.Tx.Chain.ApproximateBlockMilliseconds() * (extConfDelayHeight - extObsHeight)
+				if currentHeight > countStartHeight {
+					estConfMs -= (currentHeight - countStartHeight) * voter.Tx.Tx.Chain.ApproximateBlockMilliseconds()
+				}
+				estConfSec := estConfMs / 1000
+				// Floor at 0.
+				if estConfSec < 0 {
+					estConfSec = 0
+				}
+				confCount.RemainingConfirmationSeconds = estConfSec
 			}
-			estConfSec := estConfMs / 1000
-			// Floor at 0.
-			if estConfSec < 0 {
-				estConfSec = 0
-			}
-			confCount.RemainingConfirmationSeconds = estConfSec
 		}
 
 		result.InboundConfirmationCounted = &confCount
@@ -1008,17 +1085,36 @@ func (qs queryServer) queryShielderSync(ctx cosmos.Context, req *types.QueryShie
 		fromHeight = 0
 	}
 
-	deposits, nextDepositCursor, totalDeposits, moreDeposits, err := queryShielderSyncDeposits(ctx, k, strings.TrimSpace(req.GetDepositCursor()), limit, legacyFullSync, fromHeight)
-	if err != nil {
-		return nil, err
+	explicitStreams := req.GetIncludeDeposits() || req.GetIncludeNotes() || req.GetIncludeNullifiers()
+	includeDeposits := !explicitStreams || req.GetIncludeDeposits()
+	includeNotes := !explicitStreams || req.GetIncludeNotes()
+	includeNullifiers := !explicitStreams || req.GetIncludeNullifiers()
+
+	var deposits []*types.QueryDepositResponse
+	var notes []*types.ShielderNoteRecord
+	var nullifiers []*types.ShielderSpentNullifier
+	var nextDepositCursor, nextNoteCursor, nextNullifierCursor string
+	var totalDeposits, totalNotes, totalNullifiers uint64
+	var moreDeposits, moreNotes, moreNullifiers bool
+	var err error
+
+	if includeDeposits {
+		deposits, nextDepositCursor, totalDeposits, moreDeposits, err = queryShielderSyncDeposits(ctx, k, strings.TrimSpace(req.GetDepositCursor()), limit, legacyFullSync, fromHeight)
+		if err != nil {
+			return nil, err
+		}
 	}
-	notes, nextNoteCursor, totalNotes, moreNotes, err := queryShielderSyncNotes(ctx, k, strings.TrimSpace(req.GetNoteCursor()), limit, legacyFullSync, fromHeight)
-	if err != nil {
-		return nil, err
+	if includeNotes {
+		notes, nextNoteCursor, totalNotes, moreNotes, err = queryShielderSyncNotes(ctx, k, strings.TrimSpace(req.GetNoteCursor()), limit, legacyFullSync, fromHeight)
+		if err != nil {
+			return nil, err
+		}
 	}
-	nullifiers, nextNullifierCursor, totalNullifiers, moreNullifiers, err := queryShielderSyncNullifiers(ctx, k, strings.TrimSpace(req.GetNullifierCursor()), limit, legacyFullSync, fromHeight)
-	if err != nil {
-		return nil, err
+	if includeNullifiers {
+		nullifiers, nextNullifierCursor, totalNullifiers, moreNullifiers, err = queryShielderSyncNullifiers(ctx, k, strings.TrimSpace(req.GetNullifierCursor()), limit, legacyFullSync, fromHeight)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &types.QueryShielderSyncResponse{

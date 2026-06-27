@@ -19,6 +19,7 @@ type peerStatus struct {
 	leader         peer.ID
 	threshold      int
 	reqCount       int
+	joiners        int
 }
 
 func (ps *peerStatus) getLeaderResponse() *messages.JoinPartyLeaderComm {

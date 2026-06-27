@@ -12,6 +12,7 @@ import (
 	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
+	ttypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 func newBatchCacheTestClient(t *testing.T) (*Client, func()) {
@@ -69,6 +70,29 @@ func TestTxBatchAlreadySignedRequiresEveryItem(t *testing.T) {
 	}
 	if !client.txBatchAlreadySigned(items) {
 		t.Fatal("batch should be signed when every member item is signed")
+	}
+}
+
+func TestTxAlreadySignedDoesNotBlockInternalRecovery(t *testing.T) {
+	client, closeDB := newBatchCacheTestClient(t)
+	defer closeDB()
+
+	item := batchCacheTestItem(t, "0000000000000000000000000000000000000000000000000000000000000010", 1_000)
+	if err := client.signerCacheManager.SetSigned(item.CacheHash(), item.CacheVault(common.BTCChain), "txid"); err != nil {
+		t.Fatal(err)
+	}
+	if !client.txAlreadySigned(item) {
+		t.Fatal("non-migration tx should respect signed cache")
+	}
+
+	item.TxType = ttypes.TxOutTypeMigrate
+	if client.txAlreadySigned(item) {
+		t.Fatal("migration tx should keep retrying until chain state has an out hash")
+	}
+
+	item.TxType = ttypes.TxOutTypeSweep
+	if client.txAlreadySigned(item) {
+		t.Fatal("sweep tx should keep retrying until chain state has an out hash")
 	}
 }
 

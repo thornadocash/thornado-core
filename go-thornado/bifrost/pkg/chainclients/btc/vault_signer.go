@@ -1,34 +1,71 @@
 package btc
 
 import (
+	"context"
 	"fmt"
+	"sort"
+	"sync"
 
 	btcschnorr "github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cometbft/cometbft/crypto"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/rs/zerolog"
 
-	frostsessions "github.com/thornadocash/go-thornado/go-wrappers/frost/go-frost/sessions"
-
 	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
-	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/common"
 	ttypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
-type frostVaultSigner struct {
-	localState storage.LocalStateManager
-	log        zerolog.Logger
+type frostKeysignBridge interface {
+	GetKeysignParty(vaultPubKey common.PubKey) (common.PubKeys, error)
+	GetBlockHeight() (int64, error)
 }
 
-func newVaultSigner(_ thornadoclient.ThornadoBridge, localState storage.LocalStateManager, log zerolog.Logger) (frost.ThornadoKeyManager, error) {
+type frostVaultSigner struct {
+	localState  storage.LocalStateManager
+	log         zerolog.Logger
+	coordinator frost.SessionCoordinator
+	bridge      frostKeysignBridge
+	localParty  string
+	partyLeader string
+	partyLeaderMu sync.Mutex
+}
+
+func (s *frostVaultSigner) SetPartyLeader(leader string) {
+	s.partyLeaderMu.Lock()
+	s.partyLeader = leader
+	s.partyLeaderMu.Unlock()
+}
+
+func (s *frostVaultSigner) ClearPartyLeader() {
+	s.partyLeaderMu.Lock()
+	s.partyLeader = ""
+	s.partyLeaderMu.Unlock()
+}
+
+func newVaultSigner(
+	bridge frostKeysignBridge,
+	localState storage.LocalStateManager,
+	log zerolog.Logger,
+	coordinator frost.SessionCoordinator,
+	localParty string,
+) (frost.ThornadoKeyManager, error) {
 	if localState == nil {
 		return nil, fmt.Errorf("FROST local state manager is required")
 	}
+	if coordinator == nil {
+		return nil, fmt.Errorf("FROST P2P session coordinator is required")
+	}
+	if localParty == "" {
+		return nil, fmt.Errorf("local FROST party key is required")
+	}
 	return &frostVaultSigner{
-		localState: localState,
-		log:        log,
+		localState:  localState,
+		log:         log,
+		coordinator: coordinator,
+		bridge:      bridge,
+		localParty:  localParty,
 	}, nil
 }
 
@@ -68,7 +105,46 @@ func (s *frostVaultSigner) RemoteSignWithPath(msg []byte, algo common.SigningAlg
 			return nil, nil, err
 		}
 	}
-	signature, err := frostsessions.SignTaprootChildTweak(state.LocalData, msg, childTweak, []byte{})
+
+	signingParty := s.localParty
+	if state.LocalPartyKey != "" {
+		signingParty = state.LocalPartyKey
+	}
+	participants := append([]string(nil), state.ParticipantKeys...)
+	if len(participants) == 0 {
+		vaultKey, err := common.NewPubKey(vaultPubKey)
+		if err != nil {
+			return nil, nil, err
+		}
+		party, err := s.bridge.GetKeysignParty(vaultKey)
+		if err != nil {
+			return nil, nil, frost.NewKeysignError(ttypes.Blame{FailReason: err.Error()})
+		}
+		participants = party.Strings()
+	}
+	sort.Strings(participants)
+	height, err := s.bridge.GetBlockHeight()
+	if err != nil {
+		return nil, nil, frost.NewKeysignError(ttypes.Blame{FailReason: err.Error()})
+	}
+
+	sessionID := frost.SignSessionID(vaultPubKey, msg)
+	s.partyLeaderMu.Lock()
+	partyLeader := s.partyLeader
+	s.partyLeaderMu.Unlock()
+	signature, err := s.coordinator.RunSign(
+		context.Background(),
+		sessionID,
+		height,
+		participants,
+		signingParty,
+		state.LocalData,
+		msg,
+		true,
+		nil,
+		childTweak,
+		partyLeader,
+	)
 	if err != nil {
 		return nil, nil, frost.NewKeysignError(ttypes.Blame{FailReason: err.Error()})
 	}
@@ -76,7 +152,7 @@ func (s *frostVaultSigner) RemoteSignWithPath(msg []byte, algo common.SigningAlg
 		return nil, nil, err
 	}
 
-	s.log.Debug().Str("vault_pub_key", vaultPubKey).Msg("created FROST vault signature")
+	s.log.Debug().Str("vault_pub_key", vaultPubKey).Msg("created FROST P2P vault signature")
 	return signature, nil, nil
 }
 
