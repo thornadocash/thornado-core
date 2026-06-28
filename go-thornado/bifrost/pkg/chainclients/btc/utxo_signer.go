@@ -504,22 +504,40 @@ type utxoSigning struct {
 }
 
 func (c *Client) signRedeemTxInputs(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, signings []utxoSigning, sourceScript []byte) error {
-	if !c.isFrostVault(tx.VaultPubKey) {
-		return c.signRedeemTxInputsSequential(redeemTx, tx, signings, sourceScript)
-	}
-
-	c.log.Info().Int("inputs", len(signings)).Msg("signing BTC FROST inputs sequentially")
-	return c.signRedeemTxInputsSequential(redeemTx, tx, signings, sourceScript)
+	return c.signRedeemTxInputsParallelFrost(redeemTx, tx, signings, sourceScript)
 }
 
-func (c *Client) signRedeemTxInputsSequential(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, signings []utxoSigning, sourceScript []byte) error {
+func (c *Client) signRedeemTxInputsParallelFrost(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, signings []utxoSigning, sourceScript []byte) error {
+	c.log.Info().Int("inputs", len(signings)).Msg("signing BTC FROST inputs in parallel")
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 	var utxoErr error
-	for _, signing := range signings {
-		if err := c.signUTXOBTC(redeemTx, tx, signing.amount, sourceScript, int(signing.idx)); err != nil {
-			utxoErr = multierror.Append(utxoErr, err)
-		}
+	witnesses := make([]btcwire.TxWitness, len(signings))
+
+	for i, signing := range signings {
+		i, signing := i, signing
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			witness, err := c.taprootUTXOWitness(redeemTx, tx, signing.amount, sourceScript, int(signing.idx))
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				utxoErr = multierror.Append(utxoErr, err)
+				return
+			}
+			witnesses[i] = witness
+		}()
 	}
-	return utxoErr
+	wg.Wait()
+	if utxoErr != nil {
+		return utxoErr
+	}
+	for i, signing := range signings {
+		redeemTx.TxIn[signing.idx].Witness = witnesses[i]
+	}
+	return nil
 }
 
 func (c *Client) recoverSpentSourceInputsObservation(tx stypes.TxOutItem) (*stypes.TxInItem, error) {

@@ -75,7 +75,9 @@ snapshot_bifrost_debug() {
 }
 
 mkdir -p "$RUN_ROOT/meta"
-set_config_from_active_nodes Withdrawal_BatchWindowMinutes 0
+if [[ -n "${WITHDRAWAL_BATCH_WINDOW_MINUTES:-}" ]]; then
+  set_config_from_active_nodes Withdrawal_BatchWindowMinutes "$WITHDRAWAL_BATCH_WINDOW_MINUTES"
+fi
 snapshot_bifrost_debug "repeated-before"
 
 success=0

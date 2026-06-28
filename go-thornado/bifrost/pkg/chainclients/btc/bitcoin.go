@@ -14,7 +14,6 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	btcwire "github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
-	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	btctxscript "github.com/thornadocash/go-thornado/bifrost/txscript/txscript"
 
 	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
@@ -42,21 +41,6 @@ func (c *Client) getBitcoinVaultAddress(pubkey common.PubKey) (common.Address, e
 		return common.NoAddress, err
 	}
 	return common.NewAddress(addr.String())
-}
-
-type frostEngineReader interface {
-	LocalStateEngine(vaultPubKey string) string
-}
-
-func (c *Client) isFrostVault(pubkey common.PubKey) bool {
-	if c.cfg.ChainID != common.BTCChain {
-		return false
-	}
-	reader, ok := c.frostKeySigner.(frostEngineReader)
-	if !ok {
-		return false
-	}
-	return reader.LocalStateEngine(pubkey.String()) == storage.SigningEngineFrost
 }
 
 func (c *Client) schnorrVaultPubKey(pubkey common.PubKey) (*btcec.PublicKey, error) {
@@ -95,81 +79,24 @@ func (c *Client) getSchnorrSourceScriptAtPath(pubkey common.PubKey, pathIndex ui
 	return append([]byte{0x51, 0x20}, taprootKey...), nil
 }
 
-func (c *Client) signUTXOBTC(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, amount int64, sourceScript []byte, idx int) error {
-	if c.isFrostVault(tx.VaultPubKey) {
-		return c.signTaprootUTXOBTC(redeemTx, tx, amount, sourceScript, idx)
-	}
-
-	sigHashes := btctxscript.NewTxSigHashes(redeemTx)
-
-	var signable btctxscript.Signable
-	if tx.VaultPubKey.Equals(c.nodePubKey) {
-		signable = btctxscript.NewPrivateKeySignable(c.nodePrivKey)
-	} else {
-		signable = newFrostSignableBTC(tx.VaultPubKey, c.frostKeySigner, c.log)
-	}
-
-	witness, err := btctxscript.WitnessSignature(redeemTx, sigHashes, idx, amount, sourceScript, btctxscript.SigHashAll, signable, true)
-	if err != nil {
-		return fmt.Errorf("fail to get witness: %w", err)
-	}
-
-	redeemTx.TxIn[idx].Witness = witness
-	flag := btctxscript.StandardVerifyFlags
-	engine, err := btctxscript.NewEngine(sourceScript, redeemTx, idx, flag, nil, nil, amount)
-	if err != nil {
-		return fmt.Errorf("fail to create engine: %w", err)
-	}
-	if err = engine.Execute(); err != nil {
-		// SECURITY FIX (Layer 4 - NULLFAIL Failsafe): This should NEVER happen after Layers 1-3.
-		// If it does occur, it indicates a serious issue: cryptographic failure, FROST corruption, or unknown edge case.
-		// We log and treat as success to prevent retry loops, allowing manual investigation.
-		if btctxscript.IsErrorCode(err, btctxscript.ErrNullFail) {
-			c.log.Error().
-				Err(err).
-				Int("input_idx", idx).
-				Msg("NULLFAIL FAILSAFE TRIGGERED - This should not happen! Investigate immediately!")
-			return nil // Treat as success to prevent retry loop
-		}
-		return fmt.Errorf("fail to execute the script: %w", err)
-	}
-	return nil
-}
-
-func (c *Client) signTaprootUTXOBTC(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, amount int64, sourceScript []byte, idx int) error {
-	witness, err := c.taprootUTXOWitness(redeemTx, tx, amount, sourceScript, idx)
-	if err != nil {
-		return err
-	}
-	redeemTx.TxIn[idx].Witness = witness
-	return nil
-}
-
 func (c *Client) taprootUTXOWitness(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, amount int64, sourceScript []byte, idx int) (btcwire.TxWitness, error) {
 	sigHash, err := taprootKeySpendSigHash(redeemTx, idx, amount, sourceScript)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get taproot sighash: %w", err)
 	}
 
-	var sig []byte
-	if tx.VaultPubKey.Equals(c.nodePubKey) {
-		privKey, _ := btcec.PrivKeyFromBytes(c.nodePrivKey.Serialize())
-		signature, err := btcschnorr.Sign(privKey, sigHash)
-		if err != nil {
-			return nil, fmt.Errorf("fail to schnorr sign: %w", err)
-		}
-		sig = signature.Serialize()
+	var (
+		sig []byte
+	)
+	if signer, ok := c.frostKeySigner.(interface {
+		RemoteSignWithPath([]byte, common.SigningAlgo, string, uint64) ([]byte, []byte, error)
+	}); ok {
+		sig, _, err = signer.RemoteSignWithPath(sigHash, common.SigningAlgoSecp256k1, tx.VaultPubKey.String(), tx.VaultPathIndex)
 	} else {
-		if signer, ok := c.frostKeySigner.(interface {
-			RemoteSignWithPath([]byte, common.SigningAlgo, string, uint64) ([]byte, []byte, error)
-		}); ok {
-			sig, _, err = signer.RemoteSignWithPath(sigHash, common.SigningAlgoSecp256k1, tx.VaultPubKey.String(), tx.VaultPathIndex)
-		} else {
-			sig, _, err = c.frostKeySigner.RemoteSign(sigHash, common.SigningAlgoSecp256k1, tx.VaultPubKey.String())
-		}
-		if err != nil {
-			return nil, fmt.Errorf("fail to frost schnorr sign: %w", err)
-		}
+		sig, _, err = c.frostKeySigner.RemoteSign(sigHash, common.SigningAlgoSecp256k1, tx.VaultPubKey.String())
+	}
+	if err != nil {
+		return nil, fmt.Errorf("fail to frost schnorr sign: %w", err)
 	}
 	if len(sig) != btcschnorr.SignatureSize {
 		return nil, fmt.Errorf("invalid schnorr signature length: %d", len(sig))

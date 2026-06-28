@@ -274,6 +274,7 @@ for i in $(seq 1 "$COUNT"); do
   denom="$(jq -r '.denomination_sats' <<<"$note")"
   leaves="$(jq -c --argjson denom "$denom" '[.notes[] | select((.denomination_sats | tonumber) == $denom) | .commitment] | sort' "$run_dir/shielder-sync-after-shields.json")"
   printf '%s\n' "$leaves" >"$d/proof-leaves.json"
+  assert_shielder_root_committed "$denom" "$leaves" "parallel-flow3-${i}"
   recipient="$(btc_cli -rpcwallet=miner getnewaddress)"
   printf '%s\n' "$recipient" >"$d/recipient-address.txt"
   curl -fsS "$(api_url 1)/thornado/shielder/redeem/quote/${denom}" >"$d/redeem-quote.json"

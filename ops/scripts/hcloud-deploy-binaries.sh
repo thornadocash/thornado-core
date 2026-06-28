@@ -88,12 +88,38 @@ sync_source_delta() {
     return
   fi
 
+  existing_files=()
+  deleted_files=()
+  for source_file in "${source_files[@]}"; do
+    if [[ -e "$ROOT_DIR/$source_file" ]]; then
+      existing_files+=("$source_file")
+    else
+      deleted_files+=("$source_file")
+    fi
+  done
+
   mkdir -p "$local_tmp"
-  COPYFILE_DISABLE=1 tar --no-xattrs -C "$ROOT_DIR" -czf "$local_tmp/source-delta.tgz" "${source_files[@]}"
   "${ssh_base[@]}" "$coord" "mkdir -p $(remote_quote "$REMOTE_ROOT")"
-  "${scp_base[@]}" "$local_tmp/source-delta.tgz" "$coord:$REMOTE_ROOT/source-delta-${BUILD_ID}.tgz"
-  "${ssh_base[@]}" "$coord" "cd $(remote_quote "$REMOTE_ROOT") && tar -xzf source-delta-${BUILD_ID}.tgz && rm -f source-delta-${BUILD_ID}.tgz"
-  echo "synced ${#source_files[@]} source files to coordinator"
+  if (( ${#existing_files[@]} > 0 )); then
+    COPYFILE_DISABLE=1 tar --no-xattrs -C "$ROOT_DIR" -czf "$local_tmp/source-delta.tgz" "${existing_files[@]}"
+    "${scp_base[@]}" "$local_tmp/source-delta.tgz" "$coord:$REMOTE_ROOT/source-delta-${BUILD_ID}.tgz"
+    "${ssh_base[@]}" "$coord" "cd $(remote_quote "$REMOTE_ROOT") && tar -xzf source-delta-${BUILD_ID}.tgz && rm -f source-delta-${BUILD_ID}.tgz"
+  fi
+  if (( ${#deleted_files[@]} > 0 )); then
+    printf '%s\n' "${deleted_files[@]}" > "$local_tmp/source-deletes.txt"
+    "${scp_base[@]}" "$local_tmp/source-deletes.txt" "$coord:$REMOTE_ROOT/source-deletes-${BUILD_ID}.txt"
+    ssh_bash "$coord" "$REMOTE_ROOT" "$BUILD_ID" <<'REMOTE'
+set -euo pipefail
+remote_root="$1"
+build_id="$2"
+cd "$remote_root"
+while IFS= read -r path; do
+  [[ -n "$path" ]] && rm -f -- "$path"
+done < "source-deletes-${build_id}.txt"
+rm -f "source-deletes-${build_id}.txt"
+REMOTE
+  fi
+  echo "synced ${#existing_files[@]} source files and removed ${#deleted_files[@]} deleted files on coordinator"
 }
 
 build_on_coordinator() {

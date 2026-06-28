@@ -777,7 +777,14 @@ record_shielder_notes() {
 }
 
 shielder_leaves() {
-  local denomination="$1" file
+  local denomination="$1" file live_file
+  live_file="$RUN_ROOT/meta/shielder-leaves-${denomination}-live.json"
+  if curl -fsS "$(api_url 1)/thornado/shielder/sync?limit=100000" |
+    jq -c --argjson denom "$denomination" '[.notes[]? | select((.denomination_sats | tonumber) == $denom) | .commitment] | sort' >"$live_file" &&
+    jq -e 'length > 0' "$live_file" >/dev/null; then
+    cat "$live_file"
+    return 0
+  fi
   file="$RUN_ROOT/meta/shielder-leaves-${denomination}.json"
   [[ -f "$file" ]] || die "missing shielder leaves for denomination ${denomination}"
   jq -c 'sort' "$file"
@@ -2066,6 +2073,7 @@ validate_flow3() {
   printf '%s\n' "$committed" >"$RUN_ROOT/meta/flow3-deposit.json"
   jq -e '.status == "committed" and .settlement == "user"' <<<"$committed" >/dev/null || die "flow3 user split not committed"
   record_shielder_notes "$receipt"
+  assert_shielder_receipt_committed "$RUN_ROOT/meta/flow3-receipt.json" "flow3"
   curl -fsS "$(api_url 1)/thornado/shielder/sync" >"$RUN_ROOT/meta/flow3-shielder-sync-after-split.json"
   jq -e '(.notes | length) >= 2 and ([.notes[] | select((.commitment // "") != "" and ((.denomination_sats // "0") | tonumber) > 0)] | length) >= 2' \
     "$RUN_ROOT/meta/flow3-shielder-sync-after-split.json" >/dev/null || die "flow3 shielder sync did not expose public note records"
@@ -2074,6 +2082,7 @@ validate_flow3() {
 	  note="$(jq -c '.notes[0]' "$RUN_ROOT/meta/flow3-receipt.json")"
 	  leaves="$(shielder_leaves "$(jq -r '.denomination_sats' <<<"$note")")"
 	  printf '%s\n' "$leaves" >"$RUN_ROOT/meta/flow3-proof-leaves.json"
+	  assert_shielder_root_committed "$(jq -r '.denomination_sats' <<<"$note")" "$leaves" "flow3"
 	  recipient="$(btc_cli -rpcwallet=miner getnewaddress)"
 	  printf '%s\n' "$recipient" >"$RUN_ROOT/meta/flow3-recipient-address.txt"
 	  curl -fsS "$(api_url 1)/thornado/fee/entitlements" >"$RUN_ROOT/meta/flow3-fee-entitlements-before.json"

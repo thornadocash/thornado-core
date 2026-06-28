@@ -341,10 +341,6 @@ func (c *Client) GetNetworkFee() (transactionSize, transactionFeeRate uint64) {
 	return transactionSize, c.lastFeeRate.Load()
 }
 
-func (c *Client) IsFrostVault(pubkey common.PubKey) bool {
-	return c.isFrostVault(pubkey)
-}
-
 // GetBlockScannerHeight returns blockscanner height
 func (c *Client) GetBlockScannerHeight() (int64, error) {
 	return c.blockScanner.PreviousHeight(), nil

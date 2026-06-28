@@ -43,10 +43,6 @@ var (
 	errTxOutCompletionPending   = errors.New("txout completion pending")
 )
 
-type frostVaultChecker interface {
-	IsFrostVault(common.PubKey) bool
-}
-
 type batchSigningChain interface {
 	SignTxBatch([]types.TxOutItem, int64) ([]byte, []byte, *types.TxInItem, error)
 }
@@ -264,28 +260,15 @@ func (s *Signer) localFrostSigningParty(vaultPubKey common.PubKey) (common.PubKe
 	return s.localPubKeyECDSA, true
 }
 
-func (s *Signer) frostVaultMembers(vaultPubKey common.PubKey, chain chainclients.ChainClient) (bool, []string, error) {
-	isFrostVault := false
-	if checker, ok := chain.(frostVaultChecker); ok && checker.IsFrostVault(vaultPubKey) {
-		isFrostVault = true
-	}
-
+func (s *Signer) frostVaultMembers(vaultPubKey common.PubKey) ([]string, error) {
 	vault, err := s.thornadoBridge.GetVault(vaultPubKey.String())
 	if err != nil {
-		if !isFrostVault {
-			return false, nil, nil
-		}
-		s.logger.Debug().Err(err).Stringer("vault_pub_key", vaultPubKey).Msg("failed to fetch FROST vault membership")
-	} else if len(vault.Membership) > 0 {
-		isFrostVault = true
-	}
-	if !isFrostVault {
-		return false, nil, nil
+		return nil, fmt.Errorf("failed to fetch FROST vault membership for %s: %w", vaultPubKey, err)
 	}
 
 	nodes, err := s.thornadoBridge.GetNodeAccounts()
 	if err != nil {
-		return true, nil, fmt.Errorf("fail to get node accounts for FROST signer selection: %w", err)
+		return nil, fmt.Errorf("fail to get node accounts for FROST signer selection: %w", err)
 	}
 
 	vaultMembers := make(map[string]struct{}, len(vault.Membership))
@@ -313,39 +296,23 @@ func (s *Signer) frostVaultMembers(vaultPubKey common.PubKey, chain chainclients
 		members = append(members, pubKey)
 	}
 	if len(members) == 0 {
-		return true, nil, fmt.Errorf("no active FROST signer members found for vault %s", vaultPubKey)
+		if len(vault.Membership) == 0 {
+			return nil, fmt.Errorf("FROST vault %s has no membership", vaultPubKey)
+		}
+		return nil, fmt.Errorf("no active FROST signer members found for vault %s", vaultPubKey)
 	}
 	sort.Strings(members)
-	return true, members, nil
+	return members, nil
 }
 
-func (s *Signer) isFrostVaultTxOut(vaultPubKey common.PubKey, chain chainclients.ChainClient) bool {
-	if checker, ok := chain.(frostVaultChecker); ok && checker.IsFrostVault(vaultPubKey) {
-		return true
-	}
-	vault, err := s.thornadoBridge.GetVault(vaultPubKey.String())
-	return err == nil && len(vault.Membership) > 0
-}
-
-func (s *Signer) isDesignatedFrostSigner(item TxOutStoreItem, chain chainclients.ChainClient, blockHeight, signingPeriod int64) (bool, error) {
-	participate, broadcast, err := s.frostSignerRoles(item, chain, blockHeight, signingPeriod)
-	if err != nil {
-		return false, err
-	}
-	return participate && broadcast, nil
-}
-
-func (s *Signer) frostPartyLeader(item TxOutStoreItem, chain chainclients.ChainClient, blockHeight, signingPeriod int64) (string, error) {
+func (s *Signer) frostPartyLeader(item TxOutStoreItem, blockHeight, signingPeriod int64) (string, error) {
 	tx := item.TxOutItem
 	if !item.SigningLeader.IsEmpty() {
 		return item.SigningLeader.String(), nil
 	}
-	isFrostVault, members, err := s.frostVaultMembers(tx.VaultPubKey, chain)
+	members, err := s.frostVaultMembers(tx.VaultPubKey)
 	if err != nil {
 		return "", err
-	}
-	if !isFrostVault {
-		return "", nil
 	}
 	digest := sha256.Sum256([]byte(tx.Hash()))
 	offset := binary.BigEndian.Uint64(digest[:8])
@@ -356,7 +323,7 @@ func (s *Signer) frostPartyLeader(item TxOutStoreItem, chain chainclients.ChainC
 	return members[(offset+attempt)%uint64(len(members))], nil
 }
 
-func (s *Signer) frostSignerRoles(item TxOutStoreItem, chain chainclients.ChainClient, blockHeight, signingPeriod int64) (participate bool, broadcast bool, err error) {
+func (s *Signer) frostSignerRoles(item TxOutStoreItem, blockHeight, signingPeriod int64) (participate bool, broadcast bool, err error) {
 	tx := item.TxOutItem
 	if !item.SigningLeader.IsEmpty() {
 		if !s.localFrostStateExists(tx.VaultPubKey) {
@@ -376,12 +343,8 @@ func (s *Signer) frostSignerRoles(item TxOutStoreItem, chain chainclients.ChainC
 		return participate, broadcast, nil
 	}
 
-	isFrostVault, _, err := s.frostVaultMembers(tx.VaultPubKey, chain)
-	if err != nil {
+	if _, err := s.frostVaultMembers(tx.VaultPubKey); err != nil {
 		return false, false, err
-	}
-	if !isFrostVault {
-		return true, true, nil
 	}
 
 	if !s.localFrostStateExists(tx.VaultPubKey) {
@@ -430,13 +393,6 @@ func unwrapKeysignError(err error) (frost.KeysignError, bool) {
 
 func (s *Signer) deferFrostKeysignRetry(item TxOutStoreItem) error {
 	if ttypes.IsInternalTxOutType(item.TxOutItem.TxType) {
-		return nil
-	}
-	chain, err := s.getChain(item.TxOutItem.Chain)
-	if err != nil {
-		return err
-	}
-	if !s.isFrostVaultTxOut(item.TxOutItem.VaultPubKey, chain) {
 		return nil
 	}
 	blockHeight, err := s.thornadoBridge.GetBlockHeight()
@@ -1182,16 +1138,16 @@ func (s *Signer) signAndBroadcast(item *TxOutStoreItem) (checkpointOut []byte, o
 		}
 	}
 	s.debugSigningEvent(perfID, "leader_resolve_start", "")
-	resolvedPartyLeader, leaderErr := s.frostPartyLeader(*item, chain, blockHeight, signingTransactionPeriod)
+	resolvedPartyLeader, leaderErr := s.frostPartyLeader(*item, blockHeight, signingTransactionPeriod)
 	if leaderErr != nil {
 		s.debugSigningEvent(perfID, "leader_resolve_error", leaderErr.Error())
 	}
 	s.debugSigningEvent(perfID, "roles_resolve_start", "")
-	participate, broadcast, err := s.frostSignerRoles(*item, chain, blockHeight, signingTransactionPeriod)
+	participate, broadcast, err := s.frostSignerRoles(*item, blockHeight, signingTransactionPeriod)
 	if err != nil {
 		return nil, nil, false, err
 	}
-	s.debugSigningRoles(perfID, participate, broadcast, s.isFrostVaultTxOut(tx.VaultPubKey, chain), resolvedPartyLeader)
+	s.debugSigningRoles(perfID, participate, broadcast, resolvedPartyLeader)
 	if !participate {
 		item.DeferredUntilHeight = nextFrostSignerAttemptHeight(tx, blockHeight, signingTransactionPeriod)
 		if storeErr := s.storage.Set(*item); storeErr != nil {
@@ -1427,16 +1383,10 @@ func (s *Signer) signAndBroadcast(item *TxOutStoreItem) (checkpointOut []byte, o
 		}
 	}
 
-	if s.isFrostKeysign(tx.VaultPubKey) || s.isFrostKeysign(tx.VaultPubKeyEddsa) {
-		s.frostKeysignMetricMgr.SetFrostKeysignMetric(hash, elapse.Milliseconds())
-	}
+	s.frostKeysignMetricMgr.SetFrostKeysignMetric(hash, elapse.Milliseconds())
 
 	s.debugSigningFinish(perfID, "finished", hash)
 	return nil, observation, false, nil
-}
-
-func (s *Signer) isFrostKeysign(pubKey common.PubKey) bool {
-	return !s.localPubKeyECDSA.Equals(pubKey) && !s.localPubKeyEDDSA.Equals(pubKey)
 }
 
 // Stop the signer process
@@ -1654,7 +1604,7 @@ func (s *Signer) processTransaction(item TxOutStoreItem) {
 		Str("tx_type", item.TxOutItem.TxType).
 		Msg("Signing transaction")
 
-	// a single keysign should not take longer than 5 minutes , regardless FROST or local
+	// a single FROST keysign should not take longer than 5 minutes
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	checkpoint, obs, recoveredObs, err := runWithContext(ctx, func() ([]byte, *types.TxInItem, bool, error) {
 		return s.signAndBroadcast(&item)
@@ -1731,7 +1681,7 @@ func (s *Signer) processTransaction(item TxOutStoreItem) {
 			AllowFutureObservation: true,
 		})
 	}
-	if recoveredObs && (s.isFrostKeysign(item.TxOutItem.VaultPubKey) || s.isFrostKeysign(item.TxOutItem.VaultPubKeyEddsa)) {
+	if recoveredObs {
 		item.Observation = obs
 		if ttypes.IsInternalTxOutType(item.TxOutItem.TxType) {
 			if err = s.storage.Remove(item); err != nil {

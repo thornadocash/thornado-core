@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/constants"
@@ -44,7 +43,6 @@ type DebugTxOut struct {
 	ObservationPresent    bool               `json:"observation_present"`
 	ObservationTx         string             `json:"observation_tx,omitempty"`
 	ObservationHeight     int64              `json:"observation_height,omitempty"`
-	IsFrostVault          bool               `json:"is_frost_vault"`
 	LocalKeyshare         bool               `json:"local_keyshare"`
 	LocalPartyKey         string             `json:"local_party_key,omitempty"`
 	FrostRoles            *DebugFrostRoles   `json:"frost_roles,omitempty"`
@@ -85,7 +83,6 @@ type DebugSigningPerformance struct {
 	ResolvedLeader string              `json:"resolved_leader,omitempty"`
 	Participate    bool                `json:"participate"`
 	Broadcast      bool                `json:"broadcast"`
-	IsFrostVault   bool                `json:"is_frost_vault"`
 	BatchItems     int                 `json:"batch_items,omitempty"`
 	StartedAt      time.Time           `json:"started_at"`
 	UpdatedAt      time.Time           `json:"updated_at"`
@@ -133,7 +130,7 @@ func txStatusLabel(status TxStatus) string {
 	case TxSpent:
 		return "spent"
 	default:
-		return "legacy_or_unrecognized"
+		return "unrecognized"
 	}
 }
 
@@ -396,21 +393,20 @@ func (s *Signer) debugSigningEvent(id, event, detail string) {
 	}
 }
 
-func (s *Signer) debugSigningRoles(id string, participate, broadcast, isFrostVault bool, leader string) {
+func (s *Signer) debugSigningRoles(id string, participate, broadcast bool, leader string) {
 	s.debugSigningMu.Lock()
 	defer s.debugSigningMu.Unlock()
 	if record := s.debugSigningRecords[id]; record != nil {
 		now := time.Now().UTC()
 		record.Participate = participate
 		record.Broadcast = broadcast
-		record.IsFrostVault = isFrostVault
 		record.ResolvedLeader = leader
 		record.LastEvent = "roles_resolved"
 		record.UpdatedAt = now
 		if leader != "" {
 			appendDebugSigningPhaseLocked(record, "leader_appointed", leader, now)
 		}
-		appendDebugSigningPhaseLocked(record, "roles_resolved", signingRoleDetail(participate, broadcast, isFrostVault), now)
+		appendDebugSigningPhaseLocked(record, "roles_resolved", signingRoleDetail(participate, broadcast), now)
 	}
 }
 
@@ -476,11 +472,8 @@ func appendDebugSigningPhaseLocked(record *DebugSigningPerformance, event, detai
 	}
 }
 
-func signingRoleDetail(participate, broadcast, isFrostVault bool) string {
-	parts := make([]string, 0, 3)
-	if isFrostVault {
-		parts = append(parts, "frost_vault")
-	}
+func signingRoleDetail(participate, broadcast bool) string {
+	parts := make([]string, 0, 2)
 	if participate {
 		parts = append(parts, "participate")
 	}
@@ -535,13 +528,8 @@ func (s *Signer) debugTxOut(item TxOutStoreItem, deep bool) DebugTxOut {
 	if party, ok := s.localFrostSigningParty(tx.VaultPubKey); ok {
 		res.LocalPartyKey = party.String()
 	}
-	if chain, err := s.getChain(tx.Chain); err == nil {
-		res.IsFrostVault = s.isFrostVaultTxOut(tx.VaultPubKey, chain)
-		if deep {
-			res.FrostRoles = s.debugFrostRoles(item, chain, blockHeight)
-		}
-	} else if deep {
-		res.Errors = append(res.Errors, err.Error())
+	if deep {
+		res.FrostRoles = s.debugFrostRoles(item, blockHeight)
 	}
 	if deep {
 		if txOut, err := s.thornadoBridge.GetKeysign(item.Height, tx.VaultPubKey.String()); err != nil {
@@ -562,7 +550,7 @@ func (s *Signer) debugTxOut(item TxOutStoreItem, deep bool) DebugTxOut {
 	return res
 }
 
-func (s *Signer) debugFrostRoles(item TxOutStoreItem, chain chainclients.ChainClient, blockHeight int64) *DebugFrostRoles {
+func (s *Signer) debugFrostRoles(item TxOutStoreItem, blockHeight int64) *DebugFrostRoles {
 	periodMinutes, err := s.constantsProvider.GetInt64Value(blockHeight, constants.Keysign_PeriodMinutes)
 	if err != nil {
 		return &DebugFrostRoles{BlockHeight: blockHeight, Error: err.Error()}
@@ -572,8 +560,8 @@ func (s *Signer) debugFrostRoles(item TxOutStoreItem, chain chainclients.ChainCl
 		blockTimeSeconds = constants.NewConfigValue().GetInt64Value(constants.Chain_BlockTimeSeconds)
 	}
 	period := constants.MinutesToBlocks(periodMinutes, blockTimeSeconds)
-	participate, broadcast, roleErr := s.frostSignerRoles(item, chain, blockHeight, period)
-	leader, leaderErr := s.frostPartyLeader(item, chain, blockHeight, period)
+	participate, broadcast, roleErr := s.frostSignerRoles(item, blockHeight, period)
+	leader, leaderErr := s.frostPartyLeader(item, blockHeight, period)
 	res := &DebugFrostRoles{
 		Participate: participate,
 		Broadcast:   broadcast,

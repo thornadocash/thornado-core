@@ -248,7 +248,7 @@ func (c *concurrentSignCoordinator) MaxActive() int {
 	return c.maxActive
 }
 
-func TestSignRedeemTxInputsRunsFrostInputsSequentially(t *testing.T) {
+func TestSignRedeemTxInputsRunsFrostInputsInParallel(t *testing.T) {
 	participants := []string{"node-a", "node-b", "node-c"}
 	allShares, err := frost.RunInProcessKeygenAll(participants, 2)
 	if err != nil {
@@ -312,8 +312,8 @@ func TestSignRedeemTxInputsRunsFrostInputsSequentially(t *testing.T) {
 	if err := client.signRedeemTxInputs(redeemTx, tx, signings, sourceScript); err != nil {
 		t.Fatal(err)
 	}
-	if coordinator.MaxActive() != 1 {
-		t.Fatalf("expected sequential FROST input signing, max active sessions was %d", coordinator.MaxActive())
+	if coordinator.MaxActive() < 2 {
+		t.Fatalf("expected parallel FROST input signing, max active sessions was %d", coordinator.MaxActive())
 	}
 	for i, txIn := range redeemTx.TxIn {
 		if len(txIn.Witness) != 1 || len(txIn.Witness[0]) != 65 {
