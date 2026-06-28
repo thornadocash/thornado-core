@@ -25,7 +25,7 @@ var (
 	ErrLocalPartyNotSelected = errors.New("local FROST party not selected")
 )
 
-const postJoinSync = 5 * time.Second
+const postJoinSync = 0
 
 // P2PSessionCoordinator runs distributed FROST DKG and signing over libp2p.
 type P2PSessionCoordinator struct {
@@ -333,9 +333,12 @@ func (sc *P2PSessionCoordinator) joinParty(msgID string, height int64, participa
 		return nil, "", fmt.Errorf("FROST party coordinator is not configured")
 	}
 	if sc.comm != nil {
+		sc.debugEvent(msgID, "ensure_peers_start")
 		if err := sc.comm.EnsurePeersConnected(participants); err != nil {
+			sc.debugEvent(msgID, "ensure_peers_error")
 			return nil, "", fmt.Errorf("ensure party peers before join: %w", err)
 		}
+		sc.debugEvent(msgID, "ensure_peers_done")
 	}
 	sigChan := make(chan string, 1)
 	var online []peer.ID
@@ -384,8 +387,6 @@ func (sc *P2PSessionCoordinator) RunKeygen(
 	sc.debugEvent(msgID, "party_joined")
 	defer sc.comm.ReleaseStream(msgID)
 
-	// Straggling signers may still be subscribing when the first joiners enter
-	// runSession; pause briefly so round-1 messages are not dropped.
 	sc.debugEvent(msgID, "post_join_sync_start")
 	select {
 	case <-ctx.Done():
@@ -558,6 +559,7 @@ func (sc *P2PSessionCoordinator) runSession(
 
 	pending := make([]*p2p.Message, 0)
 	wait := 50 * time.Millisecond
+	localMaxBroadcastRound := 0
 	for {
 		if err := sessionCtx.Err(); err != nil {
 			return nil, err
@@ -567,13 +569,13 @@ func (sc *P2PSessionCoordinator) runSession(
 		for {
 			step := false
 
-			if retried, err := sc.retryPending(msgType, msgID, handle, &pending); err != nil {
+			if retried, err := sc.retryPending(msgType, msgID, handle, localMaxBroadcastRound, &pending); err != nil {
 				return nil, err
 			} else if retried {
 				step = true
 			}
 
-			if drained, err := sc.drainInbox(sessionCtx, msgType, msgID, handle, inbox, &pending); err != nil {
+			if drained, err := sc.drainInbox(sessionCtx, msgType, msgID, handle, localMaxBroadcastRound, inbox, &pending); err != nil {
 				return nil, err
 			} else if drained {
 				step = true
@@ -589,7 +591,11 @@ func (sc *P2PSessionCoordinator) runSession(
 				}
 				step = true
 				targets := broadcastTargets(handle, out, participants, peerByParty)
-				sc.debugBroadcast(msgID, frostPayloadKind(out), len(targets))
+				kind := frostPayloadKind(out)
+				if round := frostKindRound(kind); round > localMaxBroadcastRound {
+					localMaxBroadcastRound = round
+				}
+				sc.debugBroadcast(msgID, kind, len(targets))
 				sc.broadcast(msgType, msgID, out, targets)
 				if err := sc.ingestLocalOutbound(handle, out, localParty); err != nil {
 					return nil, err
@@ -614,7 +620,7 @@ func (sc *P2PSessionCoordinator) runSession(
 			case <-sessionCtx.Done():
 				return nil, sessionCtx.Err()
 			case raw := <-inbox:
-				if err := sc.ingestSessionMessage(msgType, msgID, handle, raw); err != nil {
+				if err := sc.ingestSessionMessage(msgType, msgID, handle, raw, localMaxBroadcastRound); err != nil {
 					if isRetryableFrostInputError(err) {
 						sc.debugPending(msgID)
 						pending = append(pending, raw)
@@ -695,10 +701,14 @@ func (sc *P2PSessionCoordinator) ingestSessionMessage(
 	msgID string,
 	handle frostsessions.Handle,
 	raw *p2p.Message,
+	localMaxBroadcastRound int,
 ) error {
 	payload, kind, err := decodeWrapped(msgType, raw)
 	if err != nil {
 		return err
+	}
+	if round := frostKindRound(kind); round > 1 && round > localMaxBroadcastRound {
+		return fmt.Errorf("out-of-order frost message %s before local round %d broadcast", kind, round)
 	}
 	_, err = frostsessions.SessionInputMessage(handle, payload)
 	if err == nil {
@@ -711,6 +721,7 @@ func (sc *P2PSessionCoordinator) retryPending(
 	msgType messages.ThornadoFROSTMessageType,
 	msgID string,
 	handle frostsessions.Handle,
+	localMaxBroadcastRound int,
 	pending *[]*p2p.Message,
 ) (bool, error) {
 	if len(*pending) == 0 {
@@ -719,7 +730,7 @@ func (sc *P2PSessionCoordinator) retryPending(
 	remaining := (*pending)[:0]
 	retried := false
 	for _, raw := range *pending {
-		err := sc.ingestSessionMessage(msgType, msgID, handle, raw)
+		err := sc.ingestSessionMessage(msgType, msgID, handle, raw, localMaxBroadcastRound)
 		switch {
 		case err == nil:
 			retried = true
@@ -738,6 +749,7 @@ func (sc *P2PSessionCoordinator) drainInbox(
 	msgType messages.ThornadoFROSTMessageType,
 	msgID string,
 	handle frostsessions.Handle,
+	localMaxBroadcastRound int,
 	inbox <-chan *p2p.Message,
 	pending *[]*p2p.Message,
 ) (bool, error) {
@@ -748,7 +760,7 @@ func (sc *P2PSessionCoordinator) drainInbox(
 			return drained, ctx.Err()
 		case raw := <-inbox:
 			drained = true
-			if err := sc.ingestSessionMessage(msgType, msgID, handle, raw); err != nil {
+			if err := sc.ingestSessionMessage(msgType, msgID, handle, raw, localMaxBroadcastRound); err != nil {
 				if isRetryableFrostInputError(err) {
 					sc.debugPending(msgID)
 					*pending = append(*pending, raw)
@@ -763,7 +775,8 @@ func (sc *P2PSessionCoordinator) drainInbox(
 }
 
 func isRetryableFrostInputError(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "missing round2 secret")
+	return err != nil && (strings.Contains(err.Error(), "missing round2 secret") ||
+		strings.Contains(err.Error(), "out-of-order frost message"))
 }
 
 func decodeWrapped(expected messages.ThornadoFROSTMessageType, raw *p2p.Message) ([]byte, string, error) {
@@ -805,4 +818,23 @@ func frostPayloadKind(payload []byte) string {
 		return ""
 	}
 	return msg.Kind
+}
+
+func frostKindRound(kind string) int {
+	lower := strings.ToLower(kind)
+	idx := strings.LastIndex(lower, "round")
+	if idx < 0 {
+		return 0
+	}
+	n := 0
+	for _, r := range lower[idx+len("round"):] {
+		if r < '0' || r > '9' {
+			if n > 0 {
+				break
+			}
+			continue
+		}
+		n = n*10 + int(r-'0')
+	}
+	return n
 }

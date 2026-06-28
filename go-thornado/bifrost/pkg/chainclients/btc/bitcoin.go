@@ -137,9 +137,18 @@ func (c *Client) signUTXOBTC(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, amoun
 }
 
 func (c *Client) signTaprootUTXOBTC(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, amount int64, sourceScript []byte, idx int) error {
+	witness, err := c.taprootUTXOWitness(redeemTx, tx, amount, sourceScript, idx)
+	if err != nil {
+		return err
+	}
+	redeemTx.TxIn[idx].Witness = witness
+	return nil
+}
+
+func (c *Client) taprootUTXOWitness(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, amount int64, sourceScript []byte, idx int) (btcwire.TxWitness, error) {
 	sigHash, err := taprootKeySpendSigHash(redeemTx, idx, amount, sourceScript)
 	if err != nil {
-		return fmt.Errorf("fail to get taproot sighash: %w", err)
+		return nil, fmt.Errorf("fail to get taproot sighash: %w", err)
 	}
 
 	var sig []byte
@@ -147,7 +156,7 @@ func (c *Client) signTaprootUTXOBTC(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem
 		privKey, _ := btcec.PrivKeyFromBytes(c.nodePrivKey.Serialize())
 		signature, err := btcschnorr.Sign(privKey, sigHash)
 		if err != nil {
-			return fmt.Errorf("fail to schnorr sign: %w", err)
+			return nil, fmt.Errorf("fail to schnorr sign: %w", err)
 		}
 		sig = signature.Serialize()
 	} else {
@@ -159,32 +168,31 @@ func (c *Client) signTaprootUTXOBTC(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem
 			sig, _, err = c.frostKeySigner.RemoteSign(sigHash, common.SigningAlgoSecp256k1, tx.VaultPubKey.String())
 		}
 		if err != nil {
-			return fmt.Errorf("fail to frost schnorr sign: %w", err)
+			return nil, fmt.Errorf("fail to frost schnorr sign: %w", err)
 		}
 	}
 	if len(sig) != btcschnorr.SignatureSize {
-		return fmt.Errorf("invalid schnorr signature length: %d", len(sig))
+		return nil, fmt.Errorf("invalid schnorr signature length: %d", len(sig))
 	}
 	sig = append(sig, schnorrSigHashAllAnyoneCanPay)
 
 	pubKeyBytes, err := common.DeriveBTCTaprootPubKey(tx.VaultPubKey, tx.VaultPathIndex)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	taprootKey, err := btcschnorr.ParsePubKey(pubKeyBytes)
 	if err != nil {
-		return fmt.Errorf("fail to parse schnorr public key: %w", err)
+		return nil, fmt.Errorf("fail to parse schnorr public key: %w", err)
 	}
 	parsedSig, err := btcschnorr.ParseSignature(sig[:btcschnorr.SignatureSize])
 	if err != nil {
-		return fmt.Errorf("fail to parse schnorr signature: %w", err)
+		return nil, fmt.Errorf("fail to parse schnorr signature: %w", err)
 	}
 	if !parsedSig.Verify(sigHash, taprootKey) {
-		return fmt.Errorf("schnorr signature failed local verification")
+		return nil, fmt.Errorf("schnorr signature failed local verification")
 	}
 
-	redeemTx.TxIn[idx].Witness = btcwire.TxWitness{sig}
-	return nil
+	return btcwire.TxWitness{sig}, nil
 }
 
 func taprootKeySpendSigHash(tx *btcwire.MsgTx, idx int, amount int64, sourceScript []byte) ([]byte, error) {

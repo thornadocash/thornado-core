@@ -402,12 +402,14 @@ func (b *thornadoBridge) GetInboundOutbound(txIns common.ObservedTxs) (common.Ob
 
 		isCancelTransaction := tx.Tx.ToAddress.Equals(tx.Tx.FromAddress)
 
-		// for consolidate UTXO tx, both From & To address will be the base address
-		// thus here we need to make sure that one add to inbound , the other add to outbound
+		// Internal BTC txs (sweep/consolidate) can have both sides match the same
+		// observed vault. They are protocol outbounds; duplicate observations are ignored.
 		switch {
-		case vaultToAddress && vaultFromAddress && !tx.Tx.FromAddress.Equals(tx.Tx.ToAddress):
+		case vaultToAddress && vaultFromAddress:
 			if !inOutboundArray {
 				outbound = append(outbound, tx)
+			} else {
+				b.logger.Debug().Msgf("vault-internal chain (%s) tx (%s) is already in the outbound array", tx.Tx.Chain, tx.Tx.ID)
 			}
 		case !vaultToAddress && !vaultFromAddress:
 			// Neither ToAddress nor FromAddress matches obAddr, so drop it.

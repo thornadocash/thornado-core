@@ -196,9 +196,7 @@ func (tos *TxOutStorage) updateBatchStates(ctx cosmos.Context) error {
 
 func txOutHasPendingBTCExactItems(txOut TxOut) bool {
 	for _, item := range txOut.TxArray {
-		if item.OutHash.IsEmpty() &&
-			item.Chain.Equals(common.BTCChain) &&
-			(len(item.SourceInputs) > 0 || txOut.Status == TxOutStatusPendingBatch) {
+		if btcTxOutItemNeedsExactRefresh(txOut, item) {
 			return true
 		}
 	}

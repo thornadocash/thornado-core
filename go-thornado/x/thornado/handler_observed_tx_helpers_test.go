@@ -567,6 +567,73 @@ func TestObservedOutboundBatchRequiresPrescribedSourceInputs(t *testing.T) {
 	}
 }
 
+func TestObservedOutboundBatchOverMaxGasStillSettles(t *testing.T) {
+	SetupConfigForTest()
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 1
+	mgr := newShielderFlowTestManager(k)
+	vaultPubKey := GetRandomPubKey()
+	txOut, sourceInput, sourceAddr := testQueuedBTCBatch(t, ctx, k, vaultPubKey)
+
+	totalGas := testTxOutTotalBTCMaxGas(txOut).Add(cosmos.NewUint(1))
+	outHash := GetRandomTxHash()
+	observedTx := common.NewTx(
+		outHash,
+		sourceAddr,
+		txOut.TxArray[0].ToAddress,
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(700_000))),
+		common.Gas{common.NewCoin(common.BTCAsset, totalGas)},
+	)
+	observedTx.SourceInputs = []common.TxInput{{TxID: sourceInput.TxId, Vout: sourceInput.Vout, AmountSats: sourceInput.AmountSats}}
+	observed := common.NewObservedTx(observedTx, ctx.BlockHeight(), vaultPubKey, ctx.BlockHeight())
+
+	if !markObservedOutboundTxOut(ctx, mgr, observed) {
+		t.Fatal("expected signed batch with matching outputs and source inputs to settle despite over-max gas")
+	}
+	stored := k.txOutByHeight[ctx.BlockHeight()]
+	for i, item := range stored.TxArray {
+		if !item.OutHash.Equals(outHash) || item.OutVout != uint32(i) {
+			t.Fatalf("batch item %d was not settled by over-max gas observation: %#v", i, item)
+		}
+	}
+}
+
+func TestObservedHistoricalOutboundBatchSettlesOutsideSigningWindow(t *testing.T) {
+	SetupConfigForTest()
+	ctx := testContext(500)
+	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 1
+	k.configs[constants.Chain_BlockTimeSeconds] = 6
+	k.configs[constants.Keysign_PeriodMinutes] = 5
+	mgr := newShielderFlowTestManager(k)
+	vaultPubKey := GetRandomPubKey()
+	oldCtx := testContext(100)
+	txOut, sourceInput, sourceAddr := testQueuedBTCBatch(t, oldCtx, k, vaultPubKey)
+
+	outHash := GetRandomTxHash()
+	observedTx := common.NewTx(
+		outHash,
+		sourceAddr,
+		txOut.TxArray[0].ToAddress,
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(700_000))),
+		common.Gas{common.NewCoin(common.BTCAsset, testTxOutTotalBTCMaxGas(txOut))},
+	)
+	observedTx.SourceInputs = []common.TxInput{{TxID: sourceInput.TxId, Vout: sourceInput.Vout, AmountSats: sourceInput.AmountSats}}
+	observed := common.NewObservedTx(observedTx, ctx.BlockHeight(), vaultPubKey, ctx.BlockHeight())
+
+	matched, newlyMatched := markObservedOutboundTxOutStatus(ctx, mgr, observed)
+	if !matched || !newlyMatched {
+		t.Fatalf("expected historical batch to settle outside signing window, got matched=%v newly=%v", matched, newlyMatched)
+	}
+	stored := k.txOutByHeight[oldCtx.BlockHeight()]
+	for i, item := range stored.TxArray {
+		if !item.OutHash.Equals(outHash) || item.OutVout != uint32(i) {
+			t.Fatalf("historical batch item %d was not settled: %#v", i, item)
+		}
+	}
+}
+
 func TestCommonOutboundRequiresPrescribedBTCSourceInputs(t *testing.T) {
 	ctx := testContext(100)
 	k := newShielderFlowTestKeeper()
@@ -630,6 +697,141 @@ func TestCommonOutboundRequiresPrescribedBTCSourceInputs(t *testing.T) {
 	}
 	if !stored.TxArray[0].OutHash.Equals(outHash) {
 		t.Fatalf("correct source input did not complete txout: %#v", stored.TxArray[0])
+	}
+}
+
+func TestBTCConsolidateObservedSubsetSettlesStaleTxOut(t *testing.T) {
+	SetupConfigForTest()
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+	mgr := newShielderFlowTestManager(k)
+
+	vaultPubKey := GetRandomPubKey()
+	rootAddr, err := common.DeriveBTCTaprootAddress(vaultPubKey, common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inHash := GetRandomTxHash()
+	outHash := GetRandomTxHash()
+	sourceInputs := []types.TxOutInput{
+		{TxId: GetRandomTxHash(), Vout: 0, AmountSats: 19_998_350},
+		{TxId: GetRandomTxHash(), Vout: 1, AmountSats: 19_998_350},
+		{TxId: GetRandomTxHash(), Vout: 2, AmountSats: 19_997_690},
+	}
+	staleCoin := cosmos.NewUint(sourceInputs[0].AmountSats + sourceInputs[1].AmountSats + sourceInputs[2].AmountSats - 20_000)
+	item := TxOutItem{
+		Chain:          common.BTCChain,
+		ToAddress:      rootAddr,
+		VaultPubKey:    vaultPubKey,
+		Coin:           common.NewCoin(common.BTCAsset, staleCoin),
+		MaxGas:         common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(20_000))},
+		InHash:         inHash,
+		VaultPathIndex: common.MainVaultPathIndex,
+		TxType:         types.TxOutTypeConsolidate,
+		SourceInputs:   sourceInputs,
+	}
+	if err := k.SetTxOut(ctx, &TxOut{Height: ctx.BlockHeight(), Status: TxOutStatusPendingSign, TxArray: []TxOutItem{item}}); err != nil {
+		t.Fatal(err)
+	}
+
+	observedGas := uint64(10_019)
+	observedAmount := cosmos.NewUint(sourceInputs[0].AmountSats + sourceInputs[1].AmountSats - observedGas)
+	observedTx := common.NewTx(
+		outHash,
+		rootAddr,
+		rootAddr,
+		common.NewCoins(common.NewCoin(common.BTCAsset, observedAmount)),
+		common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(observedGas))},
+	)
+	observedTx.SourceInputs = []common.TxInput{
+		{TxID: sourceInputs[0].TxId, Vout: sourceInputs[0].Vout, AmountSats: sourceInputs[0].AmountSats},
+		{TxID: sourceInputs[1].TxId, Vout: sourceInputs[1].Vout, AmountSats: sourceInputs[1].AmountSats},
+	}
+	observed := common.NewObservedTx(observedTx, ctx.BlockHeight(), vaultPubKey, ctx.BlockHeight())
+
+	if !markObservedOutboundTxOut(ctx, mgr, observed) {
+		t.Fatal("expected final consolidate observation with valid source-input subset to settle stale txout")
+	}
+	stored := k.txOutByHeight[ctx.BlockHeight()].TxArray[0]
+	if !stored.OutHash.Equals(outHash) {
+		t.Fatalf("expected out hash %s, got %s", outHash, stored.OutHash)
+	}
+	if got := len(stored.SourceInputs); got != 2 {
+		t.Fatalf("expected stored source inputs to be corrected to observed inputs, got %d", got)
+	}
+	if !stored.Coin.Amount.Equal(observedAmount) {
+		t.Fatalf("expected stored coin %s, got %s", observedAmount, stored.Coin.Amount)
+	}
+	if got := stored.MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount.Uint64(); got != observedGas {
+		t.Fatalf("expected stored max gas %d, got %d", observedGas, got)
+	}
+}
+
+func TestBTCInternalHistoricalOpenTxOutTakesPrecedenceOverCompletedDuplicate(t *testing.T) {
+	SetupConfigForTest()
+	ctx := testContext(1_000)
+	k := newShielderFlowTestKeeper()
+	k.configs[constants.Chain_BlockTimeSeconds] = 6
+	k.configs[constants.Keysign_PeriodMinutes] = 5
+	mgr := newShielderFlowTestManager(k)
+
+	vaultPubKey := GetRandomPubKey()
+	rootAddr, err := common.DeriveBTCTaprootAddress(vaultPubKey, common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outHash := GetRandomTxHash()
+	sourceInputs := []types.TxOutInput{
+		{TxId: GetRandomTxHash(), Vout: 0, AmountSats: 19_998_350},
+		{TxId: GetRandomTxHash(), Vout: 1, AmountSats: 19_998_350},
+		{TxId: GetRandomTxHash(), Vout: 2, AmountSats: 19_997_690},
+	}
+	observedGas := uint64(10_019)
+	observedAmount := cosmos.NewUint(sourceInputs[0].AmountSats + sourceInputs[1].AmountSats - observedGas)
+	openItem := TxOutItem{
+		Chain:          common.BTCChain,
+		ToAddress:      rootAddr,
+		VaultPubKey:    vaultPubKey,
+		Coin:           common.NewCoin(common.BTCAsset, cosmos.NewUint(sourceInputs[0].AmountSats+sourceInputs[1].AmountSats+sourceInputs[2].AmountSats-20_000)),
+		MaxGas:         common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(20_000))},
+		InHash:         GetRandomTxHash(),
+		VaultPathIndex: common.MainVaultPathIndex,
+		TxType:         types.TxOutTypeConsolidate,
+		SourceInputs:   sourceInputs,
+	}
+	completedItem := TxOutItem{
+		Chain:          common.BTCChain,
+		ToAddress:      rootAddr,
+		VaultPubKey:    vaultPubKey,
+		Coin:           common.NewCoin(common.BTCAsset, observedAmount),
+		MaxGas:         common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(observedGas))},
+		OutHash:        outHash,
+		VaultPathIndex: common.MainVaultPathIndex,
+		TxType:         types.TxOutTypeConsolidate,
+		SourceInputs:   sourceInputs[:2],
+	}
+	k.txOutByHeight[90] = TxOut{Height: 90, Status: TxOutStatusPendingSign, TxArray: []TxOutItem{openItem}}
+	k.txOutByHeight[80] = TxOut{Height: 80, Status: TxOutStatusComplete, TxArray: []TxOutItem{completedItem}}
+
+	observedTx := common.NewTx(
+		outHash,
+		rootAddr,
+		rootAddr,
+		common.NewCoins(common.NewCoin(common.BTCAsset, observedAmount)),
+		common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(observedGas))},
+	)
+	observedTx.SourceInputs = []common.TxInput{
+		{TxID: sourceInputs[0].TxId, Vout: sourceInputs[0].Vout, AmountSats: sourceInputs[0].AmountSats},
+		{TxID: sourceInputs[1].TxId, Vout: sourceInputs[1].Vout, AmountSats: sourceInputs[1].AmountSats},
+	}
+	observed := common.NewObservedTx(observedTx, 999, vaultPubKey, 999)
+
+	matched, newlyMatched := markObservedOutboundTxOutStatus(ctx, mgr, observed)
+	if !matched || !newlyMatched {
+		t.Fatalf("expected open historical txout to be matched before completed duplicate, got matched=%v newly=%v", matched, newlyMatched)
+	}
+	if !k.txOutByHeight[90].TxArray[0].OutHash.Equals(outHash) {
+		t.Fatalf("expected open txout to be settled, got %#v", k.txOutByHeight[90].TxArray[0])
 	}
 }
 

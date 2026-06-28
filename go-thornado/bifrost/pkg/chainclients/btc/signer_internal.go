@@ -404,6 +404,33 @@ func (c *Client) getGasCoin(tx stypes.TxOutItem, vSize int64) common.Coin {
 	return common.NewCoin(c.cfg.ChainID.GetGasAsset(), cosmos.NewUint(uint64(gasRate*vSize)))
 }
 
+func (c *Client) capGasAmtSats(tx stypes.TxOutItem, totalSize int64, gasCoin common.Coin) uint64 {
+	gasAmtSats := gasCoin.Amount.Uint64()
+
+	maxFeeSats := totalSize * c.getBTCConfigValue(constants.BTC_MaxSatsPerVByte, c.cfg.UTXO.MaxSatsPerVByte)
+	if gasAmtSats > uint64(maxFeeSats) {
+		diffSats := gasAmtSats - uint64(maxFeeSats)
+		c.log.Info().Msgf("gas amount: %d is larger than maximum fee: %d, diff: %d", gasAmtSats, uint64(maxFeeSats), diffSats)
+		gasAmtSats = uint64(maxFeeSats)
+	} else {
+		minRelayFeeSats := c.minRelayFeeSats.Load()
+		if gasAmtSats < minRelayFeeSats {
+			diffSats := minRelayFeeSats - gasAmtSats
+			c.log.Info().Msgf("gas amount: %d is less than min relay fee: %d, diff remove from customer: %d", gasAmtSats, minRelayFeeSats, diffSats)
+			gasAmtSats = minRelayFeeSats
+		}
+	}
+
+	if !tx.MaxGas.IsEmpty() {
+		maxGasCoin := tx.MaxGas.ToCoins().GetCoin(c.cfg.ChainID.GetGasAsset())
+		if gasAmtSats > maxGasCoin.Amount.Uint64() {
+			c.log.Info().Msgf("max gas: %s, however estimated gas need %d", tx.MaxGas, gasAmtSats)
+			gasAmtSats = maxGasCoin.Amount.Uint64()
+		}
+	}
+	return gasAmtSats
+}
+
 func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx, map[string]int64, error) {
 	var txes []btcjson.ListUnspentResult
 	var err error
@@ -451,33 +478,7 @@ func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx,
 	coinToCustomer := tx.Coins.GetCoin(c.cfg.ChainID.GetGasAsset())
 
 	gasCoin := c.getGasCoin(tx, totalSize)
-
-	// maxFee in sats
-	maxFeeSats := totalSize * c.getBTCConfigValue(constants.BTC_MaxSatsPerVByte, c.cfg.UTXO.MaxSatsPerVByte)
-	gasAmtSats := gasCoin.Amount.Uint64()
-
-	// make sure the transaction fee is not more than the max, otherwise it might reject the transaction
-	if gasAmtSats > uint64(maxFeeSats) {
-		diffSats := gasAmtSats - uint64(maxFeeSats) // in sats
-		c.log.Info().Msgf("gas amount: %d is larger than maximum fee: %d, diff: %d", gasAmtSats, uint64(maxFeeSats), diffSats)
-		gasAmtSats = uint64(maxFeeSats)
-	} else {
-		minRelayFeeSats := c.minRelayFeeSats.Load()
-		if gasAmtSats < minRelayFeeSats {
-			diffStats := minRelayFeeSats - gasAmtSats
-			c.log.Info().Msgf("gas amount: %d is less than min relay fee: %d, diff remove from customer: %d", gasAmtSats, minRelayFeeSats, diffStats)
-			gasAmtSats = minRelayFeeSats
-		}
-	}
-
-	// if the total gas spend is more than max gas , then we have to take away some from the amount pay to customer
-	if !tx.MaxGas.IsEmpty() {
-		maxGasCoin := tx.MaxGas.ToCoins().GetCoin(c.cfg.ChainID.GetGasAsset())
-		if gasAmtSats > maxGasCoin.Amount.Uint64() {
-			c.log.Info().Msgf("max gas: %s, however estimated gas need %d", tx.MaxGas, gasAmtSats)
-			gasAmtSats = maxGasCoin.Amount.Uint64()
-		}
-	}
+	gasAmtSats := c.capGasAmtSats(tx, totalSize, gasCoin)
 
 	gasAmt := btcutil.Amount(gasAmtSats)
 	if err = c.temporalStorage.UpsertTransactionFee(gasAmt.ToBTC(), int32(totalSize)); err != nil {
@@ -612,13 +613,7 @@ func (c *Client) buildTxBatch(txs []stypes.TxOutItem, sourceScript []byte) (*wir
 		}
 		totalSize = c.estimateTxSizeWithOutputs(txes, outputScripts, sourceScript)
 		gasCoin := c.getGasCoin(feeTx, totalSize)
-		gasAmtSats := gasCoin.Amount.Uint64()
-		maxFeeSats := totalSize * c.getBTCConfigValue(constants.BTC_MaxSatsPerVByte, c.cfg.UTXO.MaxSatsPerVByte)
-		if gasAmtSats > uint64(maxFeeSats) {
-			gasAmtSats = uint64(maxFeeSats)
-		} else if minRelayFeeSats := c.minRelayFeeSats.Load(); gasAmtSats < minRelayFeeSats {
-			gasAmtSats = minRelayFeeSats
-		}
+		gasAmtSats := c.capGasAmtSats(feeTx, totalSize, gasCoin)
 		gasAmt = btcutil.Amount(gasAmtSats)
 		needed := btcutil.Amount(totalOutput) + gasAmt
 		if selectAmount >= needed {

@@ -111,3 +111,61 @@ func TestRefreshBTCExactTxOutInternalSweepUsesSelectedInputLessGas(t *testing.T)
 		t.Fatalf("unexpected sweep max gas: %d/%d", got, expectedGas.Amount.Uint64())
 	}
 }
+
+func TestTxOutEndBlockDoesNotMutatePrescribedPendingSignBTCGas(t *testing.T) {
+	SetupConfigForTest()
+	ctx := flowTestContext()
+	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 1
+	inHash := GetRandomTxHash()
+	vaultPubKey := GetRandomPubKey()
+	toAddress := GetRandomBTCAddress()
+	sourceInput := addTestBTCVaultSourceInput(t, ctx, k, vaultPubKey, 2_000_000)
+	prescribedGas := common.NewCoin(common.BTCAsset, cosmos.NewUint(3_000))
+	prescribedGas.Decimals = common.BTCChain.GetGasAssetDecimal()
+	txOut := TxOut{
+		Height: ctx.BlockHeight() - 3,
+		Status: TxOutStatusPendingSign,
+		TxArray: []TxOutItem{
+			{
+				Chain:          common.BTCChain,
+				ToAddress:      toAddress,
+				VaultPubKey:    vaultPubKey,
+				Coin:           common.NewCoin(common.BTCAsset, cosmos.NewUint(1_997_000)),
+				MaxGas:         common.Gas{prescribedGas},
+				GasRate:        14,
+				InHash:         inHash,
+				ModuleName:     BaseName,
+				VaultPathIndex: common.MainVaultPathIndex,
+				TxType:         types.TxOutTypeRefund,
+				SourceInputs:   []types.TxOutInput{sourceInput},
+			},
+		},
+	}
+	k.txOutByHeight[txOut.Height] = txOut
+	k.txOutByHeight[ctx.BlockHeight()] = *NewTxOut(ctx.BlockHeight())
+	k.networkFees[common.BTCChain] = NetworkFee{
+		Chain:              common.BTCChain,
+		TransactionSize:    221,
+		TransactionFeeRate: 99,
+	}
+	mgr := newShielderFlowTestManager(k)
+	store := newTxOutStorage(k, constants.NewConfigValue(), nil, &mgr.gas)
+
+	if err := store.EndBlock(ctx, mgr); err != nil {
+		t.Fatal(err)
+	}
+	stored := k.txOutByHeight[txOut.Height].TxArray[0]
+	if got := stored.GasRate; got != 14 {
+		t.Fatalf("gas rate mutated: %d", got)
+	}
+	if got := stored.MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount.Uint64(); got != 3_000 {
+		t.Fatalf("max gas mutated: %d", got)
+	}
+	if got := stored.Coin.Amount.Uint64(); got != 1_997_000 {
+		t.Fatalf("coin mutated: %d", got)
+	}
+	if len(stored.SourceInputs) != 1 || !stored.SourceInputs[0].TxId.Equals(sourceInput.TxId) {
+		t.Fatalf("source inputs mutated: %#v", stored.SourceInputs)
+	}
+}

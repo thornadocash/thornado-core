@@ -72,6 +72,33 @@ func TestGetInboundOutboundAcceptsBTCDepositChildAddress(t *testing.T) {
 	require.Equal(t, common.TxID("outbound"), outbound[0].Tx.ID)
 }
 
+func TestGetInboundOutboundIgnoresDuplicateBTCVaultInternalTx(t *testing.T) {
+	thornado.SetupConfigForTest()
+
+	pubKey := stypes.GetRandomPubKey()
+	baseAddress, err := pubKey.GetAddress(common.BTCChain)
+	require.NoError(t, err)
+
+	tx := common.ObservedTx{
+		Tx: common.Tx{
+			ID:          "consolidate",
+			Chain:       common.BTCChain,
+			FromAddress: baseAddress,
+			ToAddress:   baseAddress,
+			Coins:       common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(1))),
+		},
+		ObservedPubKey: pubKey,
+	}
+
+	bridge := thornadoBridge{logger: zerolog.Nop()}
+	inbound, outbound, err := bridge.GetInboundOutbound(common.ObservedTxs{tx, tx})
+
+	require.NoError(t, err)
+	require.Empty(t, inbound)
+	require.Len(t, outbound, 1)
+	require.Equal(t, common.TxID("consolidate"), outbound[0].Tx.ID)
+}
+
 func TestIsVaultDepositAddressAcceptsStringPathIndex(t *testing.T) {
 	thornado.SetupConfigForTest()
 

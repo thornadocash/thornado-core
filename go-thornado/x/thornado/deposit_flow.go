@@ -155,7 +155,7 @@ func MatchCoreDeposit(ctx cosmos.Context, mgr Manager, tx ObservedTx) (types.Dep
 		BTCConfirmationsRequired: confirmationRequired,
 		BTCObservedHeight:        tx.BlockHeight,
 	}
-	if depositMatchedAfterAddressExpiry(deposit) {
+	if depositMatchedAfterAddressExpiry(ctx, k, deposit) {
 		deposit.RefundEligibleHeight = depositRefundEligibleHeight(ctx, k, mapping.ExpiresAtHeight)
 	}
 	if err := k.SetDepositRecord(ctx, deposit); err != nil {
@@ -288,7 +288,7 @@ func ProcessExpiredDepositAddressReturns(ctx cosmos.Context, mgr Manager) error 
 			}
 			continue
 		}
-		if deposit.Status == types.DepositStatusReturnQueued && !depositMatchedAfterAddressExpiry(deposit) {
+		if deposit.Status == types.DepositStatusReturnQueued && !depositMatchedAfterAddressExpiry(ctx, k, deposit) {
 			if depositRefundTxOutSigned(ctx, k, deposit.DepositID) {
 				ctx.Logger().Error("active-address deposit refund already signed before cleanup",
 					"deposit_id", deposit.DepositID.String(),
@@ -331,7 +331,7 @@ func ProcessExpiredDepositAddressReturns(ctx cosmos.Context, mgr Manager) error 
 		if deposit.Settlement != "" {
 			continue
 		}
-		if !depositMatchedAfterAddressExpiry(deposit) {
+		if !depositMatchedAfterAddressExpiry(ctx, k, deposit) {
 			continue
 		}
 		if deposit.RefundEligibleHeight <= 0 || deposit.RefundEligibleHeight > ctx.BlockHeight() {
@@ -361,10 +361,27 @@ func ProcessExpiredDepositAddressReturns(ctx cosmos.Context, mgr Manager) error 
 	return nil
 }
 
-func depositMatchedAfterAddressExpiry(deposit types.DepositRecord) bool {
+func depositMatchedAfterAddressExpiry(ctx cosmos.Context, k keeper.Keeper, deposit types.DepositRecord) bool {
 	return deposit.ExpiresAtHeight > 0 &&
 		deposit.MatchedHeight > 0 &&
-		deposit.MatchedHeight >= deposit.ExpiresAtHeight
+		deposit.MatchedHeight >= deposit.ExpiresAtHeight &&
+		vaultPubKeyNoLongerActive(ctx, k, deposit.VaultPubKey)
+}
+
+func vaultPubKeyNoLongerActive(ctx cosmos.Context, k keeper.Keeper, pubKey common.PubKey) bool {
+	if pubKey.IsEmpty() {
+		return false
+	}
+	activeVaults, err := k.GetBaseVaultsByStatus(ctx, ActiveVault)
+	if err != nil || len(activeVaults) == 0 {
+		return false
+	}
+	for _, vault := range activeVaults {
+		if vault.PubKey.Equals(pubKey) {
+			return false
+		}
+	}
+	return true
 }
 
 func depositRefundTxOutSigned(ctx cosmos.Context, k keeper.Keeper, depositID common.TxID) bool {
@@ -657,6 +674,9 @@ func purgeExpiredDepositAddresses(ctx cosmos.Context, mgr Manager) error {
 			continue
 		}
 		if mapping.PurgeAtHeight <= 0 || mapping.PurgeAtHeight > ctx.BlockHeight() {
+			continue
+		}
+		if !vaultPubKeyNoLongerActive(ctx, k, mapping.VaultPubKey) {
 			continue
 		}
 		expired = append(expired, mapping)

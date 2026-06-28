@@ -586,6 +586,96 @@ func (s *Signer) refreshTxOutBatchMetadata(item TxOutStoreItem) TxOutStoreItem {
 	return item
 }
 
+func txOutItemPresent(item TxOutStoreItem, txOut types.TxOut) bool {
+	if txOut.Height != item.Height {
+		return false
+	}
+	for _, tx := range txOut.TxArray {
+		txItem := tx.TxOutItem(txOut.Height)
+		txItem.VaultPubKeyEddsa = item.TxOutItem.VaultPubKeyEddsa
+		if item.TxOutItem.Equals(txItem) {
+			return true
+		}
+	}
+	return false
+}
+
+func currentTxOutItemForSigning(item TxOutStoreItem, txOut types.TxOut) (types.TxOutItem, bool) {
+	if txOut.Height != item.Height {
+		return types.TxOutItem{}, false
+	}
+	if item.Index >= 0 && int(item.Index) < len(txOut.TxArray) {
+		txItem := txOut.TxArray[item.Index].TxOutItem(txOut.Height)
+		txItem = normalizeCurrentTxOutItem(item.TxOutItem, txItem)
+		if txOutSigningIdentityMatch(item.TxOutItem, txItem) {
+			return txItem, true
+		}
+	}
+
+	var matched types.TxOutItem
+	matches := 0
+	for _, tx := range txOut.TxArray {
+		txItem := normalizeCurrentTxOutItem(item.TxOutItem, tx.TxOutItem(txOut.Height))
+		if !txOutSigningIdentityMatch(item.TxOutItem, txItem) {
+			continue
+		}
+		matched = txItem
+		matches++
+	}
+	if matches != 1 {
+		return types.TxOutItem{}, false
+	}
+	return matched, true
+}
+
+func normalizeCurrentTxOutItem(stored, current types.TxOutItem) types.TxOutItem {
+	if current.VaultPubKeyEddsa.IsEmpty() {
+		current.VaultPubKeyEddsa = stored.VaultPubKeyEddsa
+	}
+	return current
+}
+
+func txOutSigningIdentityMatch(a, b types.TxOutItem) bool {
+	return a.Chain.Equals(b.Chain) &&
+		a.VaultPubKey.Equals(b.VaultPubKey) &&
+		a.ToAddress.Equals(b.ToAddress) &&
+		a.InHash.Equals(b.InHash) &&
+		a.VaultPubKeyEddsa.Equals(b.VaultPubKeyEddsa) &&
+		a.VaultPathIndex == b.VaultPathIndex &&
+		a.TxType == b.TxType
+}
+
+func unsignedLocalTxOut(item TxOutStoreItem) bool {
+	return len(item.Checkpoint) == 0 &&
+		len(item.SignedTx) == 0 &&
+		item.Observation == nil
+}
+
+func (s *Signer) removeUnsignedTxOutMissingFromThornado(item TxOutStoreItem) bool {
+	if !unsignedLocalTxOut(item) {
+		return false
+	}
+	txOut, err := s.thornadoBridge.GetKeysign(item.Height, item.TxOutItem.VaultPubKey.String())
+	if err != nil {
+		s.logger.Debug().Err(err).Interface("tx", item.TxOutItem).Msg("fail to check txout presence before signing")
+		return false
+	}
+	if txOutItemPresent(item, txOut) {
+		return false
+	}
+	s.logger.Info().
+		Str("chain", item.TxOutItem.Chain.String()).
+		Int64("height", item.Height).
+		Int64("index", item.Index).
+		Stringer("in_hash", item.TxOutItem.InHash).
+		Str("tx_type", item.TxOutItem.TxType).
+		Msg("removing unsigned txout no longer present in thornado state")
+	if err := s.storage.Remove(item); err != nil {
+		s.logger.Error().Err(err).Msg("fail to remove tx out store item no longer present in thornado state")
+	}
+	return true
+}
+
 // signTransactions - looks for work to do by getting a list of all unsigned
 // transactions stored in the storage
 func (s *Signer) signTransactions() {
@@ -675,21 +765,30 @@ func (s *Signer) processTxnOut(ch <-chan types.TxOut, idx int) {
 				Str("status", txOut.Status).
 				Int("items", len(txOut.TxArray)).
 				Msg("received txout batch from thornado")
-			items := make([]TxOutStoreItem, 0, len(txOut.TxArray))
-
-			for i, tx := range txOut.TxArray {
-				item := NewTxOutStoreItem(txOut.Height, tx.TxOutItem(txOut.Height), int64(i))
-				item.Epoch = txOut.Epoch
-				item.BatchStatus = txOut.Status
-				item.SigningLeader = txOut.SigningLeader
-				item = mergeStoredTxOutItem(s.storage, item)
-				items = append(items, item)
-			}
+			items := txOutUnsignedStoreItems(s.storage, txOut)
 			if err := s.storage.Batch(items); err != nil {
 				s.logger.Error().Err(err).Msg("fail to save tx out items to storage")
 			}
 		}
 	}
+}
+
+func txOutUnsignedStoreItems(storage SignerStorage, txOut types.TxOut) []TxOutStoreItem {
+	items := make([]TxOutStoreItem, 0, len(txOut.TxArray))
+	for i, tx := range txOut.TxArray {
+		if !tx.OutHash.IsEmpty() {
+			continue
+		}
+		item := NewTxOutStoreItem(txOut.Height, tx.TxOutItem(txOut.Height), int64(i))
+		item.Epoch = txOut.Epoch
+		item.BatchStatus = txOut.Status
+		item.SigningLeader = txOut.SigningLeader
+		if storage != nil {
+			item = mergeStoredTxOutItem(storage, item)
+		}
+		items = append(items, item)
+	}
+	return items
 }
 
 func (s *Signer) processKeygen(ch <-chan ttypes.KeygenBlock) {
@@ -992,6 +1091,40 @@ func (s *Signer) signAndBroadcast(item *TxOutStoreItem) (checkpointOut []byte, o
 	}
 	s.debugSigningEvent(perfID, "chain_resolved", chain.GetChain().String())
 
+	s.debugSigningEvent(perfID, "keysign_state_fetch_start", "")
+	txOut, err := s.thornadoBridge.GetKeysign(height, tx.VaultPubKey.String())
+	if err != nil {
+		s.logger.Error().Err(err).Msg("fail to get keysign items")
+		return nil, nil, false, err
+	}
+	s.debugSigningEvent(perfID, "keysign_state_fetch_done", fmt.Sprintf("items=%d", len(txOut.TxArray)))
+	currentTx, foundCurrentTx := currentTxOutItemForSigning(*item, txOut)
+	if !foundCurrentTx {
+		s.logger.Info().
+			Str("chain", tx.Chain.String()).
+			Int64("height", item.Height).
+			Int64("index", item.Index).
+			Stringer("in_hash", tx.InHash).
+			Str("tx_type", tx.TxType).
+			Msg("txout is no longer present in current thornado signing state")
+		s.debugSigningFinish(perfID, "txout_not_current", "")
+		return nil, nil, false, errTxOutCompletionPending
+	}
+	if item.Checkpoint != nil {
+		currentTx.Checkpoint = item.Checkpoint
+	}
+	item.TxOutItem = currentTx
+	item.Epoch = txOut.Epoch
+	item.BatchStatus = txOut.Status
+	item.SigningLeader = txOut.SigningLeader
+	tx = currentTx
+	if err := s.storage.Set(*item); err != nil {
+		s.logger.Error().Err(err).Msg("fail to persist refreshed txout before signing")
+		s.debugSigningEvent(perfID, "keysign_state_refresh_persist_error", err.Error())
+	} else {
+		s.debugSigningEvent(perfID, "keysign_state_refreshed", fmt.Sprintf("source_inputs=%d max_gas=%d gas_rate=%d", len(tx.SourceInputs), len(tx.MaxGas), tx.GasRate))
+	}
+
 	if !s.shouldSign(tx) {
 		s.logger.Info().Str("signer_address", chain.GetAddress(tx.VaultPubKey)).Msg("different vault address, ignore")
 		return nil, nil, false, nil
@@ -1113,17 +1246,10 @@ func (s *Signer) signAndBroadcast(item *TxOutStoreItem) (checkpointOut []byte, o
 		return nil, nil, false, nil // return nil and discard item
 	}
 
-	// We get the keysign object from thornado again to ensure it hasn't
+	// We get the keysign object from thornado before signing to ensure it hasn't
 	// been signed already, and we can skip. This helps us not get stuck on
 	// a task that we'll never sign, because 2/3rds already has and will
 	// never be available to sign again.
-	s.debugSigningEvent(perfID, "keysign_state_fetch_start", "")
-	txOut, err := s.thornadoBridge.GetKeysign(height, tx.VaultPubKey.String())
-	if err != nil {
-		s.logger.Error().Err(err).Msg("fail to get keysign items")
-		return nil, nil, false, err
-	}
-	s.debugSigningEvent(perfID, "keysign_state_fetch_done", fmt.Sprintf("items=%d", len(txOut.TxArray)))
 	for _, txArray := range txOut.TxArray {
 		txItem := txArray.TxOutItem(item.TxOutItem.Height)
 		txItem.VaultPubKeyEddsa = tx.VaultPubKeyEddsa
@@ -1139,7 +1265,29 @@ func (s *Signer) signAndBroadcast(item *TxOutStoreItem) (checkpointOut []byte, o
 	// concurrent UTXO selection or local double-spend on ambiguous broadcast errors.
 	if locker, ok := chain.(interface{ GetVaultLock(string) *sync.Mutex }); ok {
 		lock := locker.GetVaultLock(tx.VaultPubKey.String())
-		lock.Lock()
+		s.debugSigningEvent(perfID, "vault_lock_acquire_start", tx.VaultPubKey.String())
+		if !lock.TryLock() {
+			if completed, outHash, completeErr := s.txOutItemCompleted(*item); completeErr != nil {
+				s.logger.Debug().Err(completeErr).Msg("fail to recheck txout completion while vault lock is busy")
+			} else if completed {
+				s.logger.Info().
+					Stringer("out_hash", outHash).
+					Msg("txout completed while waiting for vault lock")
+				s.debugSigningFinish(perfID, "completed_while_vault_lock_busy", outHash.String())
+				return nil, nil, false, nil
+			} else if completed, outHash, historyErr := s.txOutItemCompletedInHistory(*item); historyErr != nil {
+				s.logger.Debug().Err(historyErr).Msg("fail to recheck txout history while vault lock is busy")
+			} else if completed {
+				s.logger.Info().
+					Stringer("out_hash", outHash).
+					Msg("historical txout completed while waiting for vault lock")
+				s.debugSigningFinish(perfID, "historical_completed_while_vault_lock_busy", outHash.String())
+				return nil, nil, false, nil
+			}
+			s.debugSigningFinish(perfID, "vault_lock_busy", tx.VaultPubKey.String())
+			return nil, nil, false, errTxOutCompletionPending
+		}
+		s.debugSigningEvent(perfID, "vault_lock_acquired", tx.VaultPubKey.String())
 		defer lock.Unlock()
 	}
 
@@ -1414,6 +1562,9 @@ func txOutBatchTerminalStatus(status string) bool {
 
 func (s *Signer) removeTerminalOrCompletedTxOut(item TxOutStoreItem) (TxOutStoreItem, bool) {
 	item = s.refreshTxOutBatchMetadata(item)
+	if s.removeUnsignedTxOutMissingFromThornado(item) {
+		return item, true
+	}
 	if item.BatchStatus != "" && item.BatchStatus != ttypes.TxOutStatusPendingSign {
 		if txOutBatchTerminalStatus(item.BatchStatus) {
 			s.logger.Info().
@@ -1480,16 +1631,17 @@ func deferredRecoveredObservationTxIn(item TxOutStoreItem) (types.TxIn, bool) {
 	}, true
 }
 
+func (s *Signer) processTerminalOrCompletedTransaction(item TxOutStoreItem) (TxOutStoreItem, bool) {
+	return s.removeTerminalOrCompletedTxOut(item)
+}
+
 func (s *Signer) processDeferredTransaction(item TxOutStoreItem) {
-	item, handled := s.removeTerminalOrCompletedTxOut(item)
-	if handled {
-		return
-	}
+	s.processTerminalOrCompletedTransaction(item)
 }
 
 func (s *Signer) processTransaction(item TxOutStoreItem) {
 	var handled bool
-	item, handled = s.removeTerminalOrCompletedTxOut(item)
+	item, handled = s.processTerminalOrCompletedTransaction(item)
 	if handled {
 		return
 	}

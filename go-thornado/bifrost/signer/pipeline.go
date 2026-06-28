@@ -50,6 +50,7 @@ func (s semaphore) release(count int) {
 type pipelineSigner interface {
 	isStopped() bool
 	storageList() []TxOutStoreItem
+	processTerminalOrCompletedTransaction(item TxOutStoreItem) (TxOutStoreItem, bool)
 	processDeferredTransaction(item TxOutStoreItem)
 	processTransaction(item TxOutStoreItem)
 }
@@ -113,13 +114,22 @@ func (p *pipeline) SpawnSignings(s pipelineSigner, bridge thornadoclient.Thornad
 		return
 	}
 
-	// gather all vault/chain combinations with an out item in retry
-	retryItems := make(map[vaultChain][]TxOutStoreItem)
+	activeItems := make([]TxOutStoreItem, 0, len(allItems))
 	for _, item := range allItems {
+		item, handled := s.processTerminalOrCompletedTransaction(item)
+		if handled {
+			continue
+		}
 		if txOutDeferredPast(item, blockHeight) {
 			s.processDeferredTransaction(item)
 			continue
 		}
+		activeItems = append(activeItems, item)
+	}
+
+	// gather all vault/chain combinations with an out item in retry
+	retryItems := make(map[vaultChain][]TxOutStoreItem)
+	for _, item := range activeItems {
 		if item.Round7Retry || len(item.SignedTx) > 0 {
 			vc := vaultChain{item.TxOutItem.VaultPubKey, item.TxOutItem.Chain}
 			retryItems[vc] = append(retryItems[vc], item)
@@ -144,10 +154,7 @@ func (p *pipeline) SpawnSignings(s pipelineSigner, bridge thornadoclient.Thornad
 	}
 
 	// add all items from vault/chains with no items in retry
-	for _, item := range allItems {
-		if txOutDeferredPast(item, blockHeight) {
-			continue
-		}
+	for _, item := range activeItems {
 		vc := vaultChain{item.TxOutItem.VaultPubKey, item.TxOutItem.Chain}
 		if _, ok := retryItems[vc]; !ok {
 			itemsToSign = append(itemsToSign, item)

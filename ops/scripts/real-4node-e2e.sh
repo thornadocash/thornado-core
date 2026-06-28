@@ -699,6 +699,22 @@ wait_btc_balance_at_least() {
   done
 }
 
+wait_btc_raw_transaction() {
+  local txid="$1" out_file="$2" timeout="${3:-120}" start tx
+  start="$(date +%s)"
+  while true; do
+    tx="$(btc_cli getrawtransaction "$txid" true 2>/dev/null || true)"
+    if [[ -n "$tx" ]] && jq -e '.txid == "'"$txid"'"' <<<"$tx" >/dev/null 2>&1; then
+      printf '%s\n' "$tx" >"$out_file"
+      return 0
+    fi
+    if (( "$(date +%s)" - start >= timeout )); then
+      die "bitcoin tx ${txid} was not visible"
+    fi
+    sleep 1
+  done
+}
+
 wait_btc_utxo_spent() {
   local txid="$1" vout="$2" out_file="$3" timeout="${4:-300}" start current
   start="$(date +%s)"
@@ -2106,7 +2122,7 @@ validate_flow3() {
   outbound_txout="$(wait_txout_signed_by_in_hash "$withdrawal_id" "out" 1200)"
   printf '%s\n' "$outbound_txout" >"$RUN_ROOT/meta/flow3-withdrawal-txout.json"
   out_hash="$(jq -r --arg in_hash "$withdrawal_id" '.txout.tx_array[] | select(.in_hash == $in_hash) | .out_hash' <<<"$outbound_txout" | head -n1)"
-  btc_cli getrawtransaction "$(printf '%s' "$out_hash" | tr '[:upper:]' '[:lower:]')" true >"$RUN_ROOT/meta/flow3-btc-outbound-tx.json"
+  wait_btc_raw_transaction "$(printf '%s' "$out_hash" | tr '[:upper:]' '[:lower:]')" "$RUN_ROOT/meta/flow3-btc-outbound-tx.json" 120
   expected_payout="$(( $(jq -r '.denomination_sats' <<<"$note") - fee ))"
   jq -e --arg in_hash "$withdrawal_id" --arg recipient "$recipient" --argjson payout "$expected_payout" \
     '.txout.tx_array[] | select(.tx_type == "out" and .in_hash == $in_hash and .to_address == $recipient and (.coin.amount | tonumber) == $payout)' \

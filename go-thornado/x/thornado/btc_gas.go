@@ -132,7 +132,7 @@ func refreshBTCExactTxOutBlock(ctx cosmos.Context, k keeper.Keeper, txOut *TxOut
 			continue
 		}
 		item := txOut.TxArray[i]
-		if !item.Chain.Equals(common.BTCChain) || !item.OutHash.IsEmpty() {
+		if !btcTxOutItemNeedsExactRefresh(*txOut, item) {
 			continue
 		}
 
@@ -153,6 +153,16 @@ func refreshBTCExactTxOutBlock(ctx cosmos.Context, k keeper.Keeper, txOut *TxOut
 		}
 	}
 	return nil
+}
+
+func btcTxOutItemNeedsExactRefresh(txOut TxOut, item TxOutItem) bool {
+	if !item.OutHash.IsEmpty() || !item.Chain.Equals(common.BTCChain) {
+		return false
+	}
+	return txOut.Status == TxOutStatusPendingBatch ||
+		len(item.SourceInputs) == 0 ||
+		item.MaxGas.IsEmpty() ||
+		item.GasRate == 0
 }
 
 func refreshBTCExactTxOutGroup(ctx cosmos.Context, k keeper.Keeper, txOut *TxOut, group []int) error {
@@ -278,17 +288,20 @@ func selectBTCVaultSourceInputsForOutputs(
 
 func btcSelectVaultSourceInputs(ctx cosmos.Context, k keeper.Keeper, vault Vault, sourceAddr common.Address, required cosmos.Uint, ignoreTxOutHeight int64) []types.TxOutInput {
 	candidates := btcVaultSourceCandidates(ctx, k, vault, sourceAddr, ignoreTxOutHeight)
-	minInputs := int(k.GetConfigInt64(ctx, constants.UTXO_MaxSpendCount))
-	if minInputs < 1 {
-		minInputs = 1
+	maxInputs := int(k.GetConfigInt64(ctx, constants.UTXO_MaxSpendCount))
+	if maxInputs < 1 {
+		maxInputs = 1
 	}
 
 	var total uint64
 	inputs := make([]types.TxOutInput, 0, len(candidates))
 	for _, candidate := range candidates {
+		if len(inputs) >= maxInputs {
+			break
+		}
 		inputs = append(inputs, candidate.input)
 		total += candidate.input.AmountSats
-		if cosmos.NewUint(total).GTE(required) && len(inputs) >= minInputs {
+		if cosmos.NewUint(total).GTE(required) {
 			break
 		}
 	}

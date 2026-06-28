@@ -3,6 +3,8 @@ package p2p
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -10,6 +12,8 @@ import (
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p/conversion"
 )
+
+const PartyPeerConnectTimeout = 4 * time.Second
 
 func bootstrapAddrsByPeerID(bootstrapPeers []maddr.Multiaddr) map[peer.ID][]maddr.Multiaddr {
 	addrsByPeer := make(map[peer.ID][]maddr.Multiaddr)
@@ -38,7 +42,8 @@ func (c *Communication) EnsurePeersConnected(pubkeys []string) error {
 	bootstrapPeers := c.getPeers()
 	addrsByPeer := bootstrapAddrsByPeerID(bootstrapPeers)
 
-	var connectErrs []error
+	var wg sync.WaitGroup
+	errCh := make(chan error, len(peerIDs))
 	for _, pID := range peerIDs {
 		if pID == c.host.ID() {
 			continue
@@ -48,18 +53,27 @@ func (c *Communication) EnsurePeersConnected(pubkeys []string) error {
 		}
 		addrs := addrsByPeer[pID]
 		if len(addrs) == 0 {
-			connectErrs = append(connectErrs, fmt.Errorf("no bootstrap address for peer %s", pID))
+			errCh <- fmt.Errorf("no bootstrap address for peer %s", pID)
 			continue
 		}
 		pi := peer.AddrInfo{ID: pID, Addrs: addrs}
-		ctx, cancel := context.WithTimeout(context.Background(), TimeoutConnecting)
-		err := c.host.Connect(ctx, pi)
-		cancel()
-		if err != nil {
-			connectErrs = append(connectErrs, fmt.Errorf("connect peer %s: %w", pID, err))
-			continue
-		}
-		c.logger.Info().Str("peer", pID.String()).Msg("connected party peer before join")
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ctx, cancel := context.WithTimeout(context.Background(), PartyPeerConnectTimeout)
+			defer cancel()
+			if err := c.host.Connect(ctx, pi); err != nil {
+				errCh <- fmt.Errorf("connect peer %s: %w", pi.ID, err)
+				return
+			}
+			c.logger.Info().Str("peer", pi.ID.String()).Msg("connected party peer before join")
+		}()
+	}
+	wg.Wait()
+	close(errCh)
+	var connectErrs []error
+	for err := range errCh {
+		connectErrs = append(connectErrs, err)
 	}
 	if len(connectErrs) > 0 {
 		return fmt.Errorf("ensure party peers: %v", connectErrs)

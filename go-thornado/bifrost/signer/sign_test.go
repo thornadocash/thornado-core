@@ -111,6 +111,121 @@ func (s *SignerSuite) TestCompletedTxOutItemUsesHeightScopedHistory(c *C) {
 	c.Assert(matchedOutHash.Equals(outHash), Equals, true)
 }
 
+func (s *SignerSuite) TestTxOutItemPresentRequiresExactCurrentTxOut(c *C) {
+	item := NewTxOutStoreItem(127, types.TxOutItem{
+		Chain:            common.BTCChain,
+		ToAddress:        ttypes.GetRandomBTCAddress(),
+		VaultPubKey:      ttypes.GetRandomPubKey(),
+		VaultPubKeyEddsa: ttypes.GetRandomEd25519PubKey(),
+		Coins:            common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(100_000))),
+		InHash:           ttypes.GetRandomTxHash(),
+		TxType:           ttypes.TxOutTypeRefund,
+	}, 0)
+	txArrayItem := types.TxArrayItem{
+		Chain:       item.TxOutItem.Chain,
+		ToAddress:   item.TxOutItem.ToAddress,
+		VaultPubKey: item.TxOutItem.VaultPubKey,
+		Coin:        item.TxOutItem.Coins[0],
+		InHash:      item.TxOutItem.InHash,
+		TxType:      item.TxOutItem.TxType,
+	}
+
+	c.Assert(txOutItemPresent(item, types.TxOut{Height: 126, TxArray: []types.TxArrayItem{txArrayItem}}), Equals, false)
+	c.Assert(txOutItemPresent(item, types.TxOut{Height: 127, TxArray: []types.TxArrayItem{txArrayItem}}), Equals, true)
+
+	txArrayItem.InHash = ttypes.GetRandomTxHash()
+	c.Assert(txOutItemPresent(item, types.TxOut{Height: 127, TxArray: []types.TxArrayItem{txArrayItem}}), Equals, false)
+}
+
+func (s *SignerSuite) TestCurrentTxOutItemForSigningRefreshesMutableFields(c *C) {
+	inHash := ttypes.GetRandomTxHash()
+	sourceTx := ttypes.GetRandomTxHash()
+	vault := ttypes.GetRandomPubKey()
+	to := ttypes.GetRandomBTCAddress()
+	eddsa := ttypes.GetRandomEd25519PubKey()
+	item := NewTxOutStoreItem(127, types.TxOutItem{
+		Chain:            common.BTCChain,
+		ToAddress:        to,
+		VaultPubKey:      vault,
+		VaultPubKeyEddsa: eddsa,
+		Coins:            common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(100_000))),
+		InHash:           inHash,
+		GasRate:          10,
+		TxType:           ttypes.TxOutTypeOut,
+	}, 1)
+	txOut := types.TxOut{
+		Height: 127,
+		TxArray: []types.TxArrayItem{
+			{Chain: common.BTCChain, InHash: ttypes.GetRandomTxHash(), VaultPubKey: vault, TxType: ttypes.TxOutTypeOut},
+			{
+				Chain:       common.BTCChain,
+				ToAddress:   to,
+				VaultPubKey: vault,
+				Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(99_000)),
+				MaxGas:      common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(1_000))},
+				GasRate:     25,
+				InHash:      inHash,
+				TxType:      ttypes.TxOutTypeOut,
+				SourceInputs: []types.TxOutInput{
+					{TxID: sourceTx, Vout: 1, AmountSats: 100_000},
+				},
+			},
+		},
+	}
+
+	current, ok := currentTxOutItemForSigning(item, txOut)
+	c.Assert(ok, Equals, true)
+	c.Assert(current.VaultPubKeyEddsa.Equals(eddsa), Equals, true)
+	c.Assert(current.GasRate, Equals, int64(25))
+	c.Assert(current.MaxGas, HasLen, 1)
+	c.Assert(current.SourceInputs, HasLen, 1)
+	c.Assert(current.SourceInputs[0].TxID.Equals(sourceTx), Equals, true)
+	c.Assert(current.Coins[0].Amount.Equal(cosmos.NewUint(99_000)), Equals, true)
+}
+
+func (s *SignerSuite) TestCurrentTxOutItemForSigningRejectsAmbiguousFallback(c *C) {
+	inHash := ttypes.GetRandomTxHash()
+	vault := ttypes.GetRandomPubKey()
+	to := ttypes.GetRandomBTCAddress()
+	item := NewTxOutStoreItem(127, types.TxOutItem{
+		Chain:       common.BTCChain,
+		ToAddress:   to,
+		VaultPubKey: vault,
+		InHash:      inHash,
+		TxType:      ttypes.TxOutTypeOut,
+	}, 9)
+	txArrayItem := types.TxArrayItem{
+		Chain:       common.BTCChain,
+		ToAddress:   to,
+		VaultPubKey: vault,
+		Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(100_000)),
+		InHash:      inHash,
+		TxType:      ttypes.TxOutTypeOut,
+	}
+
+	_, ok := currentTxOutItemForSigning(item, types.TxOut{
+		Height:  127,
+		TxArray: []types.TxArrayItem{txArrayItem, txArrayItem},
+	})
+	c.Assert(ok, Equals, false)
+}
+
+func (s *SignerSuite) TestUnsignedLocalTxOutRequiresNoLocalSigningState(c *C) {
+	item := TxOutStoreItem{}
+	c.Assert(unsignedLocalTxOut(item), Equals, true)
+
+	item.Checkpoint = []byte("checkpoint")
+	c.Assert(unsignedLocalTxOut(item), Equals, false)
+
+	item.Checkpoint = nil
+	item.SignedTx = []byte("signed")
+	c.Assert(unsignedLocalTxOut(item), Equals, false)
+
+	item.SignedTx = nil
+	item.Observation = &types.TxInItem{Tx: "observed"}
+	c.Assert(unsignedLocalTxOut(item), Equals, false)
+}
+
 func (s *SignerSuite) TestTxOutBatchTerminalStatus(c *C) {
 	c.Assert(txOutBatchTerminalStatus(ttypes.TxOutStatusComplete), Equals, true)
 	c.Assert(txOutBatchTerminalStatus(ttypes.TxOutStatusCancelled), Equals, true)
@@ -200,6 +315,40 @@ func (s *SignerSuite) TestSignerStoreBatchRemovesSupersededTxOutKey(c *C) {
 	c.Assert(listed, HasLen, 1)
 	c.Assert(listed[0].TxOutItem.GasRate, Equals, int64(14))
 	c.Assert(listed[0].DeferredUntilHeight, Equals, int64(0))
+}
+
+func (s *SignerSuite) TestTxOutUnsignedStoreItemsSkipsAlreadySignedItems(c *C) {
+	storage, err := NewSignerStore("", config.LevelDBOptions{}, "")
+	c.Assert(err, IsNil)
+	defer storage.Close()
+
+	unsignedInHash := ttypes.GetRandomTxHash()
+	signedInHash := ttypes.GetRandomTxHash()
+	txOut := types.TxOut{
+		Height: 3997,
+		Status: ttypes.TxOutStatusPendingSign,
+		TxArray: []types.TxArrayItem{
+			{
+				Chain:       common.BTCChain,
+				InHash:      signedInHash,
+				OutHash:     ttypes.GetRandomTxHash(),
+				TxType:      ttypes.TxOutTypeSweep,
+				VaultPubKey: ttypes.GetRandomPubKey(),
+			},
+			{
+				Chain:       common.BTCChain,
+				InHash:      unsignedInHash,
+				TxType:      ttypes.TxOutTypeSweep,
+				VaultPubKey: ttypes.GetRandomPubKey(),
+			},
+		},
+	}
+
+	items := txOutUnsignedStoreItems(storage, txOut)
+	c.Assert(items, HasLen, 1)
+	c.Assert(items[0].Height, Equals, int64(3997))
+	c.Assert(items[0].Index, Equals, int64(1))
+	c.Assert(items[0].TxOutItem.InHash.Equals(unsignedInHash), Equals, true)
 }
 
 func (s *SignerSuite) TestRemoveTxOutBatchItemsUsesStoredKeys(c *C) {

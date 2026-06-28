@@ -570,6 +570,31 @@ func TestUserShieldAndUnshieldFlowQueuesNetWithdrawal(t *testing.T) {
 	}
 }
 
+func TestBTCSourceInputSelectionStopsWhenRequiredAmountCovered(t *testing.T) {
+	SetupConfigForTest()
+	ctx := flowTestContext()
+	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 3
+
+	vaultPubKey := GetRandomPubKey()
+	vault := Vault{PubKey: vaultPubKey, Status: ActiveVault, Type: BaseVault}
+	if err := k.SetVault(ctx, vault); err != nil {
+		t.Fatal(err)
+	}
+	sourceAddr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	large := addTestBTCVaultSourceInput(t, ctx, k, vaultPubKey, 5_000_000)
+	addTestBTCVaultSourceInput(t, ctx, k, vaultPubKey, 1_000_000)
+	addTestBTCVaultSourceInput(t, ctx, k, vaultPubKey, 1_000_000)
+
+	inputs := btcSelectVaultSourceInputs(ctx, k, vault, sourceAddr, cosmos.NewUint(2_000_000), 0)
+	if len(inputs) != 1 || !inputs[0].TxId.Equals(large.TxId) {
+		t.Fatalf("expected only the covering UTXO, got %#v", inputs)
+	}
+}
+
 func TestBondFromNotesConfirmsStandbyNode(t *testing.T) {
 	SetupConfigForTest()
 	ctx := flowTestContext()

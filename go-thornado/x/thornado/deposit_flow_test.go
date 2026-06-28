@@ -3,14 +3,20 @@ package thornado
 import (
 	"testing"
 
+	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
-func TestDepositMatchedAfterAddressExpiry(t *testing.T) {
+func TestDepositMatchedAfterAddressExpiryRequiresVaultChurn(t *testing.T) {
+	ctx := flowTestContext()
+	activeVault := GetRandomPubKey()
+	replacementVault := GetRandomPubKey()
+
 	tests := []struct {
 		name    string
 		deposit types.DepositRecord
+		active  []common.PubKey
 		want    bool
 	}{
 		{
@@ -18,36 +24,65 @@ func TestDepositMatchedAfterAddressExpiry(t *testing.T) {
 			deposit: types.DepositRecord{
 				MatchedHeight:   99,
 				ExpiresAtHeight: 100,
+				VaultPubKey:     activeVault,
 			},
-			want: false,
+			active: []common.PubKey{activeVault},
+			want:   false,
 		},
 		{
-			name: "deposit at expiry height is expired address deposit",
+			name: "deposit at expiry height is still active without vault churn",
 			deposit: types.DepositRecord{
 				MatchedHeight:   100,
 				ExpiresAtHeight: 100,
+				VaultPubKey:     activeVault,
 			},
-			want: true,
+			active: []common.PubKey{activeVault},
+			want:   false,
 		},
 		{
-			name: "deposit after expiry height is expired address deposit",
+			name: "deposit after expiry height is still active without vault churn",
 			deposit: types.DepositRecord{
 				MatchedHeight:   101,
 				ExpiresAtHeight: 100,
+				VaultPubKey:     activeVault,
 			},
-			want: true,
+			active: []common.PubKey{activeVault},
+			want:   false,
+		},
+		{
+			name: "deposit after expiry height is expired after base vault churn",
+			deposit: types.DepositRecord{
+				MatchedHeight:   101,
+				ExpiresAtHeight: 100,
+				VaultPubKey:     activeVault,
+			},
+			active: []common.PubKey{replacementVault},
+			want:   true,
 		},
 		{
 			name: "missing expiry is not refund eligible",
 			deposit: types.DepositRecord{
 				MatchedHeight: 100,
+				VaultPubKey:   activeVault,
 			},
-			want: false,
+			active: []common.PubKey{replacementVault},
+			want:   false,
 		},
 		{
 			name: "missing matched height is not refund eligible",
 			deposit: types.DepositRecord{
 				ExpiresAtHeight: 100,
+				VaultPubKey:     activeVault,
+			},
+			active: []common.PubKey{replacementVault},
+			want:   false,
+		},
+		{
+			name: "missing active vault set is not refund eligible",
+			deposit: types.DepositRecord{
+				MatchedHeight:   101,
+				ExpiresAtHeight: 100,
+				VaultPubKey:     activeVault,
 			},
 			want: false,
 		},
@@ -55,7 +90,13 @@ func TestDepositMatchedAfterAddressExpiry(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := depositMatchedAfterAddressExpiry(tt.deposit); got != tt.want {
+			k := newShielderFlowTestKeeper()
+			for _, pubKey := range tt.active {
+				if err := k.SetVault(ctx, Vault{PubKey: pubKey, Status: ActiveVault, Type: BaseVault}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if got := depositMatchedAfterAddressExpiry(ctx, k, tt.deposit); got != tt.want {
 				t.Fatalf("depositMatchedAfterAddressExpiry() = %t, want %t", got, tt.want)
 			}
 		})

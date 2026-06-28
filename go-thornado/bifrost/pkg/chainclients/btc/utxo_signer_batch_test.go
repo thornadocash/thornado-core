@@ -139,6 +139,25 @@ func TestBTCBatchMaxGasSumsItemShares(t *testing.T) {
 	}
 }
 
+func TestBTCFeeCappedByMaxGas(t *testing.T) {
+	client := &Client{
+		cfg: config.BifrostChainConfiguration{
+			ChainID: common.BTCChain,
+		},
+		bridge: &mockBridge{},
+		log:    zerolog.Nop(),
+	}
+	client.cfg.UTXO.MaxSatsPerVByte = 10_000
+	item := stypes.TxOutItem{
+		MaxGas: common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(1_234))},
+	}
+	gasCoin := common.NewCoin(common.BTCAsset, cosmos.NewUint(9_999_999))
+	got := client.capGasAmtSats(item, 1_000, gasCoin)
+	if got != 1_234 {
+		t.Fatalf("expected gas capped to max gas, got %d", got)
+	}
+}
+
 func TestRecoveredOutputAmountAllowsInternalActualGasBelowMaxGas(t *testing.T) {
 	item := stypes.TxOutItem{
 		Chain:  common.BTCChain,
