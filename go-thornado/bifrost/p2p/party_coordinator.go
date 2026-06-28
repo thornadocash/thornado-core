@@ -22,10 +22,16 @@ import (
 var (
 	ErrJoinPartyTimeout = errors.New("fail to join party, timeout")
 	ErrLeaderNotReady   = errors.New("leader not reachable")
+	ErrPartyClosed      = errors.New("party closed")
 	ErrSignReceived     = errors.New("signature received")
 	ErrNotActiveSigner  = errors.New("not active signer")
 	ErrSigGenerated     = errors.New("signature generated")
 )
+
+type closedPartyResponse struct {
+	response  *messages.JoinPartyLeaderComm
+	expiresAt time.Time
+}
 
 type PartyCoordinator struct {
 	logger             zerolog.Logger
@@ -33,6 +39,7 @@ type PartyCoordinator struct {
 	stopChan           chan struct{}
 	timeout            time.Duration
 	peersGroup         map[string]*peerStatus
+	closedGroups       map[string]closedPartyResponse
 	joinPartyGroupLock *sync.Mutex
 	streamMgr          *StreamMgr
 }
@@ -49,6 +56,7 @@ func NewPartyCoordinator(host host.Host, timeout time.Duration) *PartyCoordinato
 		stopChan:           make(chan struct{}),
 		timeout:            timeout,
 		peersGroup:         make(map[string]*peerStatus),
+		closedGroups:       make(map[string]closedPartyResponse),
 		joinPartyGroupLock: &sync.Mutex{},
 		streamMgr:          NewStreamMgr(),
 	}
@@ -73,7 +81,7 @@ func (pc *PartyCoordinator) processRespMsg(respMsg *messages.JoinPartyLeaderComm
 	peerGroup, ok := pc.peersGroup[respMsg.ID]
 	pc.joinPartyGroupLock.Unlock()
 	if !ok {
-		pc.logger.Info().Msgf("message ID from peer(%s) can not be found", remotePeer)
+		pc.logger.Debug().Msgf("message ID from peer(%s) can not be found", remotePeer)
 		return
 	}
 	if remotePeer == peerGroup.getLeader() {
@@ -93,9 +101,19 @@ func (pc *PartyCoordinator) processReqMsg(requestMsg *messages.JoinPartyLeaderCo
 	pc.streamMgr.AddStream(requestMsg.ID, stream)
 	pc.joinPartyGroupLock.Lock()
 	peerGroup, ok := pc.peersGroup[requestMsg.ID]
+	closedResp, closed := pc.closedGroupResponseLocked(requestMsg.ID)
 	pc.joinPartyGroupLock.Unlock()
 	if !ok {
-		pc.logger.Info().Msg("this party is not ready")
+		if closed {
+			remotePeer := stream.Conn().RemotePeer()
+			pc.logger.Trace().
+				Str("msg_id", requestMsg.ID).
+				Str("remote_peer", remotePeer.String()).
+				Msg("join party already closed")
+			pc.sendResponseToPeer(closedResp, remotePeer)
+			return
+		}
+		pc.logger.Debug().Msg("this party is not ready")
 		return
 	}
 	remotePeer := stream.Conn().RemotePeer()
@@ -130,7 +148,7 @@ func (pc *PartyCoordinator) HandleStream(stream network.Stream) {
 	peerGroup, ok := pc.peersGroup[msg.ID]
 	pc.joinPartyGroupLock.Unlock()
 	if !ok {
-		pc.logger.Info().Msg("this party is not ready")
+		pc.logger.Debug().Msg("this party is not ready")
 		return
 	}
 	_, err = peerGroup.updatePeer(remotePeer)
@@ -196,6 +214,42 @@ func (pc *PartyCoordinator) releaseJoinPartyGroup(messageID string) {
 	}
 }
 
+func cloneJoinPartyLeaderComm(msg *messages.JoinPartyLeaderComm) *messages.JoinPartyLeaderComm {
+	if msg == nil {
+		return nil
+	}
+	cp := *msg
+	cp.PeerIDs = append([]string(nil), msg.PeerIDs...)
+	return &cp
+}
+
+func (pc *PartyCoordinator) rememberClosedGroup(messageID string) {
+	pc.joinPartyGroupLock.Lock()
+	defer pc.joinPartyGroupLock.Unlock()
+	pc.closedGroups[messageID] = closedPartyResponse{
+		response: &messages.JoinPartyLeaderComm{
+			ID:      messageID,
+			MsgType: "response",
+			Type:    messages.JoinPartyLeaderComm_LeaderNotReady,
+		},
+		// Keep this long enough to answer slow joiners from the completed attempt,
+		// but short enough that a later signer retry can reform the party.
+		expiresAt: time.Now().Add(pc.timeout),
+	}
+}
+
+func (pc *PartyCoordinator) closedGroupResponseLocked(messageID string) (*messages.JoinPartyLeaderComm, bool) {
+	closed, ok := pc.closedGroups[messageID]
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(closed.expiresAt) {
+		delete(pc.closedGroups, messageID)
+		return nil, false
+	}
+	return cloneJoinPartyLeaderComm(closed.response), true
+}
+
 func (pc *PartyCoordinator) acquireJoinPartyGroup(messageID string, leaderID peer.ID, peerIDs []peer.ID, threshold int) (*peerStatus, error) {
 	pc.joinPartyGroupLock.Lock()
 	defer pc.joinPartyGroupLock.Unlock()
@@ -213,13 +267,6 @@ func (pc *PartyCoordinator) acquireJoinPartyGroup(messageID string, leaderID pee
 
 func (pc *PartyCoordinator) getPeerIDs(ids []string) ([]peer.ID, error) {
 	return conversion.GetPeerIDs(ids)
-}
-
-func peerIDFromPartyIdentity(id string) (peer.ID, error) {
-	if pid, err := peer.Decode(id); err == nil {
-		return pid, nil
-	}
-	return conversion.GetPeerIDFromPubKey(id)
 }
 
 func (pc *PartyCoordinator) sendResponseToAll(msg *messages.JoinPartyLeaderComm, peers []peer.ID) {
@@ -243,6 +290,22 @@ func (pc *PartyCoordinator) sendResponseToAll(msg *messages.JoinPartyLeaderComm,
 		}(el)
 	}
 	wg.Wait()
+}
+
+func (pc *PartyCoordinator) sendResponseToPeer(msg *messages.JoinPartyLeaderComm, remotePeer peer.ID) {
+	msg = cloneJoinPartyLeaderComm(msg)
+	if msg == nil {
+		return
+	}
+	msg.MsgType = "response"
+	msgSend, err := proto.Marshal(msg)
+	if err != nil {
+		pc.logger.Error().Err(err).Msg("error marshalling response")
+		return
+	}
+	if err := pc.sendMsgToPeer(msgSend, msg.ID, remotePeer, joinPartyProtocolWithLeader, true); err != nil {
+		pc.logger.Debug().Err(err).Msg("error sending closed party response to peer")
+	}
 }
 
 func (pc *PartyCoordinator) sendRequestToLeader(msg *messages.JoinPartyLeaderComm, leader peer.ID) error {
@@ -370,6 +433,10 @@ func (pc *PartyCoordinator) joinPartyMember(msgID string, peerGroup *peerStatus,
 		return nil, ErrLeaderNotReady
 	}
 
+	if peerGroup.getLeaderResponse().Type == messages.JoinPartyLeaderComm_LeaderNotReady {
+		return nil, ErrPartyClosed
+	}
+
 	onlineNodes := peerGroup.getLeaderResponse().PeerIDs
 	// we trust the returned nodes returned by the leader, if frost fail, the leader
 	// also will get blamed.
@@ -443,6 +510,7 @@ func (pc *PartyCoordinator) joinPartyLeader(msgID string, peerGroup *peerStatus,
 	// if a nodes is not in the list, it means he is not selected by the leader to run the frost
 	pc.logger.Debug().Msgf("sending success response to %d all peers", len(allPeers))
 	pc.sendResponseToAll(&msg, allPeers)
+	pc.rememberClosedGroup(msgID)
 	return onlinePeers, nil
 }
 
@@ -468,7 +536,7 @@ func (pc *PartyCoordinator) joinPartyWithLeader(msgID string, blockHeight int64,
 			return nil, "", err
 		}
 	}
-	leaderID, err := peerIDFromPartyIdentity(leader)
+	leaderID, err := conversion.GetPeerIDFromPubKey(leader)
 	if err != nil {
 		return nil, "", err
 	}

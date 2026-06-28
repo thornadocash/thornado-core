@@ -1,8 +1,10 @@
 package signer
 
 import (
+	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
@@ -58,6 +60,40 @@ type DebugFrostRoles struct {
 	Period      int64  `json:"period_blocks,omitempty"`
 	BlockHeight int64  `json:"block_height,omitempty"`
 	Error       string `json:"error,omitempty"`
+}
+
+type DebugSigningPhase struct {
+	Event        string    `json:"event"`
+	At           time.Time `json:"at"`
+	SinceStartMs int64     `json:"since_start_ms"`
+	Detail       string    `json:"detail,omitempty"`
+}
+
+type DebugSigningPerformance struct {
+	ID             string              `json:"id"`
+	Key            string              `json:"key"`
+	Chain          string              `json:"chain"`
+	Height         int64               `json:"height"`
+	TxHeight       int64               `json:"tx_height"`
+	Index          int64               `json:"index"`
+	Epoch          uint64              `json:"epoch"`
+	InHash         string              `json:"in_hash"`
+	OutHash        string              `json:"out_hash,omitempty"`
+	TxType         string              `json:"tx_type"`
+	VaultPubKey    string              `json:"vault_pub_key"`
+	SigningLeader  string              `json:"signing_leader,omitempty"`
+	ResolvedLeader string              `json:"resolved_leader,omitempty"`
+	Participate    bool                `json:"participate"`
+	Broadcast      bool                `json:"broadcast"`
+	IsFrostVault   bool                `json:"is_frost_vault"`
+	BatchItems     int                 `json:"batch_items,omitempty"`
+	StartedAt      time.Time           `json:"started_at"`
+	UpdatedAt      time.Time           `json:"updated_at"`
+	FinishedAt     *time.Time          `json:"finished_at,omitempty"`
+	DurationMs     int64               `json:"duration_ms"`
+	LastEvent      string              `json:"last_event"`
+	LastError      string              `json:"last_error,omitempty"`
+	Phases         []DebugSigningPhase `json:"phases"`
 }
 
 type DebugHealth struct {
@@ -134,8 +170,37 @@ func (s *Signer) DebugStoredTxOutByInHash(inHash string) (TxOutStoreItem, bool) 
 	return TxOutStoreItem{}, false
 }
 
+func (s *Signer) debugTxOutByInHash(inHash string) (TxOutStoreItem, bool, error) {
+	if item, ok := s.DebugStoredTxOutByInHash(inHash); ok {
+		return item, true, nil
+	}
+	target := strings.ToUpper(inHash)
+	txOuts, err := s.thornadoBridge.GetAllTxOutKeysigns()
+	if err != nil {
+		return TxOutStoreItem{}, false, err
+	}
+	var latest TxOutStoreItem
+	var found bool
+	for _, txOut := range txOuts {
+		for i, tx := range txOut.TxArray {
+			if !strings.EqualFold(tx.InHash.String(), target) {
+				continue
+			}
+			item := NewTxOutStoreItem(txOut.Height, tx.TxOutItem(txOut.Height), int64(i))
+			if !found || item.Height > latest.Height {
+				latest = item
+				found = true
+			}
+		}
+	}
+	return latest, found, nil
+}
+
 func (s *Signer) DebugChainTxOut(inHash string) (interface{}, bool, error) {
-	item, ok := s.DebugStoredTxOutByInHash(inHash)
+	item, ok, err := s.debugTxOutByInHash(inHash)
+	if err != nil {
+		return nil, false, err
+	}
 	if !ok {
 		return nil, false, nil
 	}
@@ -153,6 +218,46 @@ func (s *Signer) DebugChainTxOut(inHash string) (interface{}, bool, error) {
 	}
 	res, err := debugger.DebugTxOut(item.TxOutItem, height)
 	return res, true, err
+}
+
+func (s *Signer) ObserveRecoveredTxOut(inHash string) (*types.TxInItem, bool, error) {
+	item, ok, err := s.debugTxOutByInHash(inHash)
+	if err != nil {
+		return nil, false, err
+	}
+	if !ok {
+		return nil, false, nil
+	}
+	chain, err := s.getChain(item.TxOutItem.Chain)
+	if err != nil {
+		return nil, true, err
+	}
+	recoverer, ok := chain.(txObservationRecoverer)
+	if !ok {
+		return nil, true, fmt.Errorf("chain does not expose txout recovery")
+	}
+	height, err := s.thornadoBridge.GetBlockHeight()
+	if err != nil {
+		height = item.Height
+	}
+	obs, recovered, err := recoverer.RecoverTxObservation(item.TxOutItem, height)
+	if err != nil {
+		return nil, true, err
+	}
+	if obs == nil {
+		return nil, true, nil
+	}
+	txIn := types.TxIn{
+		Chain:                item.TxOutItem.Chain,
+		TxArray:              []*types.TxInItem{obs},
+		MemPool:              false,
+		Filtered:             true,
+		ConfirmationRequired: 0,
+	}
+	if err := s.observer.ObserveSignedNow(txIn); err != nil {
+		return nil, true, err
+	}
+	return obs, recovered, nil
 }
 
 func (s *Signer) DebugHealth() DebugHealth {
@@ -217,6 +322,172 @@ func (s *Signer) DebugLocalVaults() ([]DebugLocalVault, error) {
 		res = append(res, item)
 	}
 	return res, nil
+}
+
+func (s *Signer) DebugSigningPerformance() []DebugSigningPerformance {
+	s.debugSigningMu.Lock()
+	defer s.debugSigningMu.Unlock()
+
+	out := make([]DebugSigningPerformance, 0, len(s.debugSigningOrder))
+	for _, id := range s.debugSigningOrder {
+		record := s.debugSigningRecords[id]
+		if record == nil {
+			continue
+		}
+		cp := *record
+		cp.Phases = append([]DebugSigningPhase(nil), record.Phases...)
+		if record.FinishedAt != nil {
+			cp.DurationMs = record.FinishedAt.Sub(record.StartedAt).Milliseconds()
+		} else if !record.StartedAt.IsZero() {
+			cp.DurationMs = time.Since(record.StartedAt).Milliseconds()
+		}
+		out = append(out, cp)
+	}
+	return out
+}
+
+func (s *Signer) debugSigningStart(item TxOutStoreItem) string {
+	tx := item.TxOutItem
+	key := item.Key()
+	now := time.Now().UTC()
+
+	s.debugSigningMu.Lock()
+	defer s.debugSigningMu.Unlock()
+	s.ensureDebugSigningMapLocked()
+	s.debugSigningSeq++
+	id := fmt.Sprintf("%s:%d", key, s.debugSigningSeq)
+	if _, ok := s.debugSigningRecords[id]; !ok {
+		s.debugSigningOrder = append(s.debugSigningOrder, id)
+		if len(s.debugSigningOrder) > 256 {
+			delete(s.debugSigningRecords, s.debugSigningOrder[0])
+			s.debugSigningOrder = s.debugSigningOrder[1:]
+		}
+	}
+	record := &DebugSigningPerformance{
+		ID:            id,
+		Key:           key,
+		Chain:         tx.Chain.String(),
+		Height:        item.Height,
+		TxHeight:      tx.Height,
+		Index:         item.Index,
+		Epoch:         item.Epoch,
+		InHash:        tx.InHash.String(),
+		OutHash:       tx.OutHash.String(),
+		TxType:        tx.TxType,
+		VaultPubKey:   tx.VaultPubKey.String(),
+		SigningLeader: item.SigningLeader.String(),
+		StartedAt:     now,
+		UpdatedAt:     now,
+		LastEvent:     "started",
+	}
+	s.debugSigningRecords[id] = record
+	appendDebugSigningPhaseLocked(record, "started", "", now)
+	return id
+}
+
+func (s *Signer) debugSigningEvent(id, event, detail string) {
+	s.debugSigningMu.Lock()
+	defer s.debugSigningMu.Unlock()
+	if record := s.debugSigningRecords[id]; record != nil {
+		now := time.Now().UTC()
+		record.LastEvent = event
+		record.UpdatedAt = now
+		appendDebugSigningPhaseLocked(record, event, detail, now)
+	}
+}
+
+func (s *Signer) debugSigningRoles(id string, participate, broadcast, isFrostVault bool, leader string) {
+	s.debugSigningMu.Lock()
+	defer s.debugSigningMu.Unlock()
+	if record := s.debugSigningRecords[id]; record != nil {
+		now := time.Now().UTC()
+		record.Participate = participate
+		record.Broadcast = broadcast
+		record.IsFrostVault = isFrostVault
+		record.ResolvedLeader = leader
+		record.LastEvent = "roles_resolved"
+		record.UpdatedAt = now
+		if leader != "" {
+			appendDebugSigningPhaseLocked(record, "leader_appointed", leader, now)
+		}
+		appendDebugSigningPhaseLocked(record, "roles_resolved", signingRoleDetail(participate, broadcast, isFrostVault), now)
+	}
+}
+
+func (s *Signer) debugSigningBatchItems(id string, batchItems int) {
+	s.debugSigningMu.Lock()
+	defer s.debugSigningMu.Unlock()
+	if record := s.debugSigningRecords[id]; record != nil {
+		record.BatchItems = batchItems
+	}
+}
+
+func (s *Signer) debugSigningFinish(id, event, detail string) {
+	s.debugSigningMu.Lock()
+	defer s.debugSigningMu.Unlock()
+	if record := s.debugSigningRecords[id]; record != nil {
+		now := time.Now().UTC()
+		record.FinishedAt = &now
+		record.LastEvent = event
+		record.UpdatedAt = now
+		appendDebugSigningPhaseLocked(record, event, detail, now)
+	}
+}
+
+func (s *Signer) debugSigningError(id string, err error) {
+	if err == nil {
+		return
+	}
+	s.debugSigningMu.Lock()
+	defer s.debugSigningMu.Unlock()
+	if record := s.debugSigningRecords[id]; record != nil {
+		now := time.Now().UTC()
+		record.LastError = err.Error()
+		record.LastEvent = "error"
+		if record.FinishedAt == nil {
+			record.FinishedAt = &now
+		}
+		record.UpdatedAt = now
+		appendDebugSigningPhaseLocked(record, "error", err.Error(), now)
+	}
+}
+
+func (s *Signer) ensureDebugSigningMapLocked() {
+	if s.debugSigningRecords == nil {
+		s.debugSigningRecords = make(map[string]*DebugSigningPerformance)
+	}
+}
+
+func appendDebugSigningPhaseLocked(record *DebugSigningPerformance, event, detail string, at time.Time) {
+	if record == nil {
+		return
+	}
+	phase := DebugSigningPhase{
+		Event:  event,
+		At:     at,
+		Detail: detail,
+	}
+	if !record.StartedAt.IsZero() {
+		phase.SinceStartMs = at.Sub(record.StartedAt).Milliseconds()
+	}
+	record.Phases = append(record.Phases, phase)
+	if len(record.Phases) > 128 {
+		record.Phases = record.Phases[len(record.Phases)-128:]
+	}
+}
+
+func signingRoleDetail(participate, broadcast, isFrostVault bool) string {
+	parts := make([]string, 0, 3)
+	if isFrostVault {
+		parts = append(parts, "frost_vault")
+	}
+	if participate {
+		parts = append(parts, "participate")
+	}
+	if broadcast {
+		parts = append(parts, "broadcast")
+	}
+	return strings.Join(parts, ",")
 }
 
 func (s *Signer) debugTxOut(item TxOutStoreItem, deep bool) DebugTxOut {

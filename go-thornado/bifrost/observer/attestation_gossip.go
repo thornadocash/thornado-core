@@ -32,6 +32,9 @@ const (
 	// validators can get credit for observing a tx for up to this amount of time after it is committed, after which it count against a penalty.
 	defaultLateObserveTimeout = 2 * time.Minute
 
+	// retry local reconstruction when this node has peer attestations but no local attestation.
+	defaultObservedTxRecoveryRetry = 5 * time.Second
+
 	// Prune observed txs after this amount of time, even if they are not yet committed.
 	// Gives some time for longer chain halts.
 	// If chain halts for longer than this, validators will need to restart their bifrosts to re-share their attestations.
@@ -168,6 +171,9 @@ type AttestationGossip struct {
 	avMu       sync.Mutex
 
 	observerHandleObservedTxCommitted func(tx common.ObservedTx)
+	observerRecoverObservedTx         func(ctx context.Context, tx common.ObservedTx, inbound, allowFutureObservation bool)
+	observedTxRecoveryMu              sync.Mutex
+	observedTxRecovery                map[txKey]time.Time
 
 	cachedKeySignParties map[common.PubKey]cachedKeySignParty
 	cachedKeySignMu      sync.Mutex
@@ -233,10 +239,11 @@ func NewAttestationGossip(
 		eventClient: eventClient,
 
 		// Initialize generic maps
-		observedTxs: make(map[txKey]*AttestationState[*attestableObservedTx]),
-		networkFees: make(map[common.NetworkFee]*AttestationState[*common.NetworkFee]),
-		solvencies:  make(map[common.TxID]*AttestationState[*common.Solvency]),
-		errataTxs:   make(map[common.ErrataTx]*AttestationState[*common.ErrataTx]),
+		observedTxs:        make(map[txKey]*AttestationState[*attestableObservedTx]),
+		networkFees:        make(map[common.NetworkFee]*AttestationState[*common.NetworkFee]),
+		solvencies:         make(map[common.TxID]*AttestationState[*common.Solvency]),
+		errataTxs:          make(map[common.ErrataTx]*AttestationState[*common.ErrataTx]),
+		observedTxRecovery: make(map[txKey]time.Time),
 
 		peerMgr: newPeerManager(logger, config.PeerConcurrentReceives),
 
@@ -382,6 +389,10 @@ func (s *AttestationGossip) clearAttestationState() {
 	s.stateInitMu.Lock()
 	s.stateInitPeers = nil
 	s.stateInitMu.Unlock()
+
+	s.observedTxRecoveryMu.Lock()
+	s.observedTxRecovery = make(map[txKey]time.Time)
+	s.observedTxRecoveryMu.Unlock()
 }
 
 // Get the number of active validators
@@ -427,8 +438,49 @@ func (s *AttestationGossip) getKeysignParty(pubKey common.PubKey) (common.PubKey
 	return keySignParty, nil
 }
 
+func (s *AttestationGossip) observedTxQuorumTotal(allowFutureObservation bool, pubKey common.PubKey) (int, bool) {
+	if allowFutureObservation {
+		keysignParty, err := s.getKeysignParty(pubKey)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("fail to get key sign party")
+			return 0, false
+		}
+		return len(keysignParty), true
+	}
+	return s.activeValidatorCount(), true
+}
+
+func (s *AttestationGossip) quorumTxObservedTxQuorum(qtx common.QuorumTx) (bool, int) {
+	total, ok := s.observedTxQuorumTotal(qtx.AllowFutureObservation, qtx.ObsTx.ObservedPubKey)
+	if !ok {
+		return false, total
+	}
+	return thornadotypes.HasSuperMajority(len(qtx.Attestations), total), total
+}
+
+func (s *AttestationGossip) observedTxCommittedQuorum(k txKey) bool {
+	total, ok := s.observedTxQuorumTotal(k.AllowFutureObservation, k.ObservedPubKey)
+	if !ok {
+		return false
+	}
+
+	s.mu.Lock()
+	state, ok := s.observedTxs[k]
+	if ok {
+		state.mu.Lock()
+	}
+	s.mu.Unlock()
+	if !ok {
+		return false
+	}
+	defer state.mu.Unlock()
+
+	return thornadotypes.HasSuperMajority(state.CommittedCount(), total)
+}
+
 func (s *AttestationGossip) SetObserverHandleObservedTxCommitted(o *Observer) {
 	s.observerHandleObservedTxCommitted = o.handleObservedTxCommitted
+	s.observerRecoverObservedTx = o.recoverObservedTx
 }
 
 // Handle a committed quorum transaction event
@@ -441,13 +493,17 @@ func (s *AttestationGossip) handleQuorumTxCommitted(en *ebifrost.EventNotificati
 		return
 	}
 
-	if s.observerHandleObservedTxCommitted != nil && s.shouldNotifyObserverObservedTxCommitted(qtx) {
-		// if our attestation is in the quorum tx, we can remove it from our observer deck.
+	hasObservedTxQuorum, quorumTotal := s.quorumTxObservedTxQuorum(qtx)
+	if s.observerHandleObservedTxCommitted != nil {
+		// If our attestation is in a committed observed tx quorum, remove it from our observer deck.
 		for _, att := range qtx.Attestations {
 			if bytes.Equal(att.PubKey, s.pubKey) {
-				// we have attested to this tx, and it has been committed to the chain.
-				s.logger.Debug().Msg("our attestation is in the quorum tx, passing to observer to remove from ondeck")
-				s.observerHandleObservedTxCommitted(qtx.ObsTx)
+				if hasObservedTxQuorum {
+					s.logger.Debug().Msg("our attestation is in a committed observed tx quorum, passing to observer to remove from ondeck")
+					s.observerHandleObservedTxCommitted(qtx.ObsTx)
+				} else {
+					s.logger.Debug().Msgf("our attestation committed without observed tx quorum, keeping observer deck: %d/%d", len(qtx.Attestations), quorumTotal)
+				}
 				break
 			}
 		}
@@ -469,17 +525,6 @@ func (s *AttestationGossip) handleQuorumTxCommitted(en *ebifrost.EventNotificati
 
 	defer as.mu.Unlock()
 	as.MarkAttestationsCommitted(qtx.Attestations)
-}
-
-func (s *AttestationGossip) shouldNotifyObserverObservedTxCommitted(qtx common.QuorumTx) bool {
-	if !qtx.ObsTx.IsFinal() {
-		return true
-	}
-	total := s.activeValidatorCount()
-	if total == 0 {
-		return false
-	}
-	return thornadotypes.HasSuperMajority(len(qtx.Attestations), total)
 }
 
 // Handle a committed quorum network fee event
@@ -560,6 +605,45 @@ func (s *AttestationGossip) handleQuorumErrataTxCommitted(en *ebifrost.EventNoti
 	as.MarkAttestationsCommitted(qe.Attestations)
 }
 
+type observedTxRecoveryRequest struct {
+	tx                     common.ObservedTx
+	inbound                bool
+	allowFutureObservation bool
+}
+
+func (s *AttestationGossip) maybeRecoverObservedTx(k txKey, state *AttestationState[*attestableObservedTx]) (observedTxRecoveryRequest, bool) {
+	if s.observerRecoverObservedTx == nil || !s.isActiveValidator(s.host.ID()) || k.ID.IsEmpty() {
+		return observedTxRecoveryRequest{}, false
+	}
+	if state == nil || state.Item == nil || state.Item.ObservedTx == nil || state.AttestationCount() == 0 {
+		return observedTxRecoveryRequest{}, false
+	}
+	if state.AttestationCount() < 2 {
+		return observedTxRecoveryRequest{}, false
+	}
+	haveLocalAttestation, _ := state.AttestationStatus(s.pubKey)
+	if haveLocalAttestation {
+		return observedTxRecoveryRequest{}, false
+	}
+
+	now := time.Now()
+	s.observedTxRecoveryMu.Lock()
+	defer s.observedTxRecoveryMu.Unlock()
+	if s.observedTxRecovery == nil {
+		s.observedTxRecovery = make(map[txKey]time.Time)
+	}
+	if last, ok := s.observedTxRecovery[k]; ok && now.Sub(last) < defaultObservedTxRecoveryRetry {
+		return observedTxRecoveryRequest{}, false
+	}
+	s.observedTxRecovery[k] = now
+
+	return observedTxRecoveryRequest{
+		tx:                     *state.Item.ObservedTx,
+		inbound:                k.Inbound,
+		allowFutureObservation: k.AllowFutureObservation,
+	}, true
+}
+
 // Start the attestation gossip service
 func (s *AttestationGossip) Start(ctx context.Context) {
 	ticker := time.NewTicker(s.config.ObserveReconcileInterval)
@@ -581,6 +665,8 @@ func (s *AttestationGossip) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
+			var recoveryRequests []observedTxRecoveryRequest
+
 			// prune old attestations and check for late ones to send
 			s.mu.Lock()
 
@@ -589,11 +675,19 @@ func (s *AttestationGossip) Start(ctx context.Context) {
 				state.mu.Lock()
 				if state.ExpiredAfterQuorum(s.config.LateObserveTimeout, s.config.NonQuorumTimeout) {
 					delete(s.observedTxs, k)
+					s.observedTxRecoveryMu.Lock()
+					delete(s.observedTxRecovery, k)
+					s.observedTxRecoveryMu.Unlock()
 					s.observedTxsPool.PutAttestationState(state)
-				} else if state.ShouldSendLate(s.config.MinTimeBetweenAttestations) {
-					s.logger.Debug().Msg("sending late observed tx attestations")
+				} else {
+					if req, ok := s.maybeRecoverObservedTx(k, state); ok {
+						recoveryRequests = append(recoveryRequests, req)
+					}
+					if state.ShouldSendLate(s.config.MinTimeBetweenAttestations) {
+						s.logger.Debug().Msg("sending late observed tx attestations")
 
-					s.sendObservedTxAttestationsToThornado(ctx, *state.Item.ObservedTx, state, k.Inbound, k.AllowFutureObservation, false)
+						s.sendObservedTxAttestationsToThornado(ctx, *state.Item.ObservedTx, state, k.Inbound, k.AllowFutureObservation, false)
+					}
 				}
 				state.mu.Unlock()
 			}
@@ -638,6 +732,10 @@ func (s *AttestationGossip) Start(ctx context.Context) {
 			}
 
 			s.mu.Unlock()
+
+			for _, req := range recoveryRequests {
+				s.observerRecoverObservedTx(ctx, req.tx, req.inbound, req.allowFutureObservation)
+			}
 
 			// Prune cached keysign parties
 			s.cachedKeySignMu.Lock()

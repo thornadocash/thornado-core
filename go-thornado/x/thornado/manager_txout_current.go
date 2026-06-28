@@ -42,6 +42,9 @@ func (tos *TxOutStorage) EndBlock(ctx cosmos.Context, mgr Manager) error {
 	if err := tos.updateBatchStates(ctx); err != nil {
 		ctx.Logger().Error("fail to update txout batch states", "error", err)
 	}
+	if err := refreshBTCExactTxOut(ctx, tos.keeper, ctx.BlockHeight()); err != nil {
+		ctx.Logger().Error("fail to refresh bitcoin txout source inputs and gas", "error", err)
+	}
 
 	// update the max gas for all outbounds in this block. This can be useful
 	// if an outbound transaction was scheduled into the future, and the gas
@@ -57,14 +60,18 @@ func (tos *TxOutStorage) EndBlock(ctx cosmos.Context, mgr Manager) error {
 	gasDetailsFailed := make(map[common.Chain]bool)
 
 	for i, tx := range txOut.TxArray {
+		if tx.Chain.Equals(common.BTCChain) {
+			continue
+		}
 		voter, err := tos.keeper.GetObservedTxInVoter(ctx, tx.InHash)
 		if err != nil {
 			ctx.Logger().Error("fail to get observe tx in voter", "error", err)
 			continue
 		}
+		hasInboundVoter := !voter.Tx.IsEmpty() || len(voter.Actions) > 0 || len(voter.OutTxs) > 0
 
 		// if the outbound height exists and is in the past, then no need to calculate new max gas
-		if voter.OutboundHeight > 0 && voter.OutboundHeight < ctx.BlockHeight() {
+		if hasInboundVoter && voter.OutboundHeight > 0 && voter.OutboundHeight < ctx.BlockHeight() {
 			continue
 		}
 
@@ -91,8 +98,12 @@ func (tos *TxOutStorage) EndBlock(ctx cosmos.Context, mgr Manager) error {
 		if len(tx.MaxGas) == 0 || (!maxGasCoin.IsEmpty() && !maxGasCoin.Amount.Equal(tx.MaxGas[0].Amount)) {
 			// Update MaxGas in ObservedTxVoter action first; only update txOut if voter update succeeds
 			// to maintain consistency between the txOut item and the voter action.
-			if err := updateTxOutGas(ctx, tos.keeper, tx, common.Gas{maxGasCoin}); err != nil {
-				ctx.Logger().Error("Failed to update MaxGas of action in ObservedTxVoter", "hash", tx.InHash, "error", err)
+			if hasInboundVoter {
+				if err := updateTxOutGas(ctx, tos.keeper, tx, common.Gas{maxGasCoin}); err != nil {
+					ctx.Logger().Error("Failed to update MaxGas of action in ObservedTxVoter", "hash", tx.InHash, "error", err)
+				} else {
+					txOut.TxArray[i].MaxGas = common.Gas{maxGasCoin}
+				}
 			} else {
 				txOut.TxArray[i].MaxGas = common.Gas{maxGasCoin}
 			}
@@ -101,8 +112,12 @@ func (tos *TxOutStorage) EndBlock(ctx cosmos.Context, mgr Manager) error {
 			// Equals checks GasRate so update actions GasRate too (before updating in the queue item)
 			// for future updates of MaxGas, which must match for matchActionItem in AddOutTx.
 			// Only update txOut GasRate if voter update succeeds to prevent permanent desync.
-			if err := updateTxOutGasRate(ctx, tos.keeper, tx, gasRate); err != nil {
-				ctx.Logger().Error("Failed to update GasRate of action in ObservedTxVoter", "hash", tx.InHash, "error", err)
+			if hasInboundVoter {
+				if err := updateTxOutGasRate(ctx, tos.keeper, tx, gasRate); err != nil {
+					ctx.Logger().Error("Failed to update GasRate of action in ObservedTxVoter", "hash", tx.InHash, "error", err)
+				} else {
+					txOut.TxArray[i].GasRate = gasRate
+				}
 			} else {
 				txOut.TxArray[i].GasRate = gasRate
 			}
@@ -129,6 +144,11 @@ func (tos *TxOutStorage) updateBatchStates(ctx cosmos.Context) error {
 		}
 		if txOut.IsEmpty() {
 			continue
+		}
+		if txOutHasPendingBTCExactItems(txOut) {
+			if err := refreshBTCExactTxOutBlock(ctx, tos.keeper, &txOut); err != nil {
+				ctx.Logger().Error("fail to refresh pending bitcoin txout source inputs and gas", "height", txOut.Height, "error", err)
+			}
 		}
 		if !txOutHasPendingItems(txOut) {
 			txOut.Status = TxOutStatusComplete
@@ -172,6 +192,17 @@ func (tos *TxOutStorage) updateBatchStates(ctx cosmos.Context) error {
 		}
 	}
 	return nil
+}
+
+func txOutHasPendingBTCExactItems(txOut TxOut) bool {
+	for _, item := range txOut.TxArray {
+		if item.OutHash.IsEmpty() &&
+			item.Chain.Equals(common.BTCChain) &&
+			(len(item.SourceInputs) > 0 || txOut.Status == TxOutStatusPendingBatch) {
+			return true
+		}
+	}
+	return false
 }
 
 func txOutUsesBatching(txOut TxOut) bool {

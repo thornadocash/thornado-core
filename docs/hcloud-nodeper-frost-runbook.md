@@ -71,50 +71,54 @@ scheduled keygen retry
 
 Fix: start all worker `bitcoind` and Thornado processes first, wait for consensus, then start Bifrost.
 
-- Coordinator-to-worker artifact copy through local relay is slow. Better sequence:
-  1. Download `/tmp/thornado-node-artifacts.tgz` from coordinator once.
-  2. Upload the local artifact to all workers in parallel.
-  3. Verify hashes on all workers.
+- Coordinator-to-worker artifact copy through the local machine is slow. Use
+  `ops/scripts/hcloud-deploy-binaries.sh`; workers pull the artifact directly
+  from the coordinator and verify hashes before install.
 
 - Bad shell quoting around `$RUN_ROOT` can trigger the sourced `real-4node-e2e.sh` cleanup trap. Use direct commands or `NO_CLEANUP_TRAP=1` when sourcing helpers.
 
-## Current Build Command
-
-Run on coordinator:
-
-```bash
-cd /root/thornado/go-thornado
-PATH=/usr/local/go/bin:$PATH go test -tags "regtest mocknet" ./bifrost/signer ./bifrost/pkg/chainclients/shared/signercache
-PATH=/usr/local/go/bin:$PATH go test -tags "regtest mocknet" ./bifrost/pkg/chainclients/btc -run "TestTxAlreadySignedDoesNotBlockInternalRecovery|TestTxBatchAlreadySignedRequiresEveryItem|TestMarkTxBatchSignedMarksEveryItem|TestFilterUtxosBySourceInputs|TestMigrateOutputAmount|TestNormalOutputAmount"
-mkdir -p ../build
-PATH=/usr/local/go/bin:$PATH go build -tags "regtest mocknet" -o ../build/bifrost ./cmd/bifrost
-PATH=/usr/local/go/bin:$PATH go build -tags "regtest mocknet" -o ../build/thornado ./cmd/thornado
-PATH=/usr/local/go/bin:$PATH go build -tags "regtest mocknet" -o ../build/shielder-e2e-helper ./cmd/shielder-e2e-helper
-```
-
 ## Artifact Distribution
 
-Pack on coordinator:
+Use the scripted path from the local workspace:
 
 ```bash
-cd /root/thornado
-tar -czf /tmp/thornado-node-artifacts.tgz \
-  build/bifrost \
-  build/thornado \
-  build/shielder-e2e-helper \
-  ops/scripts/distributed-regtest-cluster.sh \
-  ops/scripts/real-4node-e2e.sh \
-  ops/distributed-regtest-nodeper.env \
-  go-thornado/go-wrappers/frost/includes/linux/amd64/libgofrost.so \
-  target/release/libthornado_ffi.so
+bash ops/scripts/hcloud-deploy-binaries.sh deploy
 ```
 
-Copy/extract to each worker:
+This is the only binary deployment path to use for the HCloud node-per-server cluster:
+
+1. Build `thornado` and `bifrost` on the Linux coordinator with `-tags 'regtest mocknet'`.
+2. Pack one artifact under `/root/thornado/build`.
+3. Serve it from the coordinator with a short-lived Python HTTP server.
+4. Make all workers pull the artifact in parallel from the coordinator.
+5. Verify artifact and binary hashes on every worker.
+6. Atomically replace `/root/thornado/build/thornado` and `/root/thornado/build/bifrost`.
+
+The script does not restart processes. Restart Thornado/Bifrost separately and preserve the run root.
+
+For a Bifrost-only rollout that restarts the running HCloud Bifrost processes:
 
 ```bash
-scp /tmp/thornado-node-artifacts.tgz root@$NODE_HOST:/tmp/
-ssh root@$NODE_HOST 'mkdir -p /root/thornado && cd /root/thornado && tar -xzf /tmp/thornado-node-artifacts.tgz'
+BUILD_ID=<short-name>-$(date -u +%Y%m%d%H%M%S) SKIP_SOURCE_SYNC=0 INCLUDE_UNTRACKED=0 \
+  BINS='bifrost' TAGS='regtest mocknet' RUN_TESTS=0 \
+  RUN_ROOT=/tmp/thornado-nodeper-20260627104200 \
+  bash ops/scripts/hcloud-deploy-binaries.sh deploy-restart
 ```
+
+Latest deployed Bifrost hash:
+
+```text
+1597e13316ad945e2bb6d1ff1c57f19782057e54fb82d59a866393bbbf3cd643
+```
+
+For explicit source sync before building:
+
+```bash
+SKIP_SOURCE_SYNC=0 SOURCE_FILES="go-thornado/path/file.go go-thornado/path/file_test.go" \
+  bash ops/scripts/hcloud-deploy-binaries.sh deploy
+```
+
+Do not broad-rsync the repo and do not build on each worker; the workers may have stale native FROST wrapper state.
 
 ## Cluster Setup
 
@@ -175,6 +179,34 @@ Confirmed:
 - Bifrost health is live on nodes 1-4.
 - FROST genesis keygen produced one active 4-member vault on all nodes, with independent local keyshares per Bifrost.
 
+## 2026-06-27 Solvency Halt Incident
+
+Root cause:
+
+- BTC outbound `DEB75C2A44A8A7B01D635E82F7B917E8B5F2B38FC09F91DD719F55BD890970D3` spent `9,900,000` sats plus `3,094` sats gas from the active vault.
+- Thornado vault accounting had not run because the observed-out voter was stranded at `1/4` signers.
+- Solvency compared the stale vault amount `130081548` against the wallet amount `120178454`, saw a `9903094` gap, and halted.
+- Bifrost had removed the local observation from `ondeck` after a committed one-attestation `QuorumTx`, before observed-tx quorum.
+
+Fix deployed:
+
+- Thornado solvency now treats signed BTC txouts with `OutHash` as pending until the observed-out voter is done, including observed gas.
+- Bifrost now removes observed txs from `ondeck` only when the committed observed tx has supermajority.
+- Focused tests passed for `./x/thornado` and `./bifrost/observer` with `-tags 'regtest mocknet'`.
+
+Deployed hashes:
+
+- `thornado`: `f7825834d03dcf4e968a777b8ae3b0098a17288ed1dd7e9da0d2a532875747d9`
+- `bifrost`: `c67417302c5259ffe17e13026111ab8d0b7235dc8e4767b9da20c2254333c0d1`
+
+Recovery:
+
+- Rolled all four Thornado nodes and all four Bifrost nodes against the same run root; no state was deleted.
+- Re-submitted the real DEB75 observed-out through normal `observe-tx-outs` validator messages from validators 1-4.
+- DEB75 reached `consensus_height=2208`, `finalised_height=2208`, status `done`, with all four signers.
+- Active vault accounting now matches the BTC wallet: `120178454 BTC.BTC`.
+- `HALT_SOLVENCYCHECK=0`, `HALTSIGNINGBTC=0`, `HALT_CHAINGLOBAL=0`, `NODEPAUSECHAINGLOBAL=0`; `HALT_CHURNING=2` remains intentional.
+
 ## Debug APIs Added
 
 Bifrost read-only endpoints:
@@ -186,6 +218,44 @@ Bifrost read-only endpoints:
 - `/debug/vaults/local`
 
 Use these to explain why a queued txout is not progressing without mutating protocol state.
+
+Recovery endpoint:
+
+- `POST /debug/btc/txout/{in_hash}/observe-recovered`
+
+Use only when the chain transaction already exists and Thornado has not reconciled the observed outbound. This submits the recovered observation; it does not clear or abandon the queued txout.
+
+## 2026-06-28 Refund Observation Stall
+
+Incident:
+
+- Refund input hash: `B1ACAE4A75D5D8EFAC66ABD5487565F7C406D164E04E69A4BE1AE15C74793EFF`
+- BTC refund tx: `0d9bf84956537b07ca0ed771d4338f1c90eecb47682b5a3a3e051f772df75e82`
+- Thornado had the refund stuck at `pending_sign`, while the BTC tx was already confirmed.
+- All four Bifrost signer stores had recovered observations, but the deferred FROST retry path only checked completion and did not submit the stored observation.
+
+Recovery that worked:
+
+```bash
+for spec in 5.223.51.101:10341 5.223.55.114:10342 5.223.55.174:10343 5.223.92.204:10344; do
+  h=${spec%:*}; p=${spec#*:}
+  curl -sS -X POST --max-time 10 \
+    "http://$h:$p/debug/btc/txout/B1ACAE4A75D5D8EFAC66ABD5487565F7C406D164E04E69A4BE1AE15C74793EFF/observe-recovered"
+done
+```
+
+Result:
+
+- Thornado marked the refund txout `complete` on all four nodes.
+- `/thornado/tx/0D9BF84956537B07CA0ED771D4338F1C90EECB47682B5A3A3E051F772DF75E82` returned status `done`.
+- All four signers attested the observed outbound.
+- Signer queues returned to zero; BTC scanners were healthy and height-aligned.
+
+Fix deployed:
+
+- Bifrost now submits a deferred, recovered pre-sign observation once before waiting for another signing retry period.
+- It only does this when the stored item has an observation and no signed tx/checkpoint payload, so non-leader FROST participants do not attest an unbroadcast transaction.
+- After submission, the cached local observation is cleared to avoid per-block retry noise; the queued txout remains until Thornado marks it complete.
 
 ## Rules
 

@@ -159,6 +159,64 @@ func TestSolvencyCheckStillHaltsWhenGapExceedsRecentOutboundGas(t *testing.T) {
 	}
 }
 
+func TestSolvencyCheckAllowsOldSignedBTCOutboundAwaitingObservedVoter(t *testing.T) {
+	ctx := cosmos.Context{}.WithBlockHeight(1886).WithLogger(log.NewNopLogger())
+	vaultPubKey := GetRandomPubKey()
+	outHash := mustTxID(t, "DEB75C2A44A8A7B01D635E82F7B917E8B5F2B38FC09F91DD719F55BD890970D3")
+	from := mustAddress(t, "bcrt1prw2hcce2gnrm22umrrls3fm2vxa73f7tjq3qp63l75nyah6p57ys2a2zp7")
+	to := mustAddress(t, "bcrt1qw84my4v866jvy33g92v8008ztplr5c9cd80qsk")
+
+	vault := Vault{
+		PubKey: vaultPubKey,
+		Coins:  common.Coins{common.NewCoin(common.BTCAsset, cosmos.NewUint(130_081_548))},
+	}
+	walletCoins := common.Coins{common.NewCoin(common.BTCAsset, cosmos.NewUint(120_178_454))}
+	mgr := &Mgrs{K: solvencyTestKeeper{
+		configs: map[constants.ConfigName]int64{
+			constants.Chain_BlockTimeSeconds: 6,
+			constants.Keysign_PeriodMinutes:  10,
+		},
+		txOuts: map[int64]*TxOut{
+			1600: {
+				Height: 1600,
+				TxArray: []TxOutItem{
+					{
+						Chain:       common.BTCChain,
+						VaultPubKey: vaultPubKey,
+						Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(9_900_000)),
+						ToAddress:   to,
+						OutHash:     outHash,
+						TxType:      types.TxOutTypeOut,
+					},
+				},
+			},
+		},
+		voters: map[common.TxID]ObservedTxVoter{
+			outHash: {
+				TxID: outHash,
+				Txs: []common.ObservedTx{
+					common.NewObservedTx(
+						common.NewTx(
+							outHash,
+							from,
+							to,
+							common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(9_900_000))),
+							common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(3_094))},
+						),
+						1602,
+						vaultPubKey,
+						1603,
+					),
+				},
+			},
+		},
+	}}
+
+	if insolvencyCheck(ctx, mgr, vault, walletCoins, common.BTCChain) {
+		t.Fatal("signed outbound awaiting observed voter should not halt solvency")
+	}
+}
+
 func mustTxID(t *testing.T, value string) common.TxID {
 	t.Helper()
 	txID, err := common.NewTxID(value)

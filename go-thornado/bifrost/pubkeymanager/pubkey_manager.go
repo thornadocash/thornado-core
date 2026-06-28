@@ -193,7 +193,7 @@ func (pkm *PubKeyManager) addPubKeyInternal(pk common.PubKey, signer bool, algo 
 
 	if newSecpKey {
 		pkm.fireCallback(pk)
-		go pkm.addDepositAddressLookahead(pk)
+		pkm.addDepositAddressLookahead(pk)
 	}
 }
 
@@ -399,6 +399,7 @@ func (pkm *PubKeyManager) RegisterCallback(callback OnNewPubKey) {
 func (pkm *PubKeyManager) RegisterPathCallback(callback OnNewPubKeyPath) {
 	pkm.pathCallback = append(pkm.pathCallback, callback)
 	for _, pk := range pkm.secpPubKeySnapshot() {
+		pkm.addDepositAddressLookahead(pk)
 		go pkm.fireDepositAddressLookaheadToCallback(pk, callback)
 	}
 }

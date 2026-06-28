@@ -2,12 +2,14 @@ package p2p
 
 import (
 	"context"
+	crand "crypto/rand"
 	"math/rand"
 	"sort"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	tnet "github.com/libp2p/go-libp2p-testing/net"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -25,9 +27,12 @@ func setupHosts(t *testing.T, n int) []host.Host {
 	var hosts []host.Host
 	for i := 0; i < n; i++ {
 
-		id := tnet.RandIdentityOrFatal(t)
+		privKey, _, err := crypto.GenerateSecp256k1Key(crand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
 		a := tnet.RandLocalTCPAddress()
-		h, err := mn.AddPeer(id.PrivateKey(), a)
+		h, err := mn.AddPeer(privKey, a)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -41,6 +46,29 @@ func setupHosts(t *testing.T, n int) []host.Host {
 		t.Error(err)
 	}
 	return hosts
+}
+
+func hostPubKey(t *testing.T, h host.Host) string {
+	t.Helper()
+	pubKey, err := conversion.GetPubKeyFromPeerID(h.ID().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pubKey
+}
+
+func hostPubKeys(t *testing.T, hosts []host.Host) []string {
+	t.Helper()
+	peers := make([]string, 0, len(hosts))
+	for _, h := range hosts {
+		peers = append(peers, hostPubKey(t, h))
+	}
+	return peers
+}
+
+func coordinatorPubKey(t *testing.T, pc *PartyCoordinator) string {
+	t.Helper()
+	return hostPubKey(t, pc.host)
 }
 
 func leaderAppearsLastTest(t *testing.T, msgID string, peers []string, pcs []*PartyCoordinator) {
@@ -104,12 +132,11 @@ func leaderAppersFirstTest(t *testing.T, msgID string, peers []string, pcs []*Pa
 func TestNewPartyCoordinator(t *testing.T) {
 	hosts := setupHosts(t, 4)
 	var pcs []*PartyCoordinator
-	var peers []string
+	peers := hostPubKeys(t, hosts)
 
 	timeout := time.Second * 4
 	for _, el := range hosts {
 		pcs = append(pcs, NewPartyCoordinator(el, timeout))
-		peers = append(peers, el.ID().String())
 	}
 
 	defer func() {
@@ -124,7 +151,7 @@ func TestNewPartyCoordinator(t *testing.T) {
 
 	// we sort the slice to ensure the leader is the first one easy for testing
 	for i, el := range pcs {
-		if el.host.ID().String() == leader {
+		if coordinatorPubKey(t, el) == leader {
 			if i == 0 {
 				break
 			}
@@ -134,25 +161,88 @@ func TestNewPartyCoordinator(t *testing.T) {
 			break
 		}
 	}
-	assert.Equal(t, pcs[0].host.ID().String(), leader)
+	assert.Equal(t, coordinatorPubKey(t, pcs[0]), leader)
 	// now we test the leader appears firstly and the the members
 	leaderAppersFirstTest(t, msgID, peers, pcs)
+
+	msgID = conversion.RandStringBytesMask(64)
+	leader, err = LeaderNode(msgID, 10, peers)
+	assert.Nil(t, err)
+	for i, el := range pcs {
+		if coordinatorPubKey(t, el) == leader {
+			if i == 0 {
+				break
+			}
+			temp := pcs[0]
+			pcs[0] = el
+			pcs[i] = temp
+			break
+		}
+	}
+	assert.Equal(t, coordinatorPubKey(t, pcs[0]), leader)
 	leaderAppearsLastTest(t, msgID, peers, pcs)
+}
+
+func TestLateJoinerGetsPartyClosedAfterLeaderForms(t *testing.T) {
+	hosts := setupHosts(t, 4)
+	var pcs []*PartyCoordinator
+	peers := hostPubKeys(t, hosts)
+
+	timeout := 2 * time.Second
+	for _, el := range hosts {
+		pcs = append(pcs, NewPartyCoordinator(el, timeout))
+	}
+	defer func() {
+		for _, el := range pcs {
+			el.Stop()
+		}
+	}()
+
+	msgID := conversion.RandStringBytesMask(64)
+	leader := coordinatorPubKey(t, pcs[0])
+	var wg sync.WaitGroup
+	errCh := make(chan error, 3)
+	for _, coordinator := range pcs[:3] {
+		wg.Add(1)
+		go func(coordinator *PartyCoordinator) {
+			defer wg.Done()
+			sigChan := make(chan string)
+			onlinePeers, _, err := coordinator.JoinPartyWithLeaderInitiator(msgID, 10, peers, 2, sigChan, leader)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			if len(onlinePeers) != 3 {
+				errCh <- assert.AnError
+			}
+		}(coordinator)
+	}
+	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		assert.NoError(t, err)
+	}
+
+	sigChan := make(chan string)
+	start := time.Now()
+	_, _, err := pcs[3].JoinPartyWithLeaderInitiator(msgID, 10, peers, 2, sigChan, leader)
+	assert.Equal(t, ErrPartyClosed, err)
+	assert.Less(t, time.Since(start), timeout)
 }
 
 func TestNewPartyCoordinatorTimeOut(t *testing.T) {
 	timeout := time.Second * 3
 	hosts := setupHosts(t, 4)
 	var pcs []*PartyCoordinator
-	var peers []string
 	for _, el := range hosts {
 		pcs = append(pcs, NewPartyCoordinator(el, timeout))
 	}
 	sort.Slice(pcs, func(i, j int) bool {
 		return pcs[i].host.ID().String() > pcs[j].host.ID().String()
 	})
+	peers := make([]string, 0, len(pcs))
 	for _, el := range pcs {
-		peers = append(peers, el.host.ID().String())
+		peers = append(peers, coordinatorPubKey(t, el))
 	}
 
 	defer func() {
@@ -168,7 +258,7 @@ func TestNewPartyCoordinatorTimeOut(t *testing.T) {
 
 	// we sort the slice to ensure the leader is the first one easy for testing
 	for i, el := range pcs {
-		if el.host.ID().String() == leader {
+		if coordinatorPubKey(t, el) == leader {
 			if i == 0 {
 				break
 			}
@@ -178,7 +268,7 @@ func TestNewPartyCoordinatorTimeOut(t *testing.T) {
 			break
 		}
 	}
-	assert.Equal(t, pcs[0].host.ID().String(), leader)
+	assert.Equal(t, coordinatorPubKey(t, pcs[0]), leader)
 
 	// we test the leader is offline
 	for _, el := range pcs[1:] {
@@ -216,23 +306,27 @@ func TestNewPartyCoordinatorTimeOut(t *testing.T) {
 }
 
 func TestGetPeerIDs(t *testing.T) {
-	id1 := tnet.RandIdentityOrFatal(t)
 	mn := mocknet.New(context.Background())
 	// add peers to mock net
 
 	a1 := tnet.RandLocalTCPAddress()
-	h1, err := mn.AddPeer(id1.PrivateKey(), a1)
+	privKey, _, err := crypto.GenerateSecp256k1Key(crand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h1, err := mn.AddPeer(privKey, a1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	p1 := h1.ID()
+	p1PubKey := hostPubKey(t, h1)
 	timeout := time.Second * 2
 	pc := NewPartyCoordinator(h1, timeout)
 	r, err := pc.getPeerIDs([]string{})
 	assert.Nil(t, err)
 	assert.Len(t, r, 0)
 	input := []string{
-		p1.String(),
+		p1PubKey,
 	}
 	r1, err := pc.getPeerIDs(input)
 	assert.Nil(t, err)

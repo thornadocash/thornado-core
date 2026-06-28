@@ -66,6 +66,7 @@ type Client struct {
 	vaultLocks     map[string]*sync.Mutex
 	vaultPathLock  sync.RWMutex
 	vaultPaths     map[string]map[uint64]struct{}
+	vaultAddrCache sync.Map
 	networkFeeLock sync.Mutex
 	solvencyLock   sync.Mutex
 
@@ -328,10 +329,24 @@ func (c *Client) getVaultAddress(pubkey common.PubKey) (common.Address, error) {
 }
 
 func (c *Client) getVaultAddressAtPath(pubkey common.PubKey, pathIndex uint64) (common.Address, error) {
-	if c.cfg.ChainID.Equals(common.BTCChain) {
-		return common.DeriveBTCTaprootAddress(pubkey, pathIndex)
+	cacheKey := fmt.Sprintf("%s|%s|%d", c.cfg.ChainID, pubkey, pathIndex)
+	if cached, ok := c.vaultAddrCache.Load(cacheKey); ok {
+		return cached.(common.Address), nil
 	}
-	return pubkey.GetAddress(c.cfg.ChainID)
+	var (
+		addr common.Address
+		err  error
+	)
+	if c.cfg.ChainID.Equals(common.BTCChain) {
+		addr, err = common.DeriveBTCTaprootAddress(pubkey, pathIndex)
+	} else {
+		addr, err = pubkey.GetAddress(c.cfg.ChainID)
+	}
+	if err != nil {
+		return "", err
+	}
+	c.vaultAddrCache.Store(cacheKey, addr)
+	return addr, nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////

@@ -61,6 +61,7 @@ func (s *AttestationGossip) handleObservedTxAttestation(ctx context.Context, tx 
 	} else {
 		s.logger.Debug().Msgf("observed tx attestation received - %s, id: %s, inbound: %t, final: %t, quorum: %d/%d",
 			k.Chain, k.ID, k.Inbound, k.Finalized, state.AttestationCount(), total)
+		s.sendObservedTxAttestationsToThornado(ctx, obsTx, state, k.Inbound, k.AllowFutureObservation, false)
 	}
 }
 
@@ -71,18 +72,15 @@ func (s *AttestationGossip) sendObservedTxAttestationsToThornado(
 	state *AttestationState[*attestableObservedTx],
 	inbound, allowFutureObservation, isQuorum bool,
 ) {
-	unsent := state.UnsentAttestations()
-	if isQuorum {
-		unsent = state.UncommittedAttestations()
-	}
-	if len(unsent) == 0 {
-		s.logger.Debug().Msg("no unsent observed tx attestations")
+	attestations := state.UncommittedAttestations()
+	if len(attestations) == 0 {
+		s.logger.Debug().Msg("no uncommitted observed tx attestations")
 		return
 	}
 	// Send via gRPC to thornado
 	if _, err := s.grpcClient.SendQuorumTx(ctx, &common.QuorumTx{
 		ObsTx:                  tx,
-		Attestations:           unsent,
+		Attestations:           attestations,
 		Inbound:                inbound,
 		AllowFutureObservation: allowFutureObservation,
 	}); err != nil {
@@ -90,8 +88,8 @@ func (s *AttestationGossip) sendObservedTxAttestationsToThornado(
 		return
 	}
 
-	s.logger.Info().Msgf("sent quorum tx to thornado - %s, id: %s, inbound: %t, final: %t, attestations: %s",
-		tx.Tx.Chain, tx.Tx.ID, inbound, tx.IsFinal(), state.State())
+	s.logger.Info().Msgf("sent observed tx attestations to thornado - %s, id: %s, inbound: %t, final: %t, quorum: %t, attestations: %s",
+		tx.Tx.Chain, tx.Tx.ID, inbound, tx.IsFinal(), isQuorum, state.State())
 
 	// Mark attestations as sent
 	state.MarkAttestationsSent(isQuorum)
@@ -134,27 +132,28 @@ func (s *AttestationGossip) handleNetworkFeeAttestation(ctx context.Context, anf
 	} else {
 		s.logger.Debug().Msgf("network fee attestation received - %s, height: %d, quorum: %d/%d",
 			k.Chain, k.Height, state.AttestationCount(), activeValCount)
+		s.sendNetworkFeeAttestationsToThornado(ctx, *state.Item, state, false)
 	}
 }
 
 // sendNetworkFeeAttestationsToThornado sends network fee attestations to thornado via gRPC
 func (s *AttestationGossip) sendNetworkFeeAttestationsToThornado(ctx context.Context, networkFee common.NetworkFee, state *AttestationState[*common.NetworkFee], isQuorum bool) {
-	unsent := state.UnsentAttestations()
-	if len(unsent) == 0 {
-		s.logger.Debug().Msg("no unsent network fee attestations")
+	attestations := state.UncommittedAttestations()
+	if len(attestations) == 0 {
+		s.logger.Debug().Msg("no uncommitted network fee attestations")
 		return
 	}
 	// Send via gRPC to thornado
 	if _, err := s.grpcClient.SendQuorumNetworkFee(ctx, &common.QuorumNetworkFee{
 		NetworkFee:   &networkFee,
-		Attestations: unsent,
+		Attestations: attestations,
 	}); err != nil {
 		s.logger.Error().Err(err).Msg("fail to send quorum network fee")
 		return
 	}
 
-	s.logger.Info().Msgf("sent quorum network fee to thornado - %s, height: %d, attestations: %s",
-		networkFee.Chain, networkFee.Height, state.State())
+	s.logger.Info().Msgf("sent network fee attestations to thornado - %s, height: %d, quorum: %t, attestations: %s",
+		networkFee.Chain, networkFee.Height, isQuorum, state.State())
 
 	// Mark attestations as sent
 	state.MarkAttestationsSent(isQuorum)
@@ -201,27 +200,28 @@ func (s *AttestationGossip) handleSolvencyAttestation(ctx context.Context, ats c
 	} else {
 		s.logger.Debug().Msgf("solvency attestation received - %s, height: %d, quorum: %d/%d",
 			ats.Solvency.Chain, ats.Solvency.Height, state.AttestationCount(), activeValCount)
+		s.sendSolvencyAttestationsToThornado(ctx, *state.Item, state, false)
 	}
 }
 
 // sendSolvencyAttestationsToThornado sends solvency attestations to thornado via gRPC
 func (s *AttestationGossip) sendSolvencyAttestationsToThornado(ctx context.Context, solvency common.Solvency, state *AttestationState[*common.Solvency], isQuorum bool) {
-	unsent := state.UnsentAttestations()
-	if len(unsent) == 0 {
-		s.logger.Debug().Msg("no unsent solvency attestations")
+	attestations := state.UncommittedAttestations()
+	if len(attestations) == 0 {
+		s.logger.Debug().Msg("no uncommitted solvency attestations")
 		return
 	}
 	// Send via gRPC to thornado
 	if _, err := s.grpcClient.SendQuorumSolvency(ctx, &common.QuorumSolvency{
 		Solvency:     &solvency,
-		Attestations: unsent,
+		Attestations: attestations,
 	}); err != nil {
 		s.logger.Error().Err(err).Msg("fail to send quorum solvency")
 		return
 	}
 
-	s.logger.Info().Msgf("sent quorum solvency to thornado - %s, height: %d, coins: %s, pubkey: %s, attestations: %s",
-		solvency.Chain, solvency.Height, solvency.Coins.String(), solvency.PubKey.String(), state.State())
+	s.logger.Info().Msgf("sent solvency attestations to thornado - %s, height: %d, coins: %s, pubkey: %s, quorum: %t, attestations: %s",
+		solvency.Chain, solvency.Height, solvency.Coins.String(), solvency.PubKey.String(), isQuorum, state.State())
 
 	// Mark attestations as sent
 	state.MarkAttestationsSent(isQuorum)
@@ -264,26 +264,27 @@ func (s *AttestationGossip) handleErrataAttestation(ctx context.Context, aet com
 	} else {
 		s.logger.Debug().Msgf("errata attestation received - %s, id: %s, quorum: %d/%d",
 			k.Chain, k.Id, state.AttestationCount(), activeValCount)
+		s.sendErrataAttestationsToThornado(ctx, *state.Item, state, false)
 	}
 }
 
 // sendErrataAttestationsToThornado sends errata attestations to thornado via gRPC
 func (s *AttestationGossip) sendErrataAttestationsToThornado(ctx context.Context, errata common.ErrataTx, state *AttestationState[*common.ErrataTx], isQuorum bool) {
-	unsent := state.UnsentAttestations()
-	if len(unsent) == 0 {
-		s.logger.Debug().Msg("no unsent errata attestations")
+	attestations := state.UncommittedAttestations()
+	if len(attestations) == 0 {
+		s.logger.Debug().Msg("no uncommitted errata attestations")
 		return
 	}
 	// Send via gRPC to thornado
 	if _, err := s.grpcClient.SendQuorumErrataTx(ctx, &common.QuorumErrataTx{
 		ErrataTx:     &errata,
-		Attestations: unsent,
+		Attestations: attestations,
 	}); err != nil {
 		s.logger.Error().Err(err).Msg("fail to send quorum errata")
 		return
 	}
 
-	s.logger.Info().Msgf("sent quorum errata to thornado - %s - ID: %s - attestations: %s", errata.Chain, errata.Id, state.State())
+	s.logger.Info().Msgf("sent errata attestations to thornado - %s - ID: %s - quorum: %t - attestations: %s", errata.Chain, errata.Id, isQuorum, state.State())
 
 	// Mark attestations as sent
 	state.MarkAttestationsSent(isQuorum)

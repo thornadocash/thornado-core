@@ -149,29 +149,19 @@ func (vm *NetworkMgr) consolidateActiveBTCVaults(ctx cosmos.Context, mgr Manager
 		if coin.IsEmpty() || coin.Amount.IsZero() {
 			continue
 		}
-		maxGasCoin, err := mgr.GasMgr().GetMaxGas(ctx, common.BTCChain)
-		if err != nil {
-			return fmt.Errorf("fail to get bitcoin consolidate max gas: %w", err)
-		}
-		consolidateAmount := common.SafeSub(coin.Amount, maxGasCoin.Amount.MulUint64(2))
-		if consolidateAmount.IsZero() {
-			continue
-		}
 		rootAddr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
 		if err != nil {
 			return err
 		}
-		gasRate := vm.k.GetConfigInt64(ctx, constants.BTC_DefaultSatsPerVByte)
-		if nf, err := vm.k.GetNetworkFee(ctx, common.BTCChain); err == nil && nf.TransactionFeeRate > 0 {
-			gasRate = int64(nf.TransactionFeeRate)
+		gasRate, err := btcGasRateFromKeeper(ctx, vm.k)
+		if err != nil {
+			return err
 		}
 		item := TxOutItem{
 			Chain:            common.BTCChain,
 			ToAddress:        rootAddr,
 			VaultPubKey:      vault.PubKey,
 			VaultPubKeyEddsa: vault.PubKeyEddsa,
-			Coin:             common.NewCoin(common.BTCAsset, consolidateAmount),
-			MaxGas:           common.Gas{maxGasCoin},
 			GasRate:          gasRate,
 			InHash:           common.BlankTxID,
 			ModuleName:       BaseName,
@@ -186,13 +176,16 @@ func (vm *NetworkMgr) consolidateActiveBTCVaults(ctx cosmos.Context, mgr Manager
 		for _, input := range item.SourceInputs {
 			sourceAmount = sourceAmount.Add(cosmos.NewUint(input.AmountSats))
 		}
+		maxGasCoin, err := btcExactGasCoin(vault.PubKey, common.MainVaultPathIndex, []common.Address{rootAddr}, item.SourceInputs, gasRate)
+		if err != nil {
+			return err
+		}
+		item.MaxGas = common.Gas{maxGasCoin}
 		maxSpendable := common.SafeSub(sourceAmount, maxGasCoin.Amount)
 		if maxSpendable.IsZero() {
 			continue
 		}
-		if item.Coin.Amount.GT(maxSpendable) {
-			item.Coin.Amount = maxSpendable
-		}
+		item.Coin = common.NewCoin(common.BTCAsset, maxSpendable)
 		if err := vm.k.AppendTxOut(ctx, ctx.BlockHeight(), item); err != nil {
 			return fmt.Errorf("fail to add bitcoin consolidate txout: %w", err)
 		}
@@ -512,7 +505,12 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 					for _, input := range toi.SourceInputs {
 						sourceAmount = sourceAmount.Add(cosmos.NewUint(input.AmountSats))
 					}
-					maxGasAmount := toi.MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount
+					maxGasCoin, err := btcExactGasCoin(vault.PubKey, common.MainVaultPathIndex, []common.Address{addr}, toi.SourceInputs, toi.GasRate)
+					if err != nil {
+						return err
+					}
+					toi.MaxGas = common.Gas{maxGasCoin}
+					maxGasAmount := maxGasCoin.Amount
 					if sourceAmount.LTE(maxGasAmount) {
 						ctx.Logger().Info("skip bitcoin migration txout: source inputs cannot cover gas", "vault", vault.PubKey, "source_amount", sourceAmount, "max_gas", maxGasAmount)
 						continue

@@ -35,6 +35,8 @@ type Keys struct {
 	signerName string
 	password   string // TODO this is a bad way , need to fix it
 	kb         Keyring
+	signerMu   sync.Mutex
+	signerInfo *ckeys.Record
 }
 
 type passwordReader struct {
@@ -126,11 +128,21 @@ func getKeybase(thornadoHome string, reader io.Reader) (ckeys.Keyring, error) {
 
 // GetSignerInfo return signer info
 func (k *Keys) GetSignerInfo() *ckeys.Record {
-	record, err := k.kb.Key(k.signerName)
-	if err != nil {
+	k.signerMu.Lock()
+	defer k.signerMu.Unlock()
+	if k.signerInfo != nil {
+		return k.signerInfo
+	}
+	var record *ckeys.Record
+	if err := withNonInteractiveStdin(func() error {
+		var err error
+		record, err = k.kb.Key(k.signerName)
+		return err
+	}); err != nil {
 		panic(err)
 	}
-	return record
+	k.signerInfo = record
+	return k.signerInfo
 }
 
 // GetPrivateKey return the ecdsa private key

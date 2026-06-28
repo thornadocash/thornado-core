@@ -1,13 +1,18 @@
 package observer
 
 import (
+	"context"
 	"testing"
+	"time"
 
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
+	"github.com/thornadocash/go-thornado/x/thornado/ebifrost"
 )
 
 func TestObservedTxKeySeparatesSignedPayloadWhenTxIDIsPresent(t *testing.T) {
@@ -152,16 +157,19 @@ func TestObservedTxKeyUsesPayloadHashWhenTxIDIsEmpty(t *testing.T) {
 	)
 }
 
-func TestCommittedFinalObservedTxNeedsSupermajorityBeforeDeckRemoval(t *testing.T) {
+func TestCommittedObservedTxDoesNotRemoveDeckWithoutQuorum(t *testing.T) {
+	localPubKey := []byte("local-pubkey")
+	removedDeck := false
 	gossip := &AttestationGossip{
+		pubKey: localPubKey,
 		activeVals: map[peer.ID]bool{
 			"node1": true,
 			"node2": true,
 			"node3": true,
 			"node4": true,
-			"node5": true,
-			"node6": true,
-			"node7": true,
+		},
+		observerHandleObservedTxCommitted: func(tx common.ObservedTx) {
+			removedDeck = true
 		},
 	}
 	tx := common.ObservedTx{
@@ -173,31 +181,213 @@ func TestCommittedFinalObservedTxNeedsSupermajorityBeforeDeckRemoval(t *testing.
 		FinaliseHeight: 630,
 	}
 
-	require.False(t, gossip.shouldNotifyObserverObservedTxCommitted(common.QuorumTx{
+	qtx := common.QuorumTx{
 		ObsTx:        tx,
-		Attestations: make([]*common.Attestation, 3),
-	}))
-	require.True(t, gossip.shouldNotifyObserverObservedTxCommitted(common.QuorumTx{
-		ObsTx:        tx,
-		Attestations: make([]*common.Attestation, 5),
-	}))
+		Attestations: []*common.Attestation{{PubKey: localPubKey}},
+	}
+	payload, err := qtx.Marshal()
+	require.NoError(t, err)
+
+	gossip.handleQuorumTxCommitted(&ebifrost.EventNotification{Payload: payload})
+
+	require.False(t, removedDeck)
 }
 
-func TestCommittedNonFinalObservedTxKeepsExistingDeckRemovalBehavior(t *testing.T) {
-	gossip := &AttestationGossip{}
+func TestCommittedObservedTxRemovesDeckWhenLocalAttestationHasQuorum(t *testing.T) {
+	localPubKey := []byte("local-pubkey")
+	var removed common.ObservedTx
+	removedDeck := false
+	gossip := &AttestationGossip{
+		pubKey: localPubKey,
+		activeVals: map[peer.ID]bool{
+			"node1": true,
+			"node2": true,
+			"node3": true,
+			"node4": true,
+		},
+		observerHandleObservedTxCommitted: func(tx common.ObservedTx) {
+			removedDeck = true
+			removed = tx
+		},
+	}
 	tx := common.ObservedTx{
 		Tx: common.Tx{
 			ID:    common.TxID("ABC123"),
 			Chain: common.BTCChain,
 		},
-		BlockHeight:    593,
-		FinaliseHeight: 624,
+		BlockHeight:    630,
+		FinaliseHeight: 630,
 	}
 
-	require.True(t, gossip.shouldNotifyObserverObservedTxCommitted(common.QuorumTx{
+	qtx := common.QuorumTx{
+		ObsTx: tx,
+		Attestations: []*common.Attestation{
+			{PubKey: localPubKey},
+			{PubKey: []byte("other-pubkey-1")},
+			{PubKey: []byte("other-pubkey-2")},
+		},
+	}
+	payload, err := qtx.Marshal()
+	require.NoError(t, err)
+
+	gossip.handleQuorumTxCommitted(&ebifrost.EventNotification{Payload: payload})
+
+	require.True(t, removedDeck)
+	require.Equal(t, tx.Tx.ID, removed.Tx.ID)
+}
+
+func TestCommittedObservedTxDoesNotRemoveDeckForOtherNodeAttestation(t *testing.T) {
+	localPubKey := []byte("local-pubkey")
+	removedDeck := false
+	gossip := &AttestationGossip{
+		pubKey: localPubKey,
+		observerHandleObservedTxCommitted: func(tx common.ObservedTx) {
+			removedDeck = true
+		},
+	}
+	tx := common.ObservedTx{
+		Tx: common.Tx{
+			ID:    common.TxID("ABC123"),
+			Chain: common.BTCChain,
+		},
+		BlockHeight:    630,
+		FinaliseHeight: 630,
+	}
+
+	qtx := common.QuorumTx{
 		ObsTx:        tx,
-		Attestations: make([]*common.Attestation, 1),
-	}))
+		Attestations: []*common.Attestation{{PubKey: []byte("other-pubkey")}},
+	}
+	payload, err := qtx.Marshal()
+	require.NoError(t, err)
+
+	gossip.handleQuorumTxCommitted(&ebifrost.EventNotification{Payload: payload})
+
+	require.False(t, removedDeck)
+}
+
+func TestAttestObservedTxDoesNotRebroadcastLocalDuplicate(t *testing.T) {
+	privKey := secp256k1.GenPrivKey()
+	sendCount := 0
+	gossip := &AttestationGossip{
+		host:    NewMockHost([]peer.ID{"node1"}),
+		privKey: privKey,
+		pubKey:  privKey.PubKey().Bytes(),
+		activeVals: map[peer.ID]bool{
+			"node1": true,
+			"node2": true,
+			"node3": true,
+			"node4": true,
+		},
+		observedTxs:     make(map[txKey]*AttestationState[*attestableObservedTx]),
+		observedTxsPool: NewAttestationStatePool[*attestableObservedTx](),
+		batcher: &AttestationBatcher{
+			maxBatchSize:  100,
+			forceSendChan: make(chan struct{}, 1),
+		},
+		grpcClient: &MockGRPCClient{
+			sendQuorumTxFunc: func(ctx context.Context, quorumTx *common.QuorumTx, opts ...grpc.CallOption) (*ebifrost.SendQuorumTxResult, error) {
+				sendCount++
+				return &ebifrost.SendQuorumTxResult{}, nil
+			},
+		},
+	}
+	tx := common.ObservedTx{
+		Tx: common.Tx{
+			ID:          common.TxID("ABC123"),
+			Chain:       common.BTCChain,
+			FromAddress: common.Address("from"),
+			ToAddress:   common.Address("to"),
+		},
+		BlockHeight:    630,
+		FinaliseHeight: 630,
+	}
+
+	require.NoError(t, gossip.AttestObservedTx(context.Background(), &tx, false, false))
+	require.NoError(t, gossip.AttestObservedTx(context.Background(), &tx, false, false))
+
+	gossip.batcher.mu.Lock()
+	defer gossip.batcher.mu.Unlock()
+	require.Len(t, gossip.batcher.observedTxBatch, 1)
+	require.Equal(t, 1, sendCount)
+}
+
+func TestSendObservedTxAttestationsResubmitsSentUncommitted(t *testing.T) {
+	tx := common.ObservedTx{
+		Tx: common.Tx{
+			ID:    common.TxID("ABC123"),
+			Chain: common.BTCChain,
+		},
+		BlockHeight:    630,
+		FinaliseHeight: 630,
+	}
+	state := &AttestationState[*attestableObservedTx]{
+		Item: &attestableObservedTx{ObservedTx: &tx},
+		attestations: []attestationSentState{
+			{attestation: &common.Attestation{PubKey: []byte("pubkey1"), Signature: []byte("sig1")}, sent: true},
+			{attestation: &common.Attestation{PubKey: []byte("pubkey2"), Signature: []byte("sig2")}, sent: true, committed: true},
+		},
+	}
+
+	var sent *common.QuorumTx
+	gossip := &AttestationGossip{
+		grpcClient: &MockGRPCClient{
+			sendQuorumTxFunc: func(ctx context.Context, quorumTx *common.QuorumTx, opts ...grpc.CallOption) (*ebifrost.SendQuorumTxResult, error) {
+				sent = quorumTx
+				return &ebifrost.SendQuorumTxResult{}, nil
+			},
+		},
+	}
+
+	gossip.sendObservedTxAttestationsToThornado(context.Background(), tx, state, true, false, false)
+
+	require.NotNil(t, sent)
+	require.Len(t, sent.Attestations, 1)
+	require.Equal(t, []byte("pubkey1"), sent.Attestations[0].PubKey)
+	require.Equal(t, 0, state.UnsentCount())
+	require.Equal(t, 1, state.UncommittedCount())
+	require.False(t, state.lastAttestationsSent.IsZero())
+}
+
+func TestMaybeRecoverObservedTxWhenLocalAttestationMissing(t *testing.T) {
+	tx := common.ObservedTx{
+		Tx: common.Tx{
+			ID:    common.TxID("ABC123"),
+			Chain: common.BTCChain,
+		},
+		BlockHeight:    630,
+		FinaliseHeight: 630,
+	}
+	k := newObservedTxKey(tx, true, false)
+	state := &AttestationState[*attestableObservedTx]{
+		Item: &attestableObservedTx{ObservedTx: &tx, inbound: true},
+		attestations: []attestationSentState{
+			{attestation: &common.Attestation{PubKey: []byte("remote-1"), Signature: []byte("sig-1")}},
+			{attestation: &common.Attestation{PubKey: []byte("remote-2"), Signature: []byte("sig-2")}},
+		},
+	}
+	gossip := &AttestationGossip{
+		host:                      NewMockHost([]peer.ID{"local"}),
+		pubKey:                    []byte("local"),
+		activeVals:                map[peer.ID]bool{"local": true},
+		observerRecoverObservedTx: func(context.Context, common.ObservedTx, bool, bool) {},
+		observedTxRecovery:        make(map[txKey]time.Time),
+	}
+
+	req, ok := gossip.maybeRecoverObservedTx(k, state)
+	require.True(t, ok)
+	require.Equal(t, tx.Tx.ID, req.tx.Tx.ID)
+	require.True(t, req.inbound)
+
+	_, ok = gossip.maybeRecoverObservedTx(k, state)
+	require.False(t, ok)
+
+	gossip.observedTxRecovery[k] = time.Now().Add(-defaultObservedTxRecoveryRetry - time.Second)
+	state.attestations = append(state.attestations, attestationSentState{
+		attestation: &common.Attestation{PubKey: []byte("local"), Signature: []byte("local-sig")},
+	})
+	_, ok = gossip.maybeRecoverObservedTx(k, state)
+	require.False(t, ok)
 }
 
 func TestActiveValidatorSetChangeClearsAttestationState(t *testing.T) {

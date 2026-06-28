@@ -331,10 +331,10 @@ func TestShouldSendLate(t *testing.T) {
 		expectedShouldSend bool
 	}{
 		{
-			name: "No unsent attestations",
+			name: "No uncommitted attestations",
 			attestations: []attestationSentState{
-				{attestation: &common.Attestation{}, sent: true},
-				{attestation: &common.Attestation{}, sent: true},
+				{attestation: &common.Attestation{}, sent: true, committed: true},
+				{attestation: &common.Attestation{}, sent: true, committed: true},
 			},
 			firstObserved:      time.Now().Add(-10 * time.Minute),
 			initialAttsSent:    time.Time{},
@@ -379,6 +379,28 @@ func TestShouldSendLate(t *testing.T) {
 			attestations: []attestationSentState{
 				{attestation: &common.Attestation{}, sent: true},
 				{attestation: &common.Attestation{}, sent: false},
+			},
+			firstObserved:      time.Now().Add(-15 * time.Minute),
+			initialAttsSent:    time.Now().Add(-15 * time.Minute),
+			lastAttsSent:       time.Now().Add(-10 * time.Minute),
+			expectedShouldSend: true,
+		},
+		{
+			name: "All sent but uncommitted, sent before, not enough time passed",
+			attestations: []attestationSentState{
+				{attestation: &common.Attestation{}, sent: true},
+				{attestation: &common.Attestation{}, sent: true},
+			},
+			firstObserved:      time.Now().Add(-10 * time.Minute),
+			initialAttsSent:    time.Now().Add(-10 * time.Minute),
+			lastAttsSent:       time.Now().Add(-2 * time.Minute),
+			expectedShouldSend: false,
+		},
+		{
+			name: "All sent but uncommitted, sent before, enough time passed",
+			attestations: []attestationSentState{
+				{attestation: &common.Attestation{}, sent: true},
+				{attestation: &common.Attestation{}, sent: true},
 			},
 			firstObserved:      time.Now().Add(-15 * time.Minute),
 			initialAttsSent:    time.Now().Add(-15 * time.Minute),
@@ -687,9 +709,15 @@ func TestFullWorkflow(t *testing.T) {
 	// Check updated state
 	assert.Equal(t, 1, state.AttestationCount())
 	assert.Equal(t, 0, state.UnsentCount())
+	assert.Equal(t, 1, state.UncommittedCount())
 	assert.False(t, state.initialAttestationsSent.IsZero())
 	assert.True(t, state.quorumAttestationsSent.IsZero())
 	assert.False(t, state.lastAttestationsSent.IsZero())
+	assert.False(t, state.ShouldSendLate(5*time.Minute))
+
+	state.lastAttestationsSent = time.Now().Add(-7 * time.Minute)
+	assert.True(t, state.ShouldSendLate(5*time.Minute))
+	state.lastAttestationsSent = time.Now()
 
 	// Add a second attestation
 	att2 := &common.Attestation{

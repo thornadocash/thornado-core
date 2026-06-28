@@ -1247,21 +1247,35 @@ func markObservedOutboundTxOutBatch(ctx cosmos.Context, mgr Manager, txOut *TxOu
 		return false
 	}
 	observedAmount := tx.Tx.Coins.GetCoin(common.BTCAsset).Amount
+	observedGas := tx.Tx.Gas.ToCoins().GetCoin(common.BTCAsset).Amount
 	total := cosmos.ZeroUint()
+	totalMaxGas := cosmos.ZeroUint()
 	matched := 0
+	expectedInputs := []types.TxOutInput(nil)
 	for _, item := range txOut.TxArray {
 		if !item.OutHash.IsEmpty() ||
 			!item.Chain.Equals(common.BTCChain) ||
 			!item.VaultPubKey.Equals(tx.ObservedPubKey) ||
 			item.VaultPathIndex != common.MainVaultPathIndex ||
 			!types.IsBatchableTxOutType(item.TxType) ||
-			!item.Coin.Asset.Equals(common.BTCAsset) {
+			!item.Coin.Asset.Equals(common.BTCAsset) ||
+			len(item.SourceInputs) == 0 {
+			return false
+		}
+		if expectedInputs == nil {
+			expectedInputs = item.SourceInputs
+		} else if !btcTxOutInputsEqual(expectedInputs, item.SourceInputs) {
 			return false
 		}
 		total = total.Add(item.Coin.Amount)
+		totalMaxGas = totalMaxGas.Add(item.MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount)
 		matched++
 	}
-	if matched < 2 || !total.Equal(observedAmount) {
+	if matched < 2 ||
+		!total.Equal(observedAmount) ||
+		!observedTxSpentTxOutInputs(tx.Tx.SourceInputs, expectedInputs) ||
+		totalMaxGas.IsZero() ||
+		observedGas.GT(totalMaxGas) {
 		return false
 	}
 	for i := range txOut.TxArray {
@@ -1348,7 +1362,10 @@ func observedOutboundAlreadyMatchedTxOutBatch(txOut *TxOut, tx ObservedTx) bool 
 		return false
 	}
 	total := cosmos.ZeroUint()
+	totalMaxGas := cosmos.ZeroUint()
+	observedGas := tx.Tx.Gas.ToCoins().GetCoin(common.BTCAsset).Amount
 	matched := 0
+	expectedInputs := []types.TxOutInput(nil)
 	for _, item := range txOut.TxArray {
 		if item.OutHash.IsEmpty() ||
 			!item.OutHash.Equals(tx.Tx.ID) ||
@@ -1356,13 +1373,24 @@ func observedOutboundAlreadyMatchedTxOutBatch(txOut *TxOut, tx ObservedTx) bool 
 			!item.VaultPubKey.Equals(tx.ObservedPubKey) ||
 			item.VaultPathIndex != common.MainVaultPathIndex ||
 			!types.IsBatchableTxOutType(item.TxType) ||
-			!item.Coin.Asset.Equals(common.BTCAsset) {
+			!item.Coin.Asset.Equals(common.BTCAsset) ||
+			len(item.SourceInputs) == 0 {
+			return false
+		}
+		if expectedInputs == nil {
+			expectedInputs = item.SourceInputs
+		} else if !btcTxOutInputsEqual(expectedInputs, item.SourceInputs) {
 			return false
 		}
 		total = total.Add(item.Coin.Amount)
+		totalMaxGas = totalMaxGas.Add(item.MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount)
 		matched++
 	}
-	return matched >= 2 && total.Equal(tx.Tx.Coins.GetCoin(common.BTCAsset).Amount)
+	return matched >= 2 &&
+		total.Equal(tx.Tx.Coins.GetCoin(common.BTCAsset).Amount) &&
+		observedTxSpentTxOutInputs(tx.Tx.SourceInputs, expectedInputs) &&
+		!totalMaxGas.IsZero() &&
+		observedGas.LTE(totalMaxGas)
 }
 
 func markMatchedTxOutItemSettled(ctx cosmos.Context, mgr Manager, item TxOutItem, tx ObservedTx) {

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -30,6 +31,9 @@ type P2PSessionCoordinator struct {
 	keygenTimeout  time.Duration
 	keysignTimeout time.Duration
 	logger         zerolog.Logger
+	debugMu        sync.Mutex
+	debugOrder     []string
+	debugSessions  map[string]*DebugSession
 }
 
 func NewP2PSessionCoordinator(
@@ -50,11 +54,255 @@ func NewP2PSessionCoordinator(
 		keygenTimeout:  keygenTimeout,
 		keysignTimeout: keysignTimeout,
 		logger:         zerolog.Nop(),
+		debugSessions:  make(map[string]*DebugSession),
 	}
 }
 
 func (sc *P2PSessionCoordinator) SetLogger(logger zerolog.Logger) {
 	sc.logger = logger
+}
+
+type DebugSession struct {
+	ID            string              `json:"id"`
+	Type          string              `json:"type"`
+	Height        int64               `json:"height"`
+	LocalParty    string              `json:"local_party"`
+	Leader        string              `json:"leader,omitempty"`
+	LeaderKnownAt *time.Time          `json:"leader_known_at,omitempty"`
+	Threshold     int                 `json:"threshold"`
+	Participants  []string            `json:"participants"`
+	StartedAt     time.Time           `json:"started_at"`
+	UpdatedAt     time.Time           `json:"updated_at"`
+	FinishedAt    *time.Time          `json:"finished_at,omitempty"`
+	DurationMs    int64               `json:"duration_ms"`
+	LastEvent     string              `json:"last_event"`
+	LastError     string              `json:"last_error,omitempty"`
+	Broadcasts    map[string]int      `json:"broadcasts"`
+	Receives      map[string]int      `json:"receives"`
+	Pending       int                 `json:"pending"`
+	Phases        []DebugSessionPhase `json:"phases"`
+}
+
+type DebugSessionPhase struct {
+	Event        string    `json:"event"`
+	Kind         string    `json:"kind,omitempty"`
+	At           time.Time `json:"at"`
+	SinceStartMs int64     `json:"since_start_ms"`
+	Count        int       `json:"count,omitempty"`
+	Targets      int       `json:"targets,omitempty"`
+}
+
+func (sc *P2PSessionCoordinator) DebugSessions() []DebugSession {
+	sc.debugMu.Lock()
+	defer sc.debugMu.Unlock()
+	out := make([]DebugSession, 0, len(sc.debugOrder))
+	for _, id := range sc.debugOrder {
+		session := sc.debugSessions[id]
+		if session == nil {
+			continue
+		}
+		cp := *session
+		cp.Participants = append([]string(nil), session.Participants...)
+		cp.Broadcasts = copyDebugCounts(session.Broadcasts)
+		cp.Receives = copyDebugCounts(session.Receives)
+		cp.Phases = append([]DebugSessionPhase(nil), session.Phases...)
+		if session.FinishedAt != nil {
+			cp.DurationMs = session.FinishedAt.Sub(session.StartedAt).Milliseconds()
+		} else if !session.StartedAt.IsZero() {
+			cp.DurationMs = time.Since(session.StartedAt).Milliseconds()
+		}
+		out = append(out, cp)
+	}
+	return out
+}
+
+func copyDebugCounts(in map[string]int) map[string]int {
+	out := make(map[string]int, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
+func (sc *P2PSessionCoordinator) debugStart(id, typ string, height int64, participants []string, localParty, leader string, threshold int) {
+	sc.debugMu.Lock()
+	defer sc.debugMu.Unlock()
+	sc.ensureDebugMap()
+	now := time.Now().UTC()
+	if _, ok := sc.debugSessions[id]; !ok {
+		sc.debugOrder = append(sc.debugOrder, id)
+		if len(sc.debugOrder) > 128 {
+			delete(sc.debugSessions, sc.debugOrder[0])
+			sc.debugOrder = sc.debugOrder[1:]
+		}
+	}
+	sc.debugSessions[id] = &DebugSession{
+		ID:           id,
+		Type:         typ,
+		Height:       height,
+		LocalParty:   localParty,
+		Leader:       leader,
+		Threshold:    threshold,
+		Participants: append([]string(nil), participants...),
+		StartedAt:    now,
+		UpdatedAt:    now,
+		LastEvent:    "started",
+		Broadcasts:   make(map[string]int),
+		Receives:     make(map[string]int),
+	}
+	session := sc.debugSessions[id]
+	appendDebugSessionPhaseLocked(session, "started", "", 0, 0, now)
+	if leader != "" {
+		session.LeaderKnownAt = &now
+		appendDebugSessionPhaseLocked(session, "leader_appointed", "", 0, 0, now)
+	}
+}
+
+func (sc *P2PSessionCoordinator) debugEvent(id, event string) {
+	sc.debugMu.Lock()
+	defer sc.debugMu.Unlock()
+	if session := sc.debugSessions[id]; session != nil {
+		session.LastEvent = event
+		now := time.Now().UTC()
+		session.UpdatedAt = now
+		appendDebugSessionPhaseLocked(session, event, "", 0, 0, now)
+	}
+}
+
+func (sc *P2PSessionCoordinator) debugLeader(id, leader string) {
+	if leader == "" {
+		return
+	}
+	sc.debugMu.Lock()
+	defer sc.debugMu.Unlock()
+	if session := sc.debugSessions[id]; session != nil {
+		now := time.Now().UTC()
+		session.Leader = leader
+		if session.LeaderKnownAt == nil {
+			session.LeaderKnownAt = &now
+			appendDebugSessionPhaseLocked(session, "leader_appointed", "", 0, 0, now)
+		}
+		session.LastEvent = "leader_appointed"
+		session.UpdatedAt = now
+	}
+}
+
+func (sc *P2PSessionCoordinator) debugBroadcast(id, kind string, targets int) {
+	sc.debugMu.Lock()
+	defer sc.debugMu.Unlock()
+	if session := sc.debugSessions[id]; session != nil {
+		if kind == "" {
+			kind = "unknown"
+		}
+		session.Broadcasts[kind] += targets
+		session.LastEvent = "broadcast:" + kind
+		now := time.Now().UTC()
+		session.UpdatedAt = now
+		appendDebugSessionPhaseLocked(session, "broadcast", kind, session.Broadcasts[kind], targets, now)
+	}
+}
+
+func (sc *P2PSessionCoordinator) debugReceive(id, kind string) {
+	sc.debugMu.Lock()
+	defer sc.debugMu.Unlock()
+	if session := sc.debugSessions[id]; session != nil {
+		if kind == "" {
+			kind = "unknown"
+		}
+		session.Receives[kind]++
+		session.LastEvent = "receive:" + kind
+		now := time.Now().UTC()
+		session.UpdatedAt = now
+		appendDebugSessionPhaseLocked(session, "receive", kind, session.Receives[kind], 0, now)
+	}
+}
+
+func (sc *P2PSessionCoordinator) debugPending(id string) {
+	sc.debugMu.Lock()
+	defer sc.debugMu.Unlock()
+	if session := sc.debugSessions[id]; session != nil {
+		session.Pending++
+		session.LastEvent = "pending"
+		now := time.Now().UTC()
+		session.UpdatedAt = now
+		appendDebugSessionPhaseLocked(session, "pending", "", session.Pending, 0, now)
+	}
+}
+
+func (sc *P2PSessionCoordinator) debugFinish(id string) {
+	sc.debugMu.Lock()
+	defer sc.debugMu.Unlock()
+	if session := sc.debugSessions[id]; session != nil {
+		now := time.Now().UTC()
+		session.FinishedAt = &now
+		switch session.Type {
+		case "keysign":
+			appendDebugSessionPhaseLocked(session, "signature_produced", "", 0, 0, now)
+		case "keygen":
+			appendDebugSessionPhaseLocked(session, "keyshare_produced", "", 0, 0, now)
+		default:
+			appendDebugSessionPhaseLocked(session, "result_produced", "", 0, 0, now)
+		}
+		appendDebugSessionPhaseLocked(session, "finished", "", 0, 0, now)
+		session.LastEvent = "finished"
+		session.UpdatedAt = now
+	}
+}
+
+func (sc *P2PSessionCoordinator) debugError(id string, err error) {
+	sc.debugMu.Lock()
+	defer sc.debugMu.Unlock()
+	if session := sc.debugSessions[id]; session != nil {
+		now := time.Now().UTC()
+		session.LastError = err.Error()
+		session.LastEvent = "error"
+		if session.FinishedAt == nil {
+			session.FinishedAt = &now
+		}
+		session.UpdatedAt = now
+		appendDebugSessionPhaseLocked(session, "error", "", 0, 0, now)
+	}
+}
+
+func (sc *P2PSessionCoordinator) debugClosed(id string) {
+	sc.debugMu.Lock()
+	defer sc.debugMu.Unlock()
+	if session := sc.debugSessions[id]; session != nil {
+		now := time.Now().UTC()
+		session.LastError = ""
+		session.LastEvent = "closed"
+		if session.FinishedAt == nil {
+			session.FinishedAt = &now
+		}
+		session.UpdatedAt = now
+		appendDebugSessionPhaseLocked(session, "closed", "", 0, 0, now)
+	}
+}
+
+func (sc *P2PSessionCoordinator) ensureDebugMap() {
+	if sc.debugSessions == nil {
+		sc.debugSessions = make(map[string]*DebugSession)
+	}
+}
+
+func appendDebugSessionPhaseLocked(session *DebugSession, event, kind string, count, targets int, at time.Time) {
+	if session == nil {
+		return
+	}
+	phase := DebugSessionPhase{
+		Event:   event,
+		Kind:    kind,
+		At:      at,
+		Count:   count,
+		Targets: targets,
+	}
+	if !session.StartedAt.IsZero() {
+		phase.SinceStartMs = at.Sub(session.StartedAt).Milliseconds()
+	}
+	session.Phases = append(session.Phases, phase)
+	if len(session.Phases) > 256 {
+		session.Phases = session.Phases[len(session.Phases)-256:]
+	}
 }
 
 func sortedParticipants(participants []string) []string {
@@ -66,30 +314,31 @@ func sessionMessageID(prefix string, height int64, minSigners uint16, participan
 	return hex.EncodeToString(sum[:])
 }
 
-func (sc *P2PSessionCoordinator) joinParty(msgID string, height int64, participants []string, threshold int, initiator string) ([]peer.ID, error) {
+func (sc *P2PSessionCoordinator) joinParty(msgID string, height int64, participants []string, threshold int, initiator string) ([]peer.ID, string, error) {
 	if sc.party == nil {
-		return nil, fmt.Errorf("FROST party coordinator is not configured")
+		return nil, "", fmt.Errorf("FROST party coordinator is not configured")
 	}
 	if sc.comm != nil {
 		if err := sc.comm.EnsurePeersConnected(participants); err != nil {
-			return nil, fmt.Errorf("ensure party peers before join: %w", err)
+			return nil, "", fmt.Errorf("ensure party peers before join: %w", err)
 		}
 	}
 	sigChan := make(chan string, 1)
 	var online []peer.ID
+	var leader string
 	var err error
 	if initiator != "" {
-		online, _, err = sc.party.JoinPartyWithLeaderInitiator(msgID, height, participants, threshold, sigChan, initiator)
+		online, leader, err = sc.party.JoinPartyWithLeaderInitiator(msgID, height, participants, threshold, sigChan, initiator)
 	} else {
-		online, _, err = sc.party.JoinPartyWithLeader(msgID, height, participants, threshold, sigChan)
+		online, leader, err = sc.party.JoinPartyWithLeader(msgID, height, participants, threshold, sigChan)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("join FROST party: %w", err)
+		return nil, leader, fmt.Errorf("join FROST party: %w", err)
 	}
 	if len(online) < threshold {
-		return nil, fmt.Errorf("insufficient FROST party members online: got %d want %d", len(online), threshold)
+		return nil, leader, fmt.Errorf("insufficient FROST party members online: got %d want %d", len(online), threshold)
 	}
-	return online, nil
+	return online, leader, nil
 }
 
 func (sc *P2PSessionCoordinator) RunKeygen(
@@ -101,34 +350,52 @@ func (sc *P2PSessionCoordinator) RunKeygen(
 ) (localShare []byte, pubKeyCompressed []byte, err error) {
 	participants = sortedParticipants(participants)
 	msgID := sessionMessageID("keygen", height, minSigners, participants)
+	sc.debugStart(msgID, "keygen", height, participants, localParty, "", int(len(participants)-1))
 	inbox := make(chan *p2p.Message, 256)
 	sc.comm.SetSubscribe(messages.FROSTFrostKeyGenMsg, msgID, inbox)
 	defer sc.comm.CancelSubscribe(messages.FROSTFrostKeyGenMsg, msgID)
 
 	keygenThreshold := len(participants) - 1
-	if _, err = sc.joinParty(msgID, height, participants, keygenThreshold, ""); err != nil {
+	sc.debugEvent(msgID, "party_join_start")
+	var leader string
+	if _, leader, err = sc.joinParty(msgID, height, participants, keygenThreshold, ""); err != nil {
+		if errors.Is(err, p2p.ErrPartyClosed) {
+			sc.debugClosed(msgID)
+		} else {
+			sc.debugError(msgID, err)
+		}
 		return nil, nil, err
 	}
+	sc.debugLeader(msgID, leader)
+	sc.debugEvent(msgID, "party_joined")
 	defer sc.comm.ReleaseStream(msgID)
 
 	// Straggling signers may still be subscribing when the first joiners enter
 	// runSession; pause briefly so round-1 messages are not dropped.
+	sc.debugEvent(msgID, "post_join_sync_start")
 	select {
 	case <-ctx.Done():
 		return nil, nil, ctx.Err()
 	case <-time.After(postJoinSync):
 	}
+	sc.debugEvent(msgID, "post_join_sync_done")
 
+	sc.debugEvent(msgID, "session_init_start")
 	handle, err := frostsessions.KeygenSessionNew(participants, localParty, minSigners)
 	if err != nil {
+		sc.debugError(msgID, err)
 		return nil, nil, err
 	}
+	sc.debugEvent(msgID, "session_init_done")
 	defer func() { _ = frostsessions.SessionFree(handle) }()
 
+	sc.debugEvent(msgID, "rounds_start")
 	result, err := sc.runSession(ctx, messages.FROSTFrostKeyGenMsg, msgID, participants, localParty, handle, sc.keygenTimeout, inbox)
 	if err != nil {
+		sc.debugError(msgID, err)
 		return nil, nil, err
 	}
+	sc.debugFinish(msgID)
 	decoded, err := frostsessions.DecodeKeyshare(result)
 	if err != nil {
 		return nil, nil, err
@@ -162,28 +429,50 @@ func (sc *P2PSessionCoordinator) RunSign(
 
 	participants = sortedParticipants(participants)
 	threshold := frostMinSigners(len(participants))
+	sc.debugStart(sessionID, "keysign", height, participants, localParty, partyLeader, int(threshold))
 	inbox := make(chan *p2p.Message, 256)
 	sc.comm.SetSubscribe(messages.FROSTFrostKeySignMsg, sessionID, inbox)
 	defer sc.comm.CancelSubscribe(messages.FROSTFrostKeySignMsg, sessionID)
 
-	if _, err = sc.joinParty(sessionID, height, participants, int(threshold), partyLeader); err != nil {
+	sc.debugEvent(sessionID, "party_join_start")
+	var leader string
+	if _, leader, err = sc.joinParty(sessionID, height, participants, int(threshold), partyLeader); err != nil {
+		if errors.Is(err, p2p.ErrPartyClosed) {
+			sc.debugClosed(sessionID)
+		} else {
+			sc.debugError(sessionID, err)
+		}
 		return nil, err
 	}
+	sc.debugLeader(sessionID, leader)
+	sc.debugEvent(sessionID, "party_joined")
 	defer sc.comm.ReleaseStream(sessionID)
 
+	sc.debugEvent(sessionID, "session_init_start")
 	handle, err := frostsessions.SignSessionNewWithTweak(participants, localParty, share, msg, taprootKeyPath, scriptRoot, childTweak)
 	if err != nil {
+		sc.debugError(sessionID, err)
 		return nil, err
 	}
+	sc.debugEvent(sessionID, "session_init_done")
 	defer func() { _ = frostsessions.SessionFree(handle) }()
 
+	sc.debugEvent(sessionID, "post_join_sync_start")
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case <-time.After(postJoinSync):
 	}
+	sc.debugEvent(sessionID, "post_join_sync_done")
 
-	return sc.runSession(ctx, messages.FROSTFrostKeySignMsg, sessionID, participants, localParty, handle, sc.keysignTimeout, inbox)
+	sc.debugEvent(sessionID, "rounds_start")
+	signature, err = sc.runSession(ctx, messages.FROSTFrostKeySignMsg, sessionID, participants, localParty, handle, sc.keysignTimeout, inbox)
+	if err != nil {
+		sc.debugError(sessionID, err)
+		return nil, err
+	}
+	sc.debugFinish(sessionID)
+	return signature, nil
 }
 
 func SignSessionID(vaultPubKey string, msg []byte) string {
@@ -227,13 +516,13 @@ func (sc *P2PSessionCoordinator) runSession(
 		for {
 			step := false
 
-			if retried, err := sc.retryPending(msgType, handle, &pending); err != nil {
+			if retried, err := sc.retryPending(msgType, msgID, handle, &pending); err != nil {
 				return nil, err
 			} else if retried {
 				step = true
 			}
 
-			if drained, err := sc.drainInbox(sessionCtx, msgType, handle, inbox, &pending); err != nil {
+			if drained, err := sc.drainInbox(sessionCtx, msgType, msgID, handle, inbox, &pending); err != nil {
 				return nil, err
 			} else if drained {
 				step = true
@@ -249,6 +538,7 @@ func (sc *P2PSessionCoordinator) runSession(
 				}
 				step = true
 				targets := broadcastTargets(handle, out, participants, peerByParty)
+				sc.debugBroadcast(msgID, frostPayloadKind(out), len(targets))
 				sc.broadcast(msgType, msgID, out, targets)
 				if err := sc.ingestLocalOutbound(handle, out, localParty); err != nil {
 					return nil, err
@@ -264,6 +554,7 @@ func (sc *P2PSessionCoordinator) runSession(
 		if result, err := sc.trySessionFinish(handle); err != nil {
 			return nil, err
 		} else if result != nil {
+			sc.debugEvent(msgID, "result_ready")
 			return result, nil
 		}
 
@@ -272,8 +563,9 @@ func (sc *P2PSessionCoordinator) runSession(
 			case <-sessionCtx.Done():
 				return nil, sessionCtx.Err()
 			case raw := <-inbox:
-				if err := sc.ingestSessionMessage(msgType, handle, raw); err != nil {
+				if err := sc.ingestSessionMessage(msgType, msgID, handle, raw); err != nil {
 					if isRetryableFrostInputError(err) {
+						sc.debugPending(msgID)
 						pending = append(pending, raw)
 					} else {
 						return nil, err
@@ -349,19 +641,24 @@ func (sc *P2PSessionCoordinator) ingestLocalOutbound(
 
 func (sc *P2PSessionCoordinator) ingestSessionMessage(
 	msgType messages.ThornadoFROSTMessageType,
+	msgID string,
 	handle frostsessions.Handle,
 	raw *p2p.Message,
 ) error {
-	payload, err := decodeWrapped(msgType, raw)
+	payload, kind, err := decodeWrapped(msgType, raw)
 	if err != nil {
 		return err
 	}
 	_, err = frostsessions.SessionInputMessage(handle, payload)
+	if err == nil {
+		sc.debugReceive(msgID, kind)
+	}
 	return err
 }
 
 func (sc *P2PSessionCoordinator) retryPending(
 	msgType messages.ThornadoFROSTMessageType,
+	msgID string,
 	handle frostsessions.Handle,
 	pending *[]*p2p.Message,
 ) (bool, error) {
@@ -371,7 +668,7 @@ func (sc *P2PSessionCoordinator) retryPending(
 	remaining := (*pending)[:0]
 	retried := false
 	for _, raw := range *pending {
-		err := sc.ingestSessionMessage(msgType, handle, raw)
+		err := sc.ingestSessionMessage(msgType, msgID, handle, raw)
 		switch {
 		case err == nil:
 			retried = true
@@ -388,6 +685,7 @@ func (sc *P2PSessionCoordinator) retryPending(
 func (sc *P2PSessionCoordinator) drainInbox(
 	ctx context.Context,
 	msgType messages.ThornadoFROSTMessageType,
+	msgID string,
 	handle frostsessions.Handle,
 	inbox <-chan *p2p.Message,
 	pending *[]*p2p.Message,
@@ -399,8 +697,9 @@ func (sc *P2PSessionCoordinator) drainInbox(
 			return drained, ctx.Err()
 		case raw := <-inbox:
 			drained = true
-			if err := sc.ingestSessionMessage(msgType, handle, raw); err != nil {
+			if err := sc.ingestSessionMessage(msgType, msgID, handle, raw); err != nil {
 				if isRetryableFrostInputError(err) {
+					sc.debugPending(msgID)
 					*pending = append(*pending, raw)
 					continue
 				}
@@ -416,18 +715,18 @@ func isRetryableFrostInputError(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "missing round2 secret")
 }
 
-func decodeWrapped(expected messages.ThornadoFROSTMessageType, raw *p2p.Message) ([]byte, error) {
+func decodeWrapped(expected messages.ThornadoFROSTMessageType, raw *p2p.Message) ([]byte, string, error) {
 	if raw == nil {
-		return nil, fmt.Errorf("nil frost inbound message")
+		return nil, "", fmt.Errorf("nil frost inbound message")
 	}
 	var wrapped messages.WrappedMessage
 	if err := json.Unmarshal(raw.Payload, &wrapped); err != nil {
-		return nil, fmt.Errorf("decode wrapped frost message: %w", err)
+		return nil, "", fmt.Errorf("decode wrapped frost message: %w", err)
 	}
 	if wrapped.MessageType != expected {
-		return nil, fmt.Errorf("unexpected frost message type %s", wrapped.MessageType)
+		return nil, "", fmt.Errorf("unexpected frost message type %s", wrapped.MessageType)
 	}
-	return wrapped.Payload, nil
+	return wrapped.Payload, frostPayloadKind(wrapped.Payload), nil
 }
 
 func (sc *P2PSessionCoordinator) broadcast(msgType messages.ThornadoFROSTMessageType, msgID string, payload []byte, peers []peer.ID) {
@@ -445,4 +744,14 @@ func (sc *P2PSessionCoordinator) broadcast(msgType messages.ThornadoFROSTMessage
 		return
 	}
 	sc.comm.BroadcastSync(peers, raw, msgID)
+}
+
+func frostPayloadKind(payload []byte) string {
+	var msg struct {
+		Kind string `json:"kind"`
+	}
+	if err := json.Unmarshal(payload, &msg); err != nil {
+		return ""
+	}
+	return msg.Kind
 }

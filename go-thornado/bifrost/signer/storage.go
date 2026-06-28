@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"sync"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -51,6 +52,16 @@ type TxOutStoreItem struct {
 	// the json "-" tag is to not store it in the KVStore.
 }
 
+func preserveStoredTxOutState(item, existing TxOutStoreItem) TxOutStoreItem {
+	item.Status = existing.Status
+	item.DeferredUntilHeight = existing.DeferredUntilHeight
+	item.Round7Retry = existing.Round7Retry
+	item.Checkpoint = existing.Checkpoint
+	item.SignedTx = existing.SignedTx
+	item.Observation = existing.Observation
+	return item
+}
+
 func NewTxOutStoreItem(height int64, item types.TxOutItem, idx int64) TxOutStoreItem {
 	return TxOutStoreItem{
 		TxOutItem: item,
@@ -71,13 +82,7 @@ func mergeStoredTxOutItem(storage SignerStorage, item TxOutStoreItem) TxOutStore
 	if err != nil {
 		return item
 	}
-	item.Status = existing.Status
-	item.DeferredUntilHeight = existing.DeferredUntilHeight
-	item.Round7Retry = existing.Round7Retry
-	item.Checkpoint = existing.Checkpoint
-	item.SignedTx = existing.SignedTx
-	item.Observation = existing.Observation
-	return item
+	return preserveStoredTxOutState(item, existing)
 }
 
 func (s *TxOutStoreItem) Key() string {
@@ -116,6 +121,7 @@ type SignerStore struct {
 	logger     zerolog.Logger
 	db         *leveldb.DB
 	passphrase string
+	mu         sync.RWMutex
 }
 
 type namespacedScannerStorage struct {
@@ -219,6 +225,9 @@ func (s *namespacedScannerStorage) Close() error {
 }
 
 func (s *SignerStore) Set(item TxOutStoreItem) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	key := item.Key()
 	buf, err := json.Marshal(item)
 	if err != nil {
@@ -233,9 +242,20 @@ func (s *SignerStore) Set(item TxOutStoreItem) error {
 }
 
 func (s *SignerStore) Batch(items []TxOutStoreItem) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	batch := new(leveldb.Batch)
 	for _, item := range items {
 		key := item.Key()
+		if buf, err := s.db.Get([]byte(key), nil); err == nil && len(buf) > 0 {
+			var existing TxOutStoreItem
+			if err := json.Unmarshal(buf, &existing); err != nil {
+				s.logger.Error().Err(err).Msg("fail to unmarshal existing txout store item")
+				return err
+			}
+			item = preserveStoredTxOutState(item, existing)
+		}
 		buf, err := json.Marshal(item)
 		if err != nil {
 			s.logger.Error().Err(err).Msg("fail to marshal to txout store item")
@@ -247,6 +267,9 @@ func (s *SignerStore) Batch(items []TxOutStoreItem) error {
 }
 
 func (s *SignerStore) Get(keyString string) (item TxOutStoreItem, err error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	key := []byte(keyString)
 
 	ok, err := s.db.Has(key, nil)
@@ -265,17 +288,26 @@ func (s *SignerStore) Get(keyString string) (item TxOutStoreItem, err error) {
 
 // Has check whether the given key exist in key value store
 func (s *SignerStore) Has(key string) (ok bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	ok, _ = s.db.Has([]byte(key), nil)
 	return
 }
 
 // Remove remove the given item from key values store
 func (s *SignerStore) Remove(item TxOutStoreItem) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	return s.db.Delete([]byte(item.Key()), nil)
 }
 
 // List send back tx out to retry depending on arg failed only
 func (s *SignerStore) List() []TxOutStoreItem {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	iterator := s.db.NewIterator(util.BytesPrefix([]byte(txOutPrefix)), nil)
 	defer iterator.Release()
 	var results []TxOutStoreItem

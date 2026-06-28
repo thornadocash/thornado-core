@@ -229,6 +229,18 @@ func (c *Client) getSourceUtxosToSpendAtPath(pubkey common.PubKey, pathIndex uin
 	return filterUtxosBySourceInputs(filtered, sourceInputs, total)
 }
 
+func sameTxOutInputs(a, b []stypes.TxOutInput) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !a[i].TxID.Equals(b[i].TxID) || a[i].Vout != b[i].Vout || a[i].AmountSats != b[i].AmountSats {
+			return false
+		}
+	}
+	return true
+}
+
 func formatUtxoKey(txID string, vout uint32) string {
 	return fmt.Sprintf("%s-%d", txID, vout)
 }
@@ -395,7 +407,7 @@ func (c *Client) getGasCoin(tx stypes.TxOutItem, vSize int64) common.Coin {
 func (c *Client) buildTx(tx stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx, map[string]int64, error) {
 	var txes []btcjson.ListUnspentResult
 	var err error
-	if internalTxType(tx.TxType) {
+	if len(tx.SourceInputs) > 0 {
 		txes, err = c.getSourceUtxosToSpendAtPath(tx.VaultPubKey, tx.VaultPathIndex, tx.SourceInputs, c.getPaymentAmount(tx))
 	} else {
 		txes, err = c.getUtxoToSpendAtPath(tx.VaultPubKey, tx.VaultPathIndex, c.getPaymentAmount(tx), false)
@@ -525,6 +537,14 @@ func batchableBaseVaultTx(tx stypes.TxOutItem) bool {
 	}
 }
 
+func btcBatchMaxGas(txs []stypes.TxOutItem) common.Gas {
+	maxGas := common.Gas{}
+	for _, tx := range txs {
+		maxGas = maxGas.Add(tx.MaxGas...)
+	}
+	return maxGas
+}
+
 func (c *Client) buildTxBatch(txs []stypes.TxOutItem, sourceScript []byte) (*wire.MsgTx, map[string]int64, int64, error) {
 	if len(txs) == 0 {
 		return nil, nil, 0, fmt.Errorf("empty tx batch")
@@ -537,12 +557,17 @@ func (c *Client) buildTxBatch(txs []stypes.TxOutItem, sourceScript []byte) (*wir
 	outputScripts := make([][]byte, 0, len(txs))
 	totalOutput := int64(0)
 	gasRate := first.GasRate
+	prescribedInputs := append([]stypes.TxOutInput(nil), first.SourceInputs...)
+	batchMaxGas := btcBatchMaxGas(txs)
 	for _, tx := range txs {
 		if !batchableBaseVaultTx(tx) {
 			return nil, nil, 0, fmt.Errorf("tx is not batchable: %s", tx.TxType)
 		}
 		if !tx.Chain.Equals(first.Chain) || !tx.VaultPubKey.Equals(first.VaultPubKey) || tx.VaultPathIndex != first.VaultPathIndex {
 			return nil, nil, 0, fmt.Errorf("tx batch mixes source vaults")
+		}
+		if !sameTxOutInputs(prescribedInputs, tx.SourceInputs) {
+			return nil, nil, 0, fmt.Errorf("tx batch mixes source inputs")
 		}
 		if tx.GasRate > gasRate {
 			gasRate = tx.GasRate
@@ -573,8 +598,15 @@ func (c *Client) buildTxBatch(txs []stypes.TxOutItem, sourceScript []byte) (*wir
 	var gasAmt btcutil.Amount
 	feeTx := first
 	feeTx.GasRate = gasRate
+	if !batchMaxGas.IsEmpty() {
+		feeTx.MaxGas = batchMaxGas
+	}
 	for attempt := 0; attempt < 2; attempt++ {
-		txes, err = c.getUtxoToSpendAtPath(first.VaultPubKey, first.VaultPathIndex, selectAmount, false)
+		if len(prescribedInputs) > 0 {
+			txes, err = c.getSourceUtxosToSpendAtPath(first.VaultPubKey, first.VaultPathIndex, prescribedInputs, selectAmount)
+		} else {
+			txes, err = c.getUtxoToSpendAtPath(first.VaultPubKey, first.VaultPathIndex, selectAmount, false)
+		}
 		if err != nil {
 			return nil, nil, 0, fmt.Errorf("fail to get unspent UTXO: %w", err)
 		}

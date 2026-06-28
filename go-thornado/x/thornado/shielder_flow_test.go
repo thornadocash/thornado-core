@@ -44,6 +44,7 @@ type shielderFlowTestKeeper struct {
 	txInVoters     map[string]ObservedTxVoter
 	txOutVoters    map[string]ObservedTxVoter
 	solvencyVoters map[string]types.SolvencyVoter
+	networkFees    map[common.Chain]NetworkFee
 	sessions       map[string]types.DepositSession
 	powSessions    map[string]types.DepositSession
 	addresses      map[string]types.DepositAddress
@@ -71,11 +72,18 @@ func newShielderFlowTestKeeper() *shielderFlowTestKeeper {
 		txInVoters:     make(map[string]ObservedTxVoter),
 		txOutVoters:    make(map[string]ObservedTxVoter),
 		solvencyVoters: make(map[string]types.SolvencyVoter),
-		sessions:       make(map[string]types.DepositSession),
-		powSessions:    make(map[string]types.DepositSession),
-		addresses:      make(map[string]types.DepositAddress),
-		pathNonces:     make(map[string]uint64),
-		configs:        make(map[constants.ConfigName]int64),
+		networkFees: map[common.Chain]NetworkFee{
+			common.BTCChain: {
+				Chain:              common.BTCChain,
+				TransactionSize:    221,
+				TransactionFeeRate: 14,
+			},
+		},
+		sessions:    make(map[string]types.DepositSession),
+		powSessions: make(map[string]types.DepositSession),
+		addresses:   make(map[string]types.DepositAddress),
+		pathNonces:  make(map[string]uint64),
+		configs:     make(map[constants.ConfigName]int64),
 	}
 }
 
@@ -376,8 +384,8 @@ func (k *shielderFlowTestKeeper) ShielderFeeNotePubKeyUsed(_ cosmos.Context, pub
 	return ok
 }
 
-func (k *shielderFlowTestKeeper) GetNetworkFee(_ cosmos.Context, _ common.Chain) (NetworkFee, error) {
-	return NetworkFee{}, nil
+func (k *shielderFlowTestKeeper) GetNetworkFee(_ cosmos.Context, chain common.Chain) (NetworkFee, error) {
+	return k.networkFees[chain], nil
 }
 
 func (k *shielderFlowTestKeeper) GetBaseVaultsByStatus(_ cosmos.Context, status VaultStatus) (Vaults, error) {
@@ -487,6 +495,7 @@ func TestUserShieldAndUnshieldFlowQueuesNetWithdrawal(t *testing.T) {
 	SetupConfigForTest()
 	ctx := flowTestContext()
 	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 1
 	amount := uint64(1_000_000)
 	depositID := GetRandomTxHash()
 	owner := GetRandomBech32Addr()
@@ -518,6 +527,7 @@ func TestUserShieldAndUnshieldFlowQueuesNetWithdrawal(t *testing.T) {
 		VaultPubKey:   deposit.VaultPubKey,
 		Status:        types.ShielderRedeemStatusAuthorized,
 	}
+	sourceInput := addTestBTCVaultSourceInput(t, ctx, k, deposit.VaultPubKey, amount+100_000)
 	queued, err := QueueAuthorizedWithdrawalTxOut(ctx, k, redeem)
 	if err != nil {
 		t.Fatal(err)
@@ -531,6 +541,19 @@ func TestUserShieldAndUnshieldFlowQueuesNetWithdrawal(t *testing.T) {
 	}
 	if got := k.txOuts[0].Coin.Amount.Uint64(); got != amount-fee {
 		t.Fatalf("unexpected withdrawal amount: %d", got)
+	}
+	expectedGas, err := btcExactGasCoin(deposit.VaultPubKey, common.MainVaultPathIndex, []common.Address{redeem.Recipient}, []types.TxOutInput{sourceInput}, 14)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := k.txOuts[0].MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount.Uint64(); got != expectedGas.Amount.Uint64() {
+		t.Fatalf("unexpected withdrawal max gas: %d/%d", got, expectedGas.Amount.Uint64())
+	}
+	if got := k.txOuts[0].GasRate; got != 14 {
+		t.Fatalf("unexpected withdrawal gas rate: %d", got)
+	}
+	if len(k.txOuts[0].SourceInputs) != 1 || !k.txOuts[0].SourceInputs[0].TxId.Equals(sourceInput.TxId) {
+		t.Fatalf("unexpected withdrawal source inputs: %#v", k.txOuts[0].SourceInputs)
 	}
 	if k.txOuts[0].GetTxType() != types.TxOutTypeOut {
 		t.Fatalf("unexpected txout type: %s", k.txOuts[0].GetTxType())
@@ -824,6 +847,7 @@ func TestNodeFeeShieldAndUnshieldFlow(t *testing.T) {
 	SetupConfigForTest()
 	ctx := flowTestContext()
 	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 1
 	operatorPriv, operatorPubKey := flowOperatorKey(t)
 	owner, err := operatorPubKey.GetThorAddress()
 	if err != nil {
@@ -876,6 +900,7 @@ func TestNodeFeeShieldAndUnshieldFlow(t *testing.T) {
 		VaultPubKey:   GetRandomPubKey(),
 		Status:        types.ShielderRedeemStatusAuthorized,
 	}
+	addTestBTCVaultSourceInput(t, ctx, k, redeem.VaultPubKey, claim+100_000)
 	if _, err := QueueAuthorizedWithdrawalTxOut(ctx, k, redeem); err != nil {
 		t.Fatal(err)
 	}
@@ -1172,6 +1197,7 @@ func TestNodeBidDepositAndSaleShieldThenSellerUnshield(t *testing.T) {
 	SetupConfigForTest()
 	ctx := flowTestContext()
 	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 1
 	seller := GetRandomBech32Addr()
 	bidder := GetRandomBech32Addr()
 	oldNodePubKey := GetRandomBech32ConsensusPubKey()
@@ -1283,6 +1309,7 @@ func TestNodeBidDepositAndSaleShieldThenSellerUnshield(t *testing.T) {
 		VaultPubKey:   deposit.VaultPubKey,
 		Status:        types.ShielderRedeemStatusAuthorized,
 	}
+	addTestBTCVaultSourceInput(t, ctx, k, redeem.VaultPubKey, originalBond+100_000)
 	if _, err := QueueAuthorizedWithdrawalTxOut(ctx, k, redeem); err != nil {
 		t.Fatal(err)
 	}
@@ -1607,6 +1634,7 @@ func TestExpiredDepositRefundSubtractsFee(t *testing.T) {
 	SetupConfigForTest()
 	ctx := flowTestContext()
 	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 1
 	baseVault := Vault{
 		PubKey: GetRandomPubKey(),
 		Status: ActiveVault,
@@ -1622,6 +1650,7 @@ func TestExpiredDepositRefundSubtractsFee(t *testing.T) {
 		VaultPubKey:      GetRandomPubKey(),
 		DepositPathIndex: 7,
 	}
+	sourceInput := addTestBTCVaultSourceInput(t, ctx, k, baseVault.PubKey, amount+100_000)
 	if err := queueExpiredDepositReturn(ctx, mgr, deposit); err != nil {
 		t.Fatal(err)
 	}
@@ -1631,6 +1660,19 @@ func TestExpiredDepositRefundSubtractsFee(t *testing.T) {
 	fee := withdrawalFeeSats(ctx, k, amount)
 	if got := k.txOuts[0].Coin.Amount.Uint64(); got != amount-fee {
 		t.Fatalf("refund did not subtract fee: %d/%d", got, amount-fee)
+	}
+	expectedGas, err := btcExactGasCoin(baseVault.PubKey, common.MainVaultPathIndex, []common.Address{deposit.ReturnAddress}, []types.TxOutInput{sourceInput}, 14)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := k.txOuts[0].MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount.Uint64(); got != expectedGas.Amount.Uint64() {
+		t.Fatalf("unexpected refund max gas: %d/%d", got, expectedGas.Amount.Uint64())
+	}
+	if got := k.txOuts[0].GasRate; got != 14 {
+		t.Fatalf("unexpected refund gas rate: %d", got)
+	}
+	if len(k.txOuts[0].SourceInputs) != 1 || !k.txOuts[0].SourceInputs[0].TxId.Equals(sourceInput.TxId) {
+		t.Fatalf("unexpected refund source inputs: %#v", k.txOuts[0].SourceInputs)
 	}
 	if k.txOuts[0].GetTxType() != types.TxOutTypeRefund {
 		t.Fatalf("unexpected txout type: %s", k.txOuts[0].GetTxType())
@@ -1653,6 +1695,43 @@ func flowNote(t *testing.T, amount uint64, commitment string) string {
 		t.Fatal(err)
 	}
 	return string(raw)
+}
+
+func addTestBTCVaultSourceInput(t *testing.T, ctx cosmos.Context, k *shielderFlowTestKeeper, vaultPubKey common.PubKey, amountSats uint64) types.TxOutInput {
+	t.Helper()
+	vault, err := k.GetVault(ctx, vaultPubKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if vault.PubKey.IsEmpty() {
+		vault = Vault{
+			PubKey: vaultPubKey,
+			Status: ActiveVault,
+			Type:   BaseVault,
+		}
+		if err := k.SetVault(ctx, vault); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sourceAddr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	txID := GetRandomTxHash()
+	tx := common.NewTx(
+		txID,
+		GetRandomBTCAddress(),
+		sourceAddr,
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(amountSats))),
+		common.Gas{},
+	)
+	tx.SourceVout = 0
+	k.SetObservedTxInVoter(ctx, ObservedTxVoter{
+		TxID:   txID,
+		Height: ctx.BlockHeight(),
+		Tx:     common.NewObservedTx(tx, ctx.BlockHeight(), vaultPubKey, ctx.BlockHeight()),
+	})
+	return types.TxOutInput{TxId: txID, Vout: 0, AmountSats: amountSats}
 }
 
 func flowShieldAuthorization(t *testing.T, priv *btcec.PrivateKey, depositPubkey string, amount uint64, commitments []string) string {

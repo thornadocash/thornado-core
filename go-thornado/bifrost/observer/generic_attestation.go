@@ -234,10 +234,39 @@ func (s *AttestationState[T]) AttestationCount() int {
 	return len(s.attestations)
 }
 
+func (s *AttestationState[T]) CommittedCount() int {
+	count := 0
+	for _, item := range s.attestations {
+		if item.committed {
+			count++
+		}
+	}
+	return count
+}
+
+func (s *AttestationState[T]) UncommittedCount() int {
+	count := 0
+	for _, item := range s.attestations {
+		if !item.committed {
+			count++
+		}
+	}
+	return count
+}
+
+func (s *AttestationState[T]) AttestationStatus(pubKey []byte) (bool, bool) {
+	for _, item := range s.attestations {
+		if bytes.Equal(item.attestation.PubKey, pubKey) {
+			return true, item.committed
+		}
+	}
+	return false, false
+}
+
 // ShouldSendLate determines if late attestations should be sent
 func (s *AttestationState[T]) ShouldSendLate(minTimeBetweenAttestations time.Duration) bool {
-	if s.UnsentCount() == 0 {
-		// nothing to send
+	if s.UncommittedCount() == 0 {
+		// nothing pending confirmation
 		return false
 	}
 
@@ -288,7 +317,7 @@ func (s *AttestationState[T]) ExpiredAfterQuorum(lateObserveTimeout, nonQuorumTi
 }
 
 func (s *AttestationState[T]) State() string {
-	return fmt.Sprintf("sent: %d, total: %d post-quorum: %t", s.UnsentCount(), len(s.attestations), !s.quorumAttestationsSent.IsZero())
+	return fmt.Sprintf("unsent: %d, uncommitted: %d, total: %d post-quorum: %t", s.UnsentCount(), s.UncommittedCount(), len(s.attestations), !s.quorumAttestationsSent.IsZero())
 }
 
 // MarkAttestationsSent marks all attestations as sent and updates timestamps

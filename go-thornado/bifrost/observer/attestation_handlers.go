@@ -14,9 +14,19 @@ import (
 )
 
 // AttestObservedTx creates and broadcasts an attestation for an observed transaction
-func (s *AttestationGossip) AttestObservedTx(ctx context.Context, obsTx *common.ObservedTx, inbound bool) error {
+func (s *AttestationGossip) AttestObservedTx(ctx context.Context, obsTx *common.ObservedTx, inbound, allowFutureObservation bool) error {
 	if !s.isActiveValidator(s.host.ID()) {
 		return fmt.Errorf("skipping attest observed tx: not active")
+	}
+
+	k := newObservedTxKey(*obsTx, inbound, allowFutureObservation)
+	haveLocalAttestation, committed := s.observedTxAttestationStatus(k, s.pubKey)
+	if haveLocalAttestation {
+		if committed && s.observerHandleObservedTxCommitted != nil && s.observedTxCommittedQuorum(k) {
+			s.logger.Debug().Msg("local observed tx quorum already committed, removing from observer deck")
+			s.observerHandleObservedTxCommitted(*obsTx)
+		}
+		return nil
 	}
 
 	signBz, err := obsTx.GetSignablePayloadWithInbound(inbound)
@@ -30,8 +40,9 @@ func (s *AttestationGossip) AttestObservedTx(ctx context.Context, obsTx *common.
 	}
 
 	msg := common.AttestTx{
-		ObsTx:   *obsTx,
-		Inbound: inbound,
+		ObsTx:                  *obsTx,
+		Inbound:                inbound,
+		AllowFutureObservation: allowFutureObservation,
 		Attestation: &common.Attestation{
 			PubKey:    s.pubKey,
 			Signature: signature,
@@ -45,6 +56,21 @@ func (s *AttestationGossip) AttestObservedTx(ctx context.Context, obsTx *common.
 	s.batcher.AddObservedTx(msg)
 
 	return nil
+}
+
+func (s *AttestationGossip) observedTxAttestationStatus(k txKey, pubKey []byte) (bool, bool) {
+	s.mu.Lock()
+	state, ok := s.observedTxs[k]
+	if ok {
+		state.mu.Lock()
+	}
+	s.mu.Unlock()
+	if !ok {
+		return false, false
+	}
+	defer state.mu.Unlock()
+
+	return state.AttestationStatus(pubKey)
 }
 
 func closeStream(logger zerolog.Logger, stream network.Stream) {

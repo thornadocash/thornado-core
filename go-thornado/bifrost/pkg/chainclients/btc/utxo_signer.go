@@ -39,14 +39,17 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 
 	// skip outbounds that have been signed
 	if c.txAlreadySigned(tx) {
-		c.log.Info().Msgf("ignoring already signed transaction: (%+v)", tx)
+		c.log.Debug().
+			Stringer("in_hash", tx.InHash).
+			Stringer("vault_pub_key", tx.VaultPubKey).
+			Msg("ignoring already signed transaction")
 		if obs, recoverErr := c.recoverSignedTxObservation(tx); recoverErr != nil {
-			c.log.Warn().
+			c.log.Debug().
 				Stringer("in_hash", tx.InHash).
 				Err(recoverErr).
 				Msg("failed to recover signed BTC tx observation")
 		} else if obs != nil {
-			c.log.Warn().
+			c.log.Debug().
 				Stringer("in_hash", tx.InHash).
 				Str("out_hash", obs.Tx).
 				Msg("recovered signed BTC tx observation")
@@ -103,7 +106,7 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 					Err(recoverErr).
 					Msg("failed to recover spent BTC sweep checkpoint observation")
 			} else if obs != nil {
-				c.log.Warn().
+				c.log.Debug().
 					Stringer("in_hash", tx.InHash).
 					Str("out_hash", obs.Tx).
 					Uint64("vault_path_index", tx.VaultPathIndex).
@@ -125,20 +128,31 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 						Err(recoverErr).
 						Msg("failed to recover spent BTC sweep observation")
 				} else if obs != nil {
-					c.log.Warn().
+					c.log.Debug().
 						Stringer("in_hash", tx.InHash).
 						Str("out_hash", obs.Tx).
 						Uint64("vault_path_index", tx.VaultPathIndex).
 						Msg("recovered spent BTC sweep observation")
 					return nil, nil, obs, nil
 				}
-				c.log.Warn().
+				logEvent := c.log.Warn().
 					Stringer("in_hash", tx.InHash).
 					Uint64("vault_path_index", tx.VaultPathIndex).
 					Int64("tx_height", tx.Height).
 					Int64("thornado_height", thornadoHeight).
-					Err(err).
-					Msg("BTC sweep source tx is not spendable; requesting errata")
+					Err(err)
+				logMessage := "BTC sweep source tx is not spendable while signing; waiting for completion or errata"
+				if c.signerCacheManager.HasSigned(tx.CacheHash()) {
+					logEvent = c.log.Debug().
+						Stringer("in_hash", tx.InHash).
+						Str("txout_hash", tx.CacheHash()).
+						Uint64("vault_path_index", tx.VaultPathIndex).
+						Int64("tx_height", tx.Height).
+						Int64("thornado_height", thornadoHeight).
+						Err(err)
+					logMessage = "BTC sweep source already spent by cached signed txout; waiting for completion"
+				}
+				logEvent.Msg(logMessage)
 				return nil, nil, nil, stypes.MissingSourceTxError{
 					TxID:  tx.InHash,
 					Chain: tx.Chain,
@@ -185,7 +199,11 @@ func (c *Client) SignTxBatch(txs []stypes.TxOutItem, thornadoHeight int64) ([]by
 		return nil, nil, nil, nil
 	}
 	if c.txBatchAlreadySigned(txs) {
-		c.log.Info().Msgf("ignoring already signed transaction batch: (%+v)", txs)
+		c.log.Debug().
+			Int("items", len(txs)).
+			Stringer("in_hash", tx.InHash).
+			Stringer("vault_pub_key", tx.VaultPubKey).
+			Msg("ignoring already signed transaction batch")
 		return nil, nil, nil, nil
 	}
 
@@ -258,6 +276,29 @@ func (c *Client) txAlreadySigned(tx stypes.TxOutItem) bool {
 	return c.signerCacheManager.HasSigned(tx.CacheHash())
 }
 
+// RecoverTxObservation reconstructs an already-broadcast outbound observation
+// without signing or broadcasting a transaction.
+func (c *Client) RecoverTxObservation(tx stypes.TxOutItem, _ int64) (*stypes.TxInItem, bool, error) {
+	if obs, err := c.recoverSignedTxObservation(tx); err != nil {
+		return nil, false, err
+	} else if obs != nil {
+		return obs, true, nil
+	}
+	if obs, err := c.recoverSpentSourceInputsObservation(tx); err != nil {
+		return nil, false, err
+	} else if obs != nil {
+		return obs, true, nil
+	}
+	if tx.TxType != ttypes.TxOutTypeSweep {
+		return nil, false, nil
+	}
+	obs, err := c.recoverSpentSweepObservation(tx)
+	if err != nil {
+		return nil, false, err
+	}
+	return obs, obs != nil, nil
+}
+
 func (c *Client) recoverSignedTxObservation(tx stypes.TxOutItem) (*stypes.TxInItem, error) {
 	var txids []string
 	if txid, ok := c.signerCacheManager.GetSignedTxHash(tx.CacheHash()); ok && txid != "" {
@@ -313,11 +354,13 @@ func (c *Client) fetchConfirmedTx(txid string) (*btcjson.TxRawResult, int64, err
 }
 
 func (c *Client) observationFromRecoveredTxOut(tx stypes.TxOutItem, raw *btcjson.TxRawResult, height int64) (*stypes.TxInItem, error) {
+	if len(tx.SourceInputs) > 0 && !recoveredTxSpendsSourceInputs(raw, tx.SourceInputs) {
+		return nil, fmt.Errorf("recovered BTC tx %s does not spend prescribed source inputs", raw.Txid)
+	}
 	sender, err := c.getVaultAddressAtPath(tx.VaultPubKey, tx.VaultPathIndex)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get recovered tx sender: %w", err)
 	}
-	expected := tx.Coins.GetCoin(c.cfg.ChainID.GetGasAsset()).Amount.Uint64()
 	var out *btcjson.Vout
 	for i := range raw.Vout {
 		addresses := c.getAddressesFromScriptPubKey(raw.Vout[i].ScriptPubKey)
@@ -328,7 +371,7 @@ func (c *Client) observationFromRecoveredTxOut(tx stypes.TxOutItem, raw *btcjson
 		if err != nil {
 			return nil, fmt.Errorf("fail to parse recovered output amount: %w", err)
 		}
-		if expected > 0 && uint64(amount.ToUnit(btcutil.AmountSatoshi)) != expected {
+		if !recoveredOutputAmountMatchesTxOut(tx, uint64(amount.ToUnit(btcutil.AmountSatoshi))) {
 			continue
 		}
 		out = &raw.Vout[i]
@@ -363,6 +406,29 @@ func (c *Client) observationFromRecoveredTxOut(tx stypes.TxOutItem, raw *btcjson
 		obs.SourceInputs = append([]stypes.TxOutInput(nil), tx.SourceInputs...)
 	}
 	return obs, nil
+}
+
+func recoveredOutputAmountMatchesTxOut(tx stypes.TxOutItem, amountSats uint64) bool {
+	asset := tx.Chain.GetGasAsset()
+	expected := tx.Coins.GetCoin(asset).Amount.Uint64()
+	if expected == 0 {
+		return true
+	}
+	if !ttypes.IsInternalTxOutType(tx.TxType) {
+		return amountSats == expected
+	}
+	if amountSats < expected {
+		return false
+	}
+	maxGas := tx.MaxGas.ToCoins().GetCoin(asset).Amount.Uint64()
+	if maxGas == 0 {
+		return amountSats == expected
+	}
+	limit := expected + maxGas
+	if limit < expected {
+		limit = ^uint64(0)
+	}
+	return amountSats <= limit
 }
 
 func (c *Client) MarkTxBatchSigned(txs []stypes.TxOutItem, txid string) error {
@@ -450,31 +516,12 @@ type utxoSigning struct {
 }
 
 func (c *Client) signRedeemTxInputs(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, signings []utxoSigning, sourceScript []byte) error {
-	if len(signings) <= 1 || !c.isFrostVault(tx.VaultPubKey) {
+	if !c.isFrostVault(tx.VaultPubKey) {
 		return c.signRedeemTxInputsSequential(redeemTx, tx, signings, sourceScript)
 	}
 
-	c.log.Info().Int("inputs", len(signings)).Msg("signing BTC FROST inputs concurrently")
-	errCh := make(chan error, len(signings))
-	var wg sync.WaitGroup
-	for _, signing := range signings {
-		signing := signing
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := c.signTaprootUTXOBTC(redeemTx, tx, signing.amount, sourceScript, int(signing.idx)); err != nil {
-				errCh <- fmt.Errorf("input %d: %w", signing.idx, err)
-			}
-		}()
-	}
-	wg.Wait()
-	close(errCh)
-
-	var utxoErr error
-	for err := range errCh {
-		utxoErr = multierror.Append(utxoErr, err)
-	}
-	return utxoErr
+	c.log.Info().Int("inputs", len(signings)).Msg("signing BTC FROST inputs sequentially")
+	return c.signRedeemTxInputsSequential(redeemTx, tx, signings, sourceScript)
 }
 
 func (c *Client) signRedeemTxInputsSequential(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, signings []utxoSigning, sourceScript []byte) error {
@@ -485,6 +532,41 @@ func (c *Client) signRedeemTxInputsSequential(redeemTx *btcwire.MsgTx, tx stypes
 		}
 	}
 	return utxoErr
+}
+
+func (c *Client) recoverSpentSourceInputsObservation(tx stypes.TxOutItem) (*stypes.TxInItem, error) {
+	if len(tx.SourceInputs) == 0 {
+		return nil, nil
+	}
+	var candidate *btcjson.TxRawResult
+	var candidateHeight int64
+	for _, input := range tx.SourceInputs {
+		if input.TxID.IsEmpty() {
+			return nil, fmt.Errorf("empty BTC source input tx id")
+		}
+		spend, height, err := c.findSpendingTx(input)
+		if err != nil {
+			return nil, err
+		}
+		if spend == nil {
+			return nil, nil
+		}
+		if candidate == nil {
+			candidate = spend
+			candidateHeight = height
+			continue
+		}
+		if !strings.EqualFold(candidate.Txid, spend.Txid) {
+			return nil, fmt.Errorf("BTC source inputs spent by different transactions: %s and %s", candidate.Txid, spend.Txid)
+		}
+		if height > candidateHeight {
+			candidateHeight = height
+		}
+	}
+	if candidate == nil {
+		return nil, nil
+	}
+	return c.observationFromRecoveredTxOut(tx, candidate, candidateHeight)
 }
 
 func (c *Client) recoverSpentSweepObservation(tx stypes.TxOutItem) (*stypes.TxInItem, error) {
@@ -552,6 +634,23 @@ func (c *Client) findSpendingTx(input stypes.TxOutInput) (*btcjson.TxRawResult, 
 	return nil, 0, nil
 }
 
+func recoveredTxSpendsSourceInputs(raw *btcjson.TxRawResult, inputs []stypes.TxOutInput) bool {
+	if raw == nil {
+		return false
+	}
+	spent := make(map[string]bool, len(raw.Vin))
+	for _, vin := range raw.Vin {
+		spent[fmt.Sprintf("%s:%d", strings.ToUpper(vin.Txid), vin.Vout)] = true
+	}
+	for _, input := range inputs {
+		key := fmt.Sprintf("%s:%d", strings.ToUpper(input.TxID.String()), input.Vout)
+		if !spent[key] {
+			return false
+		}
+	}
+	return true
+}
+
 func (c *Client) observationFromRecoveredSweep(tx stypes.TxOutItem, input stypes.TxOutInput, spend *btcjson.TxRawResult, height int64) (*stypes.TxInItem, error) {
 	source, err := c.rpc.GetRawTransactionVerbose(input.TxID.String())
 	if err != nil {
@@ -610,10 +709,10 @@ func (c *Client) SourceTxMissing(tx stypes.TxOutItem, thornadoHeight int64) (boo
 		return false, nil
 	}
 	if c.signerCacheManager.HasSigned(tx.CacheHash()) {
-		c.log.Info().
+		c.log.Debug().
 			Stringer("in_hash", tx.InHash).
 			Str("txout_hash", tx.CacheHash()).
-			Msg("sweep source already spent by a cached signed txout; skipping errata")
+			Msg("sweep source already spent by cached signed txout; waiting for completion")
 		return false, nil
 	}
 	sourceScript, err := c.getSourceScript(tx)
@@ -626,10 +725,10 @@ func (c *Client) SourceTxMissing(tx stypes.TxOutItem, thornadoHeight int64) (boo
 	}
 	if strings.Contains(err.Error(), "insufficient available UTXOs") {
 		if c.sweepSpendInMempool(tx) {
-			c.log.Info().
+			c.log.Debug().
 				Stringer("in_hash", tx.InHash).
 				Uint64("vault_path_index", tx.VaultPathIndex).
-				Msg("BTC sweep source is already spent by a mempool tx; skipping errata")
+				Msg("BTC sweep source already spent by mempool tx; waiting for completion")
 			return false, nil
 		}
 		if missing, checkErr := c.sweepSourceActuallyMissing(tx); checkErr != nil {

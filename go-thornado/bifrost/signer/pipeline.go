@@ -50,6 +50,7 @@ func (s semaphore) release(count int) {
 type pipelineSigner interface {
 	isStopped() bool
 	storageList() []TxOutStoreItem
+	processDeferredTransaction(item TxOutStoreItem)
 	processTransaction(item TxOutStoreItem)
 }
 
@@ -116,6 +117,7 @@ func (p *pipeline) SpawnSignings(s pipelineSigner, bridge thornadoclient.Thornad
 	retryItems := make(map[vaultChain][]TxOutStoreItem)
 	for _, item := range allItems {
 		if txOutDeferredPast(item, blockHeight) {
+			s.processDeferredTransaction(item)
 			continue
 		}
 		if item.Round7Retry || len(item.SignedTx) > 0 {

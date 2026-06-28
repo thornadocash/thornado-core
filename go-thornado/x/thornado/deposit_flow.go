@@ -510,9 +510,9 @@ func queueExpiredDepositReturn(ctx cosmos.Context, mgr Manager, deposit types.De
 		return nil
 	}
 	amount := cosmos.NewUint(deposit.AmountSats - feeSats)
-	gasRate := mgr.Keeper().GetConfigInt64(ctx, constants.BTC_DefaultSatsPerVByte)
-	if nf, err := mgr.Keeper().GetNetworkFee(ctx, common.BTCChain); err == nil && nf.TransactionFeeRate > 0 {
-		gasRate = int64(nf.TransactionFeeRate)
+	gasRate, err := btcGasRateFromKeeper(ctx, mgr.Keeper())
+	if err != nil {
+		return err
 	}
 	item := TxOutItem{
 		Chain:          common.BTCChain,
@@ -531,10 +531,13 @@ func queueExpiredDepositReturn(ctx cosmos.Context, mgr Manager, deposit types.De
 		"amount", amount.String(),
 		"fee", feeSats,
 	)
-	if err := mgr.Keeper().AppendTxOut(ctx, ctx.BlockHeight(), item); err != nil {
+	if err := appendBTCExactTxOut(ctx, mgr.Keeper(), ctx.BlockHeight(), item); err != nil {
 		return fmt.Errorf("fail to queue deposit return txout: %w", err)
 	}
-	return addWithdrawalFee(ctx, mgr.Keeper(), feeSats)
+	if err := addWithdrawalFee(ctx, mgr.Keeper(), feeSats); err != nil {
+		return err
+	}
+	return nil
 }
 
 func purgeRefundTxOutItemAtHeight(ctx cosmos.Context, k keeper.Keeper, height int64, depositID common.TxID) (bool, error) {

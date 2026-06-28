@@ -71,6 +71,9 @@ type thornadoBridge struct {
 	seqNumber     uint64
 	httpClient    *retryablehttp.Client
 	broadcastLock *sync.RWMutex
+	contextMu     sync.Mutex
+	context       client.Context
+	contextReady  bool
 }
 
 type ThornadoBridge interface {
@@ -122,8 +125,9 @@ type httpResponseCache struct {
 }
 
 var (
-	httpResponseCaches   = make(map[string]*httpResponseCache) // String-to-pointer map for quicker lookup
-	httpResponseCachesMu = &sync.Mutex{}
+	httpResponseCaches       = make(map[string]*httpResponseCache) // String-to-pointer map for quicker lookup
+	httpResponseCachesMu     = &sync.Mutex{}
+	derivedBTCVaultAddrCache sync.Map
 )
 
 // NewThornadoBridge create a new instance of ThornadoBridge
@@ -161,6 +165,11 @@ func MakeCodec() codec.ProtoCodecMarshaler {
 
 // GetContext return a valid context with all relevant values set
 func (b *thornadoBridge) GetContext() client.Context {
+	b.contextMu.Lock()
+	defer b.contextMu.Unlock()
+	if b.contextReady {
+		return b.context
+	}
 	signerAddr, err := b.keys.GetSignerInfo().GetAddress()
 	if err != nil {
 		panic(err)
@@ -190,7 +199,9 @@ func (b *thornadoBridge) GetContext() client.Context {
 		panic(err)
 	}
 	ctx = ctx.WithClient(client)
-	return ctx
+	b.context = ctx
+	b.contextReady = true
+	return b.context
 }
 
 func (b *thornadoBridge) getWithPath(path string) ([]byte, int, error) {
@@ -406,13 +417,13 @@ func (b *thornadoBridge) GetInboundOutbound(txIns common.ObservedTxs) (common.Ob
 			outbound = append(outbound, tx)
 		case inInboundArray && inOutboundArray:
 			// It's already in both arrays, so drop it.
-			b.logger.Error().Msgf("vault-to-vault chain (%s) tx (%s) is already in both inbound and outbound arrays", tx.Tx.Chain, tx.Tx.ID)
+			b.logger.Debug().Msgf("vault-to-vault chain (%s) tx (%s) is already in both inbound and outbound arrays", tx.Tx.Chain, tx.Tx.ID)
 		case !vaultFromAddress && inInboundArray:
 			// It's already in its only (inbound) array, so drop it.
-			b.logger.Error().Msgf("observed tx in for chain (%s) tx (%s) is already in the inbound array", tx.Tx.Chain, tx.Tx.ID)
+			b.logger.Debug().Msgf("observed tx in for chain (%s) tx (%s) is already in the inbound array", tx.Tx.Chain, tx.Tx.ID)
 		case !vaultToAddress && inOutboundArray:
 			// It's already in its only (outbound) array, so drop it.
-			b.logger.Error().Msgf("observed tx out for chain (%s) tx (%s) is already in the outbound array", tx.Tx.Chain, tx.Tx.ID)
+			b.logger.Debug().Msgf("observed tx out for chain (%s) tx (%s) is already in the outbound array", tx.Tx.Chain, tx.Tx.ID)
 		default:
 			// This should never happen; rather than dropping it, return an error.
 			return nil, nil, fmt.Errorf("could not determine if chain (%s) tx (%s) was inbound or outbound", tx.Tx.Chain, tx.Tx.ID)
@@ -423,21 +434,29 @@ func (b *thornadoBridge) GetInboundOutbound(txIns common.ObservedTxs) (common.Ob
 }
 
 func isDerivedBTCVaultAddress(addr common.Address, pubkey common.PubKey) bool {
+	cacheKey := pubkey.String() + "|" + addr.String()
+	if cached, ok := derivedBTCVaultAddrCache.Load(cacheKey); ok {
+		return cached.(bool)
+	}
 	for _, pathType := range []common.VaultDepositPathType{common.VaultDepositPathUser, common.VaultDepositPathNode} {
 		pathIndexes, err := common.VaultDepositLookaheadPathIndexes(pathType)
 		if err != nil {
+			derivedBTCVaultAddrCache.Store(cacheKey, false)
 			return false
 		}
 		for _, pathIndex := range pathIndexes {
 			derived, err := common.DeriveBTCTaprootAddress(pubkey, pathIndex)
 			if err != nil {
+				derivedBTCVaultAddrCache.Store(cacheKey, false)
 				return false
 			}
 			if addr.Equals(derived) {
+				derivedBTCVaultAddrCache.Store(cacheKey, true)
 				return true
 			}
 		}
 	}
+	derivedBTCVaultAddrCache.Store(cacheKey, false)
 	return false
 }
 

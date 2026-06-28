@@ -167,6 +167,7 @@ func main() {
 	}
 	frostKeysignMetricMgr := metrics.NewFrostKeysignMetricMgr()
 	healthServer := NewHealthServer(cfg.FROST.InfoAddress, comm.GetHost().ID().String(), chains)
+	healthServer.SetFrostSessionDebugger(sessionCoordinator)
 	go func() {
 		defer log.Info().Msg("health server exit")
 		if err = healthServer.Start(); err != nil {
@@ -178,12 +179,14 @@ func main() {
 
 	// start observer notifier
 	ag, err := observer.NewAttestationGossip(comm.GetHost(), k, cfg.Thornado.ChainEBifrost, thornadoBridge, m, cfg.AttestationGossip)
+	healthServer.SetAttestationDebugger(ag)
 
 	// start observer
 	obs, err := observer.NewObserver(pubkeyMgr, chains, thornadoBridge, m, cfgChains[tcommon.BTCChain].BlockScanner.DBPath, frostKeysignMetricMgr, ag, *deckDump)
 	if err != nil {
 		log.Fatal().Err(err).Msg("fail to create observer")
 	}
+	healthServer.SetObserverDebugger(obs)
 	if err = obs.Start(ctx); err != nil {
 		log.Fatal().Err(err).Msg("fail to start observer")
 	}

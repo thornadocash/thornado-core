@@ -5,7 +5,6 @@ import (
 
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
-	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
@@ -24,9 +23,9 @@ func QueueAuthorizedWithdrawalTxOut(ctx cosmos.Context, k keeper.Keeper, authori
 	authorization.FeeSats = feeSats
 
 	amount := authorization.AmountSats - authorization.FeeSats
-	gasRate := k.GetConfigInt64(ctx, constants.BTC_DefaultSatsPerVByte)
-	if nf, err := k.GetNetworkFee(ctx, common.BTCChain); err == nil && nf.TransactionFeeRate > 0 {
-		gasRate = int64(nf.TransactionFeeRate)
+	gasRate, err := btcGasRateFromKeeper(ctx, k)
+	if err != nil {
+		return types.ShielderRedeem{}, err
 	}
 	item := TxOutItem{
 		Chain:       common.BTCChain,
@@ -38,13 +37,12 @@ func QueueAuthorizedWithdrawalTxOut(ctx cosmos.Context, k keeper.Keeper, authori
 		ModuleName:  BaseName,
 		TxType:      types.TxOutTypeOut,
 	}
-	if err := k.AppendTxOut(ctx, ctx.BlockHeight(), item); err != nil {
+	if err := appendBTCExactTxOut(ctx, k, ctx.BlockHeight(), item); err != nil {
 		return types.ShielderRedeem{}, err
 	}
 	if err := addWithdrawalFee(ctx, k, authorization.FeeSats); err != nil {
 		return types.ShielderRedeem{}, err
 	}
-
 	authorization.Status = types.DepositStatusKeysignQueued
 	if err := k.SetShielderRedeem(ctx, authorization); err != nil {
 		return types.ShielderRedeem{}, err

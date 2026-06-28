@@ -263,48 +263,118 @@ func excludePendingOutboundFromVault(ctx cosmos.Context, mgr Manager, vault Vaul
 	}
 	vault.Coins = coinsCopy
 
-	// go back Keysign_PeriodMinutes window to see whether there are outstanding tx, the vault need to send out
-	// if there is , deduct it from their balance
+	// Unsigned txouts are only pending during the signing window. Signed BTC txouts stay
+	// pending until the observed-out voter finishes vault accounting.
 	signingPeriod := getConfigDurationBlocks(ctx, mgr.Keeper(), constants.Keysign_PeriodMinutes)
 	startHeight := ctx.BlockHeight() - signingPeriod
 	if startHeight < 1 {
 		startHeight = 1
 	}
-	for i := startHeight; i < ctx.BlockHeight(); i++ {
+	seenSignedOutHashes := make(map[common.TxID]struct{})
+	for i := int64(1); i < ctx.BlockHeight(); i++ {
 		blockOut, err := mgr.Keeper().GetTxOut(ctx, i)
 		if err != nil {
 			ctx.Logger().Error("fail to get block tx out", "error", err)
 			return vault, fmt.Errorf("fail to get block tx out, err: %w", err)
 		}
-		vault = deductVaultBlockPendingOutbound(vault, blockOut)
+		vault = deductVaultBlockPendingOutbound(ctx, mgr, vault, blockOut, i >= startHeight, seenSignedOutHashes)
 	}
 	return vault, nil
 }
 
-func deductVaultBlockPendingOutbound(vault Vault, block *TxOut) Vault {
+func deductVaultBlockPendingOutbound(
+	ctx cosmos.Context,
+	mgr Manager,
+	vault Vault,
+	block *TxOut,
+	includeOpenTxOut bool,
+	seenSignedOutHashes map[common.TxID]struct{},
+) Vault {
+	if block == nil {
+		return vault
+	}
 	for _, txOutItem := range block.TxArray {
 		if !txOutItem.VaultPubKey.Equals(vault.PubKey) {
 			continue
 		}
-		// only still outstanding txout will be considered
-		if !txOutItem.OutHash.IsEmpty() {
+		if txOutItem.OutHash.IsEmpty() {
+			if !includeOpenTxOut {
+				continue
+			}
+			vault = deductVaultOutboundItem(vault, txOutItem.Coin, txOutMaxGasCoin(txOutItem))
 			continue
 		}
-		// deduct the gas asset from the vault as well
-		var gasCoin common.Coin
-		if !txOutItem.MaxGas.IsEmpty() {
-			gasCoin = txOutItem.MaxGas.ToCoins().GetCoin(txOutItem.Chain.GetGasAsset())
+		if !signedOutboundAwaitingVaultAccounting(ctx, mgr, txOutItem) {
+			continue
 		}
-		for i, vaultCoin := range vault.Coins {
-			if vaultCoin.Asset.Equals(txOutItem.Coin.Asset) {
-				vault.Coins[i].Amount = common.SafeSub(vault.Coins[i].Amount, txOutItem.Coin.Amount)
-			}
-			if vaultCoin.Asset.Equals(gasCoin.Asset) {
-				vault.Coins[i].Amount = common.SafeSub(vault.Coins[i].Amount, gasCoin.Amount)
-			}
+		gasCoin := signedOutboundGasCoin(ctx, mgr, vault, txOutItem, seenSignedOutHashes)
+		vault = deductVaultOutboundItem(vault, txOutItem.Coin, gasCoin)
+	}
+	return vault
+}
+
+func deductVaultOutboundItem(vault Vault, coin, gasCoin common.Coin) Vault {
+	for i, vaultCoin := range vault.Coins {
+		if !coin.IsEmpty() && vaultCoin.Asset.Equals(coin.Asset) {
+			vault.Coins[i].Amount = common.SafeSub(vault.Coins[i].Amount, coin.Amount)
+		}
+		if !gasCoin.IsEmpty() && vaultCoin.Asset.Equals(gasCoin.Asset) {
+			vault.Coins[i].Amount = common.SafeSub(vault.Coins[i].Amount, gasCoin.Amount)
 		}
 	}
 	return vault
+}
+
+func txOutMaxGasCoin(txOutItem TxOutItem) common.Coin {
+	if txOutItem.MaxGas.IsEmpty() {
+		return common.Coin{}
+	}
+	return txOutItem.MaxGas.ToCoins().GetCoin(txOutItem.Chain.GetGasAsset())
+}
+
+func signedOutboundAwaitingVaultAccounting(ctx cosmos.Context, mgr Manager, txOutItem TxOutItem) bool {
+	if !txOutItem.Chain.Equals(common.BTCChain) {
+		return false
+	}
+	voter, err := mgr.Keeper().GetObservedTxOutVoter(ctx, txOutItem.OutHash)
+	if err != nil {
+		return true
+	}
+	return !observedOutboundVoterDone(voter)
+}
+
+func observedOutboundVoterDone(voter ObservedTxVoter) bool {
+	if voter.Tx.Status == common.Status_done {
+		return true
+	}
+	for _, tx := range voter.Txs {
+		if tx.Status == common.Status_done {
+			return true
+		}
+	}
+	return false
+}
+
+func signedOutboundGasCoin(
+	ctx cosmos.Context,
+	mgr Manager,
+	vault Vault,
+	txOutItem TxOutItem,
+	seenSignedOutHashes map[common.TxID]struct{},
+) common.Coin {
+	asset := txOutItem.Chain.GetGasAsset()
+	if _, ok := seenSignedOutHashes[txOutItem.OutHash]; ok {
+		return common.Coin{}
+	}
+	seenSignedOutHashes[txOutItem.OutHash] = struct{}{}
+
+	voter, err := mgr.Keeper().GetObservedTxOutVoter(ctx, txOutItem.OutHash)
+	if err == nil {
+		if gas, ok := observedOutboundGas(voter, vault, txOutItem.Chain, asset); ok && !gas.IsZero() {
+			return common.NewCoin(asset, gas)
+		}
+	}
+	return txOutMaxGasCoin(txOutItem)
 }
 
 func recentAuthorizedOutboundGas(ctx cosmos.Context, mgr Manager, vault Vault, chain common.Chain, asset common.Asset) cosmos.Uint {

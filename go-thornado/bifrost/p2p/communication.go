@@ -16,8 +16,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	discovery "github.com/libp2p/go-libp2p-discovery"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/addr"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	maddr "github.com/multiformats/go-multiaddr"
@@ -247,12 +245,25 @@ func (c *Communication) handleStreamFrost(stream network.Stream) {
 			c.streamMgr.AddStream(StreamUnknown, stream)
 			return
 		}
-		c.logger.Debug().Msgf(">>>>>>>[%s] %s", wrappedMsg.MessageType, string(wrappedMsg.Payload))
+		var payloadMeta struct {
+			Kind string `json:"kind"`
+			From string `json:"from"`
+		}
+		_ = json.Unmarshal(wrappedMsg.Payload, &payloadMeta)
+		c.logger.Debug().
+			Str("message_id", wrappedMsg.MsgID).
+			Str("message_type", wrappedMsg.MessageType.String()).
+			Str("kind", payloadMeta.Kind).
+			Str("from", payloadMeta.From).
+			Msg("received frost message")
 		c.streamMgr.AddStream(wrappedMsg.MsgID, stream)
 		channel := c.getSubscriber(wrappedMsg.MessageType, wrappedMsg.MsgID)
 		if nil == channel {
-			c.logger.Debug().Msgf("no MsgID %s found for this message", wrappedMsg.MsgID)
-			c.logger.Debug().Msgf("no MsgID %s found for this message", wrappedMsg.MessageType)
+			c.logger.Debug().
+				Str("message_id", wrappedMsg.MsgID).
+				Str("message_type", wrappedMsg.MessageType.String()).
+				Str("kind", payloadMeta.Kind).
+				Msg("no subscriber for frost message")
 			return
 		}
 		channel <- &Message{
@@ -373,18 +384,6 @@ func (c *Communication) startChannel(privKeyBytes []byte) error {
 	c.host = h
 	c.logger.Info().Msgf("Host created, we are: %s, at: %s", h.ID(), h.Addrs())
 	h.SetStreamHandler(FROSTProtocolID, c.handleStreamFrost)
-	// Start a DHT, for use in peer discovery. We can't just make a new DHT
-	// client because we want each peer to maintain its own local copy of the
-	// DHT, so that the bootstrapping node of the DHT can go down without
-	// inhibiting future peer discovery.
-	kademliaDHT, err := dht.New(ctx, h, dht.Mode(dht.ModeServer))
-	if err != nil {
-		return fmt.Errorf("fail to create DHT: %w", err)
-	}
-	c.logger.Debug().Msg("Bootstrapping the DHT")
-	if err = kademliaDHT.Bootstrap(ctx); err != nil {
-		return fmt.Errorf("fail to bootstrap DHT: %w", err)
-	}
 
 	var connectionErr error
 	for i := 0; i < 5; i++ {
@@ -399,16 +398,12 @@ func (c *Communication) startChannel(privKeyBytes []byte) error {
 		return fmt.Errorf("fail to connect to bootstrap peer: %w", connectionErr)
 	}
 
-	// We use a rendezvous point "meet me here" to announce our location.
-	// This is like telling your friends to meet you at the Eiffel Tower.
-	routingDiscovery := discovery.NewRoutingDiscovery(kademliaDHT)
-	discovery.Advertise(ctx, routingDiscovery, c.config.GetRendezvous())
 	err = c.bootStrapConnectivityCheck()
 	if err != nil {
 		return err
 	}
 
-	c.logger.Info().Msg("Successfully announced!")
+	c.logger.Info().Msg("Successfully connected to bootstrap peers")
 	return nil
 }
 

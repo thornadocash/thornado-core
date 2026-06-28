@@ -1,17 +1,30 @@
 package btc
 
 import (
+	"context"
+	"encoding/hex"
+	"fmt"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	btcwire "github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
+	cmtsecp256k1 "github.com/cometbft/cometbft/crypto/secp256k1"
+	"github.com/rs/zerolog"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 
+	"github.com/thornadocash/go-thornado/bifrost/frost"
+	p2pstorage "github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/signercache"
 	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
+	"github.com/thornadocash/go-thornado/config"
+	frostsessions "github.com/thornadocash/go-thornado/go-wrappers/frost/go-frost/sessions"
 	ttypes "github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
@@ -114,6 +127,185 @@ func TestMarkTxBatchSignedMarksEveryItem(t *testing.T) {
 	}
 }
 
+func TestBTCBatchMaxGasSumsItemShares(t *testing.T) {
+	txs := []stypes.TxOutItem{
+		{MaxGas: common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(101))}},
+		{MaxGas: common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(202))}},
+		{MaxGas: common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(303))}},
+	}
+	got := btcBatchMaxGas(txs).ToCoins().GetCoin(common.BTCAsset).Amount.Uint64()
+	if got != 606 {
+		t.Fatalf("expected summed batch max gas, got %d", got)
+	}
+}
+
+func TestRecoveredOutputAmountAllowsInternalActualGasBelowMaxGas(t *testing.T) {
+	item := stypes.TxOutItem{
+		Chain:  common.BTCChain,
+		Coins:  common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(19_996_700))),
+		MaxGas: common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(3_300))},
+		TxType: ttypes.TxOutTypeSweep,
+	}
+	if !recoveredOutputAmountMatchesTxOut(item, 19_997_690) {
+		t.Fatal("internal recovered output should allow actual gas below max gas")
+	}
+	if recoveredOutputAmountMatchesTxOut(item, 20_000_001) {
+		t.Fatal("internal recovered output must not exceed coin plus max gas")
+	}
+	if recoveredOutputAmountMatchesTxOut(item, 19_996_699) {
+		t.Fatal("internal recovered output must not be below instructed coin")
+	}
+}
+
+func TestRecoveredOutputAmountKeepsExternalTxOutExact(t *testing.T) {
+	item := stypes.TxOutItem{
+		Chain:  common.BTCChain,
+		Coins:  common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(19_996_700))),
+		MaxGas: common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(3_300))},
+		TxType: ttypes.TxOutTypeOut,
+	}
+	if !recoveredOutputAmountMatchesTxOut(item, 19_996_700) {
+		t.Fatal("external recovered output should accept exact amount")
+	}
+	if recoveredOutputAmountMatchesTxOut(item, 19_997_690) {
+		t.Fatal("external recovered output must not overpay")
+	}
+}
+
+type concurrentSignCoordinator struct {
+	shares    map[string][]byte
+	mu        sync.Mutex
+	active    int
+	maxActive int
+}
+
+func (c *concurrentSignCoordinator) RunKeygen(
+	ctx context.Context,
+	height int64,
+	participants []string,
+	localParty string,
+	minSigners uint16,
+) (localShare []byte, pubKeyCompressed []byte, err error) {
+	in := &frost.InProcessSessionCoordinator{}
+	return in.RunKeygen(ctx, height, participants, localParty, minSigners)
+}
+
+func (c *concurrentSignCoordinator) RunSign(
+	ctx context.Context,
+	_ string,
+	_ int64,
+	participants []string,
+	localParty string,
+	_ []byte,
+	msg []byte,
+	taprootKeyPath bool,
+	scriptRoot []byte,
+	childTweak []byte,
+	_ string,
+) ([]byte, error) {
+	c.mu.Lock()
+	c.active++
+	if c.active > c.maxActive {
+		c.maxActive = c.active
+	}
+	c.mu.Unlock()
+	defer func() {
+		c.mu.Lock()
+		c.active--
+		c.mu.Unlock()
+	}()
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(25 * time.Millisecond):
+	}
+	return frost.RunInProcessSign(participants, c.shares, localParty, msg, taprootKeyPath, scriptRoot, childTweak)
+}
+
+func (c *concurrentSignCoordinator) MaxActive() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.maxActive
+}
+
+func TestSignRedeemTxInputsRunsFrostInputsSequentially(t *testing.T) {
+	participants := []string{"node-a", "node-b", "node-c"}
+	allShares, err := frost.RunInProcessKeygenAll(participants, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := frostsessions.DecodeKeyshare(allShares["node-a"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	pubKeyBytes, err := hex.DecodeString(decoded.PublicKeyCompressed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vaultPubKey, err := common.NewPubKeyFromCrypto(cmtsecp256k1.PubKey(pubKeyBytes))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	coordinator := &concurrentSignCoordinator{shares: allShares}
+	client := &Client{
+		cfg: config.BifrostChainConfiguration{ChainID: common.BTCChain},
+		frostKeySigner: &frostVaultSigner{
+			localState: &memoryLocalState{states: map[string]p2pstorage.KeygenLocalState{
+				vaultPubKey.String(): {
+					PubKey:          vaultPubKey.String(),
+					LocalData:       allShares["node-a"],
+					ParticipantKeys: participants,
+					LocalPartyKey:   "node-a",
+					SigningEngine:   p2pstorage.SigningEngineFrost,
+				},
+			}},
+			log:         zerolog.Nop(),
+			coordinator: coordinator,
+			bridge:      &stubKeysignBridge{party: participants[:2]},
+			localParty:  "node-a",
+		},
+		log: zerolog.Nop(),
+	}
+	sourceScript, err := client.getSchnorrSourceScriptAtPath(vaultPubKey, common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	redeemTx := btcwire.NewMsgTx(2)
+	signings := make([]utxoSigning, 0, 3)
+	for i := 0; i < 3; i++ {
+		hash, err := chainhash.NewHashFromStr(fmt.Sprintf("%064x", i+1))
+		if err != nil {
+			t.Fatal(err)
+		}
+		redeemTx.AddTxIn(btcwire.NewTxIn(btcwire.NewOutPoint(hash, uint32(i)), nil, nil))
+		signings = append(signings, utxoSigning{idx: int64(i), amount: 100_000})
+	}
+	redeemTx.AddTxOut(btcwire.NewTxOut(250_000, []byte{0x51}))
+	tx := stypes.TxOutItem{
+		Chain:          common.BTCChain,
+		VaultPubKey:    vaultPubKey,
+		VaultPathIndex: common.MainVaultPathIndex,
+	}
+
+	if err := client.signRedeemTxInputs(redeemTx, tx, signings, sourceScript); err != nil {
+		t.Fatal(err)
+	}
+	if coordinator.MaxActive() != 1 {
+		t.Fatalf("expected sequential FROST input signing, max active sessions was %d", coordinator.MaxActive())
+	}
+	for i, txIn := range redeemTx.TxIn {
+		if len(txIn.Witness) != 1 || len(txIn.Witness[0]) != 65 {
+			t.Fatalf("input %d witness was not signed: %#v", i, txIn.Witness)
+		}
+		if got := txIn.Witness[0][64]; got != schnorrSigHashAllAnyoneCanPay {
+			t.Fatalf("input %d sighash byte = %x", i, got)
+		}
+	}
+}
+
 func TestFilterUtxosBySourceInputsOnlySelectsMatchingOutpoint(t *testing.T) {
 	utxos := []btcjson.ListUnspentResult{
 		{TxID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Vout: 0, Amount: 0.12},
@@ -170,6 +362,25 @@ func TestFilterUtxosBySourceInputsCanUseMultiplePrescribedInputs(t *testing.T) {
 		if utxo.TxID != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" {
 			t.Fatalf("selected non-source UTXO: %s", utxo.TxID)
 		}
+	}
+}
+
+func TestRecoveredTxMustSpendPrescribedSourceInputs(t *testing.T) {
+	sourceTx, err := common.NewTxID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw := &btcjson.TxRawResult{
+		Txid: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+		Vin: []btcjson.Vin{
+			{Txid: sourceTx.String(), Vout: 1},
+		},
+	}
+	if recoveredTxSpendsSourceInputs(raw, []stypes.TxOutInput{{TxID: sourceTx, Vout: 0}}) {
+		t.Fatal("recovered tx matched the wrong prescribed source vout")
+	}
+	if !recoveredTxSpendsSourceInputs(raw, []stypes.TxOutInput{{TxID: sourceTx, Vout: 1}}) {
+		t.Fatal("recovered tx did not match its prescribed source input")
 	}
 }
 

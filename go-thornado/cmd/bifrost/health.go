@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"strconv"
 	"strings"
@@ -16,6 +17,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/thornadocash/go-thornado/bifrost/frost"
+	"github.com/thornadocash/go-thornado/bifrost/observer"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients"
 	"github.com/thornadocash/go-thornado/bifrost/signer"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
@@ -92,6 +95,15 @@ type HealthServer struct {
 	chains          map[common.Chain]chainclients.ChainClient
 	providerPayload []byte
 	signer          *signer.Signer
+	frostSessions   interface {
+		DebugSessions() []frost.DebugSession
+	}
+	attestations interface {
+		DebugPerformance() observer.DebugAttestationPerformance
+	}
+	observerDebug interface {
+		DebugOnDeck() observer.DebugObserverOnDeck
+	}
 }
 
 // NewHealthServer create a new instance of health server
@@ -131,6 +143,24 @@ func (s *HealthServer) SetSigner(sign *signer.Signer) {
 	s.signer = sign
 }
 
+func (s *HealthServer) SetFrostSessionDebugger(debugger interface {
+	DebugSessions() []frost.DebugSession
+}) {
+	s.frostSessions = debugger
+}
+
+func (s *HealthServer) SetAttestationDebugger(debugger interface {
+	DebugPerformance() observer.DebugAttestationPerformance
+}) {
+	s.attestations = debugger
+}
+
+func (s *HealthServer) SetObserverDebugger(debugger interface {
+	DebugOnDeck() observer.DebugObserverOnDeck
+}) {
+	s.observerDebug = debugger
+}
+
 func (s *HealthServer) newHandler() http.Handler {
 	router := mux.NewRouter()
 	router.Handle("/ping", http.HandlerFunc(s.pingHandler)).Methods(http.MethodGet)
@@ -142,9 +172,19 @@ func (s *HealthServer) newHandler() http.Handler {
 	router.Handle("/version", http.HandlerFunc(s.versionHandler)).Methods(http.MethodGet)
 	router.Handle("/debug/health/full", http.HandlerFunc(s.debugFullHealth)).Methods(http.MethodGet)
 	router.Handle("/debug/signer/txouts", http.HandlerFunc(s.debugSignerTxOuts)).Methods(http.MethodGet)
+	router.Handle("/debug/signer/performance", http.HandlerFunc(s.debugSignerPerformance)).Methods(http.MethodGet)
 	router.Handle("/debug/signer/txout/{in_hash}", http.HandlerFunc(s.debugSignerTxOut)).Methods(http.MethodGet)
 	router.Handle("/debug/btc/txout/{in_hash}", http.HandlerFunc(s.debugBTCTxOut)).Methods(http.MethodGet)
+	router.Handle("/debug/btc/txout/{in_hash}/observe-recovered", http.HandlerFunc(s.observeRecoveredBTCTxOut)).Methods(http.MethodPost)
 	router.Handle("/debug/vaults/local", http.HandlerFunc(s.debugLocalVaults)).Methods(http.MethodGet)
+	router.Handle("/debug/frost/sessions", http.HandlerFunc(s.debugFrostSessions)).Methods(http.MethodGet)
+	router.Handle("/debug/attestations/performance", http.HandlerFunc(s.debugAttestationPerformance)).Methods(http.MethodGet)
+	router.Handle("/debug/observer/ondeck", http.HandlerFunc(s.debugObserverOnDeck)).Methods(http.MethodGet)
+	router.HandleFunc("/debug/pprof/", pprof.Index)
+	router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	router.HandleFunc("/debug/pprof/trace", pprof.Trace)
 	return router
 }
 
@@ -214,6 +254,14 @@ func (s *HealthServer) debugSignerTxOuts(w http.ResponseWriter, _ *http.Request)
 	writeJSON(w, s.logger, http.StatusOK, sign.DebugTxOuts())
 }
 
+func (s *HealthServer) debugSignerPerformance(w http.ResponseWriter, _ *http.Request) {
+	sign, ok := s.requireSigner(w)
+	if !ok {
+		return
+	}
+	writeJSON(w, s.logger, http.StatusOK, sign.DebugSigningPerformance())
+}
+
 func (s *HealthServer) debugSignerTxOut(w http.ResponseWriter, r *http.Request) {
 	sign, ok := s.requireSigner(w)
 	if !ok {
@@ -246,6 +294,24 @@ func (s *HealthServer) debugBTCTxOut(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, s.logger, http.StatusOK, state)
 }
 
+func (s *HealthServer) observeRecoveredBTCTxOut(w http.ResponseWriter, r *http.Request) {
+	sign, ok := s.requireSigner(w)
+	if !ok {
+		return
+	}
+	inHash := mux.Vars(r)["in_hash"]
+	obs, recovered, err := sign.ObserveRecoveredTxOut(inHash)
+	if err != nil {
+		writeJSON(w, s.logger, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	if obs == nil {
+		writeJSON(w, s.logger, http.StatusNotFound, map[string]string{"error": "recovered observation not found"})
+		return
+	}
+	writeJSON(w, s.logger, http.StatusOK, map[string]interface{}{"recovered": recovered, "observation": obs})
+}
+
 func (s *HealthServer) debugLocalVaults(w http.ResponseWriter, _ *http.Request) {
 	sign, ok := s.requireSigner(w)
 	if !ok {
@@ -257,6 +323,30 @@ func (s *HealthServer) debugLocalVaults(w http.ResponseWriter, _ *http.Request) 
 		return
 	}
 	writeJSON(w, s.logger, http.StatusOK, vaults)
+}
+
+func (s *HealthServer) debugFrostSessions(w http.ResponseWriter, _ *http.Request) {
+	if s.frostSessions == nil {
+		writeJSON(w, s.logger, http.StatusServiceUnavailable, map[string]string{"error": "frost session debugger not ready"})
+		return
+	}
+	writeJSON(w, s.logger, http.StatusOK, s.frostSessions.DebugSessions())
+}
+
+func (s *HealthServer) debugAttestationPerformance(w http.ResponseWriter, _ *http.Request) {
+	if s.attestations == nil {
+		writeJSON(w, s.logger, http.StatusServiceUnavailable, map[string]string{"error": "attestation debugger not ready"})
+		return
+	}
+	writeJSON(w, s.logger, http.StatusOK, s.attestations.DebugPerformance())
+}
+
+func (s *HealthServer) debugObserverOnDeck(w http.ResponseWriter, _ *http.Request) {
+	if s.observerDebug == nil {
+		writeJSON(w, s.logger, http.StatusServiceUnavailable, map[string]string{"error": "observer debugger not ready"})
+		return
+	}
+	writeJSON(w, s.logger, http.StatusOK, s.observerDebug.DebugOnDeck())
 }
 
 func (s *HealthServer) p2pStatus(w http.ResponseWriter, _ *http.Request) {

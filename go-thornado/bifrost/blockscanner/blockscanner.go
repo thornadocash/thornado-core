@@ -422,6 +422,15 @@ func (b *BlockScanner) updateStaleNetworkFee(currentBlock int64) {
 	}
 
 	transactionSize, transactionFeeRate := b.chainScanner.GetNetworkFee()
+	if transactionSize == 0 || transactionFeeRate == 0 {
+		b.logger.Debug().
+			Int64("height", currentBlock).
+			Uint64("size", transactionSize).
+			Uint64("rate", transactionFeeRate).
+			Msg("skipping timed network fee with incomplete scanner fee")
+		return
+	}
+
 	thorTransactionSize, thorTransactionFeeRate, err := b.thornadoBridge.GetNetworkFee(b.cfg.ChainID)
 	if err != nil {
 		b.logger.Error().Err(err).Msg("fail to get thornado network fee")

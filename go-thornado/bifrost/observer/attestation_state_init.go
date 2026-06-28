@@ -183,11 +183,12 @@ func (s *AttestationGossip) sendAttestationState(stream network.Stream) {
 	}
 
 	if totalBatches == 0 {
-		// If there are no transactions, we still need to send the end signal
 		if string(ack) != p2p.StreamMsgDone {
 			s.logger.Error().Str("response", string(ack)).Msg("unexpected final response")
 			return
 		}
+		s.logger.Debug().Msg("successfully sent empty attestation state")
+		return
 	}
 
 	if string(ack) != streamAckBegin {
@@ -243,7 +244,7 @@ func (s *AttestationGossip) sendAttestationState(stream network.Stream) {
 
 		// Marshal the batch (handle empty batches specially)
 		var batchData []byte
-		if len(batch.QuoTxs) == 0 {
+		if quorumStateEmpty(batch) {
 			// For empty batches, use an empty buffer rather than marshaling an empty struct
 			batchData = []byte{}
 		} else {
@@ -330,17 +331,35 @@ func (s *AttestationGossip) sendAttestationState(stream network.Stream) {
 		Msg("successfully sent attestation state in batches")
 }
 
+func batchBeginTotalBatches(data []byte) (int, error) {
+	if len(data) >= len(prefixBatchBegin)+4 && bytes.HasPrefix(data, prefixBatchBegin) {
+		offset := len(prefixBatchBegin)
+		return int(binary.LittleEndian.Uint32(data[offset : offset+4])), nil
+	}
+	if len(data) >= 4 {
+		return int(binary.LittleEndian.Uint32(data[:4])), nil
+	}
+	return 0, fmt.Errorf("invalid batch begin format")
+}
+
+func quorumStateEmpty(batch common.QuorumState) bool {
+	return len(batch.QuoTxs) == 0 &&
+		len(batch.QuoNetworkFees) == 0 &&
+		len(batch.QuoSolvencies) == 0 &&
+		len(batch.QuoErrataTxs) == 0
+}
+
 // Add a function to handle receiving batched attestation state
 func (s *AttestationGossip) receiveBatchedAttestationState(stream network.Stream, initialData []byte) error {
 	remotePeer := stream.Conn().RemotePeer()
 	logger := s.logger.With().Str("peer", remotePeer.String()).Str("who", "receiver").Logger()
 
 	// Process batch begin
-	if len(initialData) < 4 {
-		return fmt.Errorf("invalid batch begin format")
+	totalBatches, err := batchBeginTotalBatches(initialData)
+	if err != nil {
+		return err
 	}
 
-	totalBatches := int(binary.LittleEndian.Uint32(initialData[:4]))
 	logger.Debug().Int("total_batches", totalBatches).Msg("receiving batched attestation state")
 
 	if totalBatches == 0 {

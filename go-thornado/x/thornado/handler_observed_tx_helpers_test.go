@@ -1,8 +1,8 @@
 package thornado
 
 import (
-	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"testing"
 
@@ -13,8 +13,6 @@ import (
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
-
-var errTestMissingTxOut = errors.New("missing txout")
 
 func testContext(height int64) cosmos.Context {
 	return cosmos.Context{}.WithBlockHeight(height).WithLogger(log.NewNopLogger())
@@ -46,20 +44,35 @@ func (k *shielderFlowTestKeeper) GetBaseVaults(_ cosmos.Context) (Vaults, error)
 
 func (k *shielderFlowTestKeeper) SetTxOut(_ cosmos.Context, txOut *TxOut) error {
 	k.txOutByHeight[txOut.Height] = *txOut
+	k.txOuts = nil
+	heights := make([]int64, 0, len(k.txOutByHeight))
+	for height := range k.txOutByHeight {
+		heights = append(heights, height)
+	}
+	sort.Slice(heights, func(i, j int) bool { return heights[i] < heights[j] })
+	for _, height := range heights {
+		k.txOuts = append(k.txOuts, k.txOutByHeight[height].TxArray...)
+	}
 	return nil
 }
 
 func (k *shielderFlowTestKeeper) GetTxOut(_ cosmos.Context, height int64) (*TxOut, error) {
 	txOut, ok := k.txOutByHeight[height]
 	if !ok {
-		return nil, errTestMissingTxOut
+		return NewTxOut(height), nil
 	}
 	return &txOut, nil
 }
 
 func (k *shielderFlowTestKeeper) GetTxOutIterator(_ cosmos.Context) cosmos.Iterator {
 	iter := keeper.NewDummyIterator()
-	for height, txOut := range k.txOutByHeight {
+	heights := make([]int64, 0, len(k.txOutByHeight))
+	for height := range k.txOutByHeight {
+		heights = append(heights, height)
+	}
+	sort.Slice(heights, func(i, j int) bool { return heights[i] < heights[j] })
+	for _, height := range heights {
+		txOut := k.txOutByHeight[height]
 		value, _ := k.Cdc().Marshal(&txOut)
 		iter.AddItem([]byte(strconv.FormatInt(height, 10)), value)
 	}
@@ -84,11 +97,33 @@ func (k *shielderFlowTestKeeper) GetSolvencyVoterIterator(_ cosmos.Context) cosm
 }
 
 func (k *shielderFlowTestKeeper) GetObservedTxOutVoterIterator(_ cosmos.Context) cosmos.Iterator {
-	return keeper.NewDummyIterator()
+	iter := keeper.NewDummyIterator()
+	keys := make([]string, 0, len(k.txOutVoters))
+	for key := range k.txOutVoters {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		voter := k.txOutVoters[key]
+		value, _ := k.Cdc().Marshal(&voter)
+		iter.AddItem([]byte(key), value)
+	}
+	return iter
 }
 
 func (k *shielderFlowTestKeeper) GetObservedTxInVoterIterator(_ cosmos.Context) cosmos.Iterator {
-	return keeper.NewDummyIterator()
+	iter := keeper.NewDummyIterator()
+	keys := make([]string, 0, len(k.txInVoters))
+	for key := range k.txInVoters {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		voter := k.txInVoters[key]
+		value, _ := k.Cdc().Marshal(&voter)
+		iter.AddItem([]byte(key), value)
+	}
+	return iter
 }
 
 func (k *shielderFlowTestKeeper) SetObservedTxInVoter(_ cosmos.Context, voter ObservedTxVoter) {
@@ -98,7 +133,7 @@ func (k *shielderFlowTestKeeper) SetObservedTxInVoter(_ cosmos.Context, voter Ob
 func (k *shielderFlowTestKeeper) GetObservedTxInVoter(_ cosmos.Context, hash common.TxID) (ObservedTxVoter, error) {
 	voter, ok := k.txInVoters[hash.String()]
 	if !ok {
-		return ObservedTxVoter{}, errTestMissingTxOut
+		return ObservedTxVoter{TxID: hash}, nil
 	}
 	return voter, nil
 }
@@ -110,7 +145,7 @@ func (k *shielderFlowTestKeeper) SetObservedTxOutVoter(_ cosmos.Context, voter O
 func (k *shielderFlowTestKeeper) GetObservedTxOutVoter(_ cosmos.Context, hash common.TxID) (ObservedTxVoter, error) {
 	voter, ok := k.txOutVoters[hash.String()]
 	if !ok {
-		return ObservedTxVoter{}, errTestMissingTxOut
+		return ObservedTxVoter{TxID: hash}, nil
 	}
 	return voter, nil
 }
@@ -464,6 +499,131 @@ func TestTxForOutboundReplayMatchUsesFreshSourceInputs(t *testing.T) {
 	if len(selected.Tx.SourceInputs) != 1 || !selected.Tx.SourceInputs[0].TxID.Equals(inHash) {
 		t.Fatal("expected fresh replay observation with source inputs to be selected")
 	}
+}
+
+func TestObservedOutboundBatchSingleObservationSettlesAllItems(t *testing.T) {
+	SetupConfigForTest()
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 1
+	mgr := newShielderFlowTestManager(k)
+	vaultPubKey := GetRandomPubKey()
+	txOut, sourceInput, sourceAddr := testQueuedBTCBatch(t, ctx, k, vaultPubKey)
+
+	totalGas := testTxOutTotalBTCMaxGas(txOut)
+	outHash := GetRandomTxHash()
+	observedTx := common.NewTx(
+		outHash,
+		sourceAddr,
+		txOut.TxArray[0].ToAddress,
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(700_000))),
+		common.Gas{common.NewCoin(common.BTCAsset, totalGas)},
+	)
+	observedTx.SourceInputs = []common.TxInput{{TxID: sourceInput.TxId, Vout: sourceInput.Vout, AmountSats: sourceInput.AmountSats}}
+	observed := common.NewObservedTx(observedTx, ctx.BlockHeight(), vaultPubKey, ctx.BlockHeight())
+
+	if !markObservedOutboundTxOut(ctx, mgr, observed) {
+		t.Fatal("expected one aggregate batch observation to settle all txout items")
+	}
+	stored := k.txOutByHeight[ctx.BlockHeight()]
+	for i, item := range stored.TxArray {
+		if !item.OutHash.Equals(outHash) || item.OutVout != uint32(i) {
+			t.Fatalf("batch item %d was not settled by aggregate observation: %#v", i, item)
+		}
+	}
+}
+
+func TestObservedOutboundBatchRequiresPrescribedSourceInputs(t *testing.T) {
+	SetupConfigForTest()
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 1
+	mgr := newShielderFlowTestManager(k)
+	vaultPubKey := GetRandomPubKey()
+	txOut, sourceInput, sourceAddr := testQueuedBTCBatch(t, ctx, k, vaultPubKey)
+
+	wrongInput := addTestBTCVaultSourceInput(t, ctx, k, vaultPubKey, 2_000_000)
+	if wrongInput.TxId.Equals(sourceInput.TxId) {
+		t.Fatal("test source inputs should differ")
+	}
+	observedTx := common.NewTx(
+		GetRandomTxHash(),
+		sourceAddr,
+		txOut.TxArray[0].ToAddress,
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(700_000))),
+		common.Gas{common.NewCoin(common.BTCAsset, testTxOutTotalBTCMaxGas(txOut))},
+	)
+	observedTx.SourceInputs = []common.TxInput{{TxID: wrongInput.TxId, Vout: wrongInput.Vout, AmountSats: wrongInput.AmountSats}}
+	observed := common.NewObservedTx(observedTx, ctx.BlockHeight(), vaultPubKey, ctx.BlockHeight())
+
+	if markObservedOutboundTxOut(ctx, mgr, observed) {
+		t.Fatal("batch observation with wrong source inputs should not settle txout items")
+	}
+	stored := k.txOutByHeight[ctx.BlockHeight()]
+	for i, item := range stored.TxArray {
+		if !item.OutHash.IsEmpty() {
+			t.Fatalf("batch item %d was incorrectly settled: %#v", i, item)
+		}
+	}
+}
+
+func testQueuedBTCBatch(t *testing.T, ctx cosmos.Context, k *shielderFlowTestKeeper, vaultPubKey common.PubKey) (*TxOut, types.TxOutInput, common.Address) {
+	t.Helper()
+	sourceInput := addTestBTCVaultSourceInput(t, ctx, k, vaultPubKey, 2_000_000)
+	vault, err := k.GetVault(ctx, vaultPubKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceAddr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	txOut := NewTxOut(ctx.BlockHeight())
+	txOut.TxArray = []TxOutItem{
+		{
+			Chain:          common.BTCChain,
+			ToAddress:      GetRandomBTCAddress(),
+			VaultPubKey:    vaultPubKey,
+			VaultPathIndex: common.MainVaultPathIndex,
+			Coin:           common.NewCoin(common.BTCAsset, cosmos.NewUint(400_000)),
+			InHash:         GetRandomTxHash(),
+			ModuleName:     BaseName,
+			TxType:         types.TxOutTypeOut,
+		},
+		{
+			Chain:          common.BTCChain,
+			ToAddress:      GetRandomBTCAddress(),
+			VaultPubKey:    vaultPubKey,
+			VaultPathIndex: common.MainVaultPathIndex,
+			Coin:           common.NewCoin(common.BTCAsset, cosmos.NewUint(300_000)),
+			InHash:         GetRandomTxHash(),
+			ModuleName:     BaseName,
+			TxType:         types.TxOutTypeRefund,
+		},
+	}
+	if err := refreshBTCExactTxOutBlock(ctx, k, txOut); err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range txOut.TxArray {
+		if len(item.SourceInputs) != 1 || !item.SourceInputs[0].TxId.Equals(sourceInput.TxId) {
+			t.Fatalf("unexpected batch source inputs: %#v", item.SourceInputs)
+		}
+	}
+	if testTxOutTotalBTCMaxGas(txOut).IsZero() {
+		t.Fatal("expected batch max gas")
+	}
+	if err := k.SetTxOut(ctx, txOut); err != nil {
+		t.Fatal(err)
+	}
+	return txOut, sourceInput, sourceAddr
+}
+
+func testTxOutTotalBTCMaxGas(txOut *TxOut) cosmos.Uint {
+	total := cosmos.ZeroUint()
+	for _, item := range txOut.TxArray {
+		total = total.Add(item.MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount)
+	}
+	return total
 }
 
 func TestBTCMigrationSourceInputsSelectWholeUTXOAtOrAboveTarget(t *testing.T) {
@@ -845,6 +1005,11 @@ func TestObservedOutboundAlreadyMatchedBatchIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	sourceTx, err := common.NewTxID("1B159AE062CE13A92F1453C8BCB692FCA160E0D6048C847E9FCE33C8F02CCD0C")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceInputs := []types.TxOutInput{{TxId: sourceTx, Vout: 0, AmountSats: 11_000_000}}
 	txOut := &TxOut{
 		Height: 397,
 		TxArray: []TxOutItem{
@@ -856,8 +1021,10 @@ func TestObservedOutboundAlreadyMatchedBatchIsIdempotent(t *testing.T) {
 				InHash:         inHash1,
 				OutHash:        outHash,
 				OutVout:        0,
+				MaxGas:         common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(3_787))},
 				VaultPathIndex: common.MainVaultPathIndex,
 				TxType:         types.TxOutTypeOut,
+				SourceInputs:   sourceInputs,
 			},
 			{
 				Chain:          common.BTCChain,
@@ -867,8 +1034,10 @@ func TestObservedOutboundAlreadyMatchedBatchIsIdempotent(t *testing.T) {
 				InHash:         inHash2,
 				OutHash:        outHash,
 				OutVout:        1,
+				MaxGas:         common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(3_787))},
 				VaultPathIndex: common.MainVaultPathIndex,
 				TxType:         types.TxOutTypeOut,
+				SourceInputs:   sourceInputs,
 			},
 		},
 	}
@@ -884,6 +1053,7 @@ func TestObservedOutboundAlreadyMatchedBatchIsIdempotent(t *testing.T) {
 		pubKey,
 		636,
 	)
+	tx.Tx.SourceInputs = []common.TxInput{{TxID: sourceTx, Vout: 0, AmountSats: 11_000_000}}
 
 	if !observedOutboundAlreadyMatchedTxOut(txOut, tx) {
 		t.Fatal("expected duplicate observed batch outbound to be treated as matched")

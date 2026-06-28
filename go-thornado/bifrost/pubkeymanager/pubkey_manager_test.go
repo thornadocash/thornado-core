@@ -29,6 +29,10 @@ func TestAddPubKeyRegistersBaseVaultBeforeDepositLookahead(t *testing.T) {
 	var depositOnce sync.Once
 	var order []string
 	depositCallback := make(chan struct{})
+	firstUserPath, err := common.VaultDepositPathIndex(common.VaultDepositPathUser, 0, common.DepositPathCommitmentRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
 	pkm.RegisterCallback(func(common.PubKey) error {
 		mu.Lock()
 		defer mu.Unlock()
@@ -36,8 +40,7 @@ func TestAddPubKeyRegistersBaseVaultBeforeDepositLookahead(t *testing.T) {
 		return nil
 	})
 	pkm.RegisterPathCallback(func(_ common.PubKey, pathIndex uint64) error {
-		firstUserPath, err := common.VaultDepositPathIndex(common.VaultDepositPathUser, 0, common.DepositPathCommitmentRoot)
-		if err != nil || pathIndex != firstUserPath {
+		if pathIndex != firstUserPath {
 			return nil
 		}
 		mu.Lock()
@@ -50,6 +53,13 @@ func TestAddPubKeyRegistersBaseVaultBeforeDepositLookahead(t *testing.T) {
 	})
 
 	pkm.AddPubKey(pk, true, common.SigningAlgoSecp256k1)
+	firstUserAddress, err := common.DeriveBTCTaprootAddress(pk, firstUserPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, _ := pkm.IsValidVaultAddress(firstUserAddress.String(), common.BTCChain); !ok {
+		t.Fatal("first deposit address was not registered before AddPubKey returned")
+	}
 
 	mu.Lock()
 	if len(order) < 1 {
@@ -120,5 +130,13 @@ func TestRegisterCallbacksReplayExistingSecpVault(t *testing.T) {
 	case <-pathReplay:
 	case <-time.After(5 * time.Second):
 		t.Fatal("timed out waiting for path callback replay")
+	}
+
+	firstUserAddress, err := common.DeriveBTCTaprootAddress(pk, firstUserPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, _ := pkm.IsValidVaultAddress(firstUserAddress.String(), common.BTCChain); !ok {
+		t.Fatal("existing vault deposit address was not registered during path callback replay")
 	}
 }

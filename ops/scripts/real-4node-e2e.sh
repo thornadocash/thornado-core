@@ -2014,13 +2014,14 @@ validate_flow3() {
     "$RUN_ROOT/meta/flow3-shielder-sync-after-split.json" >/dev/null || die "flow3 shielder sync did not expose public note records"
 
   local root denom note leaves recipient fee withdrawal prefix withdrawal_id withdraw_query nullifier nullifier_query outbound_txout out_hash expected_payout recipient_received
-  note="$(jq -c '.notes[0]' "$RUN_ROOT/meta/flow3-receipt.json")"
-  leaves="$(shielder_leaves "$(jq -r '.denomination_sats' <<<"$note")")"
-  printf '%s\n' "$leaves" >"$RUN_ROOT/meta/flow3-proof-leaves.json"
-  recipient="$(btc_cli -rpcwallet=miner getnewaddress)"
-  printf '%s\n' "$recipient" >"$RUN_ROOT/meta/flow3-recipient-address.txt"
-  curl -fsS "$(api_url 1)/thornado/fee/entitlements" >"$RUN_ROOT/meta/flow3-fee-entitlements-before.json"
-  curl -fsS "$(api_url 1)/thornado/shielder/redeem/quote/$(jq -r '.denomination_sats' <<<"$note")" >"$RUN_ROOT/meta/flow3-redeem-quote.json"
+	  note="$(jq -c '.notes[0]' "$RUN_ROOT/meta/flow3-receipt.json")"
+	  leaves="$(shielder_leaves "$(jq -r '.denomination_sats' <<<"$note")")"
+	  printf '%s\n' "$leaves" >"$RUN_ROOT/meta/flow3-proof-leaves.json"
+	  recipient="$(btc_cli -rpcwallet=miner getnewaddress)"
+	  printf '%s\n' "$recipient" >"$RUN_ROOT/meta/flow3-recipient-address.txt"
+	  curl -fsS "$(api_url 1)/thornado/fee/entitlements" >"$RUN_ROOT/meta/flow3-fee-entitlements-before.json"
+	  curl -fsS "$(api_url 1)/thornado/fees" >"$RUN_ROOT/meta/flow3-fee-pool-before.json"
+	  curl -fsS "$(api_url 1)/thornado/shielder/redeem/quote/$(jq -r '.denomination_sats' <<<"$note")" >"$RUN_ROOT/meta/flow3-redeem-quote.json"
   fee="$(jq -r '.fee_sats' "$RUN_ROOT/meta/flow3-redeem-quote.json")"
   (( fee > 0 )) || die "flow3 redeem quote returned zero fee"
   withdrawal="$("$SHIELDER_HELPER" withdrawal "$note" "$flow3_note_seed" "$leaves" "$recipient" "$fee")"
@@ -2075,14 +2076,23 @@ validate_flow3() {
   recipient_received="$(wait_btc_balance_at_least "$recipient" "0.009" 300)"
   printf '%s\n' "$recipient_received" >"$RUN_ROOT/meta/flow3-recipient-received-btc.txt"
   btc_cli -rpcwallet=miner listunspent 0 9999999 "[\"${recipient}\"]" >"$RUN_ROOT/meta/flow3-recipient-utxos.json"
-  jq -e --arg txid "$(printf '%s' "$out_hash" | tr '[:upper:]' '[:lower:]')" --argjson payout "$expected_payout" \
-    'length == 1 and .[0].txid == $txid and (((.[0].amount * 100000000) | floor) == $payout)' \
-    "$RUN_ROOT/meta/flow3-recipient-utxos.json" >/dev/null || die "flow3 recipient had duplicate or unexpected BTC payout UTXOs"
-  curl -fsS "$(api_url 1)/thornado/fee/entitlements" >"$RUN_ROOT/meta/flow3-fee-entitlements-after.json"
-  jq -e --argjson fee "$fee" '([.entitlements[]? | (.claimable_sats | tonumber)] | add // 0) >= $fee' "$RUN_ROOT/meta/flow3-fee-entitlements-after.json" >/dev/null \
-    || die "flow3 fee entitlement did not increase enough to explain withdrawal fee"
+	  jq -e --arg txid "$(printf '%s' "$out_hash" | tr '[:upper:]' '[:lower:]')" --argjson payout "$expected_payout" \
+	    'length == 1 and .[0].txid == $txid and (((.[0].amount * 100000000) | floor) == $payout)' \
+	    "$RUN_ROOT/meta/flow3-recipient-utxos.json" >/dev/null || die "flow3 recipient had duplicate or unexpected BTC payout UTXOs"
+	  curl -fsS "$(api_url 1)/thornado/fee/entitlements" >"$RUN_ROOT/meta/flow3-fee-entitlements-after.json"
+	  curl -fsS "$(api_url 1)/thornado/fees" >"$RUN_ROOT/meta/flow3-fee-pool-after.json"
+	  local fee_slots before_collected after_collected
+	  fee_slots="$(jq -r '.total_slots | tonumber' "$RUN_ROOT/meta/flow3-fee-pool-after.json")"
+	  if (( fee_slots > 0 )); then
+	    jq -e --argjson fee "$fee" '([.entitlements[]? | (.claimable_sats | tonumber)] | add // 0) >= $fee' "$RUN_ROOT/meta/flow3-fee-entitlements-after.json" >/dev/null \
+	      || die "flow3 fee entitlement did not increase enough to explain withdrawal fee"
+	  else
+	    before_collected="$(jq -r '.total_collected_sats | tonumber' "$RUN_ROOT/meta/flow3-fee-pool-before.json")"
+	    after_collected="$(jq -r '.total_collected_sats | tonumber' "$RUN_ROOT/meta/flow3-fee-pool-after.json")"
+	    (( after_collected - before_collected >= fee )) || die "flow3 fee pool did not collect withdrawal fee"
+	  fi
 
-  if [[ "${FLOW3_MAIN_ONLY:-0}" == "1" ]]; then
+	  if [[ "${FLOW3_MAIN_ONLY:-0}" == "1" ]]; then
     log "RESULTS Flow 3: PASS"
     return 0
   fi

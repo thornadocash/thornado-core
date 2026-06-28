@@ -158,7 +158,7 @@ func NewObserver(pubkeyMgr *pubkeymanager.PubKeyManager,
 		lock:                  &sync.Mutex{},
 		wg:                    &sync.WaitGroup{},
 		onDeck:                make(map[txInKey]*types.TxIn),
-		globalTxsQueue:        make(chan types.TxIn),
+		globalTxsQueue:        make(chan types.TxIn, 1024),
 		globalErrataQueue:     make(chan types.ErrataBlock, 128),
 		globalSolvencyQueue:   make(chan types.Solvency),
 		globalNetworkFeeQueue: make(chan common.NetworkFee),
@@ -249,6 +249,30 @@ func (o *Observer) processManualObservations(ctx context.Context) {
 	}
 }
 
+func (o *Observer) recoverObservedTx(ctx context.Context, obsTx common.ObservedTx, inbound, allowFutureObservation bool) {
+	txid := obsTx.Tx.ID.String()
+	if txid == "" {
+		return
+	}
+	chain, err := o.getChain(obsTx.Tx.Chain)
+	if err != nil {
+		o.logger.Error().Err(err).Str("txid", txid).Stringer("chain", obsTx.Tx.Chain).Msg("attestation recovery failed to get chain")
+		return
+	}
+	txIn, err := chain.ObserveTxIn(txid)
+	if err != nil {
+		o.logger.Warn().Err(err).Str("txid", txid).Stringer("chain", obsTx.Tx.Chain).Bool("inbound", inbound).Msg("attestation recovery failed")
+		return
+	}
+	txIn.AllowFutureObservation = allowFutureObservation
+	o.logger.Info().Str("txid", txid).Stringer("chain", obsTx.Tx.Chain).Bool("inbound", inbound).Bool("mempool", txIn.MemPool).Msg("attestation recovery queued")
+	select {
+	case <-ctx.Done():
+	case <-o.stopChan:
+	case o.globalTxsQueue <- txIn:
+	}
+}
+
 // ObserveSigned is called when a tx is signed by the signer and returns an observation that should be immediately submitted.
 // Observations passed to this method with 'allowFutureObservation' false will be cached in memory and skipped if they are later observed in the mempool or block.
 func (o *Observer) ObserveSigned(txIn types.TxIn) {
@@ -259,9 +283,42 @@ func (o *Observer) ObserveSigned(txIn types.TxIn) {
 			o.signedTxOutCache.Add(tx.Tx, nil)
 		}
 		o.signedTxOutCacheMu.Unlock()
+		o.globalTxsQueue <- txIn
+		return
 	}
 
+	if err := o.ObserveSignedNow(txIn); err == nil {
+		return
+	} else {
+		o.logger.Warn().Err(err).Msg("failed immediate signed tx observation, falling back to observer deck")
+	}
 	o.globalTxsQueue <- txIn
+}
+
+func (o *Observer) ObserveSignedNow(txIn types.TxIn) error {
+	if len(txIn.TxArray) == 0 {
+		return nil
+	}
+	finalisedHeight := finaliseHeight(txIn.TxArray[0].BlockHeight, txIn.ConfirmationRequired)
+	txs, _, err := o.getThornadoTxIns(&txIn, true, finalisedHeight)
+	if err != nil {
+		return err
+	}
+	inbound, outbound, err := o.thornadoBridge.GetInboundOutbound(txs)
+	if err != nil {
+		return err
+	}
+	for _, tx := range inbound {
+		if err := o.attestationGossip.AttestObservedTx(context.Background(), &tx, true, txIn.AllowFutureObservation); err != nil {
+			return err
+		}
+	}
+	for _, tx := range outbound {
+		if err := o.attestationGossip.AttestObservedTx(context.Background(), &tx, false, txIn.AllowFutureObservation); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // restoreDeck initializes the memory cache with the ondeck txs from the storage
@@ -558,13 +615,13 @@ func (o *Observer) sendToQuorumChecker(deck *types.TxIn, finalised bool, finalis
 	}
 
 	for _, tx := range inbound {
-		if err := o.attestationGossip.AttestObservedTx(context.Background(), &tx, true); err != nil {
+		if err := o.attestationGossip.AttestObservedTx(context.Background(), &tx, true, deck.AllowFutureObservation); err != nil {
 			o.logger.Err(err).Msg("fail to send inbound tx to thornado")
 		}
 	}
 
 	for _, tx := range outbound {
-		if err := o.attestationGossip.AttestObservedTx(context.Background(), &tx, false); err != nil {
+		if err := o.attestationGossip.AttestObservedTx(context.Background(), &tx, false, deck.AllowFutureObservation); err != nil {
 			o.logger.Err(err).Msg("fail to send outbound tx to thornado")
 		}
 	}
@@ -594,6 +651,16 @@ func (o *Observer) processTxIns() {
 			o.lastNodeStatusMu.RUnlock()
 
 			if lastNodeStatus != stypes.NodeStatus_Active {
+				go func(tx types.TxIn) {
+					select {
+					case <-o.stopChan:
+					case <-time.After(deckRefreshTime):
+						select {
+						case <-o.stopChan:
+						case o.globalTxsQueue <- tx:
+						}
+					}
+				}(txIn)
 				continue
 			}
 
@@ -672,7 +739,7 @@ func (o *Observer) processObservedTx(txIn types.TxIn) {
 			for _, txInItemDeck := range in.TxArray {
 				if txInItemDeck.Equals(txInItem) {
 					foundTx = true
-					o.logger.Warn().
+					o.logger.Debug().
 						Str("id", txInItem.Tx).
 						Str("chain", in.Chain.String()).
 						Int64("height", txInItem.BlockHeight).

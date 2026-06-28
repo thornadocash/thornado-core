@@ -18,6 +18,7 @@ type DebugTxOutState struct {
 	SignedTxHash            string             `json:"signed_tx_hash,omitempty"`
 	LatestRecordedVaultTx   string             `json:"latest_recorded_vault_tx,omitempty"`
 	RecoveredObservation    *stypes.TxInItem   `json:"recovered_observation,omitempty"`
+	SourceSpendObservation  *stypes.TxInItem   `json:"source_spend_observation,omitempty"`
 	SweepSpendObservation   *stypes.TxInItem   `json:"sweep_spend_observation,omitempty"`
 	SourceInputs            []DebugSourceInput `json:"source_inputs,omitempty"`
 	SourceMissing           *bool              `json:"source_missing,omitempty"`
@@ -60,6 +61,11 @@ func (c *Client) DebugTxOut(tx stypes.TxOutItem, thornadoHeight int64) (interfac
 		res.Errors = append(res.Errors, "recover signed tx observation: "+err.Error())
 	} else {
 		res.RecoveredObservation = obs
+	}
+	if obs, err := c.recoverSpentSourceInputsObservation(tx); err != nil {
+		res.Errors = append(res.Errors, "recover source spend observation: "+err.Error())
+	} else {
+		res.SourceSpendObservation = obs
 	}
 	if tx.TxType == ttypes.TxOutTypeSweep {
 		if obs, err := c.recoverSpentSweepObservation(tx); err != nil {

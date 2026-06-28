@@ -140,6 +140,62 @@ func (s *SignerSuite) TestMergeStoredTxOutItemPreservesRetryState(c *C) {
 
 }
 
+func (s *SignerSuite) TestSignerStoreBatchPreservesRetryState(c *C) {
+	storage, err := NewSignerStore("", config.LevelDBOptions{}, "")
+	c.Assert(err, IsNil)
+	defer storage.Close()
+
+	item := NewTxOutStoreItem(3997, types.TxOutItem{TxType: ttypes.TxOutTypeOut}, 0)
+	key := item.Key()
+	stored := item
+	stored.DeferredUntilHeight = 1_010_189
+	stored.Round7Retry = true
+	stored.Checkpoint = []byte("checkpoint")
+	c.Assert(storage.Set(stored), IsNil)
+
+	incoming := NewTxOutStoreItem(3997, types.TxOutItem{TxType: ttypes.TxOutTypeOut}, 0)
+	incoming.BatchStatus = ttypes.TxOutStatusPendingSign
+	c.Assert(storage.Batch([]TxOutStoreItem{incoming}), IsNil)
+
+	merged, err := storage.Get(key)
+	c.Assert(err, IsNil)
+	c.Assert(merged.DeferredUntilHeight, Equals, int64(1_010_189))
+	c.Assert(merged.Round7Retry, Equals, true)
+	c.Assert(merged.Checkpoint, DeepEquals, []byte("checkpoint"))
+	c.Assert(merged.BatchStatus, Equals, ttypes.TxOutStatusPendingSign)
+}
+
+func (s *SignerSuite) TestRemoveTxOutBatchItemsUsesStoredKeys(c *C) {
+	storage, err := NewSignerStore("", config.LevelDBOptions{}, "")
+	c.Assert(err, IsNil)
+	defer storage.Close()
+
+	vault := ttypes.GetRandomPubKey()
+	itemA := NewTxOutStoreItem(3997, types.TxOutItem{
+		Chain:          common.BTCChain,
+		VaultPubKey:    vault,
+		VaultPathIndex: common.MainVaultPathIndex,
+		InHash:         ttypes.GetRandomTxHash(),
+		TxType:         ttypes.TxOutTypeOut,
+	}, 0)
+	itemB := NewTxOutStoreItem(3997, types.TxOutItem{
+		Chain:          common.BTCChain,
+		VaultPubKey:    vault,
+		VaultPathIndex: common.MainVaultPathIndex,
+		InHash:         ttypes.GetRandomTxHash(),
+		TxType:         ttypes.TxOutTypeRefund,
+	}, 1)
+	c.Assert(storage.Set(itemA), IsNil)
+	c.Assert(storage.Set(itemB), IsNil)
+
+	listed := storage.List()
+	c.Assert(listed, HasLen, 2)
+	signer := &Signer{storage: storage}
+	signer.removeTxOutBatchItems(listed[0])
+
+	c.Assert(storage.List(), HasLen, 0)
+}
+
 func (s *SignerSuite) TestInternalTxOutIgnoresFutureDeferral(c *C) {
 	item := TxOutStoreItem{
 		TxOutItem:           types.TxOutItem{TxType: ttypes.TxOutTypeSweep},
@@ -152,4 +208,34 @@ func (s *SignerSuite) TestInternalTxOutIgnoresFutureDeferral(c *C) {
 
 	item.TxOutItem.TxType = ttypes.TxOutTypeOut
 	c.Assert(txOutDeferredPast(item, 10), Equals, true)
+}
+
+func (s *SignerSuite) TestDeferredRecoveredObservationTxInRequiresPreSignObservation(c *C) {
+	item := TxOutStoreItem{
+		TxOutItem: types.TxOutItem{
+			Chain: common.BTCChain,
+		},
+		Observation: &types.TxInItem{
+			Tx:          "recovered",
+			BlockHeight: 100,
+		},
+	}
+
+	txIn, ok := deferredRecoveredObservationTxIn(item)
+	c.Assert(ok, Equals, true)
+	c.Assert(txIn.Chain, Equals, common.BTCChain)
+	c.Assert(txIn.MemPool, Equals, false)
+	c.Assert(txIn.Filtered, Equals, true)
+	c.Assert(txIn.ConfirmationRequired, Equals, int64(0))
+	c.Assert(txIn.TxArray, HasLen, 1)
+	c.Assert(txIn.TxArray[0].Tx, Equals, "recovered")
+
+	item.Checkpoint = []byte("checkpoint")
+	_, ok = deferredRecoveredObservationTxIn(item)
+	c.Assert(ok, Equals, false)
+
+	item.Checkpoint = nil
+	item.SignedTx = []byte("signed")
+	_, ok = deferredRecoveredObservationTxIn(item)
+	c.Assert(ok, Equals, false)
 }
