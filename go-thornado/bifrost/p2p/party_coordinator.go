@@ -117,6 +117,20 @@ func (pc *PartyCoordinator) processReqMsg(requestMsg *messages.JoinPartyLeaderCo
 		return
 	}
 	remotePeer := stream.Conn().RemotePeer()
+	if peerGroup.hasSelectedThreshold() {
+		onlinePeers, _ := peerGroup.getPeersStatus()
+		selected := append(onlinePeers, pc.host.ID())
+		if peerIDListContains(selected, remotePeer) {
+			pc.sendResponseToPeer(pc.successJoinPartyResponse(requestMsg.ID, selected), remotePeer)
+		} else {
+			pc.sendResponseToPeer(&messages.JoinPartyLeaderComm{
+				ID:      requestMsg.ID,
+				MsgType: "response",
+				Type:    messages.JoinPartyLeaderComm_LeaderNotReady,
+			}, remotePeer)
+		}
+		return
+	}
 	partyFormed, err := peerGroup.updatePeer(remotePeer)
 	if err != nil {
 		pc.logger.Error().Err(err).Msg("receive msg from unknown peer")
@@ -124,6 +138,32 @@ func (pc *PartyCoordinator) processReqMsg(requestMsg *messages.JoinPartyLeaderCo
 	}
 	if partyFormed {
 		peerGroup.notify <- true
+	}
+}
+
+func peerIDListContains(peers []peer.ID, target peer.ID) bool {
+	for _, p := range peers {
+		if p == target {
+			return true
+		}
+	}
+	return false
+}
+
+func (pc *PartyCoordinator) successJoinPartyResponse(msgID string, onlinePeers []peer.ID) *messages.JoinPartyLeaderComm {
+	frostNodes := make([]string, 0, len(onlinePeers))
+	for _, el := range onlinePeers {
+		pubKey, err := conversion.GetPubKeyFromPeerID(el.String())
+		if err != nil {
+			pc.logger.Error().Err(err).Str("peer_id", el.String()).Msg("fail to convert online peer to pubkey")
+			continue
+		}
+		frostNodes = append(frostNodes, pubKey)
+	}
+	return &messages.JoinPartyLeaderComm{
+		ID:      msgID,
+		Type:    messages.JoinPartyLeaderComm_Success,
+		PeerIDs: frostNodes,
 	}
 }
 
@@ -446,12 +486,11 @@ func (pc *PartyCoordinator) joinPartyMember(msgID string, peerGroup *peerStatus,
 		return nil, err
 	}
 
-	if len(pIDs) < peerGroup.threshold {
-		return pIDs, errors.New("not enough peers")
-	}
-
 	pc.logger.Trace().Msgf("leader response message type=%s", peerGroup.getLeaderResponse().Type.String())
 	if peerGroup.getLeaderResponse().Type == messages.JoinPartyLeaderComm_Success {
+		if len(pIDs) < peerGroup.threshold {
+			return pIDs, errors.New("not enough peers")
+		}
 		return pIDs, nil
 	}
 
@@ -483,23 +522,8 @@ func (pc *PartyCoordinator) joinPartyLeader(msgID string, peerGroup *peerStatus,
 	onlinePeers, _ := peerGroup.getPeersStatus()
 	onlinePeers = append(onlinePeers, pc.host.ID())
 
-	frostNodes := make([]string, 0, len(onlinePeers))
-	for _, el := range onlinePeers {
-		pubKey, err := conversion.GetPubKeyFromPeerID(el.String())
-		if err != nil {
-			pc.logger.Error().Err(err).Str("peer_id", el.String()).Msg("fail to convert online peer to pubkey")
-			continue
-		}
-		frostNodes = append(frostNodes, pubKey)
-	}
-
-	msg := messages.JoinPartyLeaderComm{
-		ID:      msgID,
-		Type:    messages.JoinPartyLeaderComm_Success,
-		PeerIDs: frostNodes,
-	}
-	// we put ourselves(leader) in the online list, so need threshold +1
-	if len(onlinePeers) < peerGroup.threshold+1 {
+	msg := *pc.successJoinPartyResponse(msgID, onlinePeers)
+	if len(onlinePeers) < peerGroup.threshold {
 		// we notify the failure of the join party to everyone
 		msg.Type = messages.JoinPartyLeaderComm_Timeout
 		pc.logger.Debug().Msgf("sending timeout response to %d all peers", len(onlinePeers))

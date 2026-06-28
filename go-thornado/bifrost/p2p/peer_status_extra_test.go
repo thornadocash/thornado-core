@@ -94,14 +94,14 @@ func (s *PeerStatusExtraTestSuite) TestGetCoordinationStatusAllOnline(c *C) {
 func (s *PeerStatusExtraTestSuite) TestUpdatePeerThresholdReached(c *C) {
 	peers := generateRandomPeers(c, 5)
 	sortPeers(peers)
-	ps := newPeerStatus(peers, peers[0], peers[0], 2)
+	ps := newPeerStatus(peers, peers[0], peers[0], 3)
 
 	// First peer - reqCount becomes 1
 	ret, err := ps.updatePeer(peers[1])
 	c.Assert(err, IsNil)
 	c.Assert(ret, Equals, false)
 
-	// Second peer - reqCount becomes 2, equals threshold
+	// Second peer - with the leader, this reaches threshold 3
 	ret, err = ps.updatePeer(peers[2])
 	c.Assert(err, IsNil)
 	c.Assert(ret, Equals, true)

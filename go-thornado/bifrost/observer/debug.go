@@ -29,6 +29,16 @@ type DebugObserverOnDeckItem struct {
 	Txs                    []DebugObserverTxItem `json:"txs"`
 }
 
+type DebugObserverAddress struct {
+	Chain                  string `json:"chain"`
+	Address                string `json:"address"`
+	LocalVault             bool   `json:"local_vault"`
+	LocalVaultPubKey       string `json:"local_vault_pub_key,omitempty"`
+	LocalVaultAddress      string `json:"local_vault_address,omitempty"`
+	ThornadoDepositAddress bool   `json:"thornado_deposit_address,omitempty"`
+	Error                  string `json:"error,omitempty"`
+}
+
 type DebugObserverTxItem struct {
 	Tx                   string                   `json:"tx"`
 	BlockHeight          int64                    `json:"block_height"`
@@ -106,6 +116,27 @@ func (o *Observer) DebugOnDeck() DebugObserverOnDeck {
 		}
 		return res.Items[i].Txs[0].Tx < res.Items[j].Txs[0].Tx
 	})
+	return res
+}
+
+func (o *Observer) DebugAddress(chain common.Chain, address string) DebugObserverAddress {
+	res := DebugObserverAddress{
+		Chain:   chain.String(),
+		Address: address,
+	}
+	if ok, cpi := o.pubkeyMgr.IsValidVaultAddress(address, chain); ok {
+		res.LocalVault = true
+		res.LocalVaultPubKey = cpi.PubKey.String()
+		res.LocalVaultAddress = cpi.VaultAddress.String()
+	}
+	if chain.Equals(common.BTCChain) {
+		addr, err := common.NewAddress(address)
+		if err != nil {
+			res.Error = err.Error()
+			return res
+		}
+		res.ThornadoDepositAddress = o.thornadoBridge.IsVaultDepositAddress(addr)
+	}
 	return res
 }
 

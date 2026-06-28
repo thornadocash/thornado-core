@@ -105,6 +105,12 @@ func (h CommonOutboundTxHandler) handle(ctx cosmos.Context, tx ObservedTx, inTxI
 				(tx.ObservedPubKey.Equals(txOutItem.VaultPubKey) ||
 					tx.ObservedPubKey.Equals(txOutItem.VaultPubKeyEddsa)) {
 
+				if txOutItem.Chain.Equals(common.BTCChain) &&
+					len(txOutItem.SourceInputs) > 0 &&
+					!observedTxSpentTxOutInputs(tx.Tx.SourceInputs, txOutItem.SourceInputs) {
+					continue
+				}
+
 				matchCoin := tx.Tx.Coins.EqualsEx(common.Coins{txOutItem.Coin})
 				// when outbound is gas asset
 				if !matchCoin && txOutItem.Coin.Asset.Equals(txOutItem.Chain.GetGasAsset()) {

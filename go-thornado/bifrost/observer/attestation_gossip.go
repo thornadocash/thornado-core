@@ -618,9 +618,6 @@ func (s *AttestationGossip) maybeRecoverObservedTx(k txKey, state *AttestationSt
 	if state == nil || state.Item == nil || state.Item.ObservedTx == nil || state.AttestationCount() == 0 {
 		return observedTxRecoveryRequest{}, false
 	}
-	if state.AttestationCount() < 2 {
-		return observedTxRecoveryRequest{}, false
-	}
 	haveLocalAttestation, _ := state.AttestationStatus(s.pubKey)
 	if haveLocalAttestation {
 		return observedTxRecoveryRequest{}, false

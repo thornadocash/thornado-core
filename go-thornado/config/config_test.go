@@ -20,6 +20,10 @@ func (Test) TestAllChainsReturned(c *C) {
 	c.Assert(len(b.GetChains()), Equals, 1)
 }
 
+func (Test) TestSplitEnvList(c *C) {
+	c.Assert(splitEnvList("a,b", " c ,,d "), DeepEquals, []string{"a", "b", "c", "d"})
+}
+
 func (Test) TestAllDefaultDefined(c *C) {
 	// In order to override configuration values, defaults must first be defined
 	// in the default YAML file. This test ensures all fields have defaults defined.

@@ -200,6 +200,7 @@ func TestLateJoinerGetsPartyClosedAfterLeaderForms(t *testing.T) {
 
 	msgID := conversion.RandStringBytesMask(64)
 	leader := coordinatorPubKey(t, pcs[0])
+	threshold := 3
 	var wg sync.WaitGroup
 	errCh := make(chan error, 3)
 	for _, coordinator := range pcs[:3] {
@@ -207,7 +208,7 @@ func TestLateJoinerGetsPartyClosedAfterLeaderForms(t *testing.T) {
 		go func(coordinator *PartyCoordinator) {
 			defer wg.Done()
 			sigChan := make(chan string)
-			onlinePeers, _, err := coordinator.JoinPartyWithLeaderInitiator(msgID, 10, peers, 2, sigChan, leader)
+			onlinePeers, _, err := coordinator.JoinPartyWithLeaderInitiator(msgID, 10, peers, threshold, sigChan, leader)
 			if err != nil {
 				errCh <- err
 				return
@@ -225,7 +226,7 @@ func TestLateJoinerGetsPartyClosedAfterLeaderForms(t *testing.T) {
 
 	sigChan := make(chan string)
 	start := time.Now()
-	_, _, err := pcs[3].JoinPartyWithLeaderInitiator(msgID, 10, peers, 2, sigChan, leader)
+	_, _, err := pcs[3].JoinPartyWithLeaderInitiator(msgID, 10, peers, threshold, sigChan, leader)
 	assert.Equal(t, ErrPartyClosed, err)
 	assert.Less(t, time.Since(start), timeout)
 }
@@ -284,6 +285,7 @@ func TestNewPartyCoordinatorTimeOut(t *testing.T) {
 	wg.Wait()
 	// we test one of node is not ready
 	var expected []string
+	threshold := len(peers)
 	for _, el := range pcs[:3] {
 		expected = append(expected, el.host.ID().String())
 		sort.Strings(expected)
@@ -291,7 +293,7 @@ func TestNewPartyCoordinatorTimeOut(t *testing.T) {
 		go func(coordinator *PartyCoordinator) {
 			defer wg.Done()
 			sigChan := make(chan string)
-			onlinePeers, _, err := coordinator.JoinPartyWithLeader(msgID, 10, peers, 3, sigChan)
+			onlinePeers, _, err := coordinator.JoinPartyWithLeader(msgID, 10, peers, threshold, sigChan)
 			assert.Equal(t, ErrJoinPartyTimeout, err)
 			var onlinePeersStr []string
 			for _, el := range onlinePeers {

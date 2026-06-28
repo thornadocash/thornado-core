@@ -4,6 +4,8 @@ set -euo pipefail
 RUN_ROOT="${RUN_ROOT:-/tmp/thornado-nodeper-20260627104200}"
 ROOT_DIR="${ROOT_DIR:-/root/thornado}"
 ITERATIONS="${ITERATIONS:-20}"
+WAIT_OBSERVED_OUT_FINAL_EACH="${WAIT_OBSERVED_OUT_FINAL_EACH:-0}"
+WAIT_OBSERVED_OUT_FINAL_END="${WAIT_OBSERVED_OUT_FINAL_END:-1}"
 
 export RUN_ROOT
 export BTC_USE_LOCAL=1
@@ -89,11 +91,23 @@ for i in $(seq 1 "$ITERATIONS"); do
   deposit_id="$(jq -r '.deposit_id // empty' "$RUN_ROOT/meta/flow3-deposit.json")"
   withdrawal_id="$(cat "$RUN_ROOT/meta/flow3-withdrawal-id.txt")"
   out_hash="$(jq -r --arg in_hash "$withdrawal_id" '.txout.tx_array[] | select(.in_hash == $in_hash) | .out_hash' "$RUN_ROOT/meta/flow3-withdrawal-txout.json" | head -n1)"
-  wait_observed_out_final "$out_hash" 300
-  cp "$RUN_ROOT/meta/repeated-last-observed-out.json" "$iter_dir/observed-out.json" 2>/dev/null || true
+  if [[ "$WAIT_OBSERVED_OUT_FINAL_EACH" == "1" ]]; then
+    wait_observed_out_final "$out_hash" 300
+    cp "$RUN_ROOT/meta/repeated-last-observed-out.json" "$iter_dir/observed-out.json" 2>/dev/null || true
+  fi
   printf '%s,%s,%s,%s\n' "$i" "$deposit_id" "$withdrawal_id" "$out_hash" >>"$RUN_ROOT/meta/repeated-flow3-results.csv"
   success=$((success + 1))
 done
+
+if [[ "$WAIT_OBSERVED_OUT_FINAL_END" == "1" ]]; then
+  while IFS=, read -r i _deposit_id _withdrawal_id out_hash; do
+    [[ "$i" == "iteration" ]] && continue
+    [[ -n "$out_hash" ]] || die "iteration ${i} did not record an outbound hash"
+    wait_observed_out_final "$out_hash" 300
+    iter_dir="$RUN_ROOT/meta/repeated-flow3-${i}"
+    cp "$RUN_ROOT/meta/repeated-last-observed-out.json" "$iter_dir/observed-out.json" 2>/dev/null || true
+  done <"$RUN_ROOT/meta/repeated-flow3-results.csv"
+fi
 
 snapshot_bifrost_debug "repeated-after"
 jq -n --argjson requested "$ITERATIONS" --argjson success "$success" \

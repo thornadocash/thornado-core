@@ -699,6 +699,48 @@ wait_btc_balance_at_least() {
   done
 }
 
+wait_btc_utxo_spent() {
+  local txid="$1" vout="$2" out_file="$3" timeout="${4:-300}" start current
+  start="$(date +%s)"
+  while true; do
+    current="$(btc_cli gettxout "$txid" "$vout" true 2>/dev/null || true)"
+    printf '%s\n' "$current" >"$out_file"
+    if [[ -z "$current" ]] || jq -e '. == null' "$out_file" >/dev/null 2>&1; then
+      return 0
+    fi
+    if (( "$(date +%s)" - start >= timeout )); then
+      return 1
+    fi
+    sleep 2
+  done
+}
+
+wait_flow3_fee_accounted() {
+  local fee="$1" before_pool_file="$2" after_entitlements_file="$3" after_pool_file="$4" timeout="${5:-120}"
+  local start fee_slots before_collected after_collected
+  start="$(date +%s)"
+  before_collected="$(jq -r '.total_collected_sats | tonumber' "$before_pool_file")"
+  while true; do
+    curl -fsS "$(api_url 1)/thornado/fee/entitlements" >"$after_entitlements_file"
+    curl -fsS "$(api_url 1)/thornado/fees" >"$after_pool_file"
+    fee_slots="$(jq -r '.total_slots | tonumber' "$after_pool_file")"
+    if (( fee_slots > 0 )); then
+      if jq -e --argjson fee "$fee" '([.entitlements[]? | (.claimable_sats | tonumber)] | add // 0) >= $fee' "$after_entitlements_file" >/dev/null; then
+        return 0
+      fi
+    else
+      after_collected="$(jq -r '.total_collected_sats | tonumber' "$after_pool_file")"
+      if (( after_collected - before_collected >= fee )); then
+        return 0
+      fi
+    fi
+    if (( "$(date +%s)" - start >= timeout )); then
+      return 1
+    fi
+    sleep 2
+  done
+}
+
 record_shielder_leaf() {
   local denomination="$1" commitment="$2" file tmp
   file="$RUN_ROOT/meta/shielder-leaves-${denomination}.json"
@@ -1989,8 +2031,7 @@ validate_flow3() {
   printf '%s\n' "$matched" >"$RUN_ROOT/meta/flow3-deposit-matched.json"
   sweep_txout="$(wait_sweep_signed "$deposit_id" 420)"
   printf '%s\n' "$sweep_txout" >"$RUN_ROOT/meta/flow3-sweep-txout.json"
-  btc_cli gettxout "$txid" "$child_vout" true >"$RUN_ROOT/meta/flow3-child-utxo-after-sweep.json" || true
-  [[ ! -s "$RUN_ROOT/meta/flow3-child-utxo-after-sweep.json" ]] || jq -e '. == null' "$RUN_ROOT/meta/flow3-child-utxo-after-sweep.json" >/dev/null \
+  wait_btc_utxo_spent "$txid" "$child_vout" "$RUN_ROOT/meta/flow3-child-utxo-after-sweep.json" 300 \
     || die "flow3 child deposit UTXO remained spendable after sweep"
   amount_sats="$(curl -fsS "$(api_url 1)/thornado/deposit/${deposit_id}" | jq -r '.amount_sats')"
   [[ "$amount_sats" == "20000000" ]] || die "flow3 observed deposit amount was not the actual BTC amount"
@@ -2079,18 +2120,8 @@ validate_flow3() {
 	  jq -e --arg txid "$(printf '%s' "$out_hash" | tr '[:upper:]' '[:lower:]')" --argjson payout "$expected_payout" \
 	    'length == 1 and .[0].txid == $txid and (((.[0].amount * 100000000) | floor) == $payout)' \
 	    "$RUN_ROOT/meta/flow3-recipient-utxos.json" >/dev/null || die "flow3 recipient had duplicate or unexpected BTC payout UTXOs"
-	  curl -fsS "$(api_url 1)/thornado/fee/entitlements" >"$RUN_ROOT/meta/flow3-fee-entitlements-after.json"
-	  curl -fsS "$(api_url 1)/thornado/fees" >"$RUN_ROOT/meta/flow3-fee-pool-after.json"
-	  local fee_slots before_collected after_collected
-	  fee_slots="$(jq -r '.total_slots | tonumber' "$RUN_ROOT/meta/flow3-fee-pool-after.json")"
-	  if (( fee_slots > 0 )); then
-	    jq -e --argjson fee "$fee" '([.entitlements[]? | (.claimable_sats | tonumber)] | add // 0) >= $fee' "$RUN_ROOT/meta/flow3-fee-entitlements-after.json" >/dev/null \
-	      || die "flow3 fee entitlement did not increase enough to explain withdrawal fee"
-	  else
-	    before_collected="$(jq -r '.total_collected_sats | tonumber' "$RUN_ROOT/meta/flow3-fee-pool-before.json")"
-	    after_collected="$(jq -r '.total_collected_sats | tonumber' "$RUN_ROOT/meta/flow3-fee-pool-after.json")"
-	    (( after_collected - before_collected >= fee )) || die "flow3 fee pool did not collect withdrawal fee"
-	  fi
+	  wait_flow3_fee_accounted "$fee" "$RUN_ROOT/meta/flow3-fee-pool-before.json" "$RUN_ROOT/meta/flow3-fee-entitlements-after.json" "$RUN_ROOT/meta/flow3-fee-pool-after.json" 120 \
+	    || die "flow3 fee accounting did not reflect withdrawal fee"
 
 	  if [[ "${FLOW3_MAIN_ONLY:-0}" == "1" ]]; then
     log "RESULTS Flow 3: PASS"

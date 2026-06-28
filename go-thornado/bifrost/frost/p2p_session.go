@@ -20,7 +20,10 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/p2p/messages"
 )
 
-var frostSessionLocks sync.Map // sessionID -> *sync.Mutex
+var (
+	frostSessionLocks        sync.Map // sessionID -> *sync.Mutex
+	ErrLocalPartyNotSelected = errors.New("local FROST party not selected")
+)
 
 const postJoinSync = 5 * time.Second
 
@@ -187,6 +190,17 @@ func (sc *P2PSessionCoordinator) debugLeader(id, leader string) {
 	}
 }
 
+func (sc *P2PSessionCoordinator) debugSelectedParticipants(id string, participants []string) {
+	sc.debugMu.Lock()
+	defer sc.debugMu.Unlock()
+	if session := sc.debugSessions[id]; session != nil {
+		now := time.Now().UTC()
+		session.Participants = append([]string(nil), participants...)
+		session.UpdatedAt = now
+		appendDebugSessionPhaseLocked(session, "participants_selected", "", len(participants), 0, now)
+	}
+}
+
 func (sc *P2PSessionCoordinator) debugBroadcast(id, kind string, targets int) {
 	sc.debugMu.Lock()
 	defer sc.debugMu.Unlock()
@@ -350,12 +364,12 @@ func (sc *P2PSessionCoordinator) RunKeygen(
 ) (localShare []byte, pubKeyCompressed []byte, err error) {
 	participants = sortedParticipants(participants)
 	msgID := sessionMessageID("keygen", height, minSigners, participants)
-	sc.debugStart(msgID, "keygen", height, participants, localParty, "", int(len(participants)-1))
+	sc.debugStart(msgID, "keygen", height, participants, localParty, "", int(minSigners))
 	inbox := make(chan *p2p.Message, 256)
 	sc.comm.SetSubscribe(messages.FROSTFrostKeyGenMsg, msgID, inbox)
 	defer sc.comm.CancelSubscribe(messages.FROSTFrostKeyGenMsg, msgID)
 
-	keygenThreshold := len(participants) - 1
+	keygenThreshold := int(minSigners)
 	sc.debugEvent(msgID, "party_join_start")
 	var leader string
 	if _, leader, err = sc.joinParty(msgID, height, participants, keygenThreshold, ""); err != nil {
@@ -436,13 +450,29 @@ func (sc *P2PSessionCoordinator) RunSign(
 
 	sc.debugEvent(sessionID, "party_join_start")
 	var leader string
-	if _, leader, err = sc.joinParty(sessionID, height, participants, int(threshold), partyLeader); err != nil {
+	var online []peer.ID
+	if online, leader, err = sc.joinParty(sessionID, height, participants, int(threshold), partyLeader); err != nil {
 		if errors.Is(err, p2p.ErrPartyClosed) {
 			sc.debugClosed(sessionID)
 		} else {
 			sc.debugError(sessionID, err)
 		}
 		return nil, err
+	}
+	participants, err = peerIDsToParticipantPubKeys(online)
+	if err != nil {
+		sc.debugError(sessionID, err)
+		return nil, err
+	}
+	if len(participants) < int(threshold) {
+		err = fmt.Errorf("insufficient selected FROST signers: got %d want %d", len(participants), threshold)
+		sc.debugError(sessionID, err)
+		return nil, err
+	}
+	sc.debugSelectedParticipants(sessionID, participants)
+	if !participantListContains(participants, localParty) {
+		sc.debugClosed(sessionID)
+		return nil, ErrLocalPartyNotSelected
 	}
 	sc.debugLeader(sessionID, leader)
 	sc.debugEvent(sessionID, "party_joined")
@@ -473,6 +503,27 @@ func (sc *P2PSessionCoordinator) RunSign(
 	}
 	sc.debugFinish(sessionID)
 	return signature, nil
+}
+
+func peerIDsToParticipantPubKeys(peers []peer.ID) ([]string, error) {
+	participants := make([]string, 0, len(peers))
+	for _, p := range peers {
+		pubKey, err := conversion.GetPubKeyFromPeerID(p.String())
+		if err != nil {
+			return nil, fmt.Errorf("map selected peer %s to pubkey: %w", p.String(), err)
+		}
+		participants = append(participants, pubKey)
+	}
+	return sortedParticipants(participants), nil
+}
+
+func participantListContains(participants []string, localParty string) bool {
+	for _, participant := range participants {
+		if strings.EqualFold(participant, localParty) {
+			return true
+		}
+	}
+	return false
 }
 
 func SignSessionID(vaultPubKey string, msg []byte) string {

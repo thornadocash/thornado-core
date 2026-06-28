@@ -56,6 +56,22 @@ func confirmationsRequiredForFinaliseHeight(finaliseHeight, blockHeight int64) i
 	return finaliseHeight - blockHeight + 1
 }
 
+func cloneTxIn(txIn *types.TxIn) types.TxIn {
+	if txIn == nil {
+		return types.TxIn{}
+	}
+	cp := *txIn
+	cp.TxArray = make([]*types.TxInItem, 0, len(txIn.TxArray))
+	for _, item := range txIn.TxArray {
+		if item == nil {
+			cp.TxArray = append(cp.TxArray, nil)
+			continue
+		}
+		cp.TxArray = append(cp.TxArray, item.Copy())
+	}
+	return cp
+}
+
 func TxInKey(txIn *types.TxIn) txInKey {
 	return txInKey{
 		chain:   txIn.Chain,
@@ -193,60 +209,7 @@ func (o *Observer) Start(ctx context.Context) error {
 	go o.processNetworkFeeQueue(ctx)
 	go o.deck(ctx)
 	go o.attestationGossip.Start(ctx)
-	go o.processManualObservations(ctx)
 	return nil
-}
-
-func (o *Observer) processManualObservations(ctx context.Context) {
-	cfg := config.GetBifrost().ManualObserve
-	if !cfg.Enabled || len(cfg.TxIDs) == 0 {
-		return
-	}
-	interval := cfg.Interval
-	if interval <= 0 {
-		interval = time.Second
-	}
-
-	seen := make(map[string]struct{}, len(cfg.TxIDs))
-	for _, raw := range cfg.TxIDs {
-		txid := strings.TrimSpace(raw)
-		if txid == "" {
-			continue
-		}
-		if _, ok := seen[txid]; ok {
-			continue
-		}
-		seen[txid] = struct{}{}
-
-		select {
-		case <-ctx.Done():
-			return
-		case <-o.stopChan:
-			return
-		default:
-		}
-
-		chain, err := o.getChain(common.BTCChain)
-		if err != nil {
-			o.logger.Error().Err(err).Str("txid", txid).Msg("manual observe failed to get chain")
-			continue
-		}
-		txIn, err := chain.ObserveTxIn(txid)
-		if err != nil {
-			o.logger.Error().Err(err).Str("txid", txid).Msg("manual observe failed")
-			continue
-		}
-		o.logger.Info().Str("txid", txid).Bool("mempool", txIn.MemPool).Msg("manual observe queued")
-		o.globalTxsQueue <- txIn
-
-		select {
-		case <-ctx.Done():
-			return
-		case <-o.stopChan:
-			return
-		case <-time.After(interval):
-		}
-	}
 }
 
 func (o *Observer) recoverObservedTx(ctx context.Context, obsTx common.ObservedTx, inbound, allowFutureObservation bool) {
@@ -261,7 +224,11 @@ func (o *Observer) recoverObservedTx(ctx context.Context, obsTx common.ObservedT
 	}
 	txIn, err := chain.ObserveTxIn(txid)
 	if err != nil {
-		o.logger.Warn().Err(err).Str("txid", txid).Stringer("chain", obsTx.Tx.Chain).Bool("inbound", inbound).Msg("attestation recovery failed")
+		logEvent := o.logger.Warn()
+		if isTransientBTCRecoveryMiss(err) {
+			logEvent = o.logger.Debug()
+		}
+		logEvent.Err(err).Str("txid", txid).Stringer("chain", obsTx.Tx.Chain).Bool("inbound", inbound).Msg("attestation recovery failed")
 		return
 	}
 	txIn.AllowFutureObservation = allowFutureObservation
@@ -271,6 +238,10 @@ func (o *Observer) recoverObservedTx(ctx context.Context, obsTx common.ObservedT
 	case <-o.stopChan:
 	case o.globalTxsQueue <- txIn:
 	}
+}
+
+func isTransientBTCRecoveryMiss(err error) bool {
+	return strings.Contains(err.Error(), "No such mempool or blockchain transaction")
 }
 
 // ObserveSigned is called when a tx is signed by the signer and returns an observation that should be immediately submitted.
@@ -541,58 +512,87 @@ func (o *Observer) sendDeck(ctx context.Context) {
 		return
 	}
 
-	o.lock.Lock()
-	defer o.lock.Unlock()
+	type deckWork struct {
+		key  txInKey
+		deck types.TxIn
+	}
 
+	var works []deckWork
+	o.lock.Lock()
 	for k, deck := range o.onDeck {
+		works = append(works, deckWork{key: k, deck: cloneTxIn(deck)})
+	}
+	o.lock.Unlock()
+
+	for _, work := range works {
+		deck := &work.deck
 		chainClient, err := o.getChain(deck.Chain)
 		if err != nil {
 			o.logger.Error().Err(err).Msg("fail to retrieve chain client")
 			continue
 		}
 
-		final := chainClient.ConfirmationCountReady(*deck) && !deck.MemPool
-		invalidIndices := o.sendToQuorumChecker(deck, final, k.height)
+		ready := chainClient.ConfirmationCountReady(*deck)
+		if deck.AllowFutureObservation && !ready {
+			continue
+		}
+		final := ready && !deck.MemPool
+		invalidIndices := o.sendToQuorumChecker(deck, final, work.key.height)
 
-		// Remove invalid transactions from deck
 		if len(invalidIndices) > 0 {
-			// Sort indices in descending order to remove from highest to lowest
-			// This preserves indices during removal
-			for i := 0; i < len(invalidIndices); i++ {
-				for j := i + 1; j < len(invalidIndices); j++ {
-					if invalidIndices[i] < invalidIndices[j] {
-						invalidIndices[i], invalidIndices[j] = invalidIndices[j], invalidIndices[i]
-					}
-				}
-			}
-
-			firstItemRemoved := false
+			invalidItems := make([]*types.TxInItem, 0, len(invalidIndices))
 			for _, idx := range invalidIndices {
 				if idx >= 0 && idx < len(deck.TxArray) {
-					if idx == 0 {
-						firstItemRemoved = true
-					}
-					o.logger.Info().Msgf("removing invalid tx (%s) from ondeck", deck.TxArray[idx].Tx)
-					deck.TxArray = slices.Delete(deck.TxArray, idx, idx+1)
+					invalidItems = append(invalidItems, deck.TxArray[idx])
 				}
 			}
-
-			if len(deck.TxArray) == 0 {
-				o.logger.Debug().Msgf("deck is empty after removing invalid txs, removing from ondeck")
-				delete(o.onDeck, k)
-				if err := o.storage.RemoveTx(deck, k.height); err != nil {
-					o.logger.Error().Err(err).Msg("fail to remove tx from storage")
-				}
-			} else {
-				// Update confirmation required if first item was removed
-				if firstItemRemoved && len(deck.TxArray) > 0 {
-					deck.ConfirmationRequired = confirmationsRequiredForFinaliseHeight(k.height, deck.TxArray[0].BlockHeight)
-				}
-				if err := o.storage.AddOrUpdateTx(deck); err != nil {
-					o.logger.Error().Err(err).Msg("fail to update tx in storage")
-				}
-			}
+			o.removeInvalidDeckItems(work.key, invalidItems)
 		}
+	}
+}
+
+func (o *Observer) removeInvalidDeckItems(k txInKey, invalidItems []*types.TxInItem) {
+	if len(invalidItems) == 0 {
+		return
+	}
+
+	o.lock.Lock()
+	defer o.lock.Unlock()
+
+	deck, ok := o.onDeck[k]
+	if !ok {
+		return
+	}
+
+	firstItemRemoved := false
+	for _, invalid := range invalidItems {
+		for idx, item := range deck.TxArray {
+			if item == nil || invalid == nil || !item.Equals(invalid) {
+				continue
+			}
+			if idx == 0 {
+				firstItemRemoved = true
+			}
+			o.logger.Info().Msgf("removing invalid tx (%s) from ondeck", deck.TxArray[idx].Tx)
+			deck.TxArray = slices.Delete(deck.TxArray, idx, idx+1)
+			break
+		}
+	}
+
+	if len(deck.TxArray) == 0 {
+		o.logger.Debug().Msgf("deck is empty after removing invalid txs, removing from ondeck")
+		delete(o.onDeck, k)
+		if err := o.storage.RemoveTx(deck, k.height); err != nil {
+			o.logger.Error().Err(err).Msg("fail to remove tx from storage")
+		}
+		return
+	}
+
+	if firstItemRemoved {
+		deck.ConfirmationRequired = confirmationsRequiredForFinaliseHeight(k.height, deck.TxArray[0].BlockHeight)
+	}
+	if err := o.storage.AddOrUpdateTx(deck); err != nil {
+		o.logger.Error().Err(err).Msg("fail to update tx in storage")
 	}
 }
 
@@ -615,6 +615,9 @@ func (o *Observer) sendToQuorumChecker(deck *types.TxIn, finalised bool, finalis
 	}
 
 	for _, tx := range inbound {
+		if finalised && o.removeAlreadyFinalisedInbound(tx) {
+			continue
+		}
 		if err := o.attestationGossip.AttestObservedTx(context.Background(), &tx, true, deck.AllowFutureObservation); err != nil {
 			o.logger.Err(err).Msg("fail to send inbound tx to thornado")
 		}
@@ -627,6 +630,28 @@ func (o *Observer) sendToQuorumChecker(deck *types.TxIn, finalised bool, finalis
 	}
 
 	return invalidIndices
+}
+
+type inboundFinalisedChecker interface {
+	IsTxInboundFinalised(common.TxID) (bool, error)
+}
+
+func (o *Observer) removeAlreadyFinalisedInbound(tx common.ObservedTx) bool {
+	checker, ok := o.thornadoBridge.(inboundFinalisedChecker)
+	if !ok {
+		return false
+	}
+	finalised, err := checker.IsTxInboundFinalised(tx.Tx.ID)
+	if err != nil {
+		o.logger.Debug().Err(err).Str("txid", tx.Tx.ID.String()).Msg("fail to check tx finalised status")
+		return false
+	}
+	if !finalised {
+		return false
+	}
+	o.logger.Info().Str("txid", tx.Tx.ID.String()).Msg("removing already finalised inbound from observer deck")
+	o.handleObservedTxCommitted(tx)
+	return true
 }
 
 func (o *Observer) processTxIns() {

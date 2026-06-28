@@ -87,6 +87,16 @@ func (ps *peerStatus) getPeersStatus() ([]peer.ID, []peer.ID) {
 	return online, offline
 }
 
+func (ps *peerStatus) hasSelectedThreshold() bool {
+	ps.peerStatusLock.RLock()
+	defer ps.peerStatusLock.RUnlock()
+	requiredPeers := ps.threshold
+	if requiredPeers > 0 && ps.leader != "NONE" {
+		requiredPeers--
+	}
+	return ps.reqCount >= requiredPeers
+}
+
 func (ps *peerStatus) updatePeer(peerNode peer.ID) (bool, error) {
 	ps.peerStatusLock.Lock()
 	defer ps.peerStatusLock.Unlock()
@@ -103,15 +113,22 @@ func (ps *peerStatus) updatePeer(peerNode peer.ID) (bool, error) {
 		return false, nil
 	}
 
+	requiredPeers := ps.threshold
+	if requiredPeers > 0 {
+		// The leader is part of the signing set but is not counted in reqCount,
+		// which only tracks remote peers that joined this leader.
+		requiredPeers--
+	}
+
 	// we already have enough participants
-	if ps.reqCount >= ps.threshold {
+	if ps.reqCount >= requiredPeers {
 		return false, nil
 	}
 	if !val {
 		ps.peersResponse[peerNode] = true
 		ps.reqCount++
-		log.Debug().Msgf("leader has %d out of %d participants", ps.reqCount, ps.threshold)
-		if ps.reqCount >= ps.threshold {
+		log.Debug().Msgf("leader has %d out of %d remote participants", ps.reqCount, requiredPeers)
+		if ps.reqCount >= requiredPeers {
 			return true, nil
 		}
 	}

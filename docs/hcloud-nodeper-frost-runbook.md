@@ -264,3 +264,29 @@ Fix deployed:
 - Halt churning through config when needed; do not stretch churn intervals as a workaround.
 - Prefer targeted sync/build artifacts over broad repo rsync.
 - Do not delete running state unless explicitly tearing down that cluster.
+- Major means stuck transactions, halted state, or lost-funds risk; fix and redeploy.
+- Minor means noisy logs or optimization; patch locally and hold until the next major deploy.
+
+## 2026-06-28 Repeated Flow 3 Validation
+
+Current cluster:
+
+- Coordinator: `5.223.93.218`
+- Workers: `5.223.51.101`, `5.223.55.114`, `5.223.55.174`, `5.223.92.204`
+- Run root: `/tmp/thornado-nodeper-20260627104200`
+- Deployed Bifrost hash: `f3e13f5f76a2b44947e0ee5692d45a4bdaa82aef8eb9af13edf83849e2194dd5`
+- Active repeat log: `/tmp/thornado-nodeper-20260627104200/logs/repeat-flow3-20260628044841.log`
+
+Repeat validation command:
+
+```bash
+RUN_ROOT=/tmp/thornado-nodeper-20260627104200 ITERATIONS=20 \
+  nohup bash ops/scripts/hcloud-repeated-flow3.sh \
+  >/tmp/thornado-nodeper-20260627104200/logs/repeat-flow3-$(date -u +%Y%m%d%H%M%S).log 2>&1 &
+```
+
+Harness fast-mode:
+
+- `WAIT_OBSERVED_OUT_FINAL_EACH=0` starts the next iteration immediately after Flow 3 validates signing, BTC broadcast, recipient payment, and fee accounting.
+- `WAIT_OBSERVED_OUT_FINAL_END=1` still verifies every recorded outbound observation at the end.
+- Use per-iteration finality only when debugging reconciliation timing: `WAIT_OBSERVED_OUT_FINAL_EACH=1`.

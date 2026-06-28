@@ -402,6 +402,7 @@ type shielderFlowTestManager struct {
 	k        *shielderFlowTestKeeper
 	gas      shielderFlowTestGasManager
 	obs      shielderFlowTestObserverManager
+	events   shielderFlowTestEventManager
 	txOut    shielderFlowTestTxOutStore
 	version  semver.Version
 	constant constants.ConfigValues
@@ -420,12 +421,18 @@ func (m *shielderFlowTestManager) GetConstants() constants.ConfigValues { return
 func (m *shielderFlowTestManager) GetVersion() semver.Version           { return m.version }
 func (m *shielderFlowTestManager) Keeper() keeper.Keeper                { return m.k }
 func (m *shielderFlowTestManager) GasMgr() GasManager                   { return &m.gas }
-func (m *shielderFlowTestManager) EventMgr() EventManager               { return nil }
+func (m *shielderFlowTestManager) EventMgr() EventManager               { return &m.events }
 func (m *shielderFlowTestManager) TxOutStore() TxOutStore               { return &m.txOut }
 func (m *shielderFlowTestManager) NetworkMgr() NetworkManager           { return nil }
 func (m *shielderFlowTestManager) NodeMgr() NodeManager                 { return nil }
 func (m *shielderFlowTestManager) ObMgr() ObserverManager               { return &m.obs }
 func (m *shielderFlowTestManager) PenaltyManager() PenaltyManager       { return nil }
+
+type shielderFlowTestEventManager struct{}
+
+func (m *shielderFlowTestEventManager) EmitEvent(cosmos.Context, EmitEventItem) error { return nil }
+func (m *shielderFlowTestEventManager) EmitGasEvent(cosmos.Context, *EventGas) error  { return nil }
+func (m *shielderFlowTestEventManager) EmitFeeEvent(cosmos.Context, *EventFee) error  { return nil }
 
 type shielderFlowTestObserverManager struct{}
 

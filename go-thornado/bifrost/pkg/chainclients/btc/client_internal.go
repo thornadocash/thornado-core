@@ -234,10 +234,17 @@ func (c *Client) reConfirmTx(height int64) ([]int64, error) {
 		c.log.Info().Int64("height", blockMeta.Height).Msg("re-confirming transactions")
 
 		var errataTxs []types.ErrataTx
+		pendingMissing := false
 		for _, tx := range blockMeta.CustomerTransactions {
 			// check if the tx still exists in chain
 			if c.confirmTx(tx) {
+				c.clearMissingErrata(tx)
 				c.log.Info().Int64("height", blockMeta.Height).Str("txid", tx).Msg("transaction still exists")
+				continue
+			}
+			if !c.missingErrataReady(tx, c.getCurrentBlockHeight()) {
+				c.log.Info().Int64("height", blockMeta.Height).Str("txid", tx).Msg("reconfirmed missing tx inside errata delay")
+				pendingMissing = true
 				continue
 			}
 
@@ -256,6 +263,9 @@ func (c *Client) reConfirmTx(height int64) ([]int64, error) {
 				Height: blockMeta.Height,
 				Txs:    errataTxs,
 			}
+		}
+		if pendingMissing {
+			continue
 		}
 
 		rescanBlockHeights = append(rescanBlockHeights, blockMeta.Height)

@@ -363,7 +363,6 @@ func TestMaybeRecoverObservedTxWhenLocalAttestationMissing(t *testing.T) {
 		Item: &attestableObservedTx{ObservedTx: &tx, inbound: true},
 		attestations: []attestationSentState{
 			{attestation: &common.Attestation{PubKey: []byte("remote-1"), Signature: []byte("sig-1")}},
-			{attestation: &common.Attestation{PubKey: []byte("remote-2"), Signature: []byte("sig-2")}},
 		},
 	}
 	gossip := &AttestationGossip{

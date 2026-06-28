@@ -85,6 +85,15 @@ func mergeStoredTxOutItem(storage SignerStorage, item TxOutStoreItem) TxOutStore
 	return preserveStoredTxOutState(item, existing)
 }
 
+func sameQueuedTxOutIdentity(a, b TxOutStoreItem) bool {
+	return a.Height == b.Height &&
+		a.Index == b.Index &&
+		a.TxOutItem.Chain.Equals(b.TxOutItem.Chain) &&
+		a.TxOutItem.VaultPubKey.Equals(b.TxOutItem.VaultPubKey) &&
+		a.TxOutItem.InHash.Equals(b.TxOutItem.InHash) &&
+		a.TxOutItem.TxType == b.TxOutItem.TxType
+}
+
 func (s *TxOutStoreItem) Key() string {
 	// If this is a retrieved item then refer to the same key-value pair
 	// for overwriting/deletion, else newly derive it.
@@ -256,6 +265,28 @@ func (s *SignerStore) Batch(items []TxOutStoreItem) error {
 			}
 			item = preserveStoredTxOutState(item, existing)
 		}
+		iterator := s.db.NewIterator(util.BytesPrefix([]byte(txOutPrefix)), nil)
+		for iterator.Next() {
+			existingKey := string(iterator.Key())
+			if existingKey == key {
+				continue
+			}
+			var existing TxOutStoreItem
+			if err := json.Unmarshal(iterator.Value(), &existing); err != nil {
+				iterator.Release()
+				s.logger.Error().Err(err).Msg("fail to unmarshal existing txout store item")
+				return err
+			}
+			existing.RetrievalKey = existingKey
+			if sameQueuedTxOutIdentity(item, existing) {
+				batch.Delete([]byte(existingKey))
+			}
+		}
+		if err := iterator.Error(); err != nil {
+			iterator.Release()
+			return err
+		}
+		iterator.Release()
 		buf, err := json.Marshal(item)
 		if err != nil {
 			s.logger.Error().Err(err).Msg("fail to marshal to txout store item")

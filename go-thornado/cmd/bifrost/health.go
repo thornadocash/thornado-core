@@ -103,6 +103,7 @@ type HealthServer struct {
 	}
 	observerDebug interface {
 		DebugOnDeck() observer.DebugObserverOnDeck
+		DebugAddress(chain common.Chain, address string) observer.DebugObserverAddress
 	}
 }
 
@@ -157,6 +158,7 @@ func (s *HealthServer) SetAttestationDebugger(debugger interface {
 
 func (s *HealthServer) SetObserverDebugger(debugger interface {
 	DebugOnDeck() observer.DebugObserverOnDeck
+	DebugAddress(chain common.Chain, address string) observer.DebugObserverAddress
 }) {
 	s.observerDebug = debugger
 }
@@ -180,6 +182,7 @@ func (s *HealthServer) newHandler() http.Handler {
 	router.Handle("/debug/frost/sessions", http.HandlerFunc(s.debugFrostSessions)).Methods(http.MethodGet)
 	router.Handle("/debug/attestations/performance", http.HandlerFunc(s.debugAttestationPerformance)).Methods(http.MethodGet)
 	router.Handle("/debug/observer/ondeck", http.HandlerFunc(s.debugObserverOnDeck)).Methods(http.MethodGet)
+	router.Handle("/debug/observer/address/{chain}/{address}", http.HandlerFunc(s.debugObserverAddress)).Methods(http.MethodGet)
 	router.HandleFunc("/debug/pprof/", pprof.Index)
 	router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
@@ -347,6 +350,20 @@ func (s *HealthServer) debugObserverOnDeck(w http.ResponseWriter, _ *http.Reques
 		return
 	}
 	writeJSON(w, s.logger, http.StatusOK, s.observerDebug.DebugOnDeck())
+}
+
+func (s *HealthServer) debugObserverAddress(w http.ResponseWriter, r *http.Request) {
+	if s.observerDebug == nil {
+		writeJSON(w, s.logger, http.StatusServiceUnavailable, map[string]string{"error": "observer debugger not ready"})
+		return
+	}
+	vars := mux.Vars(r)
+	chain, err := common.NewChain(vars["chain"])
+	if err != nil {
+		writeJSON(w, s.logger, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, s.logger, http.StatusOK, s.observerDebug.DebugAddress(chain, vars["address"]))
 }
 
 func (s *HealthServer) p2pStatus(w http.ResponseWriter, _ *http.Request) {

@@ -165,6 +165,43 @@ func (s *SignerSuite) TestSignerStoreBatchPreservesRetryState(c *C) {
 	c.Assert(merged.BatchStatus, Equals, ttypes.TxOutStatusPendingSign)
 }
 
+func (s *SignerSuite) TestSignerStoreBatchRemovesSupersededTxOutKey(c *C) {
+	storage, err := NewSignerStore("", config.LevelDBOptions{}, "")
+	c.Assert(err, IsNil)
+	defer storage.Close()
+
+	inHash := ttypes.GetRandomTxHash()
+	vault := ttypes.GetRandomPubKey()
+	oldItem := NewTxOutStoreItem(3997, types.TxOutItem{
+		Chain:       common.BTCChain,
+		VaultPubKey: vault,
+		InHash:      inHash,
+		TxType:      ttypes.TxOutTypeOut,
+		GasRate:     10,
+	}, 0)
+	oldKey := oldItem.Key()
+	oldItem.DeferredUntilHeight = 4_100
+	c.Assert(storage.Set(oldItem), IsNil)
+
+	newItem := NewTxOutStoreItem(3997, types.TxOutItem{
+		Chain:       common.BTCChain,
+		VaultPubKey: vault,
+		InHash:      inHash,
+		TxType:      ttypes.TxOutTypeOut,
+		GasRate:     14,
+	}, 0)
+	newKey := newItem.Key()
+	c.Assert(newKey == oldKey, Equals, false)
+	c.Assert(storage.Batch([]TxOutStoreItem{newItem}), IsNil)
+
+	c.Assert(storage.Has(oldKey), Equals, false)
+	c.Assert(storage.Has(newKey), Equals, true)
+	listed := storage.List()
+	c.Assert(listed, HasLen, 1)
+	c.Assert(listed[0].TxOutItem.GasRate, Equals, int64(14))
+	c.Assert(listed[0].DeferredUntilHeight, Equals, int64(0))
+}
+
 func (s *SignerSuite) TestRemoveTxOutBatchItemsUsesStoredKeys(c *C) {
 	storage, err := NewSignerStore("", config.LevelDBOptions{}, "")
 	c.Assert(err, IsNil)
@@ -196,15 +233,15 @@ func (s *SignerSuite) TestRemoveTxOutBatchItemsUsesStoredKeys(c *C) {
 	c.Assert(storage.List(), HasLen, 0)
 }
 
-func (s *SignerSuite) TestInternalTxOutIgnoresFutureDeferral(c *C) {
+func (s *SignerSuite) TestTxOutHonorsFutureDeferral(c *C) {
 	item := TxOutStoreItem{
 		TxOutItem:           types.TxOutItem{TxType: ttypes.TxOutTypeSweep},
 		DeferredUntilHeight: 1_000,
 	}
-	c.Assert(txOutDeferredPast(item, 10), Equals, false)
+	c.Assert(txOutDeferredPast(item, 10), Equals, true)
 
 	item.TxOutItem.TxType = ttypes.TxOutTypeMigrate
-	c.Assert(txOutDeferredPast(item, 10), Equals, false)
+	c.Assert(txOutDeferredPast(item, 10), Equals, true)
 
 	item.TxOutItem.TxType = ttypes.TxOutTypeOut
 	c.Assert(txOutDeferredPast(item, 10), Equals, true)

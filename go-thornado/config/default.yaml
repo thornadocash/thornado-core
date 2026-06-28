@@ -11,10 +11,6 @@ bifrost:
     block_cache_capacity: 8388608
     compact_on_init: false
   observer_workers: 0
-  manual_observe:
-    enabled: false
-    txids: []
-    interval: 1s
 
   metrics:
     enabled: true

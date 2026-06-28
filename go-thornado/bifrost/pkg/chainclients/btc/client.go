@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"regexp"
+	"strings"
 	"sync"
 	stdatomic "sync/atomic"
 	"syscall"
@@ -48,6 +49,8 @@ import (
 // Client defines a generic UTXO client. Since there are differences in addresses, RPCs,
 // and txscript between chains, chain additions should audit switches on chain type and
 // extend where appropriate.
+const btcErrataDelayBlocks int64 = 6
+
 type Client struct {
 	cfg config.BifrostChainConfiguration
 	log zerolog.Logger
@@ -75,11 +78,12 @@ type Client struct {
 	temporalStorage *TemporalStorage
 
 	// ---------- control ----------
-	globalErrataQueue     chan<- types.ErrataBlock
-	globalSolvencyQueue   chan<- types.Solvency
-	globalNetworkFeeQueue chan<- common.NetworkFee
-	stopchan              chan struct{}
-	currentBlockHeight    stdatomic.Int64
+	globalErrataQueue      chan<- types.ErrataBlock
+	globalSolvencyQueue    chan<- types.Solvency
+	globalNetworkFeeQueue  chan<- common.NetworkFee
+	stopchan               chan struct{}
+	currentBlockHeight     stdatomic.Int64
+	missingErrataFirstSeen sync.Map
 
 	// ---------- thornado state ----------
 	bridge    thornadoclient.ThornadoBridge
@@ -206,6 +210,56 @@ func NewClient(
 	c.updateNetworkInfo()
 
 	return c, nil
+}
+
+// NewObserveOnlyClient creates a BTC client for one-shot local observation commands.
+// It intentionally skips FROST signer/session setup and scanner state.
+func NewObserveOnlyClient(
+	thorKeys *thornadoclient.Keys,
+	cfg config.BifrostChainConfiguration,
+	bridge thornadoclient.ThornadoBridge,
+	m *metrics.Metrics,
+) (*Client, error) {
+	if cfg.ChainID != common.BTCChain {
+		return nil, fmt.Errorf("unsupported observe-only chain: %s", cfg.ChainID)
+	}
+	logger := log.Logger.With().Stringer("chain", cfg.ChainID).Logger()
+	rpcClient, err := rpc.NewClient(
+		cfg.RPCHost,
+		cfg.UserName,
+		cfg.Password,
+		cfg.MaxRPCRetries,
+		cfg.BlockScanner.HTTPRequestTimeout,
+		cfg.ChainID,
+		logger,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("fail to create rpc client: %w", err)
+	}
+	thorPrivateKey, err := thorKeys.GetPrivateKey()
+	if err != nil {
+		return nil, fmt.Errorf("fail to get Thornado private key: %w", err)
+	}
+	nodePrivKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), thorPrivateKey.Bytes())
+	nodePubKey, err := bech32AccountPubKey(nodePrivKey)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get node account public key: %w", err)
+	}
+	return &Client{
+		cfg:                       cfg,
+		log:                       logger,
+		m:                         m,
+		rpc:                       rpcClient,
+		nodePubKey:                nodePubKey,
+		nodePrivKey:               nodePrivKey,
+		wg:                        &sync.WaitGroup{},
+		signerLock:                &sync.Mutex{},
+		vaultLocks:                make(map[string]*sync.Mutex),
+		vaultPaths:                make(map[string]map[uint64]struct{}),
+		stopchan:                  make(chan struct{}),
+		bridge:                    bridge,
+		regexpRemoveTrailingZeros: regexp.MustCompile(`(?:00)+$`),
+	}, nil
 }
 
 // GetConfig returns the chain configuration.
@@ -828,9 +882,13 @@ func (c *Client) errataDroppedMempoolTxs(height int64, currentMempool map[string
 			continue
 		}
 		if c.confirmTx(txid) {
+			c.clearMissingErrata(txid)
 			// Keep mined txs in the mempool marker set until block extraction
 			// consumes them. That lets the later final observation pass the
 			// observed-tx duplicate cache after the pre-confirmation observe.
+			continue
+		}
+		if !c.missingErrataReady(txid, height) {
 			continue
 		}
 		c.removeFromMemPoolCache(txid)
@@ -848,10 +906,62 @@ func (c *Client) errataDroppedMempoolTxs(height int64, currentMempool map[string
 	}
 }
 
+func (c *Client) missingErrataReady(txid string, height int64) bool {
+	if txid == "" {
+		return false
+	}
+	if height <= 0 {
+		height = c.getCurrentBlockHeight()
+	}
+	if height <= 0 {
+		chainHeight, err := c.GetHeight()
+		if err != nil {
+			c.log.Err(err).Str("txid", txid).Msg("fail to resolve BTC height for missing tx errata delay")
+			return false
+		}
+		c.updateCurrentBlockHeight(chainHeight)
+		height = chainHeight
+	}
+	key := strings.ToUpper(txid)
+	first, ok := c.missingErrataFirstSeen.Load(key)
+	if !ok {
+		c.missingErrataFirstSeen.Store(key, height)
+		c.log.Info().
+			Int64("height", height).
+			Int64("delay_blocks", btcErrataDelayBlocks).
+			Str("txid", txid).
+			Msg("missing BTC tx first seen; delaying errata")
+		return false
+	}
+	firstHeight, ok := first.(int64)
+	if !ok {
+		c.missingErrataFirstSeen.Store(key, height)
+		return false
+	}
+	if height-firstHeight < btcErrataDelayBlocks {
+		c.log.Info().
+			Int64("height", height).
+			Int64("first_missing_height", firstHeight).
+			Int64("delay_blocks", btcErrataDelayBlocks).
+			Str("txid", txid).
+			Msg("missing BTC tx still inside errata delay")
+		return false
+	}
+	return true
+}
+
+func (c *Client) clearMissingErrata(txid string) {
+	if txid == "" {
+		return
+	}
+	c.missingErrataFirstSeen.Delete(strings.ToUpper(txid))
+}
+
 func (c *Client) errataMissingObservedTx(height int64, txid string) bool {
 	if txid == "" || c.globalErrataQueue == nil {
 		return false
 	}
+	c.clearMissingErrata(txid)
 	c.removeFromMemPoolCache(txid)
 	if err := c.temporalStorage.UntrackObservedTx(txid); err != nil {
 		c.log.Err(err).Str("txid", txid).Msg("fail to remove missing observed tx from cache")
@@ -881,11 +991,20 @@ func (c *Client) errataMissingObservedTxs(height int64, txIn types.TxIn) bool {
 		}
 	}
 	missing := false
+	delayHeight := c.getCurrentBlockHeight()
+	if delayHeight <= 0 {
+		delayHeight = height
+	}
 	for _, tx := range txIn.TxArray {
 		if tx == nil || tx.Tx == "" {
 			continue
 		}
 		if c.confirmTx(tx.Tx) {
+			c.clearMissingErrata(tx.Tx)
+			continue
+		}
+		if !c.missingErrataReady(tx.Tx, delayHeight) {
+			missing = true
 			continue
 		}
 		c.log.Info().Int64("height", height).Str("txid", tx.Tx).Msg("observed tx disappeared; queue errata")

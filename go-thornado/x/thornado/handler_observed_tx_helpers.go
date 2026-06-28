@@ -573,6 +573,9 @@ func handleObservedTxOutQuorum(
 			// update the observing addresses
 			mgr.ObMgr().AppendObserver(tx.Tx.Chain, observers)
 		}
+		if repairRevertedObservedOutbound(ctx, mgr, &voter, tx) {
+			return nil
+		}
 		if voter.FinalisedHeight > 0 {
 			replayTx := txForOutboundReplayMatch(voter, tx)
 			if markObservedOutboundTxOut(ctx, mgr, replayTx) || len(replayTx.Tx.SourceInputs) > 0 {
@@ -585,6 +588,10 @@ func handleObservedTxOutQuorum(
 	}
 
 	k := mgr.Keeper()
+
+	if repairRevertedObservedOutbound(ctx, mgr, &voter, tx) {
+		return nil
+	}
 
 	if isCancelOrApprovalTx(tx) {
 		ctx.Logger().Info("skipping penalty for cancel tx", "txid", tx.Tx.ID)
@@ -711,6 +718,79 @@ func handleObservedTxOutQuorum(
 	ctx.Logger().Info("tx out processed", "chain", tx.Tx.Chain, "id", tx.Tx.ID, "finalized", tx.IsFinal())
 
 	return nil
+}
+
+func repairRevertedObservedOutbound(ctx cosmos.Context, mgr Manager, voter *ObservedTxVoter, tx ObservedTx) bool {
+	if voter == nil ||
+		!voter.Reverted ||
+		!tx.IsFinal() ||
+		tx.Tx.ID.IsEmpty() ||
+		!tx.Tx.Chain.Equals(common.BTCChain) ||
+		!observedOutboundRequiresTxOutMatch(tx) {
+		return false
+	}
+	if voter.Tx.IsEmpty() ||
+		!voter.Tx.Tx.ID.Equals(tx.Tx.ID) ||
+		!voter.Tx.ObservedPubKey.Equals(tx.ObservedPubKey) ||
+		!voter.Tx.Tx.EqualsEx(tx.Tx) {
+		return false
+	}
+	if !markObservedOutboundTxOut(ctx, mgr, tx) && !observedOutboundAlreadyMatchedHistoricalTxOut(ctx, mgr.Keeper(), tx) {
+		return false
+	}
+
+	k := mgr.Keeper()
+	vault, err := k.GetVault(ctx, tx.ObservedPubKey)
+	if err != nil {
+		ctx.Logger().Error("fail to get vault for reverted outbound repair", "error", err, "vault", tx.ObservedPubKey.String(), "tx_id", tx.Tx.ID.String())
+		return false
+	}
+	if !tx.Tx.FromAddress.Equals(tx.Tx.ToAddress) && !isBTCChildSweepToRoot(tx, vault.PubKey) && !isOutboundFakeGasTx(tx) {
+		vault.SubFunds(tx.Tx.Coins)
+	}
+	if !vault.HasFunds() && vault.Status == RetiringVault {
+		vault.UpdateStatus(InactiveVault, ctx.BlockHeight())
+	}
+	if err := k.SetVault(ctx, vault); err != nil {
+		ctx.Logger().Error("fail to save vault after reverted outbound repair", "error", err, "vault", vault.PubKey.String(), "tx_id", tx.Tx.ID.String())
+		return false
+	}
+
+	voter.Reverted = false
+	voter.SetDone()
+	k.SetObservedTxOutVoter(ctx, *voter)
+	ctx.Logger().Info("repaired reverted observed outbound",
+		"vault", vault.PubKey.String(),
+		"tx_id", tx.Tx.ID.String(),
+		"coins", tx.Tx.Coins.String(),
+	)
+	return true
+}
+
+func observedOutboundAlreadyMatchedHistoricalTxOut(ctx cosmos.Context, k keeper.Keeper, tx ObservedTx) bool {
+	if !tx.IsFinal() || tx.Tx.ID.IsEmpty() || !observedOutboundRequiresTxOutMatch(tx) {
+		return false
+	}
+	iterator := k.GetTxOutIterator(ctx)
+	defer func() {
+		if err := iterator.Close(); shouldLogIteratorError(err) {
+			ctx.Logger().Error("fail to close txout iterator", "error", err)
+		}
+	}()
+	for ; iterator.Valid(); iterator.Next() {
+		var txOut TxOut
+		if err := k.Cdc().Unmarshal(iterator.Value(), &txOut); err != nil {
+			ctx.Logger().Error("fail to unmarshal txout while matching historical observed outbound", "error", err)
+			continue
+		}
+		if observedOutboundAlreadyMatchedTxOut(&txOut, tx) {
+			return true
+		}
+	}
+	if err := iterator.Error(); shouldLogIteratorError(err) {
+		ctx.Logger().Error("txout iterator ended with error", "error", err)
+	}
+	return false
 }
 
 func creditBTCMigrationDestination(ctx cosmos.Context, mgr Manager, voter *ObservedTxVoter, tx ObservedTx) bool {

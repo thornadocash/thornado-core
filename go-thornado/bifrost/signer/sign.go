@@ -367,24 +367,16 @@ func (s *Signer) frostSignerRoles(item TxOutStoreItem, chain chainclients.ChainC
 				Msg("skipping FROST leader txout because local keyshare is missing")
 			return false, false, nil
 		}
-		signingParty, ok := s.localFrostSigningParty(tx.VaultPubKey)
+		_, ok := s.localFrostSigningParty(tx.VaultPubKey)
 		if !ok {
 			return false, false, nil
 		}
 		participate = true
-		broadcast = item.SigningLeader.Equals(signingParty)
-		if !broadcast {
-			s.logger.Debug().
-				Stringer("in_hash", tx.InHash).
-				Stringer("signing_leader", item.SigningLeader).
-				Stringer("local_pub_key", signingParty).
-				Uint64("epoch", item.Epoch).
-				Msg("participating in FROST keysign without broadcast on non-leader signer")
-		}
+		broadcast = true
 		return participate, broadcast, nil
 	}
 
-	isFrostVault, members, err := s.frostVaultMembers(tx.VaultPubKey, chain)
+	isFrostVault, _, err := s.frostVaultMembers(tx.VaultPubKey, chain)
 	if err != nil {
 		return false, false, err
 	}
@@ -392,13 +384,6 @@ func (s *Signer) frostSignerRoles(item TxOutStoreItem, chain chainclients.ChainC
 		return true, true, nil
 	}
 
-	digest := sha256.Sum256([]byte(tx.Hash()))
-	offset := binary.BigEndian.Uint64(digest[:8])
-	var attempt uint64
-	if signingPeriod > 0 && blockHeight > tx.Height {
-		attempt = uint64((blockHeight - tx.Height) / signingPeriod)
-	}
-	designated := members[(offset+attempt)%uint64(len(members))]
 	if !s.localFrostStateExists(tx.VaultPubKey) {
 		s.logger.Debug().
 			Stringer("in_hash", tx.InHash).
@@ -407,19 +392,12 @@ func (s *Signer) frostSignerRoles(item TxOutStoreItem, chain chainclients.ChainC
 			Msg("skipping FROST txout because local keyshare is missing")
 		return false, false, nil
 	}
-	signingParty, ok := s.localFrostSigningParty(tx.VaultPubKey)
+	_, ok := s.localFrostSigningParty(tx.VaultPubKey)
 	if !ok {
 		return false, false, nil
 	}
 	participate = true
-	broadcast = strings.EqualFold(designated, signingParty.String())
-	if !broadcast {
-		s.logger.Debug().
-			Stringer("in_hash", tx.InHash).
-			Str("designated_pub_key", designated).
-			Stringer("local_pub_key", signingParty).
-			Msg("participating in FROST keysign without broadcast on non-designated signer")
-	}
+	broadcast = true
 	return participate, broadcast, nil
 }
 
@@ -1082,17 +1060,15 @@ func (s *Signer) signAndBroadcast(item *TxOutStoreItem) (checkpointOut []byte, o
 	}
 	s.debugSigningRoles(perfID, participate, broadcast, s.isFrostVaultTxOut(tx.VaultPubKey, chain), resolvedPartyLeader)
 	if !participate {
-		if !ttypes.IsInternalTxOutType(tx.TxType) {
-			item.DeferredUntilHeight = nextFrostSignerAttemptHeight(tx, blockHeight, signingTransactionPeriod)
-			if storeErr := s.storage.Set(*item); storeErr != nil {
-				s.logger.Error().Err(storeErr).Msg("fail to defer non-participating FROST tx out store item")
-			} else {
-				s.logger.Debug().
-					Int64("current_height", blockHeight).
-					Int64("deferred_until_height", item.DeferredUntilHeight).
-					Stringer("in_hash", tx.InHash).
-					Msg("deferred non-participating FROST txout")
-			}
+		item.DeferredUntilHeight = nextFrostSignerAttemptHeight(tx, blockHeight, signingTransactionPeriod)
+		if storeErr := s.storage.Set(*item); storeErr != nil {
+			s.logger.Error().Err(storeErr).Msg("fail to defer non-participating FROST tx out store item")
+		} else {
+			s.logger.Debug().
+				Int64("current_height", blockHeight).
+				Int64("deferred_until_height", item.DeferredUntilHeight).
+				Stringer("in_hash", tx.InHash).
+				Msg("deferred non-participating FROST txout")
 		}
 		return nil, nil, false, errNotDesignatedFrostSigner
 	}
@@ -1214,6 +1190,10 @@ func (s *Signer) signAndBroadcast(item *TxOutStoreItem) (checkpointOut []byte, o
 			signedTx, checkpoint, observation, err = chain.SignTx(tx, blockHeight)
 		}
 		if err != nil {
+			if errors.Is(err, frost.ErrLocalPartyNotSelected) || strings.Contains(err.Error(), frost.ErrLocalPartyNotSelected.Error()) {
+				s.logger.Trace().Err(err).Msg("local FROST signer was not selected by party leader")
+				return checkpoint, nil, false, errNotDesignatedFrostSigner
+			}
 			if strings.Contains(err.Error(), "party closed") {
 				s.logger.Trace().Err(err).Msg("FROST party already closed")
 				return checkpoint, nil, false, errNotDesignatedFrostSigner
@@ -1257,15 +1237,6 @@ func (s *Signer) signAndBroadcast(item *TxOutStoreItem) (checkpointOut []byte, o
 		s.logger.Debug().Msg("signed transaction is empty")
 		s.debugSigningFinish(perfID, "empty_signed_tx", "")
 		return nil, nil, false, nil
-	}
-
-	if !broadcast {
-		s.logger.Debug().
-			Stringer("in_hash", tx.InHash).
-			Stringer("vault_pub_key", tx.VaultPubKey).
-			Msg("completed FROST keysign without broadcasting on non-designated signer")
-		s.debugSigningFinish(perfID, "non_leader_signature_complete", fmt.Sprintf("signed_tx_bytes=%d", len(signedTx)))
-		return checkpoint, observation, false, errNotDesignatedFrostSigner
 	}
 
 	// store immediately after a successful sign so the signed payload is saved even if broadcast crashes
@@ -1500,32 +1471,19 @@ func deferredRecoveredObservationTxIn(item TxOutStoreItem) (types.TxIn, bool) {
 		return types.TxIn{}, false
 	}
 	return types.TxIn{
-		Chain:                item.TxOutItem.Chain,
-		TxArray:              []*types.TxInItem{item.Observation},
-		MemPool:              false,
-		Filtered:             true,
-		ConfirmationRequired: 0,
+		Chain:                  item.TxOutItem.Chain,
+		TxArray:                []*types.TxInItem{item.Observation},
+		MemPool:                false,
+		Filtered:               true,
+		ConfirmationRequired:   0,
+		AllowFutureObservation: true,
 	}, true
 }
 
 func (s *Signer) processDeferredTransaction(item TxOutStoreItem) {
 	item, handled := s.removeTerminalOrCompletedTxOut(item)
-	if handled || !s.cfg.Signer.AutoObserve {
+	if handled {
 		return
-	}
-	txIn, ok := deferredRecoveredObservationTxIn(item)
-	if !ok {
-		return
-	}
-	s.logger.Info().
-		Str("txid", item.Observation.Tx).
-		Int64("height", item.Observation.BlockHeight).
-		Stringer("in_hash", item.TxOutItem.InHash).
-		Msg("auto observing deferred recovered txout")
-	s.observer.ObserveSigned(txIn)
-	item.Observation = nil
-	if err := s.storage.Set(item); err != nil {
-		s.logger.Error().Err(err).Msg("fail to clear deferred recovered txout observation")
 	}
 }
 
@@ -1551,12 +1509,6 @@ func (s *Signer) processTransaction(item TxOutStoreItem) {
 	})
 	if err != nil {
 		if errors.Is(err, errNotDesignatedFrostSigner) {
-			if len(checkpoint) > 0 {
-				item.Checkpoint = checkpoint
-			}
-			if obs != nil {
-				item.Observation = obs
-			}
 			if deferErr := s.deferFrostKeysignRetry(item); deferErr != nil {
 				s.logger.Debug().Err(deferErr).Msg("fail to defer non-designated FROST keysign retry")
 			}
@@ -1609,22 +1561,19 @@ func (s *Signer) processTransaction(item TxOutStoreItem) {
 	}
 	cancel()
 
-	// if enabled and the observation is non-nil, instant observe the outbound
-	if s.cfg.Signer.AutoObserve && obs != nil {
-		memPool := true
-		if recoveredObs {
-			memPool = false
-		}
+	// Freshly signed outbounds are observed automatically. Recovered txouts are
+	// left for explicit operator recovery through the manual observe command.
+	if s.cfg.Signer.AutoObserve && obs != nil && !recoveredObs {
 		s.logger.Info().
 			Str("txid", obs.Tx).
 			Int64("height", obs.BlockHeight).
-			Bool("mempool", memPool).
-			Bool("recovered", recoveredObs).
+			Bool("mempool", true).
+			Bool("recovered", false).
 			Msg("auto observing signed txout")
 		s.observer.ObserveSigned(types.TxIn{
 			Chain:                  item.TxOutItem.Chain,
 			TxArray:                []*types.TxInItem{obs},
-			MemPool:                memPool,
+			MemPool:                true,
 			Filtered:               true,
 			ConfirmationRequired:   0,
 			AllowFutureObservation: true,

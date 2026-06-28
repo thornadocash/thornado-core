@@ -23,7 +23,7 @@ type vaultChain struct {
 type semaphore chan struct{}
 
 func txOutDeferredPast(item TxOutStoreItem, blockHeight int64) bool {
-	return item.DeferredUntilHeight > blockHeight && !types.IsInternalTxOutType(item.TxOutItem.TxType)
+	return item.DeferredUntilHeight > blockHeight
 }
 
 // acquire will asynchronously acquire all available capacity from the semaphore.

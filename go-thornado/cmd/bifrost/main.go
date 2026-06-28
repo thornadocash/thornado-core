@@ -23,6 +23,7 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
 	"github.com/thornadocash/go-thornado/bifrost/observer"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients"
+	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/btc"
 	"github.com/thornadocash/go-thornado/bifrost/pubkeymanager"
 	"github.com/thornadocash/go-thornado/bifrost/signer"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
@@ -42,6 +43,11 @@ func printVersion() {
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "observe-tx" {
+		runObserveTxCommand(os.Args[2:])
+		return
+	}
+
 	showVersion := flag.Bool("version", false, "Shows version")
 	logLevel := flag.StringP("log-level", "l", "info", "Log Level")
 	pretty := flag.BoolP("pretty-log", "p", false, "Enables unstructured prettified logging. This is useful for local debugging")
@@ -224,6 +230,104 @@ func main() {
 	}
 	if err = healthServer.Stop(); err != nil {
 		log.Fatal().Err(err).Msg("fail to stop health server")
+	}
+}
+
+func runObserveTxCommand(args []string) {
+	fs := flag.NewFlagSet("observe-tx", flag.ExitOnError)
+	logLevel := fs.StringP("log-level", "l", "info", "Log Level")
+	pretty := fs.BoolP("pretty-log", "p", false, "Enables unstructured prettified logging")
+	chainName := fs.String("chain", tcommon.BTCChain.String(), "Chain to observe")
+	allowFutureObservation := fs.Bool("allow-future-observation", false, "Submit as future observation for instant signed outbound recovery")
+	if err := fs.Parse(args); err != nil {
+		log.Fatal().Err(err).Msg("fail to parse observe-tx flags")
+	}
+	txids := fs.Args()
+	if len(txids) == 0 {
+		fmt.Fprintln(os.Stderr, "usage: bifrost observe-tx [--chain BTC] <txid> [txid...]")
+		os.Exit(2)
+	}
+
+	initPrefix()
+	initLog(*logLevel, *pretty)
+	config.Init()
+	config.InitBifrost()
+	cfg := config.GetBifrost()
+
+	m, err := metrics.NewMetrics(cfg.Metrics)
+	if err != nil {
+		log.Fatal().Err(err).Msg("fail to create metric instance")
+	}
+	if len(cfg.Thornado.SignerName) == 0 {
+		log.Fatal().Msg("signer name is empty")
+	}
+	if len(cfg.Thornado.SignerPasswd) == 0 {
+		log.Fatal().Msg("signer password is empty")
+	}
+	kb, _, err := thornadoclient.GetKeyringKeybase(cfg.Thornado.ChainHomeFolder, cfg.Thornado.SignerName, cfg.Thornado.SignerPasswd)
+	if err != nil {
+		log.Fatal().Err(err).Msg("fail to get keyring keybase")
+	}
+	k := thornadoclient.NewKeysWithKeybase(kb, cfg.Thornado.SignerName, cfg.Thornado.SignerPasswd)
+	thornadoBridge, err := thornadoclient.NewThornadoBridge(cfg.Thornado, m, k)
+	if err != nil {
+		log.Fatal().Err(err).Msg("fail to create new thornado bridge")
+	}
+	if err = thornadoBridge.EnsureNodeWhitelistedWithTimeout(); err != nil {
+		log.Fatal().Err(err).Msg("node account is not whitelisted")
+	}
+	pubkeyMgr, err := pubkeymanager.NewPubKeyManager(thornadoBridge, m)
+	if err != nil {
+		log.Fatal().Err(err).Msg("fail to create pubkey manager")
+	}
+	if err = pubkeyMgr.Start(); err != nil {
+		log.Fatal().Err(err).Msg("fail to start pubkey manager")
+	}
+	defer pubkeyMgr.Stop()
+
+	chainID := tcommon.Chain(*chainName)
+	if !chainID.Equals(tcommon.BTCChain) {
+		log.Fatal().Stringer("chain", chainID).Msg("observe-tx only supports BTC")
+	}
+	chainCfg := cfg.GetChains()[chainID]
+	if chainCfg.Disabled {
+		log.Fatal().Stringer("chain", chainID).Msg("chain is disabled")
+	}
+	if len(chainCfg.RPCHost) == 0 {
+		log.Fatal().Stringer("chain", chainID).Msg("missing chain RPC host")
+	}
+	if !strings.HasPrefix(chainCfg.RPCHost, "http") {
+		chainCfg.RPCHost = fmt.Sprintf("http://%s", chainCfg.RPCHost)
+	}
+	chainClient, err := btc.NewObserveOnlyClient(k, chainCfg, thornadoBridge, m)
+	if err != nil {
+		log.Fatal().Err(err).Msg("fail to create observe-only BTC client")
+	}
+	results, err := observer.ManualObserveTxIDs(
+		context.Background(),
+		k,
+		cfg.Thornado.ChainEBifrost,
+		thornadoBridge,
+		pubkeyMgr,
+		chainClient,
+		txids,
+		*allowFutureObservation,
+	)
+	if err != nil {
+		log.Fatal().Err(err).Msg("manual observe failed")
+	}
+	for _, result := range results {
+		log.Info().
+			Str("txid", result.TxID).
+			Stringer("chain", result.Chain).
+			Bool("mempool", result.Mempool).
+			Bool("finalized", result.Finalized).
+			Int("inbound", result.Inbound).
+			Int("outbound", result.Outbound).
+			Int64("confirmations_required", result.RequiredConfirmations).
+			Int64("finalise_height", result.ObservationFinaliseHeight).
+			Bool("allow_future_observation", result.AllowFutureObservation).
+			Msg("manual observe submitted")
 	}
 }
 

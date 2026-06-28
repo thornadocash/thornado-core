@@ -567,6 +567,72 @@ func TestObservedOutboundBatchRequiresPrescribedSourceInputs(t *testing.T) {
 	}
 }
 
+func TestCommonOutboundRequiresPrescribedBTCSourceInputs(t *testing.T) {
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+	mgr := newShielderFlowTestManager(k)
+	vaultPubKey := GetRandomPubKey()
+	vault := NewVaultV2(10, ActiveVault, BaseVault, vaultPubKey, common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	k.baseVaults = Vaults{vault}
+	from, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	to := GetRandomBTCAddress()
+	inHash := GetRandomTxHash()
+	outHash := GetRandomTxHash()
+	sourceInput := types.TxOutInput{TxId: inHash, Vout: 0, AmountSats: 20_000_000}
+	item := TxOutItem{
+		Chain:          common.BTCChain,
+		ToAddress:      to,
+		VaultPubKey:    vaultPubKey,
+		Coin:           common.NewCoin(common.BTCAsset, cosmos.NewUint(19_998_350)),
+		MaxGas:         common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(1_650))},
+		InHash:         inHash,
+		VaultPathIndex: common.MainVaultPathIndex,
+		TxType:         types.TxOutTypeSweep,
+		SourceInputs:   []types.TxOutInput{sourceInput},
+	}
+	if err := k.SetTxOut(ctx, &TxOut{Height: ctx.BlockHeight(), TxArray: []TxOutItem{item}}); err != nil {
+		t.Fatal(err)
+	}
+	k.SetObservedTxInVoter(ctx, ObservedTxVoter{TxID: inHash, Actions: []TxOutItem{item}})
+
+	wrongObservedTx := common.NewTx(
+		outHash,
+		from,
+		to,
+		common.NewCoins(item.Coin),
+		common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(1_650))},
+	)
+	wrongObservedTx.SourceInputs = []common.TxInput{{TxID: GetRandomTxHash(), Vout: 0, AmountSats: sourceInput.AmountSats}}
+	wrongObserved := common.NewObservedTx(wrongObservedTx, ctx.BlockHeight(), vaultPubKey, ctx.BlockHeight())
+	if _, err := NewCommonOutboundTxHandler(mgr).handle(ctx, wrongObserved, inHash); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := k.GetTxOut(ctx, ctx.BlockHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !stored.TxArray[0].OutHash.IsEmpty() {
+		t.Fatalf("wrong source input completed txout: %#v", stored.TxArray[0])
+	}
+
+	rightObservedTx := wrongObservedTx
+	rightObservedTx.SourceInputs = []common.TxInput{{TxID: sourceInput.TxId, Vout: sourceInput.Vout, AmountSats: sourceInput.AmountSats}}
+	rightObserved := common.NewObservedTx(rightObservedTx, ctx.BlockHeight(), vaultPubKey, ctx.BlockHeight())
+	if _, err := NewCommonOutboundTxHandler(mgr).handle(ctx, rightObserved, inHash); err != nil {
+		t.Fatal(err)
+	}
+	stored, err = k.GetTxOut(ctx, ctx.BlockHeight())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !stored.TxArray[0].OutHash.Equals(outHash) {
+		t.Fatalf("correct source input did not complete txout: %#v", stored.TxArray[0])
+	}
+}
+
 func testQueuedBTCBatch(t *testing.T, ctx cosmos.Context, k *shielderFlowTestKeeper, vaultPubKey common.PubKey) (*TxOut, types.TxOutInput, common.Address) {
 	t.Helper()
 	sourceInput := addTestBTCVaultSourceInput(t, ctx, k, vaultPubKey, 2_000_000)
@@ -980,6 +1046,89 @@ func TestAlreadyMatchedObservedOutboundSkipsOnlyAfterVoterDone(t *testing.T) {
 	voter.SetDone()
 	if !shouldSkipAlreadyProcessedObservedOutbound(voter, true, tx) {
 		t.Fatal("done voter should skip duplicate accounting")
+	}
+}
+
+func TestRepairRevertedObservedOutboundReversesFalseErrata(t *testing.T) {
+	ctx := testContext(500)
+	k := newShielderFlowTestKeeper()
+	mgr := newShielderFlowTestManager(k)
+
+	pubKey := GetRandomPubKey()
+	vault := NewVaultV2(100, ActiveVault, BaseVault, pubKey, common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	vault.AddFunds(common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(100_000_000))))
+	k.baseVaults = Vaults{vault}
+
+	from, err := common.DeriveBTCTaprootAddress(pubKey, common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	to, err := common.NewAddress("bcrt1q7jxc5gseayjdeysdvtd3xvj2wkzmza7rystenz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	outHash, err := common.NewTxID("A9EB813E8C21F60CA0399018B004FC66E8C2E34FC4ECB4652329E178EC1C4E17")
+	if err != nil {
+		t.Fatal(err)
+	}
+	inHash, err := common.NewTxID("DCE9F4D87D2200220647AAD24BA476E39527064AB8049E7FCE0624E5BED0A615")
+	if err != nil {
+		t.Fatal(err)
+	}
+	coin := common.NewCoin(common.BTCAsset, cosmos.NewUint(29_700_000))
+	tx := common.NewObservedTx(
+		common.NewTx(
+			outHash,
+			from,
+			to,
+			common.NewCoins(coin),
+			common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(3_094))},
+		),
+		4520,
+		pubKey,
+		4520,
+	)
+	tx.Tx.SourceInputs = []common.TxInput{{TxID: inHash, Vout: 0, AmountSats: 100_000_000}}
+	k.txOutByHeight[100] = TxOut{
+		Height: 100,
+		Status: TxOutStatusComplete,
+		TxArray: []TxOutItem{{
+			Chain:          common.BTCChain,
+			ToAddress:      to,
+			VaultPubKey:    pubKey,
+			Coin:           coin,
+			MaxGas:         common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(5_000))},
+			InHash:         inHash,
+			OutHash:        outHash,
+			VaultPathIndex: common.MainVaultPathIndex,
+			TxType:         types.TxOutTypeRefund,
+			SourceInputs:   []types.TxOutInput{{TxId: inHash, Vout: 0, AmountSats: 100_000_000}},
+		}},
+	}
+	voter := ObservedTxVoter{TxID: outHash, Tx: tx, Txs: []common.ObservedTx{tx}, FinalisedHeight: 499}
+	voter.SetReverted()
+	k.SetObservedTxOutVoter(ctx, voter)
+
+	if !repairRevertedObservedOutbound(ctx, mgr, &voter, tx) {
+		t.Fatal("expected reverted outbound to be repaired")
+	}
+
+	storedVault, err := k.GetVault(ctx, pubKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := storedVault.GetCoin(common.BTCAsset).Amount.Uint64(); got != 70_300_000 {
+		t.Fatalf("wrong repaired vault balance: %d", got)
+	}
+	storedVoter, err := k.GetObservedTxOutVoter(ctx, outHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if storedVoter.Reverted {
+		t.Fatal("expected reverted flag to be cleared")
+	}
+	if storedVoter.Tx.Status != common.Status_done {
+		t.Fatalf("expected done status, got %s", storedVoter.Tx.Status)
 	}
 }
 

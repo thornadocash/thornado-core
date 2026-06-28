@@ -304,18 +304,6 @@ func (c *Client) recoverSignedTxObservation(tx stypes.TxOutItem) (*stypes.TxInIt
 	if txid, ok := c.signerCacheManager.GetSignedTxHash(tx.CacheHash()); ok && txid != "" {
 		txids = append(txids, txid)
 	}
-	if latest, err := c.signerCacheManager.GetLatestRecordedTx(tx.CacheVault(c.GetChain())); err == nil && latest != "" {
-		seen := false
-		for _, txid := range txids {
-			if strings.EqualFold(txid, latest) {
-				seen = true
-				break
-			}
-		}
-		if !seen {
-			txids = append(txids, latest)
-		}
-	}
 	for _, txid := range txids {
 		raw, height, err := c.fetchConfirmedTx(txid)
 		if err != nil {
@@ -887,7 +875,12 @@ func (c *Client) BroadcastTx(txOut stypes.TxOutItem, payload []byte) (string, er
 		bm.AddSelfTransaction(txid)
 	}
 
-	msgs := []string{"already in block chain"}
+	msgs := []string{
+		"already in block chain",
+		"txn-already-in-mempool",
+		"transaction already in mempool",
+		"already have transaction",
+	}
 
 	if err != nil {
 		txid = redeemTx.TxHash().String()

@@ -437,7 +437,6 @@ type Bifrost struct {
 	FROST           BifrostFROSTConfiguration `mapstructure:"frost"`
 	ObserverLevelDB LevelDBOptions            `mapstructure:"observer_leveldb"`
 	ObserverWorkers int                       `mapstructure:"observer_workers"`
-	ManualObserve   BifrostManualObserve      `mapstructure:"manual_observe"`
 }
 
 func (b Bifrost) GetChains() map[common.Chain]BifrostChainConfiguration {
@@ -545,12 +544,6 @@ type BifrostAttestationGossipConfig struct {
 
 	// maximum concurrent receives from a single peer
 	PeerConcurrentReceives int `mapstructure:"peer_concurrent_receives"`
-}
-
-type BifrostManualObserve struct {
-	Enabled  bool          `mapstructure:"enabled"`
-	TxIDs    []string      `mapstructure:"txids"`
-	Interval time.Duration `mapstructure:"interval"`
 }
 
 type BifrostChainConfiguration struct {
@@ -805,9 +798,13 @@ type WhitelistCosmosAsset struct {
 }
 
 func expandBootstrapPeers(peers []string) []string {
-	expanded := make([]string, 0, len(peers))
-	for _, peer := range peers {
-		for _, part := range strings.Split(peer, ",") {
+	return splitEnvList(peers...)
+}
+
+func splitEnvList(values ...string) []string {
+	expanded := make([]string, 0, len(values))
+	for _, value := range values {
+		for _, part := range strings.Split(value, ",") {
 			part = strings.TrimSpace(part)
 			if part != "" {
 				expanded = append(expanded, part)

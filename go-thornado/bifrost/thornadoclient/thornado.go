@@ -55,6 +55,7 @@ const (
 	ConfigDefaultsEndpoint      = "/thornado/config/defaults"
 	ChainVersionEndpoint        = "/thornado/version"
 	NetworkFeeEndpoint          = "/thornado/network_fee"
+	TxStatusEndpoint            = "/thornado/tx/%s"
 	TxOutEndpoint               = "/thornado/txout"
 	VaultDepositAddressEndpoint = "/thornado/deposit/address/%s"
 )
@@ -930,6 +931,24 @@ func (b *thornadoBridge) GetConfigValue(key string) (int64, error) {
 func (b *thornadoBridge) GetConfigValueWithRef(template, ref string) (int64, error) {
 	key := fmt.Sprintf(template, ref)
 	return b.GetConfigValue(key)
+}
+
+func (b *thornadoBridge) IsTxInboundFinalised(txID common.TxID) (bool, error) {
+	if txID.IsEmpty() {
+		return false, nil
+	}
+	buf, status, err := b.getWithPath(fmt.Sprintf(TxStatusEndpoint, txID.String()))
+	if status == http.StatusNotFound {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("fail to get tx status: %w", err)
+	}
+	var resp openapi.TxStatusResponse
+	if err := json.Unmarshal(buf, &resp); err != nil {
+		return false, fmt.Errorf("fail to unmarshal tx status: %w", err)
+	}
+	return resp.Stages.InboundFinalised != nil && resp.Stages.InboundFinalised.Completed, nil
 }
 
 func (b *thornadoBridge) getConfigValues(endpoint string) (map[string]int64, error) {
