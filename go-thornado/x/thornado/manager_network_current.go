@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 
 	math "cosmossdk.io/math"
 	"github.com/thornadocash/go-thornado/common"
@@ -725,7 +726,7 @@ func (vm *NetworkMgr) markSpentBTCSourceInputs(spent map[string]struct{}, inputs
 }
 
 func btcSourceInputKey(txID common.TxID, vout uint32) string {
-	return fmt.Sprintf("%s:%d", txID.String(), vout)
+	return txID.String() + ":" + strconv.FormatUint(uint64(vout), 10)
 }
 
 // TriggerKeygen generate a record to instruct signer kick off keygen process

@@ -167,38 +167,50 @@ func sourceInputKey(txID string, vout uint32) string {
 	return formatUtxoKey(strings.ToLower(txID), vout)
 }
 
+type sourceInputMapKey struct {
+	txID string
+	vout uint32
+}
+
+func sourceInputLookupKey(txID string, vout uint32) sourceInputMapKey {
+	return sourceInputMapKey{
+		txID: strings.ToLower(txID),
+		vout: vout,
+	}
+}
+
 func filterUtxosBySourceInputs(utxos []btcjson.ListUnspentResult, inputs []stypes.TxOutInput, total btcutil.Amount) ([]btcjson.ListUnspentResult, error) {
 	if len(inputs) == 0 {
 		return nil, fmt.Errorf("missing source_inputs for internal tx")
 	}
 
-	available := make(map[string]btcjson.ListUnspentResult, len(utxos))
+	available := make(map[sourceInputMapKey]btcjson.ListUnspentResult, len(utxos))
 	for _, item := range utxos {
-		available[sourceInputKey(item.TxID, item.Vout)] = item
+		available[sourceInputLookupKey(item.TxID, item.Vout)] = item
 	}
 
-	seen := make(map[string]bool, len(inputs))
+	seen := make(map[sourceInputMapKey]bool, len(inputs))
 	result := make([]btcjson.ListUnspentResult, 0, len(inputs))
 	var toSpend btcutil.Amount
 	for _, input := range inputs {
 		if input.TxID.IsEmpty() {
 			return nil, fmt.Errorf("empty source input tx id")
 		}
-		key := sourceInputKey(input.TxID.String(), input.Vout)
+		key := sourceInputLookupKey(input.TxID.String(), input.Vout)
 		if seen[key] {
-			return nil, fmt.Errorf("duplicate source input %s", key)
+			return nil, fmt.Errorf("duplicate source input %s", sourceInputKey(input.TxID.String(), input.Vout))
 		}
 		seen[key] = true
 		item, ok := available[key]
 		if !ok {
-			return nil, fmt.Errorf("insufficient available UTXOs: missing source input %s", key)
+			return nil, fmt.Errorf("insufficient available UTXOs: missing source input %s", sourceInputKey(input.TxID.String(), input.Vout))
 		}
 		amt, err := btcutil.NewAmount(item.Amount)
 		if err != nil {
 			return nil, fmt.Errorf("fail to convert source input amount to btcutil amount: %w", err)
 		}
 		if input.AmountSats > 0 && uint64(amt) != input.AmountSats {
-			return nil, fmt.Errorf("source input %s amount mismatch: expected %d, got %d", key, input.AmountSats, uint64(amt))
+			return nil, fmt.Errorf("source input %s amount mismatch: expected %d, got %d", sourceInputKey(input.TxID.String(), input.Vout), input.AmountSats, uint64(amt))
 		}
 		result = append(result, item)
 		toSpend += amt

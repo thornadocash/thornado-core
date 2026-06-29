@@ -2,6 +2,7 @@ package btc
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,8 +29,16 @@ import (
 // SignTx builds and signs the outbound transaction. Returns the signed transaction, a
 // serialized checkpoint on error, and an error.
 func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []byte, *stypes.TxInItem, error) {
+	return c.SignTxContext(context.Background(), tx, thornadoHeight)
+}
+
+// SignTxContext builds and signs the outbound transaction with caller cancellation.
+func (c *Client) SignTxContext(ctx context.Context, tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []byte, *stypes.TxInItem, error) {
 	if !tx.Chain.Equals(c.cfg.ChainID) {
 		return nil, nil, nil, errors.New("wrong chain")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, nil, nil, err
 	}
 
 	// skip outbounds without coins
@@ -135,7 +144,7 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 						Msg("recovered spent BTC sweep observation")
 					return nil, nil, obs, nil
 				}
-				logEvent := c.log.Warn().
+				logEvent := c.log.Debug().
 					Stringer("in_hash", tx.InHash).
 					Uint64("vault_path_index", tx.VaultPathIndex).
 					Int64("tx_height", tx.Height).
@@ -143,13 +152,12 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 					Err(err)
 				logMessage := "BTC sweep source tx is not spendable while signing; waiting for completion or errata"
 				if c.signerCacheManager.HasSigned(tx.CacheHash()) {
-					logEvent = c.log.Debug().
+					logEvent = c.log.Trace().
 						Stringer("in_hash", tx.InHash).
 						Str("txout_hash", tx.CacheHash()).
 						Uint64("vault_path_index", tx.VaultPathIndex).
 						Int64("tx_height", tx.Height).
-						Int64("thornado_height", thornadoHeight).
-						Err(err)
+						Int64("thornado_height", thornadoHeight)
 					logMessage = "BTC sweep source already spent by cached signed txout; waiting for completion"
 				}
 				logEvent.Msg(logMessage)
@@ -176,7 +184,7 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 		return nil, nil, nil, fmt.Errorf("fail to marshal checkpoint: %w", err)
 	}
 
-	signedTx, txIn, err := c.signBuiltTx(tx, redeemTx, checkpoint.IndividualAmounts, sourceScript, thornadoHeight, redeemTx.TxOut[0].Value)
+	signedTx, txIn, err := c.signBuiltTx(ctx, tx, redeemTx, checkpoint.IndividualAmounts, sourceScript, thornadoHeight, redeemTx.TxOut[0].Value)
 	if err != nil {
 		return nil, checkpointBytes, nil, err
 	}
@@ -185,8 +193,15 @@ func (c *Client) SignTx(tx stypes.TxOutItem, thornadoHeight int64) ([]byte, []by
 }
 
 func (c *Client) SignTxBatch(txs []stypes.TxOutItem, thornadoHeight int64) ([]byte, []byte, *stypes.TxInItem, error) {
+	return c.SignTxBatchContext(context.Background(), txs, thornadoHeight)
+}
+
+func (c *Client) SignTxBatchContext(ctx context.Context, txs []stypes.TxOutItem, thornadoHeight int64) ([]byte, []byte, *stypes.TxInItem, error) {
 	if len(txs) == 0 {
 		return nil, nil, nil, errors.New("empty tx batch")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, nil, nil, err
 	}
 	tx := txs[0]
 	if !tx.Chain.Equals(c.cfg.ChainID) {
@@ -250,7 +265,7 @@ func (c *Client) SignTxBatch(txs []stypes.TxOutItem, thornadoHeight int64) ([]by
 		return nil, nil, nil, fmt.Errorf("fail to marshal checkpoint: %w", err)
 	}
 
-	signedTx, txIn, err := c.signBuiltTx(tx, redeemTx, checkpoint.IndividualAmounts, sourceScript, thornadoHeight, outputAmount)
+	signedTx, txIn, err := c.signBuiltTx(ctx, tx, redeemTx, checkpoint.IndividualAmounts, sourceScript, thornadoHeight, outputAmount)
 	if err != nil {
 		return nil, checkpointBytes, nil, err
 	}
@@ -429,7 +444,7 @@ func (c *Client) MarkTxBatchSigned(txs []stypes.TxOutItem, txid string) error {
 	return nil
 }
 
-func (c *Client) signBuiltTx(tx stypes.TxOutItem, redeemTx *btcwire.MsgTx, individualAmounts map[string]int64, sourceScript []byte, thornadoHeight int64, observedAmount int64) ([]byte, *stypes.TxInItem, error) {
+func (c *Client) signBuiltTx(ctx context.Context, tx stypes.TxOutItem, redeemTx *btcwire.MsgTx, individualAmounts map[string]int64, sourceScript []byte, thornadoHeight int64, observedAmount int64) ([]byte, *stypes.TxInItem, error) {
 	// create the list of signing requests
 	c.log.Info().Msgf("UTXOs to sign: %d", len(redeemTx.TxIn))
 	signings := []utxoSigning{}
@@ -450,7 +465,10 @@ func (c *Client) signBuiltTx(tx stypes.TxOutItem, redeemTx *btcwire.MsgTx, indiv
 			Msg("failed to get block height from RPC, falling back to scanner height")
 	}
 
-	if signErr := c.signRedeemTxInputs(redeemTx, tx, signings, sourceScript); signErr != nil {
+	if err := ctx.Err(); err != nil {
+		return nil, nil, err
+	}
+	if signErr := c.signRedeemTxInputs(ctx, redeemTx, tx, signings, sourceScript); signErr != nil {
 		err = PostKeysignFailure(c.bridge, tx, c.log, thornadoHeight, signErr)
 		return nil, nil, fmt.Errorf("fail to sign the message: %w", err)
 	}
@@ -503,12 +521,15 @@ type utxoSigning struct {
 	amount int64
 }
 
-func (c *Client) signRedeemTxInputs(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, signings []utxoSigning, sourceScript []byte) error {
-	return c.signRedeemTxInputsParallelFrost(redeemTx, tx, signings, sourceScript)
+func (c *Client) signRedeemTxInputs(ctx context.Context, redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, signings []utxoSigning, sourceScript []byte) error {
+	return c.signRedeemTxInputsParallelFrost(ctx, redeemTx, tx, signings, sourceScript)
 }
 
-func (c *Client) signRedeemTxInputsParallelFrost(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, signings []utxoSigning, sourceScript []byte) error {
+func (c *Client) signRedeemTxInputsParallelFrost(ctx context.Context, redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, signings []utxoSigning, sourceScript []byte) error {
 	c.log.Info().Int("inputs", len(signings)).Msg("signing BTC FROST inputs in parallel")
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -520,11 +541,18 @@ func (c *Client) signRedeemTxInputsParallelFrost(redeemTx *btcwire.MsgTx, tx sty
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			witness, err := c.taprootUTXOWitness(redeemTx, tx, signing.amount, sourceScript, int(signing.idx))
+			if err := ctx.Err(); err != nil {
+				mu.Lock()
+				utxoErr = multierror.Append(utxoErr, err)
+				mu.Unlock()
+				return
+			}
+			witness, err := c.taprootUTXOWitness(ctx, redeemTx, tx, signing.amount, sourceScript, int(signing.idx))
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
 				utxoErr = multierror.Append(utxoErr, err)
+				cancel()
 				return
 			}
 			witnesses[i] = witness
@@ -644,13 +672,12 @@ func recoveredTxSpendsSourceInputs(raw *btcjson.TxRawResult, inputs []stypes.TxO
 	if raw == nil {
 		return false
 	}
-	spent := make(map[string]bool, len(raw.Vin))
+	spent := make(map[sourceInputMapKey]bool, len(raw.Vin))
 	for _, vin := range raw.Vin {
-		spent[fmt.Sprintf("%s:%d", strings.ToUpper(vin.Txid), vin.Vout)] = true
+		spent[sourceInputLookupKey(vin.Txid, vin.Vout)] = true
 	}
 	for _, input := range inputs {
-		key := fmt.Sprintf("%s:%d", strings.ToUpper(input.TxID.String()), input.Vout)
-		if !spent[key] {
+		if !spent[sourceInputLookupKey(input.TxID.String(), input.Vout)] {
 			return false
 		}
 	}
@@ -883,11 +910,7 @@ func (c *Client) BroadcastTx(txOut stypes.TxOutItem, payload []byte) (string, er
 		return "", fmt.Errorf("fail to deserialize payload: %w", err)
 	}
 
-	maxFeeRate := 0.10
-	if txOut.TxType == ttypes.TxOutTypeMigrate {
-		maxFeeRate = 0
-	}
-	txid, err := c.rpc.SendRawTransaction(redeemTx, maxFeeRate)
+	txid, err := c.rpc.SendRawTransaction(redeemTx, 0)
 
 	if txid != "" {
 		bm.AddSelfTransaction(txid)

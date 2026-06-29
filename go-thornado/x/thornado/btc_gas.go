@@ -2,6 +2,7 @@ package thornado
 
 import (
 	"fmt"
+	"math"
 	"sort"
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -198,7 +199,7 @@ func refreshBTCExactTxOutGroup(ctx cosmos.Context, k keeper.Keeper, txOut *TxOut
 	}
 
 	inputs := first.SourceInputs
-	if len(inputs) == 0 || (btcBatchableTxOut(first) && txOut.Status == TxOutStatusPendingBatch) {
+	if len(inputs) == 0 || (btcBatchableTxOut(first) && txOut.Status == TxOutStatusPendingBatch && !btcPinnedSourceInputs(first)) {
 		inputs, err = selectBTCVaultSourceInputsForOutputs(ctx, k, vault, first.VaultPathIndex, sourceAddr, outputAddrs, totalOutput, gasRate, txOut.Height)
 		if err != nil {
 			return err
@@ -454,11 +455,11 @@ func btcVaultSourceCandidates(ctx cosmos.Context, k keeper.Keeper, vault Vault, 
 		result = append(result, candidate)
 	}
 	sort.Slice(result, func(i, j int) bool {
-		if result[i].height != result[j].height {
-			return result[i].height < result[j].height
-		}
 		if result[i].input.AmountSats != result[j].input.AmountSats {
 			return result[i].input.AmountSats > result[j].input.AmountSats
+		}
+		if result[i].height != result[j].height {
+			return result[i].height < result[j].height
 		}
 		return btcSourceInputKey(result[i].input.TxId, result[i].input.Vout) < btcSourceInputKey(result[j].input.TxId, result[j].input.Vout)
 	})
@@ -547,11 +548,18 @@ func btcVaultOutputScript(pubKey common.PubKey, pathIndex uint64) ([]byte, error
 }
 
 func btcSourceInputsAmount(inputs []types.TxOutInput) cosmos.Uint {
-	total := cosmos.ZeroUint()
+	var total uint64
 	for _, input := range inputs {
-		total = total.Add(cosmos.NewUint(input.AmountSats))
+		if math.MaxUint64-total < input.AmountSats {
+			wideTotal := cosmos.NewUint(total)
+			for _, input := range inputs {
+				wideTotal = wideTotal.Add(cosmos.NewUint(input.AmountSats))
+			}
+			return wideTotal
+		}
+		total += input.AmountSats
 	}
-	return total
+	return cosmos.NewUint(total)
 }
 
 func markSpentBTCSourceInputs(spent map[string]struct{}, inputs []common.TxInput) {
@@ -571,12 +579,62 @@ func btcSameBatchSource(a, b TxOutItem) bool {
 		btcBatchableTxOut(b) &&
 		a.Chain.Equals(b.Chain) &&
 		a.VaultPubKey.Equals(b.VaultPubKey) &&
-		a.VaultPathIndex == b.VaultPathIndex
+		a.VaultPathIndex == b.VaultPathIndex &&
+		btcPinnedSourceInputsCompatible(a, b)
+}
+
+func btcPinnedSourceInputs(item TxOutItem) bool {
+	if item.InHash.IsEmpty() {
+		return false
+	}
+	for _, input := range item.SourceInputs {
+		if input.TxId.Equals(item.InHash) {
+			return true
+		}
+	}
+	return false
+}
+
+func btcPinnedSourceInputsCompatible(a, b TxOutItem) bool {
+	aPinned := btcPinnedSourceInputs(a)
+	bPinned := btcPinnedSourceInputs(b)
+	if !aPinned && !bPinned {
+		return true
+	}
+	return aPinned && bPinned && btcTxOutInputsEqual(a.SourceInputs, b.SourceInputs)
+}
+
+type btcTxOutInputMapKey struct {
+	txID       common.TxID
+	vout       uint32
+	amountSats uint64
+}
+
+func btcTxOutInputKey(input types.TxOutInput) btcTxOutInputMapKey {
+	return btcTxOutInputMapKey{
+		txID:       input.TxId,
+		vout:       input.Vout,
+		amountSats: input.AmountSats,
+	}
 }
 
 func btcTxOutInputsEqual(a, b []types.TxOutInput) bool {
 	if len(a) != len(b) {
 		return false
+	}
+	if len(a) > 8 {
+		matched := make(map[btcTxOutInputMapKey]uint16, len(a))
+		for _, input := range a {
+			matched[btcTxOutInputKey(input)]++
+		}
+		for _, input := range b {
+			key := btcTxOutInputKey(input)
+			if matched[key] == 0 {
+				return false
+			}
+			matched[key]--
+		}
+		return true
 	}
 	matched := make([]bool, len(b))
 	for _, left := range a {

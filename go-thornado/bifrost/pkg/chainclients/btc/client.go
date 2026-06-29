@@ -64,14 +64,17 @@ type Client struct {
 	signerCacheManager *signercache.CacheManager
 
 	// ---------- sync ----------
-	wg             *sync.WaitGroup
-	signerLock     *sync.Mutex
-	vaultLocks     map[string]*sync.Mutex
-	vaultPathLock  sync.RWMutex
-	vaultPaths     map[string]map[uint64]struct{}
-	vaultAddrCache sync.Map
-	networkFeeLock sync.Mutex
-	solvencyLock   sync.Mutex
+	wg                 *sync.WaitGroup
+	signerLock         *sync.Mutex
+	vaultLocks         map[string]*sync.Mutex
+	vaultPathLock      sync.RWMutex
+	vaultPaths         map[string]map[uint64]struct{}
+	vaultAddrCache     sync.Map
+	vaultPathAddrs     sync.Map
+	sourceScriptCache  sync.Map
+	taprootPubKeyCache sync.Map
+	networkFeeLock     sync.Mutex
+	solvencyLock       sync.Mutex
 
 	// ---------- scanner ----------
 	blockScanner    *blockscanner.BlockScanner
@@ -320,17 +323,25 @@ func (c *Client) ObserveTxIn(txid string) (types.TxIn, error) {
 		}
 	}
 
-	txInItem, err := c.getTxIn(tx, height, mempool, nil)
+	txInItems, err := c.getTxIns(tx, height, mempool, nil)
 	if err != nil {
 		return types.TxIn{}, fmt.Errorf("fail to build tx observation %s: %w", txid, err)
 	}
-	if txInItem.IsEmpty() || txInItem.Coins.IsEmpty() {
+	txArray := make([]*types.TxInItem, 0, len(txInItems))
+	for i := range txInItems {
+		txInItem := txInItems[i]
+		if txInItem.IsEmpty() || txInItem.Coins.IsEmpty() {
+			continue
+		}
+		txArray = append(txArray, &txInItem)
+	}
+	if len(txArray) == 0 {
 		return types.TxIn{}, fmt.Errorf("transaction %s is not an observable inbound", txid)
 	}
 
 	return types.TxIn{
 		Chain:   c.GetChain(),
-		TxArray: []*types.TxInItem{&txInItem},
+		TxArray: txArray,
 		MemPool: mempool,
 	}, nil
 }
@@ -506,13 +517,18 @@ func lockBTCWalletImport() (func(), error) {
 
 func (c *Client) rememberVaultPath(pubkey common.PubKey, pathIndex uint64) {
 	c.vaultPathLock.Lock()
-	defer c.vaultPathLock.Unlock()
-
 	key := pubkey.String()
 	if c.vaultPaths[key] == nil {
 		c.vaultPaths[key] = make(map[uint64]struct{})
 	}
 	c.vaultPaths[key][pathIndex] = struct{}{}
+	c.vaultPathLock.Unlock()
+
+	if addr, err := c.getVaultAddressAtPath(pubkey, pathIndex); err != nil {
+		c.log.Debug().Err(err).Str("pubkey", key).Uint64("path_index", pathIndex).Msg("fail to cache vault path address")
+	} else {
+		c.vaultPathAddrs.Store(strings.ToLower(addr.String()), struct{}{})
+	}
 }
 
 func (c *Client) registeredVaultPaths(pubkey common.PubKey) []uint64 {
@@ -641,8 +657,9 @@ func (c *Client) OnObservedTxIn(txIn types.TxInItem, blockHeight int64) {
 	if blockHeight <= 0 {
 		observedStage = ObservedTxStageMempool
 	}
-	if _, _, err = c.temporalStorage.TrackObservedTxStage(txIn.Tx, observedStage); err != nil {
-		c.log.Err(err).Msgf("fail to add hash (%s) to observed tx cache", txIn.Tx)
+	cacheKey := c.observedTxCacheKey(txIn)
+	if _, _, err = c.temporalStorage.TrackObservedTxStage(cacheKey, observedStage); err != nil {
+		c.log.Err(err).Msgf("fail to add hash (%s) to observed tx cache", cacheKey)
 	}
 	if c.isBaseAddress(txIn.Sender) {
 		c.log.Debug().Int64("height", blockHeight).Msgf("add hash %s as self transaction", txIn.Tx)
@@ -833,30 +850,34 @@ func (c *Client) FetchMemPool(height int64) (types.TxIn, error) {
 			}
 
 			// filter transactions
-			var txInItem types.TxInItem
-			txInItem, err = c.getTxIn(result, height, true, nil)
+			var txInItems []types.TxInItem
+			txInItems, err = c.getTxIns(result, height, true, nil)
 			if err != nil {
 				c.removeFromMemPoolCache(batch[i])
 				c.log.Debug().Err(err).Msg("fail to get TxInItem")
 				continue
 			}
-			if txInItem.IsEmpty() {
+			if len(txInItems) == 0 {
 				c.removeFromMemPoolCache(batch[i])
 				continue
 			}
-			if txInItem.Coins.IsEmpty() {
-				c.removeFromMemPoolCache(batch[i])
-				continue
+			for j := range txInItems {
+				txInItem := txInItems[j]
+				if txInItem.IsEmpty() || txInItem.Coins.IsEmpty() {
+					continue
+				}
+				txIn.TxArray = append(txIn.TxArray, &txInItem)
 			}
-
-			txIn.TxArray = append(txIn.TxArray, &txInItem)
 		}
 	}
 
 	// log some info if we observed or had errors
 	if len(txIn.TxArray) > 0 || errCount > 0 {
-		c.log.Info().
-			Int("batch", len(batch)).
+		logEvent := c.log.Debug()
+		if errCount > 0 {
+			logEvent = c.log.Warn()
+		}
+		logEvent.Int("batch", len(batch)).
 			Int("txins", len(txIn.TxArray)).
 			Int("errors", errCount).
 			Msg("retrieved mempool batch")

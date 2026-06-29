@@ -2,6 +2,7 @@ package btc
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
@@ -71,15 +72,33 @@ func (c *Client) getSchnorrSourceScript(pubkey common.PubKey) ([]byte, error) {
 	return c.getSchnorrSourceScriptAtPath(pubkey, common.MainVaultPathIndex)
 }
 
+type schnorrSourceScriptCacheKey struct {
+	pubkey    common.PubKey
+	pathIndex uint64
+}
+
 func (c *Client) getSchnorrSourceScriptAtPath(pubkey common.PubKey, pathIndex uint64) ([]byte, error) {
+	key := schnorrSourceScriptCacheKey{
+		pubkey:    pubkey,
+		pathIndex: pathIndex,
+	}
+	if cached, ok := c.sourceScriptCache.Load(key); ok {
+		return append([]byte(nil), cached.([]byte)...), nil
+	}
+
 	taprootKey, err := common.DeriveBTCTaprootPubKey(pubkey, pathIndex)
 	if err != nil {
 		return nil, err
 	}
-	return append([]byte{0x51, 0x20}, taprootKey...), nil
+	script := append([]byte{0x51, 0x20}, taprootKey...)
+	if parsedTaprootKey, err := btcschnorr.ParsePubKey(taprootKey); err == nil {
+		c.taprootPubKeyCache.Store(key, parsedTaprootKey)
+	}
+	c.sourceScriptCache.Store(key, script)
+	return append([]byte(nil), script...), nil
 }
 
-func (c *Client) taprootUTXOWitness(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, amount int64, sourceScript []byte, idx int) (btcwire.TxWitness, error) {
+func (c *Client) taprootUTXOWitness(ctx context.Context, redeemTx *btcwire.MsgTx, tx stypes.TxOutItem, amount int64, sourceScript []byte, idx int) (btcwire.TxWitness, error) {
 	sigHash, err := taprootKeySpendSigHash(redeemTx, idx, amount, sourceScript)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get taproot sighash: %w", err)
@@ -89,6 +108,10 @@ func (c *Client) taprootUTXOWitness(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem
 		sig []byte
 	)
 	if signer, ok := c.frostKeySigner.(interface {
+		RemoteSignWithPathContext(context.Context, []byte, common.SigningAlgo, string, uint64) ([]byte, []byte, error)
+	}); ok {
+		sig, _, err = signer.RemoteSignWithPathContext(ctx, sigHash, common.SigningAlgoSecp256k1, tx.VaultPubKey.String(), tx.VaultPathIndex)
+	} else if signer, ok := c.frostKeySigner.(interface {
 		RemoteSignWithPath([]byte, common.SigningAlgo, string, uint64) ([]byte, []byte, error)
 	}); ok {
 		sig, _, err = signer.RemoteSignWithPath(sigHash, common.SigningAlgoSecp256k1, tx.VaultPubKey.String(), tx.VaultPathIndex)
@@ -103,13 +126,9 @@ func (c *Client) taprootUTXOWitness(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem
 	}
 	sig = append(sig, schnorrSigHashAllAnyoneCanPay)
 
-	pubKeyBytes, err := common.DeriveBTCTaprootPubKey(tx.VaultPubKey, tx.VaultPathIndex)
+	taprootKey, err := c.taprootWitnessVerifyPubKey(tx, sourceScript)
 	if err != nil {
 		return nil, err
-	}
-	taprootKey, err := btcschnorr.ParsePubKey(pubKeyBytes)
-	if err != nil {
-		return nil, fmt.Errorf("fail to parse schnorr public key: %w", err)
 	}
 	parsedSig, err := btcschnorr.ParseSignature(sig[:btcschnorr.SignatureSize])
 	if err != nil {
@@ -120,6 +139,27 @@ func (c *Client) taprootUTXOWitness(redeemTx *btcwire.MsgTx, tx stypes.TxOutItem
 	}
 
 	return btcwire.TxWitness{sig}, nil
+}
+
+func (c *Client) taprootWitnessVerifyPubKey(tx stypes.TxOutItem, sourceScript []byte) (*btcec.PublicKey, error) {
+	key := schnorrSourceScriptCacheKey{
+		pubkey:    tx.VaultPubKey,
+		pathIndex: tx.VaultPathIndex,
+	}
+	if cached, ok := c.taprootPubKeyCache.Load(key); ok {
+		return cached.(*btcec.PublicKey), nil
+	}
+
+	pubKeyBytes, err := common.DeriveBTCTaprootPubKey(tx.VaultPubKey, tx.VaultPathIndex)
+	if err != nil {
+		return nil, err
+	}
+	taprootKey, err := btcschnorr.ParsePubKey(pubKeyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("fail to parse schnorr public key: %w", err)
+	}
+	c.taprootPubKeyCache.Store(key, taprootKey)
+	return taprootKey, nil
 }
 
 func taprootKeySpendSigHash(tx *btcwire.MsgTx, idx int, amount int64, sourceScript []byte) ([]byte, error) {

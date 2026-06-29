@@ -125,9 +125,17 @@ type httpResponseCache struct {
 	httpResponseMu      *sync.Mutex
 }
 
+type configValuesCache struct {
+	values  map[string]int64
+	checked time.Time
+	mu      *sync.Mutex
+}
+
 var (
 	httpResponseCaches       = make(map[string]*httpResponseCache) // String-to-pointer map for quicker lookup
 	httpResponseCachesMu     = &sync.Mutex{}
+	configValuesCaches       = make(map[string]*configValuesCache)
+	configValuesCachesMu     = &sync.Mutex{}
 	derivedBTCVaultAddrCache sync.Map
 )
 
@@ -935,7 +943,8 @@ func (b *thornadoBridge) GetConfigValueWithRef(template, ref string) (int64, err
 	return b.GetConfigValue(key)
 }
 
-func (b *thornadoBridge) IsTxInboundFinalised(txID common.TxID) (bool, error) {
+func (b *thornadoBridge) IsTxInboundFinalised(tx common.Tx) (bool, error) {
+	txID := common.BTCOutpointScopedTxID(tx)
 	if txID.IsEmpty() {
 		return false, nil
 	}
@@ -954,14 +963,43 @@ func (b *thornadoBridge) IsTxInboundFinalised(txID common.TxID) (bool, error) {
 }
 
 func (b *thornadoBridge) getConfigValues(endpoint string) (map[string]int64, error) {
-	buf, s, err := b.getWithPath(endpoint)
+	url := b.getThorChainURL(endpoint)
+	configValuesCachesMu.Lock()
+	cache := configValuesCaches[url]
+	if cache == nil {
+		cache = &configValuesCache{mu: &sync.Mutex{}}
+		configValuesCaches[url] = cache
+	}
+	configValuesCachesMu.Unlock()
+
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	if time.Since(cache.checked) < constants.ThornadoBlockTime && cache.values != nil {
+		return cloneConfigValues(cache.values), nil
+	}
+
+	buf, s, err := b.get(url)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get config values: %w", err)
 	}
 	if s != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", s)
 	}
-	return decodeConfigInt64Values(buf)
+	values, err := decodeConfigInt64Values(buf)
+	if err != nil {
+		return nil, err
+	}
+	cache.values = values
+	cache.checked = time.Now()
+	return cloneConfigValues(values), nil
+}
+
+func cloneConfigValues(values map[string]int64) map[string]int64 {
+	cloned := make(map[string]int64, len(values))
+	for key, value := range values {
+		cloned[key] = value
+	}
+	return cloned
 }
 
 func decodeConfigInt64Values(buf []byte) (map[string]int64, error) {
