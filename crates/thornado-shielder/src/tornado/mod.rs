@@ -18,7 +18,7 @@ pub use groth16::SnarkjsProof;
 pub use hash::{note_commitment, nullifier_hash, recipient_binding_decimal};
 pub use merkle::MerklePath;
 pub use prove::{
-    create_note_commitment, merkle_root_hex, prove_withdrawal, public_input_count,
-    redact_private_fields, validate_public_inputs, verify_withdrawal, withdrawal_witness_json,
-    TornadoWithdrawProof, PROTOCOL_ID,
+    create_note_commitment, merkle_root_hex, prove_withdrawal, prove_withdrawal_and_witness,
+    public_input_count, redact_private_fields, validate_public_inputs, verify_withdrawal,
+    withdrawal_witness_json, TornadoWithdrawProof, PROTOCOL_ID,
 };

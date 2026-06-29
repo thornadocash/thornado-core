@@ -32,6 +32,7 @@ async function thornadoWasm() {
     nullifierHashJson: mod.nullifier_hash_json,
     verifyWithdrawalJson: mod.verify_withdrawal_json,
     withdrawalWitnessFromReceiptJson: mod.withdrawal_witness_from_receipt_json,
+    withdrawalProofAndWitnessFromReceiptJson: mod.withdrawal_proof_and_witness_from_receipt_json,
     zkWithdrawalFromReceiptJson: mod.zk_withdrawal_from_receipt_json || mod.shielder_withdrawal_from_receipt_json
   };
 }
@@ -3469,34 +3470,50 @@ async function generateWithdrawalProof(noteIndex = state.selectedNote || 0, opti
     throw new Error("receive address is required");
   }
   const feeSats = options.feeSats ?? await quoteWithdrawalFee(note);
-  const seedHex = await walletRootSeedHex();
   const leavesResponse = await shielderLeavesForDenomination(note.denomination_sats);
   updateNotePoolPosition(note, leavesResponse);
   renderNotes();
   updateDashboard();
   const wasm = await thornadoWasm();
-  const [proof, generatedPublicInputs] = JSON.parse(wasm.zkWithdrawalFromReceiptJson(
-    JSON.stringify(note),
-    seedHex,
-    JSON.stringify(leavesResponse.leaves),
-    recipient,
-    BigInt(feeSats)
-  ));
+  const noteJson = JSON.stringify(note);
+  const leavesJson = JSON.stringify(leavesResponse.leaves);
+  let proof;
+  let generatedPublicInputs;
+  let witness;
+  if (wasm.withdrawalProofAndWitnessFromReceiptJson) {
+    [proof, generatedPublicInputs, witness] = JSON.parse(wasm.withdrawalProofAndWitnessFromReceiptJson(
+      noteJson,
+      leavesJson,
+      recipient,
+      BigInt(feeSats)
+    ));
+  } else {
+    const seedHex = await walletRootSeedHex();
+    [proof, generatedPublicInputs] = JSON.parse(wasm.zkWithdrawalFromReceiptJson(
+      noteJson,
+      seedHex,
+      leavesJson,
+      recipient,
+      BigInt(feeSats)
+    ));
+  }
   const publicInputs = {
     ...generatedPublicInputs,
     ...(options.publicPatch || {})
   };
   if (!proof?.tornado?.groth16) {
-    if (!wasm.withdrawalWitnessFromReceiptJson) {
+    if (!witness && !wasm.withdrawalWitnessFromReceiptJson) {
       throw new Error("Browser proof engine unavailable. Rebuild the web client with the Groth16 witness export before withdrawing.");
     }
     setMessage("Generating privacy proof in this browser...", "");
-    const witness = JSON.parse(wasm.withdrawalWitnessFromReceiptJson(
-      JSON.stringify(note),
-      JSON.stringify(leavesResponse.leaves),
-      recipient,
-      BigInt(feeSats)
-    ));
+    if (!witness) {
+      witness = JSON.parse(wasm.withdrawalWitnessFromReceiptJson(
+        noteJson,
+        leavesJson,
+        recipient,
+        BigInt(feeSats)
+      ));
+    }
     const verifyBrowserProof = async () => {
       const groth16 = await proveWithdrawalInWorker(witness);
       const candidate = {
@@ -3553,7 +3570,7 @@ function proveWithdrawalInWorker(witness) {
     }
     const proverVersion = new URLSearchParams(window.location.search).get("v") || "local";
     const proverUrl = new URL(`/thornado/ui/prover/prover.bundle.js?v=${encodeURIComponent(proverVersion)}`, window.location.origin).href;
-    const circuitUrl = new URL(`/thornado/ui/prover/withdraw.json?v=${encodeURIComponent(proverVersion)}`, window.location.origin).href;
+    const witnessWasmUrl = new URL(`/thornado/ui/prover/withdraw.wasm?v=${encodeURIComponent(proverVersion)}`, window.location.origin).href;
     const provingKeyUrl = new URL(`/thornado/ui/prover/withdraw_proving_key.bin?v=${encodeURIComponent(proverVersion)}`, window.location.origin).href;
     const workerSource = `
       self.window = self;
@@ -3563,9 +3580,9 @@ function proveWithdrawalInWorker(witness) {
       async function assets() {
         if (!assetsPromise) {
           assetsPromise = Promise.all([
-            fetch(${JSON.stringify(circuitUrl)}).then((response) => {
-              if (!response.ok) throw new Error("withdraw circuit unavailable");
-              return response.json();
+            fetch(${JSON.stringify(witnessWasmUrl)}).then((response) => {
+              if (!response.ok) throw new Error("withdraw witness wasm unavailable");
+              return response.arrayBuffer();
             }),
             fetch(${JSON.stringify(provingKeyUrl)}).then((response) => {
               if (!response.ok) throw new Error("withdraw proving key unavailable");
@@ -3577,8 +3594,8 @@ function proveWithdrawalInWorker(witness) {
       }
       self.onmessage = async (event) => {
         try {
-          const [circuit, provingKey] = await assets();
-          const groth16 = await self.ThornadoBrowserProver.proveWithdrawWithJson(event.data, circuit, provingKey);
+          const [witnessWasm, provingKey] = await assets();
+          const groth16 = await self.ThornadoBrowserProver.proveWithdrawWithWasm(event.data, witnessWasm, provingKey);
           self.postMessage({ groth16 });
         } catch (error) {
           self.postMessage({ error: error.stack || error.message || String(error) });

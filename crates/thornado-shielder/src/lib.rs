@@ -466,6 +466,36 @@ pub fn withdrawal_witness_from_receipt(
     )
 }
 
+pub fn withdrawal_proof_and_witness_from_receipt(
+    receipt: &NoteReceipt,
+    tree: &DenominationTree,
+    recipient: String,
+    fee_sats: u64,
+) -> Result<(WithdrawalProof, WithdrawalPublicInputs, serde_json::Value)> {
+    let leaf_index = tree
+        .leaves
+        .iter()
+        .position(|leaf| leaf == &receipt.commitment)
+        .ok_or(Error::UnknownCommitment)?;
+    let public = WithdrawalPublicInputs {
+        nullifier_hash: String::new(),
+        denomination_sats: receipt.denomination_sats,
+        recipient,
+        fee_sats,
+        merkle_root: tree.root(),
+        recipient_field: None,
+        relayer_field: None,
+        refund_field: None,
+    };
+    tornado::prove_withdrawal_and_witness(
+        &receipt.nullifier,
+        &receipt.secret,
+        &tree.leaves,
+        leaf_index,
+        &public,
+    )
+}
+
 pub fn validate_withdrawal_public_inputs(public: &WithdrawalPublicInputs) -> Result<()> {
     tornado::validate_public_inputs(public)
 }

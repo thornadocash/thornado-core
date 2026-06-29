@@ -5,8 +5,9 @@ use thornado_shielder::{
     note_recovery_candidates, nullifier_hash, recipient_binding_field, recover_note_receipt,
     recover_note_receipt_for_deposit_type, shield_authorization, shield_authorization_for_deposit,
     shield_authorization_for_deposit_type, shielder_withdrawal_from_receipt,
-    validate_withdrawal_public_inputs, withdrawal_witness_from_receipt, DenominationTree,
-    NoteCommitment, NoteReceipt, ShielderProofVerifier, WithdrawalProof, WithdrawalPublicInputs,
+    validate_withdrawal_public_inputs, withdrawal_proof_and_witness_from_receipt,
+    withdrawal_witness_from_receipt, DenominationTree, NoteCommitment, NoteReceipt,
+    ShielderProofVerifier, WithdrawalProof, WithdrawalPublicInputs,
 };
 use wasm_bindgen::prelude::*;
 
@@ -214,6 +215,27 @@ pub fn withdrawal_witness_from_receipt_json(
         known_roots: Default::default(),
     };
     json(withdrawal_witness_from_receipt(
+        &note,
+        &tree,
+        recipient.to_string(),
+        fee_sats,
+    ))
+}
+
+#[wasm_bindgen]
+pub fn withdrawal_proof_and_witness_from_receipt_json(
+    note_json: &str,
+    leaves_json: &str,
+    recipient: &str,
+    fee_sats: u64,
+) -> Result<String, JsValue> {
+    let note: NoteReceipt = parse_json(note_json)?;
+    let leaves = decode_leaves(leaves_json)?;
+    let tree = DenominationTree {
+        leaves,
+        known_roots: Default::default(),
+    };
+    json(withdrawal_proof_and_witness_from_receipt(
         &note,
         &tree,
         recipient.to_string(),

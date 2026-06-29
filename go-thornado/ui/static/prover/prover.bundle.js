@@ -54699,6 +54699,18 @@ function witnessToBuffer(witness) {
   }
   return buffer;
 }
+function fieldFromBinWitness(witnessBuffer, index) {
+  const bytes = witnessBuffer instanceof Uint8Array ? witnessBuffer : new Uint8Array(witnessBuffer);
+  const start = index * 32;
+  if (bytes.length < start + 32) {
+    throw new Error('binary witness too short');
+  }
+  let value = 0n;
+  for (let i = 31; i >= 0; i -= 1) {
+    value = (value << 8n) + BigInt(bytes[start + i]);
+  }
+  return value.toString();
+}
 async function proveWithdraw(input, witnessWasmBuffer, provingKeyBuffer) {
   return proveWithdrawWithWasm(input, witnessWasmBuffer, provingKeyBuffer);
 }
@@ -54715,12 +54727,11 @@ async function proveWithdrawWithJson(input, circuitJson, provingKeyBuffer) {
 async function proveWithdrawWithWasm(input, witnessWasmBuffer, provingKeyBuffer) {
   const wtns = withdrawWitnessInput(input);
   const witnessCalculator = await WitnessCalculatorBuilder(exactArrayBuffer(witnessWasmBuffer));
-  const witness = await witnessCalculator.calculateWitness(snarkjsOld.unstringifyBigInts(wtns));
-  const publicSignals = witness.slice(1, 7).map((signal) => signal.toString());
+  const witnessBin = await witnessCalculator.calculateBinWitness(snarkjsOld.unstringifyBigInts(wtns));
+  const publicSignals = [1, 2, 3, 4, 5, 6].map((index) => fieldFromBinWitness(witnessBin, index));
   if (publicSignals[0] !== input.root || publicSignals[1] !== input.nullifierHash) {
     throw new Error('public signal mismatch during prove');
   }
-  const witnessBin = await witnessCalculator.calculateBinWitness(snarkjsOld.unstringifyBigInts(wtns));
   return proveWitnessBin(witnessBin, provingKeyBuffer);
 }
 function withdrawWitnessInput(input) {

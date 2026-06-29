@@ -9,9 +9,9 @@ use super::field::{
 };
 use super::groth16::{public_inputs_from_withdraw, verify_snarkjs_proof, SnarkjsProof};
 use super::hash::{field_from_hex, field_to_hex, note_commitment, nullifier_hash};
-use super::merkle::{incremental_root, merkle_path, verify_merkle_path};
 #[cfg(feature = "proof-tests")]
-use super::merkle::{MerklePath, MERKLE_TREE_DEPTH};
+use super::merkle::MERKLE_TREE_DEPTH;
+use super::merkle::{incremental_root, merkle_path, verify_merkle_path, MerklePath};
 use crate::{Result, WithdrawalProof, WithdrawalPublicInputs};
 
 pub use super::ceremony::ENGINE_ID as PROTOCOL_ID;
@@ -86,6 +86,55 @@ pub fn prove_withdrawal(
     leaf_index: usize,
     public: &WithdrawalPublicInputs,
 ) -> Result<(WithdrawalProof, WithdrawalPublicInputs)> {
+    let ctx = withdrawal_context(nullifier_hex, secret_hex, leaves, leaf_index, public)?;
+    let public_out = withdrawal_public(public, &ctx);
+    let proof = withdrawal_proof(&public_out, public.fee_sats, &ctx)?;
+    Ok((proof, public_out))
+}
+
+pub fn prove_withdrawal_and_witness(
+    nullifier_hex: &str,
+    secret_hex: &str,
+    leaves: &[String],
+    leaf_index: usize,
+    public: &WithdrawalPublicInputs,
+) -> Result<(WithdrawalProof, WithdrawalPublicInputs, serde_json::Value)> {
+    let ctx = withdrawal_context(nullifier_hex, secret_hex, leaves, leaf_index, public)?;
+    let public_out = withdrawal_public(public, &ctx);
+    let proof = withdrawal_proof(&public_out, public.fee_sats, &ctx)?;
+    let witness = withdrawal_witness(public.fee_sats, &ctx);
+    Ok((proof, public_out, witness))
+}
+
+pub fn withdrawal_witness_json(
+    nullifier_hex: &str,
+    secret_hex: &str,
+    leaves: &[String],
+    leaf_index: usize,
+    public: &WithdrawalPublicInputs,
+) -> Result<serde_json::Value> {
+    let ctx = withdrawal_context(nullifier_hex, secret_hex, leaves, leaf_index, public)?;
+    Ok(withdrawal_witness(public.fee_sats, &ctx))
+}
+
+struct WithdrawalContext {
+    nullifier: Fr,
+    secret: Fr,
+    root: Fr,
+    nf_hash: Fr,
+    path: MerklePath,
+    recipient: Fr,
+    relayer: Fr,
+    refund: Fr,
+}
+
+fn withdrawal_context(
+    nullifier_hex: &str,
+    secret_hex: &str,
+    leaves: &[String],
+    leaf_index: usize,
+    public: &WithdrawalPublicInputs,
+) -> Result<WithdrawalContext> {
     let nullifier = field_from_hex(nullifier_hex).ok_or(crate::Error::InvalidProof)?;
     let secret = field_from_hex(secret_hex).ok_or(crate::Error::InvalidProof)?;
     let commitment = note_commitment(nullifier, secret)?;
@@ -106,24 +155,45 @@ pub fn prove_withdrawal(
     let recipient = expected_recipient_binding(public)?;
     let relayer = Fr::zero();
     let refund = Fr::zero();
+    Ok(WithdrawalContext {
+        nullifier,
+        secret,
+        root,
+        nf_hash,
+        path,
+        recipient,
+        relayer,
+        refund,
+    })
+}
+
+fn withdrawal_proof(
+    public_out: &WithdrawalPublicInputs,
+    _fee_sats: u64,
+    _ctx: &WithdrawalContext,
+) -> Result<WithdrawalProof> {
     #[cfg(feature = "proof-tests")]
     let groth16 = {
-        let fee = u64_to_fr(public.fee_sats);
-        let public_inputs =
-            public_inputs_from_withdraw(root, nf_hash, recipient, relayer, fee, refund);
-        Some(prove_groth16(nullifier, secret, &path, &public_inputs)?)
+        let fee = u64_to_fr(_fee_sats);
+        let public_inputs = public_inputs_from_withdraw(
+            _ctx.root,
+            _ctx.nf_hash,
+            _ctx.recipient,
+            _ctx.relayer,
+            fee,
+            _ctx.refund,
+        );
+        Some(prove_groth16(
+            _ctx.nullifier,
+            _ctx.secret,
+            &_ctx.path,
+            &public_inputs,
+        )?)
     };
     #[cfg(not(feature = "proof-tests"))]
     let groth16 = None;
 
-    let mut public_out = public.clone();
-    public_out.nullifier_hash = fr_to_decimal(nf_hash);
-    public_out.merkle_root = fr_to_decimal(root);
-    public_out.recipient_field = Some(fr_to_decimal(recipient));
-    public_out.relayer_field = Some(fr_to_decimal(relayer));
-    public_out.refund_field = Some(fr_to_decimal(refund));
-
-    let proof = WithdrawalProof {
+    Ok(WithdrawalProof {
         nullifier: String::new(),
         secret: String::new(),
         commitment: String::new(),
@@ -132,47 +202,35 @@ pub fn prove_withdrawal(
             protocol: PROTOCOL_ID.to_string(),
             groth16,
         }),
-    };
-    Ok((proof, public_out))
+    })
 }
 
-pub fn withdrawal_witness_json(
-    nullifier_hex: &str,
-    secret_hex: &str,
-    leaves: &[String],
-    leaf_index: usize,
+fn withdrawal_public(
     public: &WithdrawalPublicInputs,
-) -> Result<serde_json::Value> {
-    let nullifier = field_from_hex(nullifier_hex).ok_or(crate::Error::InvalidProof)?;
-    let secret = field_from_hex(secret_hex).ok_or(crate::Error::InvalidProof)?;
-    let commitment = note_commitment(nullifier, secret)?;
-    let nf_hash = nullifier_hash(nullifier)?;
-    let parsed_leaves: Result<Vec<Fr>> = leaves
-        .iter()
-        .map(|leaf| fr_from_field_hex(leaf).ok_or(crate::Error::InvalidProof))
-        .collect();
-    let parsed_leaves = parsed_leaves?;
-    if leaf_index >= parsed_leaves.len() || parsed_leaves[leaf_index] != commitment {
-        return Err(crate::Error::InvalidProof);
-    }
-    let root = incremental_root(&parsed_leaves)?;
-    let path = merkle_path(&parsed_leaves, leaf_index)?;
-    verify_merkle_path(&field_to_hex(root), &field_to_hex(commitment), &path)?;
+    ctx: &WithdrawalContext,
+) -> WithdrawalPublicInputs {
+    let mut public_out = public.clone();
+    public_out.nullifier_hash = fr_to_decimal(ctx.nf_hash);
+    public_out.merkle_root = fr_to_decimal(ctx.root);
+    public_out.recipient_field = Some(fr_to_decimal(ctx.recipient));
+    public_out.relayer_field = Some(fr_to_decimal(ctx.relayer));
+    public_out.refund_field = Some(fr_to_decimal(ctx.refund));
+    public_out
+}
 
-    validate_public_inputs(public)?;
-    let recipient = expected_recipient_binding(public)?;
-    Ok(serde_json::json!({
-        "nullifier": fr_to_decimal(nullifier),
-        "secret": fr_to_decimal(secret),
-        "pathElements": path.path_elements,
-        "pathIndices": path.path_indices,
-        "root": fr_to_decimal(root),
-        "nullifierHash": fr_to_decimal(nf_hash),
-        "recipient": fr_to_decimal(recipient),
+fn withdrawal_witness(fee_sats: u64, ctx: &WithdrawalContext) -> serde_json::Value {
+    serde_json::json!({
+        "nullifier": fr_to_decimal(ctx.nullifier),
+        "secret": fr_to_decimal(ctx.secret),
+        "pathElements": ctx.path.path_elements,
+        "pathIndices": ctx.path.path_indices,
+        "root": fr_to_decimal(ctx.root),
+        "nullifierHash": fr_to_decimal(ctx.nf_hash),
+        "recipient": fr_to_decimal(ctx.recipient),
         "relayer": "0",
-        "fee": public.fee_sats.to_string(),
+        "fee": fee_sats.to_string(),
         "refund": "0"
-    }))
+    })
 }
 
 pub fn verify_withdrawal(proof: &WithdrawalProof, public: &WithdrawalPublicInputs) -> Result<()> {
