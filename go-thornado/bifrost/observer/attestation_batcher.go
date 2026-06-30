@@ -425,7 +425,7 @@ func (b *AttestationBatcher) broadcastToPeer(ctx context.Context, peer peer.ID, 
 	defer cancel()
 	stream, err := b.host.NewStream(peerCtx, peer, batchedAttestationProtocol)
 	if err != nil {
-		b.logger.Error().Err(err).Msgf("fail to create stream to peer: %s", peer)
+		logAttestationStreamOpenError(b.logger, err, peer, string(batchedAttestationProtocol))
 		return
 	}
 

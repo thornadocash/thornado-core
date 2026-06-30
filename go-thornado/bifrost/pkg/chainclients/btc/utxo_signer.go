@@ -816,6 +816,15 @@ func (c *Client) sweepSourceActuallyMissing(tx stypes.TxOutItem) (bool, error) {
 				Msg("BTC sweep source output is not present on source transaction")
 			return true, nil
 		}
+		if raw.BlockHash != "" && raw.Confirmations == 0 {
+			c.log.Warn().
+				Stringer("in_hash", tx.InHash).
+				Stringer("source_tx", input.TxID).
+				Uint32("source_vout", input.Vout).
+				Str("block_hash", raw.BlockHash).
+				Msg("BTC sweep source transaction is only known from an inactive block")
+			return true, nil
+		}
 		txOut, err := c.rpc.GetTxOut(input.TxID.String(), input.Vout, true)
 		if err != nil {
 			return false, fmt.Errorf("fail to query source output %s:%d: %w", input.TxID, input.Vout, err)

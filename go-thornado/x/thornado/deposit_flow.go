@@ -99,9 +99,6 @@ func MatchCoreDeposit(ctx cosmos.Context, mgr Manager, tx ObservedTx) (types.Dep
 	if tx.Tx.ID.IsEmpty() {
 		return types.DepositRecord{}, fmt.Errorf("missing deposit tx id")
 	}
-	if existing, err := k.GetDepositRecord(ctx, tx.Tx.ID); err == nil && !existing.DepositID.IsEmpty() {
-		return types.DepositRecord{}, fmt.Errorf("deposit tx already matched")
-	}
 	if !tx.Tx.Chain.Equals(common.BTCChain) {
 		return types.DepositRecord{}, fmt.Errorf("deposit must be bitcoin")
 	}
@@ -120,6 +117,15 @@ func MatchCoreDeposit(ctx cosmos.Context, mgr Manager, tx ObservedTx) (types.Dep
 	if mapping.PurgeAtHeight > 0 && ctx.BlockHeight() >= mapping.PurgeAtHeight {
 		return types.DepositRecord{}, fmt.Errorf("deposit address purged")
 	}
+	if existing, found, err := findDepositRecordByInboundOutpoint(ctx, k, tx.Tx.ID, tx.Tx.SourceVout, tx.Tx.ToAddress); err != nil {
+		return types.DepositRecord{}, err
+	} else if found && !existing.DepositID.IsEmpty() {
+		return types.DepositRecord{}, fmt.Errorf("deposit outpoint already matched")
+	}
+	depositID := common.BTCOutpointScopedTxID(tx.Tx)
+	if existing, err := k.GetDepositRecord(ctx, depositID); err == nil && !existing.DepositID.IsEmpty() {
+		return types.DepositRecord{}, fmt.Errorf("deposit tx already matched")
+	}
 	if minDeposit := uint64(k.GetConfigInt64(ctx, constants.Deposit_AmountMinSats)); coin.Amount.Uint64() < minDeposit {
 		return types.DepositRecord{}, fmt.Errorf("deposit below dust threshold: %d/%d", coin.Amount.Uint64(), minDeposit)
 	}
@@ -129,7 +135,7 @@ func MatchCoreDeposit(ctx cosmos.Context, mgr Manager, tx ObservedTx) (types.Dep
 	}
 
 	deposit := types.DepositRecord{
-		DepositID:                tx.Tx.ID,
+		DepositID:                depositID,
 		Owner:                    mapping.Owner,
 		AmountSats:               coin.Amount.Uint64(),
 		DepositAddress:           tx.Tx.ToAddress,
@@ -162,7 +168,7 @@ func MatchCoreDeposit(ctx cosmos.Context, mgr Manager, tx ObservedTx) (types.Dep
 		return types.DepositRecord{}, err
 	}
 	if timing, err := k.GetDepositPowTiming(ctx, mapping.PowToken); err == nil && timing.PowToken != "" {
-		timing.DepositID = tx.Tx.ID
+		timing.DepositID = depositID
 		timing.DepositAmountSats = coin.Amount.Uint64()
 		timing.MatchedHeight = ctx.BlockHeight()
 		timing.Deposited = true
@@ -172,7 +178,7 @@ func MatchCoreDeposit(ctx cosmos.Context, mgr Manager, tx ObservedTx) (types.Dep
 	}
 
 	if session, err := k.GetDepositSession(ctx, mapping.Owner); err == nil && tx.Tx.ToAddress.Equals(session.DepositAddress) {
-		session.DepositID = tx.Tx.ID
+		session.DepositID = depositID
 		session.RefundEligibleHeight = deposit.RefundEligibleHeight
 		session.InboundTxID = tx.Tx.ID
 		session.SourceVout = tx.Tx.SourceVout
@@ -184,7 +190,7 @@ func MatchCoreDeposit(ctx cosmos.Context, mgr Manager, tx ObservedTx) (types.Dep
 			return types.DepositRecord{}, err
 		}
 	}
-	if err := queueVaultPathSweep(ctx, mgr, tx, mapping.VaultPubKey, mapping.PathIndex); err != nil {
+	if err := queueVaultPathSweepWithInHash(ctx, mgr, tx, mapping.VaultPubKey, mapping.PathIndex, depositID); err != nil {
 		return types.DepositRecord{}, err
 	}
 
@@ -228,7 +234,9 @@ func RecordDepositObservation(ctx cosmos.Context, k keeper.Keeper, tx ObservedTx
 		}
 	}
 
-	if deposit, err := k.GetDepositRecord(ctx, tx.Tx.ID); err == nil && !deposit.DepositID.IsEmpty() {
+	if deposit, found, err := findDepositRecordByInboundOutpoint(ctx, k, tx.Tx.ID, tx.Tx.SourceVout, tx.Tx.ToAddress); err != nil {
+		return err
+	} else if found && !deposit.DepositID.IsEmpty() {
 		depositRequired := required
 		if deposit.BTCConfirmationsRequired > 0 {
 			depositRequired = deposit.BTCConfirmationsRequired
@@ -243,6 +251,40 @@ func RecordDepositObservation(ctx cosmos.Context, k keeper.Keeper, tx ObservedTx
 		}
 	}
 	return nil
+}
+
+func findDepositRecordByInboundOutpoint(ctx cosmos.Context, k keeper.Keeper, inboundTxID common.TxID, sourceVout uint32, depositAddress common.Address) (types.DepositRecord, bool, error) {
+	if inboundTxID.IsEmpty() {
+		return types.DepositRecord{}, false, nil
+	}
+	iter := k.GetDepositRecordIterator(ctx)
+	if iter == nil {
+		return types.DepositRecord{}, false, nil
+	}
+	defer func() {
+		if err := iter.Close(); shouldLogIteratorError(err) {
+			ctx.Logger().Error("fail to close deposit record iterator", "error", err)
+		}
+	}()
+	for ; iter.Valid(); iter.Next() {
+		var deposit types.DepositRecord
+		if err := json.Unmarshal(iter.Value(), &deposit); err != nil {
+			return types.DepositRecord{}, false, fmt.Errorf("fail to unmarshal deposit record: %w", err)
+		}
+		recordTxID := deposit.InboundTxID
+		if recordTxID.IsEmpty() {
+			recordTxID = deposit.DepositID
+		}
+		if recordTxID.Equals(inboundTxID) &&
+			deposit.SourceVout == sourceVout &&
+			(depositAddress.IsEmpty() || deposit.DepositAddress.Equals(depositAddress)) {
+			return deposit, true, nil
+		}
+	}
+	if err := iter.Error(); shouldLogIteratorError(err) {
+		return types.DepositRecord{}, false, err
+	}
+	return types.DepositRecord{}, false, nil
 }
 
 func depositConfirmationProgress(finalised bool, blockHeight, required int64) int64 {
@@ -288,7 +330,7 @@ func ProcessExpiredDepositAddressReturns(ctx cosmos.Context, mgr Manager) error 
 			}
 			continue
 		}
-		if deposit.Status == types.DepositStatusReturnQueued && !depositMatchedAfterAddressExpiry(ctx, k, deposit) {
+		if deposit.Status == types.DepositStatusReturnQueued && !depositRequiresReturn(ctx, k, deposit) {
 			if depositRefundTxOutSigned(ctx, k, deposit.DepositID) {
 				ctx.Logger().Error("active-address deposit refund already signed before cleanup",
 					"deposit_id", deposit.DepositID.String(),
@@ -366,6 +408,29 @@ func depositMatchedAfterAddressExpiry(ctx cosmos.Context, k keeper.Keeper, depos
 		deposit.MatchedHeight > 0 &&
 		deposit.MatchedHeight >= deposit.ExpiresAtHeight &&
 		vaultPubKeyNoLongerActive(ctx, k, deposit.VaultPubKey)
+}
+
+func depositRequiresReturn(ctx cosmos.Context, k keeper.Keeper, deposit types.DepositRecord) bool {
+	return depositMatchedAfterAddressExpiry(ctx, k, deposit) ||
+		depositDirectBaseVaultReturn(ctx, k, deposit)
+}
+
+func depositDirectBaseVaultReturn(ctx cosmos.Context, k keeper.Keeper, deposit types.DepositRecord) bool {
+	if deposit.DepositID.IsEmpty() ||
+		deposit.VaultPubKey.IsEmpty() ||
+		deposit.DepositAddress.IsEmpty() ||
+		deposit.ReturnAddress.IsEmpty() ||
+		deposit.DepositPathIndex != common.MainVaultPathIndex ||
+		!deposit.SweepComplete ||
+		deposit.RefundEligibleHeight <= 0 {
+		return false
+	}
+	vault, err := k.GetVault(ctx, deposit.VaultPubKey)
+	if err != nil || vault.PubKey.IsEmpty() || !vault.IsBase() {
+		return false
+	}
+	rootAddr, err := common.DeriveBTCTaprootAddress(deposit.VaultPubKey, common.MainVaultPathIndex)
+	return err == nil && deposit.DepositAddress.Equals(rootAddr)
 }
 
 func vaultPubKeyNoLongerActive(ctx cosmos.Context, k keeper.Keeper, pubKey common.PubKey) bool {
@@ -504,22 +569,70 @@ func markDepositSweepComplete(ctx cosmos.Context, mgr Manager, item TxOutItem, _
 }
 
 func queueExpiredDepositReturn(ctx cosmos.Context, mgr Manager, deposit types.DepositRecord) error {
+	vault, _, err := currentBTCVaultAddress(ctx, mgr.Keeper())
+	if err != nil {
+		return fmt.Errorf("fail to get base vault for deposit return: %w", err)
+	}
+	return queueDepositReturnFromVault(ctx, mgr, deposit, vault, nil)
+}
+
+func queueDirectBaseVaultDepositReturn(ctx cosmos.Context, mgr Manager, tx ObservedTx, vault Vault) error {
+	coin := tx.Tx.Coins.GetCoin(common.BTCAsset)
+	if coin.IsEmpty() || coin.Amount.IsZero() {
+		return fmt.Errorf("missing bitcoin direct deposit amount")
+	}
+	if tx.Tx.FromAddress.IsEmpty() {
+		return fmt.Errorf("missing bitcoin direct deposit return address")
+	}
+	if existing, err := mgr.Keeper().GetDepositRecord(ctx, tx.Tx.ID); err == nil && !existing.DepositID.IsEmpty() {
+		return fmt.Errorf("deposit tx already matched")
+	}
+	deposit := types.DepositRecord{
+		DepositID:                tx.Tx.ID,
+		Owner:                    cosmos.AccAddress(tx.Tx.FromAddress.String()),
+		AmountSats:               coin.Amount.Uint64(),
+		DepositAddress:           tx.Tx.ToAddress,
+		ReturnAddress:            tx.Tx.FromAddress,
+		VaultPubKey:              vault.PubKey,
+		DepositPathIndex:         common.MainVaultPathIndex,
+		MatchedHeight:            ctx.BlockHeight(),
+		CreatedHeight:            ctx.BlockHeight(),
+		ExpiresAtHeight:          ctx.BlockHeight(),
+		Status:                   types.DepositStatusDepositMatched,
+		InboundTxID:              tx.Tx.ID,
+		SourceVout:               tx.Tx.SourceVout,
+		BTCConfirmations:         1,
+		BTCConfirmationsRequired: 1,
+		BTCObservedHeight:        tx.BlockHeight,
+		RefundEligibleHeight:     ctx.BlockHeight(),
+		SweepComplete:            true,
+	}
+	sourceInputs := []types.TxOutInput{{
+		TxId:       tx.Tx.ID,
+		Vout:       tx.Tx.SourceVout,
+		AmountSats: coin.Amount.Uint64(),
+	}}
+	if err := queueDepositReturnFromVault(ctx, mgr, deposit, vault, sourceInputs); err != nil {
+		return err
+	}
+	deposit.Status = types.DepositStatusReturnQueued
+	deposit.RefundQueuedHeight = ctx.BlockHeight()
+	return mgr.Keeper().SetDepositRecord(ctx, deposit)
+}
+
+func queueDepositReturnFromVault(ctx cosmos.Context, mgr Manager, deposit types.DepositRecord, vault Vault, sourceInputs []types.TxOutInput) error {
 	if deposit.DepositID.IsEmpty() {
 		return fmt.Errorf("missing deposit id")
 	}
 	if deposit.ReturnAddress.IsEmpty() {
 		return fmt.Errorf("missing deposit return address")
 	}
-	vault, _, err := currentBTCVaultAddress(ctx, mgr.Keeper())
-	if err != nil {
-		return fmt.Errorf("fail to get base vault for deposit return: %w", err)
-	}
 	feeSats := withdrawalFeeSats(ctx, mgr.Keeper(), deposit.AmountSats)
 	if feeSats >= deposit.AmountSats {
 		if err := addWithdrawalFee(ctx, mgr.Keeper(), deposit.AmountSats); err != nil {
 			return err
 		}
-		ctx.Logger().Info("expired deposit return consumed by fee",
+		ctx.Logger().Info("deposit return consumed by fee",
 			"deposit_id", deposit.DepositID.String(),
 			"amount", deposit.AmountSats,
 			"fee", feeSats,
@@ -541,8 +654,9 @@ func queueExpiredDepositReturn(ctx cosmos.Context, mgr Manager, deposit types.De
 		InHash:         deposit.DepositID,
 		ModuleName:     BaseName,
 		TxType:         types.TxOutTypeRefund,
+		SourceInputs:   sourceInputs,
 	}
-	ctx.Logger().Info("queued expired deposit return",
+	ctx.Logger().Info("queued deposit return",
 		"deposit_id", deposit.DepositID.String(),
 		"to", deposit.ReturnAddress.String(),
 		"amount", amount.String(),

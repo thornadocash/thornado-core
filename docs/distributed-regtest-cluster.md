@@ -1,5 +1,8 @@
 # Distributed Regtest Cluster
 
+Canonical current runbook: [Thornado Cluster Runbook](./thornado-cluster-runbook.md).
+This file is retained as historical distributed-regtest notes.
+
 This runbook starts a six-server regtest deployment:
 
 - controller: bitcoind, miner loop, wallet management, genesis nodes 1-4

@@ -1,10 +1,12 @@
 package signer
 
 import (
+	"sort"
 	"testing"
 
 	. "gopkg.in/check.v1"
 
+	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
@@ -17,6 +19,25 @@ func TestPackage(t *testing.T) { TestingT(t) }
 type SignerSuite struct{}
 
 var _ = Suite(&SignerSuite{})
+
+type signerBridgeStub struct {
+	thornadoclient.ThornadoBridge
+	vault  ttypes.Vault
+	nodes  []*ttypes.QueryNodeResponse
+	height int64
+}
+
+func (b signerBridgeStub) GetVault(string) (ttypes.Vault, error) {
+	return b.vault, nil
+}
+
+func (b signerBridgeStub) GetNodeAccounts() ([]*ttypes.QueryNodeResponse, error) {
+	return b.nodes, nil
+}
+
+func (b signerBridgeStub) GetBlockHeight() (int64, error) {
+	return b.height, nil
+}
 
 func (s *SignerSuite) TestTxOutCompletionMatchIgnoresMutableSigningFields(c *C) {
 	sourceTx := ttypes.GetRandomTxHash()
@@ -244,12 +265,14 @@ func (s *SignerSuite) TestMergeStoredTxOutItemPreservesRetryState(c *C) {
 		Height:              item.Height,
 		Index:               item.Index,
 		DeferredUntilHeight: 1_010_189,
+		SigningLeaderRetry:  2,
 		Round7Retry:         true,
 		Checkpoint:          []byte("checkpoint"),
 	}), IsNil)
 
 	merged := mergeStoredTxOutItem(storage, item)
 	c.Assert(merged.DeferredUntilHeight, Equals, int64(1_010_189))
+	c.Assert(merged.SigningLeaderRetry, Equals, uint64(2))
 	c.Assert(merged.Round7Retry, Equals, true)
 	c.Assert(merged.Checkpoint, DeepEquals, []byte("checkpoint"))
 
@@ -264,6 +287,7 @@ func (s *SignerSuite) TestSignerStoreBatchPreservesRetryState(c *C) {
 	key := item.Key()
 	stored := item
 	stored.DeferredUntilHeight = 1_010_189
+	stored.SigningLeaderRetry = 2
 	stored.Round7Retry = true
 	stored.Checkpoint = []byte("checkpoint")
 	c.Assert(storage.Set(stored), IsNil)
@@ -275,9 +299,103 @@ func (s *SignerSuite) TestSignerStoreBatchPreservesRetryState(c *C) {
 	merged, err := storage.Get(key)
 	c.Assert(err, IsNil)
 	c.Assert(merged.DeferredUntilHeight, Equals, int64(1_010_189))
+	c.Assert(merged.SigningLeaderRetry, Equals, uint64(2))
 	c.Assert(merged.Round7Retry, Equals, true)
 	c.Assert(merged.Checkpoint, DeepEquals, []byte("checkpoint"))
 	c.Assert(merged.BatchStatus, Equals, ttypes.TxOutStatusPendingSign)
+}
+
+func (s *SignerSuite) TestFrostPartyLeaderFallbackIgnoresLocalRetryAndHeight(c *C) {
+	vaultPubKey := ttypes.GetRandomPubKey()
+	members := []common.PubKey{
+		ttypes.GetRandomPubKey(),
+		ttypes.GetRandomPubKey(),
+		ttypes.GetRandomPubKey(),
+		ttypes.GetRandomPubKey(),
+	}
+	memberStrings := make([]string, 0, len(members))
+	nodes := make([]*ttypes.QueryNodeResponse, 0, len(members))
+	for _, member := range members {
+		memberStrings = append(memberStrings, member.String())
+		nodes = append(nodes, &ttypes.QueryNodeResponse{
+			Status:           "active",
+			PubKeySet:        common.NewPubKeySet(member),
+			SignerMembership: []string{vaultPubKey.String()},
+		})
+	}
+	sort.Strings(memberStrings)
+	signer := &Signer{
+		thornadoBridge: signerBridgeStub{
+			vault: ttypes.Vault{
+				PubKey:     vaultPubKey,
+				Membership: memberStrings,
+			},
+			nodes: nodes,
+		},
+	}
+	item := TxOutStoreItem{
+		TxOutItem: types.TxOutItem{
+			Chain:       common.BTCChain,
+			VaultPubKey: vaultPubKey,
+			InHash:      ttypes.GetRandomTxHash(),
+			ToAddress:   ttypes.GetRandomBTCAddress(),
+			Coins:       common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(100_000))),
+		},
+		Height: 100,
+		Epoch:  7,
+	}
+
+	first, err := signer.frostPartyLeader(item, 120, 10)
+	c.Assert(err, IsNil)
+	item.SigningLeaderRetry = 1
+	second, err := signer.frostPartyLeader(item, 120, 10)
+	c.Assert(err, IsNil)
+	third, err := signer.frostPartyLeader(item, 130, 10)
+	c.Assert(err, IsNil)
+
+	c.Assert(first, Equals, second)
+	c.Assert(first, Equals, third)
+	c.Assert(memberStrings, DeepEquals, sortedStrings(memberStrings))
+	c.Assert(memberStrings, HasLen, 4)
+}
+
+func (s *SignerSuite) TestFrostPartyLeaderUsesAssignedTxOutLeader(c *C) {
+	assigned := ttypes.GetRandomPubKey()
+	item := TxOutStoreItem{
+		TxOutItem: types.TxOutItem{
+			Chain:       common.BTCChain,
+			VaultPubKey: ttypes.GetRandomPubKey(),
+		},
+		SigningLeader: assigned,
+	}
+
+	leader, err := (&Signer{}).frostPartyLeader(item, 120, 10)
+	c.Assert(err, IsNil)
+	c.Assert(leader, Equals, assigned.String())
+}
+
+func (s *SignerSuite) TestFrostLeaderRetryPersistsForInternalTxOut(c *C) {
+	storage, err := NewSignerStore("", config.LevelDBOptions{}, "")
+	c.Assert(err, IsNil)
+	defer storage.Close()
+
+	item := NewTxOutStoreItem(3997, types.TxOutItem{
+		Chain:       common.BTCChain,
+		VaultPubKey: ttypes.GetRandomPubKey(),
+		InHash:      ttypes.GetRandomTxHash(),
+		TxType:      ttypes.TxOutTypeSweep,
+	}, 0)
+	signer := &Signer{
+		thornadoBridge: signerBridgeStub{height: 4_100},
+		storage:        storage,
+	}
+
+	c.Assert(signer.deferFrostKeysignRetryWithNextLeader(item), IsNil)
+
+	stored, err := storage.Get(item.Key())
+	c.Assert(err, IsNil)
+	c.Assert(stored.SigningLeaderRetry, Equals, uint64(0))
+	c.Assert(stored.DeferredUntilHeight, Equals, int64(4_101))
 }
 
 func (s *SignerSuite) TestSignerStoreBatchRemovesSupersededTxOutKey(c *C) {

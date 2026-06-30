@@ -1025,7 +1025,7 @@ func (qs queryServer) queryDeposit(ctx cosmos.Context, req *types.QueryDepositRe
 func depositQueryResponse(deposit types.DepositRecord) *types.QueryDepositResponse {
 	return &types.QueryDepositResponse{
 		DepositId:                deposit.DepositID.String(),
-		Owner:                    deposit.Owner.String(),
+		Owner:                    depositOwnerString(deposit),
 		AmountSats:               deposit.AmountSats,
 		DepositAddress:           deposit.DepositAddress.String(),
 		VaultPubKey:              deposit.VaultPubKey.String(),
@@ -1047,6 +1047,18 @@ func depositQueryResponse(deposit types.DepositRecord) *types.QueryDepositRespon
 		RefundEligibleHeight:     deposit.RefundEligibleHeight,
 		RefundQueuedHeight:       deposit.RefundQueuedHeight,
 	}
+}
+
+func depositOwnerString(deposit types.DepositRecord) string {
+	if deposit.DepositPathIndex == common.MainVaultPathIndex &&
+		!deposit.ReturnAddress.IsEmpty() &&
+		!deposit.VaultPubKey.IsEmpty() {
+		rootAddr, err := common.DeriveBTCTaprootAddress(deposit.VaultPubKey, common.MainVaultPathIndex)
+		if err == nil && deposit.DepositAddress.Equals(rootAddr) {
+			return deposit.ReturnAddress.String()
+		}
+	}
+	return deposit.Owner.String()
 }
 
 func (qs queryServer) queryShielderRedeem(ctx cosmos.Context, req *types.QueryShielderRedeemRequest) (*types.QueryShielderRedeemResponse, error) {

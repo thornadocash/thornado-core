@@ -2,6 +2,7 @@ package btc
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 	cKeys "github.com/cosmos/cosmos-sdk/crypto/keyring"
 	. "gopkg.in/check.v1"
 
+	btypes "github.com/thornadocash/go-thornado/bifrost/blockscanner/types"
 	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
 	p2pstorage "github.com/thornadocash/go-thornado/bifrost/p2p/storage"
@@ -246,6 +248,10 @@ func (s *BitcoinSuite) TestExtractTxsDoesNotToggleObservedTxCache(c *C) {
 	secondScan, err := s.client.extractTxs(block)
 	c.Assert(err, IsNil)
 	c.Assert(secondScan.TxArray, HasLen, 0)
+	blockMeta, err := s.client.temporalStorage.GetBlockMeta(block.Height)
+	c.Assert(err, IsNil)
+	c.Assert(blockMeta, NotNil)
+	c.Assert(blockMeta.CustomerTransactions, DeepEquals, []string{"24ed2d26fd5d4e0e8fa86633e40faf1bdfc8d1903b1cd02855286312d48818a2"})
 
 	thirdScan, err := s.client.extractTxs(block)
 	c.Assert(err, IsNil)
@@ -427,7 +433,7 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
 					Asm:  "",
-					Type: "",
+					Type: "nulldata",
 				},
 			},
 		},
@@ -453,7 +459,7 @@ func (s *BitcoinSuite) TestIgnoreTx(c *C) {
 			{
 				ScriptPubKey: btcjson.ScriptPubKeyResult{
 					Asm:  "",
-					Type: "",
+					Type: "nulldata",
 				},
 			},
 		},
@@ -879,7 +885,7 @@ func (s *BitcoinSuite) TestProcessReOrg(c *C) {
 	s.client.globalErrataQueue = make(chan types.ErrataBlock, 1)
 	s.client.updateCurrentBlockHeight(previousHeight)
 	reorgedItems, err = s.client.processReorg(&result)
-	c.Assert(err, IsNil)
+	c.Assert(errors.Is(err, btypes.ErrPendingErrataDelay), Equals, true)
 	c.Assert(reorgedItems, IsNil)
 	c.Assert(s.client.globalErrataQueue, HasLen, 0)
 
@@ -948,7 +954,12 @@ func (s *BitcoinSuite) TestConfirmedMempoolTxRetainsMarker(c *C) {
 	btcChainRPCs[key] = map[string]interface{}{
 		"jsonrpc": "2.0",
 		"id":      1,
-		"result":  "02000000000100",
+		"result": map[string]interface{}{
+			"txid": txid,
+			"hash": txid,
+			"vin":  []map[string]interface{}{},
+			"vout": []map[string]interface{}{},
+		},
 	}
 	defer func() {
 		if hadPrevious {
@@ -1410,6 +1421,46 @@ func (s *BitcoinSuite) TestGetOutput(c *C) {
 	c.Assert(out.ScriptPubKey.Addresses[0], Equals, childAddressString)
 	c.Assert(out.Value, Equals, 1.49655603)
 
+	tx = btcjson.TxRawResult{
+		Vin: []btcjson.Vin{
+			{
+				Txid: "5b0876dcc027d2f0c671fc250460ee388df39697c3ff082007b6ddd9cb9a7513",
+				Vout: 1,
+			},
+		},
+		Vout: []btcjson.Vout{
+			{
+				ScriptPubKey: btcjson.ScriptPubKeyResult{
+					Type: "nulldata",
+				},
+			},
+			{
+				Value: 0.01000000,
+				ScriptPubKey: btcjson.ScriptPubKeyResult{
+					Addresses: []string{"tb1qj08ys4ct2hzzc2hcz6h2hgrvlmsjynaw43s835"},
+				},
+			},
+			{
+				Value: 0.20000000,
+				N:     2,
+				ScriptPubKey: btcjson.ScriptPubKeyResult{
+					Addresses: []string{childAddressString},
+				},
+			},
+			{
+				Value: 0.02000000,
+				ScriptPubKey: btcjson.ScriptPubKeyResult{
+					Addresses: []string{"tb1qkq7weysjn6ljc2ywmjmwp8ttcckg8yyxjdz5k6"},
+				},
+			},
+		},
+	}
+	out, err = s.client.getOutput("tb1qj08ys4ct2hzzc2hcz6h2hgrvlmsjynaw43s835", &tx, false)
+	c.Assert(err, IsNil)
+	c.Assert(out.N, Equals, uint32(2))
+	c.Assert(out.ScriptPubKey.Addresses[0], Equals, childAddressString)
+	c.Assert(out.Value, Equals, 0.20000000)
+
 	// invalid tx only multiple (positive-value) vout Addresses
 	tx = btcjson.TxRawResult{
 		Vin: []btcjson.Vin{
@@ -1522,6 +1573,123 @@ func (s *BitcoinSuite) TestGetTxInObservesRegisteredPathSelfConsolidation(c *C) 
 	c.Assert(txIn.SourceInputs[0].TxID.String(), Equals, strings.ToUpper(prevTxID))
 	c.Assert(txIn.SourceInputs[0].Vout, Equals, uint32(0))
 	c.Assert(txIn.SourceInputs[0].AmountSats, Equals, uint64(100_000_000))
+}
+
+func (s *BitcoinSuite) TestGetTxInsObservesMultipleRegisteredVaultOutputs(c *C) {
+	var vaultPubKey common.PubKey
+	var err error
+	if common.CurrentChainNetwork == common.MainNet {
+		vaultPubKey, err = common.NewPubKey("thorpub1addwnpepqwprh5vd0rrk78kd98qjruuazwvapnxft7f86w7hlf768whxytpn5quf2gs")
+	} else {
+		vaultPubKey, err = common.NewPubKey("tthorpub1addwnpepqflvfv08t6qt95lmttd6wpf3ss8wx63e9vf6fvyuj2yy6nnyna576rfzjks")
+	}
+	c.Assert(err, IsNil)
+	firstPath, err := common.VaultDepositPathIndex(common.VaultDepositPathUser, 1, common.DepositPathCommitmentRoot)
+	c.Assert(err, IsNil)
+	secondPath, err := common.VaultDepositPathIndex(common.VaultDepositPathUser, 2, common.DepositPathCommitmentRoot)
+	c.Assert(err, IsNil)
+	firstAddress, err := common.DeriveBTCTaprootAddress(vaultPubKey, firstPath)
+	c.Assert(err, IsNil)
+	secondAddress, err := common.DeriveBTCTaprootAddress(vaultPubKey, secondPath)
+	c.Assert(err, IsNil)
+	s.client.rememberVaultPath(vaultPubKey, firstPath)
+	s.client.rememberVaultPath(vaultPubKey, secondPath)
+
+	prevTxID := strings.Repeat("c", 64)
+	txID := strings.Repeat("d", 64)
+	sender := "tb1qj08ys4ct2hzzc2hcz6h2hgrvlmsjynaw43s835"
+	key := fmt.Sprintf("getrawtransaction-%s", prevTxID)
+	previous, hadPrevious := btcChainRPCs[key]
+	btcChainRPCs[key] = map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      3,
+		"error":   nil,
+		"result": map[string]interface{}{
+			"txid": prevTxID,
+			"hash": prevTxID,
+			"vin": []map[string]interface{}{
+				{"coinbase": "00", "sequence": 4294967295},
+			},
+			"vout": []map[string]interface{}{
+				{
+					"value": 1.0,
+					"n":     0,
+					"scriptPubKey": map[string]interface{}{
+						"hex":       "00140653096f54ae1ae2d73291d15854aef08ebcfa8c",
+						"type":      "witness_v0_keyhash",
+						"addresses": []string{sender},
+					},
+				},
+			},
+		},
+	}
+	defer func() {
+		if hadPrevious {
+			btcChainRPCs[key] = previous
+		} else {
+			delete(btcChainRPCs, key)
+		}
+	}()
+
+	tx := btcjson.TxRawResult{
+		Txid: txID,
+		Hash: txID,
+		Vin: []btcjson.Vin{
+			{
+				Txid: prevTxID,
+				Vout: 0,
+			},
+		},
+		Vout: []btcjson.Vout{
+			{
+				ScriptPubKey: btcjson.ScriptPubKeyResult{Type: "nulldata"},
+			},
+			{
+				Value: 0.10000000,
+				N:     1,
+				ScriptPubKey: btcjson.ScriptPubKeyResult{
+					Addresses: []string{"tb1qkq7weysjn6ljc2ywmjmwp8ttcckg8yyxjdz5k6"},
+				},
+			},
+			{
+				Value: 0.20000000,
+				N:     2,
+				ScriptPubKey: btcjson.ScriptPubKeyResult{
+					Addresses: []string{firstAddress.String()},
+					Hex:       "5120f01002397e3cb9179d41f1e25412bd29fc8d22f8fe786758aeeacf137a4cbc5f",
+					Type:      "witness_v1_taproot",
+				},
+			},
+			{
+				Value: 0.05000000,
+				N:     3,
+				ScriptPubKey: btcjson.ScriptPubKeyResult{
+					Addresses: []string{"tb1q6v28g5n75j6mnf3j4dqly5gdp9ztmn33xvay0u"},
+				},
+			},
+			{
+				Value: 0.30000000,
+				N:     4,
+				ScriptPubKey: btcjson.ScriptPubKeyResult{
+					Addresses: []string{secondAddress.String()},
+					Hex:       "5120f01002397e3cb9179d41f1e25412bd29fc8d22f8fe786758aeeacf137a4cbc5f",
+					Type:      "witness_v1_taproot",
+				},
+			},
+		},
+	}
+	txIns, err := s.client.getTxIns(&tx, 1024, false, nil)
+	c.Assert(err, IsNil)
+	c.Assert(txIns, HasLen, 2)
+	c.Assert(txIns[0].Tx, Equals, txID)
+	c.Assert(txIns[0].To, Equals, firstAddress.String())
+	c.Assert(txIns[0].SourceVout, Equals, uint32(2))
+	c.Assert(txIns[0].Coins[0].Amount.Uint64(), Equals, uint64(20_000_000))
+	c.Assert(txIns[1].To, Equals, secondAddress.String())
+	c.Assert(txIns[1].SourceVout, Equals, uint32(4))
+	c.Assert(txIns[1].Coins[0].Amount.Uint64(), Equals, uint64(30_000_000))
+	c.Assert(s.client.observedTxCacheKey(txIns[0]), Equals, txID+":2")
+	c.Assert(s.client.observedTxCacheKey(txIns[1]), Equals, txID+":4")
 }
 
 func (s *BitcoinSuite) TestIsBaseAddressFallsBackToRegisteredVaultPath(c *C) {

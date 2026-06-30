@@ -21,9 +21,30 @@ import (
 )
 
 var (
-	frostSessionLocks        sync.Map // sessionID -> *sync.Mutex
+	frostSessionLocks        sync.Map // sessionID -> *frostSessionLock
 	ErrLocalPartyNotSelected = errors.New("local FROST party not selected")
 )
+
+type frostSessionLock struct {
+	ch chan struct{}
+}
+
+func newFrostSessionLock() *frostSessionLock {
+	return &frostSessionLock{ch: make(chan struct{}, 1)}
+}
+
+func (l *frostSessionLock) lock(ctx context.Context) error {
+	select {
+	case l.ch <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (l *frostSessionLock) unlock() {
+	<-l.ch
+}
 
 const postJoinSync = 0
 
@@ -328,17 +349,47 @@ func sessionMessageID(prefix string, height int64, minSigners uint16, participan
 	return hex.EncodeToString(sum[:])
 }
 
-func (sc *P2PSessionCoordinator) joinParty(msgID string, height int64, participants []string, threshold int, initiator string) ([]peer.ID, string, error) {
+// Keygen must include every member Thornado targeted for that keygen request:
+// existing active vault members plus any new nodes being churned in.
+func keygenPartyThreshold(participants []string) int {
+	return len(participants)
+}
+
+func (sc *P2PSessionCoordinator) ensurePartyPeers(msgID string, participants []string, threshold int, timeout time.Duration) error {
+	if sc.comm == nil {
+		return nil
+	}
+	sc.debugEvent(msgID, "ensure_peers_start")
+	var err error
+	if timeout > 0 {
+		err = sc.comm.EnsurePeersConnectedWithin(participants, timeout)
+	} else if threshold > 0 && threshold < len(participants) {
+		err = sc.comm.EnsurePeersConnectedThreshold(participants, threshold)
+	} else {
+		err = sc.comm.EnsurePeersConnected(participants)
+	}
+	if err != nil {
+		sc.debugEvent(msgID, "ensure_peers_error")
+		return err
+	}
+	sc.debugEvent(msgID, "ensure_peers_done")
+	return nil
+}
+
+func (sc *P2PSessionCoordinator) joinParty(msgID string, height int64, participants []string, threshold int, initiator string, peerConnectTimeout time.Duration) ([]peer.ID, string, error) {
 	if sc.party == nil {
 		return nil, "", fmt.Errorf("FROST party coordinator is not configured")
 	}
-	if sc.comm != nil {
-		sc.debugEvent(msgID, "ensure_peers_start")
-		if err := sc.comm.EnsurePeersConnected(participants); err != nil {
-			sc.debugEvent(msgID, "ensure_peers_error")
-			return nil, "", fmt.Errorf("ensure party peers before join: %w", err)
+	if initiator != "" && sc.comm != nil {
+		sc.debugEvent(msgID, "ensure_leader_start")
+		if err := sc.comm.EnsurePeersConnectedThreshold([]string{initiator}, 1); err != nil {
+			sc.debugEvent(msgID, "ensure_leader_error")
+			return nil, initiator, fmt.Errorf("%w: %v", p2p.ErrLeaderNotReady, err)
 		}
-		sc.debugEvent(msgID, "ensure_peers_done")
+		sc.debugEvent(msgID, "ensure_leader_done")
+	}
+	if err := sc.ensurePartyPeers(msgID, participants, threshold, peerConnectTimeout); err != nil {
+		return nil, "", fmt.Errorf("ensure party peers before join: %w", err)
 	}
 	sigChan := make(chan string, 1)
 	var online []peer.ID
@@ -372,10 +423,10 @@ func (sc *P2PSessionCoordinator) RunKeygen(
 	sc.comm.SetSubscribe(messages.FROSTFrostKeyGenMsg, msgID, inbox)
 	defer sc.comm.CancelSubscribe(messages.FROSTFrostKeyGenMsg, msgID)
 
-	keygenThreshold := int(minSigners)
+	keygenThreshold := keygenPartyThreshold(participants)
 	sc.debugEvent(msgID, "party_join_start")
 	var leader string
-	if _, leader, err = sc.joinParty(msgID, height, participants, keygenThreshold, ""); err != nil {
+	if _, leader, err = sc.joinParty(msgID, height, participants, keygenThreshold, "", sc.party.Timeout()); err != nil {
 		if errors.Is(err, p2p.ErrPartyClosed) {
 			sc.debugClosed(msgID)
 		} else {
@@ -438,13 +489,17 @@ func (sc *P2PSessionCoordinator) RunSign(
 	if len(msg) != 32 {
 		return nil, fmt.Errorf("FROST messages must be 32 bytes, got %d", len(msg))
 	}
-	lock, _ := frostSessionLocks.LoadOrStore(sessionID, &sync.Mutex{})
-	lock.(*sync.Mutex).Lock()
-	defer lock.(*sync.Mutex).Unlock()
-
 	participants = sortedParticipants(participants)
 	threshold := frostMinSigners(len(participants))
 	sc.debugStart(sessionID, "keysign", height, participants, localParty, partyLeader, int(threshold))
+	lock, _ := frostSessionLocks.LoadOrStore(sessionID, newFrostSessionLock())
+	sc.debugEvent(sessionID, "session_lock_wait_start")
+	if err := lock.(*frostSessionLock).lock(ctx); err != nil {
+		sc.debugError(sessionID, err)
+		return nil, err
+	}
+	defer lock.(*frostSessionLock).unlock()
+	sc.debugEvent(sessionID, "session_lock_acquired")
 	inbox := make(chan *p2p.Message, 256)
 	sc.comm.SetSubscribe(messages.FROSTFrostKeySignMsg, sessionID, inbox)
 	defer sc.comm.CancelSubscribe(messages.FROSTFrostKeySignMsg, sessionID)
@@ -452,7 +507,7 @@ func (sc *P2PSessionCoordinator) RunSign(
 	sc.debugEvent(sessionID, "party_join_start")
 	var leader string
 	var online []peer.ID
-	if online, leader, err = sc.joinParty(sessionID, height, participants, int(threshold), partyLeader); err != nil {
+	if online, leader, err = sc.joinParty(sessionID, height, participants, int(threshold), partyLeader, 0); err != nil {
 		if errors.Is(err, p2p.ErrPartyClosed) {
 			sc.debugClosed(sessionID)
 		} else {

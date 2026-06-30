@@ -595,6 +595,71 @@ func TestBTCSourceInputSelectionStopsWhenRequiredAmountCovered(t *testing.T) {
 	}
 }
 
+func TestBTCSourceInputSelectionPrefersLargeUTXOOverOldDustAtSpendLimit(t *testing.T) {
+	SetupConfigForTest()
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 15
+
+	vaultPubKey := GetRandomPubKey()
+	vault := Vault{PubKey: vaultPubKey, Status: ActiveVault, Type: BaseVault}
+	if err := k.SetVault(ctx, vault); err != nil {
+		t.Fatal(err)
+	}
+	sourceAddr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for height := int64(1); height <= 15; height++ {
+		k.txOutByHeight[height] = TxOut{
+			Height: height,
+			Status: TxOutStatusComplete,
+			TxArray: []TxOutItem{
+				{
+					Chain:       common.BTCChain,
+					ToAddress:   sourceAddr,
+					VaultPubKey: vaultPubKey,
+					Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(1_000_000)),
+					OutHash:     GetRandomTxHash(),
+				},
+			},
+		}
+	}
+	largeTx := GetRandomTxHash()
+	k.txOutByHeight[50] = TxOut{
+		Height: 50,
+		Status: TxOutStatusComplete,
+		TxArray: []TxOutItem{
+			{
+				Chain:       common.BTCChain,
+				ToAddress:   sourceAddr,
+				VaultPubKey: vaultPubKey,
+				Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(50_000_000)),
+				OutHash:     largeTx,
+			},
+		},
+	}
+
+	inputs, err := selectBTCVaultSourceInputsForOutputs(
+		ctx,
+		k,
+		vault,
+		common.MainVaultPathIndex,
+		sourceAddr,
+		[]common.Address{GetRandomBTCAddress(), GetRandomBTCAddress()},
+		cosmos.NewUint(19_800_000),
+		1000,
+		0,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(inputs) != 1 || !inputs[0].TxId.Equals(largeTx) {
+		t.Fatalf("expected large UTXO to avoid old dust spend-limit crowding, got %#v", inputs)
+	}
+}
+
 func TestBondFromNotesConfirmsStandbyNode(t *testing.T) {
 	SetupConfigForTest()
 	ctx := flowTestContext()
@@ -1717,6 +1782,137 @@ func TestExpiredDepositRefundSubtractsFee(t *testing.T) {
 	}
 	if k.feePool.TotalCollectedSats != fee {
 		t.Fatalf("refund fee was not collected: %#v", k.feePool)
+	}
+}
+
+func TestDirectBaseVaultDepositUsesNormalRefundPath(t *testing.T) {
+	SetupConfigForTest()
+	ctx := flowTestContext().WithBlockHeight(123)
+	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 1
+	baseVault := Vault{
+		PubKey: GetRandomPubKey(),
+		Status: ActiveVault,
+		Type:   BaseVault,
+	}
+	k.baseVaults = Vaults{baseVault}
+	mgr := newShielderFlowTestManager(k)
+	baseAddr, err := baseVault.DeriveBTCAddress(common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	amount := uint64(20_000_000)
+	txID := GetRandomTxHash()
+	tx := common.NewTx(
+		txID,
+		GetRandomBTCAddress(),
+		baseAddr,
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(amount))),
+		common.Gas{},
+	)
+	tx.SourceVout = 5
+	observed := common.NewObservedTx(tx, 100, baseVault.PubKey, 102)
+	k.SetObservedTxInVoter(ctx, ObservedTxVoter{
+		TxID:   txID,
+		Height: ctx.BlockHeight(),
+		Tx:     observed,
+	})
+
+	if err := queueDirectBaseVaultDepositReturn(ctx, mgr, observed, baseVault); err != nil {
+		t.Fatal(err)
+	}
+	record := k.deposits[txID.String()]
+	if record.Status != types.DepositStatusReturnQueued ||
+		record.RefundEligibleHeight != ctx.BlockHeight() ||
+		record.RefundQueuedHeight != ctx.BlockHeight() ||
+		!record.SweepComplete ||
+		!record.DepositID.Equals(txID) ||
+		!record.DepositAddress.Equals(baseAddr) ||
+		record.SourceVout != 5 ||
+		record.AmountSats != amount {
+		t.Fatalf("unexpected direct deposit record: %#v", record)
+	}
+	if string(record.Owner) != tx.FromAddress.String() {
+		t.Fatalf("direct deposit owner mismatch: %q/%q", string(record.Owner), tx.FromAddress.String())
+	}
+	if len(k.txOuts) != 1 {
+		t.Fatalf("expected one refund txout, got %d", len(k.txOuts))
+	}
+	item := k.txOuts[0]
+	if item.GetTxType() != types.TxOutTypeRefund {
+		t.Fatalf("unexpected txout type: %s", item.GetTxType())
+	}
+	if !item.InHash.Equals(txID) || !item.VaultPubKey.Equals(baseVault.PubKey) || item.VaultPathIndex != common.MainVaultPathIndex {
+		t.Fatalf("unexpected refund identity: %#v", item)
+	}
+	if len(item.SourceInputs) != 1 ||
+		!item.SourceInputs[0].TxId.Equals(txID) ||
+		item.SourceInputs[0].Vout != 5 ||
+		item.SourceInputs[0].AmountSats != amount {
+		t.Fatalf("refund did not use direct deposit source input: %#v", item.SourceInputs)
+	}
+	if item.MaxGas.IsEmpty() || item.GasRate != 14 {
+		t.Fatalf("refund gas was not exact: max_gas=%s gas_rate=%d", item.MaxGas, item.GasRate)
+	}
+	if err := ProcessExpiredDepositAddressReturns(ctx, mgr); err != nil {
+		t.Fatal(err)
+	}
+	if len(k.txOuts) != 1 {
+		t.Fatalf("normal refund cleanup duplicated direct refund txout: %#v", k.txOuts)
+	}
+	record = k.deposits[txID.String()]
+	if record.Status != types.DepositStatusReturnQueued ||
+		!record.DepositID.Equals(txID) ||
+		!record.DepositAddress.Equals(baseAddr) ||
+		record.SourceVout != 5 ||
+		record.AmountSats != amount {
+		t.Fatalf("unexpected direct deposit record: %#v", record)
+	}
+}
+
+func TestDirectBaseVaultRefundPinnedSourceSurvivesPendingBatchRefresh(t *testing.T) {
+	SetupConfigForTest()
+	ctx := flowTestContext().WithBlockHeight(123)
+	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 1
+	baseVault := Vault{
+		PubKey: GetRandomPubKey(),
+		Status: ActiveVault,
+		Type:   BaseVault,
+	}
+	k.baseVaults = Vaults{baseVault}
+	mgr := newShielderFlowTestManager(k)
+	oldInput := addTestBTCVaultSourceInput(t, ctx, k, baseVault.PubKey, 20_000_000)
+	baseAddr, err := baseVault.DeriveBTCAddress(common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	amount := uint64(20_000_000)
+	txID := GetRandomTxHash()
+	tx := common.NewTx(
+		txID,
+		GetRandomBTCAddress(),
+		baseAddr,
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(amount))),
+		common.Gas{},
+	)
+	observed := common.NewObservedTx(tx, 100, baseVault.PubKey, 102)
+	if err := queueDirectBaseVaultDepositReturn(ctx, mgr, observed, baseVault); err != nil {
+		t.Fatal(err)
+	}
+	if len(k.txOuts) != 1 {
+		t.Fatalf("expected one refund txout, got %d", len(k.txOuts))
+	}
+	inputs := k.txOuts[0].SourceInputs
+	if len(inputs) != 1 {
+		t.Fatalf("expected one source input, got %#v", inputs)
+	}
+	if inputs[0].TxId.Equals(oldInput.TxId) {
+		t.Fatalf("pending batch refresh selected old vault UTXO: %#v", inputs)
+	}
+	if !inputs[0].TxId.Equals(txID) || inputs[0].Vout != 0 || inputs[0].AmountSats != amount {
+		t.Fatalf("refund did not keep direct deposit source input: %#v", inputs)
 	}
 }
 

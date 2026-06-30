@@ -226,7 +226,7 @@ func (p *pipeline) SpawnSignings(s pipelineSigner, bridge thornadoclient.Thornad
 		if _, isRetry := retryItems[vc]; isRetry {
 			sanitized := item
 			sanitized.SignedTx = nil
-			log.Warn().Interface("item", sanitized).Msg("found retry item")
+			log.Debug().Interface("item", sanitized).Msg("found retry item")
 		}
 
 		// spawn signing routine

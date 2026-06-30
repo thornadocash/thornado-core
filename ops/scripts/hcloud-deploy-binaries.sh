@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-COORDINATOR_HOST="${COORDINATOR_HOST:-5.223.93.218}"
-WORKER_HOSTS="${WORKER_HOSTS:-5.223.51.101 5.223.55.114 5.223.55.174 5.223.92.204}"
+COORDINATOR_HOST="${COORDINATOR_HOST:-5.223.51.101}"
+WORKER_HOSTS="${WORKER_HOSTS:-5.223.55.114 5.223.55.174 5.223.52.254 5.223.93.218}"
 REMOTE_ROOT="${REMOTE_ROOT:-/root/thornado}"
 GO_BIN="${GO_BIN:-/usr/local/go/bin/go}"
 TAGS="${TAGS:-regtest mocknet}"
@@ -15,6 +15,7 @@ RUN_TESTS="${RUN_TESTS:-0}"
 TEST_ARGS="${TEST_ARGS:-./x/thornado ./bifrost/pkg/chainclients/btc}"
 SKIP_SOURCE_SYNC="${SKIP_SOURCE_SYNC:-1}"
 INCLUDE_UNTRACKED="${INCLUDE_UNTRACKED:-0}"
+SYNC_SOURCE_TO_WORKERS="${SYNC_SOURCE_TO_WORKERS:-1}"
 KNOWN_HOSTS="${KNOWN_HOSTS:-/tmp/thornado-hcloud-known-hosts}"
 RUN_ROOT="${RUN_ROOT:-/tmp/thornado-nodeper-20260627104200}"
 
@@ -104,6 +105,12 @@ sync_source_delta() {
     COPYFILE_DISABLE=1 tar --no-xattrs -C "$ROOT_DIR" -czf "$local_tmp/source-delta.tgz" "${existing_files[@]}"
     "${scp_base[@]}" "$local_tmp/source-delta.tgz" "$coord:$REMOTE_ROOT/source-delta-${BUILD_ID}.tgz"
     "${ssh_base[@]}" "$coord" "cd $(remote_quote "$REMOTE_ROOT") && tar -xzf source-delta-${BUILD_ID}.tgz && rm -f source-delta-${BUILD_ID}.tgz"
+    if [[ "$SYNC_SOURCE_TO_WORKERS" == "1" ]]; then
+      for host in $WORKER_HOSTS; do
+        "${scp_base[@]}" "$local_tmp/source-delta.tgz" "root@$host:$REMOTE_ROOT/source-delta-${BUILD_ID}.tgz"
+        "${ssh_base[@]}" "root@$host" "cd $(remote_quote "$REMOTE_ROOT") && tar -xzf source-delta-${BUILD_ID}.tgz && rm -f source-delta-${BUILD_ID}.tgz"
+      done
+    fi
   fi
   if (( ${#deleted_files[@]} > 0 )); then
     printf '%s\n' "${deleted_files[@]}" > "$local_tmp/source-deletes.txt"
@@ -118,8 +125,27 @@ while IFS= read -r path; do
 done < "source-deletes-${build_id}.txt"
 rm -f "source-deletes-${build_id}.txt"
 REMOTE
+    if [[ "$SYNC_SOURCE_TO_WORKERS" == "1" ]]; then
+      for host in $WORKER_HOSTS; do
+        "${scp_base[@]}" "$local_tmp/source-deletes.txt" "root@$host:$REMOTE_ROOT/source-deletes-${BUILD_ID}.txt"
+        ssh_bash "root@$host" "$REMOTE_ROOT" "$BUILD_ID" <<'REMOTE'
+set -euo pipefail
+remote_root="$1"
+build_id="$2"
+cd "$remote_root"
+while IFS= read -r path; do
+  [[ -n "$path" ]] && rm -f -- "$path"
+done < "source-deletes-${build_id}.txt"
+rm -f "source-deletes-${build_id}.txt"
+REMOTE
+      done
+    fi
   fi
-  echo "synced ${#existing_files[@]} source files and removed ${#deleted_files[@]} deleted files on coordinator"
+  if [[ "$SYNC_SOURCE_TO_WORKERS" == "1" ]]; then
+    echo "synced ${#existing_files[@]} source files and removed ${#deleted_files[@]} deleted files on coordinator and workers"
+  else
+    echo "synced ${#existing_files[@]} source files and removed ${#deleted_files[@]} deleted files on coordinator"
+  fi
 }
 
 build_on_coordinator() {

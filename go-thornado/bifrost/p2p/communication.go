@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -287,7 +288,11 @@ func (c *Communication) getPeers() addr.AddrList {
 	if c.stateManager != nil {
 		savedPeers, err := c.stateManager.RetrieveP2PAddresses()
 		if err != nil {
-			c.logger.Error().Err(err).Msg("fail to get saved peers from state manager")
+			if os.IsNotExist(err) {
+				c.logger.Trace().Msg("no saved peers in state manager yet")
+			} else {
+				c.logger.Error().Err(err).Msg("fail to get saved peers from state manager")
+			}
 		} else {
 			bootstrapPeers = append(bootstrapPeers, savedPeers...)
 		}
@@ -391,7 +396,10 @@ func (c *Communication) startChannel(privKeyBytes []byte) error {
 		if connectionErr == nil {
 			break
 		}
-		c.logger.Error().Msg("cannot connect to any bootstrap node, retry in 5 seconds")
+		c.logger.Info().
+			Err(connectionErr).
+			Int("attempt", i+1).
+			Msg("bootstrap peers not reachable yet; retrying")
 		time.Sleep(time.Second * 5)
 	}
 	if connectionErr != nil {
@@ -452,7 +460,7 @@ func (c *Communication) connectToBootstrapPeers() error {
 			ctx, cancel := context.WithTimeout(context.Background(), TimeoutConnecting)
 			defer cancel()
 			if err := c.host.Connect(ctx, *pi); err != nil {
-				c.logger.Error().Err(err).Msgf("fail to connect to %s", pi.String())
+				c.logger.Debug().Err(err).Msgf("bootstrap peer not reachable yet: %s", pi.String())
 				connRet <- false
 				return
 			}

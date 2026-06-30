@@ -1,5 +1,8 @@
 # HCloud Node-Per-Server FROST Runbook
 
+Canonical current runbook: [Thornado Cluster Runbook](./thornado-cluster-runbook.md).
+This file is retained as historical incident/setup notes.
+
 Date: 2026-06-27
 
 ## Goal
@@ -21,14 +24,14 @@ Build Go binaries with:
 
 Coordinator:
 
-- `5.223.93.218`
+- `5.223.51.101`
 
 Workers:
 
-- node1: `5.223.51.101`
-- node2: `5.223.55.114`
-- node3: `5.223.55.174`
-- node4: `5.223.92.204`
+- node1: `5.223.55.114`
+- node2: `5.223.55.174`
+- node3: `5.223.52.254`
+- node4: `5.223.93.218`
 
 Server size used for all five:
 
@@ -75,6 +78,14 @@ Fix: start all worker `bitcoind` and Thornado processes first, wait for consensu
   `ops/scripts/hcloud-deploy-binaries.sh`; workers pull the artifact directly
   from the coordinator and verify hashes before install.
 
+- 2026-06-28 deployment drift: `SOURCE_FILES` source sync updated the
+  coordinator before build, but did not update worker launcher scripts. Workers
+  ran stale `ops/scripts/distributed-regtest-cluster.sh`, started Bifrost with
+  node1-only live `/p2pid` bootstrap, and genesis keygen exhausted retries with
+  incomplete party peer addresses. Fix: the deploy script now syncs source
+  deltas to the coordinator and workers by default. Launcher/config script
+  changes must be deployed through that same path before relaunch.
+
 - Bad shell quoting around `$RUN_ROOT` can trigger the sourced `real-4node-e2e.sh` cleanup trap. Use direct commands or `NO_CLEANUP_TRAP=1` when sourcing helpers.
 
 ## Artifact Distribution
@@ -85,14 +96,15 @@ Use the scripted path from the local workspace:
 bash ops/scripts/hcloud-deploy-binaries.sh deploy
 ```
 
-This is the only binary deployment path to use for the HCloud node-per-server cluster:
+This is the only binary/script deployment path to use for the HCloud node-per-server cluster:
 
-1. Build `thornado` and `bifrost` on the Linux coordinator with `-tags 'regtest mocknet'`.
-2. Pack one artifact under `/root/thornado/build`.
-3. Serve it from the coordinator with a short-lived Python HTTP server.
-4. Make all workers pull the artifact in parallel from the coordinator.
-5. Verify artifact and binary hashes on every worker.
-6. Atomically replace `/root/thornado/build/thornado` and `/root/thornado/build/bifrost`.
+1. If `SKIP_SOURCE_SYNC=0`, sync `SOURCE_FILES` to the coordinator and all workers.
+2. Build `thornado` and `bifrost` on the Linux coordinator with `-tags 'regtest mocknet'`.
+3. Pack one artifact under `/root/thornado/build`.
+4. Serve it from the coordinator with a short-lived Python HTTP server.
+5. Make all workers pull the artifact in parallel from the coordinator.
+6. Verify artifact and binary hashes on every worker.
+7. Atomically replace `/root/thornado/build/thornado` and `/root/thornado/build/bifrost`.
 
 The script does not restart processes. Restart Thornado/Bifrost separately and preserve the run root.
 
@@ -108,13 +120,28 @@ BUILD_ID=<short-name>-$(date -u +%Y%m%d%H%M%S) SKIP_SOURCE_SYNC=0 INCLUDE_UNTRAC
 Latest deployed Bifrost hash:
 
 ```text
-1597e13316ad945e2bb6d1ff1c57f19782057e54fb82d59a866393bbbf3cd643
+fbfa8a161767c5431751cf00eec7270c6463b4d91f6c6939c105c30726abde20
+```
+
+Latest deployed Thornado hash:
+
+```text
+742ff34ef34653136bee6ece870f379307011fdc81a4c66679dffa408d6bc2cd
 ```
 
 For explicit source sync before building:
 
 ```bash
 SKIP_SOURCE_SYNC=0 SOURCE_FILES="go-thornado/path/file.go go-thornado/path/file_test.go" \
+  bash ops/scripts/hcloud-deploy-binaries.sh deploy
+```
+
+When a launch script changes, include it in `SOURCE_FILES`; otherwise workers
+can have current binaries with stale orchestration:
+
+```bash
+SKIP_SOURCE_SYNC=0 \
+  SOURCE_FILES="ops/scripts/distributed-regtest-cluster.sh ops/scripts/hcloud-deploy-binaries.sh" \
   bash ops/scripts/hcloud-deploy-binaries.sh deploy
 ```
 
@@ -154,10 +181,10 @@ Copy `worker-nodeN.tgz` to the matching worker and extract under the same `$RUN_
 2. Start each worker `bitcoind`; each connects to coordinator `bitcoind`.
 3. Start Thornado on all four workers.
 4. Wait for all four Thornado RPC endpoints and block height convergence.
-5. Start Bifrost node1 first with empty FROST bootstrap allowed.
-6. Confirm node1 `/p2pid` is available.
-7. Start Bifrost node2-node4 using node1 live `/p2pid` bootstrap.
-8. If node1 saw genesis keygen before peers were online, wait for its scheduled retry height.
+5. Build a complete FROST bootstrap list from `/thornado/nodes` plus `meta/node*.env`.
+6. Start all four Bifrosts with the complete FROST bootstrap list.
+7. Do not rely on node1-only live `/p2pid` bootstrap for genesis keygen.
+8. If any Bifrost sees genesis keygen before all party peer addresses are available, relaunch cleanly; do not accept retry exhaustion.
 9. Confirm `/debug/vaults/local` returns the same active vault on all four nodes.
 10. Run repeated deposits and shield withdrawals from the coordinator.
 11. Require 100% FROST keygen/keysign success; any miss is a bug to debug, not a transaction to abandon.
@@ -167,7 +194,7 @@ Copy `worker-nodeN.tgz` to the matching worker and extract under the same `$RUN_
 Run root:
 
 ```bash
-/tmp/thornado-nodeper-20260627104200
+/tmp/thornado-nodeper-20260628131009
 ```
 
 Confirmed:
@@ -178,6 +205,63 @@ Confirmed:
 - Thornado consensus is live on nodes 1-4.
 - Bifrost health is live on nodes 1-4.
 - FROST genesis keygen produced one active 4-member vault on all nodes, with independent local keyshares per Bifrost.
+- Keygen requires 100% participation of Thornado's targeted keygen set: active vault members plus any nodes churning in.
+- Keysign requires 67% of the active node set.
+- Edge run `20260628134822` passed multi-output/vout/OP_RETURN/direct-refund/dust/coinbase cases.
+- Node4-offline Bifrost fault run `node4-bifrost-down-final-20260628183151` passed:
+  - 4 deposits, 4 shield redeems, 4 successes, 0 failures.
+  - Node4 Bifrost was down during signing.
+  - Sweeps and withdrawals completed with 3-of-4 FROST signing.
+  - Final outbound batch hash: `2416824387A2E30AD6AD072E9F5B37488BC09D535769BA233570713C27D8A88C`.
+  - Final signer queues were zero on all four workers after node4 restart.
+- All-online FROST broadcast run `all-online-20260628234842` passed:
+  - 4 deposits, 4 shield redeems, 4 successes, 0 failures.
+  - The 4 withdrawals reconciled into one BTC outbound batch.
+  - Each signed BTC transaction had three signer broadcasts, matching the 67% selected signing set.
+  - Duplicate/late broadcast handling was harmless.
+  - Final signer queues were zero on all four workers.
+- Node1 restart-during-signing run `restart-flow-logwatch-20260628235806` passed:
+  - Node1 Bifrost was stopped at `2026-06-29T00:01:05Z` while outbounds were waiting to sign.
+  - Node1 was restarted at `2026-06-29T00:01:25Z` through `ops/scripts/hcloud-deploy-binaries.sh restart-bifrost`.
+  - Node2, node3, and node4 completed the 4-output outbound batch with 3-of-4 FROST signing.
+  - Final outbound batch hash: `F75AB8BC5C7C8949FF21B28E982C6BA980745017CEADE682CBE33844875EFB33`.
+  - Final signer queues were zero on all four workers after node1 restart.
+- Current minor local-only cleanup: attestation stream `protocol not supported` during peer restart is demoted locally from error to debug; deploy only with the next major change.
+
+## 2026-06-28 Direct Refund Source-Input Bug
+
+Root cause:
+
+- Direct deposits to the active base vault queued a normal refund with the direct deposit as the intended source input.
+- BTC pending-batch gas refresh reselected source inputs for all batchable txouts, including refunds that already had a prescribed direct source input.
+- The refund could spend an older vault UTXO instead of the direct deposit UTXO.
+
+Fix deployed:
+
+- Direct base-vault refund source inputs are pinned to the inbound deposit UTXO.
+- Pending-batch refresh preserves pinned source inputs where the txout input equals the txout `in_hash`.
+
+## 2026-06-28 FROST Offline-Leader Bug
+
+Root cause:
+
+- Keysign preconnect originally required every vault member, so 3-of-4 signing failed if one Bifrost was offline.
+- After threshold preconnect, an offline node could still be selected as party leader.
+- The fast leader-unavailable path did not persist `SigningLeaderRetry` for internal txouts, so sweeps retried the same dead leader in a tight loop.
+
+Fix deployed:
+
+- Keygen still requires 100% of Thornado's targeted keygen set.
+- Keysign preconnect accepts the 67% active-node threshold.
+- Keysign checks the designated leader first and fails fast if unreachable.
+- Leader-unavailable retry persists the next-leader offset for all txout types, including sweeps.
+- Timeout/success responses are sent only to online/selected peers.
+- `EnsurePeersConnectedWithin` clears libp2p dial backoff while waiting for delayed peers.
+- Regression test: `TestDirectBaseVaultRefundPinnedSourceSurvivesPendingBatchRefresh`.
+
+Validation:
+
+- Direct base-vault refund in edge run `20260628134822` completed with source input equal to its own inbound tx and `vout0`.
 
 ## 2026-06-27 Solvency Halt Incident
 
@@ -290,3 +374,127 @@ Harness fast-mode:
 - `WAIT_OBSERVED_OUT_FINAL_EACH=0` starts the next iteration immediately after Flow 3 validates signing, BTC broadcast, recipient payment, and fee accounting.
 - `WAIT_OBSERVED_OUT_FINAL_END=1` still verifies every recorded outbound observation at the end.
 - Use per-iteration finality only when debugging reconciliation timing: `WAIT_OBSERVED_OUT_FINAL_EACH=1`.
+
+## 2026-06-28 HCloud Pressure Run Fixes
+
+Cluster:
+
+- Coordinator: `5.223.93.218`
+- Workers: `5.223.51.101`, `5.223.55.114`, `5.223.55.174`, `5.223.92.204`
+- Run root: `/tmp/thornado-nodeper-20260627104200`
+- Deployed Thornado hash: `581609b14a31f2a9041880acb3a0d1eb2ce08bbe6f2f00ab27064930546668ac`
+- Deployed Bifrost hash: `e6a5997787e7e8bb2632fb6854611b329eec1a8003cd42c654e4e02649099f20`
+
+What failed:
+
+- The first 50-flow pressure run produced valid FROST signatures, then Bitcoin Core rejected broadcast with `Fee exceeds maximum configured by user`.
+- Thornado also logged `Failed to send event to subscriber`; the ebifrost event stream used an unbuffered subscriber channel and could drop events unless the Bifrost receiver was waiting at that exact instant.
+
+Fixes deployed:
+
+- Bifrost now broadcasts signed BTC txs with `SendRawTransaction(..., 0)` so local max-fee policy does not reject valid high-fee regtest consolidation or sweep txs.
+- Thornado ebifrost subscriber queues are buffered and queue depth is logged if a subscriber falls behind.
+- The pressure harness retries the same offline-signed tx on transient RPC transport errors and confirms inclusion before treating a nonzero sync response as failure.
+
+Validation:
+
+- Run `/tmp/thornado-nodeper-20260627104200/meta/parallel-flow3/20260628091829`: `COUNT=50`, success `50`, failed `0`.
+- Run `/tmp/thornado-nodeper-20260627104200/meta/parallel-flow3/20260628100556`: `COUNT=20`, success `20`, failed `0`.
+- The 20-flow run produced 6 batched BTC outbounds; every outbound reached `final_count=4` and completed.
+- Keysign timing on the 20-flow run: min `584ms`, max `1304ms`, avg `946.7ms`.
+- Final signer queues were zero on all four workers.
+
+Current minor local-only cleanup:
+
+- Pre-errata BTC source-input miss logging was demoted from warn to debug locally. Keep it until the next major deploy.
+
+## 2026-06-28 Edge Case Harness
+
+Harness:
+
+```bash
+RUN_ROOT=/tmp/thornado-nodeper-20260627104200 \
+  TX_INCLUSION_TIMEOUT=1200 THORNADO_TX_TIMEOUT=60 \
+  ./ops/scripts/hcloud-edge-cases.sh
+```
+
+Cases currently wired:
+
+- Non-vault BTC tx with `OP_RETURN`: must not be tracked by Thornado.
+- Multi-output BTC deposit with unrelated outputs and `OP_RETURN`: only the registered vault output may match; sweep must spend the exact matched source vout.
+- Dust payment to a registered deposit address: must remain `address_issued` and must not queue a sweep.
+
+Bug found:
+
+- Bifrost `ignoreTx` rejected any BTC tx containing a Bitcoin Core `nulldata` output.
+- That skipped valid user deposits where one output paid the vault and another output was `OP_RETURN`.
+- Live stuck tx: `49a3d8cda60adbe9dc2c587513585d34befa04de3eff1950b7bd330d5232cd13`, vault output `vout=3`, amount `20000000` sats.
+
+Fix deployed:
+
+- Bifrost hash: `82049dfc59e285d039a3068915f4293f68ac78213d4cc7188a82acb4ffc31dd2`
+- `ignoreTx` now skips `nulldata` outputs while still inspecting the rest of the transaction.
+- Added a small normal Go regression test that runs without the gocheck fixture: `TestIgnoreTxSkipsNulldataOutputs`.
+
+Recovery that worked:
+
+```bash
+xargs -0 -a /tmp/thornado-nodeper-20260627104200/meta/bifrost-N.restart.env \
+  sh -c 'exec env "$@" /root/thornado/build/bifrost observe-tx --log-level debug --chain BTC <txid>' sh
+```
+
+Run it once per worker node. This submits normal observed inbound attestations; it does not clear or mutate state directly.
+
+Validation:
+
+- Recovered stuck tx matched and swept; sweep observation reached `final_count=4`.
+- Clean run: `/tmp/thornado-nodeper-20260627104200/meta/edge-cases/20260628105348`
+- Result: all three wired edge cases passed.
+- Multi-output clean-run sweep source input matched the actual vault output and reached `final_count=4`.
+- Final signer queues were zero on all four workers.
+
+## 2026-06-28 Node-Per-Server Fast Batch Run
+
+Cluster:
+
+- Coordinator: `5.223.51.101`
+- Workers: `5.223.55.114`, `5.223.55.174`, `5.223.52.254`, `5.223.93.218`
+- Run root: `/tmp/thornado-nodeper-20260628131009`
+- Deployed Thornado hash: `7149e3f9c44b7c61b59249535e92bc7d3fab8daf4f7e86ff7c2f6f49d9dda82e`
+- Deployed Bifrost hash: `ced35c890b8b844f74425b071f5091f335f980fb7e289d5f4df9e19e8e3bc7d0`
+
+Major bug fixed:
+
+- Duplicate or losing FROST signing attempts could block forever waiting for a per-session `sync.Mutex`.
+- Context cancellation did not unblock `Mutex.Lock()`, so a completed txout could leave stale signer goroutines behind.
+- Fix: replace the FROST session mutex with a context-aware per-session lock and record `session_lock_wait_start` / `session_lock_acquired` in debug sessions.
+
+Validation:
+
+- Run: `/tmp/thornado-nodeper-20260628131009/meta/parallel-flow3/20260628151555`
+- Result: `requested=24`, `success=24`, `failed=0`.
+- Outbound batching: one BTC outbound hash for all 24 withdrawals.
+- Batch shape: `tx_array=24`, `source_inputs=1`, `max_gas=1`.
+- Signer queues ended empty on all four Bifrosts.
+- Debug signer performance ended with `unfinished=0`, `errors=0` on all four Bifrosts.
+- Max recorded signer duration after the lock fix: node1 `6737ms`, node2 `7273ms`, node3 `6912ms`, node4 `6998ms`.
+
+Observation note:
+
+- The delayed deposit matching seen during the run was not BTC confirmation delay and not deposit size.
+- Deposits were `0.20000000 BTC`; lag was observation attestation/finalization into Thornado.
+
+Harness fix:
+
+- `hcloud-parallel-flow3.sh` and `hcloud-continue-parallel-flow3.sh` now prepare withdrawal proofs first, then submit redeem txs concurrently with locally incremented account sequence.
+- This produced the expected single outbound batch instead of splitting across several Thornado blocks.
+
+Operational warning:
+
+- Do not source `ops/scripts/real-4node-e2e.sh` in diagnostic SSH shells. It installs cleanup traps. Use direct RPC/API commands or purpose-built harness scripts.
+
+Minor local-only cleanup waiting for next major deploy:
+
+- Suppress missing `address_book.seed` debug spam.
+- Move duplicate cached-source spent notices to trace.
+- Log BTC mempool batches at debug unless errors are present.

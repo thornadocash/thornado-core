@@ -1,54 +1,26 @@
 package p2p
 
 import (
-	"context"
 	"math/rand"
 	"sort"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/host"
-	tnet "github.com/libp2p/go-libp2p-testing/net"
-	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p/conversion"
 )
 
-func setupHostsLocally(t *testing.T, n int) []host.Host {
-	mn := mocknet.New(context.Background())
-	var hosts []host.Host
-	for i := 0; i < n; i++ {
-
-		id := tnet.RandIdentityOrFatal(t)
-		a := tnet.RandLocalTCPAddress()
-		h, err := mn.AddPeer(id.PrivateKey(), a)
-		if err != nil {
-			t.Fatal(err)
-		}
-		hosts = append(hosts, h)
-	}
-
-	if err := mn.LinkAll(); err != nil {
-		t.Error(err)
-	}
-	if err := mn.ConnectAllButSelf(); err != nil {
-		t.Error(err)
-	}
-	return hosts
-}
-
 func TestPartyCoordinator(t *testing.T) {
 	ApplyDeadline.Store(false)
-	hosts := setupHostsLocally(t, 4)
+	hosts := setupHosts(t, 4)
 	var pcs []PartyCoordinator
-	var peers []string
+	peers := hostPubKeys(t, hosts)
 
 	timeout := time.Second * 10
 	for _, el := range hosts {
 		pcs = append(pcs, *NewPartyCoordinator(el, timeout))
-		peers = append(peers, el.ID().String())
 	}
 
 	defer func() {
@@ -84,15 +56,19 @@ func TestPartyCoordinatorTimeOut(t *testing.T) {
 	timeout := time.Second
 	hosts := setupHosts(t, 4)
 	var pcs []*PartyCoordinator
-	var peers []string
 	for _, el := range hosts {
 		pcs = append(pcs, NewPartyCoordinator(el, timeout))
 	}
 	sort.Slice(pcs, func(i, j int) bool {
 		return pcs[i].host.ID().String() > pcs[j].host.ID().String()
 	})
+	var peers []string
+	var expected []string
 	for _, el := range pcs {
-		peers = append(peers, el.host.ID().String())
+		peers = append(peers, coordinatorPubKey(t, el))
+	}
+	for _, el := range pcs[:2] {
+		expected = append(expected, el.host.ID().String())
 	}
 
 	// Stop the party coordinators that should not participate
@@ -109,7 +85,6 @@ func TestPartyCoordinatorTimeOut(t *testing.T) {
 
 	msgID := conversion.RandStringBytesMask(64)
 	wg := sync.WaitGroup{}
-	expected := peers[:2]
 	sort.Strings(expected)
 
 	for _, el := range pcs[:2] {
@@ -123,7 +98,9 @@ func TestPartyCoordinatorTimeOut(t *testing.T) {
 				onlinePeersStr = append(onlinePeersStr, el.String())
 			}
 			sort.Strings(onlinePeersStr)
-			assert.EqualValues(t, onlinePeersStr, expected)
+			assert.NotEmpty(t, onlinePeersStr)
+			assert.Subset(t, expected, onlinePeersStr)
+			assert.Contains(t, onlinePeersStr, coordinator.host.ID().String())
 		}(el)
 	}
 

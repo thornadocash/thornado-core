@@ -519,8 +519,7 @@ func judgeLateSigner(ctx cosmos.Context, mgr Manager, msg *MsgKeygenVault, voter
 }
 
 // FrostAnteHandler called by the ante handler to gate mempool entry
-// and also during deliver. Store changes will persist if this function
-// succeeds, regardless of the success of the transaction.
+// and also during deliver.
 func FrostAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg MsgKeygenVault) (cosmos.Context, error) {
 	if err := msg.ValidateBasic(); err != nil {
 		return ctx, err
@@ -537,9 +536,6 @@ func FrostAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keeper, msg
 	}
 	if !voter.Sign(msg.Signer, msg.Chains, string(msg.Secp256K1Signature)) {
 		return ctx, cosmos.ErrUnknownRequest("frost attestation already submitted")
-	}
-	if ctx.IsCheckTx() {
-		k.SetFrostVoter(ctx, voter)
 	}
 
 	return ctx.WithPriority(ActiveNodePriority), nil

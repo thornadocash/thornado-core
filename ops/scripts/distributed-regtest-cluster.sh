@@ -257,12 +257,30 @@ frost_bootstrap_from_inventory() {
   (IFS=,; printf '%s\n' "${peers[*]}")
 }
 
+frost_bootstrap_from_nodes_api() {
+  local query_node nodes_file
+  query_node="${1:-1}"
+  nodes_file="$RUN_ROOT/meta/frost-bootstrap-nodes-${query_node}.json"
+  local peers=() i host secp peer_id
+  mkdir -p "$RUN_ROOT/meta"
+  curl --connect-timeout 2 --max-time 5 -fsS "$(api_url "$query_node")/thornado/nodes" >"$nodes_file" 2>/dev/null || return 1
+  for i in 1 2 3 4; do
+    host="$(node_host "$i")"
+    secp="$(sed -n 's/^secp=//p' "$RUN_ROOT/meta/node${i}.env" 2>/dev/null || true)"
+    [[ -n "$host" && -n "$secp" ]] || return 1
+    peer_id="$(jq -r --arg secp "$secp" '.[]? | select(.pub_key_set.secp256k1 == $secp) | .peer_id // empty' "$nodes_file" | head -n1)"
+    [[ -n "$peer_id" && "$peer_id" != "null" ]] || return 1
+    peers+=("/ip4/${host}/tcp/$(frost_p2p_port "$i")/p2p/${peer_id}")
+  done
+  (IFS=,; printf '%s\n' "${peers[*]}")
+}
+
 write_frost_bootstrap_all() {
   local bootstrap existing="$RUN_ROOT/meta/bifrost-bootstrap-all"
-  bootstrap="$(frost_bootstrap_from_inventory)"
+  bootstrap="$(frost_bootstrap_from_nodes_api 1 || frost_bootstrap_from_inventory)"
   if [[ -n "$bootstrap" ]]; then
     printf '%s\n' "$bootstrap" >"$existing"
-    log_dist "refreshed FROST bootstrap peers from live /p2pid endpoints"
+    log_dist "refreshed FROST bootstrap peers"
     return 0
   fi
   if [[ -s "$existing" ]]; then
@@ -277,8 +295,16 @@ start_worker_bifrost() {
   require_inventory
   host="$(node_host "$NODE")"
   controller="$(controller_host)"
-  bootstrap="$(frost_bootstrap_from_inventory)"
-  bootstrap="${FROST_BOOTSTRAP_PEERS:-$bootstrap}"
+  bootstrap="${FROST_BOOTSTRAP_PEERS:-}"
+  if [[ -z "$bootstrap" ]]; then
+    bootstrap="$(cat "$RUN_ROOT/meta/bifrost-bootstrap-all" 2>/dev/null || true)"
+  fi
+  if [[ -z "$bootstrap" ]]; then
+    bootstrap="$(frost_bootstrap_from_nodes_api "$NODE" || true)"
+  fi
+  if [[ -z "$bootstrap" ]]; then
+    bootstrap="$(frost_bootstrap_from_inventory)"
+  fi
   if [[ -z "$bootstrap" && "$NODE" != "1" ]]; then
     die "no FROST bootstrap peers found"
   fi
@@ -319,13 +345,13 @@ start_worker_bifrost() {
     BIFROST_CHAINS_BTC_CHAIN_ID="BTC" BIFROST_CHAINS_BTC_CHAIN_NETWORK="regtest" \
     BIFROST_CHAINS_BTC_BLOCK_SCANNER_CHAIN_ID="BTC" BIFROST_CHAINS_BTC_BLOCK_SCANNER_START_BLOCK_HEIGHT="0" \
     BTC_HOST="127.0.0.1:${BTC_RPC_PORT}/wallet/bifrost${NODE}" BTC_START_BLOCK_HEIGHT="0" \
-    "$BIFROST" --log-level debug >"$RUN_ROOT/logs/bifrost-${NODE}.log" 2>&1 &
+    "$BIFROST" --log-level info >"$RUN_ROOT/logs/bifrost-${NODE}.log" 2>&1 &
   echo "$!" >"$RUN_ROOT/pids/bifrost-${NODE}.pid"
 }
 
 export_worker_bundle() {
   local node="$1" out="$RUN_ROOT/meta/worker-node${node}.tgz"
-  tar -C "$RUN_ROOT" -czf "$out" "node${node}" meta/peers "meta/node${node}.env"
+  tar -C "$RUN_ROOT" -czf "$out" "node${node}" meta/peers meta/node{1,2,3,4,5,6,7,8,9}.env
   printf '%s\n' "$out"
 }
 

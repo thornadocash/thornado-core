@@ -64,6 +64,182 @@ func TestCanonicalObservedHeightUsesKnownScannerHeight(t *testing.T) {
 	}
 }
 
+func TestConfirmTxClassifiesActiveMempoolStaleAndMissing(t *testing.T) {
+	activeTxID := strings.Repeat("1", 64)
+	mempoolTxID := strings.Repeat("2", 64)
+	staleTxID := strings.Repeat("3", 64)
+	missingTxID := strings.Repeat("4", 64)
+	responses := map[string]map[string]any{
+		activeTxID: {
+			"result": map[string]any{
+				"txid":          activeTxID,
+				"hash":          activeTxID,
+				"confirmations": 2,
+				"blockhash":     strings.Repeat("a", 64),
+				"vin":           []map[string]any{},
+				"vout":          []map[string]any{},
+			},
+		},
+		mempoolTxID: {
+			"result": map[string]any{
+				"txid": mempoolTxID,
+				"hash": mempoolTxID,
+				"vin":  []map[string]any{},
+				"vout": []map[string]any{},
+			},
+		},
+		staleTxID: {
+			"result": map[string]any{
+				"txid":      staleTxID,
+				"hash":      staleTxID,
+				"blockhash": strings.Repeat("b", 64),
+				"vin":       []map[string]any{},
+				"vout":      []map[string]any{},
+			},
+		},
+		missingTxID: {
+			"error": map[string]any{
+				"code":    -5,
+				"message": "No such mempool or blockchain transaction",
+			},
+		},
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		var req struct {
+			ID     any    `json:"id"`
+			Method string `json:"method"`
+			Params []any  `json:"params"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("decode rpc request: %v", err)
+		}
+		if req.Method != "getrawtransaction" || len(req.Params) < 2 || req.Params[1] != true {
+			t.Fatalf("unexpected rpc request: %+v", req)
+		}
+		txid, _ := req.Params[0].(string)
+		resp := map[string]any{
+			"jsonrpc": "2.0",
+			"id":      req.ID,
+		}
+		for key, value := range responses[txid] {
+			resp[key] = value
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			t.Fatalf("encode rpc response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	rpcClient, err := rpc.NewClient(server.URL, "thornado", "thornado", 0, 10*time.Second, common.BTCChain, zerolog.Nop())
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &Client{
+		rpc: rpcClient,
+		log: zerolog.Nop(),
+	}
+
+	tests := []struct {
+		name string
+		txid string
+		want bool
+	}{
+		{name: "active chain", txid: activeTxID, want: true},
+		{name: "mempool", txid: mempoolTxID, want: true},
+		{name: "stale block", txid: staleTxID, want: false},
+		{name: "missing", txid: missingTxID, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := client.confirmTx(tt.txid); got != tt.want {
+				t.Fatalf("confirmTx(%s) = %v, want %v", tt.txid, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMissingErrataReadySinceUsesMissingBlockHeight(t *testing.T) {
+	client := &Client{log: zerolog.Nop()}
+	txid := strings.Repeat("5", 64)
+
+	if !client.missingErrataReadySince(txid, 100, 100+btcErrataDelayBlocks) {
+		t.Fatal("reorg errata should be ready when the current height is past the missing block delay")
+	}
+
+	client.clearMissingErrata(txid)
+	if client.missingErrataReady(txid, 100+btcErrataDelayBlocks) {
+		t.Fatal("plain first-seen errata should not be ready on first observation")
+	}
+	if !client.missingErrataReady(txid, 100+(2*btcErrataDelayBlocks)) {
+		t.Fatal("plain first-seen errata should be ready after the delay")
+	}
+}
+
+func TestSweepSourceActuallyMissingTreatsInactiveBlockTxAsMissing(t *testing.T) {
+	sourceTxID, err := common.NewTxID(strings.Repeat("6", 64))
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		var req struct {
+			ID     any    `json:"id"`
+			Method string `json:"method"`
+			Params []any  `json:"params"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("decode rpc request: %v", err)
+		}
+		if req.Method != "getrawtransaction" {
+			t.Fatalf("unexpected rpc request: %s", req.Method)
+		}
+		resp := map[string]any{
+			"jsonrpc": "2.0",
+			"id":      req.ID,
+			"result": map[string]any{
+				"txid":      sourceTxID.String(),
+				"hash":      sourceTxID.String(),
+				"blockhash": strings.Repeat("a", 64),
+				"vin":       []map[string]any{},
+				"vout": []map[string]any{{
+					"value": 0.2,
+					"n":     0,
+				}},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			t.Fatalf("encode rpc response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	rpcClient, err := rpc.NewClient(server.URL, "thornado", "thornado", 0, 10*time.Second, common.BTCChain, zerolog.Nop())
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &Client{
+		rpc: rpcClient,
+		log: zerolog.Nop(),
+	}
+	missing, err := client.sweepSourceActuallyMissing(stypes.TxOutItem{
+		InHash: sourceTxID,
+		SourceInputs: []stypes.TxOutInput{{
+			TxID: sourceTxID,
+			Vout: 0,
+		}},
+	})
+	if err != nil {
+		t.Fatalf("sweepSourceActuallyMissing failed: %v", err)
+	}
+	if !missing {
+		t.Fatal("inactive block source tx should be classified as missing")
+	}
+}
+
 func TestGetGasUsesProvidedVinTransactions(t *testing.T) {
 	client := &Client{}
 	client.cfg.ChainID = common.BTCChain

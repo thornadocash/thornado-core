@@ -309,7 +309,7 @@ func TestSignRedeemTxInputsRunsFrostInputsInParallel(t *testing.T) {
 		VaultPathIndex: common.MainVaultPathIndex,
 	}
 
-	if err := client.signRedeemTxInputs(redeemTx, tx, signings, sourceScript); err != nil {
+	if err := client.signRedeemTxInputs(context.Background(), redeemTx, tx, signings, sourceScript); err != nil {
 		t.Fatal(err)
 	}
 	if coordinator.MaxActive() < 2 {

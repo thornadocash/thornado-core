@@ -700,6 +700,63 @@ func TestCommonOutboundRequiresPrescribedBTCSourceInputs(t *testing.T) {
 	}
 }
 
+func TestDirectBaseVaultInboundRefundPreemptsDepositMatch(t *testing.T) {
+	SetupConfigForTest()
+	ctx := testContext(200)
+	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 1
+	mgr := newShielderFlowTestManager(k)
+	vaultPubKey := GetRandomPubKey()
+	vault := NewVaultV2(10, ActiveVault, BaseVault, vaultPubKey, common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	k.baseVaults = Vaults{vault}
+	rootAddr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := k.SetDepositAddress(ctx, types.DepositAddress{
+		Owner:       cosmos.AccAddress("owner"),
+		Address:     rootAddr,
+		VaultPubKey: vaultPubKey,
+		PathIndex:   common.MainVaultPathIndex,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	txID := GetRandomTxHash()
+	tx := common.NewTx(
+		txID,
+		GetRandomBTCAddress(),
+		rootAddr,
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(20_000_000))),
+		common.Gas{},
+	)
+	tx.SourceVout = 5
+	observed := common.NewObservedTx(tx, 100, vaultPubKey, 100)
+	voter := ObservedTxVoter{TxID: txID, Tx: observed}
+	k.SetObservedTxInVoter(ctx, voter)
+
+	if err := handleObservedTxInQuorum(ctx, mgr, nil, nil, nil, observed, voter, nil, true); err != nil {
+		t.Fatal(err)
+	}
+	record := k.deposits[txID.String()]
+	if record.Status != types.DepositStatusReturnQueued ||
+		record.RefundEligibleHeight != ctx.BlockHeight() ||
+		record.RefundQueuedHeight != ctx.BlockHeight() ||
+		!record.SweepComplete {
+		t.Fatalf("direct base-vault inbound was not queued for refund: %#v", record)
+	}
+	if string(record.Owner) != tx.FromAddress.String() {
+		t.Fatalf("direct base-vault refund owner mismatch: %q/%q", string(record.Owner), tx.FromAddress.String())
+	}
+	if len(k.txOuts) != 1 || k.txOuts[0].GetTxType() != types.TxOutTypeRefund {
+		t.Fatalf("expected one refund txout, got %#v", k.txOuts)
+	}
+	if len(k.txOuts[0].SourceInputs) != 1 ||
+		!k.txOuts[0].SourceInputs[0].TxId.Equals(txID) ||
+		k.txOuts[0].SourceInputs[0].Vout != 5 {
+		t.Fatalf("refund did not spend direct root deposit source: %#v", k.txOuts[0].SourceInputs)
+	}
+}
+
 func TestBTCConsolidateObservedSubsetSettlesStaleTxOut(t *testing.T) {
 	SetupConfigForTest()
 	ctx := testContext(100)

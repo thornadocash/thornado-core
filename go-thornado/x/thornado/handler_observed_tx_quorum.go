@@ -1,6 +1,7 @@
 package thornado
 
 import (
+	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
@@ -59,7 +60,7 @@ func (h ObservedTxQuorumHandler) handle(ctx cosmos.Context, msg types.MsgObserve
 	// check we are sending to a valid vault
 	var voter types.ObservedTxVoter
 	if inbound {
-		voter, err = ensureVaultAndGetTxInVoter(ctx, obsTx.ObservedPubKey, obsTx.Tx.ID, k)
+		voter, err = ensureVaultAndGetTxInVoter(ctx, obsTx.ObservedPubKey, common.BTCOutpointScopedTxID(obsTx.Tx), k)
 		if err != nil {
 			ctx.Logger().Error("fail to ensure vault and get tx in voter", "error", err)
 			return &cosmos.Result{}, nil

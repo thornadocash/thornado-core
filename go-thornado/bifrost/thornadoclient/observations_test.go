@@ -3,6 +3,7 @@ package thornadoclient
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/go-retryablehttp"
@@ -121,4 +122,36 @@ func TestIsVaultDepositAddressAcceptsStringPathIndex(t *testing.T) {
 	}
 
 	require.True(t, bridge.IsVaultDepositAddress(address))
+}
+
+func TestIsTxInboundFinalisedUsesBTCOutpointScopedID(t *testing.T) {
+	txID := common.TxID("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+	tx := common.Tx{
+		ID:         txID,
+		Chain:      common.BTCChain,
+		SourceVout: 1,
+	}
+	scopedID := common.BTCOutpointScopedTxID(tx)
+	var requestedPath string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestedPath = r.URL.Path
+		require.True(t, strings.HasSuffix(r.URL.Path, "/thornado/tx/"+scopedID.String()))
+		_, _ = w.Write([]byte(`{"stages":{"inbound_finalised":{"completed":true}}}`))
+	}))
+	defer server.Close()
+
+	client := retryablehttp.NewClient()
+	client.RetryMax = 0
+	bridge := thornadoBridge{
+		logger:     zerolog.Nop(),
+		cfg:        config.BifrostClientConfiguration{ChainHost: server.URL},
+		httpClient: client,
+		errCounter: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "test_tx_finalised_errors_total"}, []string{"error", "endpoint"}),
+	}
+
+	finalised, err := bridge.IsTxInboundFinalised(tx)
+	require.NoError(t, err)
+	require.True(t, finalised)
+	require.True(t, strings.HasSuffix(requestedPath, "/thornado/tx/"+scopedID.String()))
 }

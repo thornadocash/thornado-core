@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/thornadocash/go-thornado/common"
+	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
@@ -111,5 +112,97 @@ func TestNextDepositAddressExpiryHeightUsesNextChurnOnly(t *testing.T) {
 
 	if got, want := nextDepositAddressExpiryHeight(ctx, k), int64(100); got != want {
 		t.Fatalf("nextDepositAddressExpiryHeight() = %d, want next churn height %d", got, want)
+	}
+}
+
+func TestMatchCoreDepositProcessesMultipleOutputsFromSameBTCTx(t *testing.T) {
+	SetupConfigForTest()
+	ctx := testContext(200)
+	k := newShielderFlowTestKeeper()
+	mgr := newShielderFlowTestManager(k)
+
+	vaultPubKey := GetRandomPubKey()
+	vault := NewVaultV2(10, ActiveVault, BaseVault, vaultPubKey, common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	if err := k.SetVault(ctx, vault); err != nil {
+		t.Fatal(err)
+	}
+
+	firstPath := testUserDepositPathIndex(t, 1)
+	secondPath := testUserDepositPathIndex(t, 2)
+	firstAddress, err := common.DeriveBTCTaprootAddress(vaultPubKey, firstPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondAddress, err := common.DeriveBTCTaprootAddress(vaultPubKey, secondPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerA := cosmos.AccAddress("owner-a")
+	ownerB := cosmos.AccAddress("owner-b")
+	if err := k.SetDepositAddress(ctx, types.DepositAddress{
+		Owner:       ownerA,
+		Address:     firstAddress,
+		VaultPubKey: vaultPubKey,
+		PathIndex:   firstPath,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := k.SetDepositAddress(ctx, types.DepositAddress{
+		Owner:       ownerB,
+		Address:     secondAddress,
+		VaultPubKey: vaultPubKey,
+		PathIndex:   secondPath,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	txID := GetRandomTxHash()
+	sender := GetRandomBTCAddress()
+	firstTx := common.NewTx(
+		txID,
+		sender,
+		firstAddress,
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(20_000_000))),
+		common.Gas{},
+	)
+	firstTx.SourceVout = 2
+	secondTx := common.NewTx(
+		txID,
+		sender,
+		secondAddress,
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(30_000_000))),
+		common.Gas{},
+	)
+	secondTx.SourceVout = 4
+
+	firstDeposit, err := MatchCoreDeposit(ctx, mgr, common.NewObservedTx(firstTx, 100, vaultPubKey, 100))
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondDeposit, err := MatchCoreDeposit(ctx, mgr, common.NewObservedTx(secondTx, 100, vaultPubKey, 100))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if firstDeposit.DepositID.Equals(secondDeposit.DepositID) {
+		t.Fatalf("deposits used the same id: %s", firstDeposit.DepositID.String())
+	}
+	if !firstDeposit.InboundTxID.Equals(txID) || firstDeposit.SourceVout != 2 {
+		t.Fatalf("first deposit lost source outpoint: %#v", firstDeposit)
+	}
+	if !secondDeposit.InboundTxID.Equals(txID) || secondDeposit.SourceVout != 4 {
+		t.Fatalf("second deposit lost source outpoint: %#v", secondDeposit)
+	}
+	if len(k.txOuts) != 2 {
+		t.Fatalf("expected two sweep txouts, got %#v", k.txOuts)
+	}
+	if !k.txOuts[0].InHash.Equals(firstDeposit.DepositID) ||
+		!k.txOuts[0].SourceInputs[0].TxId.Equals(txID) ||
+		k.txOuts[0].SourceInputs[0].Vout != 2 {
+		t.Fatalf("first sweep did not preserve source outpoint: %#v", k.txOuts[0])
+	}
+	if !k.txOuts[1].InHash.Equals(secondDeposit.DepositID) ||
+		!k.txOuts[1].SourceInputs[0].TxId.Equals(txID) ||
+		k.txOuts[1].SourceInputs[0].Vout != 4 {
+		t.Fatalf("second sweep did not preserve source outpoint: %#v", k.txOuts[1])
 	}
 }

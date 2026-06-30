@@ -7,12 +7,8 @@ use base64::engine::general_purpose::STANDARD as B64;
 use base64::Engine;
 use frost_secp256k1_tr as frost;
 use frost_secp256k1_tr::keys::dkg;
-use frost_secp256k1_tr::keys::{
-    KeyPackage, PublicKeyPackage, SigningShare, Tweak, VerifyingShare,
-};
-use frost_secp256k1_tr::{
-    Ciphersuite, Field, Group, Identifier, SigningPackage, VerifyingKey,
-};
+use frost_secp256k1_tr::keys::{KeyPackage, PublicKeyPackage, SigningShare, Tweak, VerifyingShare};
+use frost_secp256k1_tr::{Ciphersuite, Field, Group, Identifier, SigningPackage, VerifyingKey};
 use once_cell::sync::Lazy;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};

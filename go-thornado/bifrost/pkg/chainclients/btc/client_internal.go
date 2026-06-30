@@ -49,33 +49,8 @@ func (c *Client) isBaseAddress(addressToCheck string) bool {
 }
 
 func (c *Client) isRegisteredVaultPathAddress(addressToCheck string) bool {
-	c.vaultPathLock.RLock()
-	pathsByPubKey := make(map[string][]uint64, len(c.vaultPaths))
-	for pubKey, paths := range c.vaultPaths {
-		for path := range paths {
-			pathsByPubKey[pubKey] = append(pathsByPubKey[pubKey], path)
-		}
-	}
-	c.vaultPathLock.RUnlock()
-
-	for pubKeyString, paths := range pathsByPubKey {
-		pubKey, err := common.NewPubKey(pubKeyString)
-		if err != nil {
-			c.log.Debug().Err(err).Str("pubkey", pubKeyString).Msg("fail to parse registered vault pubkey")
-			continue
-		}
-		for _, path := range paths {
-			addr, err := c.getVaultAddressAtPath(pubKey, path)
-			if err != nil {
-				c.log.Debug().Err(err).Str("pubkey", pubKeyString).Uint64("path_index", path).Msg("fail to derive registered vault path address")
-				continue
-			}
-			if strings.EqualFold(addr.String(), addressToCheck) {
-				return true
-			}
-		}
-	}
-	return false
+	_, ok := c.vaultPathAddrs.Load(strings.ToLower(addressToCheck))
+	return ok
 }
 
 func (c *Client) protocolControlledTxIn(txIn types.TxIn) bool {
@@ -170,6 +145,9 @@ func (c *Client) processReorg(block *btcjson.GetBlockVerboseTxResult) ([]types.T
 
 	blockHeights, err := c.reConfirmTx(block.Height)
 	if err != nil {
+		if errors.Is(err, btypes.ErrPendingErrataDelay) {
+			return nil, err
+		}
 		c.log.Err(err).Msgf("fail to reprocess all txs")
 	}
 	txIns := make([]types.TxIn, 0)
@@ -242,7 +220,7 @@ func (c *Client) reConfirmTx(height int64) ([]int64, error) {
 				c.log.Info().Int64("height", blockMeta.Height).Str("txid", tx).Msg("transaction still exists")
 				continue
 			}
-			if !c.missingErrataReady(tx, c.getCurrentBlockHeight()) {
+			if !c.missingErrataReadySince(tx, blockMeta.Height, c.getCurrentBlockHeight()) {
 				c.log.Info().Int64("height", blockMeta.Height).Str("txid", tx).Msg("reconfirmed missing tx inside errata delay")
 				pendingMissing = true
 				continue
@@ -265,7 +243,7 @@ func (c *Client) reConfirmTx(height int64) ([]int64, error) {
 			}
 		}
 		if pendingMissing {
-			continue
+			return nil, btypes.ErrPendingErrataDelay
 		}
 
 		rescanBlockHeights = append(rescanBlockHeights, blockMeta.Height)
@@ -287,12 +265,26 @@ func (c *Client) reConfirmTx(height int64) ([]int64, error) {
 }
 
 func (c *Client) confirmTx(txid string) bool {
-	// since daemons are run with the tx index enabled, this covers block and mempool
-	_, err := c.rpc.GetRawTransaction(txid)
+	tx, err := c.rpc.GetRawTransactionVerbose(txid)
 	if err != nil {
-		c.log.Err(err).Str("txid", txid).Msg("fail to get tx")
+		c.log.Debug().Err(err).Str("txid", txid).Msg("transaction not found")
+		return false
 	}
-	return err == nil
+	if tx == nil {
+		c.log.Debug().Str("txid", txid).Msg("transaction not found")
+		return false
+	}
+	if tx.Confirmations > 0 {
+		return true
+	}
+	if tx.BlockHash != "" {
+		c.log.Info().
+			Str("txid", txid).
+			Str("block_hash", tx.BlockHash).
+			Msg("transaction only found in inactive block")
+		return false
+	}
+	return true
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -525,35 +517,134 @@ func (c *Client) isRBFEnabled(tx *btcjson.TxRawResult) bool {
 }
 
 func (c *Client) getTxIn(tx *btcjson.TxRawResult, height int64, isMemPool bool, vinZeroTxs map[string]*btcjson.TxRawResult) (types.TxInItem, error) {
-	if c.ignoreTx(tx, height) {
-		c.log.Debug().Int64("height", height).Str("txid", tx.Hash).Msg("ignore tx not matching format")
+	txIns, err := c.getTxIns(tx, height, isMemPool, vinZeroTxs)
+	if err != nil {
+		return types.TxInItem{}, err
+	}
+	if len(txIns) == 0 {
 		return types.TxInItem{}, nil
 	}
+	return txIns[0], nil
+}
+
+func (c *Client) getTxIns(tx *btcjson.TxRawResult, height int64, isMemPool bool, vinTxs map[string]*btcjson.TxRawResult) ([]types.TxInItem, error) {
+	if c.ignoreTx(tx, height) {
+		c.log.Debug().Int64("height", height).Str("txid", tx.Hash).Msg("ignore tx not matching format")
+		return nil, nil
+	}
 	height = c.canonicalObservedHeight(tx, height, isMemPool)
-	sender, err := c.getSender(tx, vinZeroTxs)
+	sender, err := c.getSender(tx, vinTxs)
 	if err != nil {
-		return types.TxInItem{}, fmt.Errorf("fail to get sender from tx: %w", err)
+		return nil, fmt.Errorf("fail to get sender from tx: %w", err)
 	}
 	isProtocolSender := c.isProtocolControlledAddress(sender, common.EmptyPubKey)
 	if isProtocolSender {
-		txInItem, ok, err := c.getBatchOutboundTxIn(tx, sender, height)
+		txInItem, ok, err := c.getBatchOutboundTxIn(tx, sender, height, vinTxs)
 		if err != nil {
-			return types.TxInItem{}, err
+			return nil, err
 		}
 		if ok {
-			return txInItem, nil
+			return []types.TxInItem{txInItem}, nil
 		}
+		output, err := c.getOutput(sender, tx, true)
+		if err != nil {
+			if errors.Is(err, btypes.ErrFailOutputMatchCriteria) {
+				c.log.Debug().Int64("height", height).Str("txid", tx.Hash).Msg("ignore tx not matching format")
+				return nil, nil
+			}
+			return nil, fmt.Errorf("fail to get output from tx: %w", err)
+		}
+		gas, sourceInputs, err := c.observationInputData(tx, vinTxs)
+		if err != nil {
+			return nil, err
+		}
+		txInItem, err = c.txInItemFromOutput(tx, output, sender, height, gas, sourceInputs)
+		if err != nil {
+			return nil, err
+		}
+		return []types.TxInItem{txInItem}, nil
 	}
-	output, err := c.getOutput(sender, tx, isProtocolSender)
+
+	outputs, err := c.getOutputs(sender, tx, false)
 	if err != nil {
 		if errors.Is(err, btypes.ErrFailOutputMatchCriteria) {
 			c.log.Debug().Int64("height", height).Str("txid", tx.Hash).Msg("ignore tx not matching format")
-			return types.TxInItem{}, nil
+			return nil, nil
 		}
-		return types.TxInItem{}, fmt.Errorf("fail to get output from tx: %w", err)
+		return nil, fmt.Errorf("fail to get outputs from tx: %w", err)
+	}
+	gas, sourceInputs, err := c.observationInputData(tx, vinTxs)
+	if err != nil {
+		return nil, err
+	}
+	txIns := make([]types.TxInItem, 0, len(outputs))
+	for _, output := range outputs {
+		txInItem, err := c.txInItemFromOutput(tx, output, sender, height, gas, sourceInputs)
+		if err != nil {
+			return nil, err
+		}
+		txIns = append(txIns, txInItem)
+	}
+	return txIns, nil
+}
+
+func (c *Client) observationInputData(tx *btcjson.TxRawResult, vinTxs map[string]*btcjson.TxRawResult) (common.Gas, []types.TxOutInput, error) {
+	var sumVin uint64
+	sourceInputs := make([]types.TxOutInput, 0, len(tx.Vin))
+	for _, vin := range tx.Vin {
+		vinTx := vinTxs[vin.Txid]
+		hadMappedVinTx := vinTxs != nil && vinTx != nil
+		if vinTx == nil {
+			var err error
+			vinTx, err = c.rpc.GetRawTransactionVerbose(vin.Txid)
+			if err != nil {
+				return nil, nil, fmt.Errorf("fail to query raw tx from node")
+			}
+		}
+		if int(vin.Vout) >= len(vinTx.Vout) {
+			return nil, nil, fmt.Errorf("source vout %d out of range for tx %s", vin.Vout, vin.Txid)
+		}
+		amount, err := btcutil.NewAmount(vinTx.Vout[vin.Vout].Value)
+		if err != nil {
+			return nil, nil, err
+		}
+		amountSats := uint64(amount.ToUnit(btcutil.AmountSatoshi))
+		sumVin += amountSats
+
+		txID, err := common.NewTxID(vin.Txid)
+		if err != nil {
+			continue
+		}
+		sourceAmountSats := uint64(0)
+		if vinTxs == nil || hadMappedVinTx {
+			sourceAmountSats = amountSats
+		}
+		sourceInputs = append(sourceInputs, types.TxOutInput{
+			TxID:       txID,
+			Vout:       vin.Vout,
+			AmountSats: sourceAmountSats,
+		})
 	}
 
+	var sumVout uint64
+	for _, vout := range tx.Vout {
+		amount, err := btcutil.NewAmount(vout.Value)
+		if err != nil {
+			return nil, nil, err
+		}
+		sumVout += uint64(amount.ToUnit(btcutil.AmountSatoshi))
+	}
+	gas := common.Gas{
+		common.NewCoin(c.cfg.ChainID.GetGasAsset(), cosmos.NewUint(sumVin-sumVout)),
+	}
+	return gas, sourceInputs, nil
+}
+
+func (c *Client) txInItemFromOutput(tx *btcjson.TxRawResult, output btcjson.Vout, sender string, height int64, gas common.Gas, sourceInputs []types.TxOutInput) (types.TxInItem, error) {
 	addresses := c.getAddressesFromScriptPubKey(output.ScriptPubKey)
+	if len(addresses) != 1 {
+		return types.TxInItem{}, btypes.ErrFailOutputMatchCriteria
+	}
 	toAddr := addresses[0]
 
 	isInbound := c.isBaseAddress(toAddr)
@@ -569,14 +660,6 @@ func (c *Client) getTxIn(tx *btcjson.TxRawResult, height int64, isMemPool bool, 
 	}
 	amt := uint64(amount.ToUnit(btcutil.AmountSatoshi))
 
-	gas, err := c.getGas(tx, isInbound)
-	if err != nil {
-		return types.TxInItem{}, fmt.Errorf("fail to get gas from tx: %w", err)
-	}
-	sourceInputs := observedSourceInputsWithAmounts(tx, vinZeroTxs)
-	if vinZeroTxs == nil {
-		sourceInputs = c.observedSourceInputsFromRPC(tx)
-	}
 	return types.TxInItem{
 		BlockHeight:  height,
 		Tx:           tx.Txid,
@@ -591,7 +674,7 @@ func (c *Client) getTxIn(tx *btcjson.TxRawResult, height int64, isMemPool bool, 
 	}, nil
 }
 
-func (c *Client) getBatchOutboundTxIn(tx *btcjson.TxRawResult, sender string, height int64) (types.TxInItem, bool, error) {
+func (c *Client) getBatchOutboundTxIn(tx *btcjson.TxRawResult, sender string, height int64, vinTxs map[string]*btcjson.TxRawResult) (types.TxInItem, bool, error) {
 	var toAddr string
 	var total uint64
 	outputs := 0
@@ -621,11 +704,10 @@ func (c *Client) getBatchOutboundTxIn(tx *btcjson.TxRawResult, sender string, he
 	if outputs == 0 {
 		return types.TxInItem{}, false, nil
 	}
-	gas, err := c.getGas(tx, false)
+	gas, sourceInputs, err := c.observationInputData(tx, vinTxs)
 	if err != nil {
-		return types.TxInItem{}, false, fmt.Errorf("fail to get gas from tx: %w", err)
+		return types.TxInItem{}, false, err
 	}
-	sourceInputs := c.observedSourceInputsFromRPC(tx)
 	return types.TxInItem{
 		BlockHeight:  height,
 		Tx:           tx.Txid,
@@ -639,8 +721,21 @@ func (c *Client) getBatchOutboundTxIn(tx *btcjson.TxRawResult, sender string, he
 	}, true, nil
 }
 
+func (c *Client) observedTxCacheKey(txIn types.TxInItem) string {
+	if txIn.Tx == "" {
+		return ""
+	}
+	if c.isBaseAddress(txIn.To) && !c.isProtocolControlledAddress(txIn.Sender, txIn.ObservedVaultPubKey) {
+		return fmt.Sprintf("%s:%d", txIn.Tx, txIn.SourceVout)
+	}
+	return txIn.Tx
+}
+
 func (c *Client) canonicalObservedHeight(tx *btcjson.TxRawResult, fallback int64, isMemPool bool) int64 {
 	if isMemPool || tx == nil || tx.BlockHash == "" {
+		return fallback
+	}
+	if fallback > 0 {
 		return fallback
 	}
 	block, err := c.rpc.GetBlockVerbose(tx.BlockHash)
@@ -663,6 +758,7 @@ func (c *Client) getVinZeroTxs(block *btcjson.GetBlockVerboseTxResult) (map[stri
 	// create our batches
 	batches := [][]string{}
 	batch := []string{}
+	seenVinZeroTxs := make(map[string]struct{})
 	var count, ignoreCount, skipDustCount int // just for debug logs
 	for i := range block.Tx {
 		if c.ignoreTx(&block.Tx[i], block.Height) {
@@ -680,7 +776,12 @@ func (c *Client) getVinZeroTxs(block *btcjson.GetBlockVerboseTxResult) (map[stri
 		}
 
 		count++
-		batch = append(batch, block.Tx[i].Vin[0].Txid)
+		vinZeroTxID := block.Tx[i].Vin[0].Txid
+		if _, ok := seenVinZeroTxs[vinZeroTxID]; ok {
+			continue
+		}
+		seenVinZeroTxs[vinZeroTxID] = struct{}{}
+		batch = append(batch, vinZeroTxID)
 		if len(batch) >= c.cfg.UTXO.TransactionBatchSize {
 			batches = append(batches, batch)
 			batch = []string{}
@@ -762,35 +863,40 @@ func (c *Client) extractTxs(block *btcjson.GetBlockVerboseTxResult) (types.TxIn,
 		// mempool transaction get committed to block , thus remove it from mempool cache
 		c.removeFromMemPoolCache(tx.Txid)
 		c.removeFromMemPoolCache(tx.Hash)
-		var txInItem types.TxInItem
-		txInItem, err = c.getTxIn(&block.Tx[idx], block.Height, false, vinZeroTxs)
+		var txInItems []types.TxInItem
+		txInItems, err = c.getTxIns(&block.Tx[idx], block.Height, false, vinZeroTxs)
 		if err != nil {
 			// expected since vouts below dust threshold are skipped for vinZeroTxs
 			c.log.Debug().Str("txid", tx.Txid).Err(err).Msg("fail to get TxInItem")
 			continue
 		}
-		if txInItem.IsEmpty() {
-			continue
+		for i := range txInItems {
+			txInItem := txInItems[i]
+			if txInItem.IsEmpty() {
+				continue
+			}
+			if txInItem.Coins.IsEmpty() {
+				continue
+			}
+			if txInItem.Coins[0].Amount.LT(c.cfg.ChainID.DustThreshold()) {
+				continue
+			}
+			c.recordObservedTxBlockMeta(txInItem, block.Height)
+			cacheKey := c.observedTxCacheKey(txInItem)
+			var added bool
+			added, previousStage, err := c.temporalStorage.TrackObservedTxStage(cacheKey, ObservedTxStageFinal)
+			if err != nil {
+				c.log.Err(err).Msgf("fail to determine whether hash(%s) had been observed before", cacheKey)
+			}
+			if !added {
+				c.log.Info().Msgf("tx: %s had been report before, ignore", cacheKey)
+				continue
+			}
+			if previousStage == ObservedTxStageMempool {
+				c.log.Info().Msgf("tx: %s promoted from mempool observation to final", cacheKey)
+			}
+			txItems = append(txItems, &txInItem)
 		}
-		if txInItem.Coins.IsEmpty() {
-			continue
-		}
-		if txInItem.Coins[0].Amount.LT(c.cfg.ChainID.DustThreshold()) {
-			continue
-		}
-		var added bool
-		added, previousStage, err := c.temporalStorage.TrackObservedTxStage(txInItem.Tx, ObservedTxStageFinal)
-		if err != nil {
-			c.log.Err(err).Msgf("fail to determine whether hash(%s) had been observed before", txInItem.Tx)
-		}
-		if !added {
-			c.log.Info().Msgf("tx: %s had been report before, ignore", txInItem.Tx)
-			continue
-		}
-		if previousStage == ObservedTxStageMempool {
-			c.log.Info().Msgf("tx: %s promoted from mempool observation to final", txInItem.Tx)
-		}
-		txItems = append(txItems, &txInItem)
 	}
 	txIn.TxArray = txItems
 	return txIn, nil
@@ -807,7 +913,7 @@ func (c *Client) ignoreTx(tx *btcjson.TxRawResult, height int64) bool {
 	countWithOutput := 0
 	for _, vout := range tx.Vout {
 		if strings.EqualFold(vout.ScriptPubKey.Type, "nulldata") {
-			return true
+			continue
 		}
 		// analyze-ignore(float-comparison)
 		if vout.Value > 0 {
@@ -832,7 +938,16 @@ func (c *Client) ignoreTx(tx *btcjson.TxRawResult, height int64) bool {
 // else prefer the first Vout with value that's to a vault
 // an exception need to be made for consolidate tx , because consolidate tx will be send from base back base itself
 func (c *Client) getOutput(sender string, tx *btcjson.TxRawResult, consolidate bool) (btcjson.Vout, error) {
+	outputs, err := c.getOutputs(sender, tx, consolidate)
+	if err != nil {
+		return btcjson.Vout{}, err
+	}
+	return outputs[0], nil
+}
+
+func (c *Client) getOutputs(sender string, tx *btcjson.TxRawResult, consolidate bool) ([]btcjson.Vout, error) {
 	isSenderProtocolControlled := c.isProtocolControlledAddress(sender, common.EmptyPubKey)
+	outputs := make([]btcjson.Vout, 0)
 	for _, vout := range tx.Vout {
 		// analyze-ignore(float-comparison)
 		if vout.Value <= 0 {
@@ -854,13 +969,17 @@ func (c *Client) getOutput(sender string, tx *btcjson.TxRawResult, consolidate b
 		}
 
 		if consolidate && receiver == sender {
-			return vout, nil
+			outputs = append(outputs, vout)
+			continue
 		}
 		if !consolidate && receiver != sender {
-			return vout, nil
+			outputs = append(outputs, vout)
 		}
 	}
-	return btcjson.Vout{}, btypes.ErrFailOutputMatchCriteria
+	if len(outputs) == 0 {
+		return nil, btypes.ErrFailOutputMatchCriteria
+	}
+	return outputs, nil
 }
 
 // isFromBase returns true if the tx is from base and false if not or on error.
@@ -938,11 +1057,22 @@ func (c *Client) getAddressesFromScriptPubKey(scriptPubKey btcjson.ScriptPubKeyR
 
 // getGas returns gas for a tx (sum vin - sum vout)
 func (c *Client) getGas(tx *btcjson.TxRawResult, isInbound bool) (common.Gas, error) {
+	return c.getGasWithVinTxs(tx, nil)
+}
+
+func (c *Client) getGasWithVinTxs(tx *btcjson.TxRawResult, vinTxs map[string]*btcjson.TxRawResult) (common.Gas, error) {
 	var sumVin uint64 = 0
 	for _, vin := range tx.Vin {
-		vinTx, err := c.rpc.GetRawTransactionVerbose(vin.Txid)
-		if err != nil {
-			return common.Gas{}, fmt.Errorf("fail to query raw tx from node")
+		vinTx := vinTxs[vin.Txid]
+		if vinTx == nil {
+			var err error
+			vinTx, err = c.rpc.GetRawTransactionVerbose(vin.Txid)
+			if err != nil {
+				return common.Gas{}, fmt.Errorf("fail to query raw tx from node")
+			}
+		}
+		if int(vin.Vout) >= len(vinTx.Vout) {
+			return nil, fmt.Errorf("source vout %d out of range for tx %s", vin.Vout, vin.Txid)
 		}
 
 		amount, err := btcutil.NewAmount(vinTx.Vout[vin.Vout].Value)

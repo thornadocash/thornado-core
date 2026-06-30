@@ -57,6 +57,18 @@ func NewTxID(hash string) (TxID, error) {
 	return TxID(strings.ToUpper(hash)), nil
 }
 
+func BTCOutpointScopedTxID(tx Tx) TxID {
+	if !tx.Chain.Equals(BTCChain) || tx.ID.IsEmpty() || tx.SourceVout == 0 {
+		return tx.ID
+	}
+	sum := sha256.Sum256([]byte(fmt.Sprintf("thornado:btc-outpoint:%s:%d", tx.ID.String(), tx.SourceVout)))
+	id, err := NewTxID(fmt.Sprintf("%X", sum[:]))
+	if err != nil {
+		return tx.ID
+	}
+	return id
+}
+
 // Equals check whether two TxID are the same
 func (tx TxID) Equals(tx2 TxID) bool {
 	return strings.EqualFold(tx.String(), tx2.String())
@@ -156,6 +168,9 @@ func (tx Tx) EqualsEx(tx2 Tx) bool {
 	if !tx.Gas.Equals(tx2.Gas) {
 		return false
 	}
+	if tx.SourceVout != tx2.SourceVout {
+		return false
+	}
 	return true
 }
 
@@ -176,6 +191,9 @@ func (tx Tx) EqualsExIgnoreGas(tx2 Tx) bool {
 		return false
 	}
 	if !tx.Coins.EqualsEx(tx2.Coins) {
+		return false
+	}
+	if tx.SourceVout != tx2.SourceVout {
 		return false
 	}
 	return true

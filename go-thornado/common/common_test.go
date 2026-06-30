@@ -30,6 +30,23 @@ func (s CommonSuite) TestGetSafeShare(c *C) {
 	c.Assert(share.Equal(cosmos.NewUint(50000000)), Equals, true)
 }
 
+func (s CommonSuite) TestBTCOutpointScopedTxID(c *C) {
+	txID := TxID("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+	tx := Tx{
+		ID:    txID,
+		Chain: BTCChain,
+	}
+
+	c.Assert(BTCOutpointScopedTxID(tx), Equals, txID)
+
+	tx.SourceVout = 1
+	c.Assert(
+		BTCOutpointScopedTxID(tx),
+		Equals,
+		TxID("79C9E94802D437FBED735902EAA2F97747E2561C20A4A068AD38A701A7A456AC"),
+	)
+}
+
 func (s CommonSuite) TestObservedTxSignablePayloadCoversWrapperAndInbound(c *C) {
 	limit := cosmos.NewUint(1000)
 	base := ObservedTx{

@@ -317,8 +317,5 @@ func FrostKeysignFailAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.
 	if !voter.Sign(msg.Signer) {
 		return ctx, cosmos.ErrUnknownRequest("frost keysign failure attestation already submitted")
 	}
-	if ctx.IsCheckTx() {
-		k.SetFrostKeysignFailVoter(ctx, voter)
-	}
 	return newCtx, nil
 }

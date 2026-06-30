@@ -23,12 +23,12 @@ type frostKeysignBridge interface {
 }
 
 type frostVaultSigner struct {
-	localState  storage.LocalStateManager
-	log         zerolog.Logger
-	coordinator frost.SessionCoordinator
-	bridge      frostKeysignBridge
-	localParty  string
-	partyLeader string
+	localState    storage.LocalStateManager
+	log           zerolog.Logger
+	coordinator   frost.SessionCoordinator
+	bridge        frostKeysignBridge
+	localParty    string
+	partyLeader   string
 	partyLeaderMu sync.Mutex
 }
 
@@ -74,6 +74,10 @@ func (s *frostVaultSigner) RemoteSign(msg []byte, algo common.SigningAlgo, vault
 }
 
 func (s *frostVaultSigner) RemoteSignWithPath(msg []byte, algo common.SigningAlgo, vaultPubKey string, pathIndex uint64) ([]byte, []byte, error) {
+	return s.RemoteSignWithPathContext(context.Background(), msg, algo, vaultPubKey, pathIndex)
+}
+
+func (s *frostVaultSigner) RemoteSignWithPathContext(ctx context.Context, msg []byte, algo common.SigningAlgo, vaultPubKey string, pathIndex uint64) ([]byte, []byte, error) {
 	if algo != common.SigningAlgoSecp256k1 {
 		return nil, nil, frost.NewKeysignError(ttypes.Blame{
 			FailReason: fmt.Sprintf("FROST signer only supports secp256k1, got %s", algo),
@@ -133,7 +137,7 @@ func (s *frostVaultSigner) RemoteSignWithPath(msg []byte, algo common.SigningAlg
 	partyLeader := s.partyLeader
 	s.partyLeaderMu.Unlock()
 	signature, err := s.coordinator.RunSign(
-		context.Background(),
+		ctx,
 		sessionID,
 		height,
 		participants,

@@ -52,7 +52,7 @@ func processTxInAttestation(
 	penaltyManager.IncPenaltyPoints(penaltyCtx, observePenaltyPoints, signer)
 
 	if !voter.Add(tx, signer) {
-		if !shouldPenalizeForDuplicate {
+		if !shouldPenalizeForDuplicate || isExactObservedTxReplay(voter, tx, signer) || isFinalBTCObservedTxReplay(voter, tx, signer) {
 			penaltyManager.DecPenaltyPoints(penaltyCtx, observePenaltyPoints, signer)
 		}
 		// A duplicate message, so do nothing further.
@@ -234,6 +234,20 @@ func handleObservedTxInQuorum(
 
 	mgr.ObMgr().AppendObserver(tx.Tx.Chain, voter.Tx.GetSigners())
 
+	if hasFinalised && tx.Tx.Chain.Equals(common.BTCChain) && vault.Status == ActiveVault && vault.IsBase() &&
+		!tx.Tx.FromAddress.Equals(tx.Tx.ToAddress) && !observedBTCMigrationInbound(ctx, k, tx) {
+		rootAddr, rootErr := common.DeriveBTCTaprootAddress(tx.ObservedPubKey, common.MainVaultPathIndex)
+		if rootErr == nil && tx.Tx.ToAddress.Equals(rootAddr) {
+			if err := queueDirectBaseVaultDepositReturn(ctx, mgr, voter.Tx, vault); err != nil {
+				ctx.Logger().Error("fail to queue direct base vault deposit return", "error", err, "tx", tx.String())
+			} else {
+				voter.SetDone()
+				k.SetObservedTxInVoter(ctx, voter)
+				return nil
+			}
+		}
+	}
+
 	if err := RecordDepositObservation(ctx, k, voter.Tx, hasFinalised); err != nil {
 		ctx.Logger().Error("fail to record deposit observation", "error", err, "tx", voter.TxID)
 	}
@@ -338,7 +352,7 @@ func processTxOutAttestation(
 	penaltyManager.IncPenaltyPoints(penaltyCtx, observePenaltyPoints, signer)
 
 	if !voter.Add(tx, signer) {
-		if !shouldPenalizeForDuplicate {
+		if !shouldPenalizeForDuplicate || isExactObservedTxReplay(voter, tx, signer) || isFinalBTCObservedTxReplay(voter, tx, signer) {
 			penaltyManager.DecPenaltyPoints(penaltyCtx, observePenaltyPoints, signer)
 		}
 		// A duplicate message, so do nothing further.

@@ -511,7 +511,7 @@ func (s *AttestationGossip) askPeerForState(ctx context.Context, peer peer.ID, w
 	defer wg.Done()
 	stream, err := s.host.NewStream(ctx, peer, attestationStateProtocol)
 	if err != nil {
-		s.logger.Error().Err(err).Msgf("fail to create stream to peer: %s", peer)
+		logAttestationStreamOpenError(s.logger, err, peer, string(attestationStateProtocol))
 		return
 	}
 

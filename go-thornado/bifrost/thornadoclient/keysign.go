@@ -1,6 +1,7 @@
 package thornadoclient
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -18,8 +19,8 @@ import (
 var ErrNotFound = fmt.Errorf("not found")
 
 type QueryKeysign struct {
-	Keysign   types.TxOut `json:"keysign"`
-	Signature string      `json:"signature"`
+	Keysign   json.RawMessage `json:"keysign"`
+	Signature string          `json:"signature"`
 }
 
 type queryTxOutQueue struct {
@@ -31,6 +32,7 @@ type queryTxOut struct {
 	TxArray          []queryTxArrayItem `json:"tx_array"`
 	Epoch            string             `json:"epoch,omitempty"`
 	Status           string             `json:"status,omitempty"`
+	SigningLeader    common.PubKey      `json:"signing_leader,omitempty"`
 	SigningAttempt   string             `json:"signing_attempt,omitempty"`
 	RetryUntilHeight string             `json:"retry_until_height,omitempty"`
 }
@@ -79,6 +81,7 @@ func (q queryTxOut) txOut() (types.TxOut, bool) {
 		TxArray:          q.txArray(),
 		Epoch:            epoch,
 		Status:           q.Status,
+		SigningLeader:    q.SigningLeader,
 		SigningAttempt:   signingAttempt,
 		RetryUntilHeight: retryUntilHeight,
 	}, true
@@ -182,36 +185,55 @@ func (b *thornadoBridge) GetKeysign(blockHeight int64, pk string) (types.TxOut, 
 	if err = json.Unmarshal(body, &query); err != nil {
 		return types.TxOut{}, fmt.Errorf("failed to unmarshal TxOut: %w", err)
 	}
+	pubKey, err := b.keys.GetSignerInfo().GetPubKey()
+	if err != nil {
+		return types.TxOut{}, fmt.Errorf("fail to get signer pub key: %w", err)
+	}
+	txOut, err := verifyAndDecodeKeysign(query, pubKey, blockHeight)
+	if err != nil {
+		return types.TxOut{}, err
+	}
+	return txOut, nil
+}
+
+type signatureVerifier interface {
+	VerifySignature(msg []byte, sig []byte) bool
+}
+
+func verifyAndDecodeKeysign(query QueryKeysign, pubKey signatureVerifier, blockHeight int64) (types.TxOut, error) {
+	var txOut types.TxOut
+	if len(query.Keysign) == 0 {
+		return txOut, errors.New("invalid keysign: empty payload")
+	}
+	if err := json.Unmarshal(query.Keysign, &txOut); err != nil {
+		return txOut, fmt.Errorf("failed to unmarshal TxOut: %w", err)
+	}
 	// there is no txout item , thus no need to validate signature either
-	if len(query.Keysign.TxArray) == 0 {
-		return query.Keysign, nil
+	if len(txOut.TxArray) == 0 {
+		return txOut, nil
 	}
 	if query.Signature == "" {
 		return types.TxOut{}, errors.New("invalid keysign signature: empty")
 	}
-	buf, err := json.Marshal(query.Keysign)
-	if err != nil {
-		return types.TxOut{}, fmt.Errorf("fail to marshal keysign block to json: %w", err)
-	}
-	pubKey, err := b.keys.GetSignerInfo().GetPubKey()
-	if err != nil {
-		return types.TxOut{}, fmt.Errorf("fail to get signer pub key: %w", err)
+	var signed bytes.Buffer
+	if err := json.Compact(&signed, query.Keysign); err != nil {
+		return types.TxOut{}, fmt.Errorf("fail to compact keysign block json: %w", err)
 	}
 	s, err := base64.StdEncoding.DecodeString(query.Signature)
 	if err != nil {
 		return types.TxOut{}, errors.New("invalid keysign signature: cannot decode signature")
 	}
-	if !pubKey.VerifySignature(buf, s) {
+	if !pubKey.VerifySignature(signed.Bytes(), s) {
 		return types.TxOut{}, errors.New("invalid keysign signature: bad signature")
 	}
 
 	// ensure the block height received is the one requested. Without this
 	// check, an attacker could use a replay attack to steal funds
-	if query.Keysign.Height != blockHeight {
-		return types.TxOut{}, fmt.Errorf("invalid keysign: block height mismatch (%d vs %d)", query.Keysign.Height, blockHeight)
+	if txOut.Height != blockHeight {
+		return types.TxOut{}, fmt.Errorf("invalid keysign: block height mismatch (%d vs %d)", txOut.Height, blockHeight)
 	}
 
-	return query.Keysign, nil
+	return txOut, nil
 }
 
 func (b *thornadoBridge) GetPendingTxOutKeysigns() ([]types.TxOut, error) {

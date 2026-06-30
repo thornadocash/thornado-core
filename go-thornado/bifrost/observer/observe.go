@@ -633,7 +633,7 @@ func (o *Observer) sendToQuorumChecker(deck *types.TxIn, finalised bool, finalis
 }
 
 type inboundFinalisedChecker interface {
-	IsTxInboundFinalised(common.TxID) (bool, error)
+	IsTxInboundFinalised(common.Tx) (bool, error)
 }
 
 func (o *Observer) removeAlreadyFinalisedInbound(tx common.ObservedTx) bool {
@@ -641,15 +641,23 @@ func (o *Observer) removeAlreadyFinalisedInbound(tx common.ObservedTx) bool {
 	if !ok {
 		return false
 	}
-	finalised, err := checker.IsTxInboundFinalised(tx.Tx.ID)
+	finalised, err := checker.IsTxInboundFinalised(tx.Tx)
 	if err != nil {
-		o.logger.Debug().Err(err).Str("txid", tx.Tx.ID.String()).Msg("fail to check tx finalised status")
+		o.logger.Debug().
+			Err(err).
+			Str("txid", tx.Tx.ID.String()).
+			Uint32("source_vout", tx.Tx.SourceVout).
+			Msg("fail to check tx finalised status")
 		return false
 	}
 	if !finalised {
 		return false
 	}
-	o.logger.Info().Str("txid", tx.Tx.ID.String()).Msg("removing already finalised inbound from observer deck")
+	o.logger.Info().
+		Str("txid", tx.Tx.ID.String()).
+		Uint32("source_vout", tx.Tx.SourceVout).
+		Str("finalised_txid", common.BTCOutpointScopedTxID(tx.Tx).String()).
+		Msg("removing already finalised inbound from observer deck")
 	o.handleObservedTxCommitted(tx)
 	return true
 }

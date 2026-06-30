@@ -65,6 +65,13 @@ func NewPartyCoordinator(host host.Host, timeout time.Duration) *PartyCoordinato
 	return pc
 }
 
+func (pc *PartyCoordinator) Timeout() time.Duration {
+	if pc == nil || pc.timeout <= 0 {
+		return 10 * time.Second
+	}
+	return pc.timeout
+}
+
 // Stop the PartyCoordinator rune
 func (pc *PartyCoordinator) Stop() {
 	defer pc.logger.Info().Msg("stopping party coordinator")
@@ -120,15 +127,7 @@ func (pc *PartyCoordinator) processReqMsg(requestMsg *messages.JoinPartyLeaderCo
 	if peerGroup.hasSelectedThreshold() {
 		onlinePeers, _ := peerGroup.getPeersStatus()
 		selected := append(onlinePeers, pc.host.ID())
-		if peerIDListContains(selected, remotePeer) {
-			pc.sendResponseToPeer(pc.successJoinPartyResponse(requestMsg.ID, selected), remotePeer)
-		} else {
-			pc.sendResponseToPeer(&messages.JoinPartyLeaderComm{
-				ID:      requestMsg.ID,
-				MsgType: "response",
-				Type:    messages.JoinPartyLeaderComm_LeaderNotReady,
-			}, remotePeer)
-		}
+		pc.sendResponseToPeer(pc.successJoinPartyResponse(requestMsg.ID, selected), remotePeer)
 		return
 	}
 	partyFormed, err := peerGroup.updatePeer(remotePeer)
@@ -139,15 +138,6 @@ func (pc *PartyCoordinator) processReqMsg(requestMsg *messages.JoinPartyLeaderCo
 	if partyFormed {
 		peerGroup.notify <- true
 	}
-}
-
-func peerIDListContains(peers []peer.ID, target peer.ID) bool {
-	for _, p := range peers {
-		if p == target {
-			return true
-		}
-	}
-	return false
 }
 
 func (pc *PartyCoordinator) successJoinPartyResponse(msgID string, onlinePeers []peer.ID) *messages.JoinPartyLeaderComm {
@@ -263,15 +253,11 @@ func cloneJoinPartyLeaderComm(msg *messages.JoinPartyLeaderComm) *messages.JoinP
 	return &cp
 }
 
-func (pc *PartyCoordinator) rememberClosedGroup(messageID string) {
+func (pc *PartyCoordinator) rememberClosedGroup(messageID string, response *messages.JoinPartyLeaderComm) {
 	pc.joinPartyGroupLock.Lock()
 	defer pc.joinPartyGroupLock.Unlock()
 	pc.closedGroups[messageID] = closedPartyResponse{
-		response: &messages.JoinPartyLeaderComm{
-			ID:      messageID,
-			MsgType: "response",
-			Type:    messages.JoinPartyLeaderComm_LeaderNotReady,
-		},
+		response: cloneJoinPartyLeaderComm(response),
 		// Keep this long enough to answer slow joiners from the completed attempt,
 		// but short enough that a later signer retry can reform the party.
 		expiresAt: time.Now().Add(pc.timeout),
@@ -294,10 +280,20 @@ func (pc *PartyCoordinator) acquireJoinPartyGroup(messageID string, leaderID pee
 	pc.joinPartyGroupLock.Lock()
 	defer pc.joinPartyGroupLock.Unlock()
 	if existing, ok := pc.peersGroup[messageID]; ok {
-		existing.peerStatusLock.Lock()
-		existing.joiners++
-		existing.peerStatusLock.Unlock()
-		return existing, nil
+		if !existing.matchesParty(leaderID, peerIDs, threshold) {
+			pc.logger.Debug().
+				Str("msg_id", messageID).
+				Str("old_leader", existing.getLeader().String()).
+				Str("new_leader", leaderID.String()).
+				Msg("replacing stale join party group")
+			existing.closeParty()
+			delete(pc.peersGroup, messageID)
+		} else {
+			existing.peerStatusLock.Lock()
+			existing.joiners++
+			existing.peerStatusLock.Unlock()
+			return existing, nil
+		}
 	}
 	peerGroup := newPeerStatus(peerIDs, pc.host.ID(), leaderID, threshold)
 	peerGroup.joiners = 1
@@ -518,7 +514,6 @@ func (pc *PartyCoordinator) joinPartyLeader(msgID string, peerGroup *peerStatus,
 	if sigNotify == "signature received" {
 		return nil, ErrSignReceived
 	}
-	allPeers := peerGroup.getAllPeers()
 	onlinePeers, _ := peerGroup.getPeersStatus()
 	onlinePeers = append(onlinePeers, pc.host.ID())
 
@@ -526,15 +521,16 @@ func (pc *PartyCoordinator) joinPartyLeader(msgID string, peerGroup *peerStatus,
 	if len(onlinePeers) < peerGroup.threshold {
 		// we notify the failure of the join party to everyone
 		msg.Type = messages.JoinPartyLeaderComm_Timeout
-		pc.logger.Debug().Msgf("sending timeout response to %d all peers", len(onlinePeers))
-		pc.sendResponseToAll(&msg, allPeers)
+		pc.logger.Debug().Msgf("sending timeout response to %d online peers", len(onlinePeers))
+		pc.sendResponseToAll(&msg, onlinePeers)
 		return onlinePeers, ErrJoinPartyTimeout
 	}
 	// we notify all the peers who to run keygen/keysign
 	// if a nodes is not in the list, it means he is not selected by the leader to run the frost
+	allPeers := peerGroup.getAllPeers()
 	pc.logger.Debug().Msgf("sending success response to %d all peers", len(allPeers))
 	pc.sendResponseToAll(&msg, allPeers)
-	pc.rememberClosedGroup(msgID)
+	pc.rememberClosedGroup(msgID, &msg)
 	return onlinePeers, nil
 }
 

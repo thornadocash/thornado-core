@@ -28,6 +28,7 @@ const (
 	EventQuorumNetworkFeeCommitted = "quorum_network_fee_committed"
 	EventQuorumSolvencyCommitted   = "quorum_solvency_committed"
 	EventQuorumErrataTxCommitted   = "quorum_errata_tx_committed"
+	subscriberEventBufferSize      = 1024
 )
 
 var ErrAlreadyStarted = errors.New("ebifrost already started")
@@ -280,7 +281,7 @@ func (b *EnshrinedBifrost) SubscribeToEvents(req *SubscribeRequest, stream Local
 		}
 	}
 
-	eventCh := make(chan *EventNotification)
+	eventCh := make(chan *EventNotification, subscriberEventBufferSize)
 
 	// Register this client
 	b.subscribersMu.Lock()
@@ -294,7 +295,10 @@ func (b *EnshrinedBifrost) SubscribeToEvents(req *SubscribeRequest, stream Local
 	// Keep the connection open and forward events to client
 	for {
 		select {
-		case event := <-eventCh:
+		case event, ok := <-eventCh:
+			if !ok {
+				return nil
+			}
 			if err := stream.Send(event); err != nil {
 				return err
 			}
@@ -344,16 +348,23 @@ func (b *EnshrinedBifrost) broadcastEvent(eventType string, payload []byte) {
 	}
 
 	b.subscribersMu.Lock()
-	subscribers := b.subscribers[eventType]
+	subscribers := append([]chan *EventNotification(nil), b.subscribers[eventType]...)
 	b.subscribersMu.Unlock()
 
-	for _, ch := range subscribers {
+	for i, ch := range subscribers {
 		select {
 		case ch <- event:
 			b.logger.Debug("Event sent to subscriber", "event", eventType)
 			// Event sent successfully
 		default:
-			b.logger.Error("Failed to send event to subscriber", "event", eventType)
+			b.logger.Error(
+				"Failed to send event to subscriber",
+				"event", eventType,
+				"subscriber_index", i,
+				"subscriber_count", len(subscribers),
+				"queue_len", len(ch),
+				"queue_cap", cap(ch),
+			)
 			// Channel is full or closed, could implement cleanup here
 		}
 	}

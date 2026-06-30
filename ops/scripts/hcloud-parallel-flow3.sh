@@ -3,7 +3,12 @@ set -euo pipefail
 
 RUN_ROOT="${RUN_ROOT:-/tmp/thornado-nodeper-20260627104200}"
 ROOT_DIR="${ROOT_DIR:-/root/thornado}"
+INVENTORY="${INVENTORY:-${ROOT_DIR}/ops/distributed-regtest-nodeper.env}"
 COUNT="${COUNT:-20}"
+DEPOSIT_AMOUNTS_CSV="${DEPOSIT_AMOUNTS_CSV:-}"
+DUPLICATE_RECIPIENT="${DUPLICATE_RECIPIENT:-0}"
+FLOW3_HALT_SIGNING_BEFORE_REDEEMS="${FLOW3_HALT_SIGNING_BEFORE_REDEEMS:-0}"
+FLOW3_STOP_AFTER_REDEEMS="${FLOW3_STOP_AFTER_REDEEMS:-0}"
 
 export RUN_ROOT
 export BTC_USE_LOCAL=1
@@ -14,69 +19,115 @@ export CHAIN_ID="${CHAIN_ID:-thornado-e2e}"
 export SIGNER_PASSWD="${SIGNER_PASSWD:-passphrase123}"
 export TX_INCLUSION_TIMEOUT="${TX_INCLUSION_TIMEOUT:-1200}"
 export THORNADO_TX_TIMEOUT="${THORNADO_TX_TIMEOUT:-60}"
-export THORNADO_TX_NODE="${THORNADO_TX_NODE:-tcp://5.223.51.101:33361}"
 
 # shellcheck source=/dev/null
 source "${ROOT_DIR}/ops/scripts/real-4node-e2e.sh"
 trap - EXIT ERR
 
+if [[ -f "$INVENTORY" ]]; then
+  # shellcheck disable=SC1090
+  source "$INVENTORY"
+fi
+
+API_BASE="${API_BASE:-2370}"
+RPC_BASE="${RPC_BASE:-33360}"
+
+node_host() {
+  local key="NODE${1}_HOST"
+  printf '%s' "${!key:-}"
+}
+
 api_url() {
-  case "$1" in
-    1) echo "http://5.223.51.101:2371" ;;
-    2) echo "http://5.223.55.114:2372" ;;
-    3) echo "http://5.223.55.174:2373" ;;
-    4) echo "http://5.223.92.204:2374" ;;
-    *) echo "http://5.223.51.101:2371" ;;
-  esac
+  printf 'http://%s:%s\n' "$(node_host "$1")" "$((API_BASE + $1))"
 }
 
 rpc_url() {
-  case "$1" in
-    1) echo "http://5.223.51.101:33361" ;;
-    2) echo "http://5.223.55.114:33362" ;;
-    3) echo "http://5.223.55.174:33363" ;;
-    4) echo "http://5.223.92.204:33364" ;;
-    *) echo "http://5.223.51.101:33361" ;;
-  esac
+  printf 'http://%s:%s\n' "$(node_host "$1")" "$((RPC_BASE + $1))"
+}
+
+export THORNADO_TX_NODE="${THORNADO_TX_NODE:-tcp://$(node_host 1):$((RPC_BASE + 1))}"
+
+deposit_amount_for_index() {
+  local i="$1" amount
+  if [[ -n "$DEPOSIT_AMOUNTS_CSV" ]]; then
+    amount="$(awk -v idx="$i" 'BEGIN{FS=","} {gsub(/[[:space:]]/,""); print $idx}' <<<"$DEPOSIT_AMOUNTS_CSV")"
+    if [[ -n "$amount" ]]; then
+      printf '%s\n' "$amount"
+      return 0
+    fi
+  fi
+  printf '0.20000000\n'
 }
 
 thornado_tx_seq() {
-  local seq="$1" account_number="$2" home="$3" from="$4"
-  shift 4
-  local from_addr out status node_rpc
-  from_addr="$(key_show_addr "$home" "$from")"
-  node_rpc="${THORNADO_TX_NODE:-tcp://5.223.51.101:33361}"
-  set +e
-  out="$(printf '%s\n' "$PASS" | timeout "${THORNADO_TX_TIMEOUT:-45}" "$THORNADO" tx thornado "$@" \
-    --home "$home" \
-    --from "$from_addr" \
-    --keyring-backend file \
-    --keyring-dir "$home" \
-    --chain-id "$CHAIN_ID" \
-    --node "$node_rpc" \
-    --gas 2500000 \
-    --fees 0btc \
-    --broadcast-mode sync \
-    --offline \
-    --account-number "$account_number" \
-    --sequence "$seq" \
-    --yes \
-    --output json \
-    2>&1)"
-  status=$?
-  set -e
-  if (( status == 124 )); then
-    jq -n --arg log "thornado tx timed out after ${THORNADO_TX_TIMEOUT:-45}s" \
-      '{height:"0",txhash:"",codespace:"harness",code:124,data:"",raw_log:$log,logs:[],info:"",gas_wanted:"0",gas_used:"0",tx:null,timestamp:"",events":[]}'
-    return 0
-  fi
-  printf '%s\n' "$out"
+	local seq="$1" account_number="$2" home="$3" from="$4"
+	shift 4
+	local attempt from_addr max_attempts out status node_rpc
+	from_addr="$(key_show_addr "$home" "$from")"
+	node_rpc="${THORNADO_TX_NODE}"
+	max_attempts="${THORNADO_TX_ATTEMPTS:-5}"
+	for attempt in $(seq 1 "$max_attempts"); do
+		set +e
+		out="$(printf '%s\n' "$PASS" | timeout "${THORNADO_TX_TIMEOUT:-45}" "$THORNADO" tx thornado "$@" \
+			--home "$home" \
+			--from "$from_addr" \
+			--keyring-backend file \
+			--keyring-dir "$home" \
+			--chain-id "$CHAIN_ID" \
+			--node "$node_rpc" \
+			--gas 2500000 \
+			--fees 0btc \
+			--broadcast-mode sync \
+			--offline \
+			--account-number "$account_number" \
+			--sequence "$seq" \
+			--yes \
+			--output json \
+			2>&1)"
+		status=$?
+		set -e
+		if (( status == 124 )); then
+			out="thornado tx timed out after ${THORNADO_TX_TIMEOUT:-45}s"
+		elif jq -e . <<<"$out" >/dev/null 2>&1; then
+			printf '%s\n' "$out"
+			return 0
+		fi
+		if (( attempt < max_attempts )) && grep -Eqi 'EOF|connection reset|context deadline|timeout' <<<"$out"; then
+			sleep 1
+			continue
+		fi
+		if [[ ! "$status" =~ ^[0-9]+$ ]] || (( status == 0 )); then
+			status=125
+		fi
+		jq -nc --arg log "$out" --argjson code "$status" \
+			'{height:"0",txhash:"",codespace:"harness",code:$code,data:"",raw_log:$log,logs:[],info:"",gas_wanted:"0",gas_used:"0",tx:null,timestamp:"",events":[]}'
+		return 0
+	done
 }
 
 assert_checktx_success() {
-  local out="$1" label="$2" txhash
-  jq -e '.code == null or .code == 0' <<<"$out" >/dev/null || die "$label failed CheckTx: $out"
+  local out="$1" label="$2" txhash code res raw_log start
+  code="$(jq -r '.code // 0' <<<"$out")"
   txhash="$(jq -r '.txhash // empty' <<<"$out")"
+  if [[ "$code" != "0" ]]; then
+    if [[ -n "$txhash" ]]; then
+      start="$(date +%s)"
+      while (( $(date +%s) - start < 30 )); do
+        res="$(curl_json_quiet "$(rpc_url 1)/tx?hash=0x${txhash}" || true)"
+        if [[ -n "$res" ]] && jq -e '.result.tx_result' <<<"$res" >/dev/null 2>&1; then
+          code="$(jq -r '.result.tx_result.code // 0' <<<"$res")"
+          if [[ "$code" == "0" ]]; then
+            printf '%s\n' "$txhash"
+            return 0
+          fi
+          raw_log="$(jq -r '.result.tx_result.log // .result.tx_result.info // empty' <<<"$res")"
+          die "$label tx $txhash failed DeliverTx code=$code log=$raw_log"
+        fi
+        sleep 1
+      done
+    fi
+    die "$label failed CheckTx: $out"
+  fi
   [[ -n "$txhash" ]] || die "$label returned no txhash"
   printf '%s\n' "$txhash"
 }
@@ -156,7 +207,7 @@ wait_all_observed_out_final() {
 }
 
 mkdir -p "$RUN_ROOT/meta/parallel-flow3"
-run_dir="${RESUME_RUN_DIR:-$RUN_ROOT/meta/parallel-flow3/$(date -u +%Y%m%d%H%M%S)}"
+run_dir="${RUN_DIR:-${RESUME_RUN_DIR:-$RUN_ROOT/meta/parallel-flow3/$(date -u +%Y%m%d%H%M%S)}}"
 mkdir -p "$run_dir"
 
 source "$RUN_ROOT/meta/user.env"
@@ -206,7 +257,9 @@ else
     printf '%s\n' "$session" >"$d/session-before-deposit.json"
     address="$(jq -r '.deposit_address' <<<"$session")"
     path_index="$(jq -r '.deposit_path_index' <<<"$session")"
-    txid="$(btc_cli -rpcwallet=miner sendtoaddress "$address" "0.20000000" "" "" false true)"
+    deposit_amount="$(deposit_amount_for_index "$i")"
+    printf '%s\n' "$deposit_amount" >"$d/deposit-amount-btc.txt"
+    txid="$(btc_cli -rpcwallet=miner sendtoaddress "$address" "$deposit_amount" "" "" false true)"
     printf '%s\n' "$txid" >"$d/btc-deposit-txid.txt"
     printf '%s\n' "$path_index" >"$d/path-index.txt"
   done
@@ -267,6 +320,9 @@ curl -fsS "$(api_url 1)/thornado/shielder/sync?limit=50000" >"$run_dir/shielder-
 log "parallel Flow 3: broadcasting redeem txs"
 >"$run_dir/withdrawal-ids.txt"
 >"$run_dir/redeem-txhashes.txt"
+if [[ "$DUPLICATE_RECIPIENT" == "1" ]]; then
+  btc_cli -rpcwallet=miner getnewaddress >"$run_dir/shared-recipient-address.txt"
+fi
 for i in $(seq 1 "$COUNT"); do
   d="$run_dir/$i"
   label="$(cat "$d/label.txt")"
@@ -275,7 +331,11 @@ for i in $(seq 1 "$COUNT"); do
   leaves="$(jq -c --argjson denom "$denom" '[.notes[] | select((.denomination_sats | tonumber) == $denom) | .commitment] | sort' "$run_dir/shielder-sync-after-shields.json")"
   printf '%s\n' "$leaves" >"$d/proof-leaves.json"
   assert_shielder_root_committed "$denom" "$leaves" "parallel-flow3-${i}"
-  recipient="$(btc_cli -rpcwallet=miner getnewaddress)"
+  if [[ "$DUPLICATE_RECIPIENT" == "1" ]]; then
+    recipient="$(cat "$run_dir/shared-recipient-address.txt")"
+  else
+    recipient="$(btc_cli -rpcwallet=miner getnewaddress)"
+  fi
   printf '%s\n' "$recipient" >"$d/recipient-address.txt"
   curl -fsS "$(api_url 1)/thornado/shielder/redeem/quote/${denom}" >"$d/redeem-quote.json"
   fee="$(jq -r '.fee_sats' "$d/redeem-quote.json")"
@@ -283,11 +343,37 @@ for i in $(seq 1 "$COUNT"); do
   printf '%s\n' "$withdrawal" >"$d/withdrawal.json"
   prefix="$d/withdrawal"
   "$SHIELDER_HELPER" shield-withdrawal "$withdrawal" "$prefix"
-  seq=$((base_sequence + COUNT + COUNT + i - 1))
-  out="$(thornado_tx_seq "$seq" "$account_number" "$RUN_ROOT/node1" "user" shielder redeem "${prefix}.proof.json" "${prefix}.public.json")"
-  printf '%s\n' "$out" >"$d/redeem.json"
-  assert_checktx_success "$out" "parallel redeem ${i}" >>"$run_dir/redeem-txhashes.txt"
 done
+
+log "parallel Flow 3: submitting redeem txs concurrently"
+if [[ "$FLOW3_HALT_SIGNING_BEFORE_REDEEMS" == "1" ]]; then
+  set_config_from_active_nodes HaltSigningBTC 1
+fi
+pids=()
+for i in $(seq 1 "$COUNT"); do
+  d="$run_dir/$i"
+  prefix="$d/withdrawal"
+  seq=$((base_sequence + COUNT + COUNT + i - 1))
+  (
+    out="$(thornado_tx_seq "$seq" "$account_number" "$RUN_ROOT/node1" "user" shielder redeem "${prefix}.proof.json" "${prefix}.public.json")"
+    printf '%s\n' "$out" >"$d/redeem.json"
+    assert_checktx_success "$out" "parallel redeem ${i}" >"$d/redeem-txhash.txt"
+  ) >"$d/redeem-submit.log" 2>&1 &
+  pids+=("$!")
+done
+failed=0
+for pid in "${pids[@]}"; do
+  if ! wait "$pid"; then
+    failed=1
+  fi
+done
+for i in $(seq 1 "$COUNT"); do
+  d="$run_dir/$i"
+  cat "$d/redeem-submit.log"
+  [[ "$failed" == "0" ]] || continue
+  cat "$d/redeem-txhash.txt" >>"$run_dir/redeem-txhashes.txt"
+done
+[[ "$failed" == "0" ]] || die "one or more parallel redeem tx submissions failed"
 wait_txhashes_included "$run_dir/redeem-txhashes.txt" "parallel redeem" 300
 
 for i in $(seq 1 "$COUNT"); do
@@ -303,6 +389,13 @@ for i in $(seq 1 "$COUNT"); do
   printf '%s\n' "$withdrawal_id" >"$d/withdrawal-id.txt"
   printf '%s\n' "$withdrawal_id" >>"$run_dir/withdrawal-ids.txt"
 done
+
+if [[ "$FLOW3_STOP_AFTER_REDEEMS" == "1" ]]; then
+  jq -n --argjson count "$COUNT" --arg run_dir "$run_dir" \
+    '{requested:$count, queued_redeems:$count, run_dir:$run_dir, stopped_after_redeems:true}' >"$run_dir/partial-summary.json"
+  cat "$run_dir/partial-summary.json"
+  exit 0
+fi
 
 log "parallel Flow 3: waiting for outbounds"
 wait_all_txouts_signed "out" 1200 "$run_dir/withdrawal-ids.txt" "$run_dir"
@@ -321,5 +414,7 @@ log "parallel Flow 3: waiting for observed outbounds"
 wait_all_observed_out_final "$run_dir/out-hashes.txt" 900
 
 jq -n --argjson count "$COUNT" --arg run_dir "$run_dir" \
-  '{requested:$count, success:$count, failed:0, run_dir:$run_dir}' >"$run_dir/summary.json"
+  --arg duplicate_recipient "$DUPLICATE_RECIPIENT" \
+  --arg deposit_amounts_csv "$DEPOSIT_AMOUNTS_CSV" \
+  '{requested:$count, success:$count, failed:0, run_dir:$run_dir, duplicate_recipient:($duplicate_recipient == "1"), deposit_amounts_csv:$deposit_amounts_csv}' >"$run_dir/summary.json"
 cat "$run_dir/summary.json"

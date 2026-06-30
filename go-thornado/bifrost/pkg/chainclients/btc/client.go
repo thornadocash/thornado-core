@@ -645,14 +645,6 @@ func (c *Client) OnObservedTxIn(txIn types.TxInItem, blockHeight int64) {
 		return
 	}
 
-	blockMeta, err := c.temporalStorage.GetBlockMeta(blockHeight)
-	if err != nil {
-		c.log.Err(err).Int64("height", blockHeight).Msgf("fail to get block meta")
-		return
-	}
-	if blockMeta == nil {
-		blockMeta = NewBlockMeta("", blockHeight, "")
-	}
 	observedStage := ObservedTxStageFinal
 	if blockHeight <= 0 {
 		observedStage = ObservedTxStageMempool
@@ -660,6 +652,18 @@ func (c *Client) OnObservedTxIn(txIn types.TxInItem, blockHeight int64) {
 	cacheKey := c.observedTxCacheKey(txIn)
 	if _, _, err = c.temporalStorage.TrackObservedTxStage(cacheKey, observedStage); err != nil {
 		c.log.Err(err).Msgf("fail to add hash (%s) to observed tx cache", cacheKey)
+	}
+	c.recordObservedTxBlockMeta(txIn, blockHeight)
+}
+
+func (c *Client) recordObservedTxBlockMeta(txIn types.TxInItem, blockHeight int64) {
+	blockMeta, err := c.temporalStorage.GetBlockMeta(blockHeight)
+	if err != nil {
+		c.log.Err(err).Int64("height", blockHeight).Msgf("fail to get block meta")
+		return
+	}
+	if blockMeta == nil {
+		blockMeta = NewBlockMeta("", blockHeight, "")
 	}
 	if c.isBaseAddress(txIn.Sender) {
 		c.log.Debug().Int64("height", blockHeight).Msgf("add hash %s as self transaction", txIn.Tx)
@@ -701,6 +705,9 @@ func (c *Client) FetchTxs(height, chainHeight int64) (types.TxIn, error) {
 	c.updateCurrentBlockHeight(chainHeight)
 	reScannedTxs, err := c.processReorg(block)
 	if err != nil {
+		if errors.Is(err, btypes.ErrPendingErrataDelay) {
+			return txIn, err
+		}
 		c.log.Err(err).Msg("fail to process re-org")
 	}
 	if len(reScannedTxs) > 0 {
@@ -939,12 +946,38 @@ func (c *Client) missingErrataReady(txid string, height int64) bool {
 		c.updateCurrentBlockHeight(chainHeight)
 		height = chainHeight
 	}
+	return c.missingErrataReadySince(txid, height, height)
+}
+
+func (c *Client) missingErrataReadySince(txid string, firstMissingHeight, height int64) bool {
+	if txid == "" {
+		return false
+	}
+	if firstMissingHeight <= 0 {
+		firstMissingHeight = height
+	}
+	if height <= 0 {
+		height = c.getCurrentBlockHeight()
+	}
+	if height <= 0 {
+		chainHeight, err := c.GetHeight()
+		if err != nil {
+			c.log.Err(err).Str("txid", txid).Msg("fail to resolve BTC height for missing tx errata delay")
+			return false
+		}
+		c.updateCurrentBlockHeight(chainHeight)
+		height = chainHeight
+	}
 	key := strings.ToUpper(txid)
 	first, ok := c.missingErrataFirstSeen.Load(key)
 	if !ok {
-		c.missingErrataFirstSeen.Store(key, height)
+		c.missingErrataFirstSeen.Store(key, firstMissingHeight)
+		if height-firstMissingHeight >= btcErrataDelayBlocks {
+			return true
+		}
 		c.log.Info().
 			Int64("height", height).
+			Int64("first_missing_height", firstMissingHeight).
 			Int64("delay_blocks", btcErrataDelayBlocks).
 			Str("txid", txid).
 			Msg("missing BTC tx first seen; delaying errata")
@@ -952,7 +985,7 @@ func (c *Client) missingErrataReady(txid string, height int64) bool {
 	}
 	firstHeight, ok := first.(int64)
 	if !ok {
-		c.missingErrataFirstSeen.Store(key, height)
+		c.missingErrataFirstSeen.Store(key, firstMissingHeight)
 		return false
 	}
 	if height-firstHeight < btcErrataDelayBlocks {

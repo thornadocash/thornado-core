@@ -5,6 +5,7 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
 )
@@ -60,7 +61,7 @@ func (h ObservedTxInHandler) handle(ctx cosmos.Context, msg MsgObservedTxIn) (*c
 	}
 	handler := NewInternalHandler(h.mgr)
 	for _, tx := range msg.Txs {
-		voter, err := ensureVaultAndGetTxInVoter(ctx, tx.ObservedPubKey, tx.Tx.ID, h.mgr.Keeper())
+		voter, err := ensureVaultAndGetTxInVoter(ctx, tx.ObservedPubKey, common.BTCOutpointScopedTxID(tx.Tx), h.mgr.Keeper())
 		if err != nil {
 			ctx.Logger().Error("fail to ensure vault and get tx in voter", "error", err)
 			continue
@@ -86,7 +87,7 @@ func ObservedTxInAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Keep
 		return ctx, err
 	}
 	for _, tx := range msg.Txs {
-		voter, err := ensureVaultAndGetTxInVoter(ctx, tx.ObservedPubKey, tx.Tx.ID, k)
+		voter, err := ensureVaultAndGetTxInVoter(ctx, tx.ObservedPubKey, common.BTCOutpointScopedTxID(tx.Tx), k)
 		if err != nil {
 			return ctx, err
 		}

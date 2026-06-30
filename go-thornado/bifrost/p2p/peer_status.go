@@ -40,6 +40,41 @@ func (ps *peerStatus) getLeader() peer.ID {
 	return ps.leader
 }
 
+func (ps *peerStatus) matchesParty(leaderID peer.ID, peerNodes []peer.ID, threshold int) bool {
+	ps.peerStatusLock.RLock()
+	defer ps.peerStatusLock.RUnlock()
+	if ps.leader != leaderID || ps.threshold != threshold || len(ps.allPeers) != len(peerNodes) {
+		return false
+	}
+	seen := make(map[peer.ID]struct{}, len(ps.allPeers))
+	for _, peerNode := range ps.allPeers {
+		seen[peerNode] = struct{}{}
+	}
+	for _, peerNode := range peerNodes {
+		if _, ok := seen[peerNode]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func (ps *peerStatus) closeParty() {
+	ps.peerStatusLock.Lock()
+	defer ps.peerStatusLock.Unlock()
+	ps.leaderResponse = &messages.JoinPartyLeaderComm{
+		MsgType: "response",
+		Type:    messages.JoinPartyLeaderComm_LeaderNotReady,
+	}
+	for peerNode := range ps.peersResponse {
+		ps.peersResponse[peerNode] = false
+	}
+	ps.reqCount = 0
+	select {
+	case ps.notify <- true:
+	default:
+	}
+}
+
 func newPeerStatus(peerNodes []peer.ID, myPeerID, leaderID peer.ID, threshold int) *peerStatus {
 	dat := make(map[peer.ID]bool)
 	for _, el := range peerNodes {

@@ -22,6 +22,7 @@ type DebugTxOut struct {
 	StatusLabel           string             `json:"status_label"`
 	BatchStatus           string             `json:"batch_status"`
 	SigningLeader         string             `json:"signing_leader,omitempty"`
+	SigningLeaderRetry    uint64             `json:"signing_leader_retry,omitempty"`
 	InHash                string             `json:"in_hash"`
 	OutHash               string             `json:"out_hash,omitempty"`
 	TxType                string             `json:"tx_type"`
@@ -68,29 +69,30 @@ type DebugSigningPhase struct {
 }
 
 type DebugSigningPerformance struct {
-	ID             string              `json:"id"`
-	Key            string              `json:"key"`
-	Chain          string              `json:"chain"`
-	Height         int64               `json:"height"`
-	TxHeight       int64               `json:"tx_height"`
-	Index          int64               `json:"index"`
-	Epoch          uint64              `json:"epoch"`
-	InHash         string              `json:"in_hash"`
-	OutHash        string              `json:"out_hash,omitempty"`
-	TxType         string              `json:"tx_type"`
-	VaultPubKey    string              `json:"vault_pub_key"`
-	SigningLeader  string              `json:"signing_leader,omitempty"`
-	ResolvedLeader string              `json:"resolved_leader,omitempty"`
-	Participate    bool                `json:"participate"`
-	Broadcast      bool                `json:"broadcast"`
-	BatchItems     int                 `json:"batch_items,omitempty"`
-	StartedAt      time.Time           `json:"started_at"`
-	UpdatedAt      time.Time           `json:"updated_at"`
-	FinishedAt     *time.Time          `json:"finished_at,omitempty"`
-	DurationMs     int64               `json:"duration_ms"`
-	LastEvent      string              `json:"last_event"`
-	LastError      string              `json:"last_error,omitempty"`
-	Phases         []DebugSigningPhase `json:"phases"`
+	ID                 string              `json:"id"`
+	Key                string              `json:"key"`
+	Chain              string              `json:"chain"`
+	Height             int64               `json:"height"`
+	TxHeight           int64               `json:"tx_height"`
+	Index              int64               `json:"index"`
+	Epoch              uint64              `json:"epoch"`
+	InHash             string              `json:"in_hash"`
+	OutHash            string              `json:"out_hash,omitempty"`
+	TxType             string              `json:"tx_type"`
+	VaultPubKey        string              `json:"vault_pub_key"`
+	SigningLeader      string              `json:"signing_leader,omitempty"`
+	SigningLeaderRetry uint64              `json:"signing_leader_retry,omitempty"`
+	ResolvedLeader     string              `json:"resolved_leader,omitempty"`
+	Participate        bool                `json:"participate"`
+	Broadcast          bool                `json:"broadcast"`
+	BatchItems         int                 `json:"batch_items,omitempty"`
+	StartedAt          time.Time           `json:"started_at"`
+	UpdatedAt          time.Time           `json:"updated_at"`
+	FinishedAt         *time.Time          `json:"finished_at,omitempty"`
+	DurationMs         int64               `json:"duration_ms"`
+	LastEvent          string              `json:"last_event"`
+	LastError          string              `json:"last_error,omitempty"`
+	Phases             []DebugSigningPhase `json:"phases"`
 }
 
 type DebugHealth struct {
@@ -361,21 +363,22 @@ func (s *Signer) debugSigningStart(item TxOutStoreItem) string {
 		}
 	}
 	record := &DebugSigningPerformance{
-		ID:            id,
-		Key:           key,
-		Chain:         tx.Chain.String(),
-		Height:        item.Height,
-		TxHeight:      tx.Height,
-		Index:         item.Index,
-		Epoch:         item.Epoch,
-		InHash:        tx.InHash.String(),
-		OutHash:       tx.OutHash.String(),
-		TxType:        tx.TxType,
-		VaultPubKey:   tx.VaultPubKey.String(),
-		SigningLeader: item.SigningLeader.String(),
-		StartedAt:     now,
-		UpdatedAt:     now,
-		LastEvent:     "started",
+		ID:                 id,
+		Key:                key,
+		Chain:              tx.Chain.String(),
+		Height:             item.Height,
+		TxHeight:           tx.Height,
+		Index:              item.Index,
+		Epoch:              item.Epoch,
+		InHash:             tx.InHash.String(),
+		OutHash:            tx.OutHash.String(),
+		TxType:             tx.TxType,
+		VaultPubKey:        tx.VaultPubKey.String(),
+		SigningLeader:      item.SigningLeader.String(),
+		SigningLeaderRetry: item.SigningLeaderRetry,
+		StartedAt:          now,
+		UpdatedAt:          now,
+		LastEvent:          "started",
 	}
 	s.debugSigningRecords[id] = record
 	appendDebugSigningPhaseLocked(record, "started", "", now)
@@ -500,6 +503,7 @@ func (s *Signer) debugTxOut(item TxOutStoreItem, deep bool) DebugTxOut {
 		StatusLabel:         txStatusLabel(item.Status),
 		BatchStatus:         item.BatchStatus,
 		SigningLeader:       item.SigningLeader.String(),
+		SigningLeaderRetry:  item.SigningLeaderRetry,
 		InHash:              tx.InHash.String(),
 		OutHash:             tx.OutHash.String(),
 		TxType:              tx.TxType,

@@ -1946,8 +1946,15 @@ func parseShielderRedeemPublicInputs(raw json.RawMessage) (shielderRedeemPublicI
 }
 
 func queueVaultPathSweep(ctx cosmos.Context, mgr Manager, tx ObservedTx, sourcePubKey common.PubKey, pathIndex uint64) error {
+	return queueVaultPathSweepWithInHash(ctx, mgr, tx, sourcePubKey, pathIndex, tx.Tx.ID)
+}
+
+func queueVaultPathSweepWithInHash(ctx cosmos.Context, mgr Manager, tx ObservedTx, sourcePubKey common.PubKey, pathIndex uint64, inHash common.TxID) error {
 	if sourcePubKey.IsEmpty() {
 		return fmt.Errorf("missing sweep vault pubkey")
+	}
+	if inHash.IsEmpty() {
+		return fmt.Errorf("missing sweep in hash")
 	}
 	coin := tx.Tx.Coins.GetCoin(common.BTCAsset)
 	if coin.IsEmpty() || coin.Amount.IsZero() {
@@ -1992,7 +1999,7 @@ func queueVaultPathSweep(ctx cosmos.Context, mgr Manager, tx ObservedTx, sourceP
 		Coin:           common.NewCoin(common.BTCAsset, amount),
 		MaxGas:         common.Gas{maxGasCoin},
 		GasRate:        gasRate,
-		InHash:         tx.Tx.ID,
+		InHash:         inHash,
 		ModuleName:     BaseName,
 		VaultPathIndex: pathIndex,
 		TxType:         txType,

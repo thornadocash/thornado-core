@@ -11,11 +11,13 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
 	tnet "github.com/libp2p/go-libp2p-testing/net"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p/conversion"
+	"github.com/thornadocash/go-thornado/bifrost/p2p/messages"
 )
 
 func init() {
@@ -73,17 +75,18 @@ func coordinatorPubKey(t *testing.T, pc *PartyCoordinator) string {
 
 func leaderAppearsLastTest(t *testing.T, msgID string, peers []string, pcs []*PartyCoordinator) {
 	wg := sync.WaitGroup{}
+	threshold := 3
 
-	for _, el := range pcs[1:] {
+	for _, el := range pcs[1:threshold] {
 		wg.Add(1)
 		go func(coordinator *PartyCoordinator) {
 			defer wg.Done()
 			// we simulate different nodes join at different time
 			time.Sleep(time.Millisecond * time.Duration(rand.Int()%100)) // nolint:gosec
 			sigChan := make(chan string)
-			onlinePeers, _, err := coordinator.JoinPartyWithLeader(msgID, 10, peers, 3, sigChan)
+			onlinePeers, _, err := coordinator.JoinPartyWithLeader(msgID, 10, peers, threshold, sigChan)
 			assert.Nil(t, err)
-			assert.Len(t, onlinePeers, 4)
+			assert.Len(t, onlinePeers, threshold)
 		}(el)
 	}
 
@@ -94,36 +97,37 @@ func leaderAppearsLastTest(t *testing.T, msgID string, peers []string, pcs []*Pa
 		defer wg.Done()
 		sigChan := make(chan string)
 		// we simulate different nodes join at different time
-		onlinePeers, _, err := coordinator.JoinPartyWithLeader(msgID, 10, peers, 3, sigChan)
+		onlinePeers, _, err := coordinator.JoinPartyWithLeader(msgID, 10, peers, threshold, sigChan)
 		assert.Nil(t, err)
-		assert.Len(t, onlinePeers, 4)
+		assert.Len(t, onlinePeers, threshold)
 	}(pcs[0])
 	wg.Wait()
 }
 
 func leaderAppersFirstTest(t *testing.T, msgID string, peers []string, pcs []*PartyCoordinator) {
 	wg := sync.WaitGroup{}
+	threshold := 3
 	wg.Add(1)
 	// we start the leader firstly
 	go func(coordinator *PartyCoordinator) {
 		defer wg.Done()
 		// we simulate different nodes join at different time
 		sigChan := make(chan string)
-		onlinePeers, _, err := coordinator.JoinPartyWithLeader(msgID, 10, peers, 3, sigChan)
+		onlinePeers, _, err := coordinator.JoinPartyWithLeader(msgID, 10, peers, threshold, sigChan)
 		assert.Nil(t, err)
-		assert.Len(t, onlinePeers, 4)
+		assert.Len(t, onlinePeers, threshold)
 	}(pcs[0])
 	time.Sleep(time.Second)
-	for _, el := range pcs[1:] {
+	for _, el := range pcs[1:threshold] {
 		wg.Add(1)
 		go func(coordinator *PartyCoordinator) {
 			defer wg.Done()
 			// we simulate different nodes join at different time
 			time.Sleep(time.Millisecond * time.Duration(rand.Int()%100)) // nolint:gosec
 			sigChan := make(chan string)
-			onlinePeers, _, err := coordinator.JoinPartyWithLeader(msgID, 10, peers, 3, sigChan)
+			onlinePeers, _, err := coordinator.JoinPartyWithLeader(msgID, 10, peers, threshold, sigChan)
 			assert.Nil(t, err)
-			assert.Len(t, onlinePeers, 4)
+			assert.Len(t, onlinePeers, threshold)
 		}(el)
 	}
 	wg.Wait()
@@ -183,7 +187,33 @@ func TestNewPartyCoordinator(t *testing.T) {
 	leaderAppearsLastTest(t, msgID, peers, pcs)
 }
 
-func TestLateJoinerGetsPartyClosedAfterLeaderForms(t *testing.T) {
+func TestAcquireJoinPartyGroupReplacesMismatchedLeader(t *testing.T) {
+	hosts := setupHosts(t, 3)
+	pc := NewPartyCoordinator(hosts[0], time.Second)
+	defer pc.Stop()
+
+	msgID := "same-session-retry"
+	peers := []peer.ID{hosts[0].ID(), hosts[1].ID(), hosts[2].ID()}
+	first, err := pc.acquireJoinPartyGroup(msgID, hosts[1].ID(), peers, 2)
+	assert.NoError(t, err)
+	formed, err := first.updatePeer(hosts[2].ID())
+	assert.NoError(t, err)
+	assert.True(t, formed)
+
+	second, err := pc.acquireJoinPartyGroup(msgID, hosts[2].ID(), peers, 2)
+	assert.NoError(t, err)
+	assert.NotSame(t, first, second)
+	assert.Equal(t, hosts[2].ID(), second.getLeader())
+	assert.Equal(t, 1, second.joiners)
+
+	resp := first.getLeaderResponse()
+	assert.NotNil(t, resp)
+	assert.Equal(t, messages.JoinPartyLeaderComm_LeaderNotReady, resp.Type)
+	online, _ := first.getPeersStatus()
+	assert.Empty(t, online)
+}
+
+func TestLateJoinerGetsSelectedPartyAfterLeaderForms(t *testing.T) {
 	hosts := setupHosts(t, 4)
 	var pcs []*PartyCoordinator
 	peers := hostPubKeys(t, hosts)
@@ -226,8 +256,10 @@ func TestLateJoinerGetsPartyClosedAfterLeaderForms(t *testing.T) {
 
 	sigChan := make(chan string)
 	start := time.Now()
-	_, _, err := pcs[3].JoinPartyWithLeaderInitiator(msgID, 10, peers, threshold, sigChan, leader)
-	assert.Equal(t, ErrPartyClosed, err)
+	onlinePeers, _, err := pcs[3].JoinPartyWithLeaderInitiator(msgID, 10, peers, threshold, sigChan, leader)
+	assert.NoError(t, err)
+	assert.Len(t, onlinePeers, threshold)
+	assert.NotContains(t, onlinePeers, pcs[3].host.ID())
 	assert.Less(t, time.Since(start), timeout)
 }
 

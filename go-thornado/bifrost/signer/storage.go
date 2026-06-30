@@ -42,6 +42,7 @@ type TxOutStoreItem struct {
 	Epoch               uint64
 	BatchStatus         string
 	SigningLeader       common.PubKey
+	SigningLeaderRetry  uint64
 	Round7Retry         bool
 	DeferredUntilHeight int64
 	Checkpoint          []byte
@@ -55,6 +56,7 @@ type TxOutStoreItem struct {
 func preserveStoredTxOutState(item, existing TxOutStoreItem) TxOutStoreItem {
 	item.Status = existing.Status
 	item.DeferredUntilHeight = existing.DeferredUntilHeight
+	item.SigningLeaderRetry = existing.SigningLeaderRetry
 	item.Round7Retry = existing.Round7Retry
 	item.Checkpoint = existing.Checkpoint
 	item.SignedTx = existing.SignedTx

@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/syndtr/goleveldb/leveldb"
 
 	btypes "github.com/thornadocash/go-thornado/bifrost/blockscanner/types"
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
@@ -180,7 +181,11 @@ func (b *BlockScanner) Start(globalTxsQueue chan types.TxIn, globalNetworkFeeQue
 	b.globalNetworkFeeQueue = globalNetworkFeeQueue
 	currentPos, err := b.scannerStorage.GetScanPos()
 	if err != nil {
-		b.logger.Error().Err(err).Msgf("fail to get current block scan pos, %s will start from %d", b.cfg.ChainID, b.previousBlock)
+		if err == leveldb.ErrNotFound {
+			b.logger.Info().Msgf("no stored block scan pos, %s will start from %d", b.cfg.ChainID, b.previousBlock)
+		} else {
+			b.logger.Error().Err(err).Msgf("fail to get current block scan pos, %s will start from %d", b.cfg.ChainID, b.previousBlock)
+		}
 	} else if currentPos > b.previousBlock {
 		b.previousBlock = currentPos
 	}
@@ -335,8 +340,8 @@ func (b *BlockScanner) scanBlocks() {
 			}
 
 			if err != nil {
-				// don't log an error if its because the block doesn't exist yet
-				if !errors.Is(err, btypes.ErrUnavailableBlock) {
+				// don't log expected retry conditions.
+				if !errors.Is(err, btypes.ErrUnavailableBlock) && !errors.Is(err, btypes.ErrPendingErrataDelay) {
 					b.logger.Error().Err(err).Int64("block height", currentBlock).Msg("fail to get RPCBlock")
 					b.healthy.Store(false)
 				}

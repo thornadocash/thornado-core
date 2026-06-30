@@ -1,5 +1,8 @@
 # Manual Protocol Validation Runbook
 
+Canonical current cluster ops runbook: [Thornado Cluster Runbook](../thornado-cluster-runbook.md).
+This file remains the manual validation checklist.
+
 This runbook is the source of truth for manual validation. The harness may start the
 cluster, submit transactions, and collect snapshots, but script success is not proof.
 Each stage is validated from chain state, BTC state, Bifrost state, and accounting
@@ -130,4 +133,3 @@ as observations unless they imply a critical mismatch.
 
 The flow is failing when any critical value is wrong, missing, duplicated, or
 unconserved.
-

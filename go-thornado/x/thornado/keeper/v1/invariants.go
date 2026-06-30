@@ -71,6 +71,16 @@ func DepositRecordInvariant(k KVStore) common.Invariant {
 					msg = append(msg, fmt.Sprintf("%s: committed deposit missing settlement", deposit.DepositID))
 					broken = true
 				}
+			case types.DepositStatusReturnQueued:
+				if deposit.RefundQueuedHeight <= 0 {
+					msg = append(msg, fmt.Sprintf("%s: queued return missing refund queued height", deposit.DepositID))
+					broken = true
+				}
+			case types.DepositStatusReturnComplete:
+				if deposit.RefundQueuedHeight <= 0 {
+					msg = append(msg, fmt.Sprintf("%s: completed return missing refund queued height", deposit.DepositID))
+					broken = true
+				}
 			default:
 				msg = append(msg, fmt.Sprintf("%s: invalid deposit status %s", deposit.DepositID, deposit.Status))
 				broken = true

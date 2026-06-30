@@ -223,7 +223,7 @@ func ObservedTxQuorumAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.
 	tx := msg.QuoTx.ObsTx
 	var voter types.ObservedTxVoter
 	if msg.QuoTx.Inbound {
-		voter, err = ensureVaultAndGetTxInVoter(ctx, tx.ObservedPubKey, tx.Tx.ID, k)
+		voter, err = ensureVaultAndGetTxInVoter(ctx, tx.ObservedPubKey, common.BTCOutpointScopedTxID(tx.Tx), k)
 	} else {
 		voter, err = ensureVaultAndGetTxOutVoter(ctx, k, tx.ObservedPubKey, tx.Tx.ID, msg.GetSigners(), tx.KeysignMs)
 	}
@@ -302,6 +302,12 @@ func ErrataTxQuorumAnteHandler(ctx cosmos.Context, v semver.Version, k keeper.Ke
 func reserveObservedTxAttestations(ctx cosmos.Context, k keeper.Keeper, voter types.ObservedTxVoter, tx common.ObservedTx, signers []cosmos.AccAddress, inbound bool) error {
 	for _, signer := range signers {
 		if !voter.Add(tx, signer) {
+			if isExactObservedTxReplay(voter, tx, signer) {
+				continue
+			}
+			if isFinalBTCObservedTxReplay(voter, tx, signer) {
+				continue
+			}
 			if !inbound && isFinalBTCSourceInputReplay(voter, tx, signer) {
 				continue
 			}
@@ -311,15 +317,41 @@ func reserveObservedTxAttestations(ctx cosmos.Context, k keeper.Keeper, voter ty
 			return cosmos.ErrUnknownRequest("observed tx attestation already submitted")
 		}
 	}
-	if !ctx.IsCheckTx() {
-		return nil
-	}
-	if inbound {
-		k.SetObservedTxInVoter(ctx, voter)
-	} else {
-		k.SetObservedTxOutVoter(ctx, voter)
-	}
 	return nil
+}
+
+func isExactObservedTxReplay(voter types.ObservedTxVoter, tx common.ObservedTx, signer cosmos.AccAddress) bool {
+	if matchingExactObservedTxReplay(voter.Tx, tx, signer) {
+		return true
+	}
+	for _, existing := range voter.Txs {
+		if matchingExactObservedTxReplay(existing, tx, signer) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchingExactObservedTxReplay(existing, tx common.ObservedTx, signer cosmos.AccAddress) bool {
+	return !existing.IsEmpty() &&
+		existing.HasSigned(signer) &&
+		existing.Equals(tx) &&
+		btcSourceInputsEqual(existing.Tx.SourceInputs, tx.Tx.SourceInputs)
+}
+
+func isFinalBTCObservedTxReplay(voter types.ObservedTxVoter, tx common.ObservedTx, signer cosmos.AccAddress) bool {
+	if !tx.IsFinal() || !tx.Tx.Chain.Equals(common.BTCChain) {
+		return false
+	}
+	if matchingFinalBTCObservedTxReplay(voter.Tx, tx, signer) {
+		return true
+	}
+	for _, existing := range voter.Txs {
+		if matchingFinalBTCObservedTxReplay(existing, tx, signer) {
+			return true
+		}
+	}
+	return false
 }
 
 func isFinalBTCSourceInputReplay(voter types.ObservedTxVoter, tx common.ObservedTx, signer cosmos.AccAddress) bool {
@@ -362,11 +394,25 @@ func isFinalBTCMigrationInboundRepair(ctx cosmos.Context, k keeper.Keeper, voter
 }
 
 func matchingFinalBTCSourceInputReplay(existing, tx common.ObservedTx, signer cosmos.AccAddress) bool {
+	if len(existing.Tx.SourceInputs) == 0 || len(tx.Tx.SourceInputs) == 0 {
+		return false
+	}
+	return matchingFinalBTCObservedTxReplay(existing, tx, signer)
+}
+
+func matchingFinalBTCObservedTxReplay(existing, tx common.ObservedTx, signer cosmos.AccAddress) bool {
 	return existing.IsFinal() &&
 		existing.HasSigned(signer) &&
 		existing.ObservedPubKey.Equals(tx.ObservedPubKey) &&
 		existing.Tx.EqualsEx(tx.Tx) &&
-		reflect.DeepEqual(existing.Tx.SourceInputs, tx.Tx.SourceInputs)
+		btcSourceInputsEqual(existing.Tx.SourceInputs, tx.Tx.SourceInputs)
+}
+
+func btcSourceInputsEqual(existing, replay []common.TxInput) bool {
+	if len(existing) == 0 && len(replay) == 0 {
+		return true
+	}
+	return reflect.DeepEqual(existing, replay)
 }
 
 func reserveNetworkFeeAttestations(ctx cosmos.Context, k keeper.Keeper, voter types.ObservedNetworkFeeVoter, signers []cosmos.AccAddress) error {
@@ -374,9 +420,6 @@ func reserveNetworkFeeAttestations(ctx cosmos.Context, k keeper.Keeper, voter ty
 		if !voter.Sign(signer) {
 			return cosmos.ErrUnknownRequest("network fee attestation already submitted")
 		}
-	}
-	if ctx.IsCheckTx() {
-		k.SetObservedNetworkFeeVoter(ctx, voter)
 	}
 	return nil
 }
@@ -387,9 +430,6 @@ func reserveSolvencyAttestations(ctx cosmos.Context, k keeper.Keeper, voter type
 			return cosmos.ErrUnknownRequest("solvency attestation already submitted")
 		}
 	}
-	if ctx.IsCheckTx() {
-		k.SetSolvencyVoter(ctx, voter)
-	}
 	return nil
 }
 
@@ -398,9 +438,6 @@ func reserveErrataTxAttestations(ctx cosmos.Context, k keeper.Keeper, voter type
 		if !voter.Sign(signer) {
 			continue
 		}
-	}
-	if ctx.IsCheckTx() {
-		k.SetErrataTxVoter(ctx, voter)
 	}
 	return nil
 }
@@ -424,11 +461,6 @@ func depositPowAnte(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAddress
 		expiry := getConfigDurationBlocks(ctx, k, constants.Deposit_PowExpiryMinutes)
 		if expiry <= 0 || existing.CreatedHeight+expiry >= ctx.BlockHeight() {
 			return ctx, cosmos.ErrUnknownRequest("deposit pow token already used")
-		}
-	}
-	if ctx.IsCheckTx() {
-		if _, err := RegisterDepositPowToken(ctx, k, owner, powToken, powDurationMs); err != nil {
-			return ctx, err
 		}
 	}
 	return ctx, nil
@@ -505,12 +537,6 @@ func shielderShieldAnte(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 			return ctx, err
 		}
 	}
-	if ctx.IsCheckTx() {
-		deposit.Status = types.DepositStatusSettled
-		if err := k.SetDepositRecord(ctx, deposit); err != nil {
-			return ctx, err
-		}
-	}
 	return ctx, nil
 }
 
@@ -547,13 +573,6 @@ func shielderRedeemAnte(ctx cosmos.Context, k keeper.Keeper, proof, public []byt
 	}
 	if err := VerifyShielderRedeemJSON(proof, public); err != nil {
 		return ctx, err
-	}
-	if ctx.IsCheckTx() {
-		recipient, _ := shielderRedeemRecipient(publicInputs, policy)
-		withdrawalID := shielderRedeemID(publicInputs.NullifierHash, recipient.String(), policy)
-		if err := k.SetShielderNullifierSpent(ctx, publicInputs.NullifierHash, withdrawalID); err != nil {
-			return ctx, err
-		}
 	}
 	return ctx, nil
 }
@@ -643,13 +662,6 @@ func ShielderShieldFeesAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg type
 			return ctx, cosmos.ErrUnknownRequest("shielder fee note pubkey already used")
 		}
 	}
-	if ctx.IsCheckTx() {
-		for _, pubKey := range notePubKeys {
-			if err := k.SetShielderFeeNotePubKey(ctx, pubKey); err != nil {
-				return ctx, err
-			}
-		}
-	}
 	return ctx, nil
 }
 
@@ -681,22 +693,12 @@ func NodeSlotAuctionCreateAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg t
 	if _, err := validateNodeSlotAuctionCreate(ctx, k, msg.Signer, msg.NodePubKey, msg.ExpiryHeight); err != nil {
 		return ctx, err
 	}
-	if ctx.IsCheckTx() {
-		if _, err := CreateNodeSlotAuction(ctx, k, msg.Signer, msg.NodePubKey, msg.ReserveSats, msg.ExpiryHeight); err != nil {
-			return ctx, err
-		}
-	}
 	return ctx, nil
 }
 
 func NodeSlotAuctionBidCreateAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.MsgNodeSlotAuctionBidCreate) (cosmos.Context, error) {
 	if err := msg.ValidateBasic(); err != nil {
 		return ctx, err
-	}
-	if ctx.IsCheckTx() {
-		if _, err := CreateNodeSlotBid(ctx, k, msg.Signer, msg.AuctionId, msg.OperatorPubKey, msg.NodePubKey); err != nil {
-			return ctx, err
-		}
 	}
 	return ctx, nil
 }
@@ -705,20 +707,8 @@ func NodeSlotAuctionSelectBidAnteHandler(ctx cosmos.Context, k keeper.Keeper, ms
 	if err := msg.ValidateBasic(); err != nil {
 		return ctx, err
 	}
-	auction, bid, err := validateNodeSlotBidSelection(ctx, k, msg.Signer, msg.AuctionId, msg.BidId)
-	if err != nil {
+	if _, _, err := validateNodeSlotBidSelection(ctx, k, msg.Signer, msg.AuctionId, msg.BidId); err != nil {
 		return ctx, err
-	}
-	if ctx.IsCheckTx() {
-		auction.Status = types.NodeSlotAuctionSelected
-		auction.SelectedBidID = bid.BidID
-		bid.Selected = true
-		if err := k.SetNodeSlotAuction(ctx, auction); err != nil {
-			return ctx, err
-		}
-		if err := k.SetNodeSlotBid(ctx, bid); err != nil {
-			return ctx, err
-		}
 	}
 	return ctx, nil
 }
@@ -738,12 +728,6 @@ func NodeSaleShieldAnteHandler(ctx cosmos.Context, k keeper.Keeper, msg types.Ms
 	authorizedAmountSats := shielderNoteCommitmentTotal(noteCommitments)
 	if err := VerifyShieldAuthorization(msg.DepositPubkey, msg.Signature, msg.DepositPubkey, authorizedAmountSats, msg.Commitments); err != nil {
 		return ctx, err
-	}
-	if ctx.IsCheckTx() {
-		deposit.Status = types.DepositStatusCommitted
-		if err := k.SetDepositRecord(ctx, deposit); err != nil {
-			return ctx, err
-		}
 	}
 	return ctx, nil
 }

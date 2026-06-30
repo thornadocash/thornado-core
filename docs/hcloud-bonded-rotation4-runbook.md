@@ -1,5 +1,8 @@
 # HCloud Bonded Rotation4 Runbook
 
+Canonical current runbook: [Thornado Cluster Runbook](./thornado-cluster-runbook.md).
+This file is retained as historical bonded-rotation notes.
+
 ## Goal
 
 Run a clean HCloud THORNado real5 compose cluster through `FLOW_MODE=bonded_rotation4` until it passes:
