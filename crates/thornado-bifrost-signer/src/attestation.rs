@@ -204,20 +204,20 @@ mod tests {
     #[test]
     fn quorum_boundary_matches_go() {
         // ceil(2*total/3): the exact thresholds Go's HasSuperMajority yields.
-        assert_eq!(has_super_majority(0, 0), false);
+        assert!(!has_super_majority(0, 0));
         assert!(has_super_majority(1, 1));
-        assert_eq!(has_super_majority(1, 2), false);
+        assert!(!has_super_majority(1, 2));
         assert!(has_super_majority(2, 2));
-        assert_eq!(has_super_majority(1, 3), false);
+        assert!(!has_super_majority(1, 3));
         assert!(has_super_majority(2, 3)); // total=3 -> need 2
         // total=4 -> need 3
-        assert_eq!(has_super_majority(2, 4), false);
+        assert!(!has_super_majority(2, 4));
         assert!(has_super_majority(3, 4));
         // total=9 -> need 6
-        assert_eq!(has_super_majority(5, 9), false);
+        assert!(!has_super_majority(5, 9));
         assert!(has_super_majority(6, 9));
         // more signers than total is never a quorum
-        assert_eq!(has_super_majority(5, 4), false);
+        assert!(!has_super_majority(5, 4));
     }
 
     #[test]
