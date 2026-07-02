@@ -129,16 +129,45 @@ pub fn available_work(mut items: Vec<TxOutStoreItem>, height: i64) -> Vec<TxOutS
     items
 }
 
+/// A stable fingerprint of an item's prescribed spend inputs (sorted). Items
+/// batch into ONE bitcoin tx only if they share the exact same inputs — the
+/// chain's batch matcher (`markObservedOutboundTxOutBatch`) requires every
+/// batched item to carry identical `source_inputs`, and matches the observed
+/// tx against their union. Refunds that each spend their own distinct deposit
+/// UTXO are therefore NOT one batch; each signs as its own single-item tx.
+fn source_inputs_key(item: &TxOutItem) -> String {
+    let mut ins: Vec<(String, u32)> = item
+        .source_inputs
+        .iter()
+        .map(|s| (s.tx_id.clone(), s.vout))
+        .collect();
+    ins.sort();
+    ins.iter()
+        .map(|(t, v)| format!("{t}:{v}"))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
 /// The next batch to sign from the available work: the representative is the
-/// first item; batchable peers (same source) join it, otherwise it signs
-/// alone. Returns store items, preserving deterministic order.
+/// first item; peers that are batchable (same chain/vault/path) AND share the
+/// representative's exact prescribed inputs join it. Items with no prescribed
+/// inputs, or different inputs, sign on their own. Deterministic order.
 pub fn next_batch(avail: &[TxOutStoreItem]) -> Option<Vec<TxOutStoreItem>> {
     let rep = avail.first()?;
+    let rep_key = source_inputs_key(&rep.item);
+    // A shared-input batch needs non-empty inputs on every member; an empty
+    // key means "select fresh", which is inherently single-item.
+    if rep_key.is_empty() {
+        return Some(vec![rep.clone()]);
+    }
     let all_items: Vec<TxOutItem> = avail.iter().map(|it| it.item.clone()).collect();
     match batch_items(&all_items, &rep.item) {
         Some(batch) => {
-            let keys: std::collections::HashSet<String> =
-                batch.iter().map(|it| it.in_hash.clone()).collect();
+            let keys: std::collections::HashSet<String> = batch
+                .iter()
+                .filter(|it| source_inputs_key(it) == rep_key)
+                .map(|it| it.in_hash.clone())
+                .collect();
             Some(
                 avail
                     .iter()
@@ -765,6 +794,18 @@ mod tests {
     use crate::chain::Coin;
 
     fn stored(in_hash: &str, height: i64, index: i64, status: TxStatus, deferred: i64) -> TxOutStoreItem {
+        stored_in(in_hash, height, index, status, deferred, &[("utxoA", 0, 200_000)])
+    }
+
+    fn stored_in(
+        in_hash: &str,
+        height: i64,
+        index: i64,
+        status: TxStatus,
+        deferred: i64,
+        inputs: &[(&str, u32, u64)],
+    ) -> TxOutStoreItem {
+        use crate::chain::TxOutInput;
         let mut it = TxOutStoreItem::new(
             TxOutItem {
                 chain: "BTC".into(),
@@ -774,6 +815,14 @@ mod tests {
                 gas_rate: 10,
                 in_hash: in_hash.into(),
                 tx_type: "out".into(),
+                source_inputs: inputs
+                    .iter()
+                    .map(|(t, v, a)| TxOutInput {
+                        tx_id: (*t).into(),
+                        vout: *v,
+                        amount_sats: *a,
+                    })
+                    .collect(),
                 ..Default::default()
             },
             height,
@@ -807,13 +856,28 @@ mod tests {
     }
 
     #[test]
-    fn next_batch_groups_batchables() {
+    fn next_batch_groups_items_sharing_inputs() {
+        // Two items that spend the SAME prescribed inputs → one batch tx.
+        let shared = &[("shared", 0, 300_000)];
         let avail = vec![
-            stored("a", 10, 0, TxStatus::Available, 0),
-            stored("b", 10, 1, TxStatus::Available, 0),
+            stored_in("a", 10, 0, TxStatus::Available, 0, shared),
+            stored_in("b", 10, 1, TxStatus::Available, 0, shared),
         ];
         let batch = next_batch(&avail).unwrap();
         assert_eq!(batch.len(), 2);
+    }
+
+    #[test]
+    fn next_batch_splits_items_with_distinct_inputs() {
+        // Independent refunds each spend their OWN deposit UTXO → NOT one
+        // batch; the chain's batch matcher requires identical source_inputs.
+        let avail = vec![
+            stored_in("a", 10, 0, TxStatus::Available, 0, &[("depA", 0, 250_000)]),
+            stored_in("b", 10, 1, TxStatus::Available, 0, &[("depB", 0, 350_000)]),
+        ];
+        let batch = next_batch(&avail).unwrap();
+        assert_eq!(batch.len(), 1);
+        assert_eq!(batch[0].item.in_hash, "a");
     }
 
     #[test]
