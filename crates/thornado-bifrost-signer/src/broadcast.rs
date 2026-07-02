@@ -444,6 +444,10 @@ pub fn observation_to_msg(
             }),
             status: crate::cosmos_tx::Status::Incomplete as i32,
             block_height: item.block_height,
+            // The observer only reports txs already in blocks (>= 1 conf), so
+            // observations are final: IsFinal() on the chain side is
+            // `finalise_height == block_height`.
+            finalise_height: item.block_height,
             observed_pub_key: item.observed_vault_pub_key.clone(),
             aggregator: item.aggregator.clone(),
             aggregator_target: item.aggregator_target.clone(),

@@ -57,10 +57,16 @@ struct RunArgs {
     /// this node's FROST keyshare (JSON StoredShare) — enables the sign loop
     #[arg(long, env = "KEYSHARE")]
     keyshare: Option<String>,
-    /// this node's compressed secp256k1 pubkey (33 bytes, hex) used to verify
-    /// signed keysign payloads from the local thornadod
+    /// this node's compressed secp256k1 pubkey (33-byte hex or thornado
+    /// bech32 `tthorpub1...`) used to verify signed keysign payloads from the
+    /// local thornadod
     #[arg(long, env = "NODE_PUBKEY")]
     node_pubkey: Option<String>,
+    /// the vault identifier the chain's keysign endpoint and observations use
+    /// (bech32 `tthorpub1...` on a live chain). Defaults to the keyshare's
+    /// group key hex, which is what the mock harness expects.
+    #[arg(long, env = "VAULT_ID")]
+    vault_id: Option<String>,
     /// JSON file mapping FROST participant names → libp2p peer id + multiaddr
     /// (see p2p::PeerEntry). Peers are dialed at startup.
     #[arg(long)]
@@ -333,7 +339,14 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
     let store = store::SignerStore::open(&args.store_path)?;
 
     let verifier: Box<dyn chain::KeysignVerifier> = match &args.node_pubkey {
-        Some(pk) => Box::new(chain::Secp256k1Verifier::new(&hex::decode(pk)?)?),
+        Some(pk) => {
+            let key = if pk.contains("pub1") {
+                chain::decode_bech32_pubkey(pk)?
+            } else {
+                hex::decode(pk)?
+            };
+            Box::new(chain::Secp256k1Verifier::new(&key)?)
+        }
         None => {
             tracing::warn!("--node-pubkey not set; keysign payload signatures are NOT verified");
             Box::new(chain::InsecureAcceptAll)
@@ -363,15 +376,19 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
         wallet: args.btc_wallet.clone(),
     };
 
-    // Vault facts: address derived from the share's group key (path 0).
+    // Vault facts: address derived from the share's group key (path 0). The
+    // chain-facing identifier may differ (bech32 on a live chain).
     let mut vault_addresses: Vec<String> = args.vault_addresses.clone();
     let mut vault_id = String::new();
     if let Some(share) = &share {
-        vault_id = share.public_key_compressed.clone();
-        let pk = hex::decode(&vault_id)?;
+        vault_id = args
+            .vault_id
+            .clone()
+            .unwrap_or_else(|| share.public_key_compressed.clone());
+        let pk = hex::decode(&share.public_key_compressed)?;
         let vault = tx_builder::TaprootVault::derive(&pk, 0).map_err(|e| anyhow::anyhow!(e))?;
         let addr = bitcoin::Address::from_script(vault.script_pubkey().as_script(), network)?;
-        tracing::info!(vault = %addr, group_key = %vault_id, "loaded FROST keyshare");
+        tracing::info!(vault = %addr, vault_id = %vault_id, "loaded FROST keyshare");
         vault_addresses.push(addr.to_string());
     }
 
@@ -511,7 +528,13 @@ fn build_observation_poster(args: &RunArgs) -> Option<broadcast::ThornadoObserva
     let account_bytes = args
         .cosmos_account
         .as_ref()
-        .and_then(|h| hex::decode(h).ok())
+        .and_then(|a| {
+            if a.contains('1') && !a.chars().all(|c| c.is_ascii_hexdigit()) {
+                chain::decode_bech32_account(a).ok()
+            } else {
+                hex::decode(a).ok()
+            }
+        })
         .unwrap_or_default();
     // derive the compressed pubkey from the secret
     let secp = bitcoin::secp256k1::Secp256k1::signing_only();

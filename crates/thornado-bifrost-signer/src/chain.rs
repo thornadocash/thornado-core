@@ -123,6 +123,34 @@ impl KeysignVerifier for Secp256k1Verifier {
     }
 }
 
+/// Decode a thornado bech32 pubkey (`tthorpub1...`/`thorpub1...`) into the
+/// 33-byte compressed secp256k1 key: bech32 data is the 5-byte amino
+/// `PubKeySecp256k1` prefix plus the key.
+pub fn decode_bech32_pubkey(s: &str) -> Result<Vec<u8>> {
+    let (_hrp, data) = bitcoin::bech32::decode(s)
+        .map_err(|e| ChainError::Decode(format!("bech32 pubkey: {e}")))?;
+    if data.len() < 33 {
+        return Err(ChainError::Decode(format!(
+            "bech32 pubkey too short: {} bytes",
+            data.len()
+        )));
+    }
+    Ok(data[data.len() - 33..].to_vec())
+}
+
+/// Decode a thornado bech32 account address (`tthor1...`) to its 20 raw bytes.
+pub fn decode_bech32_account(s: &str) -> Result<Vec<u8>> {
+    let (_hrp, data) = bitcoin::bech32::decode(s)
+        .map_err(|e| ChainError::Decode(format!("bech32 account: {e}")))?;
+    if data.len() != 20 {
+        return Err(ChainError::Decode(format!(
+            "account address is {} bytes, want 20",
+            data.len()
+        )));
+    }
+    Ok(data)
+}
+
 /// Accepts any payload WITHOUT verifying the keysign signature. Only for
 /// tests and local development where the node key is not available; never use
 /// on a network where funds are at stake.
@@ -1149,5 +1177,25 @@ mod tests {
         )
         .unwrap();
         assert_eq!((f.transaction_size, f.transaction_fee_rate), (250, 12));
+    }
+
+    /// Real vector from the thornado-e2e chain: this bech32 vault pubkey and
+    /// its keyshare's `public_key_compressed` hex refer to the same key.
+    #[test]
+    fn bech32_pubkey_decodes_to_compressed_secp() {
+        let bech = "tthorpub1addwnpepq0q8zefgywacpyulgdd3a0lyleqjt9yxfj9kmgn0us2q5cspk86ey8jvh0s";
+        let key = decode_bech32_pubkey(bech).unwrap();
+        assert_eq!(
+            hex::encode(&key),
+            "03c071652823bb80939f435b1ebfe4fe412594864c8b6da26fe4140a6201b1f592"
+        );
+    }
+
+    #[test]
+    fn bech32_account_decodes_to_20_bytes() {
+        // validator5's account address on the e2e chain.
+        let addr = decode_bech32_account("tthor1va6tuv96gxerfupz4lk0e0xxm6amy82dsdpzur").unwrap();
+        assert_eq!(addr.len(), 20);
+        assert!(decode_bech32_account("tthorpub1addwnpepq0q8zefgywacpyulgdd3a0lyleqjt9yxfj9kmgn0us2q5cspk86ey8jvh0s").is_err());
     }
 }

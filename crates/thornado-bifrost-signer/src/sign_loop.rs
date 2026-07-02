@@ -702,8 +702,11 @@ impl SignLoop {
             spend_all: false,
         })?;
 
-        let vault_pub = hex::decode(&self.cfg.vault_id)
-            .map_err(|e| SignLoopError::Config(format!("vault id hex: {e}")))?;
+        // The FROST session is keyed by the raw group key from the share;
+        // cfg.vault_id is the chain's identifier string (bech32 on a live
+        // chain, hex in test harnesses) and is only used for URLs.
+        let vault_pub = hex::decode(&self.share.public_key_compressed)
+            .map_err(|e| SignLoopError::Config(format!("share pubkey hex: {e}")))?;
         frost_sign_tx(
             &mut self.mailbox,
             &self.share,
