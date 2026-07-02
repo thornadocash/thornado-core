@@ -8,6 +8,7 @@ pub mod bitcoind;
 pub mod chain;
 pub mod frost_session;
 pub mod p2p;
+pub mod scanner;
 pub mod signer;
 pub mod store;
 pub mod temporal;
