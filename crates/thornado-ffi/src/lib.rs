@@ -16,6 +16,30 @@ thread_local! {
     static LAST_ERROR: RefCell<Option<String>> = RefCell::new(None);
 }
 
+/// Runs an FFI entry-point body under `catch_unwind` so a Rust panic can never
+/// unwind across the C ABI (which would be undefined behavior). A caught panic is
+/// routed to `fallback`, mirroring the normal error path of each entry point.
+fn guard_ffi<T>(fallback: T, body: impl FnOnce() -> T + std::panic::UnwindSafe) -> T {
+    match std::panic::catch_unwind(body) {
+        Ok(value) => value,
+        Err(payload) => {
+            let message = panic_message(&payload);
+            set_error(format!("panic: {message}"));
+            fallback
+        }
+    }
+}
+
+fn panic_message(payload: &Box<dyn std::any::Any + Send>) -> String {
+    if let Some(message) = payload.downcast_ref::<&str>() {
+        (*message).to_string()
+    } else if let Some(message) = payload.downcast_ref::<String>() {
+        message.clone()
+    } else {
+        "unknown panic".to_string()
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn thornado_free_string(value: *mut c_char) {
     if value.is_null() {
@@ -28,9 +52,11 @@ pub extern "C" fn thornado_free_string(value: *mut c_char) {
 
 #[no_mangle]
 pub extern "C" fn thornado_last_error() -> *mut c_char {
-    LAST_ERROR.with(|slot| match slot.borrow().as_ref() {
-        Some(message) => into_c_string(message),
-        None => std::ptr::null_mut(),
+    guard_ffi(std::ptr::null_mut(), || {
+        LAST_ERROR.with(|slot| match slot.borrow().as_ref() {
+            Some(message) => into_c_string(message),
+            None => std::ptr::null_mut(),
+        })
     })
 }
 
@@ -248,21 +274,26 @@ pub extern "C" fn thornado_recipient_binding_field_json(
 
 #[no_mangle]
 pub extern "C" fn thornado_validate_withdrawal_public_json(public_json: *const c_char) -> bool {
-    match (|| {
-        let public_json = c_str(public_json, "public_json")?;
-        let public: WithdrawalPublicInputs =
-            serde_json::from_str(public_json).map_err(|error| error.to_string())?;
-        validate_withdrawal_public_inputs(&public).map_err(|error| error.to_string())
-    })() {
-        Ok(()) => {
-            clear_error();
-            true
-        }
-        Err(error) => {
-            set_error(error);
-            false
-        }
-    }
+    guard_ffi(
+        false,
+        std::panic::AssertUnwindSafe(|| {
+            match (|| {
+                let public_json = c_str(public_json, "public_json")?;
+                let public: WithdrawalPublicInputs =
+                    serde_json::from_str(public_json).map_err(|error| error.to_string())?;
+                validate_withdrawal_public_inputs(&public).map_err(|error| error.to_string())
+            })() {
+                Ok(()) => {
+                    clear_error();
+                    true
+                }
+                Err(error) => {
+                    set_error(error);
+                    false
+                }
+            }
+        }),
+    )
 }
 
 #[no_mangle]
@@ -270,26 +301,31 @@ pub extern "C" fn thornado_verify_withdrawal_json(
     proof_json: *const c_char,
     public_json: *const c_char,
 ) -> bool {
-    match (|| {
-        let proof_json = c_str(proof_json, "proof_json")?;
-        let public_json = c_str(public_json, "public_json")?;
-        let proof: WithdrawalProof =
-            serde_json::from_str(proof_json).map_err(|error| error.to_string())?;
-        let public: WithdrawalPublicInputs =
-            serde_json::from_str(public_json).map_err(|error| error.to_string())?;
-        ShielderProofVerifier
-            .verify_withdrawal(&proof, &public)
-            .map_err(|error| error.to_string())
-    })() {
-        Ok(()) => {
-            clear_error();
-            true
-        }
-        Err(error) => {
-            set_error(error);
-            false
-        }
-    }
+    guard_ffi(
+        false,
+        std::panic::AssertUnwindSafe(|| {
+            match (|| {
+                let proof_json = c_str(proof_json, "proof_json")?;
+                let public_json = c_str(public_json, "public_json")?;
+                let proof: WithdrawalProof =
+                    serde_json::from_str(proof_json).map_err(|error| error.to_string())?;
+                let public: WithdrawalPublicInputs =
+                    serde_json::from_str(public_json).map_err(|error| error.to_string())?;
+                ShielderProofVerifier
+                    .verify_withdrawal(&proof, &public)
+                    .map_err(|error| error.to_string())
+            })() {
+                Ok(()) => {
+                    clear_error();
+                    true
+                }
+                Err(error) => {
+                    set_error(error);
+                    false
+                }
+            }
+        }),
+    )
 }
 
 fn return_json_result<T: Serialize>(body: impl FnOnce() -> Result<T, String>) -> *mut c_char {
@@ -300,16 +336,19 @@ fn return_json_result<T: Serialize>(body: impl FnOnce() -> Result<T, String>) ->
 }
 
 fn return_string_result(body: impl FnOnce() -> Result<String, String>) -> *mut c_char {
-    match body() {
-        Ok(value) => {
-            clear_error();
-            into_c_string(&value)
-        }
-        Err(error) => {
-            set_error(error);
-            std::ptr::null_mut()
-        }
-    }
+    guard_ffi(
+        std::ptr::null_mut(),
+        std::panic::AssertUnwindSafe(|| match body() {
+            Ok(value) => {
+                clear_error();
+                into_c_string(&value)
+            }
+            Err(error) => {
+                set_error(error);
+                std::ptr::null_mut()
+            }
+        }),
+    )
 }
 
 fn c_str<'a>(value: *const c_char, name: &str) -> Result<&'a str, String> {
@@ -409,6 +448,22 @@ mod tests {
             proof_json.as_ptr(),
             public_json.as_ptr(),
         ));
+        let error = take_string(thornado_last_error());
+        assert!(!error.is_empty());
+    }
+
+    #[test]
+    fn off_curve_proof_point_returns_error_not_panic() {
+        let public_json = c_string(
+            r#"{"nullifier_hash":"1","merkle_root":"2","denomination_sats":100000,"recipient":"bcrt1qrecipient","fee_sats":1000}"#,
+        );
+        // pi_a = ["1","1"] is an off-curve bn254 G1 point. Before the fix this panicked
+        // inside `G1Affine::new`, unwinding across the C ABI. It must now return false.
+        let proof_json = c_string(
+            r#"{"merkle_root":"2","tornado":{"protocol":"tornado-cash-groth16-v2.1","groth16":{"pi_a":["1","1"],"pi_b":[["1","1"],["1","1"]],"pi_c":["1","1"],"protocol":"groth"}}}"#,
+        );
+        let verified = thornado_verify_withdrawal_json(proof_json.as_ptr(), public_json.as_ptr());
+        assert!(!verified);
         let error = take_string(thornado_last_error());
         assert!(!error.is_empty());
     }

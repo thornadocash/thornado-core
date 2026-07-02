@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"math/bits"
 	"sort"
 	"strings"
 
@@ -1498,7 +1499,10 @@ func withdrawalFeeSats(ctx cosmos.Context, k keeper.Keeper, amountSats uint64) u
 }
 
 func withdrawalFeeSatsForBp(amountSats, feeBp uint64) uint64 {
-	return amountSats * feeBp / 10_000
+	hi, lo := bits.Mul64(amountSats, feeBp)
+	q1, r1 := bits.Div64(0, hi, 10_000)
+	q0, _ := bits.Div64(r1, lo, 10_000)
+	return q1<<32<<32 + q0
 }
 
 func withdrawalFeeBp(ctx cosmos.Context, k keeper.Keeper) uint64 {

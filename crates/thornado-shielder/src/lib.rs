@@ -128,6 +128,7 @@ impl ShieldReceipt {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct WithdrawalProof {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub nullifier: String,

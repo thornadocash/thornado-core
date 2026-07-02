@@ -83,6 +83,9 @@ pub fn zero_subtree(level: usize) -> Result<Fr> {
 
 pub fn incremental_root(leaves: &[Fr]) -> Result<Fr> {
     let depth = super::merkle::MERKLE_TREE_DEPTH;
+    if leaves.len() > (1usize << depth) {
+        return Err(crate::Error::InvalidProof);
+    }
     let mut filled = vec![Fr::zero(); depth];
     let mut root = zero_subtree(depth)?;
     for (index, leaf) in leaves.iter().enumerate() {
@@ -151,6 +154,15 @@ mod tests {
             super::super::field::fr_to_decimal(super::super::field::fr_from_hex(hex).unwrap()),
             "7120861356467848435263064379192047478074060781135320967663101236819528304084"
         );
+    }
+
+    #[test]
+    fn incremental_root_rejects_over_capacity_leaf_count() {
+        let depth = super::super::merkle::MERKLE_TREE_DEPTH;
+        // One leaf beyond the depth-20 capacity must be rejected rather than silently
+        // index-wrapping. The guard returns before any hashing, so this stays cheap.
+        let leaves = vec![Fr::zero(); (1usize << depth) + 1];
+        assert_eq!(incremental_root(&leaves), Err(crate::Error::InvalidProof));
     }
 
     #[test]

@@ -12,6 +12,7 @@ use super::ceremony::PRODUCTION_VK_JSON;
 use crate::Result;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct SnarkjsProof {
     pub pi_a: Vec<String>,
     pub pi_b: Vec<Vec<String>>,
@@ -94,9 +95,12 @@ fn parse_g1(values: &[String]) -> Result<G1Affine> {
     }
     let x = parse_fq(&values[0])?;
     let y = parse_fq(&values[1])?;
-    let point = G1Affine::new(x, y);
+    let point = G1Affine::new_unchecked(x, y);
     if point.is_zero() {
         return Ok(G1Affine::identity());
+    }
+    if !point.is_on_curve() || !point.is_in_correct_subgroup_assuming_on_curve() {
+        return Err(crate::Error::InvalidProof);
     }
     Ok(point)
 }
@@ -107,9 +111,12 @@ fn parse_g2(values: &[Vec<String>]) -> Result<G2Affine> {
     }
     let x = Fq2::new(parse_fq(&values[0][0])?, parse_fq(&values[0][1])?);
     let y = Fq2::new(parse_fq(&values[1][0])?, parse_fq(&values[1][1])?);
-    let point = G2Affine::new(x, y);
+    let point = G2Affine::new_unchecked(x, y);
     if point.is_zero() {
         return Ok(G2Affine::identity());
+    }
+    if !point.is_on_curve() || !point.is_in_correct_subgroup_assuming_on_curve() {
+        return Err(crate::Error::InvalidProof);
     }
     Ok(point)
 }
@@ -161,5 +168,21 @@ mod tests {
     fn production_vk_loads() {
         production_vk().unwrap();
         assert_eq!(vk_digest_hex(), ceremony::verification_key_sha256());
+    }
+
+    #[test]
+    fn parse_g1_rejects_off_curve_point_without_panic() {
+        let result = parse_g1(&["1".to_string(), "1".to_string()]);
+        assert_eq!(result, Err(crate::Error::InvalidProof));
+    }
+
+    #[test]
+    fn parse_g2_rejects_off_curve_point_without_panic() {
+        let point = vec![
+            vec!["1".to_string(), "1".to_string()],
+            vec!["1".to_string(), "1".to_string()],
+        ];
+        let result = parse_g2(&point);
+        assert_eq!(result, Err(crate::Error::InvalidProof));
     }
 }

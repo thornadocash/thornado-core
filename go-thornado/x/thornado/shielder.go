@@ -44,27 +44,44 @@ func ValidateShielderRedeemPublicJSON(publicJSON []byte) error {
 	return shielder.ValidateRedeemPublicJSON(string(publicJSON))
 }
 
+type shielderRedeemGroth16 struct {
+	PiA      []string   `json:"pi_a"`
+	PiB      [][]string `json:"pi_b"`
+	PiC      []string   `json:"pi_c"`
+	Protocol string     `json:"protocol,omitempty"`
+}
+
+type shielderRedeemTornado struct {
+	Protocol string                 `json:"protocol"`
+	Groth16  *shielderRedeemGroth16 `json:"groth16,omitempty"`
+}
+
+type shielderRedeemProof struct {
+	Nullifier  string                 `json:"nullifier,omitempty"`
+	Secret     string                 `json:"secret,omitempty"`
+	Commitment string                 `json:"commitment,omitempty"`
+	MerkleRoot string                 `json:"merkle_root"`
+	Tornado    *shielderRedeemTornado `json:"tornado,omitempty"`
+}
+
+// RejectLeakyShielderRedeemProof enforces a strict allowlist on the redeem proof
+// JSON: only the exact fields the legitimate client emits are accepted. Any
+// unenumerated key (leaf index, path indices, deposit identity, or an arbitrary
+// key the client might leak) is rejected up front. Private note material and the
+// merkle witness are additionally rejected even though they are known keys.
 func RejectLeakyShielderRedeemProof(ctx cosmos.Context, k keeper.Keeper, proofJSON []byte) error {
-	var proof struct {
-		Nullifier  string `json:"nullifier"`
-		Secret     string `json:"secret"`
-		Commitment string `json:"commitment"`
-		Tornado    *struct {
-			MerklePath *struct {
-				PathElements []string `json:"path_elements"`
-			} `json:"merkle_path"`
-		} `json:"tornado"`
+	decoder := json.NewDecoder(strings.NewReader(string(proofJSON)))
+	decoder.DisallowUnknownFields()
+	var proof shielderRedeemProof
+	err := decoder.Decode(&proof)
+	if err != nil {
+		return fmt.Errorf("shielder proof carries unexpected fields: %w", err)
 	}
-	if err := json.Unmarshal(proofJSON, &proof); err != nil {
-		return fmt.Errorf("invalid shielder proof json: %w", err)
+	if decoder.More() {
+		return fmt.Errorf("shielder proof carries trailing data")
 	}
 	if strings.TrimSpace(proof.Nullifier) != "" || strings.TrimSpace(proof.Secret) != "" || strings.TrimSpace(proof.Commitment) != "" {
 		return fmt.Errorf("shielder proof carries private note material")
-	}
-	if proof.Tornado != nil {
-		if proof.Tornado.MerklePath != nil && len(proof.Tornado.MerklePath.PathElements) > 0 {
-			return fmt.Errorf("shielder proof carries merkle path")
-		}
 	}
 	return nil
 }
