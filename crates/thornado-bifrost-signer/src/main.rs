@@ -26,6 +26,14 @@ enum Command {
     Run(Box<RunArgs>),
     /// Run a distributed FROST keygen (DKG) and write this node's keyshare.
     Keygen(KeygenArgs),
+    /// Print this node's libp2p peer id (creating the key if missing).
+    Identity(IdentityArgs),
+}
+
+#[derive(Parser, Debug)]
+struct IdentityArgs {
+    #[arg(long, default_value = "p2p.key")]
+    p2p_key: String,
 }
 
 #[derive(Parser, Debug)]
@@ -143,6 +151,11 @@ async fn main() -> anyhow::Result<()> {
     match Cli::parse().command {
         Command::Run(args) => run_daemon(*args).await,
         Command::Keygen(args) => run_keygen_cmd(args).await,
+        Command::Identity(args) => {
+            let keypair = load_p2p_key(&args.p2p_key)?;
+            println!("peer_id={}", libp2p::PeerId::from(keypair.public()));
+            Ok(())
+        }
     }
 }
 
@@ -258,11 +271,37 @@ fn start_p2p(
     let mailbox =
         transport::Libp2pMailbox::new(mailbox_control, registry.name_to_peer(), inbound_rx);
 
-    // Drive the swarm so listeners, dials, and streams make progress.
+    // Drive the swarm so listeners, dials, and streams make progress, and
+    // keep the mesh connected: every few seconds re-dial any registry peer
+    // we lost (startup races, restarts, dropped connections).
+    let dial_targets = registry.dial_targets();
     tokio::spawn(async move {
         use futures::StreamExt;
-        while let Some(event) = swarm.next().await {
-            tracing::trace!(?event, "swarm event");
+        use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
+        let mut redial = tokio::time::interval(std::time::Duration::from_secs(10));
+        loop {
+            tokio::select! {
+                event = swarm.next() => {
+                    match event {
+                        Some(event) => tracing::trace!(?event, "swarm event"),
+                        None => break,
+                    }
+                }
+                _ = redial.tick() => {
+                    for (peer, addr) in &dial_targets {
+                        if swarm.is_connected(peer) {
+                            continue;
+                        }
+                        let opts = DialOpts::peer_id(*peer)
+                            .addresses(vec![addr.clone()])
+                            .condition(PeerCondition::Disconnected)
+                            .build();
+                        if let Err(e) = swarm.dial(opts) {
+                            tracing::debug!(%peer, error = %e, "redial failed");
+                        }
+                    }
+                }
+            }
         }
     });
 
@@ -441,9 +480,13 @@ async fn run_keygen_cmd(args: KeygenArgs) -> anyhow::Result<()> {
     .map_err(|e| anyhow::anyhow!(e))?;
 
     tracing::info!(local = %args.local_name, n = participants.len(), min = args.min_signers, "starting DKG");
-    let share = transport::run_keygen(&mut p2p_stack.mailbox, session, &session_id)
-        .await
-        .map_err(|e| anyhow::anyhow!(e))?;
+    let share = tokio::time::timeout(
+        std::time::Duration::from_secs(120),
+        transport::run_keygen(&mut p2p_stack.mailbox, session, &session_id),
+    )
+    .await
+    .map_err(|_| anyhow::anyhow!("DKG timed out after 120s"))?
+    .map_err(|e| anyhow::anyhow!(e))?;
 
     std::fs::write(&args.out, serde_json::to_vec_pretty(&share)?)?;
     let pk = hex::decode(&share.public_key_compressed)?;
@@ -479,7 +522,13 @@ fn build_observation_poster(args: &RunArgs) -> Option<broadcast::ThornadoObserva
         chain_host: args.chain_host.clone(),
         chain_rpc: args.chain_rpc.clone(),
     };
-    let signer_addr = args.cosmos_signer_addr.clone();
+    // Default the auth-lookup identity to hex(pubkey): mock-thornado keys
+    // accounts by it, and a real chain deployment always sets the bech32.
+    let signer_addr = if args.cosmos_signer_addr.is_empty() {
+        hex::encode(&pub_key)
+    } else {
+        args.cosmos_signer_addr.clone()
+    };
     Some(
         broadcast::ThornadoObservationClient::new(cfg, signer_addr).with_key(broadcast::SignerKey {
             priv_key,

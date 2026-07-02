@@ -9,8 +9,17 @@ description = "Pure-Rust FROST signer bifrost: p2p keysign sessions, BTC batch s
 name = "bifrost-signer"
 path = "src/main.rs"
 
+[[bin]]
+name = "mock-thornado"
+path = "src/bin/mock_thornado.rs"
+required-features = ["harness"]
+
+[features]
+harness = ["dep:axum"]
+
 [dependencies]
 anyhow.workspace = true
+axum = { workspace = true, optional = true }
 base64.workspace = true
 bitcoin.workspace = true
 clap.workspace = true

@@ -192,10 +192,11 @@ impl Mailbox for Libp2pMailbox {
             .ok_or_else(|| TransportError::Transport(format!("unknown peer {to}")))?;
 
         // Opening a stream can transiently fail if the connection isn't ready
-        // yet (or briefly dropped and re-dialed). Retry a few times before
-        // giving up — the round message is idempotent at the session layer.
+        // yet (or briefly dropped and re-dialed). Retry long enough to span
+        // the daemon's ~10s redial cycle — the round message is idempotent at
+        // the session layer.
         let mut last_err = None;
-        for attempt in 0..8u32 {
+        for attempt in 0..12u32 {
             // Bound each attempt: a stuck open_stream (peer mid-reconnect)
             // must become a retryable error rather than hang the session.
             let opened = tokio::time::timeout(
@@ -214,15 +215,22 @@ impl Mailbox for Libp2pMailbox {
                 Ok(mut stream) => {
                     use futures::AsyncWriteExt;
                     // `framed` already carries the length prefix; write it raw.
-                    stream
-                        .write_all(&framed)
-                        .await
-                        .map_err(|e| TransportError::Transport(e.to_string()))?;
-                    stream
-                        .flush()
-                        .await
-                        .map_err(|e| TransportError::Transport(e.to_string()))?;
-                    return Ok(());
+                    // A write can still fail (e.g. the connection was closing
+                    // under us — duplicate-connection pruning after mutual
+                    // dials); that is as retryable as a failed open.
+                    let write = async {
+                        stream.write_all(&framed).await?;
+                        stream.flush().await
+                    };
+                    match write.await {
+                        Ok(()) => return Ok(()),
+                        Err(e) => {
+                            last_err = Some(e.to_string());
+                            let backoff =
+                                std::time::Duration::from_millis(150 * (attempt as u64 + 1));
+                            tokio::time::sleep(backoff).await;
+                        }
+                    }
                 }
                 Err(e) => {
                     last_err = Some(e.to_string());

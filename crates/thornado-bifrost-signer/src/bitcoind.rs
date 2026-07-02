@@ -276,6 +276,71 @@ impl BitcoindRpc {
         self.call("getrawtransaction", serde_json::json!([txid, true]))
             .await
     }
+
+    // -- wallet/regtest methods (used by test harnesses, not the daemon) -----
+
+    pub async fn get_new_address(&self) -> Result<String> {
+        self.call("getnewaddress", Value::Array(vec![])).await
+    }
+
+    /// Send from the configured wallet; returns the txid.
+    pub async fn send_to_address(&self, address: &str, amount_btc: f64) -> Result<String> {
+        self.call("sendtoaddress", serde_json::json!([address, amount_btc]))
+            .await
+    }
+
+    /// Mine `n` blocks paying `address` (regtest); returns the block hashes.
+    pub async fn generate_to_address(&self, n: u64, address: &str) -> Result<Vec<String>> {
+        self.call("generatetoaddress", serde_json::json!([n, address]))
+            .await
+    }
+
+    /// Mark a block invalid, forcing a reorg (regtest stress testing).
+    pub async fn invalidate_block(&self, hash: &str) -> Result<()> {
+        // invalidateblock returns null on success.
+        let body = Self::encode_request("invalidateblock", serde_json::json!([hash]));
+        let resp = self
+            .http
+            .post(self.cfg.url())
+            .basic_auth(&self.cfg.user, Some(&self.cfg.password))
+            .header("content-type", "application/json")
+            .body(body)
+            .send()
+            .await
+            .map_err(|e| RpcError::Http(e.to_string()))?;
+        let bytes = resp.bytes().await.map_err(|e| RpcError::Http(e.to_string()))?;
+        Self::decode_optional::<Value>(&bytes)?;
+        Ok(())
+    }
+
+    pub async fn get_balance(&self) -> Result<f64> {
+        self.call("getbalance", Value::Array(vec![])).await
+    }
+
+    /// Create a wallet; `disable_private_keys` makes it watch-only.
+    pub async fn create_wallet(&self, name: &str, disable_private_keys: bool) -> Result<Value> {
+        self.call(
+            "createwallet",
+            serde_json::json!([name, disable_private_keys]),
+        )
+        .await
+    }
+
+    pub async fn load_wallet(&self, name: &str) -> Result<Value> {
+        self.call("loadwallet", serde_json::json!([name])).await
+    }
+
+    /// Canonicalize a descriptor (adds the required checksum).
+    pub async fn get_descriptor_info(&self, desc: &str) -> Result<Value> {
+        self.call("getdescriptorinfo", serde_json::json!([desc]))
+            .await
+    }
+
+    /// Import descriptors into the (watch-only) wallet; rescans from `timestamp`.
+    pub async fn import_descriptors(&self, requests: Value) -> Result<Value> {
+        self.call("importdescriptors", serde_json::json!([requests]))
+            .await
+    }
 }
 
 impl ScriptPubKey {
