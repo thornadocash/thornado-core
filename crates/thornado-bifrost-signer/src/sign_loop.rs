@@ -637,6 +637,7 @@ impl SignLoop {
         let in_hashes: Vec<String> = batch.iter().map(|it| it.item.in_hash.clone()).collect();
         let sid = party_session_id(&self.cfg.vault_id, rep.epoch, rep.height, &in_hashes);
 
+        let party_start = std::time::Instant::now();
         let selected = if leader == self.cfg.local {
             // Hand any parked requests for this session to the coordinator.
             let mut seed = Vec::new();
@@ -677,7 +678,8 @@ impl SignLoop {
         if !selected.contains(&self.cfg.local) {
             return Err(SignLoopError::NotSelected);
         }
-        tracing::info!(leader = %leader, selected = selected.len(), "party formed");
+        let party_ms = party_start.elapsed().as_millis();
+        tracing::info!(leader = %leader, selected = selected.len(), party_ms, "party formed");
 
         // Build the identical unsigned tx on every selected party.
         let vault = self.vault_for(rep.item.vault_path_index)?;
@@ -764,6 +766,8 @@ impl SignLoop {
         // chain, hex in test harnesses) and is only used for URLs.
         let vault_pub = hex::decode(&self.share.public_key_compressed)
             .map_err(|e| SignLoopError::Config(format!("share pubkey hex: {e}")))?;
+        let n_inputs = unsigned.tx.input.len();
+        let keysign_start = std::time::Instant::now();
         frost_sign_tx(
             &mut self.mailbox,
             &self.share,
@@ -774,6 +778,15 @@ impl SignLoop {
             self.cfg.keysign_timeout,
         )
         .await?;
+        let keysign_ms = keysign_start.elapsed().as_millis();
+        // One taproot FROST session PER input; report both total and per-input.
+        tracing::info!(
+            keysign_ms,
+            inputs = n_inputs,
+            per_input_ms = keysign_ms / (n_inputs.max(1) as u128),
+            signers = selected.len(),
+            "KEYSIGN_TIMING frost keysign complete"
+        );
 
         let mut raw = Vec::new();
         unsigned

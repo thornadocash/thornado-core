@@ -502,6 +502,7 @@ async fn run_keygen_cmd(args: KeygenArgs) -> anyhow::Result<()> {
     .map_err(|e| anyhow::anyhow!(e))?;
 
     tracing::info!(local = %args.local_name, n = participants.len(), min = args.min_signers, "starting DKG");
+    let dkg_start = std::time::Instant::now();
     let share = tokio::time::timeout(
         std::time::Duration::from_secs(120),
         transport::run_keygen(&mut p2p_stack.mailbox, session, &session_id),
@@ -509,6 +510,9 @@ async fn run_keygen_cmd(args: KeygenArgs) -> anyhow::Result<()> {
     .await
     .map_err(|_| anyhow::anyhow!("DKG timed out after 120s"))?
     .map_err(|e| anyhow::anyhow!(e))?;
+    let dkg_ms = dkg_start.elapsed().as_millis();
+    tracing::info!(dkg_ms, n = participants.len(), min = args.min_signers, "DKG_TIMING keygen complete");
+    println!("dkg_ms={dkg_ms}");
 
     std::fs::write(&args.out, serde_json::to_vec_pretty(&share)?)?;
     let pk = hex::decode(&share.public_key_compressed)?;
