@@ -206,7 +206,7 @@ pub struct TxOutItem {
     pub vault_pub_key: String,
     #[serde(default)]
     pub coin: Coin,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "flexnum::de_null_vec")]
     pub max_gas: Vec<Coin>,
     #[serde(default, deserialize_with = "flexnum::de_i64")]
     pub gas_rate: i64,
@@ -220,7 +220,7 @@ pub struct TxOutItem {
     pub vault_path_index: u64,
     #[serde(default)]
     pub tx_type: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "flexnum::de_null_vec")]
     pub source_inputs: Vec<TxOutInput>,
 }
 
@@ -229,7 +229,7 @@ pub struct TxOutItem {
 pub struct TxOut {
     #[serde(default, deserialize_with = "flexnum::de_i64")]
     pub height: i64,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "flexnum::de_null_vec")]
     pub tx_array: Vec<TxOutItem>,
     #[serde(default, deserialize_with = "flexnum::de_u64")]
     pub epoch: u64,
@@ -278,7 +278,7 @@ pub struct NodeAccount {
     pub status: String,
     #[serde(default)]
     pub pub_key_set: PubKeySet,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "flexnum::de_null_vec")]
     pub signer_membership: Vec<String>,
     #[serde(default)]
     pub peer_id: String,
@@ -298,7 +298,7 @@ pub struct Vault {
     pub pub_key: String,
     #[serde(default)]
     pub pub_key_eddsa: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "flexnum::de_null_vec")]
     pub membership: Vec<String>,
 }
 
@@ -321,7 +321,7 @@ struct KeysignResponse {
 
 #[derive(Deserialize)]
 struct TxOutQueue {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "flexnum::de_null_vec")]
     txouts: Vec<TxOut>,
 }
 
@@ -840,6 +840,15 @@ fn normalize_config_key(key: &str) -> String {
 mod flexnum {
     use super::*;
 
+    /// Go's json.Marshal encodes nil slices as `null`; treat that as empty.
+    pub fn de_null_vec<'de, D, T>(d: D) -> std::result::Result<Vec<T>, D::Error>
+    where
+        D: Deserializer<'de>,
+        T: Deserialize<'de>,
+    {
+        Ok(Option::<Vec<T>>::deserialize(d)?.unwrap_or_default())
+    }
+
     struct Flex;
 
     impl<'de> de::Visitor<'de> for Flex {
@@ -1040,6 +1049,21 @@ mod tests {
         let key = SecretKey::from_slice(&[7u8; 32]).unwrap();
         let wrapper = KeysignResponse {
             keysign: Some(RawValue::from_string(r#"{"height":42}"#.to_string()).unwrap()),
+            signature: String::new(),
+        };
+        let tx_out = verify_and_decode_keysign(&wrapper, &verifier_for(&key), 42).unwrap();
+        assert!(tx_out.tx_array.is_empty());
+    }
+
+    /// Go's json.Marshal writes nil slices as `null` — the live chain returns
+    /// `"tx_array": null` for empty keysign blocks.
+    #[test]
+    fn keysign_null_tx_array_is_empty() {
+        let key = SecretKey::from_slice(&[7u8; 32]).unwrap();
+        let wrapper = KeysignResponse {
+            keysign: Some(
+                RawValue::from_string(r#"{"height":42,"tx_array":null}"#.to_string()).unwrap(),
+            ),
             signature: String::new(),
         };
         let tx_out = verify_and_decode_keysign(&wrapper, &verifier_for(&key), 42).unwrap();
