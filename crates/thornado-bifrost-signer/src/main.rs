@@ -573,7 +573,15 @@ fn to_broadcast_txin(
             block_height: it.block_height,
             tx: it.tx.clone(),
             source_vout: it.source_vout,
-            source_inputs: vec![],
+            source_inputs: it
+                .source_inputs
+                .iter()
+                .map(|s| broadcast::TxOutInput {
+                    tx_id: s.tx_id.clone(),
+                    vout: s.vout,
+                    amount_sats: s.amount_sats,
+                })
+                .collect(),
             sender: it.sender.clone(),
             to: it.to.clone(),
             coins: it

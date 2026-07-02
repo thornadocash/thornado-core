@@ -53,6 +53,14 @@ pub struct DecodedOutput {
     pub script_hex: String,
 }
 
+/// A spent UTXO reference carried on observations (Go `common.TxInput`).
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SourceInput {
+    pub tx_id: String,
+    pub vout: u32,
+    pub amount_sats: u64,
+}
+
 /// An amount of a single asset, in satoshis.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Coin {
@@ -78,6 +86,10 @@ pub struct TxInItem {
     /// caller resolves it from `to`). Empty when unknown.
     #[serde(default)]
     pub observed_vault_pubkey: String,
+    /// The UTXOs the observed tx spent (Go `SourceInputs`) — the chain uses
+    /// these for vault UTXO bookkeeping and internal-outbound matching.
+    #[serde(default)]
+    pub source_inputs: Vec<SourceInput>,
     /// Index of the observed output within the source tx (Go `SourceVout`).
     pub source_vout: u32,
 }
@@ -173,6 +185,59 @@ where
         return Ok(None);
     }
 
+    let source_inputs: Vec<SourceInput> = inputs
+        .iter()
+        .map(|i| SourceInput {
+            tx_id: i.prev_txid.clone(),
+            vout: i.prev_vout,
+            amount_sats: i.prev_amount_sats,
+        })
+        .collect();
+    let sum_in: u64 = inputs.iter().map(|i| i.prev_amount_sats).sum();
+    let sum_out: u64 = outputs.iter().map(|o| o.value_sats).sum();
+    let gas_sats = sum_in.saturating_sub(sum_out);
+
+    // Vault-sent txs are observed as ONE batch outbound covering every output
+    // that is not change back to the sender: to = the first recipient, amount
+    // = the recipient total (Go `getBatchOutboundTxIn`). Only when there is no
+    // such output (pure consolidation) does the consolidate branch apply.
+    if is_protocol_controlled(sender) {
+        let mut to_addr = String::new();
+        let mut total = 0u64;
+        for (i, v) in vouts.iter().enumerate() {
+            if outputs[i].value_sats == 0 || v.addresses.len() != 1 {
+                continue;
+            }
+            let receiver = &v.addresses[0];
+            if receiver.eq_ignore_ascii_case(sender) {
+                continue;
+            }
+            if to_addr.is_empty() {
+                to_addr = receiver.clone();
+            }
+            total += outputs[i].value_sats;
+        }
+        if !to_addr.is_empty() {
+            return Ok(Some(TxInItem {
+                block_height,
+                tx: txid.to_string(),
+                sender: sender.to_string(),
+                to: to_addr,
+                coins: vec![Coin {
+                    asset: BTC_GAS_ASSET.to_string(),
+                    amount_sats: total,
+                }],
+                gas: vec![Coin {
+                    asset: BTC_GAS_ASSET.to_string(),
+                    amount_sats: gas_sats,
+                }],
+                observed_vault_pubkey: String::new(),
+                source_inputs,
+                source_vout: 0,
+            }));
+        }
+    }
+
     // Protocol senders take the consolidate branch (self-outputs); customer
     // sends take the normal branch (outputs to a vault). Matches Go getTxIns,
     // which calls getOutput(sender, tx, consolidate=true) for protocol senders.
@@ -199,10 +264,6 @@ where
         .cloned()
         .ok_or(ExtractError::BadAmount)?;
 
-    let sum_in: u64 = inputs.iter().map(|i| i.prev_amount_sats).sum();
-    let sum_out: u64 = outputs.iter().map(|o| o.value_sats).sum();
-    let gas_sats = sum_in.saturating_sub(sum_out);
-
     let item = TxInItem {
         block_height,
         tx: txid.to_string(),
@@ -217,6 +278,7 @@ where
             amount_sats: gas_sats,
         }],
         observed_vault_pubkey: String::new(),
+        source_inputs,
         source_vout: out.n,
     };
     Ok(Some(item))
@@ -384,12 +446,72 @@ mod tests {
         .unwrap()
         .expect("observation");
 
-        // consolidate branch keeps self-outputs, so the vault-self change is
-        // selected (Go getOutput(sender, tx, consolidate=true) for protocol
-        // senders).
+        // Vault-sent txs observe as a batch outbound (Go
+        // getBatchOutboundTxIn): the recipient output, NOT the change —
+        // otherwise the chain sees an unmatched vault spend and halts BTC
+        // (observed live on thornado-e2e before this was fixed).
+        assert_eq!(item.to, recipient);
+        assert_eq!(item.coins[0].amount_sats, 30_000_000);
+        assert_eq!(item.gas[0].amount_sats, 1_000_000);
+        assert_eq!(item.source_inputs.len(), 1);
+        assert_eq!(item.source_inputs[0].tx_id, "bb");
+        assert_eq!(item.source_inputs[0].amount_sats, 100_000_000);
+    }
+
+    #[test]
+    fn outbound_batch_aggregates_all_recipients() {
+        let vault = p2tr_addr(1);
+        let vault_hex = p2tr_hex(1);
+        let r1_hex = p2tr_hex(3);
+        let r2_hex = p2tr_hex(4);
+        let r1 = p2tr_addr(3);
+
+        let inputs = vec![input("bb", &vault, 100_000_000)];
+        let outputs = vec![
+            out(0, 30_000_000, &r1_hex),
+            out(1, 20_000_000, &r2_hex),
+            out(2, 49_000_000, &vault_hex), // change
+        ];
+        let item = extract_observation(
+            200,
+            "cafe",
+            &inputs,
+            &outputs,
+            &vault,
+            |a| a == vault,
+            |a| a == vault,
+            10_000,
+            NET,
+        )
+        .unwrap()
+        .expect("observation");
+        assert_eq!(item.to, r1); // first recipient
+        assert_eq!(item.coins[0].amount_sats, 50_000_000); // recipient total
+        assert_eq!(item.gas[0].amount_sats, 1_000_000);
+    }
+
+    #[test]
+    fn pure_consolidation_still_observes_self_output() {
+        let vault = p2tr_addr(1);
+        let vault_hex = p2tr_hex(1);
+        let inputs = vec![input("bb", &vault, 100_000_000)];
+        // ALL outputs back to the vault: consolidation.
+        let outputs = vec![out(0, 99_000_000, &vault_hex)];
+        let item = extract_observation(
+            200,
+            "cafe",
+            &inputs,
+            &outputs,
+            &vault,
+            |a| a == vault,
+            |a| a == vault,
+            10_000,
+            NET,
+        )
+        .unwrap()
+        .expect("observation");
         assert_eq!(item.to, vault);
-        assert_eq!(item.coins[0].amount_sats, 69_000_000);
-        let _ = recipient;
+        assert_eq!(item.coins[0].amount_sats, 99_000_000);
     }
 
     #[test]
