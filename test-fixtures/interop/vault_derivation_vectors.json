@@ -1,0 +1,30 @@
+[
+  {
+    "compressed_pubkey_hex": "0284bf7562262bbd6940085748f3be6afa52ae317155181ece31b66351ccffa4b0",
+    "path_index": 0,
+    "internal_xonly_hex": "84bf7562262bbd6940085748f3be6afa52ae317155181ece31b66351ccffa4b0",
+    "output_xonly_hex": "4a95770effc923dbe8125e951a8e0f7a667ae1512eac4a933d8be96fbd591127",
+    "script_hex": "51204a95770effc923dbe8125e951a8e0f7a667ae1512eac4a933d8be96fbd591127"
+  },
+  {
+    "compressed_pubkey_hex": "0284bf7562262bbd6940085748f3be6afa52ae317155181ece31b66351ccffa4b0",
+    "path_index": 1,
+    "internal_xonly_hex": "e4ad815d71073c45a5efd5d8ac14b04dc2274d5edafe150ef8c80ef6c4f8ba05",
+    "output_xonly_hex": "2861397daa7059eb56ec7c848da95f6a0e9bb57cbc40f5087c7c0bb8c9710093",
+    "script_hex": "51202861397daa7059eb56ec7c848da95f6a0e9bb57cbc40f5087c7c0bb8c9710093"
+  },
+  {
+    "compressed_pubkey_hex": "0284bf7562262bbd6940085748f3be6afa52ae317155181ece31b66351ccffa4b0",
+    "path_index": 5,
+    "internal_xonly_hex": "0bd4ab24ed6af2c271cebedb01b2e0836b0be1b27253d316f990587adcc2d317",
+    "output_xonly_hex": "165260e79914585eae747c6ea50dc85c3db085768c8c77d99537e8a2ab4eb495",
+    "script_hex": "5120165260e79914585eae747c6ea50dc85c3db085768c8c77d99537e8a2ab4eb495"
+  },
+  {
+    "compressed_pubkey_hex": "0284bf7562262bbd6940085748f3be6afa52ae317155181ece31b66351ccffa4b0",
+    "path_index": 42,
+    "internal_xonly_hex": "f037353efbabb4ea1e36d2e5975287296505e9db93b1ffa3c90a246fceb85531",
+    "output_xonly_hex": "9126a14ee8a35b0fb224854a14b0caec918211aeb6bf6d273177556b0cf1b8f6",
+    "script_hex": "51209126a14ee8a35b0fb224854a14b0caec918211aeb6bf6d273177556b0cf1b8f6"
+  }
+]

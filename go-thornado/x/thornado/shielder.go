@@ -107,6 +107,47 @@ func ComputeShielderMerkleRoot(commitments []string) (string, error) {
 	return value.String(), nil
 }
 
+// ShielderMerkleAppendResult is the outcome of an incremental Merkle append: the
+// new tree root and the updated filled-subtree state, both decimal field elements.
+type ShielderMerkleAppendResult struct {
+	Root           string
+	FilledSubtrees []string
+}
+
+// AppendShielderMerkleLeaf appends one commitment at nextIndex to a denomination's
+// incremental Merkle tree via the Rust engine, returning the new root and filled
+// subtrees. The root is byte-identical to a full recompute over the same leaves in
+// insertion order (verified in the go-wrappers/shielder parity test).
+func AppendShielderMerkleLeaf(filledSubtrees []string, nextIndex uint64, commitment string) (ShielderMerkleAppendResult, error) {
+	if filledSubtrees == nil {
+		filledSubtrees = []string{}
+	}
+	request, err := json.Marshal(struct {
+		FilledSubtrees []string `json:"filled_subtrees"`
+		NextIndex      uint64   `json:"next_index"`
+		Leaf           string   `json:"leaf"`
+	}{
+		FilledSubtrees: filledSubtrees,
+		NextIndex:      nextIndex,
+		Leaf:           strings.TrimSpace(commitment),
+	})
+	if err != nil {
+		return ShielderMerkleAppendResult{}, err
+	}
+	responseJSON, err := shielder.MerkleAppend(string(request))
+	if err != nil {
+		return ShielderMerkleAppendResult{}, err
+	}
+	var response struct {
+		Root           string   `json:"root"`
+		FilledSubtrees []string `json:"filled_subtrees"`
+	}
+	if err := json.Unmarshal([]byte(responseJSON), &response); err != nil {
+		return ShielderMerkleAppendResult{}, fmt.Errorf("invalid shielder merkle append response: %w", err)
+	}
+	return ShielderMerkleAppendResult{Root: response.Root, FilledSubtrees: response.FilledSubtrees}, nil
+}
+
 func ComputeProtocolShielderCommitment(seed string, denominationSats uint64) (string, error) {
 	receiptJSON, err := shielder.DeriveShieldReceipt(seed, denominationSats, seed)
 	if err != nil {

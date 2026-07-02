@@ -1,0 +1,33 @@
+[package]
+name = "thornado-bifrost-signer"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Pure-Rust FROST signer bifrost: p2p keysign sessions, BTC batch signing, thornado chain client"
+
+[[bin]]
+name = "bifrost-signer"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+base64.workspace = true
+bitcoin.workspace = true
+clap.workspace = true
+frost-core.workspace = true
+frost-secp256k1-tr.workspace = true
+futures.workspace = true
+hex.workspace = true
+libp2p.workspace = true
+libp2p-stream.workspace = true
+rand.workspace = true
+rand_core.workspace = true
+redb.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

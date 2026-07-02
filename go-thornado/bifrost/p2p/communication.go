@@ -12,12 +12,11 @@ import (
 
 	tcrypto "github.com/cometbft/cometbft/crypto"
 	libp2p "github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
-	"github.com/libp2p/go-libp2p-peerstore/addr"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	maddr "github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog"
@@ -275,8 +274,8 @@ func (c *Communication) handleStreamFrost(stream network.Stream) {
 	}
 }
 
-func (c *Communication) getPeers() addr.AddrList {
-	var bootstrapPeers addr.AddrList
+func (c *Communication) getPeers() []maddr.Multiaddr {
+	var bootstrapPeers []maddr.Multiaddr
 
 	cfgBoostrapPeers, err := c.config.GetBootstrapPeers()
 	if err != nil {
@@ -355,7 +354,6 @@ func (c *Communication) bootStrapConnectivityCheck() error {
 }
 
 func (c *Communication) startChannel(privKeyBytes []byte) error {
-	ctx := context.Background()
 	p2pPriKey, err := crypto.UnmarshalSecp256k1PrivateKey(privKeyBytes)
 	if err != nil {
 		c.logger.Error().Msgf("error is %f", err)
@@ -382,7 +380,7 @@ func (c *Communication) startChannel(privKeyBytes []byte) error {
 		opts = append(opts, libp2p.ConnectionGater(c.nodeGater))
 	}
 
-	h, err := libp2p.New(ctx, opts...)
+	h, err := libp2p.New(opts...)
 	if err != nil {
 		return fmt.Errorf("fail to create p2p host: %w", err)
 	}

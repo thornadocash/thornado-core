@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	cmtsecp256k1 "github.com/cometbft/cometbft/crypto/secp256k1"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-peerstore/addr"
+	"github.com/libp2p/go-libp2p/core/peer"
+	maddr "github.com/multiformats/go-multiaddr"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 
@@ -174,10 +174,10 @@ func (s *memoryLocalState) GetLocalState(pubKey string) (p2pstorage.KeygenLocalS
 	return state, nil
 }
 
-func (s *memoryLocalState) SaveAddressBook(map[peer.ID]addr.AddrList) error {
+func (s *memoryLocalState) SaveAddressBook(map[peer.ID][]maddr.Multiaddr) error {
 	return nil
 }
 
-func (s *memoryLocalState) RetrieveP2PAddresses() (addr.AddrList, error) {
+func (s *memoryLocalState) RetrieveP2PAddresses() ([]maddr.Multiaddr, error) {
 	return nil, nil
 }

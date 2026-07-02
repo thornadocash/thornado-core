@@ -11,7 +11,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
+	btcecdsa "github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	sdksecp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 
 	"github.com/thornadocash/go-thornado/common"
@@ -916,16 +917,16 @@ func VerifyShieldAuthorization(depositPubkey string, signatureHex string, deposi
 	if err != nil {
 		return fmt.Errorf("invalid shield authorization signature")
 	}
-	signature, err := btcec.ParseDERSignature(rawSig, btcec.S256())
+	signature, err := btcecdsa.ParseDERSignature(rawSig)
 	if err != nil {
 		return fmt.Errorf("invalid shield authorization signature: %w", err)
 	}
-	halfOrder := new(big.Int).Rsh(btcec.S256().N, 1)
-	if signature.S.Cmp(halfOrder) == 1 {
+	sigS := signature.S()
+	if sigS.IsOverHalfOrder() {
 		return fmt.Errorf("high-S signature rejected")
 	}
 	for _, candidate := range rawPubkey {
-		pubkey, err := btcec.ParsePubKey(candidate, btcec.S256())
+		pubkey, err := btcec.ParsePubKey(candidate)
 		if err == nil && signature.Verify(digest, pubkey) {
 			return nil
 		}
@@ -1033,7 +1034,8 @@ func shielderDustRemainder(ctx cosmos.Context, k keeper.Keeper, amountSats uint6
 
 func insertShielderCommitments(ctx cosmos.Context, k keeper.Keeper, notes []shielderNoteCommitment) error {
 	seen := make(map[string]struct{}, len(notes))
-	byDenomination := make(map[uint64][]string)
+	states := make(map[uint64]types.StoredShielderTreeState)
+	touched := make([]uint64, 0)
 	for _, note := range notes {
 		note.Commitment = strings.TrimSpace(note.Commitment)
 		if note.DenominationSats == 0 {
@@ -1049,35 +1051,68 @@ func insertShielderCommitments(ctx cosmos.Context, k keeper.Keeper, notes []shie
 			return fmt.Errorf("shielder commitment already exists")
 		}
 		seen[note.Commitment] = struct{}{}
+
+		state, err := loadShielderTreeState(ctx, k, states, &touched, note.DenominationSats)
+		if err != nil {
+			return err
+		}
+		index := state.NextIndex
+		appended, err := AppendShielderMerkleLeaf(state.FilledSubtrees, index, note.Commitment)
+		if err != nil {
+			return err
+		}
+
 		if err := k.SetShielderCommitment(ctx, note.Commitment); err != nil {
 			return err
 		}
-		if err := k.SetShielderDenominationCommitment(ctx, note.DenominationSats, note.Commitment); err != nil {
+		if err := k.SetShielderDenominationLeaf(ctx, note.DenominationSats, index, note.Commitment); err != nil {
 			return err
 		}
 		if err := k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
 			Commitment:       note.Commitment,
 			DenominationSats: note.DenominationSats,
 			CreatedHeight:    ctx.BlockHeight(),
+			LeafIndex:        index,
 		}); err != nil {
 			return err
 		}
-		byDenomination[note.DenominationSats] = append(byDenomination[note.DenominationSats], note.Commitment)
+
+		state.NextIndex = index + 1
+		state.FilledSubtrees = appended.FilledSubtrees
+		state.Root = appended.Root
+		states[note.DenominationSats] = state
 	}
-	return refreshShielderRoots(ctx, k, byDenomination)
+	return persistShielderTreeStates(ctx, k, states, touched)
 }
 
-func refreshShielderRoots(ctx cosmos.Context, k keeper.Keeper, byDenomination map[uint64][]string) error {
-	for denomination := range byDenomination {
-		leaves, err := k.GetShielderDenominationCommitments(ctx, denomination)
-		if err != nil {
+// loadShielderTreeState returns the in-progress tree state for a denomination,
+// loading it from the keeper on first touch within the batch (or initializing an
+// empty tree) so multiple commitments in one batch append against evolving state.
+func loadShielderTreeState(ctx cosmos.Context, k keeper.Keeper, states map[uint64]types.StoredShielderTreeState, touched *[]uint64, denominationSats uint64) (types.StoredShielderTreeState, error) {
+	if state, ok := states[denominationSats]; ok {
+		return state, nil
+	}
+	loaded, found, err := k.GetShielderTreeState(ctx, denominationSats)
+	if err != nil {
+		return types.StoredShielderTreeState{}, err
+	}
+	if !found {
+		loaded = types.StoredShielderTreeState{DenominationSats: denominationSats}
+	}
+	states[denominationSats] = loaded
+	*touched = append(*touched, denominationSats)
+	return loaded, nil
+}
+
+// persistShielderTreeStates writes back each touched denomination's tree state and
+// records its new root in the historical root set (so past roots stay spendable).
+func persistShielderTreeStates(ctx cosmos.Context, k keeper.Keeper, states map[uint64]types.StoredShielderTreeState, order []uint64) error {
+	for _, denomination := range order {
+		state := states[denomination]
+		if err := k.SetShielderTreeState(ctx, state); err != nil {
 			return err
 		}
-		root, err := ComputeShielderMerkleRoot(leaves)
-		if err != nil {
-			return err
-		}
-		if err := k.SetShielderMerkleRoot(ctx, denomination, root); err != nil {
+		if err := k.SetShielderMerkleRoot(ctx, denomination, state.Root); err != nil {
 			return err
 		}
 	}
@@ -1808,7 +1843,8 @@ func ShieldShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 		return types.DepositRecord{}, fmt.Errorf("bonder fee claims must not include an operator signature")
 	}
 	seen := make(map[string]struct{}, len(noteCommitments))
-	byDenomination := make(map[uint64][]string)
+	states := make(map[uint64]types.StoredShielderTreeState)
+	touched := make([]uint64, 0)
 	for idx, note := range noteCommitments {
 		if note.Commitment == "" {
 			return types.DepositRecord{}, fmt.Errorf("empty shielder fee commitment")
@@ -1823,10 +1859,21 @@ func ShieldShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 			return types.DepositRecord{}, fmt.Errorf("shielder fee note pubkey already used")
 		}
 		seen[note.Commitment] = struct{}{}
+
+		state, err := loadShielderTreeState(ctx, k, states, &touched, note.DenominationSats)
+		if err != nil {
+			return types.DepositRecord{}, err
+		}
+		index := state.NextIndex
+		appended, err := AppendShielderMerkleLeaf(state.FilledSubtrees, index, note.Commitment)
+		if err != nil {
+			return types.DepositRecord{}, err
+		}
+
 		if err := k.SetShielderCommitment(ctx, note.Commitment); err != nil {
 			return types.DepositRecord{}, err
 		}
-		if err := k.SetShielderDenominationCommitment(ctx, note.DenominationSats, note.Commitment); err != nil {
+		if err := k.SetShielderDenominationLeaf(ctx, note.DenominationSats, index, note.Commitment); err != nil {
 			return types.DepositRecord{}, err
 		}
 		if err := k.SetShielderFeeNotePubKey(ctx, notePubKeys[idx]); err != nil {
@@ -1836,12 +1883,17 @@ func ShieldShielderFees(ctx cosmos.Context, k keeper.Keeper, owner cosmos.AccAdd
 			Commitment:       note.Commitment,
 			DenominationSats: note.DenominationSats,
 			CreatedHeight:    ctx.BlockHeight(),
+			LeafIndex:        index,
 		}); err != nil {
 			return types.DepositRecord{}, err
 		}
-		byDenomination[note.DenominationSats] = append(byDenomination[note.DenominationSats], note.Commitment)
+
+		state.NextIndex = index + 1
+		state.FilledSubtrees = appended.FilledSubtrees
+		state.Root = appended.Root
+		states[note.DenominationSats] = state
 	}
-	if err := refreshShielderRoots(ctx, k, byDenomination); err != nil {
+	if err := persistShielderTreeStates(ctx, k, states, touched); err != nil {
 		return types.DepositRecord{}, err
 	}
 	if isBonder && bonderClaimSats != 0 {
@@ -1921,13 +1973,16 @@ func verifySecp256K1SignaturePayload(pk common.PubKey, sig []byte, payload []byt
 	if len(sig) != 64 {
 		return fmt.Errorf("invalid secp256k1 signature length")
 	}
-	r := new(big.Int).SetBytes(sig[:32])
-	s := new(big.Int).SetBytes(sig[32:])
-	halfOrder := new(big.Int).Rsh(btcec.S256().N, 1)
-	if s.Cmp(halfOrder) == 1 {
+	var r, s btcec.ModNScalar
+	rOverflow := r.SetByteSlice(sig[:32])
+	sOverflow := s.SetByteSlice(sig[32:])
+	if rOverflow || sOverflow {
+		return fmt.Errorf("signature scalar out of range")
+	}
+	if s.IsOverHalfOrder() {
 		return fmt.Errorf("high-S signature rejected")
 	}
-	signature := &btcec.Signature{R: r, S: s}
+	signature := btcecdsa.NewSignature(&r, &s)
 	spk, err := pk.Secp256K1()
 	if err != nil {
 		return fmt.Errorf("fail to get secp256k1 pubkey: %w", err)

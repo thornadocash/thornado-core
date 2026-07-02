@@ -450,6 +450,7 @@ type ShielderNoteRecord struct {
 	Commitment       string `protobuf:"bytes,1,opt,name=commitment,proto3" json:"commitment,omitempty"`
 	DenominationSats uint64 `protobuf:"varint,2,opt,name=denomination_sats,json=denominationSats,proto3" json:"denomination_sats,omitempty"`
 	CreatedHeight    int64  `protobuf:"varint,3,opt,name=created_height,json=createdHeight,proto3" json:"created_height,omitempty"`
+	LeafIndex        uint64 `protobuf:"varint,4,opt,name=leaf_index,json=leafIndex,proto3" json:"leaf_index,omitempty"`
 }
 
 func (m *ShielderNoteRecord) Reset()         { *m = ShielderNoteRecord{} }
@@ -502,6 +503,13 @@ func (m *ShielderNoteRecord) GetDenominationSats() uint64 {
 func (m *ShielderNoteRecord) GetCreatedHeight() int64 {
 	if m != nil {
 		return m.CreatedHeight
+	}
+	return 0
+}
+
+func (m *ShielderNoteRecord) GetLeafIndex() uint64 {
+	if m != nil {
+		return m.LeafIndex
 	}
 	return 0
 }
@@ -1445,6 +1453,11 @@ func (m *ShielderNoteRecord) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.LeafIndex != 0 {
+		i = encodeVarintQueryShielder(dAtA, i, uint64(m.LeafIndex))
+		i--
+		dAtA[i] = 0x20
+	}
 	if m.CreatedHeight != 0 {
 		i = encodeVarintQueryShielder(dAtA, i, uint64(m.CreatedHeight))
 		i--
@@ -2054,6 +2067,9 @@ func (m *ShielderNoteRecord) Size() (n int) {
 	}
 	if m.CreatedHeight != 0 {
 		n += 1 + sovQueryShielder(uint64(m.CreatedHeight))
+	}
+	if m.LeafIndex != 0 {
+		n += 1 + sovQueryShielder(uint64(m.LeafIndex))
 	}
 	return n
 }
@@ -3517,6 +3533,25 @@ func (m *ShielderNoteRecord) Unmarshal(dAtA []byte) error {
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.CreatedHeight |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LeafIndex", wireType)
+			}
+			m.LeafIndex = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQueryShielder
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.LeafIndex |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

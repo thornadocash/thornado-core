@@ -28,10 +28,10 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
 	"github.com/thornadocash/go-thornado/bifrost/observer"
-	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients"
 	"github.com/thornadocash/go-thornado/bifrost/pubkeymanager"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
+	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/btc"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
 	"github.com/thornadocash/go-thornado/constants"
@@ -45,26 +45,6 @@ var (
 	errTxOutRemoved             = errors.New("txout removed from signer queue")
 )
 
-type batchSigningChain interface {
-	SignTxBatch([]types.TxOutItem, int64) ([]byte, []byte, *types.TxInItem, error)
-}
-
-type contextSigningChain interface {
-	SignTxContext(context.Context, types.TxOutItem, int64) ([]byte, []byte, *types.TxInItem, error)
-}
-
-type contextBatchSigningChain interface {
-	SignTxBatchContext(context.Context, []types.TxOutItem, int64) ([]byte, []byte, *types.TxInItem, error)
-}
-
-type batchSignedMarker interface {
-	MarkTxBatchSigned([]types.TxOutItem, string) error
-}
-
-type txObservationRecoverer interface {
-	RecoverTxObservation(types.TxOutItem, int64) (*types.TxInItem, bool, error)
-}
-
 // Signer will pull the tx out from thornado and then forward it to chain
 type Signer struct {
 	logger                 zerolog.Logger
@@ -74,7 +54,7 @@ type Signer struct {
 	stopChan               chan struct{}
 	blockScanner           *blockscanner.BlockScanner
 	thornadoBlockScanner   *ThornadoBlockScan
-	chains                 map[common.Chain]chainclients.ChainClient
+	chains                 map[common.Chain]*btc.Client
 	storage                SignerStorage
 	m                      *metrics.Metrics
 	errCounter             *prometheus.CounterVec
@@ -101,7 +81,7 @@ func NewSigner(cfg config.Bifrost,
 	thorKeys *thornadoclient.Keys,
 	localState storage.LocalStateManager,
 	pubkeyMgr pubkeymanager.PubKeyValidator,
-	chains map[common.Chain]chainclients.ChainClient,
+	chains map[common.Chain]*btc.Client,
 	m *metrics.Metrics,
 	frostKeysignMetricMgr *metrics.FrostKeysignMetricMgr,
 	obs *observer.Observer,
@@ -182,7 +162,7 @@ func NewSigner(cfg config.Bifrost,
 	}, nil
 }
 
-func (s *Signer) getChain(chainID common.Chain) (chainclients.ChainClient, error) {
+func (s *Signer) getChain(chainID common.Chain) (*btc.Client, error) {
 	chain, ok := s.chains[chainID]
 	if !ok {
 		s.logger.Debug().Str("chain", chainID.String()).Msg("is not supported yet")
@@ -455,6 +435,47 @@ func (s *Signer) deferFrostKeysignRetryWithNextLeader(item TxOutStoreItem) error
 	return nil
 }
 
+func (s *Signer) submitFrostLeaderUnavailable(item TxOutStoreItem, cause error) bool {
+	leader := item.SigningLeader
+	if leader.IsEmpty() {
+		var err error
+		leaderStr, err := s.frostPartyLeader(item, item.Height, 0)
+		if err != nil {
+			s.logger.Debug().Err(err).Msg("fail to resolve unavailable FROST leader")
+			return false
+		}
+		leader, err = common.NewPubKey(leaderStr)
+		if err != nil {
+			s.logger.Debug().Err(err).Str("leader", leaderStr).Msg("fail to parse unavailable FROST leader")
+			return false
+		}
+	}
+	blame := ttypes.Blame{
+		FailReason: "FROST party leader unavailable",
+		BlameNodes: []ttypes.Node{{
+			Pubkey: leader.String(),
+		}},
+	}
+	if cause != nil {
+		blame.FailReason = cause.Error()
+	}
+	txID, err := s.thornadoBridge.PostKeysignFailure(blame, item.Height, item.TxOutItem.Coins, item.TxOutItem.VaultPubKey)
+	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Int64("height", item.Height).
+			Stringer("leader", leader).
+			Msg("fail to submit FROST leader unavailable vote")
+		return false
+	}
+	s.logger.Warn().
+		Int64("height", item.Height).
+		Stringer("leader", leader).
+		Stringer("tx_id", txID).
+		Msg("submitted FROST leader unavailable vote")
+	return true
+}
+
 func (s *Signer) txOutItemCompleted(item TxOutStoreItem) (bool, common.TxID, error) {
 	txOut, err := s.thornadoBridge.GetKeysign(item.Height, item.TxOutItem.VaultPubKey.String())
 	if err != nil {
@@ -591,6 +612,15 @@ func txOutItemPresent(item TxOutStoreItem, txOut types.TxOut) bool {
 	return false
 }
 
+func txOutItemPresentInList(item TxOutStoreItem, txOuts []types.TxOut) bool {
+	for _, txOut := range txOuts {
+		if txOutItemPresent(item, txOut) {
+			return true
+		}
+	}
+	return false
+}
+
 func currentTxOutItemForSigning(item TxOutStoreItem, txOut types.TxOut) (types.TxOutItem, bool) {
 	if txOut.Height != item.Height {
 		return types.TxOutItem{}, false
@@ -652,6 +682,14 @@ func (s *Signer) removeUnsignedTxOutMissingFromThornado(item TxOutStoreItem) boo
 		return false
 	}
 	if txOutItemPresent(item, txOut) {
+		return false
+	}
+	txOuts, err := s.thornadoBridge.GetAllTxOutKeysigns()
+	if err != nil {
+		s.logger.Debug().Err(err).Interface("tx", item.TxOutItem).Msg("fail to cross-check txout history before signing")
+		return false
+	}
+	if txOutItemPresentInList(item, txOuts) {
 		return false
 	}
 	s.logger.Info().
@@ -1122,9 +1160,9 @@ func (s *Signer) signAndBroadcast(ctx context.Context, item *TxOutStoreItem) (ch
 		s.logger.Info().Str("signer_address", chain.GetAddress(tx.VaultPubKey)).Msg("different vault address, ignore")
 		return nil, nil, false, nil
 	}
-	if recoverer, ok := chain.(txObservationRecoverer); ok {
+	{
 		s.debugSigningEvent(perfID, "recover_observation_start", "")
-		obs, recovered, recoverErr := recoverer.RecoverTxObservation(tx, blockHeight)
+		obs, recovered, recoverErr := chain.RecoverTxObservation(tx, blockHeight)
 		if recoverErr != nil {
 			s.logger.Debug().
 				Err(recoverErr).
@@ -1259,8 +1297,8 @@ func (s *Signer) signAndBroadcast(ctx context.Context, item *TxOutStoreItem) (ch
 
 	// If this chain provides a vault lock, hold it across sign and broadcast to avoid
 	// concurrent UTXO selection or local double-spend on ambiguous broadcast errors.
-	if locker, ok := chain.(interface{ GetVaultLock(string) *sync.Mutex }); ok {
-		lock := locker.GetVaultLock(tx.VaultPubKey.String())
+	{
+		lock := chain.GetVaultLock(tx.VaultPubKey.String())
 		s.debugSigningEvent(perfID, "vault_lock_acquire_start", tx.VaultPubKey.String())
 		if !lock.TryLock() {
 			if completed, outHash, completeErr := s.txOutItemCompleted(*item); completeErr != nil {
@@ -1298,20 +1336,11 @@ func (s *Signer) signAndBroadcast(ctx context.Context, item *TxOutStoreItem) (ch
 		signedTx = item.SignedTx
 		observation = item.Observation
 	} else {
-		var clearFrostPartyLeader func()
-		if partyLeaderSetter, ok := chain.(interface {
-			SetFrostPartyLeader(string)
-			ClearFrostPartyLeader()
-		}); ok {
-			if leaderErr != nil {
-				s.logger.Debug().Err(leaderErr).Msg("fail to resolve FROST party leader")
-			} else if resolvedPartyLeader != "" {
-				partyLeaderSetter.SetFrostPartyLeader(resolvedPartyLeader)
-				clearFrostPartyLeader = partyLeaderSetter.ClearFrostPartyLeader
-			}
-		}
-		if clearFrostPartyLeader != nil {
-			defer clearFrostPartyLeader()
+		if leaderErr != nil {
+			s.logger.Debug().Err(leaderErr).Msg("fail to resolve FROST party leader")
+		} else if resolvedPartyLeader != "" {
+			chain.SetFrostPartyLeader(resolvedPartyLeader)
+			defer chain.ClearFrostPartyLeader()
 		}
 		startKeySign := time.Now()
 		s.debugSigningEvent(perfID, "batch_collect_start", "")
@@ -1325,19 +1354,9 @@ func (s *Signer) signAndBroadcast(ctx context.Context, item *TxOutStoreItem) (ch
 				Int64("height", height).
 				Uint64("epoch", txOut.Epoch).
 				Msg("signing BTC txout batch")
-			if batchSigner, ok := chain.(contextBatchSigningChain); ok {
-				signedTx, checkpoint, observation, err = batchSigner.SignTxBatchContext(ctx, batchItems, blockHeight)
-			} else if batchSigner, ok := chain.(batchSigningChain); ok {
-				signedTx, checkpoint, observation, err = batchSigner.SignTxBatch(batchItems, blockHeight)
-			} else {
-				return nil, nil, false, fmt.Errorf("chain %s does not support txout batch signing", tx.Chain)
-			}
+			signedTx, checkpoint, observation, err = chain.SignTxBatchContext(ctx, batchItems, blockHeight)
 		} else {
-			if signer, ok := chain.(contextSigningChain); ok {
-				signedTx, checkpoint, observation, err = signer.SignTxContext(ctx, tx, blockHeight)
-			} else {
-				signedTx, checkpoint, observation, err = chain.SignTx(tx, blockHeight)
-			}
+			signedTx, checkpoint, observation, err = chain.SignTxContext(ctx, tx, blockHeight)
 		}
 		if err != nil {
 			if errors.Is(err, frost.ErrLocalPartyNotSelected) || strings.Contains(err.Error(), frost.ErrLocalPartyNotSelected.Error()) {
@@ -1424,12 +1443,10 @@ func (s *Signer) signAndBroadcast(ctx context.Context, item *TxOutStoreItem) (ch
 		Msg("broadcasted tx to chain")
 
 	if len(batchItems) > 0 {
-		if marker, ok := chain.(batchSignedMarker); ok {
-			if err := marker.MarkTxBatchSigned(batchItems, hash); err != nil {
-				s.logger.Error().Err(err).Str("txid", hash).Msg("fail to mark BTC txout batch as signed")
-			} else {
-				s.debugSigningEvent(perfID, "batch_marked_signed", fmt.Sprintf("items=%d", len(batchItems)))
-			}
+		if err := chain.MarkTxBatchSigned(batchItems, hash); err != nil {
+			s.logger.Error().Err(err).Str("txid", hash).Msg("fail to mark BTC txout batch as signed")
+		} else {
+			s.debugSigningEvent(perfID, "batch_marked_signed", fmt.Sprintf("items=%d", len(batchItems)))
 		}
 	}
 
@@ -1704,6 +1721,7 @@ func (s *Signer) processTransaction(item TxOutStoreItem) {
 			return
 		}
 		if errors.Is(err, errFrostLeaderUnavailable) {
+			s.submitFrostLeaderUnavailable(item, err)
 			if deferErr := s.deferFrostKeysignRetryWithNextLeader(item); deferErr != nil {
 				s.logger.Debug().Err(deferErr).Msg("fail to defer FROST keysign retry to next leader")
 			}

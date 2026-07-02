@@ -7,7 +7,7 @@ import (
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
@@ -43,64 +43,115 @@ func btcGasCoinFromNativeSats(sats uint64) common.Coin {
 	return coin
 }
 
-func btcTxOutBatchHeight(ctx cosmos.Context, k keeper.Keeper, height int64) (int64, uint64) {
-	windowBlocks := constants.MinutesToBlocks(
-		k.GetConfigInt64(ctx, constants.Withdrawal_BatchWindowMinutes),
-		k.GetConfigInt64(ctx, constants.Chain_BlockTimeSeconds),
-	)
-	if windowBlocks <= 0 {
-		return height, 0
-	}
-
-	origin := maxInt64
+// btcVaultBatchTxOut returns the txout block collecting batchable outbounds for the
+// given vault. Each vault grows its own batch: an open pending_batch block whose close
+// height has not yet arrived is reused; otherwise a new block is opened one batch window
+// ahead with the vault's next epoch sequence number.
+func btcVaultBatchTxOut(ctx cosmos.Context, k keeper.Keeper, vault common.PubKey) (*TxOut, error) {
 	iterator := k.GetTxOutIterator(ctx)
 	if iterator == nil {
-		return height, 0
+		return nil, fmt.Errorf("fail to create txout iterator")
 	}
 	defer iterator.Close()
+	var open *TxOut
+	nextEpoch := uint64(0)
 	for ; iterator.Valid(); iterator.Next() {
 		var txOut TxOut
 		if err := k.Cdc().Unmarshal(iterator.Value(), &txOut); err != nil {
 			continue
 		}
-		if txOut.Status == "" {
+		batchVault, ok := txOutBatchVault(txOut)
+		if !ok || !batchVault.Equals(vault) {
 			continue
 		}
-		candidate := txOut.Height - (int64(txOut.Epoch)+1)*windowBlocks
-		if candidate < origin {
-			origin = candidate
+		if txOut.Epoch+1 > nextEpoch {
+			nextEpoch = txOut.Epoch + 1
+		}
+		if txOut.Status != TxOutStatusPendingBatch || txOut.Height <= ctx.BlockHeight() {
+			continue
+		}
+		if open == nil || txOut.Height < open.Height {
+			openCopy := txOut
+			open = &openCopy
 		}
 	}
-	if origin == maxInt64 {
-		origin = ctx.BlockHeight()
+	if open != nil {
+		return open, nil
 	}
-	epoch := uint64((height - origin) / windowBlocks)
-	closeHeight := origin + (int64(epoch)+1)*windowBlocks
-	return closeHeight, epoch
+
+	windowBlocks := constants.MinutesToBlocks(
+		k.GetConfigInt64(ctx, constants.Withdrawal_BatchWindowMinutes),
+		k.GetConfigInt64(ctx, constants.Chain_BlockTimeSeconds),
+	)
+	if windowBlocks < 0 {
+		windowBlocks = 0
+	}
+	height, err := nextEmptyTxOutHeight(ctx, k, ctx.BlockHeight()+windowBlocks)
+	if err != nil {
+		return nil, err
+	}
+	block, err := k.GetTxOut(ctx, height)
+	if err != nil {
+		return nil, err
+	}
+	block.Epoch = nextEpoch
+	block.Status = TxOutStatusPendingBatch
+	return block, nil
+}
+
+// txOutBatchVault returns the vault pubkey of a batch block: a block whose items are
+// all batchable and belong to a single vault.
+func txOutBatchVault(txOut TxOut) (common.PubKey, bool) {
+	if len(txOut.TxArray) == 0 {
+		return common.EmptyPubKey, false
+	}
+	vault := txOut.TxArray[0].VaultPubKey
+	if vault.IsEmpty() {
+		return common.EmptyPubKey, false
+	}
+	for _, item := range txOut.TxArray {
+		if !types.IsBatchableTxOutType(item.TxType) || !item.VaultPubKey.Equals(vault) {
+			return common.EmptyPubKey, false
+		}
+	}
+	return vault, true
 }
 
 func appendBTCExactTxOut(ctx cosmos.Context, k keeper.Keeper, height int64, item TxOutItem) error {
 	item.TxType = item.GetTxType()
 	if types.IsBatchableTxOutType(item.TxType) {
-		batchHeight, epoch := btcTxOutBatchHeight(ctx, k, height)
-		block, err := k.GetTxOut(ctx, batchHeight)
+		if item.VaultPubKey.IsEmpty() {
+			return fmt.Errorf("fail to batch bitcoin txout: empty vault pubkey")
+		}
+		block, err := btcVaultBatchTxOut(ctx, k, item.VaultPubKey)
 		if err != nil {
 			return err
 		}
-		block.Epoch = epoch
-		if block.Status == "" {
-			block.Status = TxOutStatusPendingBatch
-		}
 		block.TxArray = append(block.TxArray, item)
+		// a batch queued behind an unfinished predecessor may not have spendable
+		// source inputs yet; the end-block refresh fills them in once the prior
+		// batch completes, and promotion waits until every item has sources
 		if err := refreshBTCExactTxOutBlock(ctx, k, block); err != nil {
-			return err
+			ctx.Logger().Info("deferring bitcoin batch source input selection", "height", block.Height, "error", err)
 		}
 		return k.SetTxOut(ctx, block)
 	}
 
-	block, err := k.GetTxOut(ctx, height)
-	if err != nil {
-		return err
+	var block *TxOut
+	var err error
+	for offset := int64(0); offset < 1000; offset++ {
+		block, err = k.GetTxOut(ctx, height+offset)
+		if err != nil {
+			return err
+		}
+		if txOutCanAppendImmediateBTCItem(block) {
+			height += offset
+			break
+		}
+		block = nil
+	}
+	if block == nil {
+		return fmt.Errorf("fail to find bitcoin immediate txout slot from height %d", height)
 	}
 	if block.Status == "" {
 		block.Status = TxOutStatusPendingSign
@@ -110,6 +161,10 @@ func appendBTCExactTxOut(ctx cosmos.Context, k keeper.Keeper, height int64, item
 		return err
 	}
 	return k.SetTxOut(ctx, block)
+}
+
+func txOutCanAppendImmediateBTCItem(txOut *TxOut) bool {
+	return txOut == nil || txOut.IsEmpty() || txOut.Status == ""
 }
 
 func refreshBTCExactTxOut(ctx cosmos.Context, k keeper.Keeper, height int64) error {
@@ -351,7 +406,6 @@ func btcVaultSourceCandidates(ctx cosmos.Context, k keeper.Keeper, vault Vault, 
 			}
 			if item.OutHash.IsEmpty() ||
 				!item.Chain.Equals(common.BTCChain) ||
-				!item.VaultPubKey.Equals(vault.PubKey) ||
 				!item.Coin.Asset.Equals(common.BTCAsset) ||
 				!item.ToAddress.Equals(sourceAddr) ||
 				item.Coin.Amount.IsZero() {

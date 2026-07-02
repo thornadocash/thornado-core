@@ -28,6 +28,7 @@ var Upgrades = []upgrades.Upgrade{
 	// v3_12_0.NewUpgrade(),
 	//
 	// Example pattern: https://gitlab.com/thornado/thornado/-/merge_requests/3837
+	standard.NewUpgrade("3.17.1"),
 }
 
 // RegisterUpgradeHandlers registers the chain upgrade handlers

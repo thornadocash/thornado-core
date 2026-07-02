@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcutil/bech32"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil/bech32"
 	"github.com/cometbft/cometbft/crypto"
 	"github.com/cosmos/cosmos-sdk/crypto/codec"
 
@@ -81,7 +81,7 @@ func (p PubKey) Secp256K1() (*btcec.PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	return btcec.ParsePubKey(pk.Bytes(), btcec.S256())
+	return btcec.ParsePubKey(pk.Bytes())
 }
 
 // GetAddress will return an address for the given chain

@@ -140,3 +140,122 @@ func TestRegisterCallbacksReplayExistingSecpVault(t *testing.T) {
 		t.Fatal("existing vault deposit address was not registered during path callback replay")
 	}
 }
+
+func TestRegisterPathCallbackDoesNotBlockOnExistingReplay(t *testing.T) {
+	pk, err := common.NewPubKeyFromCrypto(secp256k1.GenPrivKey().PubKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pkm := &PubKeyManager{
+		rwMutex:        &sync.RWMutex{},
+		logger:         zerolog.Nop(),
+		callback:       []OnNewPubKey{},
+		pathCallback:   []OnNewPubKeyPath{},
+		vaultAddresses: map[string]common.ChainVaultInfo{},
+		pubkeys: []pubKeyInfo{{
+			PubKey: pk,
+			Signer: true,
+			Algo:   common.SigningAlgoSecp256k1,
+		}},
+	}
+
+	release := make(chan struct{})
+	defer close(release)
+	returned := make(chan struct{})
+	go func() {
+		pkm.RegisterPathCallback(func(common.PubKey, uint64) error {
+			<-release
+			return nil
+		})
+		close(returned)
+	}()
+
+	select {
+	case <-returned:
+	case <-time.After(time.Second):
+		t.Fatal("RegisterPathCallback blocked on existing vault path replay")
+	}
+}
+
+func TestDepositAddressLookaheadDeduplicatesPathTypes(t *testing.T) {
+	pk, err := common.NewPubKeyFromCrypto(secp256k1.GenPrivKey().PubKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pkm := &PubKeyManager{
+		rwMutex:        &sync.RWMutex{},
+		logger:         zerolog.Nop(),
+		callback:       []OnNewPubKey{},
+		pathCallback:   []OnNewPubKeyPath{},
+		vaultAddresses: map[string]common.ChainVaultInfo{},
+	}
+
+	seen := make(map[uint64]struct{})
+	pkm.fireDepositAddressLookaheadToCallback(pk, func(_ common.PubKey, pathIndex uint64) error {
+		if _, ok := seen[pathIndex]; ok {
+			t.Fatalf("duplicate path callback for %d", pathIndex)
+		}
+		seen[pathIndex] = struct{}{}
+		return nil
+	})
+
+	if got, want := len(seen), int(common.DepositAddressLookahead); got != want {
+		t.Fatalf("unexpected path callback count: got %d want %d", got, want)
+	}
+}
+
+func TestDepositAddressLookaheadCallbacksSerialized(t *testing.T) {
+	pk1, err := common.NewPubKeyFromCrypto(secp256k1.GenPrivKey().PubKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	pk2, err := common.NewPubKeyFromCrypto(secp256k1.GenPrivKey().PubKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pkm := &PubKeyManager{
+		rwMutex:        &sync.RWMutex{},
+		logger:         zerolog.Nop(),
+		callback:       []OnNewPubKey{},
+		pathCallback:   []OnNewPubKeyPath{},
+		vaultAddresses: map[string]common.ChainVaultInfo{},
+	}
+
+	var mu sync.Mutex
+	active := 0
+	maxActive := 0
+	callback := func(common.PubKey, uint64) error {
+		mu.Lock()
+		active++
+		if active > maxActive {
+			maxActive = active
+		}
+		mu.Unlock()
+
+		time.Sleep(time.Millisecond)
+
+		mu.Lock()
+		active--
+		mu.Unlock()
+		return nil
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		pkm.fireDepositAddressLookaheadToCallback(pk1, callback)
+	}()
+	go func() {
+		defer wg.Done()
+		pkm.fireDepositAddressLookaheadToCallback(pk2, callback)
+	}()
+	wg.Wait()
+
+	if maxActive != 1 {
+		t.Fatalf("deposit lookahead callbacks ran concurrently: max active %d", maxActive)
+	}
+}

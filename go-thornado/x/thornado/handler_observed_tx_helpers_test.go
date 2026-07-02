@@ -757,6 +757,50 @@ func TestDirectBaseVaultInboundRefundPreemptsDepositMatch(t *testing.T) {
 	}
 }
 
+func TestDirectBaseVaultInboundRefundWhenVaultRetiring(t *testing.T) {
+	SetupConfigForTest()
+	ctx := testContext(24052)
+	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 1
+	mgr := newShielderFlowTestManager(k)
+	vaultPubKey := GetRandomPubKey()
+	vault := NewVaultV2(10, RetiringVault, BaseVault, vaultPubKey, common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	k.baseVaults = Vaults{vault}
+	rootAddr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	txID := GetRandomTxHash()
+	tx := common.NewTx(
+		txID,
+		GetRandomBTCAddress(),
+		rootAddr,
+		common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(20_000_000))),
+		common.Gas{},
+	)
+	tx.SourceVout = 0
+	observed := common.NewObservedTx(tx, 67508, vaultPubKey, 67508)
+	voter := ObservedTxVoter{TxID: txID, Tx: observed}
+	k.SetObservedTxInVoter(ctx, voter)
+
+	if err := handleObservedTxInQuorum(ctx, mgr, nil, nil, nil, observed, voter, nil, true); err != nil {
+		t.Fatal(err)
+	}
+	record := k.deposits[txID.String()]
+	if record.Status != types.DepositStatusReturnQueued || !record.SweepComplete {
+		t.Fatalf("retiring base-vault inbound was not queued for refund: %#v", record)
+	}
+	if len(k.txOuts) != 1 || k.txOuts[0].GetTxType() != types.TxOutTypeRefund {
+		t.Fatalf("expected one refund txout, got %#v", k.txOuts)
+	}
+	if !k.txOuts[0].InHash.Equals(txID) ||
+		len(k.txOuts[0].SourceInputs) != 1 ||
+		!k.txOuts[0].SourceInputs[0].TxId.Equals(txID) ||
+		k.txOuts[0].SourceInputs[0].Vout != 0 {
+		t.Fatalf("refund did not pin the direct root deposit source: %#v", k.txOuts[0])
+	}
+}
+
 func TestBTCConsolidateObservedSubsetSettlesStaleTxOut(t *testing.T) {
 	SetupConfigForTest()
 	ctx := testContext(100)
@@ -1044,6 +1088,85 @@ func TestBTCMigrationSourceInputsSelectLargestUTXORegardlessOfDiscoveryOrder(t *
 	}
 	if !inputs[0].TxId.Equals(hugeTx) || inputs[0].AmountSats != 90_000_000 {
 		t.Fatalf("expected huge UTXO to be selected first, got %#v", inputs[0])
+	}
+}
+
+func TestBTCMigrationSourceInputsSelectPriorMigrationDestinationUTXO(t *testing.T) {
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+	networkMgr := &NetworkMgr{k: k}
+
+	oldPubKey := GetRandomPubKey()
+	retiringPubKey := GetRandomPubKey()
+	vault := NewVaultV2(20, RetiringVault, BaseVault, retiringPubKey, common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	sourceAddr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	migrationTx, err := common.NewTxID("9411111111111111111111111111111111111111111111111111111111111111")
+	if err != nil {
+		t.Fatal(err)
+	}
+	k.txOutByHeight[10] = TxOut{
+		Height: 10,
+		TxArray: []TxOutItem{
+			{
+				Chain:       common.BTCChain,
+				ToAddress:   sourceAddr,
+				VaultPubKey: oldPubKey,
+				Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(80_000_000)),
+				OutHash:     migrationTx,
+				OutVout:     0,
+				TxType:      types.TxOutTypeMigrate,
+			},
+		},
+	}
+
+	inputs := networkMgr.btcMigrationSourceInputs(ctx, vault, sourceAddr, cosmos.NewUint(50_000_000))
+	if len(inputs) != 1 {
+		t.Fatalf("expected one selected migrated UTXO, got %d", len(inputs))
+	}
+	if !inputs[0].TxId.Equals(migrationTx) || inputs[0].Vout != 0 || inputs[0].AmountSats != 80_000_000 {
+		t.Fatalf("expected prior migration destination UTXO to be selected, got %#v", inputs[0])
+	}
+}
+
+func TestBTCVaultSourceInputsSelectPriorMigrationDestinationUTXO(t *testing.T) {
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+
+	oldPubKey := GetRandomPubKey()
+	activePubKey := GetRandomPubKey()
+	vault := NewVaultV2(20, ActiveVault, BaseVault, activePubKey, common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	sourceAddr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	migrationTx, err := common.NewTxID("9511111111111111111111111111111111111111111111111111111111111111")
+	if err != nil {
+		t.Fatal(err)
+	}
+	k.txOutByHeight[10] = TxOut{
+		Height: 10,
+		TxArray: []TxOutItem{
+			{
+				Chain:       common.BTCChain,
+				ToAddress:   sourceAddr,
+				VaultPubKey: oldPubKey,
+				Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(80_000_000)),
+				OutHash:     migrationTx,
+				OutVout:     0,
+				TxType:      types.TxOutTypeMigrate,
+			},
+		},
+	}
+
+	inputs := btcSelectVaultSourceInputs(ctx, k, vault, sourceAddr, cosmos.NewUint(50_000_000), 0)
+	if len(inputs) != 1 {
+		t.Fatalf("expected one selected migrated UTXO, got %d", len(inputs))
+	}
+	if !inputs[0].TxId.Equals(migrationTx) || inputs[0].Vout != 0 || inputs[0].AmountSats != 80_000_000 {
+		t.Fatalf("expected prior migration destination UTXO to be selected, got %#v", inputs[0])
 	}
 }
 
@@ -2274,6 +2397,83 @@ func TestBTCMigrationReplayRepairDoesNotFallThroughAfterSourceSettled(t *testing
 	}
 	if !storedSource.GetCoin(common.BTCAsset).Amount.IsZero() {
 		t.Fatalf("settled migration replay changed source balance: %s", storedSource.GetCoin(common.BTCAsset).Amount)
+	}
+}
+
+func TestBTCInternalOutboundReplayRepairIsIdempotent(t *testing.T) {
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+	mgr := newShielderFlowTestManager(k)
+
+	vaultPubKey := GetRandomPubKey()
+	vault := NewVaultV2(10, ActiveVault, BaseVault, vaultPubKey, common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	vault.AddFunds(common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(100_000_000))))
+	k.baseVaults = Vaults{vault}
+
+	from, err := common.DeriveBTCTaprootAddress(vaultPubKey, common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	to := GetRandomBTCAddress()
+	outHash, err := common.NewTxID("C611111111111111111111111111111111111111111111111111111111111111")
+	if err != nil {
+		t.Fatal(err)
+	}
+	inHash, err := common.NewTxID("D611111111111111111111111111111111111111111111111111111111111111")
+	if err != nil {
+		t.Fatal(err)
+	}
+	k.txOutByHeight[90] = TxOut{
+		Height: 90,
+		Status: TxOutStatusComplete,
+		TxArray: []TxOutItem{{
+			Chain:          common.BTCChain,
+			ToAddress:      to,
+			VaultPubKey:    vaultPubKey,
+			Coin:           common.NewCoin(common.BTCAsset, cosmos.NewUint(10_000_000)),
+			InHash:         inHash,
+			OutHash:        outHash,
+			VaultPathIndex: common.MainVaultPathIndex,
+			TxType:         types.TxOutTypeSweep,
+			SourceInputs:   []types.TxOutInput{{TxId: inHash, Vout: 0, AmountSats: 10_000_000}},
+		}},
+	}
+	tx := common.NewObservedTx(
+		common.NewTx(
+			outHash,
+			from,
+			to,
+			common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(10_000_000))),
+			common.Gas{},
+		),
+		99,
+		vaultPubKey,
+		99,
+	)
+	tx.Tx.SourceInputs = []common.TxInput{{TxID: inHash, Vout: 0, AmountSats: 10_000_000}}
+
+	if !repairBTCInternalOutboundReplay(ctx, mgr, tx) {
+		t.Fatal("expected first replay repair to update vault accounting")
+	}
+	if repairBTCInternalOutboundReplay(ctx, mgr, tx) {
+		t.Fatal("duplicate replay repair should be ignored")
+	}
+	storedVault, err := k.GetVault(ctx, vaultPubKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := storedVault.GetCoin(common.BTCAsset).Amount.Uint64(); got != 90_000_000 {
+		t.Fatalf("duplicate replay repair changed vault balance: %d", got)
+	}
+	if storedVault.OutboundTxCount != 1 {
+		t.Fatalf("duplicate replay repair changed outbound count: %d", storedVault.OutboundTxCount)
+	}
+	voter, err := k.GetObservedTxOutVoter(ctx, outHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !observedTxOutVoterDone(voter) {
+		t.Fatal("repair did not mark outbound voter done")
 	}
 }
 

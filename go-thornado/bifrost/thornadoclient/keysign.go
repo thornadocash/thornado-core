@@ -237,7 +237,7 @@ func verifyAndDecodeKeysign(query QueryKeysign, pubKey signatureVerifier, blockH
 }
 
 func (b *thornadoBridge) GetPendingTxOutKeysigns() ([]types.TxOut, error) {
-	body, _, err := b.getWithPath(TxOutEndpoint)
+	body, _, err := b.getWithPath(TxOutEndpoint + "/all")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pending txouts: %w", err)
 	}
@@ -246,29 +246,14 @@ func (b *thornadoBridge) GetPendingTxOutKeysigns() ([]types.TxOut, error) {
 		return nil, fmt.Errorf("failed to unmarshal pending txouts: %w", err)
 	}
 
-	seen := make(map[string]struct{})
 	txOuts := make([]types.TxOut, 0, len(queue.Txouts))
 	for _, txOut := range queue.Txouts {
 		parsedTxOut, ok := txOut.txOut()
 		if !ok {
 			continue
 		}
-		for _, item := range parsedTxOut.TxArray {
-			if item.VaultPubKey == "" {
-				continue
-			}
-			key := fmt.Sprintf("%d/%s", parsedTxOut.Height, item.VaultPubKey)
-			if _, ok := seen[key]; ok {
-				continue
-			}
-			seen[key] = struct{}{}
-			keysign, err := b.GetKeysign(parsedTxOut.Height, item.VaultPubKey.String())
-			if err != nil {
-				return nil, fmt.Errorf("failed to get pending keysign %s: %w", key, err)
-			}
-			if len(keysign.TxArray) > 0 && hasUnsignedTxOutItem(keysign) {
-				txOuts = append(txOuts, keysign)
-			}
+		if len(parsedTxOut.TxArray) > 0 && hasUnsignedTxOutItem(parsedTxOut) {
+			txOuts = append(txOuts, parsedTxOut)
 		}
 	}
 	return txOuts, nil

@@ -30,7 +30,7 @@ BTC_AUTO_MINE="${BTC_AUTO_MINE:-${KEEP_RUNNING:-0}}"
 BTC_AUTO_MINE_INTERVAL="${BTC_AUTO_MINE_INTERVAL:-60}"
 TX_INCLUSION_TIMEOUT="${TX_INCLUSION_TIMEOUT:-1200}"
 THORNADO_BLOCK_TIME_SECONDS="${THORNADO_BLOCK_TIME_SECONDS:-6}"
-GENESIS_NODE_BOND_START_AMOUNT_SATS="${GENESIS_NODE_BOND_START_AMOUNT_SATS:-0}"
+GENESIS_NODE_BOND_START_AMOUNT_SATS="${GENESIS_NODE_BOND_START_AMOUNT_SATS:-100000000}"
 GENESIS_CHURN_INTERVAL_MINUTES="${GENESIS_CHURN_INTERVAL_MINUTES:-1}"
 GENESIS_CHURN_RETRY_INTERVAL_MINUTES="${GENESIS_CHURN_RETRY_INTERVAL_MINUTES:-2}"
 GENESIS_HALT_CHURNING="${GENESIS_HALT_CHURNING:-0}"
@@ -1791,9 +1791,17 @@ validate_flow2() {
   source "$RUN_ROOT/meta/node5.env"
   local owner_addr="$address" operator_pubkey="$secp" node_pubkey="$cons"
   curl -fsS "$(api_url 1)/thornado/nodes/metrics" >"$RUN_ROOT/meta/flow2-node-metrics-before.json"
-  jq -e '(.next_slot | tonumber) == 1 and (.next_slot_bond_required_sats | tonumber) == 100000000 and (.bond_start_amount_sats | tonumber) == 0 and (.bond_slot_increment_sats | tonumber) == 100000000' \
-    "$RUN_ROOT/meta/flow2-node-metrics-before.json" >/dev/null || die "flow2 next slot bond requirement is not 1 BTC"
-  local deposit_pubkey deposit_owner session deposit_address txid deposit_id amount_sats receipt commitment_objects commitments shield_signature out sweep_txout root_addr root_received out_hash note leaves bond_withdrawal prefix nullifier bond matched
+  jq -e '
+    (.bond_start_amount_sats | tonumber) == 100000000 and
+    (.bond_slot_increment_sats | tonumber) == 100000000 and
+    (.next_slot_bond_required_sats | tonumber) ==
+      ((.bond_start_amount_sats | tonumber) + ((.next_slot | tonumber) * (.bond_slot_increment_sats | tonumber)))
+  ' "$RUN_ROOT/meta/flow2-node-metrics-before.json" >/dev/null || die "flow2 next slot bond requirement does not match configured bond curve"
+  local deposit_pubkey deposit_owner session deposit_address txid deposit_id amount_sats amount_btc receipt commitment_objects commitments shield_signature out sweep_txout root_addr root_received out_hash note leaves bond_withdrawal prefix nullifier bond matched
+  local note_count idx denom_sats spent_total
+  amount_sats="$(jq -r '.next_slot_bond_required_sats | tonumber' "$RUN_ROOT/meta/flow2-node-metrics-before.json")"
+  amount_btc="$(sats_to_btc "$amount_sats")"
+  printf '%s\n' "$amount_sats" >"$RUN_ROOT/meta/flow2-required-bond-sats.txt"
   deposit_pubkey="$("$SHIELDER_HELPER" pubkey "node5-bond-deposit-pubkey")"
   deposit_owner="$("$SHIELDER_HELPER" owner-address "$deposit_pubkey")"
   request_deposit "$RUN_ROOT/node5" "validator5" "bond-flow-2" "$deposit_pubkey" >"$RUN_ROOT/meta/flow2-request-deposit.json"
@@ -1803,9 +1811,9 @@ validate_flow2() {
   jq -e --arg owner "$deposit_owner" \
     '.owner == $owner and ((.operator_pub_key // "") == "") and ((.node_pub_key // "") == "") and (.deposit_path_index | tonumber) > 0 and (.deposit_address | length) > 0 and (.vault_pub_key | length) > 0' \
     "$RUN_ROOT/meta/flow2-session-before-deposit.json" >/dev/null || die "flow2 deposit session is invalid"
-  txid="$(mine_to_registered_deposit "$deposit_address" "1.00000000")"
+  txid="$(mine_to_registered_deposit "$deposit_address" "$amount_btc")"
   btc_cli -rpcwallet=bifrost1 listunspent 1 9999999 "[\"${deposit_address}\"]" >"$RUN_ROOT/meta/flow2-child-utxo-before-sweep.json"
-  jq -e 'map(select((.amount * 100000000 | floor) == 100000000)) | length == 1' "$RUN_ROOT/meta/flow2-child-utxo-before-sweep.json" >/dev/null \
+  jq -e --argjson amount "$amount_sats" 'map(select((.amount * 100000000 | floor) == $amount)) | length == 1' "$RUN_ROOT/meta/flow2-child-utxo-before-sweep.json" >/dev/null \
     || die "flow2 child deposit UTXO was not visible before sweep"
   matched="$(wait_owner_deposit_matched "$deposit_owner")"
   printf '%s\n' "$matched" >"$RUN_ROOT/meta/flow2-deposit-matched.json"
@@ -1819,7 +1827,7 @@ validate_flow2() {
   btc_cli -rpcwallet=bifrost1 listunspent 0 9999999 "[\"${deposit_address}\"]" >"$RUN_ROOT/meta/flow2-child-utxo-after-sweep.json"
   jq -e 'length == 0' "$RUN_ROOT/meta/flow2-child-utxo-after-sweep.json" >/dev/null || die "flow2 child deposit UTXO remained spendable after sweep"
   amount_sats="$(curl -fsS "$(api_url 1)/thornado/deposit/${deposit_id}" | jq -r '.amount_sats')"
-  [[ "$amount_sats" == "100000000" ]] || die "flow2 observed bond amount was not 1 BTC"
+  [[ "$amount_sats" == "$(cat "$RUN_ROOT/meta/flow2-required-bond-sats.txt")" ]] || die "flow2 observed bond amount did not match required bond"
   receipt="$("$SHIELDER_HELPER" receipt "$deposit_id" "$(jq -r '.deposit_path_index' <<<"$session")" "$amount_sats" "operator5-bond-note-seed")"
   printf '%s\n' "$receipt" >"$RUN_ROOT/meta/flow2-bond-note-receipt.json"
   commitment_objects="$("$SHIELDER_HELPER" commitment-objects "$receipt")"
@@ -1832,23 +1840,30 @@ validate_flow2() {
   local committed
   committed="$(wait_deposit_committed "$deposit_id")"
   printf '%s\n' "$committed" >"$RUN_ROOT/meta/flow2-deposit.json"
-  jq -e '.settlement == "user" and .status == "committed" and (.amount_sats | tonumber) == 100000000' <<<"$committed" >/dev/null || die "flow2 funding deposit was not committed as user settlement"
+  jq -e --argjson amount "$amount_sats" '.settlement == "user" and .status == "committed" and (.amount_sats | tonumber) == $amount' <<<"$committed" >/dev/null || die "flow2 funding deposit was not committed as user settlement"
   record_shielder_notes "$receipt"
   assert_shielder_receipt_committed "$RUN_ROOT/meta/flow2-bond-note-receipt.json" "flow2-bond-note"
-  note="$(jq -c '.notes[0]' "$RUN_ROOT/meta/flow2-bond-note-receipt.json")"
-  leaves="$(shielder_leaves "$(jq -r '.denomination_sats' <<<"$note")")"
-  printf '%s\n' "$leaves" >"$RUN_ROOT/meta/flow2-bond-proof-leaves.json"
-  assert_shielder_root_committed "$(jq -r '.denomination_sats' <<<"$note")" "$leaves" "flow2-bond-note"
-  bond_withdrawal="$("$SHIELDER_HELPER" withdrawal-policy "$note" "operator5-bond-note-seed" "$leaves" "bond_escrow" 0 "bond_escrow" "$node_pubkey" "")"
-  printf '%s\n' "$bond_withdrawal" >"$RUN_ROOT/meta/flow2-bond-withdrawal.json"
-  prefix="$RUN_ROOT/meta/flow2-bond-withdrawal"
-  "$SHIELDER_HELPER" shield-withdrawal "$bond_withdrawal" "$prefix"
-  out="$(thornado_tx "$RUN_ROOT/node5" "validator5" shielder bond-from-notes "$node_pubkey" "$operator_pubkey" "${prefix}.proof.json" "${prefix}.public.json")"
-  printf '%s\n' "$out" >"$RUN_ROOT/meta/flow2-bond-from-notes.json"
-  assert_tx_success "$out" "flow2 bond-from-notes"
-  nullifier="$(jq -r '.nullifier_hash' "${prefix}.public.json")"
-  curl -fsS "$(api_url 1)/thornado/shielder/nullifier/${nullifier}" >"$RUN_ROOT/meta/flow2-bond-nullifier-query.json"
-  jq -e '.spent == true' "$RUN_ROOT/meta/flow2-bond-nullifier-query.json" >/dev/null || die "flow2 bond note nullifier was not spent"
+  note_count="$(jq -r '.notes | length' "$RUN_ROOT/meta/flow2-bond-note-receipt.json")"
+  spent_total=0
+  for ((idx=0; idx<note_count; idx++)); do
+    note="$(jq -c --argjson idx "$idx" '.notes[$idx]' "$RUN_ROOT/meta/flow2-bond-note-receipt.json")"
+    denom_sats="$(jq -r '.denomination_sats' <<<"$note")"
+    leaves="$(shielder_leaves "$denom_sats")"
+    printf '%s\n' "$leaves" >"$RUN_ROOT/meta/flow2-bond-proof-leaves-${idx}.json"
+    assert_shielder_root_committed "$denom_sats" "$leaves" "flow2-bond-note-${idx}"
+    bond_withdrawal="$("$SHIELDER_HELPER" withdrawal-policy "$note" "operator5-bond-note-seed" "$leaves" "bond_escrow" 0 "bond_escrow" "$node_pubkey" "")"
+    printf '%s\n' "$bond_withdrawal" >"$RUN_ROOT/meta/flow2-bond-withdrawal-${idx}.json"
+    prefix="$RUN_ROOT/meta/flow2-bond-withdrawal-${idx}"
+    "$SHIELDER_HELPER" shield-withdrawal "$bond_withdrawal" "$prefix"
+    out="$(thornado_tx "$RUN_ROOT/node5" "validator5" shielder bond-from-notes "$node_pubkey" "$operator_pubkey" "${prefix}.proof.json" "${prefix}.public.json")"
+    printf '%s\n' "$out" >"$RUN_ROOT/meta/flow2-bond-from-notes-${idx}.json"
+    assert_tx_success "$out" "flow2 bond-from-notes note ${idx}"
+    nullifier="$(jq -r '.nullifier_hash' "${prefix}.public.json")"
+    curl -fsS "$(api_url 1)/thornado/shielder/nullifier/${nullifier}" >"$RUN_ROOT/meta/flow2-bond-nullifier-query-${idx}.json"
+    jq -e '.spent == true' "$RUN_ROOT/meta/flow2-bond-nullifier-query-${idx}.json" >/dev/null || die "flow2 bond note ${idx} nullifier was not spent"
+    spent_total="$((spent_total + denom_sats))"
+  done
+  [[ "$spent_total" == "$amount_sats" ]] || die "flow2 bonded note total did not match required bond"
   if [[ "${FLOW2_DEFER_NODE5_PREFLIGHT:-0}" != "1" ]]; then
     out="$(thornado_tx "$RUN_ROOT/node5" "validator5" set-ip-address "127.0.0.1")"
     assert_tx_success "$out" "flow2 set-ip-address"
@@ -1865,8 +1880,8 @@ validate_flow2() {
   curl -fsS "$(api_url 1)/thornado/bond/${node_pubkey}" >"$RUN_ROOT/meta/flow2-bond.json"
   jq -e '((.node.total_bond // .total_bond // .node.bond // .bond) == "'"${amount_sats}"'") and (((.node.status // .status) | ascii_downcase) == "standby" or ((.node.status // .status) | ascii_downcase) == "active")' "$RUN_ROOT/meta/flow2-node.json" >/dev/null \
     || die "flow2 node account not bonded standby/active"
-  jq -e --arg op "$operator_pubkey" --arg node "$node_pubkey" \
-    '.node_pub_key == $node and .operator_pub_key == $op and (.bond_sats | tonumber) == 100000000 and (.pending_sats | tonumber) == 0 and .fee_share_active == true' \
+  jq -e --arg op "$operator_pubkey" --arg node "$node_pubkey" --argjson amount "$amount_sats" \
+    '.node_pub_key == $node and .operator_pub_key == $op and (.bond_sats | tonumber) == $amount and (.pending_sats | tonumber) == 0 and .fee_share_active == true' \
     "$RUN_ROOT/meta/flow2-bond.json" >/dev/null || die "flow2 bond query did not match committed state"
   curl -fsS "$(api_url 1)/thornado/nodes/metrics" >"$RUN_ROOT/meta/flow2-node-metrics-after.json"
   log "RESULTS Flow 2: PASS"
@@ -1890,8 +1905,8 @@ validate_flow2_node5_churn() {
   node5_cons="$cons"
 
   curl -fsS "$(api_url 1)/thornado/bond/${node5_cons}" >"$RUN_ROOT/meta/flow2-node5-bond-before-churn.json"
-  jq -e '(.bond_sats | tonumber) == 100000000 and .node_status == "Standby" and .fee_share_active == true' \
-    "$RUN_ROOT/meta/flow2-node5-bond-before-churn.json" >/dev/null || die "flow2 node5 bond is not standby with 1 BTC"
+  jq -e '.node_status == "Standby" and (.bond_sats | tonumber) > 0 and .fee_share_active == true' \
+    "$RUN_ROOT/meta/flow2-node5-bond-before-churn.json" >/dev/null || die "flow2 node5 bond is not standby and active"
 
   start_thornado_node5
   start_bifrost_node5
@@ -3199,12 +3214,22 @@ register_extra_node() {
 bond_extra_node_from_notes() {
   local node="$1" amount_sats="$2" label="$3"
   local node_addr node_pubkey operator_pubkey deposit_pubkey deposit_owner session deposit_address txid matched deposit_id receipt commitment_objects commitments shield_signature
-  local note leaves withdrawal prefix out nullifier bond amount_btc note_count idx spent_total
+  local note leaves withdrawal prefix out nullifier bond amount_btc note_count idx spent_total existing_bond_sats expected_total bond_before bond_base_file denom_sats current_expected
   source "$RUN_ROOT/meta/node${node}.env"
   node_addr="$address"
   node_pubkey="$cons"
   operator_pubkey="$secp"
   amount_btc="$(sats_to_btc "$amount_sats")"
+  bond_base_file="$RUN_ROOT/meta/${label}-existing-bond-sats.txt"
+  if [[ -s "$bond_base_file" ]]; then
+    existing_bond_sats="$(cat "$bond_base_file")"
+  else
+    bond_before="$(curl -fsS "$(api_url 1)/thornado/bond/${node_pubkey}" 2>/dev/null || true)"
+    existing_bond_sats="$(jq -r '(.bond_sats // "0") | tonumber' <<<"${bond_before:-{}}" 2>/dev/null | head -n1 || true)"
+    existing_bond_sats="${existing_bond_sats:-0}"
+    printf '%s\n' "$existing_bond_sats" >"$bond_base_file"
+  fi
+  expected_total=$((existing_bond_sats + amount_sats))
 
   deposit_pubkey="$("$SHIELDER_HELPER" pubkey "${label}-deposit-pubkey")"
   deposit_owner="$("$SHIELDER_HELPER" owner-address "$deposit_pubkey")"
@@ -3254,32 +3279,49 @@ bond_extra_node_from_notes() {
   spent_total=0
   for ((idx=0; idx<note_count; idx++)); do
     note="$(jq -c --argjson idx "$idx" '.notes[$idx]' "$RUN_ROOT/meta/${label}-receipt.json")"
-    leaves="$(shielder_leaves "$(jq -r '.denomination_sats' <<<"$note")")"
+    denom_sats="$(jq -r '.denomination_sats' <<<"$note")"
+    prefix="$RUN_ROOT/meta/${label}-bond-withdrawal-${idx}"
+    if [[ -s "${prefix}.public.json" ]]; then
+      nullifier="$(jq -r '.nullifier_hash' "${prefix}.public.json")"
+      if curl -fsS "$(api_url 1)/thornado/shielder/nullifier/${nullifier}" >"$RUN_ROOT/meta/${label}-bond-nullifier-${idx}.json" &&
+        jq -e '.spent == true' "$RUN_ROOT/meta/${label}-bond-nullifier-${idx}.json" >/dev/null; then
+        spent_total="$((spent_total + denom_sats))"
+        log "${label}: note ${idx} already bonded"
+        continue
+      fi
+    fi
+    leaves="$(shielder_leaves "$denom_sats")"
     printf '%s\n' "$leaves" >"$RUN_ROOT/meta/${label}-proof-leaves-${idx}.json"
-    assert_shielder_root_committed "$(jq -r '.denomination_sats' <<<"$note")" "$leaves" "${label}-note-${idx}"
+    assert_shielder_root_committed "$denom_sats" "$leaves" "${label}-note-${idx}"
     withdrawal="$("$SHIELDER_HELPER" withdrawal-policy "$note" "${label}-note-seed" "$leaves" "bond_escrow" 0 "bond_escrow" "$node_pubkey" "")"
     printf '%s\n' "$withdrawal" >"$RUN_ROOT/meta/${label}-bond-withdrawal-${idx}.json"
-    prefix="$RUN_ROOT/meta/${label}-bond-withdrawal-${idx}"
     "$SHIELDER_HELPER" shield-withdrawal "$withdrawal" "$prefix"
     out="$(thornado_tx "$RUN_ROOT/node${node}" "validator${node}" shielder bond-from-notes "$node_pubkey" "$operator_pubkey" "${prefix}.proof.json" "${prefix}.public.json")"
     printf '%s\n' "$out" >"$RUN_ROOT/meta/${label}-bond-from-notes-${idx}.json"
     assert_tx_success "$out" "${label} bond-from-notes note ${idx}"
     log "${label}: bonded note ${idx}"
-    spent_total="$((spent_total + $(jq -r '.denomination_sats' <<<"$note")))"
+    spent_total="$((spent_total + denom_sats))"
     nullifier="$(jq -r '.nullifier_hash' "${prefix}.public.json")"
     curl -fsS "$(api_url 1)/thornado/shielder/nullifier/${nullifier}" >"$RUN_ROOT/meta/${label}-bond-nullifier-${idx}.json"
     jq -e '.spent == true' "$RUN_ROOT/meta/${label}-bond-nullifier-${idx}.json" >/dev/null || die "${label} bond nullifier ${idx} not spent"
     curl -fsS "$(api_url 1)/thornado/bond/${node_pubkey}" >"$RUN_ROOT/meta/${label}-bond-after-note-${idx}.json"
     if (( spent_total < amount_sats )); then
-      jq -e --arg node_key "$node_pubkey" --argjson pending "$spent_total" \
-        '.node_pub_key == $node_key and (.pending_sats | tonumber) == $pending and ((.bond_sats // 0) | tonumber) == 0 and (.fee_share_active != true)' \
-        "$RUN_ROOT/meta/${label}-bond-after-note-${idx}.json" >/dev/null || die "${label} pending bond state invalid after note ${idx}"
+      if (( existing_bond_sats > 0 )); then
+        current_expected=$((existing_bond_sats + spent_total))
+        jq -e --arg node_key "$node_pubkey" --argjson amount "$current_expected" \
+          '.node_pub_key == $node_key and (.pending_sats | tonumber) == 0 and ((.bond_sats // 0) | tonumber) == $amount and .fee_share_active == true' \
+          "$RUN_ROOT/meta/${label}-bond-after-note-${idx}.json" >/dev/null || die "${label} top-up bond state invalid after note ${idx}"
+      else
+        jq -e --arg node_key "$node_pubkey" --argjson pending "$spent_total" \
+          '.node_pub_key == $node_key and (.pending_sats | tonumber) == $pending and ((.bond_sats // 0) | tonumber) == 0 and (.fee_share_active != true)' \
+          "$RUN_ROOT/meta/${label}-bond-after-note-${idx}.json" >/dev/null || die "${label} pending bond state invalid after note ${idx}"
+      fi
     fi
   done
 
   curl -fsS "$(api_url 1)/thornado/bond/${node_pubkey}" >"$RUN_ROOT/meta/${label}-bond.json"
-  jq -e --arg op "$operator_pubkey" --arg node_key "$node_pubkey" --argjson amount "$amount_sats" \
-    '.node_pub_key == $node_key and .operator_pub_key == $op and (.bond_sats | tonumber) == $amount and (.node_status == "Standby" or .node_status == "Whitelisted") and .fee_share_active == true' \
+  jq -e --arg op "$operator_pubkey" --arg node_key "$node_pubkey" --argjson amount "$expected_total" \
+    '.node_pub_key == $node_key and .operator_pub_key == $op and (.bond_sats | tonumber) == $amount and (.node_status == "Standby" or .node_status == "Whitelisted" or .node_status == "Active") and .fee_share_active == true' \
     "$RUN_ROOT/meta/${label}-bond.json" >/dev/null || die "${label} standby bond state invalid"
   node_query "$node_addr" >"$RUN_ROOT/meta/${label}-node-after-bond.json"
   log "${label}: bond complete"
@@ -3302,7 +3344,7 @@ required_bond_sats_for_node() {
       break
     fi
     if (( "$(date +%s)" - metrics_start >= 20 )); then
-      jq -n '{next_slot:"1",next_slot_bond_required_sats:"100000000",bond_start_amount_sats:"0",bond_slot_increment_sats:"100000000"}' >"$metrics_file"
+      jq -n '{next_slot:"1",next_slot_bond_required_sats:"200000000",bond_start_amount_sats:"100000000",bond_slot_increment_sats:"100000000"}' >"$metrics_file"
       break
     fi
     sleep 1

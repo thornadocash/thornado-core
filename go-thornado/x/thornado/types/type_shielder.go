@@ -402,6 +402,30 @@ type StoredShielderNoteRecord struct {
 	Commitment       string `json:"commitment"`
 	DenominationSats uint64 `json:"denomination_sats"`
 	CreatedHeight    int64  `json:"created_height,omitempty"`
+	// LeafIndex is the fixed position of this commitment in its denomination's
+	// incremental Merkle tree (insertion order). Clients rebuild the tree by
+	// ordering same-denomination leaves by LeafIndex to derive a spend path.
+	LeafIndex uint64 `json:"leaf_index"`
+}
+
+// StoredShielderTreeState is the persisted per-denomination incremental Merkle
+// tree state. NextIndex is the number of leaves inserted so far (the index the
+// next leaf will occupy); FilledSubtrees are the rightmost filled node at each
+// level (decimal field elements) that let a new leaf be appended in O(depth);
+// Root is the current tree root (decimal), also recorded in the historical root
+// set so past roots remain spendable.
+type StoredShielderTreeState struct {
+	DenominationSats uint64   `json:"denomination_sats"`
+	NextIndex        uint64   `json:"next_index"`
+	FilledSubtrees   []string `json:"filled_subtrees"`
+	Root             string   `json:"root"`
+}
+
+func (m StoredShielderTreeState) Valid() error {
+	if m.DenominationSats == 0 {
+		return fmt.Errorf("missing shielder tree denomination")
+	}
+	return nil
 }
 
 func (m StoredShielderNoteRecord) Key() string {
@@ -442,9 +466,13 @@ type ShielderRedeem struct {
 	AmountSats      uint64         `json:"amount_sats"`
 	FeeSats         uint64         `json:"fee_sats"`
 	InHash          common.TxID    `json:"in_hash"`
-	VaultPubKey     common.PubKey  `json:"vault_pub_key"`
-	RequestedHeight int64          `json:"requested_height"`
-	Status          string         `json:"status"`
+	// OutHash is the BTC txid of the settled outbound payout. It is recorded when
+	// the outbound is matched so an errata (reorg) of that outbound can find and
+	// re-queue the redeem instead of stranding the note.
+	OutHash         common.TxID   `json:"out_hash,omitempty"`
+	VaultPubKey     common.PubKey `json:"vault_pub_key"`
+	RequestedHeight int64         `json:"requested_height"`
+	Status          string        `json:"status"`
 }
 
 func (m ShielderRedeem) Key() string {

@@ -11,7 +11,7 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	btcwire "github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	cmtsecp256k1 "github.com/cometbft/cometbft/crypto/secp256k1"
 	"github.com/rs/zerolog"
 	"github.com/syndtr/goleveldb/leveldb"

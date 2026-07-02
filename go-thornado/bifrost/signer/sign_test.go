@@ -25,6 +25,8 @@ type signerBridgeStub struct {
 	vault  ttypes.Vault
 	nodes  []*ttypes.QueryNodeResponse
 	height int64
+	txOut  types.TxOut
+	txOuts []types.TxOut
 }
 
 func (b signerBridgeStub) GetVault(string) (ttypes.Vault, error) {
@@ -37,6 +39,14 @@ func (b signerBridgeStub) GetNodeAccounts() ([]*ttypes.QueryNodeResponse, error)
 
 func (b signerBridgeStub) GetBlockHeight() (int64, error) {
 	return b.height, nil
+}
+
+func (b signerBridgeStub) GetKeysign(int64, string) (types.TxOut, error) {
+	return b.txOut, nil
+}
+
+func (b signerBridgeStub) GetAllTxOutKeysigns() ([]types.TxOut, error) {
+	return b.txOuts, nil
 }
 
 func (s *SignerSuite) TestTxOutCompletionMatchIgnoresMutableSigningFields(c *C) {
@@ -498,6 +508,44 @@ func (s *SignerSuite) TestRemoveTxOutBatchItemsUsesStoredKeys(c *C) {
 	signer.removeTxOutBatchItems(listed[0])
 
 	c.Assert(storage.List(), HasLen, 0)
+}
+
+func (s *SignerSuite) TestRemoveUnsignedTxOutMissingKeepsPendingRetryFromAll(c *C) {
+	storage, err := NewSignerStore("", config.LevelDBOptions{}, "")
+	c.Assert(err, IsNil)
+	defer storage.Close()
+
+	item := NewTxOutStoreItem(24733, types.TxOutItem{
+		Chain:       common.BTCChain,
+		ToAddress:   ttypes.GetRandomBTCAddress(),
+		VaultPubKey: ttypes.GetRandomPubKey(),
+		Coins:       common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(100_000))),
+		InHash:      ttypes.GetRandomTxHash(),
+		TxType:      ttypes.TxOutTypeRefund,
+	}, 0)
+	c.Assert(storage.Set(item), IsNil)
+
+	signer := &Signer{
+		storage: storage,
+		thornadoBridge: signerBridgeStub{
+			txOut: types.TxOut{Height: item.Height},
+			txOuts: []types.TxOut{{
+				Height: item.Height,
+				TxArray: []types.TxArrayItem{{
+					Chain:       item.TxOutItem.Chain,
+					ToAddress:   item.TxOutItem.ToAddress,
+					VaultPubKey: item.TxOutItem.VaultPubKey,
+					Coin:        item.TxOutItem.Coins[0],
+					InHash:      item.TxOutItem.InHash,
+					TxType:      item.TxOutItem.TxType,
+				}},
+				Status: ttypes.TxOutStatusPendingRetry,
+			}},
+		},
+	}
+
+	c.Assert(signer.removeUnsignedTxOutMissingFromThornado(item), Equals, false)
+	c.Assert(storage.List(), HasLen, 1)
 }
 
 func (s *SignerSuite) TestTxOutHonorsFutureDeferral(c *C) {

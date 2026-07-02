@@ -169,13 +169,15 @@ cloud_deploy_action() {
   local action="$1"
   load_inventory
   COORDINATOR_HOST="$COORDINATOR_HOST" WORKER_HOSTS="$WORKER_HOSTS" REMOTE_ROOT="$REMOTE_ROOT" \
+    WORKER_NODES="$WORKER_NODES" REMOTE_INVENTORY="$REMOTE_INVENTORY" \
     RUN_ROOT="${RUN_ROOT:-}" KNOWN_HOSTS="$KNOWN_HOSTS" TAGS="$TAGS" \
+    BTC_RPC_PORT="$BTC_RPC_PORT" BTC_P2P_PORT="$BTC_P2P_PORT" \
     "$SCRIPT_DIR/hcloud-deploy-binaries.sh" "$action"
 }
 
 cloud_sync_ops() {
   local files
-  files="${SOURCE_FILES:-ops/scripts/thornado-cluster.sh ops/scripts/distributed-regtest-cluster.sh ops/scripts/hcloud-deploy-binaries.sh ops/scripts/hcloud-parallel-flow3.sh ops/scripts/hcloud-continue-parallel-flow3.sh ops/scripts/hcloud-remaining-tests.sh ops/scripts/hcloud-edge-cases.sh ops/scripts/hcloud-fee-swing-test.sh ops/scripts/hcloud-fee-reschedule-test.sh ops/scripts/hcloud-refund-script-test.sh docs/thornado-cluster-runbook.md}"
+  files="${SOURCE_FILES:-ops/scripts/thornado-cluster.sh ops/scripts/distributed-regtest-cluster.sh ops/scripts/real-4node-e2e.sh ops/scripts/hcloud-deploy-binaries.sh ops/scripts/hcloud-parallel-flow3.sh ops/scripts/hcloud-continue-parallel-flow3.sh ops/scripts/hcloud-remaining-tests.sh ops/scripts/hcloud-edge-cases.sh ops/scripts/hcloud-fee-swing-test.sh ops/scripts/hcloud-fee-reschedule-test.sh ops/scripts/hcloud-refund-script-test.sh docs/thornado-cluster-runbook.md docs/flow-checks/flow-2-bonded-standby-node.md}"
   SKIP_SOURCE_SYNC=0 INCLUDE_UNTRACKED=1 SOURCE_FILES="$files" cloud_deploy_action build
 }
 

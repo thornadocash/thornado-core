@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
-	swarm "github.com/libp2p/go-libp2p-swarm"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
+	swarm "github.com/libp2p/go-libp2p/p2p/net/swarm"
 	maddr "github.com/multiformats/go-multiaddr"
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p/conversion"

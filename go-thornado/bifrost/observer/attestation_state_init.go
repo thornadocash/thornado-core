@@ -8,8 +8,8 @@ import (
 	"math/rand/v2"
 	"sync"
 
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog"
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p"

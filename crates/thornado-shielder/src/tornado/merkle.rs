@@ -37,6 +37,10 @@ pub fn incremental_root(leaves: &[Fr]) -> Result<Fr> {
     mimc_sponge::incremental_root(leaves)
 }
 
+pub fn append_leaf(filled: &[Fr], next_index: u64, leaf: Fr) -> Result<(Fr, Vec<Fr>)> {
+    mimc_sponge::append_leaf(filled, next_index, leaf)
+}
+
 pub fn merkle_path(leaves: &[Fr], leaf_index: usize) -> Result<MerklePath> {
     mimc_sponge::merkle_path(leaves, leaf_index)
 }

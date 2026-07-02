@@ -207,11 +207,21 @@ lookup) — amount is public at withdrawal.
 | Nullifier hash | `Pedersen(nullifier)` over 248 bits | `withdraw.circom:16,28`; Rust `nullifier_hash` (`pedersen.rs:92-96`) |
 | Pair hash | MiMC-sponge `hash_left_right = multi_hash([l,r], key=0, 1 output)` | `mimc_sponge.rs:72-74` |
 | Tree depth | 20 (max 1,048,576 leaves per denomination) | `merkle.rs:11`; `withdraw.circom:70`; `ceremony.rs:9` |
-| Root computation | full-leaf `incremental_root`, leaves in sorted order | Rust `mimc_sponge.rs:84-103`; Go feeds `sort.Strings`-sorted commitments (`keeper_shielder.go:244`) |
+| Root computation | O(depth) incremental append in **insertion order** (Tornado-style) | Rust `append_leaf` (`mimc_sponge.rs`); Go persists per-denomination `nextIndex` + `filledSubtrees` (`StoredShielderTreeState`) and appends via `AppendShielderMerkleLeaf` (`shielder.go`) |
 
-Go delegates the Merkle root computation to the same Rust engine over FFI
-(`go-thornado/go-wrappers/shielder/shielder.go` → `merkle_root_hex` →
-`incremental_root`), so there is no separate Go MiMC implementation (audit answer Q21).
+Go delegates the Merkle math to the same Rust engine over FFI (there is no separate
+Go MiMC implementation, audit answer Q21). Each commitment is appended once at a
+fixed `LeafIndex` (insertion order) via `append_leaf`, which produces byte-identical
+roots to a full `incremental_root` recompute over the same leaves in order (proven by
+`append_leaf_matches_full_incremental_root` in Rust and the `go-wrappers/shielder`
+parity test). **Clients must rebuild the tree by ordering same-denomination leaves by
+`LeafIndex`** (exposed on each note record) to derive a valid spend path — earlier
+builds sorted leaves lexicographically, which is no longer the tree order.
+
+> Note: switching from sorted-order to insertion-order changes every root, so the
+> testnet upgrade purges the commitment pool (`PurgeShielderPoolState`); outstanding
+> notes are invalidated by design. All historical roots per denomination remain
+> accepted at redeem (root existence set), preserving the anonymity set.
 
 ### Zero-value deviation from upstream (flagged here, documented deliberately)
 

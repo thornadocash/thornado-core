@@ -16,12 +16,12 @@ The registered node operator is the address derived from the supplied operator p
 
 - check: {Node5 starts with no node account}; desired_result: {query returns no active/standby Node5 account before bonding}; validated: true
 - check: {Node5 requests a normal private deposit address with POW token and deposit pubkey}; desired_result: {request succeeds and returns child deposit address, vault pubkey, path index, expiry, and no node/bond fields}; validated: false
-- check: {bond amount requirement for first non-genesis node}; desired_result: {next_slot=1, bond_start=0, increment=100000000 sats, required bond=100000000 sats}; evidence: {/tmp/thornado-flow2-clean-v5/meta/flow2-node-metrics-before.json}; validated: true
-- check: {Node5 sends exactly 1.0 BTC to derived child address}; desired_result: {BTC UTXO exists at child address before sweep}; validated: false
+- check: {bond amount requirement for first non-genesis node}; desired_result: {required bond is computed from chain metrics as `bond_start_amount_sats + next_slot * bond_slot_increment_sats`; current config starts at 100000000 sats and increments by 100000000 sats}; evidence: {`/thornado/nodes/metrics`}; validated: true
+- check: {Node5 sends the required BTC amount to derived child address}; desired_result: {BTC UTXO exists at child address before sweep}; validated: false
 - check: {Bifrost sweeps child-path BTC to base vault}; desired_result: {sweep txout spends child UTXO and base vault receives funds}; validated: false
-- check: {Node5 shields the matched deposit into one private note}; desired_result: {deposit becomes committed/user with one 100000000 sat note commitment and accepted Merkle root}; validated: false
+- check: {Node5 shields the matched deposit into private notes}; desired_result: {deposit becomes committed/user and all receipt notes are accepted into Merkle roots}; validated: false
 - check: {Node5 builds a zero-fee withdrawal proof to `bond_escrow`}; desired_result: {public inputs have `recipient:"bond_escrow"`, `recipient_policy:"bond_escrow"`, `node_pub_key` equal Node5 consensus pubkey, `fee_sats:0`}; validated: false
-- check: {Node5 submits `shielder bond-from-notes`}; desired_result: {nullifier is consumed, no BTC outbound txout is queued, and `bond_sats` becomes 100000000}; validated: false
+- check: {Node5 submits `shielder bond-from-notes` for all receipt notes}; desired_result: {nullifiers are consumed, no BTC outbound txout is queued, and `bond_sats` reaches the required amount}; validated: false
 - check: {underbonded node note}; desired_result: {below-required bond is stored as pending_sats and does not activate fee share or node setup}; validated: false
 - check: {non-operator first bonder}; desired_result: {first bond attempt is rejected unless signer is the address derived from the operator pubkey}; validated: false
 - check: {different note owner tops up an existing node bond}; desired_result: {bond_sats increases, registered operator pubkey and node address are unchanged}; validated: false
@@ -30,7 +30,7 @@ The registered node operator is the address derived from the supplied operator p
 - check: {registered operator rotates to a new operator pubkey}; desired_result: {bond operator_pub_key and node_operator_address update, node_address and slot remain unchanged}; validated: false
 - check: {old operator after rotation}; desired_result: {old operator cannot send node-address transactions}; validated: false
 - check: {new operator after rotation}; desired_result: {new operator can send node-address transactions such as maintenance}; validated: false
-- check: {Node5 status after setup}; desired_result: {node is Standby, not Active, and has total_bond=100000000}; evidence: {/tmp/thornado-flow2-clean-v5/meta/flow2-node.json}; validated: true
+- check: {Node5 status after setup}; desired_result: {node is Standby, not Active, and has total_bond equal to the required chain-configured amount}; evidence: {/tmp/thornado-flow2-clean-v5/meta/flow2-node.json}; validated: true
 
 ## State Changes
 
@@ -76,7 +76,7 @@ The registered node operator is the address derived from the supplied operator p
 
 - check: {deposit query}; desired_result: {funding deposit query returns committed user deposit with correct deposit_id and amount}; validated: false
 - check: {redeem/nullifier query}; desired_result: {bond note redeem exists with status `authorized` or `settled`, policy `bond_escrow`, `fee_sats:0`, and nullifier spent}; validated: false
-- check: {bond query}; desired_result: {bond query returns Node5 bond_sats=100000000 and pending_sats=0 after `MsgBondFromNotes`}; validated: false
+- check: {bond query}; desired_result: {bond query returns Node5 bond_sats equal to the required amount and pending_sats=0 after `MsgBondFromNotes`}; validated: false
 - check: {bond query after top-up}; desired_result: {bond query returns increased bond_sats and unchanged operator_pub_key}; validated: false
 - check: {bond query after rotation}; desired_result: {bond query returns new operator_pub_key and unchanged node_address/slot/bond_sats}; validated: false
 - check: {node query}; desired_result: {node query returns Standby Node5 with keys, IP, registered operator address, and bond}; evidence: {/tmp/thornado-flow2-clean-v5/meta/flow2-node.json}; validated: true

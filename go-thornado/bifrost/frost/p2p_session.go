@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog"
 	frostsessions "github.com/thornadocash/go-thornado/go-wrappers/frost/go-frost/sessions"
 

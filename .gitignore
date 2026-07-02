@@ -8,3 +8,5 @@
 /go-thornado/shielder-e2e-helper
 
 /node_modules/
+go-thornado/thornado-ui
+go-thornado/interop-fixtures

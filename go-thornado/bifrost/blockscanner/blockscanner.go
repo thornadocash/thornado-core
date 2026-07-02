@@ -282,6 +282,7 @@ func (b *BlockScanner) scanBlocks() {
 	defer b.wg.Done()
 
 	lastConfigCheck := time.Now().Add(-constants.ThornadoBlockTime)
+	lastProgressLog := time.Now().Add(-time.Minute)
 	isChainPaused := false
 
 	type fetchTxsResult struct {
@@ -375,15 +376,16 @@ func (b *BlockScanner) scanBlocks() {
 
 			// determine how often we print a info log line for scanner
 			// progress. General goal is about once per minute
-			mod = (60_000 + ms - 1) / ms
 			// enable this one , so we could see how far it is behind
-			if currentBlock%mod == 0 || !b.healthy.Load() {
+			gap := chainHeight - currentBlock
+			if time.Since(lastProgressLog) >= time.Minute || (!b.healthy.Load() && gap%1000 == 0) {
 				b.logger.Info().
 					Int64("block height", currentBlock).
 					Int("txs", len(txIn.TxArray)).
-					Int64("gap", chainHeight-currentBlock).
+					Int64("gap", gap).
 					Bool("healthy", b.healthy.Load()).
 					Msg("scan block")
+				lastProgressLog = time.Now()
 			}
 			atomic.AddInt64(&b.previousBlock, 1)
 

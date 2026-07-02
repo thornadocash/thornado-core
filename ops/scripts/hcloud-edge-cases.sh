@@ -26,25 +26,71 @@ fi
 API_BASE="${API_BASE:-2370}"
 RPC_BASE="${RPC_BASE:-33360}"
 FROST_INFO_BASE="${FROST_INFO_BASE:-10340}"
+NODE_SPECS="${NODE_SPECS:-}"
+
+node_spec_field() {
+  local idx="$1" field="$2" entry spec host api rpc signer
+  if [[ -n "$NODE_SPECS" ]]; then
+    IFS=',' read -ra entries <<<"$NODE_SPECS"
+    for entry in "${entries[@]}"; do
+      if [[ "${entry%%=*}" == "$idx" ]]; then
+        spec="${entry#*=}"
+        IFS=':' read -r host api rpc signer <<<"$spec"
+        case "$field" in
+          host) printf '%s' "$host" ;;
+          api) printf '%s' "$api" ;;
+          rpc) printf '%s' "$rpc" ;;
+          signer) printf '%s' "$signer" ;;
+        esac
+        return 0
+      fi
+    done
+  fi
+  return 1
+}
 
 node_host() {
   local key="NODE${1}_HOST"
+  if node_spec_field "$1" host; then
+    return 0
+  fi
   printf '%s' "${!key:-}"
 }
 
 api_url() {
+  local port
+  if port="$(node_spec_field "$1" api)"; then
+    printf 'http://%s:%s\n' "$(node_host "$1")" "$port"
+    return 0
+  fi
   printf 'http://%s:%s\n' "$(node_host "$1")" "$((API_BASE + $1))"
 }
 
 rpc_url() {
+  local port
+  if port="$(node_spec_field "$1" rpc)"; then
+    printf 'http://%s:%s\n' "$(node_host "$1")" "$port"
+    return 0
+  fi
   printf 'http://%s:%s\n' "$(node_host "$1")" "$((RPC_BASE + $1))"
 }
 
 signer_url() {
+  local port
+  if port="$(node_spec_field "$1" signer)"; then
+    printf 'http://%s:%s\n' "$(node_host "$1")" "$port"
+    return 0
+  fi
   printf 'http://%s:%s\n' "$(node_host "$1")" "$((FROST_INFO_BASE + $1))"
 }
 
-export THORNADO_TX_NODE="${THORNADO_TX_NODE:-tcp://$(node_host 1):$((RPC_BASE + 1))}"
+if [[ -z "${THORNADO_TX_NODE:-}" ]]; then
+  if tx_rpc_port="$(node_spec_field 1 rpc)"; then
+    export THORNADO_TX_NODE="tcp://$(node_host 1):${tx_rpc_port}"
+  else
+    export THORNADO_TX_NODE="tcp://$(node_host 1):$((RPC_BASE + 1))"
+  fi
+fi
 
 mkdir -p "$RUN_ROOT/meta/edge-cases"
 run_dir="$RUN_ROOT/meta/edge-cases/$(date -u +%Y%m%d%H%M%S)"
@@ -577,19 +623,40 @@ case_coinbase_to_deposit_address() {
   printf '%s,pass,%s\n' "$label" "$txid" >>"$run_dir/results.csv"
 }
 
-case_multi_output_one_vault
-case_vault_output_plus_dust_change_duplicate_amount
-case_direct_base_vault_refund
-case_exact_vout5_op_return_before
-case_op_return_after_vault
-case_dust_deposit_ignored
-case_coinbase_to_deposit_address
-case_multiple_vault_outputs_one_tx
+run_edge_case() {
+  case "$1" in
+    multi-output-one-vault) case_multi_output_one_vault ;;
+    vault-dust-change-duplicate-amount) case_vault_output_plus_dust_change_duplicate_amount ;;
+    direct-base-vault-refund) case_direct_base_vault_refund ;;
+    exact-vout5-op-return-before) case_exact_vout5_op_return_before ;;
+    op-return-after-vault) case_op_return_after_vault ;;
+    dust-deposit-ignored) case_dust_deposit_ignored ;;
+    coinbase-to-deposit-address) case_coinbase_to_deposit_address ;;
+    multiple-vault-outputs-one-tx) case_multiple_vault_outputs_one_tx ;;
+    *) die "unknown edge case: $1" ;;
+  esac
+}
 
+if [[ -n "${EDGE_CASES:-}" ]]; then
+  for edge_case in $EDGE_CASES; do
+    run_edge_case "$edge_case"
+  done
+else
+  run_edge_case multi-output-one-vault
+  run_edge_case vault-dust-change-duplicate-amount
+  run_edge_case direct-base-vault-refund
+  run_edge_case exact-vout5-op-return-before
+  run_edge_case op-return-after-vault
+  run_edge_case dust-deposit-ignored
+  run_edge_case coinbase-to-deposit-address
+  run_edge_case multiple-vault-outputs-one-tx
+fi
+
+signer_nodes="${SIGNER_NODES:-${WORKER_NODES:-5 6 7 8 9}}"
 start="$(date +%s)"
 while true; do
   all_empty=1
-  for i in 1 2 3 4; do
+  for i in $signer_nodes; do
     curl -fsS --max-time 5 "$(signer_url "$i")/debug/signer/txouts" >"$run_dir/signer-node${i}-txouts.json" || all_empty=0
     jq -e 'length == 0' "$run_dir/signer-node${i}-txouts.json" >/dev/null || all_empty=0
   done

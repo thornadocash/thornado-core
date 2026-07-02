@@ -9,8 +9,8 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 
-	"github.com/btcsuite/btcutil"
-	btctxscript "github.com/thornadocash/go-thornado/bifrost/txscript/txscript"
+	"github.com/btcsuite/btcd/btcutil"
+	btctxscript "github.com/btcsuite/btcd/txscript"
 
 	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
@@ -58,14 +58,7 @@ func (c *Client) getUtxoToSpendAtPath(pubkey common.PubKey, pathIndex uint64, to
 	}
 
 	// spend UTXO older to younger
-	sort.SliceStable(utxos, func(i, j int) bool {
-		if utxos[i].Confirmations > utxos[j].Confirmations {
-			return true
-		} else if utxos[i].Confirmations < utxos[j].Confirmations {
-			return false
-		}
-		return utxos[i].TxID < utxos[j].TxID
-	})
+	sortUtxosForSpend(utxos)
 
 	var result []btcjson.ListUnspentResult
 	var toSpend btcutil.Amount
@@ -676,4 +669,17 @@ func (c *Client) buildTxBatch(txs []stypes.TxOutItem, sourceScript []byte) (*wir
 	}
 
 	return redeemTx, individualAmounts, totalOutput, nil
+}
+
+// sortUtxosForSpend orders UTXOs oldest-to-youngest for deterministic coin
+// selection: most confirmations first, ties broken by ascending txid. Stable so
+// equal keys preserve input order. Extracted for cross-language conformance
+// testing (see sighash_conformance_test.go / the Rust bifrost-signer crate).
+func sortUtxosForSpend(utxos []btcjson.ListUnspentResult) {
+	sort.SliceStable(utxos, func(i, j int) bool {
+		if utxos[i].Confirmations != utxos[j].Confirmations {
+			return utxos[i].Confirmations > utxos[j].Confirmations
+		}
+		return utxos[i].TxID < utxos[j].TxID
+	})
 }

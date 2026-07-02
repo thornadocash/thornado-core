@@ -10,6 +10,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/module"
 
 	"github.com/thornadocash/go-thornado/app/upgrades"
+	thornado "github.com/thornadocash/go-thornado/x/thornado"
 	keeperv1 "github.com/thornadocash/go-thornado/x/thornado/keeper/v1"
 )
 
@@ -41,6 +42,17 @@ func CreateUpgradeHandler(
 		if err := keeperv1.UpdateActiveNodeVersions(ctx, ak.ThornadoKeeper, plan.Name); err != nil {
 			return nil, fmt.Errorf("failed to update active validator versions: %w", err)
 		}
+		if err := thornado.RepairMixedBTCPendingBatches(ctx, ak.ThornadoKeeper); err != nil {
+			return nil, fmt.Errorf("failed to repair mixed bitcoin pending batches: %w", err)
+		}
+
+		// Testnet reset: the shielder Merkle tree switched from sorted-order to
+		// insertion-order (incremental) root computation, which changes every root.
+		// Purge the commitment pool (commitments, notes, leaves, tree state, roots,
+		// nullifiers) so the new tree starts clean. Outstanding notes are invalidated
+		// by design; this is acceptable on testnet.
+		ak.ThornadoKeeper.PurgeShielderPoolState(ctx)
+		ctx.Logger().Info("purged shielder pool state for incremental merkle tree reset")
 
 		// Perform SDK module migrations
 		return mm.RunMigrations(goCtx, configurator, fromVM)

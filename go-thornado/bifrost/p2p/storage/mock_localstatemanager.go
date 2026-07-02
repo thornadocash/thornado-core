@@ -3,8 +3,8 @@ package storage
 import (
 	"fmt"
 
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-peerstore/addr"
+	"github.com/libp2p/go-libp2p/core/peer"
+	maddr "github.com/multiformats/go-multiaddr"
 )
 
 // MockLocalStateManager is a mock use for test purpose
@@ -18,10 +18,10 @@ func (s *MockLocalStateManager) GetLocalState(pubKey string) (KeygenLocalState, 
 	return KeygenLocalState{}, fmt.Errorf("missing local state: %s", pubKey)
 }
 
-func (s *MockLocalStateManager) SaveAddressBook(address map[peer.ID]addr.AddrList) error {
+func (s *MockLocalStateManager) SaveAddressBook(address map[peer.ID][]maddr.Multiaddr) error {
 	return nil
 }
 
-func (s *MockLocalStateManager) RetrieveP2PAddresses() (addr.AddrList, error) {
+func (s *MockLocalStateManager) RetrieveP2PAddresses() ([]maddr.Multiaddr, error) {
 	return nil, nil
 }

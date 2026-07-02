@@ -3,7 +3,7 @@ package messages
 import (
 	"fmt"
 
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 // ThornadoFROSTMessageType  represent the message type used in Thornado FROST

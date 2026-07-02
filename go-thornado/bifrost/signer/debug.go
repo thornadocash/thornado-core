@@ -207,15 +207,11 @@ func (s *Signer) DebugChainTxOut(inHash string) (interface{}, bool, error) {
 	if err != nil {
 		return nil, true, err
 	}
-	debugger, ok := chain.(chainTxOutDebugger)
-	if !ok {
-		return map[string]string{"error": "chain does not expose txout debug"}, true, nil
-	}
 	height, err := s.thornadoBridge.GetBlockHeight()
 	if err != nil {
 		height = item.Height
 	}
-	res, err := debugger.DebugTxOut(item.TxOutItem, height)
+	res, err := chain.DebugTxOut(item.TxOutItem, height)
 	return res, true, err
 }
 
@@ -231,15 +227,11 @@ func (s *Signer) ObserveRecoveredTxOut(inHash string) (*types.TxInItem, bool, er
 	if err != nil {
 		return nil, true, err
 	}
-	recoverer, ok := chain.(txObservationRecoverer)
-	if !ok {
-		return nil, true, fmt.Errorf("chain does not expose txout recovery")
-	}
 	height, err := s.thornadoBridge.GetBlockHeight()
 	if err != nil {
 		height = item.Height
 	}
-	obs, recovered, err := recoverer.RecoverTxObservation(item.TxOutItem, height)
+	obs, recovered, err := chain.RecoverTxObservation(item.TxOutItem, height)
 	if err != nil {
 		return nil, true, err
 	}

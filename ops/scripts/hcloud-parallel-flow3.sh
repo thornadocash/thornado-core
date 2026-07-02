@@ -31,21 +31,62 @@ fi
 
 API_BASE="${API_BASE:-2370}"
 RPC_BASE="${RPC_BASE:-33360}"
+NODE_SPECS="${NODE_SPECS:-}"
+
+node_spec_field() {
+  local idx="$1" field="$2" entry spec host api rpc signer
+  if [[ -n "$NODE_SPECS" ]]; then
+    IFS=',' read -ra entries <<<"$NODE_SPECS"
+    for entry in "${entries[@]}"; do
+      if [[ "${entry%%=*}" == "$idx" ]]; then
+        spec="${entry#*=}"
+        IFS=':' read -r host api rpc signer <<<"$spec"
+        case "$field" in
+          host) printf '%s' "$host" ;;
+          api) printf '%s' "$api" ;;
+          rpc) printf '%s' "$rpc" ;;
+          signer) printf '%s' "$signer" ;;
+        esac
+        return 0
+      fi
+    done
+  fi
+  return 1
+}
 
 node_host() {
   local key="NODE${1}_HOST"
+  if node_spec_field "$1" host; then
+    return 0
+  fi
   printf '%s' "${!key:-}"
 }
 
 api_url() {
+  local port
+  if port="$(node_spec_field "$1" api)"; then
+    printf 'http://%s:%s\n' "$(node_host "$1")" "$port"
+    return 0
+  fi
   printf 'http://%s:%s\n' "$(node_host "$1")" "$((API_BASE + $1))"
 }
 
 rpc_url() {
+  local port
+  if port="$(node_spec_field "$1" rpc)"; then
+    printf 'http://%s:%s\n' "$(node_host "$1")" "$port"
+    return 0
+  fi
   printf 'http://%s:%s\n' "$(node_host "$1")" "$((RPC_BASE + $1))"
 }
 
-export THORNADO_TX_NODE="${THORNADO_TX_NODE:-tcp://$(node_host 1):$((RPC_BASE + 1))}"
+if [[ -z "${THORNADO_TX_NODE:-}" ]]; then
+  if tx_rpc_port="$(node_spec_field 1 rpc)"; then
+    export THORNADO_TX_NODE="tcp://$(node_host 1):${tx_rpc_port}"
+  else
+    export THORNADO_TX_NODE="tcp://$(node_host 1):$((RPC_BASE + 1))"
+  fi
+fi
 
 deposit_amount_for_index() {
   local i="$1" amount

@@ -583,7 +583,6 @@ func (vm *NetworkMgr) btcMigrationSourceInputs(ctx cosmos.Context, vault Vault, 
 
 			if item.OutHash.IsEmpty() ||
 				!item.Chain.Equals(common.BTCChain) ||
-				!item.VaultPubKey.Equals(vault.PubKey) ||
 				!item.Coin.Asset.Equals(common.BTCAsset) ||
 				!item.ToAddress.Equals(sourceAddr) ||
 				item.Coin.Amount.IsZero() {

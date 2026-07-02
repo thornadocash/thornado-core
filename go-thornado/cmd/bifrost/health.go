@@ -19,9 +19,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/thornadocash/go-thornado/bifrost/frost"
 	"github.com/thornadocash/go-thornado/bifrost/observer"
-	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients"
 	"github.com/thornadocash/go-thornado/bifrost/signer"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
+	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/btc"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
 	"github.com/thornadocash/go-thornado/constants"
@@ -92,7 +92,7 @@ type HealthServer struct {
 	logger          zerolog.Logger
 	s               *http.Server
 	localPeerID     string
-	chains          map[common.Chain]chainclients.ChainClient
+	chains          map[common.Chain]*btc.Client
 	providerPayload []byte
 	signer          *signer.Signer
 	frostSessions   interface {
@@ -108,7 +108,7 @@ type HealthServer struct {
 }
 
 // NewHealthServer create a new instance of health server
-func NewHealthServer(addr string, localPeerID string, chains map[common.Chain]chainclients.ChainClient) *HealthServer {
+func NewHealthServer(addr string, localPeerID string, chains map[common.Chain]*btc.Client) *HealthServer {
 	res := make(ProviderResponse)
 	for chain, client := range chains {
 		cfg := client.GetConfig()
@@ -183,7 +183,7 @@ func (s *HealthServer) newHandler() http.Handler {
 	router.Handle("/debug/attestations/performance", http.HandlerFunc(s.debugAttestationPerformance)).Methods(http.MethodGet)
 	router.Handle("/debug/observer/ondeck", http.HandlerFunc(s.debugObserverOnDeck)).Methods(http.MethodGet)
 	router.Handle("/debug/observer/address/{chain}/{address}", http.HandlerFunc(s.debugObserverAddress)).Methods(http.MethodGet)
-	router.HandleFunc("/debug/pprof/", pprof.Index)
+	router.PathPrefix("/debug/pprof/").HandlerFunc(pprof.Index)
 	router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 	router.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	router.HandleFunc("/debug/pprof/symbol", pprof.Symbol)

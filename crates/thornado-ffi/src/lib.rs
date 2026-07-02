@@ -6,7 +6,7 @@ use serde::Serialize;
 use thornado_shielder::{
     client_pubkey_for_deposit, client_pubkey_for_deposit_type, client_pubkey_from_secret,
     derive_shield_receipt, derive_shield_receipt_for_deposit,
-    derive_shield_receipt_for_deposit_type, merkle_root, recipient_binding_field,
+    derive_shield_receipt_for_deposit_type, merkle_append, merkle_root, recipient_binding_field,
     shield_authorization, shield_authorization_for_deposit, shield_authorization_for_deposit_type,
     shielder_withdrawal_from_receipt, validate_withdrawal_public_inputs, DenominationTree,
     NoteCommitment, NoteReceipt, ShielderProofVerifier, WithdrawalProof, WithdrawalPublicInputs,
@@ -230,6 +230,16 @@ pub extern "C" fn thornado_merkle_root_json(leaves_json: *const c_char) -> *mut 
         let leaves: Vec<String> =
             serde_json::from_str(leaves_json).map_err(|error| error.to_string())?;
         Ok(merkle_root(&leaves))
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn thornado_shielder_merkle_append_json(request_json: *const c_char) -> *mut c_char {
+    return_json_result(|| {
+        let request_json = c_str(request_json, "request_json")?;
+        let request: thornado_shielder::MerkleAppendRequest =
+            serde_json::from_str(request_json).map_err(|error| error.to_string())?;
+        merkle_append(&request).map_err(|error| error.to_string())
     })
 }
 

@@ -105,6 +105,36 @@ pub fn incremental_root(leaves: &[Fr]) -> Result<Fr> {
     Ok(root)
 }
 
+/// Appends a single leaf to an incremental (Tornado-style) Merkle tree given the
+/// persisted `filled` subtree nodes and the `next_index` (current leaf count),
+/// returning the new root and the updated `filled` subtrees. This is O(depth) per
+/// insert. Starting from `filled = [0; depth]` / `next_index = 0` and appending
+/// leaves in order reproduces exactly the same roots as `incremental_root` over
+/// the full leaf slice (same inner loop), so it stays consistent with the
+/// circomlibjs-differential-tested full recompute.
+pub fn append_leaf(filled: &[Fr], next_index: u64, leaf: Fr) -> Result<(Fr, Vec<Fr>)> {
+    let depth = super::merkle::MERKLE_TREE_DEPTH;
+    if filled.len() != depth {
+        return Err(crate::Error::InvalidProof);
+    }
+    if next_index >= (1u64 << depth) {
+        return Err(crate::Error::InvalidProof);
+    }
+    let mut filled = filled.to_vec();
+    let mut current_index = next_index;
+    let mut current = leaf;
+    for (level, filled_level) in filled.iter_mut().enumerate() {
+        if current_index % 2 == 0 {
+            *filled_level = current;
+            current = hash_left_right(current, zero_subtree(level)?)?;
+        } else {
+            current = hash_left_right(*filled_level, current)?;
+        }
+        current_index /= 2;
+    }
+    Ok((current, filled))
+}
+
 pub fn merkle_path(leaves: &[Fr], target_index: usize) -> Result<super::merkle::MerklePath> {
     if target_index >= leaves.len() {
         return Err(crate::Error::InvalidProof);
@@ -163,6 +193,38 @@ mod tests {
         // index-wrapping. The guard returns before any hashing, so this stays cheap.
         let leaves = vec![Fr::zero(); (1usize << depth) + 1];
         assert_eq!(incremental_root(&leaves), Err(crate::Error::InvalidProof));
+    }
+
+    #[test]
+    fn append_leaf_matches_full_incremental_root() {
+        let depth = super::super::merkle::MERKLE_TREE_DEPTH;
+        let leaves: Vec<Fr> = (1u64..=5).map(Fr::from).collect();
+        let mut filled = vec![Fr::zero(); depth];
+        let mut root = Fr::zero();
+        for (index, leaf) in leaves.iter().enumerate() {
+            let (new_root, new_filled) = append_leaf(&filled, index as u64, *leaf).unwrap();
+            filled = new_filled;
+            root = new_root;
+            // Appending 0..=index must equal a full recompute over the same prefix.
+            assert_eq!(root, incremental_root(&leaves[..=index]).unwrap());
+        }
+        assert_eq!(root, incremental_root(&leaves).unwrap());
+    }
+
+    #[test]
+    fn append_leaf_rejects_bad_state() {
+        let depth = super::super::merkle::MERKLE_TREE_DEPTH;
+        // Wrong filled length.
+        assert_eq!(
+            append_leaf(&[Fr::zero(); 3], 0, Fr::from(1u64)),
+            Err(crate::Error::InvalidProof)
+        );
+        // next_index at capacity.
+        let filled = vec![Fr::zero(); depth];
+        assert_eq!(
+            append_leaf(&filled, 1u64 << depth, Fr::from(1u64)),
+            Err(crate::Error::InvalidProof)
+        );
     }
 
     #[test]

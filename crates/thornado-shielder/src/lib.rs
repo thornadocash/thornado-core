@@ -405,6 +405,49 @@ pub fn merkle_root(leaves: &[String]) -> String {
     tornado::merkle_root_hex(leaves).unwrap_or_default()
 }
 
+/// Request to append a single leaf to an incremental Merkle tree. `filled_subtrees`
+/// are decimal field elements (empty is treated as all-zero, i.e. an empty tree);
+/// `leaf` is a field-hex commitment (same encoding the keeper stores).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MerkleAppendRequest {
+    #[serde(default)]
+    pub filled_subtrees: Vec<String>,
+    pub next_index: u64,
+    pub leaf: String,
+}
+
+/// Result of an incremental append: the new root and updated filled subtrees, both
+/// as decimal field elements. The root matches `fr_to_decimal` of the tree root, so
+/// it is byte-identical to what the keeper stores from the full-recompute path.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MerkleAppendResponse {
+    pub root: String,
+    pub filled_subtrees: Vec<String>,
+}
+
+pub fn merkle_append(request: &MerkleAppendRequest) -> Result<MerkleAppendResponse> {
+    use tornado::field::{fr_from_decimal, fr_from_field_hex, fr_to_decimal};
+    let depth = tornado::merkle::MERKLE_TREE_DEPTH;
+    let filled: Vec<ark_bn254::Fr> = if request.filled_subtrees.is_empty() {
+        vec![ark_bn254::Fr::from(0u64); depth]
+    } else {
+        if request.filled_subtrees.len() != depth {
+            return Err(Error::InvalidProof);
+        }
+        request
+            .filled_subtrees
+            .iter()
+            .map(|value| fr_from_decimal(value).ok_or(Error::InvalidProof))
+            .collect::<Result<Vec<_>>>()?
+    };
+    let leaf = fr_from_field_hex(&request.leaf).ok_or(Error::InvalidProof)?;
+    let (root, new_filled) = tornado::merkle::append_leaf(&filled, request.next_index, leaf)?;
+    Ok(MerkleAppendResponse {
+        root: fr_to_decimal(root),
+        filled_subtrees: new_filled.into_iter().map(fr_to_decimal).collect(),
+    })
+}
+
 pub fn shielder_withdrawal_from_receipt(
     receipt: &NoteReceipt,
     client_seed: &str,
