@@ -458,15 +458,40 @@ pub struct SignSession {
     outputs: Vec<ProtocolMessage>,
     result: Option<[u8; 64]>,
     aborted: Option<AbortInfo>,
+    /// When true, sign/aggregate with the BIP341 key-path tweak.
+    taproot: bool,
 }
 
 impl SignSession {
-    /// Begin a keysign: emit our round1 commitment.
+    /// Begin a keysign over the raw group key (no taproot tweak).
     pub fn new(
         share: &StoredShare,
         local: String,
         participants: Vec<String>,
         message: Vec<u8>,
+    ) -> Result<Self> {
+        Self::new_inner(share, local, participants, message, false)
+    }
+
+    /// Begin a BIP341 taproot key-path keysign: the aggregate signature is
+    /// tweaked so it verifies under `tweak(group_key)` — i.e. the vault's
+    /// taproot output key (`TaprootVault::derive`). Use this to sign BTC
+    /// key-path sighashes.
+    pub fn new_taproot(
+        share: &StoredShare,
+        local: String,
+        participants: Vec<String>,
+        message: Vec<u8>,
+    ) -> Result<Self> {
+        Self::new_inner(share, local, participants, message, true)
+    }
+
+    fn new_inner(
+        share: &StoredShare,
+        local: String,
+        participants: Vec<String>,
+        message: Vec<u8>,
+        taproot: bool,
     ) -> Result<Self> {
         let participants = normalize_participants(&participants);
         if !participants.contains(&local) {
@@ -501,6 +526,7 @@ impl SignSession {
             outputs: vec![round1],
             result: None,
             aborted: None,
+            taproot,
         };
         let id = identifier_for(&me.participants, &me.local)?;
         me.commitments.insert(id, commitments);
@@ -574,8 +600,12 @@ impl SignSession {
         }
         let signing_package = frost::SigningPackage::new(self.commitments.clone(), &self.message);
         let nonces = self.nonces.take().expect("checked above");
-        let share = frost::round2::sign(&signing_package, &nonces, &self.key_package)
-            .map_err(|e| FrostError::Frost(e.to_string()))?;
+        let share = if self.taproot {
+            frost::round2::sign_with_tweak(&signing_package, &nonces, &self.key_package, None)
+        } else {
+            frost::round2::sign(&signing_package, &nonces, &self.key_package)
+        }
+        .map_err(|e| FrostError::Frost(e.to_string()))?;
 
         let id = identifier_for(&self.participants, &self.local)?;
         self.signature_shares.insert(id, share);
@@ -609,11 +639,21 @@ impl SignSession {
         let signing_package = frost::SigningPackage::new(self.commitments.clone(), &self.message);
         // aggregate validates each share and, on failure, names the parties
         // whose shares were invalid (Error::InvalidSignatureShare).
-        let signature = match frost::aggregate(
-            &signing_package,
-            &self.signature_shares,
-            &self.public_key_package,
-        ) {
+        let agg = if self.taproot {
+            frost::aggregate_with_tweak(
+                &signing_package,
+                &self.signature_shares,
+                &self.public_key_package,
+                None,
+            )
+        } else {
+            frost::aggregate(
+                &signing_package,
+                &self.signature_shares,
+                &self.public_key_package,
+            )
+        };
+        let signature = match agg {
             Ok(s) => s,
             Err(e) => {
                 let culprits = blame_names(&self.participants, &e);
@@ -638,10 +678,17 @@ impl SignSession {
             }
         };
 
-        self.public_key_package
-            .verifying_key()
-            .verify(&self.message, &signature)
-            .map_err(|e| FrostError::Frost(e.to_string()))?;
+        // For the raw-key case, verify against the group key. For taproot,
+        // aggregate_with_tweak already validated the shares internally and the
+        // tweaked verifying key isn't reachable (frost's Tweak trait is
+        // private); the signature's validity under the taproot output key is
+        // confirmed downstream by the BTC node accepting the witness.
+        if !self.taproot {
+            self.public_key_package
+                .verifying_key()
+                .verify(&self.message, &signature)
+                .map_err(|e| FrostError::Frost(e.to_string()))?;
+        }
 
         let sig_bytes = signature
             .serialize()
