@@ -12,6 +12,7 @@
 use prost::Message;
 
 pub const MSG_OBSERVED_TX_IN_TYPE_URL: &str = "/types.MsgObservedTxIn";
+pub const MSG_OBSERVED_TX_OUT_TYPE_URL: &str = "/types.MsgObservedTxOut";
 pub const SECP256K1_PUBKEY_TYPE_URL: &str = "/cosmos.crypto.secp256k1.PubKey";
 /// Gas limit the Go bridge hard-codes.
 pub const GAS_LIMIT: u64 = 4_000_000_000;
@@ -234,12 +235,35 @@ pub fn build_and_sign(
     account_number: u64,
     sequence: u64,
 ) -> Result<Vec<u8>, CosmosTxError> {
+    build_and_sign_typed(
+        MSG_OBSERVED_TX_IN_TYPE_URL,
+        msg,
+        priv_key,
+        pub_key,
+        chain_id,
+        account_number,
+        sequence,
+    )
+}
+
+/// Like [`build_and_sign`] but with an explicit message type URL, so the same
+/// `MsgObservedTxIn` shape can be posted as `MsgObservedTxOut` (the two proto
+/// messages have identical fields).
+pub fn build_and_sign_typed(
+    type_url: &str,
+    msg: &MsgObservedTxIn,
+    priv_key: &[u8],
+    pub_key: &[u8],
+    chain_id: &str,
+    account_number: u64,
+    sequence: u64,
+) -> Result<Vec<u8>, CosmosTxError> {
     use bitcoin::secp256k1::{ecdsa, Message as SecpMessage, Secp256k1, SecretKey};
     use sha2::{Digest, Sha256};
 
     let body = TxBody {
         messages: vec![Any {
-            type_url: MSG_OBSERVED_TX_IN_TYPE_URL.to_string(),
+            type_url: type_url.to_string(),
             value: msg.encode_to_vec(),
         }],
         memo: String::new(),

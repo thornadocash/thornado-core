@@ -342,17 +342,11 @@ impl ThornadoObservationClient {
             .key
             .as_ref()
             .ok_or(BroadcastError::Unimplemented("signer key not configured"))?;
-        // Only inbound observations are wired here; outbound uses the same
-        // machinery with a different msg type (not yet built).
-        if !matches!(kind, ObservationKind::In) {
-            return Err(BroadcastError::Unimplemented(
-                "outbound observation posting not yet wired",
-            ));
-        }
 
         let (account_number, sequence) = self.fetch_account().await?;
         let msg = observation_to_msg(observation, &key.account_bytes);
-        let tx_raw = crate::cosmos_tx::build_and_sign(
+        let tx_raw = crate::cosmos_tx::build_and_sign_typed(
+            kind.type_url(),
             &msg,
             &key.priv_key,
             &key.pub_key,
