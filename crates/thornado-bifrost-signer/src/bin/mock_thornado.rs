@@ -103,7 +103,7 @@ struct PendingBatch {
 struct Stats {
     batches_created: u64,
     batches_completed: u64,
-    batches_stalled: u64,
+    batches_requeued: u64,
     completion_secs_total: u64,
     completion_secs_max: u64,
     obs_in_txs: u64,
@@ -434,20 +434,22 @@ async fn check_completions(app: &Arc<App>) {
             stats.completion_secs_total += age;
             stats.completion_secs_max = stats.completion_secs_max.max(age);
             tracing::info!(height, age_secs = age, "batch completed (inputs spent)");
-        } else if served == 0 && age > 60 {
-            // Never delivered (no daemon was at that height) — drop it so the
-            // generator recreates the work at a current height.
+        } else if age > 120 {
+            // Not completing — e.g. never served (no daemon at that height),
+            // or fetched by a subset that does not include the party leader.
+            // The real chain reschedules unsigned work to a fresh height;
+            // mirror that: drop it and let the generator recreate the work.
+            // Daemons still holding the old items retry them harmlessly —
+            // a conflicting spend resolves as a benign broadcast error.
             let mut pending = app.pending.lock().unwrap();
             pending.retain(|b| b.height != height);
             let mut reserved = app.reserved.lock().unwrap();
             for (txid, vout) in &inputs {
                 reserved.remove(&format!("{txid}-{vout}"));
             }
-            tracing::warn!(height, "batch never served; requeueing at a new height");
-        } else if age > 300 {
             let mut stats = app.stats.lock().unwrap();
-            stats.batches_stalled += 1;
-            tracing::warn!(height, age_secs = age, served, "batch still pending (stall?)");
+            stats.batches_requeued += 1;
+            tracing::warn!(height, age_secs = age, served, "batch not completing; requeued at a new height");
         }
     }
 }
@@ -655,7 +657,7 @@ async fn stats(State(app): State<Arc<App>>) -> Json<serde_json::Value> {
         "batches_created": stats.batches_created,
         "batches_completed": stats.batches_completed,
         "batches_pending": app.pending.lock().unwrap().len(),
-        "batches_stalled_reports": stats.batches_stalled,
+        "batches_requeued": stats.batches_requeued,
         "completion_secs_avg": avg_completion,
         "completion_secs_max": stats.completion_secs_max,
         "posts_accepted": stats.posts_accepted,
