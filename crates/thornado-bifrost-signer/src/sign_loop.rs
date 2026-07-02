@@ -430,6 +430,9 @@ impl SignLoop {
         if let Err(e) = self.fetch_work(height).await {
             tracing::warn!(error = %e, "sign: keysign fetch failed");
         }
+        if let Err(e) = self.retire_stale(height).await {
+            tracing::warn!(error = %e, "sign: stale-work retirement failed");
+        }
         for _ in 0..self.cfg.max_batches_per_tick {
             match self.process_next(height).await {
                 Ok(true) => continue,
@@ -460,8 +463,9 @@ impl SignLoop {
                         if !item.out_hash.is_empty() {
                             continue; // already signed on-chain
                         }
-                        let stored =
+                        let mut stored =
                             TxOutStoreItem::new(item.clone(), txout.height, i as i64, txout.epoch);
+                        stored.retry_until_height = txout.retry_until_height;
                         if self.store.get(&stored.key())?.is_none() {
                             self.store.put(&stored)?;
                             tracing::info!(in_hash = %item.in_hash, height = h, "queued txout for signing");
@@ -473,6 +477,52 @@ impl SignLoop {
                     self.last_fetched = h;
                 }
                 Err(e) => return Err(e.into()),
+            }
+        }
+        Ok(())
+    }
+
+    /// Retire stale queued work so old copies cannot starve current batches:
+    /// items expired past `retry_until_height` are removed, and items whose
+    /// prescribed inputs are already spent on-chain are finished — another
+    /// party (or a rescheduled successor) executed the spend.
+    async fn retire_stale(&mut self, height: i64) -> Result<()> {
+        let items = self.store.list()?;
+        let mut groups: std::collections::BTreeMap<(u64, i64), Vec<TxOutStoreItem>> =
+            std::collections::BTreeMap::new();
+        for it in items {
+            if it.status != TxStatus::Available || !it.item.out_hash.is_empty() {
+                continue;
+            }
+            if it.retry_until_height > 0 && height > it.retry_until_height {
+                tracing::info!(in_hash = %it.item.in_hash, "retiring expired txout");
+                self.store.remove(&it.key())?;
+                continue;
+            }
+            groups.entry((it.epoch, it.height)).or_default().push(it);
+        }
+        for batch in groups.into_values() {
+            let batch_items: Vec<TxOutItem> = batch.iter().map(|it| it.item.clone()).collect();
+            let Some(inputs) = prescribed_inputs(&batch_items) else {
+                continue;
+            };
+            let mut all_spent = true;
+            for u in &inputs {
+                match self.btc.get_tx_out(&u.txid.to_string(), u.vout).await? {
+                    None => {}
+                    Some(_) => {
+                        all_spent = false;
+                        break;
+                    }
+                }
+            }
+            if all_spent {
+                for it in &batch {
+                    let mut done = it.clone();
+                    done.status = TxStatus::Spent;
+                    self.store.put(&done)?;
+                }
+                tracing::info!(items = batch.len(), height = batch[0].height, "retired batch: prescribed inputs already spent");
             }
         }
         Ok(())

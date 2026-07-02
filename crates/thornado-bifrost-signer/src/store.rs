@@ -45,6 +45,10 @@ pub struct TxOutStoreItem {
     pub signing_leader: String,
     pub round7_retry: bool,
     pub deferred_until_height: i64,
+    /// Give up on this item once the chain passes this height (0 = no limit);
+    /// the chain reschedules unsigned work, so stale copies must retire.
+    #[serde(default)]
+    pub retry_until_height: i64,
     /// Serialized checkpoint (unsigned tx + per-input amounts).
     pub checkpoint: Option<Vec<u8>>,
     /// Serialized signed transaction, once produced.
@@ -62,6 +66,7 @@ impl TxOutStoreItem {
             signing_leader: String::new(),
             round7_retry: false,
             deferred_until_height: 0,
+            retry_until_height: 0,
             checkpoint: None,
             signed_tx: None,
         }

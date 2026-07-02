@@ -546,7 +546,9 @@ async fn maybe_generate_batch(app: &Arc<App>) -> Result<(), String> {
         status: "pending".into(),
         signing_leader: String::new(),
         signing_attempt: 0,
-        retry_until_height: serve_height + 1000,
+        // Expire stale copies quickly: the harness requeues a non-completing
+        // batch at ~120s, so daemon-side copies retire shortly after.
+        retry_until_height: serve_height + 90,
     };
     let payload_json = serde_json::to_string(&txout).map_err(|e| e.to_string())?;
 
