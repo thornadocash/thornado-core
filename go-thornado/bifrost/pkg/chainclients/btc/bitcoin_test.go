@@ -189,6 +189,9 @@ func (s *BitcoinSuite) SetUpTest(c *C) {
 			c.Assert(err, IsNil)
 		} else if strings.HasPrefix(req.RequestURI, thornadoclient.BaseVaultEndpoint) {
 			httpTestHandler(c, rw, "../../../../test/fixtures/endpoints/vaults/base.json")
+		} else if req.RequestURI == thornadoclient.StatusEndpoint {
+			_, err := rw.Write([]byte(`{"result":{"sync_info":{"catching_up":false}}}`))
+			c.Assert(err, IsNil)
 		} else if req.RequestURI == "/thornado/config" {
 			_, err := rw.Write([]byte(`{}`))
 			c.Assert(err, IsNil)
@@ -205,6 +208,7 @@ func (s *BitcoinSuite) SetUpTest(c *C) {
 	}))
 	var err error
 	cfg.ChainHost = s.server.Listener.Addr().String()
+	cfg.ChainRPC = s.server.Listener.Addr().String()
 	s.bridge, err = thornadoclient.NewThornadoBridge(cfg, s.m, s.keys)
 	c.Assert(err, IsNil)
 	s.cfg.RPCHost = s.server.Listener.Addr().String()

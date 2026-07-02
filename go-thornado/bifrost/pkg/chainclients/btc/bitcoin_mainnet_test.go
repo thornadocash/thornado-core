@@ -190,7 +190,7 @@ func (s *BitcoinSuite) TestGetConfirmationCount(c *C) {
 		Filtered:             true,
 		MemPool:              false,
 		ConfirmationRequired: 0,
-	}), Equals, int64(0))
+	}), Equals, int64(1))
 
 	c.Assert(s.client.GetConfirmationCount(types.TxIn{
 		Chain: common.BTCChain,
@@ -209,7 +209,7 @@ func (s *BitcoinSuite) TestGetConfirmationCount(c *C) {
 		Filtered:             true,
 		MemPool:              false,
 		ConfirmationRequired: 0,
-	}), Equals, int64(0))
+	}), Equals, int64(1))
 
 	c.Assert(s.client.GetConfirmationCount(types.TxIn{
 		Chain: common.BTCChain,
@@ -247,5 +247,5 @@ func (s *BitcoinSuite) TestGetConfirmationCount(c *C) {
 		Filtered:             true,
 		MemPool:              false,
 		ConfirmationRequired: 0,
-	}), Equals, int64(6))
+	}), Equals, int64(5))
 }

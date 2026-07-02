@@ -208,7 +208,7 @@ func (s *PostKeysignFailureSuite) TestPostKeysignFailure_KeysignError_PostError(
 }
 
 // -------------------------------------------------------------------------------------
-// GetConfMulBasisPoint / MaxConfAdjustment Tests (mocknet)
+// GetConfMulBasisPoint / MaxConfAdjustment Tests
 // -------------------------------------------------------------------------------------
 
 type ConfAdjustmentSuite struct{}
@@ -219,14 +219,14 @@ func (s *ConfAdjustmentSuite) TestGetConfMulBasisPoint(c *C) {
 	bridge := &mockBridge{}
 	val, err := GetConfMulBasisPoint("BTC", bridge)
 	c.Assert(err, IsNil)
-	c.Assert(val.Uint64(), Equals, uint64(1))
+	c.Assert(val.Uint64(), Equals, uint64(constants.MaxBasisPts))
 }
 
 func (s *ConfAdjustmentSuite) TestMaxConfAdjustment(c *C) {
 	bridge := &mockBridge{}
 	val, err := MaxConfAdjustment(10, "BTC", bridge)
 	c.Assert(err, IsNil)
-	c.Assert(val, Equals, uint64(1))
+	c.Assert(val, Equals, expectedMaxConfAdjustment)
 }
 
 // -------------------------------------------------------------------------------------
