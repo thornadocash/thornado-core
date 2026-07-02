@@ -1,8 +1,50 @@
 # Rust Bifrost — status
 
 GOAL MET (2026-07-02): the **full** Rust-ported Bifrost — observe AND sign —
-pressure-tested on the hcloud regtest cluster with **4 active nodes**. See
-"Pressure test results" below for the final numbers.
+(1) pressure-tested on a standalone 4-node regtest cluster, then (2) deployed
+**in place on the live thornado-e2e validators (nodes 5–9)**, replacing the Go
+bifrost, reusing each node's existing FROST keyshare and cosmos key. The live
+chain now observes BTC deposits, FROST-signs refunds/outbounds across the real
+Go-DKG'd vault, and settles them — all on Rust. See "In-place live upgrade"
+and "Pressure test results" below.
+
+## In-place live upgrade (nodes 5–9, thornado-e2e)
+
+- Each Rust daemon reuses the node's EXISTING FROST keyshare
+  (`.../bifrostN/localstate-<vault>.json`, whose base64 `local_data` field is
+  the Rust `StoredShare` verbatim), cosmos key (`thornado keys export
+  validatorN --unsafe --unarmored-hex`, answer the `y` confirm), and node
+  pubkey. Active vault = 4-of participants, 3-of-4 threshold; members are
+  v5/v7/v8/v9, v6 is standby (observer-only, no keyshare).
+- Shared regtest bitcoind on the coordinator (5.223.51.101:24645, per-node
+  wallet `bifrostN`); daemons talk to their local node's API/RPC and post
+  observations with the node's own cosmos key.
+- Under `/root/rust-bifrost-live/` on each node; systemd unit
+  `rust-bifrost-live`. Rollback: `systemctl stop rust-bifrost-live` then
+  re-exec the Go bifrost with the saved `go-bifrost.env` (kept by the swap
+  script). The Go binary is untouched.
+- **Verified live**: a 0.4 BTC deposit was observed by all 4 members
+  (consensus, finalised), its refund FROST-signed by the live vault party and
+  broadcast to bitcoind, the outbound observed with the correct recipient and
+  **matched by the chain** (txout item → `complete`), leaving BTC signing
+  un-halted and the queue drained.
+- Five interop bugs were found and fixed by running against the real chain
+  (all committed): bech32 pubkey/account decoding; tolerating Go's `null`
+  slices; **batch-outbound observation** (vault-sent txs must be observed as
+  the recipient output, not the change, or the chain halts BTC as an
+  unmatched outbound); **pending-work discovery** via `/thornado/txout/all`
+  (the chain holds unsigned batches at their original height, which a linear
+  height-walk misses); and **input-based batching** (the chain's batch matcher
+  requires every batched item to share identical `source_inputs`, so
+  independent refunds — each spending its own deposit UTXO — must sign as
+  separate single-item txs, not one union tx). Plus the safety rule: when
+  prescribed inputs are already spent, DEFER — never re-sign with fresh UTXOs
+  (double-pays and re-halts). A `--allow-respend-spent` flag (default off)
+  exists only to drain a batch poisoned by a buggy prior signer.
+- Un-halt after investigating: vote the config keys from each active
+  validator — `thornado tx thornado config HaltSigningBTC 0` and
+  `Halt_SolvencyCheck 0` (operational config, needs 2/3 node votes; run
+  sequentially to avoid sequence races).
 
 ## What runs where (cluster, hcloud regtest — NO real funds)
 
