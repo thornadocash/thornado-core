@@ -10,6 +10,7 @@ pub mod frost_session;
 pub mod p2p;
 pub mod signer;
 pub mod store;
+pub mod temporal;
 pub mod transport;
 pub mod tx_builder;
 pub mod wire;
