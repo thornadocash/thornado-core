@@ -482,47 +482,20 @@ impl SignLoop {
         Ok(())
     }
 
-    /// Retire stale queued work so old copies cannot starve current batches:
-    /// items expired past `retry_until_height` are removed, and items whose
-    /// prescribed inputs are already spent on-chain are finished — another
-    /// party (or a rescheduled successor) executed the spend.
+    /// Retire queued work that has expired past the chain's
+    /// `retry_until_height` so old copies cannot starve current batches. We do
+    /// NOT retire on "prescribed inputs spent" alone: if the chain still lists
+    /// the item as unsigned, its outbound was never credited and it must be
+    /// re-signed (with fresh inputs) — retiring it here would deadlock the
+    /// chain's per-vault batch queue behind an item nobody will sign.
     async fn retire_stale(&mut self, height: i64) -> Result<()> {
-        let items = self.store.list()?;
-        let mut groups: std::collections::BTreeMap<(u64, i64), Vec<TxOutStoreItem>> =
-            std::collections::BTreeMap::new();
-        for it in items {
+        for it in self.store.list()? {
             if it.status != TxStatus::Available || !it.item.out_hash.is_empty() {
                 continue;
             }
             if it.retry_until_height > 0 && height > it.retry_until_height {
                 tracing::info!(in_hash = %it.item.in_hash, "retiring expired txout");
                 self.store.remove(&it.key())?;
-                continue;
-            }
-            groups.entry((it.epoch, it.height)).or_default().push(it);
-        }
-        for batch in groups.into_values() {
-            let batch_items: Vec<TxOutItem> = batch.iter().map(|it| it.item.clone()).collect();
-            let Some(inputs) = prescribed_inputs(&batch_items) else {
-                continue;
-            };
-            let mut all_spent = true;
-            for u in &inputs {
-                match self.btc.get_tx_out(&u.txid.to_string(), u.vout).await? {
-                    None => {}
-                    Some(_) => {
-                        all_spent = false;
-                        break;
-                    }
-                }
-            }
-            if all_spent {
-                for it in &batch {
-                    let mut done = it.clone();
-                    done.status = TxStatus::Spent;
-                    self.store.put(&done)?;
-                }
-                tracing::info!(items = batch.len(), height = batch[0].height, "retired batch: prescribed inputs already spent");
             }
         }
         Ok(())
@@ -673,8 +646,32 @@ impl SignLoop {
         let recipients_total: u64 = recipients.iter().map(|r| r.amount_sats).sum();
         let fee_rate = rep.item.gas_rate.max(1) as u64;
 
+        // Prescribed inputs win — but only while they are still spendable.
+        // If the chain prescribed a UTXO that is already spent on-chain (e.g. a
+        // prior attempt executed but its outbound was never credited), every
+        // party sees the same spent state and falls back to the same
+        // deterministic fresh selection, so all still build the identical tx.
         let batch_items_ref: Vec<TxOutItem> = batch.iter().map(|it| it.item.clone()).collect();
-        let inputs = match prescribed_inputs(&batch_items_ref) {
+        let prescribed = prescribed_inputs(&batch_items_ref);
+        let prescribed = match prescribed {
+            Some(inputs) => {
+                let mut all_spendable = true;
+                for u in &inputs {
+                    if self
+                        .btc
+                        .get_tx_out(&u.txid.to_string(), u.vout)
+                        .await?
+                        .is_none()
+                    {
+                        all_spendable = false;
+                        break;
+                    }
+                }
+                all_spendable.then_some(inputs)
+            }
+            None => None,
+        };
+        let inputs = match prescribed {
             Some(inputs) => inputs,
             None => {
                 let unspent = self
