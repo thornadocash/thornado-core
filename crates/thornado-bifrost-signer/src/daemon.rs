@@ -55,9 +55,15 @@ pub struct DecodedBlock {
 
 /// The chain data source (bitcoind in production, a fake in tests).
 pub trait BlockSource {
-    fn block_count(&self) -> Result<i64>;
-    fn block_hash(&self, height: i64) -> Result<Option<String>>;
-    fn block_at(&self, height: i64) -> Result<DecodedBlock>;
+    fn block_count(&self) -> impl std::future::Future<Output = Result<i64>> + Send;
+    fn block_hash(
+        &self,
+        height: i64,
+    ) -> impl std::future::Future<Output = Result<Option<String>>> + Send;
+    fn block_at(
+        &self,
+        height: i64,
+    ) -> impl std::future::Future<Output = Result<DecodedBlock>> + Send;
 }
 
 /// Vault membership predicates for observation extraction.
@@ -105,30 +111,40 @@ impl<S: BlockSource> Observer<S> {
     /// Scan any blocks newer than `last_scanned` up to the tip, handling reorgs,
     /// recording block metadata, and returning the observations found. Advances
     /// `last_scanned` to the tip.
-    pub fn scan_to_tip(
+    pub async fn scan_to_tip(
         &mut self,
         store: &TemporalStore,
         vaults: &VaultView,
     ) -> Result<Vec<TxInItem>> {
-        let tip = self.source.block_count()?;
+        let tip = self.source.block_count().await?;
         let mut observations = Vec::new();
         let mut height = self.last_scanned + 1;
         while height <= tip {
-            let block = self.source.block_at(height)?;
+            let block = self.source.block_at(height).await?;
 
             // Reorg check: does this block extend what we recorded?
             let reorg = scanner::is_reorg(store, height, &block.previous_hash)
                 .map_err(|e| DaemonError::Scan(e.to_string()))?;
             if reorg {
+                // Pre-fetch the canonical hashes for the reorg window so the
+                // pure common-ancestor walk stays sync (and unit-tested).
+                let earliest = (height - self.max_reorg_rescan).max(1);
+                let mut window: std::collections::HashMap<i64, String> =
+                    std::collections::HashMap::new();
+                for h in earliest..height {
+                    if let Some(hash) = self.source.block_hash(h).await? {
+                        window.insert(h, hash);
+                    }
+                }
                 let rescan = scanner::reconfirm_heights(
                     store,
                     height,
                     self.max_reorg_rescan,
-                    |h| self.source.block_hash(h).ok().flatten(),
+                    |h| window.get(&h).cloned(),
                 )
                 .map_err(|e| DaemonError::Scan(e.to_string()))?;
                 for h in rescan {
-                    let b = self.source.block_at(h)?;
+                    let b = self.source.block_at(h).await?;
                     observations.extend(self.extract_block(&b, vaults)?);
                     // update the recorded meta to the new canonical block
                     self.record_block_meta(store, &b)?;
@@ -190,6 +206,110 @@ fn vaults_self_only(_tx: &DecodedTx) -> bool {
     false
 }
 
+/// Live [`BlockSource`] backed by bitcoind. Resolves each input's prevout
+/// (address + amount) via `getrawtransaction`, matching what the Go observer
+/// needs to compute sender and gas.
+pub struct BitcoindBlockSource {
+    rpc: crate::bitcoind::BitcoindRpc,
+}
+
+impl BitcoindBlockSource {
+    pub fn new(rpc: crate::bitcoind::BitcoindRpc) -> Self {
+        Self { rpc }
+    }
+
+    async fn decode_tx(&self, tx: &crate::bitcoind::VerboseTx) -> Result<DecodedTx> {
+        let mut inputs = Vec::with_capacity(tx.vin.len());
+        for vin in &tx.vin {
+            // coinbase inputs have no prevout
+            let (Some(prev_txid), Some(prev_vout)) = (vin.txid.clone(), vin.vout) else {
+                continue;
+            };
+            let prev = self
+                .rpc
+                .get_raw_transaction(&prev_txid)
+                .await
+                .map_err(|e| DaemonError::Source(e.to_string()))?;
+            let (addr, amount) = prev
+                .vout
+                .iter()
+                .find(|o| o.n == prev_vout)
+                .map(|o| {
+                    (
+                        o.script_pubkey.single_address(),
+                        crate::extract::btc_to_sats(o.value),
+                    )
+                })
+                .unwrap_or((None, 0));
+            inputs.push(DecodedInput {
+                prev_txid,
+                prev_vout,
+                prev_address: addr,
+                prev_amount_sats: amount,
+            });
+        }
+        let outputs = tx
+            .vout
+            .iter()
+            .map(|o| DecodedOutput {
+                n: o.n,
+                value_sats: crate::extract::btc_to_sats(o.value),
+                script_hex: o.script_pubkey.hex.clone(),
+            })
+            .collect();
+        let sender = inputs
+            .first()
+            .and_then(|i| i.prev_address.clone())
+            .unwrap_or_default();
+        Ok(DecodedTx {
+            txid: tx.txid.clone(),
+            inputs,
+            outputs,
+            sender,
+        })
+    }
+}
+
+impl BlockSource for BitcoindBlockSource {
+    async fn block_count(&self) -> Result<i64> {
+        self.rpc
+            .get_block_count()
+            .await
+            .map_err(|e| DaemonError::Source(e.to_string()))
+    }
+
+    async fn block_hash(&self, height: i64) -> Result<Option<String>> {
+        match self.rpc.get_block_hash(height).await {
+            Ok(h) => Ok(Some(h)),
+            Err(crate::bitcoind::RpcError::Rpc { .. }) => Ok(None), // out of range
+            Err(e) => Err(DaemonError::Source(e.to_string())),
+        }
+    }
+
+    async fn block_at(&self, height: i64) -> Result<DecodedBlock> {
+        let hash = self
+            .rpc
+            .get_block_hash(height)
+            .await
+            .map_err(|e| DaemonError::Source(e.to_string()))?;
+        let block = self
+            .rpc
+            .get_block_verbose_txs(&hash)
+            .await
+            .map_err(|e| DaemonError::Source(e.to_string()))?;
+        let mut txs = Vec::with_capacity(block.tx.len());
+        for tx in &block.tx {
+            txs.push(self.decode_tx(tx).await?);
+        }
+        Ok(DecodedBlock {
+            height: block.height,
+            hash: block.hash,
+            previous_hash: block.previous_block_hash,
+            txs,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -203,13 +323,13 @@ mod tests {
         tip: i64,
     }
     impl BlockSource for FakeChain {
-        fn block_count(&self) -> Result<i64> {
+        async fn block_count(&self) -> Result<i64> {
             Ok(self.tip)
         }
-        fn block_hash(&self, height: i64) -> Result<Option<String>> {
+        async fn block_hash(&self, height: i64) -> Result<Option<String>> {
             Ok(self.blocks.get(&height).map(|b| b.hash.clone()))
         }
-        fn block_at(&self, height: i64) -> Result<DecodedBlock> {
+        async fn block_at(&self, height: i64) -> Result<DecodedBlock> {
             self.blocks
                 .get(&height)
                 .cloned()
@@ -260,8 +380,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn scans_new_blocks_and_extracts_inbound() {
+    #[tokio::test]
+    async fn scans_new_blocks_and_extracts_inbound() {
         let (addr, script) = vault_addr();
         let mut blocks = HashMap::new();
         blocks.insert(1, inbound_block(1, "h1", "h0", &script));
@@ -270,7 +390,7 @@ mod tests {
         let store = TemporalStore::in_memory().unwrap();
 
         let mut obs = Observer::new(chain, Network::Regtest, 10_000, 0);
-        let items = obs.scan_to_tip(&store, &view(&addr)).unwrap();
+        let items = obs.scan_to_tip(&store, &view(&addr)).await.unwrap();
 
         assert_eq!(items.len(), 2); // one inbound per block
         assert_eq!(items[0].to, addr);
@@ -282,20 +402,20 @@ mod tests {
         assert!(store.get_block_meta(2).unwrap().is_some());
     }
 
-    #[test]
-    fn idempotent_when_no_new_blocks() {
+    #[tokio::test]
+    async fn idempotent_when_no_new_blocks() {
         let (addr, script) = vault_addr();
         let mut blocks = HashMap::new();
         blocks.insert(1, inbound_block(1, "h1", "h0", &script));
         let chain = FakeChain { blocks, tip: 1 };
         let store = TemporalStore::in_memory().unwrap();
         let mut obs = Observer::new(chain, Network::Regtest, 10_000, 1); // already scanned 1
-        let items = obs.scan_to_tip(&store, &view(&addr)).unwrap();
+        let items = obs.scan_to_tip(&store, &view(&addr)).await.unwrap();
         assert!(items.is_empty());
     }
 
-    #[test]
-    fn dust_output_is_skipped() {
+    #[tokio::test]
+    async fn dust_output_is_skipped() {
         let (addr, script) = vault_addr();
         let mut b = inbound_block(1, "h1", "h0", &script);
         b.txs[0].outputs[0].value_sats = 500; // below dust
@@ -304,12 +424,12 @@ mod tests {
         let chain = FakeChain { blocks, tip: 1 };
         let store = TemporalStore::in_memory().unwrap();
         let mut obs = Observer::new(chain, Network::Regtest, 10_000, 0);
-        let items = obs.scan_to_tip(&store, &view(&addr)).unwrap();
+        let items = obs.scan_to_tip(&store, &view(&addr)).await.unwrap();
         assert!(items.is_empty()); // dust filtered
     }
 
-    #[test]
-    fn reorg_rescans_diverged_block() {
+    #[tokio::test]
+    async fn reorg_rescans_diverged_block() {
         let (addr, script) = vault_addr();
         let store = TemporalStore::in_memory().unwrap();
 
@@ -319,7 +439,7 @@ mod tests {
         blocks.insert(2, inbound_block(2, "h2", "h1", &script));
         let chain = FakeChain { blocks, tip: 2 };
         let mut obs = Observer::new(chain, Network::Regtest, 10_000, 0);
-        obs.scan_to_tip(&store, &view(&addr)).unwrap();
+        obs.scan_to_tip(&store, &view(&addr)).await.unwrap();
         assert_eq!(obs.last_scanned(), 2);
 
         // Reorg: height 2 is replaced (h2_new, still building on h1), and a new
@@ -338,7 +458,7 @@ mod tests {
         };
         // Scanning height 3: its previous hash h2_new != recorded h2 -> reorg,
         // rescans height 2, plus extracts block 3.
-        let items = obs.scan_to_tip(&store, &view(&addr)).unwrap();
+        let items = obs.scan_to_tip(&store, &view(&addr)).await.unwrap();
         // rescanned block 2 + new block 3 = 2 observations
         assert_eq!(items.len(), 2);
         // block meta for 2 updated to the new hash

@@ -79,6 +79,61 @@ pub struct TxOutInfo {
     pub value: f64,
 }
 
+/// scriptPubKey in a verbose tx vout.
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct ScriptPubKey {
+    #[serde(default)]
+    pub hex: String,
+    /// bitcoind >= 22 returns a single `address`; older returns `addresses`.
+    #[serde(default)]
+    pub address: Option<String>,
+    #[serde(default)]
+    pub addresses: Vec<String>,
+    #[serde(rename = "type", default)]
+    pub script_type: String,
+}
+
+/// A verbose tx input.
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct VerboseVin {
+    /// absent for coinbase inputs
+    #[serde(default)]
+    pub txid: Option<String>,
+    #[serde(default)]
+    pub vout: Option<u32>,
+}
+
+/// A verbose tx output.
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct VerboseVout {
+    pub value: f64,
+    pub n: u32,
+    #[serde(rename = "scriptPubKey", default)]
+    pub script_pubkey: ScriptPubKey,
+}
+
+/// A transaction as returned by verbose `getrawtransaction` / `getblock`
+/// verbosity=2.
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct VerboseTx {
+    pub txid: String,
+    #[serde(default)]
+    pub vin: Vec<VerboseVin>,
+    #[serde(default)]
+    pub vout: Vec<VerboseVout>,
+}
+
+/// A block with full transaction detail (`getblock` verbosity=2).
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct VerboseBlock {
+    pub hash: String,
+    pub height: i64,
+    #[serde(rename = "previousblockhash", default)]
+    pub previous_block_hash: String,
+    #[serde(default)]
+    pub tx: Vec<VerboseTx>,
+}
+
 /// Config for reaching bitcoind's JSON-RPC.
 #[derive(Debug, Clone)]
 pub struct BitcoindConfig {
@@ -209,6 +264,30 @@ impl BitcoindRpc {
     pub async fn send_raw_transaction(&self, tx_hex: &str) -> Result<String> {
         self.call("sendrawtransaction", serde_json::json!([tx_hex]))
             .await
+    }
+
+    /// Fetch a block with full transaction detail (`getblock <hash> 2`).
+    pub async fn get_block_verbose_txs(&self, hash: &str) -> Result<VerboseBlock> {
+        self.call("getblock", serde_json::json!([hash, 2])).await
+    }
+
+    /// Fetch a verbose transaction (`getrawtransaction <txid> true`).
+    pub async fn get_raw_transaction(&self, txid: &str) -> Result<VerboseTx> {
+        self.call("getrawtransaction", serde_json::json!([txid, true]))
+            .await
+    }
+}
+
+impl ScriptPubKey {
+    /// The single receiver address, if the output has exactly one.
+    pub fn single_address(&self) -> Option<String> {
+        if let Some(a) = &self.address {
+            return Some(a.clone());
+        }
+        if self.addresses.len() == 1 {
+            return Some(self.addresses[0].clone());
+        }
+        None
     }
 }
 
