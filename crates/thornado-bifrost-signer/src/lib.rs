@@ -7,6 +7,7 @@
 pub mod bitcoind;
 pub mod chain;
 pub mod frost_session;
+pub mod observer;
 pub mod p2p;
 pub mod scanner;
 pub mod signer;
