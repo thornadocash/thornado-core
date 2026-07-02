@@ -397,7 +397,8 @@ async fn force_reorg(app: &Arc<App>) -> Result<(), String> {
 /// A batch completes when every prescribed input is spent on-chain/in-mempool
 /// — bitcoind accepted the FROST-signed spend, the core success signal.
 async fn check_completions(app: &Arc<App>) {
-    let candidates: Vec<(i64, Vec<(String, u32)>, u64, u64)> = {
+    type Candidate = (i64, Vec<(String, u32)>, u64, u64);
+    let candidates: Vec<Candidate> = {
         let pending = app.pending.lock().unwrap();
         pending
             .iter()
