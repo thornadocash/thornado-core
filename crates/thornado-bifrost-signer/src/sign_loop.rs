@@ -97,11 +97,14 @@ impl Default for SignLoopCfg {
             local: String::new(),
             vault_id: String::new(),
             network: bitcoin::Network::Regtest,
-            signing_period: 12,
+            // Party attempts must be SHORT relative to the signing period, or
+            // sequential attempts convoy: every node sits in a member-wait for
+            // one batch while its own leadership window for another expires.
+            signing_period: 30,
             min_utxo_conf: 1,
-            party_wait: Duration::from_secs(20),
-            join_wait: Duration::from_secs(45),
-            keysign_timeout: Duration::from_secs(90),
+            party_wait: Duration::from_secs(12),
+            join_wait: Duration::from_secs(20),
+            keysign_timeout: Duration::from_secs(60),
             fetch_window: 20,
             max_batches_per_tick: 5,
         }
@@ -171,8 +174,10 @@ pub fn recipients_for(
     Ok(out)
 }
 
-/// Session id for the join-party handshake of one signing attempt. All batch
-/// facts that every party agrees on, hashed.
+/// Session id for the join-party handshake of one signing attempt: the batch
+/// identity in plaintext (`epoch-height-`) plus a hash of the full batch
+/// facts. The plaintext prefix lets a leader resolve WHICH batch a member is
+/// asking it to lead (demand-driven leading), the hash pins the exact items.
 pub fn party_session_id(vault_id: &str, epoch: u64, height: i64, in_hashes: &[String]) -> String {
     use sha2::{Digest, Sha256};
     let mut h = Sha256::new();
@@ -184,7 +189,16 @@ pub fn party_session_id(vault_id: &str, epoch: u64, height: i64, in_hashes: &[St
         h.update(ih.as_bytes());
         h.update(b"|");
     }
-    hex::encode(h.finalize())
+    format!("{epoch}-{height}-{}", hex::encode(&h.finalize()[..16]))
+}
+
+/// Parse the `epoch-height` prefix out of a party session id.
+pub fn parse_party_session_id(id: &str) -> Option<(u64, i64)> {
+    let mut parts = id.splitn(3, '-');
+    let epoch = parts.next()?.parse().ok()?;
+    let height = parts.next()?.parse().ok()?;
+    parts.next()?;
+    Some((epoch, height))
 }
 
 /// True when a bitcoind broadcast error means the tx is already known —
@@ -205,10 +219,14 @@ pub fn broadcast_error_is_benign(message: &str) -> bool {
 
 /// Leader side: collect join requests for `session_id` until every member is
 /// in or `wait` elapses, then answer every joined stream. Success needs
-/// `threshold` parties (leader included). Requests for other session ids are
-/// dropped (their streams close; the member retries next period).
+/// `threshold` parties (leader included). `seed` carries already-received
+/// (parked) requests; requests for other session ids are parked back via
+/// `parked` so demand-driven leading can pick them up next.
+#[allow(clippy::too_many_arguments)]
 pub async fn leader_form_party(
     joins: &mut tokio::sync::mpsc::Receiver<JoinRequest>,
+    parked: &mut Vec<(std::time::Instant, JoinRequest)>,
+    seed: Vec<JoinRequest>,
     session_id: &str,
     local: &str,
     members: &[String],
@@ -218,6 +236,11 @@ pub async fn leader_form_party(
     let mut coordinator =
         p2p::Coordinator::new_leader(session_id, local, members.iter().cloned(), threshold);
     let mut joined: Vec<(String, libp2p::Stream)> = Vec::new();
+    for req in seed {
+        if req.msg.id == session_id && coordinator.on_request(&req.from) {
+            joined.push((req.from.clone(), req.stream));
+        }
+    }
     let deadline = tokio::time::Instant::now() + wait;
 
     while coordinator.selected().len() < members.len() {
@@ -227,7 +250,8 @@ pub async fn leader_form_party(
         };
         let Some(req) = req else { break };
         if req.msg.id != session_id {
-            continue; // stale request for another attempt; stream drops
+            parked.push((std::time::Instant::now(), req));
+            continue;
         }
         if coordinator.on_request(&req.from) {
             joined.push((req.from.clone(), req.stream));
@@ -350,6 +374,11 @@ pub struct SignLoop {
     pub control: libp2p_stream::Control,
     pub joins: tokio::sync::mpsc::Receiver<JoinRequest>,
     last_fetched: i64,
+    /// Join requests received while attending other sessions. A member asking
+    /// us to lead a batch pulls that batch to the front of our queue
+    /// (demand-driven leading) — without this, deferral-timing skew lets every
+    /// node's queue head diverge and no party ever forms.
+    parked: Vec<(std::time::Instant, JoinRequest)>,
 }
 
 impl SignLoop {
@@ -378,6 +407,7 @@ impl SignLoop {
             control,
             joins,
             last_fetched: 0,
+            parked: Vec::new(),
         }
     }
 
@@ -448,12 +478,64 @@ impl SignLoop {
         Ok(())
     }
 
-    /// Try to sign the next ready batch. Ok(true) = signed one (try another),
+    /// Absorb pending join requests into the parked buffer and drop entries
+    /// whose member has certainly given up waiting.
+    fn park_joins(&mut self) {
+        while let Ok(req) = self.joins.try_recv() {
+            self.parked.push((std::time::Instant::now(), req));
+        }
+        let ttl = self.cfg.join_wait.min(Duration::from_secs(25));
+        self.parked.retain(|(at, _)| at.elapsed() < ttl);
+    }
+
+    /// A batch other members are asking US to lead, if any: resolve the
+    /// (epoch, height) prefix of a parked join request against our store,
+    /// ignoring local deferral — member demand overrides it.
+    fn demanded_batch(&self, all: &[TxOutStoreItem]) -> Option<Vec<TxOutStoreItem>> {
+        let members = crate::frost_session::normalize_participants(&self.share.participants);
+        for (_, req) in &self.parked {
+            let Some((epoch, height)) = parse_party_session_id(&req.msg.id) else {
+                continue;
+            };
+            let subset: Vec<TxOutStoreItem> = all
+                .iter()
+                .filter(|it| {
+                    it.epoch == epoch
+                        && it.height == height
+                        && it.status == TxStatus::Available
+                        && it.item.out_hash.is_empty()
+                })
+                .cloned()
+                .collect();
+            let Some(batch) = next_batch(&subset) else { continue };
+            let leader = frost_party_leader(&members, epoch, height);
+            if leader.as_deref() == Some(self.cfg.local.as_str()) {
+                // Confirm the id actually matches this batch before leading.
+                let in_hashes: Vec<String> =
+                    batch.iter().map(|it| it.item.in_hash.clone()).collect();
+                if party_session_id(&self.cfg.vault_id, epoch, height, &in_hashes) == req.msg.id {
+                    return Some(batch);
+                }
+            }
+        }
+        None
+    }
+
+    /// Try to sign the next ready batch — one that members demand we lead
+    /// first, else our queue head. Ok(true) = signed one (try another),
     /// Ok(false) = nothing ready. Failures defer the batch and bubble up.
     async fn process_next(&mut self, height: i64) -> Result<bool> {
-        let avail = available_work(self.store.list()?, height);
-        let Some(batch) = next_batch(&avail) else {
-            return Ok(false);
+        self.park_joins();
+        let all = self.store.list()?;
+        let batch = match self.demanded_batch(&all) {
+            Some(b) => b,
+            None => {
+                let avail = available_work(all, height);
+                match next_batch(&avail) {
+                    Some(b) => b,
+                    None => return Ok(false),
+                }
+            }
         };
         let rep = batch[0].clone();
 
@@ -487,8 +569,21 @@ impl SignLoop {
         let sid = party_session_id(&self.cfg.vault_id, rep.epoch, rep.height, &in_hashes);
 
         let selected = if leader == self.cfg.local {
+            // Hand any parked requests for this session to the coordinator.
+            let mut seed = Vec::new();
+            let mut rest = Vec::new();
+            for (at, req) in self.parked.drain(..) {
+                if req.msg.id == sid {
+                    seed.push(req);
+                } else {
+                    rest.push((at, req));
+                }
+            }
+            self.parked = rest;
             leader_form_party(
                 &mut self.joins,
+                &mut self.parked,
+                seed,
                 &sid,
                 &self.cfg.local,
                 &members,
@@ -697,9 +792,13 @@ mod tests {
         let a = party_session_id("v", 1, 10, &["h1".into(), "h2".into()]);
         let b = party_session_id("v", 1, 10, &["h1".into(), "h2".into()]);
         let c = party_session_id("v", 1, 11, &["h1".into(), "h2".into()]);
+        let d = party_session_id("v", 1, 10, &["h1".into(), "hX".into()]);
         assert_eq!(a, b);
         assert_ne!(a, c);
-        assert_eq!(a.len(), 64);
+        assert_ne!(a, d); // same prefix, different batch facts
+        assert_eq!(parse_party_session_id(&a), Some((1, 10)));
+        assert_eq!(parse_party_session_id(&c), Some((1, 11)));
+        assert_eq!(parse_party_session_id("garbage"), None);
     }
 
     #[test]
