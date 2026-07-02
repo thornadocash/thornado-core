@@ -91,6 +91,12 @@ pub struct SignLoopCfg {
     pub fetch_window: i64,
     /// Max batches signed per tick.
     pub max_batches_per_tick: usize,
+    /// Operational escape hatch: when a batch's prescribed inputs are already
+    /// spent, re-sign it with fresh UTXOs instead of deferring. Off by default
+    /// (deferring is safe — the outbound is normally already in flight). Turn
+    /// on ONLY to drain a batch poisoned by a buggy prior signer, accepting a
+    /// possible double-payment.
+    pub allow_respend_spent: bool,
 }
 
 impl Default for SignLoopCfg {
@@ -109,6 +115,7 @@ impl Default for SignLoopCfg {
             keysign_timeout: Duration::from_secs(60),
             fetch_window: 20,
             max_batches_per_tick: 5,
+            allow_respend_spent: false,
         }
     }
 }
@@ -694,6 +701,7 @@ impl SignLoop {
         let batch_items_ref: Vec<TxOutItem> = batch.iter().map(|it| it.item.clone()).collect();
         let inputs = match prescribed_inputs(&batch_items_ref) {
             Some(inputs) => {
+                let mut all_spendable = true;
                 for u in &inputs {
                     if self
                         .btc
@@ -701,10 +709,29 @@ impl SignLoop {
                         .await?
                         .is_none()
                     {
-                        return Err(SignLoopError::InputsSpent);
+                        all_spendable = false;
+                        break;
                     }
                 }
-                inputs
+                if all_spendable {
+                    inputs
+                } else if self.cfg.allow_respend_spent {
+                    tracing::warn!(items = batch.len(), "prescribed inputs spent; re-sweeping with fresh UTXOs (operational override)");
+                    let unspent = self
+                        .btc
+                        .list_unspent(std::slice::from_ref(&vault_addr))
+                        .await?;
+                    select_utxos(
+                        to_utxos(&unspent),
+                        recipients_total,
+                        fee_rate,
+                        recipients.len(),
+                        self.cfg.min_utxo_conf,
+                        |key| self.store.is_spent(key).unwrap_or(false),
+                    )?
+                } else {
+                    return Err(SignLoopError::InputsSpent);
+                }
             }
             None => {
                 let unspent = self

@@ -116,6 +116,10 @@ struct RunArgs {
     /// observe loop poll interval, seconds
     #[arg(long, default_value_t = 10)]
     observe_poll_secs: u64,
+    /// Operational recovery: re-sign batches whose prescribed inputs are
+    /// already spent, using fresh UTXOs (may double-pay). Off by default.
+    #[arg(long, default_value_t = false)]
+    allow_respend_spent: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -454,6 +458,7 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
                 vault_id,
                 network,
                 signing_period: args.signing_period,
+                allow_respend_spent: args.allow_respend_spent,
                 ..Default::default()
             };
             let sl = sign_loop::SignLoop::new(
