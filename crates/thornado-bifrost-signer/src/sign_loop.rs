@@ -50,6 +50,8 @@ pub enum SignLoopError {
     Session(#[from] crate::frost_session::FrostError),
     #[error("keysign timed out")]
     KeysignTimeout,
+    #[error("prescribed inputs already spent; outbound in flight, deferring")]
+    InputsSpent,
     #[error("not selected for this party")]
     NotSelected,
     #[error("config: {0}")]
@@ -577,7 +579,13 @@ impl SignLoop {
                     deferred.deferred_until_height = retry_at;
                     self.store.put(&deferred)?;
                 }
-                tracing::warn!(error = %e, retry_at, items = batch.len(), "signing failed; deferred");
+                if matches!(e, SignLoopError::InputsSpent) {
+                    // Expected while an already-broadcast outbound awaits
+                    // observation; not a failure.
+                    tracing::debug!(retry_at, items = batch.len(), "outbound in flight; deferring");
+                } else {
+                    tracing::warn!(error = %e, retry_at, items = batch.len(), "signing failed; deferred");
+                }
                 Err(e)
             }
         }
@@ -648,16 +656,15 @@ impl SignLoop {
         let recipients_total: u64 = recipients.iter().map(|r| r.amount_sats).sum();
         let fee_rate = rep.item.gas_rate.max(1) as u64;
 
-        // Prescribed inputs win — but only while they are still spendable.
-        // If the chain prescribed a UTXO that is already spent on-chain (e.g. a
-        // prior attempt executed but its outbound was never credited), every
-        // party sees the same spent state and falls back to the same
-        // deterministic fresh selection, so all still build the identical tx.
+        // Prescribed inputs win. If the chain prescribed a UTXO that is already
+        // spent on-chain, the outbound was almost certainly already broadcast
+        // (by us or a peer) and is simply awaiting observation — DEFER and let
+        // the chain match it. Re-signing with fresh inputs would pay the
+        // recipient a second time; every retry would pay again. When there are
+        // no prescribed inputs at all (a lone unbatched item), select fresh.
         let batch_items_ref: Vec<TxOutItem> = batch.iter().map(|it| it.item.clone()).collect();
-        let prescribed = prescribed_inputs(&batch_items_ref);
-        let prescribed = match prescribed {
+        let inputs = match prescribed_inputs(&batch_items_ref) {
             Some(inputs) => {
-                let mut all_spendable = true;
                 for u in &inputs {
                     if self
                         .btc
@@ -665,16 +672,11 @@ impl SignLoop {
                         .await?
                         .is_none()
                     {
-                        all_spendable = false;
-                        break;
+                        return Err(SignLoopError::InputsSpent);
                     }
                 }
-                all_spendable.then_some(inputs)
+                inputs
             }
-            None => None,
-        };
-        let inputs = match prescribed {
-            Some(inputs) => inputs,
             None => {
                 let unspent = self
                     .btc
