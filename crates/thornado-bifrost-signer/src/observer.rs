@@ -84,10 +84,10 @@ where
         if !sender_protocol && !is_base(receiver) {
             continue;
         }
+        // consolidate keeps self-outputs (receiver == sender); a normal tx
+        // keeps outputs to others — i.e. keep when `consolidate == same`.
         let same = receiver == sender;
-        if consolidate && same {
-            selected.push(idx);
-        } else if !consolidate && !same {
+        if consolidate == same {
             selected.push(idx);
         }
     }
