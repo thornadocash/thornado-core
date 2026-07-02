@@ -373,7 +373,6 @@ pub struct SignLoop {
     pub mailbox: Libp2pMailbox,
     pub control: libp2p_stream::Control,
     pub joins: tokio::sync::mpsc::Receiver<JoinRequest>,
-    last_fetched: i64,
     /// Join requests received while attending other sessions. A member asking
     /// us to lead a batch pulls that batch to the front of our queue
     /// (demand-driven leading) — without this, deferral-timing skew lets every
@@ -406,7 +405,6 @@ impl SignLoop {
             mailbox,
             control,
             joins,
-            last_fetched: 0,
             parked: Vec::new(),
         }
     }
@@ -445,38 +443,42 @@ impl SignLoop {
         }
     }
 
-    /// Fetch keysign work for every height we have not seen yet (bounded).
-    async fn fetch_work(&mut self, height: i64) -> Result<()> {
-        if self.last_fetched == 0 {
-            self.last_fetched = (height - 1).max(0);
-        }
-        let from = self.last_fetched + 1;
-        let to = height.min(self.last_fetched + self.cfg.fetch_window);
-        for h in from..=to {
-            match self
+    /// Discover pending keysign work from the chain's txout queue and queue it.
+    ///
+    /// The chain keeps a batch at its original close height until it is signed,
+    /// so a linear height walk would miss batches held for retry below the
+    /// tip. We ask the queue which heights have unsigned items for our vault,
+    /// then fetch each one through the SIGNED keysign endpoint so every item is
+    /// still authenticated against the node key.
+    async fn fetch_work(&mut self, _height: i64) -> Result<()> {
+        let pending = self.client.get_pending_tx_out_keysigns().await?;
+        for txout in pending {
+            let has_ours = txout.tx_array.iter().any(|it| {
+                it.out_hash.is_empty() && it.vault_pub_key == self.cfg.vault_id
+            });
+            if !has_ours {
+                continue;
+            }
+            let signed = match self
                 .client
-                .get_keysign(h, &self.cfg.vault_id, self.verifier.as_ref())
+                .get_keysign(txout.height, &self.cfg.vault_id, self.verifier.as_ref())
                 .await
             {
-                Ok(txout) => {
-                    for (i, item) in txout.tx_array.iter().enumerate() {
-                        if !item.out_hash.is_empty() {
-                            continue; // already signed on-chain
-                        }
-                        let mut stored =
-                            TxOutStoreItem::new(item.clone(), txout.height, i as i64, txout.epoch);
-                        stored.retry_until_height = txout.retry_until_height;
-                        if self.store.get(&stored.key())?.is_none() {
-                            self.store.put(&stored)?;
-                            tracing::info!(in_hash = %item.in_hash, height = h, "queued txout for signing");
-                        }
-                    }
-                    self.last_fetched = h;
-                }
-                Err(crate::chain::ChainError::UnavailableBlock) => {
-                    self.last_fetched = h;
-                }
+                Ok(s) => s,
+                Err(crate::chain::ChainError::UnavailableBlock) => continue,
                 Err(e) => return Err(e.into()),
+            };
+            for (i, item) in signed.tx_array.iter().enumerate() {
+                if !item.out_hash.is_empty() {
+                    continue; // already signed on-chain
+                }
+                let mut stored =
+                    TxOutStoreItem::new(item.clone(), signed.height, i as i64, signed.epoch);
+                stored.retry_until_height = signed.retry_until_height;
+                if self.store.get(&stored.key())?.is_none() {
+                    self.store.put(&stored)?;
+                    tracing::info!(in_hash = %item.in_hash, height = signed.height, "queued txout for signing");
+                }
             }
         }
         Ok(())

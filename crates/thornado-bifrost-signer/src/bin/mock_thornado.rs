@@ -307,6 +307,7 @@ async fn main() -> anyhow::Result<()> {
 
     let rest = Router::new()
         .route("/thornado/lastblock", get(lastblock))
+        .route("/thornado/txout/all", get(txout_all))
         .route("/thornado/keysign/:height/:pubkey", get(keysign))
         .route("/cosmos/auth/v1beta1/accounts/:addr", get(auth_account))
         .route("/stats", get(stats))
@@ -616,6 +617,20 @@ async fn keysign(
         return (headers, body);
     }
     (headers, r#"{"keysign":{"height":0,"tx_array":[]},"signature":""}"#.into())
+}
+
+/// The pending-batch queue the daemon polls to discover unsigned work
+/// (`/thornado/txout/all`). Each pending batch's payload is the same TxOut JSON
+/// served at its keysign height.
+async fn txout_all(State(app): State<Arc<App>>) -> ([(&'static str, &'static str); 1], String) {
+    let headers = [("content-type", "application/json")];
+    let pending = app.pending.lock().unwrap();
+    let joined = pending
+        .iter()
+        .map(|b| b.payload_json.clone())
+        .collect::<Vec<_>>()
+        .join(",");
+    (headers, format!("{{\"txouts\":[{joined}]}}"))
 }
 
 async fn auth_account(
