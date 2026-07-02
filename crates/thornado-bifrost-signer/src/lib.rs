@@ -4,8 +4,11 @@
 //! sessions, BTC transaction construction) with a single-language stack on
 //! top of `frost-secp256k1-tr` — no FFI boundary.
 
+pub mod attestation;
 pub mod bitcoind;
+pub mod broadcast;
 pub mod chain;
+pub mod extract;
 pub mod frost_session;
 pub mod observer;
 pub mod p2p;
