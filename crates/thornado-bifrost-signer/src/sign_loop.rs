@@ -1,0 +1,861 @@
+//! The signing pipeline: composes the ported subsystems into the daemon's
+//! sign half — poll thornado keysign → queue in the store → batch → resolve
+//! the FROST party leader → join-party handshake → one taproot FROST session
+//! per input → assemble witnesses → broadcast to bitcoind → record spent.
+//!
+//! Outbound observations are NOT posted here: the observe loop sees the
+//! broadcast tx on-chain (vault as sender) and posts `MsgObservedTxOut`,
+//! matching the Go bifrost's split.
+//!
+//! The pure decision logic (work selection, batch mapping, recipients,
+//! deferral) is unit-tested here; the FROST drive is tested in
+//! [`crate::transport`]; the leader handshake state machine in [`crate::p2p`].
+
+use std::collections::BTreeMap;
+use std::time::Duration;
+
+use bitcoin::consensus::Encodable;
+
+use crate::bitcoind::BitcoindRpc;
+use crate::chain::{KeysignVerifier, ThornadoClient, TxOutItem};
+use crate::frost_session::{keysign_session_id, SignSession, StoredShare};
+use crate::p2p::{self, PeerRegistry};
+use crate::signer::{
+    batch_items, frost_min_signers, frost_party_leader, next_frost_signer_attempt_height,
+};
+use crate::store::{SignerStore, TxOutStoreItem, TxStatus};
+use crate::transport::{run_keysign_multi, Libp2pMailbox, Mailbox};
+use crate::tx_builder::{
+    apply_taproot_witness, build_unsigned, taproot_sighash, utxo_key, BuildRequest, Recipient,
+    TaprootVault, UnsignedTx,
+};
+use crate::utxo::{prescribed_inputs, select_utxos, to_utxos};
+use crate::wire::{JoinPartyLeaderComm, ResponseType};
+
+#[derive(Debug, thiserror::Error)]
+pub enum SignLoopError {
+    #[error("chain: {0}")]
+    Chain(#[from] crate::chain::ChainError),
+    #[error("store: {0}")]
+    Store(#[from] crate::store::StoreError),
+    #[error("btc rpc: {0}")]
+    Btc(#[from] crate::bitcoind::RpcError),
+    #[error("tx build: {0}")]
+    Tx(#[from] crate::tx_builder::TxError),
+    #[error("party: {0}")]
+    Party(#[from] p2p::P2pError),
+    #[error("frost: {0}")]
+    Frost(#[from] crate::transport::TransportError),
+    #[error("session setup: {0}")]
+    Session(#[from] crate::frost_session::FrostError),
+    #[error("keysign timed out")]
+    KeysignTimeout,
+    #[error("not selected for this party")]
+    NotSelected,
+    #[error("config: {0}")]
+    Config(String),
+}
+
+type Result<T> = std::result::Result<T, SignLoopError>;
+
+/// A member's join-party request accepted by the daemon's stream listener,
+/// waiting for the leader (this node) to respond on the same stream.
+pub struct JoinRequest {
+    /// Participant name resolved from the stream's remote PeerId.
+    pub from: String,
+    pub msg: JoinPartyLeaderComm,
+    pub stream: libp2p::Stream,
+}
+
+/// Tunables for the sign loop.
+pub struct SignLoopCfg {
+    /// Our FROST participant name (the share's `participant`).
+    pub local: String,
+    /// The vault identifier used by the chain's keysign endpoint (the FROST
+    /// group pubkey, hex-compressed).
+    pub vault_id: String,
+    pub network: bitcoin::Network,
+    /// Blocks between signing retries (Go signing transaction period).
+    pub signing_period: i64,
+    /// Minimum confirmations for runtime-selected UTXOs.
+    pub min_utxo_conf: u64,
+    /// How long the leader collects join requests before deciding.
+    pub party_wait: Duration,
+    /// How long a member waits for the leader's response.
+    pub join_wait: Duration,
+    /// Ceiling for driving all of a tx's FROST sessions to completion.
+    pub keysign_timeout: Duration,
+    /// Max keysign heights fetched per tick when catching up.
+    pub fetch_window: i64,
+    /// Max batches signed per tick.
+    pub max_batches_per_tick: usize,
+}
+
+impl Default for SignLoopCfg {
+    fn default() -> Self {
+        Self {
+            local: String::new(),
+            vault_id: String::new(),
+            network: bitcoin::Network::Regtest,
+            signing_period: 12,
+            min_utxo_conf: 1,
+            party_wait: Duration::from_secs(20),
+            join_wait: Duration::from_secs(45),
+            keysign_timeout: Duration::from_secs(90),
+            fetch_window: 20,
+            max_batches_per_tick: 5,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pure decision helpers (unit-tested)
+// ---------------------------------------------------------------------------
+
+/// Store items ready to sign at `height`: Available, not deferred, sorted by
+/// (height, index) so every party picks the same representative.
+pub fn available_work(mut items: Vec<TxOutStoreItem>, height: i64) -> Vec<TxOutStoreItem> {
+    items.retain(|it| {
+        it.status == TxStatus::Available
+            && it.deferred_until_height <= height
+            && it.item.out_hash.is_empty()
+    });
+    items.sort_by(|a, b| (a.height, a.index).cmp(&(b.height, b.index)));
+    items
+}
+
+/// The next batch to sign from the available work: the representative is the
+/// first item; batchable peers (same source) join it, otherwise it signs
+/// alone. Returns store items, preserving deterministic order.
+pub fn next_batch(avail: &[TxOutStoreItem]) -> Option<Vec<TxOutStoreItem>> {
+    let rep = avail.first()?;
+    let all_items: Vec<TxOutItem> = avail.iter().map(|it| it.item.clone()).collect();
+    match batch_items(&all_items, &rep.item) {
+        Some(batch) => {
+            let keys: std::collections::HashSet<String> =
+                batch.iter().map(|it| it.in_hash.clone()).collect();
+            Some(
+                avail
+                    .iter()
+                    .filter(|it| keys.contains(&it.item.in_hash))
+                    .cloned()
+                    .collect(),
+            )
+        }
+        None => Some(vec![rep.clone()]),
+    }
+}
+
+/// Recipient outputs for the batch, in batch order (all parties must agree).
+pub fn recipients_for(
+    batch: &[TxOutStoreItem],
+    network: bitcoin::Network,
+) -> Result<Vec<Recipient>> {
+    use std::str::FromStr;
+    let mut out = Vec::with_capacity(batch.len());
+    for it in batch {
+        let addr = bitcoin::Address::from_str(&it.item.to_address)
+            .map_err(|e| SignLoopError::Config(format!("bad to_address {}: {e}", it.item.to_address)))?
+            .require_network(network)
+            .map_err(|e| SignLoopError::Config(format!("address network: {e}")))?;
+        let amount = it
+            .item
+            .coin
+            .amount_u64()
+            .map_err(|e| SignLoopError::Config(format!("bad amount: {e}")))?;
+        out.push(Recipient {
+            script_pubkey: addr.script_pubkey(),
+            amount_sats: amount,
+        });
+    }
+    Ok(out)
+}
+
+/// Session id for the join-party handshake of one signing attempt. All batch
+/// facts that every party agrees on, hashed.
+pub fn party_session_id(vault_id: &str, epoch: u64, height: i64, in_hashes: &[String]) -> String {
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    h.update(b"party|");
+    h.update(vault_id.as_bytes());
+    h.update(epoch.to_be_bytes());
+    h.update(height.to_be_bytes());
+    for ih in in_hashes {
+        h.update(ih.as_bytes());
+        h.update(b"|");
+    }
+    hex::encode(h.finalize())
+}
+
+/// True when a bitcoind broadcast error means the tx is already known —
+/// another party won the race, which is success for us.
+pub fn broadcast_error_is_benign(message: &str) -> bool {
+    let m = message.to_ascii_lowercase();
+    m.contains("already in block chain")
+        || m.contains("already known")
+        || m.contains("already in mempool")
+        || m.contains("txn-already")
+        || m.contains("inputs missing or spent") // sibling tx confirmed first
+        || m.contains("bad-txns-inputs-missingorspent")
+}
+
+// ---------------------------------------------------------------------------
+// Party formation over /p2p/join-party-leader
+// ---------------------------------------------------------------------------
+
+/// Leader side: collect join requests for `session_id` until every member is
+/// in or `wait` elapses, then answer every joined stream. Success needs
+/// `threshold` parties (leader included). Requests for other session ids are
+/// dropped (their streams close; the member retries next period).
+pub async fn leader_form_party(
+    joins: &mut tokio::sync::mpsc::Receiver<JoinRequest>,
+    session_id: &str,
+    local: &str,
+    members: &[String],
+    threshold: usize,
+    wait: Duration,
+) -> Result<Vec<String>> {
+    let mut coordinator =
+        p2p::Coordinator::new_leader(session_id, local, members.iter().cloned(), threshold);
+    let mut joined: Vec<(String, libp2p::Stream)> = Vec::new();
+    let deadline = tokio::time::Instant::now() + wait;
+
+    while coordinator.selected().len() < members.len() {
+        let req = tokio::select! {
+            r = joins.recv() => r,
+            _ = tokio::time::sleep_until(deadline) => break,
+        };
+        let Some(req) = req else { break };
+        if req.msg.id != session_id {
+            continue; // stale request for another attempt; stream drops
+        }
+        if coordinator.on_request(&req.from) {
+            joined.push((req.from.clone(), req.stream));
+        }
+    }
+
+    let timed_out = !coordinator.ready();
+    let response = coordinator.response(timed_out);
+    let framed = response.encode();
+    for (name, mut stream) in joined {
+        if let Err(e) = crate::wire::write_frame(&mut stream, &framed).await {
+            tracing::warn!(member = %name, error = %e, "failed to answer join request");
+        }
+    }
+    if timed_out {
+        return Err(p2p::P2pError::Threshold {
+            have: coordinator.selected().len(),
+            need: threshold,
+        }
+        .into());
+    }
+    Ok(coordinator.selected())
+}
+
+/// Member side: open a join-party stream to the leader, announce ourselves,
+/// and wait for the leader's selected set.
+pub async fn member_join_party(
+    control: &mut libp2p_stream::Control,
+    leader_peer: libp2p::PeerId,
+    local: &str,
+    session_id: &str,
+    wait: Duration,
+) -> Result<Vec<String>> {
+    let request = JoinPartyLeaderComm {
+        id: session_id.to_string(),
+        msg_type: "request".into(),
+        resp_type: ResponseType::Unknown,
+        peer_ids: vec![local.to_string()],
+    };
+    let attempt = async {
+        let mut stream = control
+            .open_stream(leader_peer, p2p::join_party_protocol())
+            .await
+            .map_err(|e| p2p::P2pError::Transport(e.to_string()))?;
+        crate::wire::write_frame(&mut stream, &request.encode())
+            .await
+            .map_err(|e| p2p::P2pError::Transport(e.to_string()))?;
+        let resp_bytes = crate::wire::read_frame(&mut stream)
+            .await
+            .map_err(|e| p2p::P2pError::Transport(e.to_string()))?;
+        let resp = JoinPartyLeaderComm::decode(&resp_bytes)
+            .map_err(|e| p2p::P2pError::Transport(e.to_string()))?;
+        p2p::interpret_response(&resp)
+    };
+    match tokio::time::timeout(wait, attempt).await {
+        Ok(res) => Ok(res?),
+        Err(_) => Err(p2p::P2pError::Timeout.into()),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// FROST signing of a built transaction
+// ---------------------------------------------------------------------------
+
+/// Run one taproot FROST session per input of `unsigned` (session id =
+/// `keysign_session_id(vault, sighash)`), then assemble every witness.
+pub async fn frost_sign_tx<M: Mailbox>(
+    mailbox: &mut M,
+    share: &StoredShare,
+    local: &str,
+    selected: &[String],
+    unsigned: &mut UnsignedTx,
+    vault_pub: &[u8],
+    timeout: Duration,
+) -> Result<()> {
+    let mut sessions = BTreeMap::new();
+    let mut sid_order = Vec::with_capacity(unsigned.tx.input.len());
+    for i in 0..unsigned.tx.input.len() {
+        let sighash = taproot_sighash(unsigned, i)?;
+        let sid = keysign_session_id(vault_pub, &sighash);
+        let session = SignSession::new_taproot(
+            share,
+            local.to_string(),
+            selected.to_vec(),
+            sighash.to_vec(),
+        )?;
+        sid_order.push(sid.clone());
+        sessions.insert(sid, session);
+    }
+
+    let sigs = match tokio::time::timeout(timeout, run_keysign_multi(mailbox, &mut sessions)).await
+    {
+        Ok(res) => res?,
+        Err(_) => return Err(SignLoopError::KeysignTimeout),
+    };
+
+    for (i, sid) in sid_order.iter().enumerate() {
+        let sig = sigs
+            .get(sid)
+            .ok_or_else(|| SignLoopError::Config("missing signature for input".into()))?;
+        apply_taproot_witness(unsigned, i, sig)?;
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// The daemon sign loop
+// ---------------------------------------------------------------------------
+
+/// Everything the loop needs from the daemon.
+pub struct SignLoop {
+    pub cfg: SignLoopCfg,
+    pub client: ThornadoClient,
+    pub verifier: Box<dyn KeysignVerifier>,
+    pub store: SignerStore,
+    pub btc: BitcoindRpc,
+    pub share: StoredShare,
+    pub registry: PeerRegistry,
+    pub mailbox: Libp2pMailbox,
+    pub control: libp2p_stream::Control,
+    pub joins: tokio::sync::mpsc::Receiver<JoinRequest>,
+    last_fetched: i64,
+}
+
+impl SignLoop {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        cfg: SignLoopCfg,
+        client: ThornadoClient,
+        verifier: Box<dyn KeysignVerifier>,
+        store: SignerStore,
+        btc: BitcoindRpc,
+        share: StoredShare,
+        registry: PeerRegistry,
+        mailbox: Libp2pMailbox,
+        control: libp2p_stream::Control,
+        joins: tokio::sync::mpsc::Receiver<JoinRequest>,
+    ) -> Self {
+        Self {
+            cfg,
+            client,
+            verifier,
+            store,
+            btc,
+            share,
+            registry,
+            mailbox,
+            control,
+            joins,
+            last_fetched: 0,
+        }
+    }
+
+    /// The vault's taproot script/address facts for a path index.
+    fn vault_for(&self, path_index: u64) -> Result<TaprootVault> {
+        let pk = hex::decode(&self.share.public_key_compressed)
+            .map_err(|e| SignLoopError::Config(format!("share pubkey hex: {e}")))?;
+        Ok(TaprootVault::derive(&pk, path_index)?)
+    }
+
+    /// One poll cycle: fetch new keysign work, then sign what is ready.
+    pub async fn tick(&mut self) {
+        let height = match self.client.get_block_height().await {
+            Ok(h) => h,
+            Err(e) => {
+                tracing::warn!(error = %e, "sign: failed to fetch thornado height");
+                return;
+            }
+        };
+        if let Err(e) = self.fetch_work(height).await {
+            tracing::warn!(error = %e, "sign: keysign fetch failed");
+        }
+        for _ in 0..self.cfg.max_batches_per_tick {
+            match self.process_next(height).await {
+                Ok(true) => continue,
+                Ok(false) => break,
+                Err(e) => {
+                    tracing::warn!(error = %e, "sign: batch attempt failed");
+                    break;
+                }
+            }
+        }
+    }
+
+    /// Fetch keysign work for every height we have not seen yet (bounded).
+    async fn fetch_work(&mut self, height: i64) -> Result<()> {
+        if self.last_fetched == 0 {
+            self.last_fetched = (height - 1).max(0);
+        }
+        let from = self.last_fetched + 1;
+        let to = height.min(self.last_fetched + self.cfg.fetch_window);
+        for h in from..=to {
+            match self
+                .client
+                .get_keysign(h, &self.cfg.vault_id, self.verifier.as_ref())
+                .await
+            {
+                Ok(txout) => {
+                    for (i, item) in txout.tx_array.iter().enumerate() {
+                        if !item.out_hash.is_empty() {
+                            continue; // already signed on-chain
+                        }
+                        let stored =
+                            TxOutStoreItem::new(item.clone(), txout.height, i as i64, txout.epoch);
+                        if self.store.get(&stored.key())?.is_none() {
+                            self.store.put(&stored)?;
+                            tracing::info!(in_hash = %item.in_hash, height = h, "queued txout for signing");
+                        }
+                    }
+                    self.last_fetched = h;
+                }
+                Err(crate::chain::ChainError::UnavailableBlock) => {
+                    self.last_fetched = h;
+                }
+                Err(e) => return Err(e.into()),
+            }
+        }
+        Ok(())
+    }
+
+    /// Try to sign the next ready batch. Ok(true) = signed one (try another),
+    /// Ok(false) = nothing ready. Failures defer the batch and bubble up.
+    async fn process_next(&mut self, height: i64) -> Result<bool> {
+        let avail = available_work(self.store.list()?, height);
+        let Some(batch) = next_batch(&avail) else {
+            return Ok(false);
+        };
+        let rep = batch[0].clone();
+
+        match self.sign_batch(&batch, height).await {
+            Ok(txid) => {
+                tracing::info!(%txid, items = batch.len(), "signed and broadcast outbound batch");
+                Ok(true)
+            }
+            Err(e) => {
+                let retry_at =
+                    next_frost_signer_attempt_height(rep.height, height, self.cfg.signing_period);
+                for it in &batch {
+                    let mut deferred = it.clone();
+                    deferred.deferred_until_height = retry_at;
+                    self.store.put(&deferred)?;
+                }
+                tracing::warn!(error = %e, retry_at, items = batch.len(), "signing failed; deferred");
+                Err(e)
+            }
+        }
+    }
+
+    async fn sign_batch(&mut self, batch: &[TxOutStoreItem], height: i64) -> Result<String> {
+        let rep = &batch[0];
+        let members = crate::frost_session::normalize_participants(&self.share.participants);
+        let threshold = frost_min_signers(members.len()).max(self.share.min_signers as usize);
+        let leader = frost_party_leader(&members, rep.epoch, rep.height)
+            .ok_or_else(|| SignLoopError::Config("empty member set".into()))?;
+
+        let in_hashes: Vec<String> = batch.iter().map(|it| it.item.in_hash.clone()).collect();
+        let sid = party_session_id(&self.cfg.vault_id, rep.epoch, rep.height, &in_hashes);
+
+        let selected = if leader == self.cfg.local {
+            leader_form_party(
+                &mut self.joins,
+                &sid,
+                &self.cfg.local,
+                &members,
+                threshold,
+                self.cfg.party_wait,
+            )
+            .await?
+        } else {
+            let leader_peer = self
+                .registry
+                .peer_id(&leader)
+                .ok_or_else(|| SignLoopError::Config(format!("no peer entry for leader {leader}")))?;
+            member_join_party(
+                &mut self.control,
+                leader_peer,
+                &self.cfg.local,
+                &sid,
+                self.cfg.join_wait,
+            )
+            .await?
+        };
+        if !selected.contains(&self.cfg.local) {
+            return Err(SignLoopError::NotSelected);
+        }
+        tracing::info!(leader = %leader, selected = selected.len(), "party formed");
+
+        // Build the identical unsigned tx on every selected party.
+        let vault = self.vault_for(rep.item.vault_path_index)?;
+        let vault_addr = bitcoin::Address::from_script(
+            vault.script_pubkey().as_script(),
+            self.cfg.network,
+        )
+        .map_err(|e| SignLoopError::Config(format!("vault address: {e}")))?
+        .to_string();
+
+        let recipients = recipients_for(batch, self.cfg.network)?;
+        let recipients_total: u64 = recipients.iter().map(|r| r.amount_sats).sum();
+        let fee_rate = rep.item.gas_rate.max(1) as u64;
+
+        let batch_items_ref: Vec<TxOutItem> = batch.iter().map(|it| it.item.clone()).collect();
+        let inputs = match prescribed_inputs(&batch_items_ref) {
+            Some(inputs) => inputs,
+            None => {
+                let unspent = self
+                    .btc
+                    .list_unspent(std::slice::from_ref(&vault_addr))
+                    .await?;
+                select_utxos(
+                    to_utxos(&unspent),
+                    recipients_total,
+                    fee_rate,
+                    recipients.len(),
+                    self.cfg.min_utxo_conf,
+                    |key| self.store.is_spent(key).unwrap_or(false),
+                )?
+            }
+        };
+        let input_keys: Vec<String> =
+            inputs.iter().map(|u| utxo_key(&u.txid, u.vout)).collect();
+
+        let mut unsigned = build_unsigned(&BuildRequest {
+            vault,
+            inputs,
+            recipients,
+            fee_rate,
+            spend_all: false,
+        })?;
+
+        let vault_pub = hex::decode(&self.cfg.vault_id)
+            .map_err(|e| SignLoopError::Config(format!("vault id hex: {e}")))?;
+        frost_sign_tx(
+            &mut self.mailbox,
+            &self.share,
+            &self.cfg.local,
+            &selected,
+            &mut unsigned,
+            &vault_pub,
+            self.cfg.keysign_timeout,
+        )
+        .await?;
+
+        let mut raw = Vec::new();
+        unsigned
+            .tx
+            .consensus_encode(&mut raw)
+            .map_err(|e| SignLoopError::Config(format!("encode tx: {e}")))?;
+        let tx_hex = hex::encode(&raw);
+        let txid = unsigned.tx.compute_txid().to_string();
+
+        match self.btc.send_raw_transaction(&tx_hex).await {
+            Ok(_) => {}
+            Err(crate::bitcoind::RpcError::Rpc { message, .. })
+                if broadcast_error_is_benign(&message) =>
+            {
+                tracing::debug!(%txid, %message, "broadcast raced; already known");
+            }
+            Err(e) => return Err(e.into()),
+        }
+
+        self.store.mark_spent(&input_keys, height)?;
+        for it in batch {
+            let mut done = it.clone();
+            done.status = TxStatus::Broadcast;
+            done.item.out_hash = txid.clone();
+            done.signed_tx = Some(raw.clone());
+            self.store.put(&done)?;
+        }
+        Ok(txid)
+    }
+
+    /// Run forever with the given tick interval.
+    pub async fn run(mut self, interval: Duration) {
+        let mut ticker = tokio::time::interval(interval);
+        ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        loop {
+            ticker.tick().await;
+            self.tick().await;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::chain::Coin;
+
+    fn stored(in_hash: &str, height: i64, index: i64, status: TxStatus, deferred: i64) -> TxOutStoreItem {
+        let mut it = TxOutStoreItem::new(
+            TxOutItem {
+                chain: "BTC".into(),
+                to_address: "bcrt1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080".into(),
+                vault_pub_key: "vault".into(),
+                coin: Coin { asset: "BTC.BTC".into(), amount: "100000".into() },
+                gas_rate: 10,
+                in_hash: in_hash.into(),
+                tx_type: "out".into(),
+                ..Default::default()
+            },
+            height,
+            index,
+            7,
+        );
+        it.status = status;
+        it.deferred_until_height = deferred;
+        it
+    }
+
+    #[test]
+    fn available_work_filters_and_sorts() {
+        let items = vec![
+            stored("c", 12, 0, TxStatus::Available, 0),
+            stored("a", 10, 1, TxStatus::Available, 0),
+            stored("b", 10, 0, TxStatus::Available, 0),
+            stored("x", 9, 0, TxStatus::Broadcast, 0),   // wrong status
+            stored("y", 9, 0, TxStatus::Available, 100), // deferred
+        ];
+        let avail = available_work(items, 50);
+        let hashes: Vec<&str> = avail.iter().map(|it| it.item.in_hash.as_str()).collect();
+        assert_eq!(hashes, vec!["b", "a", "c"]);
+    }
+
+    #[test]
+    fn deferred_work_returns_after_height() {
+        let items = vec![stored("y", 9, 0, TxStatus::Available, 100)];
+        assert!(available_work(items.clone(), 99).is_empty());
+        assert_eq!(available_work(items, 100).len(), 1);
+    }
+
+    #[test]
+    fn next_batch_groups_batchables() {
+        let avail = vec![
+            stored("a", 10, 0, TxStatus::Available, 0),
+            stored("b", 10, 1, TxStatus::Available, 0),
+        ];
+        let batch = next_batch(&avail).unwrap();
+        assert_eq!(batch.len(), 2);
+    }
+
+    #[test]
+    fn next_batch_single_when_not_batchable() {
+        let mut lone = stored("a", 10, 0, TxStatus::Available, 0);
+        lone.item.tx_type = "migrate".into();
+        let other = stored("b", 11, 0, TxStatus::Available, 0);
+        let batch = next_batch(&[lone.clone(), other]).unwrap();
+        assert_eq!(batch.len(), 1);
+        assert_eq!(batch[0].item.in_hash, "a");
+    }
+
+    #[test]
+    fn recipients_map_addresses_and_amounts() {
+        let batch = vec![stored("a", 10, 0, TxStatus::Available, 0)];
+        let rec = recipients_for(&batch, bitcoin::Network::Regtest).unwrap();
+        assert_eq!(rec.len(), 1);
+        assert_eq!(rec[0].amount_sats, 100_000);
+        assert!(!rec[0].script_pubkey.is_empty());
+    }
+
+    #[test]
+    fn recipients_reject_wrong_network() {
+        let batch = vec![stored("a", 10, 0, TxStatus::Available, 0)];
+        assert!(recipients_for(&batch, bitcoin::Network::Bitcoin).is_err());
+    }
+
+    #[test]
+    fn party_session_id_is_deterministic_and_input_sensitive() {
+        let a = party_session_id("v", 1, 10, &["h1".into(), "h2".into()]);
+        let b = party_session_id("v", 1, 10, &["h1".into(), "h2".into()]);
+        let c = party_session_id("v", 1, 11, &["h1".into(), "h2".into()]);
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+        assert_eq!(a.len(), 64);
+    }
+
+    #[test]
+    fn benign_broadcast_errors_recognized() {
+        assert!(broadcast_error_is_benign("Transaction already in block chain"));
+        assert!(broadcast_error_is_benign("txn-already-in-mempool"));
+        assert!(broadcast_error_is_benign("txn-already-known"));
+        assert!(!broadcast_error_is_benign("mandatory-script-verify-flag-failed"));
+    }
+
+    /// End-to-end signing of a real 2-input tx across 3 in-process parties:
+    /// DKG shares, per-input taproot FROST sessions over channel mailboxes,
+    /// witness assembly, and script-level verification via rust-bitcoin.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn frost_sign_tx_produces_valid_taproot_spend() {
+        use crate::frost_session::{normalize_participants, KeygenSession};
+        use crate::transport::run_keygen;
+        use crate::tx_builder::Utxo;
+        use std::collections::HashMap;
+        use tokio::sync::mpsc;
+
+        struct MemMailbox {
+            me: String,
+            senders: HashMap<String, mpsc::UnboundedSender<(String, Vec<u8>)>>,
+            inbox: mpsc::UnboundedReceiver<(String, Vec<u8>)>,
+        }
+        impl Mailbox for MemMailbox {
+            async fn send(
+                &mut self,
+                to: &str,
+                framed: Vec<u8>,
+            ) -> std::result::Result<(), crate::transport::TransportError> {
+                if let Some(tx) = self.senders.get(to) {
+                    let _ = tx.send((self.me.clone(), framed));
+                }
+                Ok(())
+            }
+            async fn recv(&mut self) -> Option<(String, Vec<u8>)> {
+                self.inbox.recv().await
+            }
+        }
+
+        let names = normalize_participants(&["p0".into(), "p1".into(), "p2".into()]);
+        let mut senders = HashMap::new();
+        let mut receivers = HashMap::new();
+        for n in &names {
+            let (tx, rx) = mpsc::unbounded_channel();
+            senders.insert(n.clone(), tx);
+            receivers.insert(n.clone(), rx);
+        }
+
+        // DKG
+        let mut handles = Vec::new();
+        for n in &names {
+            let mut mbox = MemMailbox {
+                me: n.clone(),
+                senders: senders.clone(),
+                inbox: receivers.remove(n).unwrap(),
+            };
+            let session = KeygenSession::new(n.clone(), names.clone(), 2).unwrap();
+            let n2 = n.clone();
+            handles.push(tokio::spawn(async move {
+                let share = run_keygen(&mut mbox, session, "kg").await.unwrap();
+                (n2, share, mbox)
+            }));
+        }
+        let mut shares = HashMap::new();
+        let mut mailboxes = HashMap::new();
+        for h in handles {
+            let (n, share, mbox) = h.await.unwrap();
+            shares.insert(n.clone(), share);
+            mailboxes.insert(n, mbox);
+        }
+
+        // Build the vault + a 2-input unsigned tx from the group key.
+        let group_hex = shares[&names[0]].public_key_compressed.clone();
+        let group_pub = hex::decode(&group_hex).unwrap();
+        let vault = TaprootVault::derive(&group_pub, 0).unwrap();
+        use bitcoin::hashes::Hash;
+        let mk_utxo = |b: u8, sats: u64| Utxo {
+            txid: bitcoin::Txid::from_byte_array([b; 32]),
+            vout: 0,
+            amount_sats: sats,
+            confirmations: 6,
+        };
+        let req = BuildRequest {
+            vault: vault.clone(),
+            inputs: vec![mk_utxo(1, 100_000), mk_utxo(2, 60_000)],
+            recipients: vec![Recipient {
+                script_pubkey: vault.script_pubkey(),
+                amount_sats: 120_000,
+            }],
+            fee_rate: 2,
+            spend_all: false,
+        };
+
+        // All parties sign concurrently.
+        let mut sign_handles = Vec::new();
+        for n in &names {
+            let mut mbox = mailboxes.remove(n).unwrap();
+            let share = shares[n].clone();
+            let sel = names.clone();
+            let n2 = n.clone();
+            let req_inputs = req.inputs.clone();
+            let req_recipients = req.recipients.clone();
+            let vault2 = vault.clone();
+            let group_pub2 = group_pub.clone();
+            sign_handles.push(tokio::spawn(async move {
+                let mut unsigned = build_unsigned(&BuildRequest {
+                    vault: vault2,
+                    inputs: req_inputs,
+                    recipients: req_recipients,
+                    fee_rate: 2,
+                    spend_all: false,
+                })
+                .unwrap();
+                frost_sign_tx(
+                    &mut mbox,
+                    &share,
+                    &n2,
+                    &sel,
+                    &mut unsigned,
+                    &group_pub2,
+                    Duration::from_secs(30),
+                )
+                .await
+                .unwrap();
+                unsigned
+            }));
+        }
+        let mut signed = Vec::new();
+        for h in sign_handles {
+            signed.push(h.await.unwrap());
+        }
+
+        // Every party assembled the identical fully-signed tx.
+        let txids: Vec<String> = signed.iter().map(|u| u.tx.compute_txid().to_string()).collect();
+        assert!(txids.windows(2).all(|w| w[0] == w[1]));
+
+        // rust-bitcoin as the oracle: each input's schnorr sig verifies against
+        // the vault output key over the BIP341 sighash.
+        let unsigned = &signed[0];
+        for i in 0..unsigned.tx.input.len() {
+            let w = &unsigned.tx.input[i].witness;
+            assert_eq!(w.len(), 1);
+            let sig_bytes = w.iter().next().unwrap();
+            assert_eq!(sig_bytes.len(), 65);
+            assert_eq!(sig_bytes[64], 0x81);
+            let sighash = taproot_sighash(unsigned, i).unwrap();
+            let secp = bitcoin::secp256k1::Secp256k1::verification_only();
+            let xonly =
+                bitcoin::secp256k1::XOnlyPublicKey::from_slice(&vault.output_key).unwrap();
+            let sig =
+                bitcoin::secp256k1::schnorr::Signature::from_slice(&sig_bytes[..64]).unwrap();
+            let msg = bitcoin::secp256k1::Message::from_digest(sighash);
+            secp.verify_schnorr(&sig, &msg, &xonly).expect("schnorr sig valid for vault key");
+        }
+    }
+}

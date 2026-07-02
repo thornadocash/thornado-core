@@ -101,6 +101,41 @@ pub async fn run_keysign<M: Mailbox>(
         .ok_or_else(|| TransportError::Transport("finished without signature".into()))
 }
 
+/// Drive several keysign sessions (keyed by session id) to completion over one
+/// mailbox, routing each inbound frame to its session. A batched BTC tx signs
+/// one sighash per input; peers may progress sessions at different speeds, so
+/// a single-session driver would drop frames that belong to a sibling session.
+/// Frames for unknown session ids (stale attempts) are dropped.
+pub async fn run_keysign_multi<M: Mailbox>(
+    mbox: &mut M,
+    sessions: &mut std::collections::BTreeMap<String, SignSession>,
+) -> Result<std::collections::BTreeMap<String, [u8; 64]>> {
+    for (sid, session) in sessions.iter_mut() {
+        let outs = session.drain_outputs();
+        flush(mbox, sid, MSG_TYPE_KEYSIGN, outs).await?;
+    }
+
+    while sessions.values().any(|s| !s.finished()) {
+        let (_from, framed) = mbox.recv().await.ok_or(TransportError::MailboxClosed)?;
+        let (mid, pm) = unwrap(&framed)?;
+        let Some(session) = sessions.get_mut(&mid) else {
+            continue; // stale or foreign session
+        };
+        session.handle(&pm)?;
+        let outs = session.drain_outputs();
+        flush(mbox, &mid, MSG_TYPE_KEYSIGN, outs).await?;
+    }
+
+    let mut sigs = std::collections::BTreeMap::new();
+    for (sid, session) in sessions.iter() {
+        let sig = session
+            .signature()
+            .ok_or_else(|| TransportError::Transport("finished without signature".into()))?;
+        sigs.insert(sid.clone(), sig);
+    }
+    Ok(sigs)
+}
+
 /// Drive a distributed keygen (DKG) session to completion, returning this
 /// party's `StoredShare`.
 pub async fn run_keygen<M: Mailbox>(

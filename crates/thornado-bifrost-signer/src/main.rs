@@ -1,15 +1,35 @@
 //! `bifrost-signer` daemon: pure-Rust FROST signer bifrost.
 //!
-//! Polls the thornado chain for keysign work, coordinates a FROST signing
-//! party over libp2p, builds and signs the BTC transaction, and broadcasts it.
+//! `run` polls the thornado chain for keysign work, coordinates a FROST
+//! signing party over libp2p, builds and signs the BTC transaction, broadcasts
+//! it, and posts observations (inbound and outbound) back to thornado.
+//! `keygen` runs a distributed FROST DKG across the configured peers and
+//! writes this node's keyshare.
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use thornado_bifrost_signer::daemon::BlockSource as _;
-use thornado_bifrost_signer::{bitcoind, chain, daemon, p2p, store, temporal, transport, wire};
+use thornado_bifrost_signer::{
+    bitcoind, broadcast, chain, daemon, frost_session, p2p, sign_loop, store, temporal, transport,
+    tx_builder, wire,
+};
 
 #[derive(Parser, Debug)]
 #[command(name = "bifrost-signer", about = "Pure-Rust FROST signer bifrost")]
-struct Args {
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand, Debug)]
+enum Command {
+    /// Run the bifrost daemon (observe + sign loops).
+    Run(Box<RunArgs>),
+    /// Run a distributed FROST keygen (DKG) and write this node's keyshare.
+    Keygen(KeygenArgs),
+}
+
+#[derive(Parser, Debug)]
+struct RunArgs {
     /// thornado REST host, e.g. localhost:1317
     #[arg(long, env = "CHAIN_API", default_value = "localhost:1317")]
     chain_host: String,
@@ -19,12 +39,16 @@ struct Args {
     /// libp2p listen multiaddr
     #[arg(long, default_value = "/ip4/0.0.0.0/tcp/5040")]
     p2p_listen: String,
+    /// path to this node's libp2p ed25519 key (32-byte seed, hex). Created on
+    /// first run so the peer id stays stable across restarts.
+    #[arg(long, default_value = "p2p.key")]
+    p2p_key: String,
     /// signer store path
     #[arg(long, default_value = "signer.redb")]
     store_path: String,
-    /// this node's vault pubkey(s) to poll keysign for (repeatable)
-    #[arg(long = "vault")]
-    vaults: Vec<String>,
+    /// this node's FROST keyshare (JSON StoredShare) — enables the sign loop
+    #[arg(long, env = "KEYSHARE")]
+    keyshare: Option<String>,
     /// this node's compressed secp256k1 pubkey (33 bytes, hex) used to verify
     /// signed keysign payloads from the local thornadod
     #[arg(long, env = "NODE_PUBKEY")]
@@ -52,7 +76,8 @@ struct Args {
     /// dust threshold in sats (outputs below this are ignored)
     #[arg(long, default_value_t = 10_000)]
     dust_sats: u64,
-    /// vault BTC addresses to observe as inbound targets (repeatable)
+    /// extra vault BTC addresses to observe as inbound targets (repeatable);
+    /// the keyshare's own vault address is always observed
     #[arg(long = "vault-address")]
     vault_addresses: Vec<String>,
     /// node's cosmos secp256k1 secret key (32-byte hex) for posting
@@ -68,6 +93,43 @@ struct Args {
     /// cosmos chain id, e.g. thornado-1
     #[arg(long, env = "CHAIN_ID", default_value = "thornado")]
     chain_id: String,
+    /// blocks between signing retries
+    #[arg(long, default_value_t = 12)]
+    signing_period: i64,
+    /// sign loop poll interval, seconds
+    #[arg(long, default_value_t = 3)]
+    sign_poll_secs: u64,
+    /// observe loop poll interval, seconds
+    #[arg(long, default_value_t = 10)]
+    observe_poll_secs: u64,
+}
+
+#[derive(Parser, Debug)]
+struct KeygenArgs {
+    /// our FROST participant name (must appear in --participants and peers)
+    #[arg(long)]
+    local_name: String,
+    /// all participant names, comma separated
+    #[arg(long, value_delimiter = ',')]
+    participants: Vec<String>,
+    /// signing threshold (min signers)
+    #[arg(long)]
+    min_signers: u16,
+    /// JSON peer registry (other participants' peer ids + multiaddrs)
+    #[arg(long)]
+    peers: String,
+    /// libp2p listen multiaddr
+    #[arg(long, default_value = "/ip4/0.0.0.0/tcp/5040")]
+    p2p_listen: String,
+    /// path to this node's libp2p ed25519 key (created if missing)
+    #[arg(long, default_value = "p2p.key")]
+    p2p_key: String,
+    /// where to write this node's keyshare JSON
+    #[arg(long, default_value = "keyshare.json")]
+    out: String,
+    /// seconds to wait for peer connections before starting DKG
+    #[arg(long, default_value_t = 5)]
+    settle_secs: u64,
 }
 
 #[tokio::main]
@@ -78,26 +140,45 @@ async fn main() -> anyhow::Result<()> {
         )
         .init();
 
-    let args = Args::parse();
-    tracing::info!(host = %args.chain_host, "starting bifrost-signer");
+    match Cli::parse().command {
+        Command::Run(args) => run_daemon(*args).await,
+        Command::Keygen(args) => run_keygen_cmd(args).await,
+    }
+}
 
-    let cfg = chain::ChainConfig {
-        chain_host: args.chain_host.clone(),
-        chain_rpc: args.chain_rpc.clone(),
-    };
-    let client = chain::ThornadoClient::new(cfg);
-    let store = store::SignerStore::open(&args.store_path)?;
+/// Load (or create) the stable libp2p identity.
+fn load_p2p_key(path: &str) -> anyhow::Result<libp2p::identity::Keypair> {
+    if let Ok(hex_seed) = std::fs::read_to_string(path) {
+        let mut seed: [u8; 32] = hex::decode(hex_seed.trim())?
+            .try_into()
+            .map_err(|_| anyhow::anyhow!("p2p key must be a 32-byte hex seed"))?;
+        return Ok(libp2p::identity::Keypair::ed25519_from_bytes(&mut seed)?);
+    }
+    let keypair = libp2p::identity::Keypair::generate_ed25519();
+    let seed = keypair
+        .clone()
+        .try_into_ed25519()
+        .map_err(|_| anyhow::anyhow!("generated key is not ed25519"))?
+        .secret();
+    std::fs::write(path, hex::encode(seed.as_ref()))?;
+    tracing::info!(%path, "generated new p2p identity");
+    Ok(keypair)
+}
 
-    let verifier: Box<dyn chain::KeysignVerifier> = match &args.node_pubkey {
-        Some(pk) => Box::new(chain::Secp256k1Verifier::new(&hex::decode(pk)?)?),
-        None => {
-            tracing::warn!("--node-pubkey not set; keysign payload signatures are NOT verified");
-            Box::new(chain::InsecureAcceptAll)
-        }
-    };
+/// Shared libp2p bring-up: swarm, dials, frost + join-party accept loops.
+struct P2pStack {
+    registry: p2p::PeerRegistry,
+    control: libp2p_stream::Control,
+    mailbox: transport::Libp2pMailbox,
+    joins_rx: tokio::sync::mpsc::Receiver<sign_loop::JoinRequest>,
+}
 
-    // Peer registry: name → PeerId + multiaddr, for session routing.
-    let registry = match &args.peers {
+fn start_p2p(
+    keypair: libp2p::identity::Keypair,
+    listen: &str,
+    peers_path: Option<&str>,
+) -> anyhow::Result<P2pStack> {
+    let registry = match peers_path {
         Some(path) => p2p::PeerRegistry::load(path).map_err(|e| anyhow::anyhow!(e))?,
         None => {
             tracing::warn!("--peers not set; no FROST peers configured (single-node mode)");
@@ -106,26 +187,23 @@ async fn main() -> anyhow::Result<()> {
     };
     tracing::info!(peers = registry.len(), "loaded peer registry");
 
-    // libp2p host for FROST sessions and party coordination.
-    let keypair = libp2p::identity::Keypair::generate_ed25519();
     let (mut swarm, mut control) = p2p::build_swarm(keypair).map_err(|e| anyhow::anyhow!(e))?;
     swarm
-        .listen_on(args.p2p_listen.parse()?)
+        .listen_on(listen.parse()?)
         .map_err(|e| anyhow::anyhow!(e.to_string()))?;
     tracing::info!(peer_id = %swarm.local_peer_id(), "libp2p host ready");
 
-    // Register peer addresses and dial them.
     for (peer, err) in p2p::register_and_dial(&mut swarm, &registry) {
         tracing::warn!(%peer, error = %err, "initial dial failed (will retry on demand)");
     }
 
-    // Accept inbound FROST streams; translate PeerId → participant name via the
-    // registry and forward decoded frames to the mailbox channel. Each stream
-    // carries one length-prefixed WrappedMessage.
+    // Accept inbound FROST streams; translate PeerId → participant name via
+    // the registry and forward decoded frames to the mailbox channel. Each
+    // stream carries one length-prefixed WrappedMessage.
     let mut incoming = control
         .accept(p2p::frost_protocol())
         .map_err(|e| anyhow::anyhow!(e.to_string()))?;
-    let (inbound_tx, inbound_rx) = tokio::sync::mpsc::channel::<(String, Vec<u8>)>(1024);
+    let (inbound_tx, inbound_rx) = tokio::sync::mpsc::channel::<(String, Vec<u8>)>(4096);
     let accept_registry = registry.clone();
     tokio::spawn(async move {
         use futures::StreamExt;
@@ -146,9 +224,39 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // Mailbox the signing pipeline uses to drive FROST sessions over libp2p.
-    let _mailbox = transport::Libp2pMailbox::new(control, registry.name_to_peer(), inbound_rx);
-    tracing::info!("FROST transport ready");
+    // Accept join-party streams: read the member's request, hand the open
+    // stream to the sign loop so the leader can answer on it.
+    let mut joins_incoming = control
+        .accept(p2p::join_party_protocol())
+        .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    let (joins_tx, joins_rx) = tokio::sync::mpsc::channel::<sign_loop::JoinRequest>(256);
+    let joins_registry = registry.clone();
+    tokio::spawn(async move {
+        use futures::StreamExt;
+        while let Some((peer, mut stream)) = joins_incoming.next().await {
+            let tx = joins_tx.clone();
+            let from = joins_registry
+                .name(&peer)
+                .unwrap_or_else(|| peer.to_string());
+            tokio::spawn(async move {
+                match wire::read_frame(&mut stream).await {
+                    Ok(payload) => match wire::JoinPartyLeaderComm::decode(&payload) {
+                        Ok(msg) => {
+                            let _ = tx
+                                .send(sign_loop::JoinRequest { from, msg, stream })
+                                .await;
+                        }
+                        Err(e) => tracing::debug!(error = %e, "bad join-party request"),
+                    },
+                    Err(e) => tracing::debug!(error = %e, "join-party stream read failed"),
+                }
+            });
+        }
+    });
+
+    let mailbox_control = control.clone();
+    let mailbox =
+        transport::Libp2pMailbox::new(mailbox_control, registry.name_to_peer(), inbound_rx);
 
     // Drive the swarm so listeners, dials, and streams make progress.
     tokio::spawn(async move {
@@ -158,50 +266,121 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // Observe loop: scan bitcoind for inbound observations to our vaults.
-    let network = match args.btc_network.as_str() {
+    Ok(P2pStack {
+        registry,
+        control,
+        mailbox,
+        joins_rx,
+    })
+}
+
+fn parse_network(name: &str) -> bitcoin::Network {
+    match name {
         "bitcoin" | "mainnet" => bitcoin::Network::Bitcoin,
         "testnet" => bitcoin::Network::Testnet,
         "signet" => bitcoin::Network::Signet,
         _ => bitcoin::Network::Regtest,
+    }
+}
+
+async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
+    tracing::info!(host = %args.chain_host, "starting bifrost-signer");
+
+    let cfg = chain::ChainConfig {
+        chain_host: args.chain_host.clone(),
+        chain_rpc: args.chain_rpc.clone(),
     };
-    let btc_rpc = bitcoind::BitcoindRpc::new(bitcoind::BitcoindConfig {
+    let client = chain::ThornadoClient::new(cfg.clone());
+    let store = store::SignerStore::open(&args.store_path)?;
+
+    let verifier: Box<dyn chain::KeysignVerifier> = match &args.node_pubkey {
+        Some(pk) => Box::new(chain::Secp256k1Verifier::new(&hex::decode(pk)?)?),
+        None => {
+            tracing::warn!("--node-pubkey not set; keysign payload signatures are NOT verified");
+            Box::new(chain::InsecureAcceptAll)
+        }
+    };
+
+    let keypair = load_p2p_key(&args.p2p_key)?;
+    let p2p_stack = start_p2p(keypair, &args.p2p_listen, args.peers.as_deref())?;
+
+    // Optional keyshare: with it the sign loop runs; without it observe-only.
+    let share: Option<frost_session::StoredShare> = match &args.keyshare {
+        Some(path) => {
+            let bytes = std::fs::read(path)?;
+            Some(serde_json::from_slice(&bytes)?)
+        }
+        None => {
+            tracing::warn!("--keyshare not set; sign loop disabled (observe-only)");
+            None
+        }
+    };
+
+    let network = parse_network(&args.btc_network);
+    let btc_cfg = bitcoind::BitcoindConfig {
         host: args.btc_rpc_host.clone(),
         user: args.btc_rpc_user.clone(),
         password: args.btc_rpc_pass.clone(),
         wallet: args.btc_wallet.clone(),
-    });
+    };
+
+    // Vault facts: address derived from the share's group key (path 0).
+    let mut vault_addresses: Vec<String> = args.vault_addresses.clone();
+    let mut vault_id = String::new();
+    if let Some(share) = &share {
+        vault_id = share.public_key_compressed.clone();
+        let pk = hex::decode(&vault_id)?;
+        let vault = tx_builder::TaprootVault::derive(&pk, 0).map_err(|e| anyhow::anyhow!(e))?;
+        let addr = bitcoin::Address::from_script(vault.script_pubkey().as_script(), network)?;
+        tracing::info!(vault = %addr, group_key = %vault_id, "loaded FROST keyshare");
+        vault_addresses.push(addr.to_string());
+    }
+
+    // Observe loop: scan bitcoind, split inbound/outbound, post observations.
     let temporal_store = temporal::TemporalStore::open(&args.temporal_path)?;
     let vault_view = daemon::VaultView {
-        vault_addresses: args.vault_addresses.iter().cloned().collect(),
-        protocol_addresses: args.vault_addresses.iter().cloned().collect(),
-        observed_vault_pubkey: args.vaults.first().cloned().unwrap_or_default(),
+        vault_addresses: vault_addresses.iter().cloned().collect(),
+        protocol_addresses: vault_addresses.iter().cloned().collect(),
+        observed_vault_pubkey: vault_id.clone(),
     };
-    let source = daemon::BitcoindBlockSource::new(btc_rpc);
-
-    // Optional observation-posting client (needs the node's cosmos key).
+    let source = daemon::BitcoindBlockSource::new(bitcoind::BitcoindRpc::new(btc_cfg.clone()));
     let poster = build_observation_poster(&args);
     if poster.is_none() {
         tracing::warn!("--cosmos-priv-key not set; observations will be logged, not posted");
     }
-    let observe_chain = args.vaults.first().cloned().unwrap_or_default();
+    let observe_chain = "BTC".to_string();
+    let vault_set: std::collections::HashSet<String> = vault_addresses.iter().cloned().collect();
+    let observe_secs = args.observe_poll_secs;
+    let dust = args.dust_sats;
     tokio::spawn(async move {
         let start = source.block_count().await.unwrap_or(0);
-        let mut observer = daemon::Observer::new(source, network, args.dust_sats, start);
-        let mut ticker = tokio::time::interval(std::time::Duration::from_secs(10));
+        let mut observer = daemon::Observer::new(source, network, dust, start);
+        let mut ticker = tokio::time::interval(std::time::Duration::from_secs(observe_secs));
         loop {
             ticker.tick().await;
             match observer.scan_to_tip(&temporal_store, &vault_view).await {
                 Ok(obs) if !obs.is_empty() => {
-                    tracing::info!(count = obs.len(), height = observer.last_scanned(), "observed inbound txs");
-                    if let Some(ref p) = poster {
-                        let batch = to_broadcast_txin(&observe_chain, &obs);
-                        match p
-                            .broadcast_observation(broadcast::ObservationKind::In, &batch)
-                            .await
-                        {
-                            Ok(hash) => tracing::info!(%hash, "posted observation to thornado"),
-                            Err(e) => tracing::warn!(error = %e, "failed to post observation"),
+                    tracing::info!(count = obs.len(), height = observer.last_scanned(), "observed txs");
+                    let Some(ref p) = poster else { continue };
+                    // Outbound = the vault is the sender; inbound = the vault
+                    // is the receiver (Go GetInboundOutbound split).
+                    let (outbound, inbound): (Vec<_>, Vec<_>) =
+                        obs.iter().partition(|it| vault_set.contains(&it.sender));
+                    for (kind, items) in [
+                        (broadcast::ObservationKind::In, inbound),
+                        (broadcast::ObservationKind::Out, outbound),
+                    ] {
+                        if items.is_empty() {
+                            continue;
+                        }
+                        let batch = to_broadcast_txin(&observe_chain, &items);
+                        match p.broadcast_observation(kind, &batch).await {
+                            Ok(hash) => {
+                                tracing::info!(%hash, ?kind, count = batch.tx_array.len(), "posted observation")
+                            }
+                            Err(e) => {
+                                tracing::warn!(error = %e, ?kind, "failed to post observation")
+                            }
                         }
                     }
                 }
@@ -211,46 +390,79 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // Main poll loop: fetch height, then keysign work for each vault.
-    let mut ticker = tokio::time::interval(std::time::Duration::from_secs(6));
-    loop {
-        ticker.tick().await;
-        let height = match client.get_block_height().await {
-            Ok(h) => h,
-            Err(e) => {
-                tracing::warn!(error = %e, "failed to fetch block height");
-                continue;
-            }
-        };
-        for vault in &args.vaults {
-            match client.get_keysign(height, vault, verifier.as_ref()).await {
-                Ok(txout) => {
-                    for (i, item) in txout.tx_array.iter().enumerate() {
-                        let stored = store::TxOutStoreItem::new(
-                            item.clone(),
-                            txout.height,
-                            i as i64,
-                            txout.epoch,
-                        );
-                        if store.get(&stored.key())?.is_none() {
-                            store.put(&stored)?;
-                            tracing::info!(in_hash = %item.in_hash, "queued txout for signing");
-                        }
-                    }
-                }
-                Err(chain::ChainError::UnavailableBlock) => {}
-                Err(e) => tracing::warn!(vault = %vault, error = %e, "keysign fetch failed"),
-            }
+    // Sign loop (needs a keyshare).
+    match share {
+        Some(share) => {
+            let sl_cfg = sign_loop::SignLoopCfg {
+                local: share.participant.clone(),
+                vault_id,
+                network,
+                signing_period: args.signing_period,
+                ..Default::default()
+            };
+            let sl = sign_loop::SignLoop::new(
+                sl_cfg,
+                client,
+                verifier,
+                store,
+                bitcoind::BitcoindRpc::new(btc_cfg),
+                share,
+                p2p_stack.registry,
+                p2p_stack.mailbox,
+                p2p_stack.control,
+                p2p_stack.joins_rx,
+            );
+            tracing::info!("sign loop starting");
+            sl.run(std::time::Duration::from_secs(args.sign_poll_secs))
+                .await;
         }
-        // NOTE: the signing pipeline (batch -> party join -> FROST -> broadcast)
-        // is driven from the store here; see signer.rs for the decision logic.
+        None => {
+            // Observe-only: park forever.
+            futures::future::pending::<()>().await;
+        }
     }
+    Ok(())
 }
 
-use thornado_bifrost_signer::broadcast;
+async fn run_keygen_cmd(args: KeygenArgs) -> anyhow::Result<()> {
+    let keypair = load_p2p_key(&args.p2p_key)?;
+    let mut p2p_stack = start_p2p(keypair, &args.p2p_listen, Some(&args.peers))?;
+
+    tracing::info!(secs = args.settle_secs, "waiting for peer connections to settle");
+    tokio::time::sleep(std::time::Duration::from_secs(args.settle_secs)).await;
+
+    let participants = frost_session::normalize_participants(&args.participants);
+    let session_id = frost_session::keygen_session_id(0, args.min_signers, &participants);
+    let session = frost_session::KeygenSession::new(
+        args.local_name.clone(),
+        participants.clone(),
+        args.min_signers,
+    )
+    .map_err(|e| anyhow::anyhow!(e))?;
+
+    tracing::info!(local = %args.local_name, n = participants.len(), min = args.min_signers, "starting DKG");
+    let share = transport::run_keygen(&mut p2p_stack.mailbox, session, &session_id)
+        .await
+        .map_err(|e| anyhow::anyhow!(e))?;
+
+    std::fs::write(&args.out, serde_json::to_vec_pretty(&share)?)?;
+    let pk = hex::decode(&share.public_key_compressed)?;
+    let vault = tx_builder::TaprootVault::derive(&pk, 0).map_err(|e| anyhow::anyhow!(e))?;
+    let regtest_addr =
+        bitcoin::Address::from_script(vault.script_pubkey().as_script(), bitcoin::Network::Regtest)?;
+    tracing::info!(
+        out = %args.out,
+        group_key = %share.public_key_compressed,
+        vault_regtest = %regtest_addr,
+        "DKG complete; keyshare written"
+    );
+    println!("group_key={}", share.public_key_compressed);
+    println!("vault_regtest={regtest_addr}");
+    Ok(())
+}
 
 /// Build the observation-posting client if the node's cosmos key is configured.
-fn build_observation_poster(args: &Args) -> Option<broadcast::ThornadoObservationClient> {
+fn build_observation_poster(args: &RunArgs) -> Option<broadcast::ThornadoObservationClient> {
     let priv_hex = args.cosmos_priv_key.as_ref()?;
     let priv_key = hex::decode(priv_hex).ok()?;
     let account_bytes = args
@@ -267,11 +479,7 @@ fn build_observation_poster(args: &Args) -> Option<broadcast::ThornadoObservatio
         chain_host: args.chain_host.clone(),
         chain_rpc: args.chain_rpc.clone(),
     };
-    let signer_addr = if args.cosmos_signer_addr.is_empty() {
-        args.vaults.first().cloned().unwrap_or_default()
-    } else {
-        args.cosmos_signer_addr.clone()
-    };
+    let signer_addr = args.cosmos_signer_addr.clone();
     Some(
         broadcast::ThornadoObservationClient::new(cfg, signer_addr).with_key(broadcast::SignerKey {
             priv_key,
@@ -285,7 +493,7 @@ fn build_observation_poster(args: &Args) -> Option<broadcast::ThornadoObservatio
 /// Convert extracted observations into the broadcast `TxIn` batch shape.
 fn to_broadcast_txin(
     chain: &str,
-    items: &[thornado_bifrost_signer::extract::TxInItem],
+    items: &[&thornado_bifrost_signer::extract::TxInItem],
 ) -> broadcast::TxIn {
     let tx_array = items
         .iter()
