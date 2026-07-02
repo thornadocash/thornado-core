@@ -55,6 +55,19 @@ struct Args {
     /// vault BTC addresses to observe as inbound targets (repeatable)
     #[arg(long = "vault-address")]
     vault_addresses: Vec<String>,
+    /// node's cosmos secp256k1 secret key (32-byte hex) for posting
+    /// observations to thornado. If unset, observations are logged only.
+    #[arg(long, env = "COSMOS_PRIV_KEY")]
+    cosmos_priv_key: Option<String>,
+    /// node's cosmos account address (20-byte hex) — the tx signer identity
+    #[arg(long, env = "COSMOS_ACCOUNT")]
+    cosmos_account: Option<String>,
+    /// bech32 signer address (thor1...) for the auth-account lookup
+    #[arg(long, env = "COSMOS_SIGNER_ADDR", default_value = "")]
+    cosmos_signer_addr: String,
+    /// cosmos chain id, e.g. thornado-1
+    #[arg(long, env = "CHAIN_ID", default_value = "thornado")]
+    chain_id: String,
 }
 
 #[tokio::main]
@@ -165,6 +178,13 @@ async fn main() -> anyhow::Result<()> {
         observed_vault_pubkey: args.vaults.first().cloned().unwrap_or_default(),
     };
     let source = daemon::BitcoindBlockSource::new(btc_rpc);
+
+    // Optional observation-posting client (needs the node's cosmos key).
+    let poster = build_observation_poster(&args);
+    if poster.is_none() {
+        tracing::warn!("--cosmos-priv-key not set; observations will be logged, not posted");
+    }
+    let observe_chain = args.vaults.first().cloned().unwrap_or_default();
     tokio::spawn(async move {
         let start = source.block_count().await.unwrap_or(0);
         let mut observer = daemon::Observer::new(source, network, args.dust_sats, start);
@@ -174,8 +194,16 @@ async fn main() -> anyhow::Result<()> {
             match observer.scan_to_tip(&temporal_store, &vault_view).await {
                 Ok(obs) if !obs.is_empty() => {
                     tracing::info!(count = obs.len(), height = observer.last_scanned(), "observed inbound txs");
-                    // Observations can be posted to thornado via broadcast::ThornadoObservationClient
-                    // (SIGN_MODE_DIRECT) once a cosmos signing key is configured.
+                    if let Some(ref p) = poster {
+                        let batch = to_broadcast_txin(&observe_chain, &obs);
+                        match p
+                            .broadcast_observation(broadcast::ObservationKind::In, &batch)
+                            .await
+                        {
+                            Ok(hash) => tracing::info!(%hash, "posted observation to thornado"),
+                            Err(e) => tracing::warn!(error = %e, "failed to post observation"),
+                        }
+                    }
                 }
                 Ok(_) => {}
                 Err(e) => tracing::warn!(error = %e, "observe scan failed"),
@@ -216,5 +244,87 @@ async fn main() -> anyhow::Result<()> {
         }
         // NOTE: the signing pipeline (batch -> party join -> FROST -> broadcast)
         // is driven from the store here; see signer.rs for the decision logic.
+    }
+}
+
+use thornado_bifrost_signer::broadcast;
+
+/// Build the observation-posting client if the node's cosmos key is configured.
+fn build_observation_poster(args: &Args) -> Option<broadcast::ThornadoObservationClient> {
+    let priv_hex = args.cosmos_priv_key.as_ref()?;
+    let priv_key = hex::decode(priv_hex).ok()?;
+    let account_bytes = args
+        .cosmos_account
+        .as_ref()
+        .and_then(|h| hex::decode(h).ok())
+        .unwrap_or_default();
+    // derive the compressed pubkey from the secret
+    let secp = bitcoin::secp256k1::Secp256k1::signing_only();
+    let sk = bitcoin::secp256k1::SecretKey::from_slice(&priv_key).ok()?;
+    let pub_key = sk.public_key(&secp).serialize().to_vec();
+
+    let cfg = chain::ChainConfig {
+        chain_host: args.chain_host.clone(),
+        chain_rpc: args.chain_rpc.clone(),
+    };
+    let signer_addr = if args.cosmos_signer_addr.is_empty() {
+        args.vaults.first().cloned().unwrap_or_default()
+    } else {
+        args.cosmos_signer_addr.clone()
+    };
+    Some(
+        broadcast::ThornadoObservationClient::new(cfg, signer_addr).with_key(broadcast::SignerKey {
+            priv_key,
+            pub_key,
+            account_bytes,
+            chain_id: args.chain_id.clone(),
+        }),
+    )
+}
+
+/// Convert extracted observations into the broadcast `TxIn` batch shape.
+fn to_broadcast_txin(
+    chain: &str,
+    items: &[thornado_bifrost_signer::extract::TxInItem],
+) -> broadcast::TxIn {
+    let tx_array = items
+        .iter()
+        .map(|it| broadcast::TxInItem {
+            block_height: it.block_height,
+            tx: it.tx.clone(),
+            source_vout: it.source_vout,
+            source_inputs: vec![],
+            sender: it.sender.clone(),
+            to: it.to.clone(),
+            coins: it
+                .coins
+                .iter()
+                .map(|c| chain::Coin {
+                    asset: c.asset.clone(),
+                    amount: c.amount_sats.to_string(),
+                })
+                .collect(),
+            gas: it
+                .gas
+                .iter()
+                .map(|c| chain::Coin {
+                    asset: c.asset.clone(),
+                    amount: c.amount_sats.to_string(),
+                })
+                .collect(),
+            observed_vault_pub_key: it.observed_vault_pubkey.clone(),
+            aggregator: String::new(),
+            aggregator_target: String::new(),
+            aggregator_target_limit: None,
+            committed_un_finalised: false,
+        })
+        .collect();
+    broadcast::TxIn {
+        chain: chain.to_string(),
+        tx_array,
+        filtered: true,
+        mem_pool: false,
+        confirmation_required: 0,
+        allow_future_observation: false,
     }
 }
