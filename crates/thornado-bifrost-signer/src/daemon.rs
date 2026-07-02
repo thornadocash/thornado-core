@@ -9,9 +9,9 @@
 //! The sign half (poll thornado keysign → batch → FROST party → build+sign →
 //! broadcast) composes [`crate::signer`], [`crate::transport`],
 //! [`crate::tx_builder`], and [`crate::broadcast`]; its decision logic and each
-//! stage are already unit-tested in their own modules. Posting observations
-//! back to thornado remains gated on the cosmos-tx path (see
-//! [`crate::broadcast`]).
+//! stage are already unit-tested in their own modules. Observations are posted
+//! back to thornado via [`crate::broadcast`] (SIGN_MODE_DIRECT signing in
+//! [`crate::cosmos_tx`]) once a cosmos signing key is configured.
 
 use bitcoin::Network;
 

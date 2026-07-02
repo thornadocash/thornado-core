@@ -233,12 +233,27 @@ impl ObservationKind {
 ///
 /// URL composition and request shape are implemented and tested; the actual
 /// cosmos-tx signing is an honest stub (see [`Self::broadcast_observation`]).
+/// The node's cosmos signing material for posting observations.
+#[derive(Clone)]
+pub struct SignerKey {
+    /// 32-byte secp256k1 secret.
+    pub priv_key: Vec<u8>,
+    /// 33-byte compressed secp256k1 pubkey.
+    pub pub_key: Vec<u8>,
+    /// 20-byte cosmos AccAddress (raw, not bech32).
+    pub account_bytes: Vec<u8>,
+    /// chain id, e.g. "thornado-1".
+    pub chain_id: String,
+}
+
 pub struct ThornadoObservationClient {
     cfg: ChainConfig,
     /// bech32 signer address (the node's own account) — the tx signer.
     signer_address: String,
     gas_limit: u64,
     broadcast_mode: String,
+    key: Option<SignerKey>,
+    http: reqwest::Client,
 }
 
 impl ThornadoObservationClient {
@@ -248,7 +263,18 @@ impl ThornadoObservationClient {
             signer_address: signer_address.into(),
             gas_limit: BROADCAST_GAS_LIMIT,
             broadcast_mode: BROADCAST_MODE.to_string(),
+            key: None,
+            http: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(10))
+                .build()
+                .expect("reqwest client"),
         }
+    }
+
+    /// Attach the signing key needed to actually post observations.
+    pub fn with_key(mut self, key: SignerKey) -> Self {
+        self.key = Some(key);
+        self
     }
 
     pub fn signer_address(&self) -> &str {
@@ -278,36 +304,162 @@ impl ThornadoObservationClient {
         format!("{}{}", self.cfg.base_url(), BROADCAST_TX_ENDPOINT)
     }
 
-    /// Sign and broadcast an observation to thornado.
-    ///
-    /// NOT IMPLEMENTED — returns [`BroadcastError::Unimplemented`] rather than
-    /// faking a signature. A correct implementation needs the `cosmrs` crate
-    /// (not currently a dependency) and would:
-    ///
-    /// 1. `GET` [`Self::auth_account_url`] and parse the account number +
-    ///    sequence (Go `getAccountNumberAndSequenceNumber`).
-    /// 2. Build a protobuf `TxBody` wrapping the `Any`-encoded observation
-    ///    message ([`ObservationKind::type_url`]) whose payload is this
-    ///    [`TxIn`] re-encoded as the chain's proto (`MsgObservedTxIn`/`Out`),
-    ///    and an `AuthInfo` with the signer's pubkey, `SIGN_MODE_DIRECT`, the
-    ///    fetched sequence, and gas limit [`BROADCAST_GAS_LIMIT`].
-    /// 3. Assemble a `SignDoc` (body + auth_info + chain-id + account_number),
-    ///    hash it, and produce a real secp256k1 signature with the node key.
-    /// 4. `POST` the encoded `TxRaw` to [`Self::broadcast_url`] in
-    ///    [`BROADCAST_MODE`] (`"sync"`) and read back the `TxHash`, retrying
-    ///    on a sequence-mismatch (cosmos code 32) as Go does.
-    ///
-    /// Steps 2–3 require the chain proto definitions and cosmrs; without them
-    /// any signature we produced would be invalid and rejected by thornado, so
-    /// we refuse rather than pretend.
+    /// Fetch this signer's (account_number, sequence) from the auth endpoint
+    /// (Go `getAccountNumberAndSequenceNumber`).
+    pub async fn fetch_account(&self) -> Result<(u64, u64)> {
+        let body = self
+            .http
+            .get(self.auth_account_url())
+            .send()
+            .await
+            .map_err(|e| BroadcastError::Rpc(e.to_string()))?
+            .text()
+            .await
+            .map_err(|e| BroadcastError::Rpc(e.to_string()))?;
+        let v: serde_json::Value =
+            serde_json::from_str(&body).map_err(|e| BroadcastError::Rpc(e.to_string()))?;
+        let acct = &v["account"];
+        let num = acct["account_number"]
+            .as_str()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
+        let seq = acct["sequence"]
+            .as_str()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
+        Ok((num, seq))
+    }
+
+    /// Sign and broadcast an observation to thornado: fetch account, build the
+    /// `MsgObservedTxIn`, sign SIGN_MODE_DIRECT, and POST the `TxRaw` to
+    /// CometBFT `broadcast_tx_sync`. Returns the tx hash.
     pub async fn broadcast_observation(
         &self,
-        _kind: ObservationKind,
-        _observation: &TxIn,
+        kind: ObservationKind,
+        observation: &TxIn,
     ) -> Result<String> {
-        Err(BroadcastError::Unimplemented(
-            "cosmos tx signing needs cosmrs",
-        ))
+        let key = self
+            .key
+            .as_ref()
+            .ok_or(BroadcastError::Unimplemented("signer key not configured"))?;
+        // Only inbound observations are wired here; outbound uses the same
+        // machinery with a different msg type (not yet built).
+        if !matches!(kind, ObservationKind::In) {
+            return Err(BroadcastError::Unimplemented(
+                "outbound observation posting not yet wired",
+            ));
+        }
+
+        let (account_number, sequence) = self.fetch_account().await?;
+        let msg = observation_to_msg(observation, &key.account_bytes);
+        let tx_raw = crate::cosmos_tx::build_and_sign(
+            &msg,
+            &key.priv_key,
+            &key.pub_key,
+            &key.chain_id,
+            account_number,
+            sequence,
+        )
+        .map_err(|e| BroadcastError::Rpc(e.to_string()))?;
+
+        // CometBFT broadcast_tx_sync JSON-RPC, tx as base64.
+        use base64::Engine as _;
+        let tx_b64 = base64::engine::general_purpose::STANDARD.encode(&tx_raw);
+        let rpc_url = if self.cfg.chain_rpc.starts_with("http") {
+            self.cfg.chain_rpc.clone()
+        } else {
+            format!("http://{}", self.cfg.chain_rpc)
+        };
+        let req = serde_json::json!({
+            "jsonrpc": "2.0", "id": "thornado-bifrost", "method": "broadcast_tx_sync",
+            "params": { "tx": tx_b64 }
+        });
+        let resp: serde_json::Value = self
+            .http
+            .post(&rpc_url)
+            .json(&req)
+            .send()
+            .await
+            .map_err(|e| BroadcastError::Rpc(e.to_string()))?
+            .json()
+            .await
+            .map_err(|e| BroadcastError::Rpc(e.to_string()))?;
+        let result = &resp["result"];
+        let code = result["code"].as_i64().unwrap_or(0);
+        let hash = result["hash"].as_str().unwrap_or_default().to_string();
+        if code != 0 && code != 6 {
+            // code 6 (unknown request) is ignored like Go; others are errors.
+            return Err(BroadcastError::Rpc(format!(
+                "broadcast rejected code {code}: {}",
+                result["log"].as_str().unwrap_or_default()
+            )));
+        }
+        Ok(hash)
+    }
+}
+
+/// Parse a thornado asset string ("BTC.BTC") into a proto Asset.
+fn parse_asset(s: &str) -> crate::cosmos_tx::Asset {
+    let (chain, sym) = s.split_once('.').unwrap_or((s, s));
+    crate::cosmos_tx::Asset {
+        chain: chain.to_string(),
+        symbol: sym.to_string(),
+        ticker: sym.to_string(),
+        secured: false,
+    }
+}
+
+fn to_proto_coins(coins: &[Coin]) -> Vec<crate::cosmos_tx::Coin> {
+    coins
+        .iter()
+        .map(|c| crate::cosmos_tx::Coin {
+            asset: Some(parse_asset(&c.asset)),
+            amount: c.amount.clone(),
+            decimals: 8,
+        })
+        .collect()
+}
+
+/// Convert an observation batch into the proto `MsgObservedTxIn` (Go
+/// `types.MsgObservedTxIn` with `common.ObservedTx` entries).
+pub fn observation_to_msg(
+    obs: &TxIn,
+    signer_account_bytes: &[u8],
+) -> crate::cosmos_tx::MsgObservedTxIn {
+    let txs = obs
+        .tx_array
+        .iter()
+        .map(|item| crate::cosmos_tx::ObservedTx {
+            tx: Some(crate::cosmos_tx::Tx {
+                id: item.tx.clone(),
+                chain: obs.chain.clone(),
+                from_address: item.sender.clone(),
+                to_address: item.to.clone(),
+                coins: to_proto_coins(&item.coins),
+                gas: to_proto_coins(&item.gas),
+                source_vout: item.source_vout,
+                source_inputs: item
+                    .source_inputs
+                    .iter()
+                    .map(|i| crate::cosmos_tx::TxInput {
+                        tx_id: i.tx_id.clone(),
+                        vout: i.vout,
+                        amount_sats: i.amount_sats,
+                    })
+                    .collect(),
+            }),
+            status: crate::cosmos_tx::Status::Incomplete as i32,
+            block_height: item.block_height,
+            observed_pub_key: item.observed_vault_pub_key.clone(),
+            aggregator: item.aggregator.clone(),
+            aggregator_target: item.aggregator_target.clone(),
+            aggregator_target_limit: item.aggregator_target_limit.clone().unwrap_or_default(),
+            ..Default::default()
+        })
+        .collect();
+    crate::cosmos_tx::MsgObservedTxIn {
+        txs,
+        signer: signer_account_bytes.to_vec(),
     }
 }
 
@@ -501,13 +653,35 @@ mod tests {
         };
         let client = ThornadoObservationClient::new(cfg, "thor1signer");
         let obs = build_observation("BTC", vec![sample_item()], false, 1, false);
+        // No signing key configured -> refuses rather than posting.
         let err = client
             .broadcast_observation(ObservationKind::In, &obs)
             .await
             .unwrap_err();
         assert!(matches!(
             err,
-            BroadcastError::Unimplemented(m) if m.contains("cosmrs")
+            BroadcastError::Unimplemented(m) if m.contains("signer key")
         ));
+    }
+
+    #[test]
+    fn observation_converts_to_proto_msg() {
+        use prost::Message;
+        let obs = build_observation("BTC", vec![sample_item()], false, 1, false);
+        let msg = observation_to_msg(&obs, &[0xAB; 20]);
+        assert_eq!(msg.signer, vec![0xAB; 20]);
+        assert_eq!(msg.txs.len(), 1);
+        let tx = msg.txs[0].tx.as_ref().unwrap();
+        assert_eq!(tx.chain, "BTC");
+        // asset string "BTC.BTC" split into chain/symbol/ticker
+        if let Some(coin) = tx.coins.first() {
+            let a = coin.asset.as_ref().unwrap();
+            assert_eq!(a.chain, "BTC");
+            assert_eq!(a.symbol, "BTC");
+        }
+        // round-trips through protobuf
+        let bytes = msg.encode_to_vec();
+        let back = crate::cosmos_tx::MsgObservedTxIn::decode(bytes.as_slice()).unwrap();
+        assert_eq!(back, msg);
     }
 }

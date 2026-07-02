@@ -8,6 +8,7 @@ pub mod attestation;
 pub mod bitcoind;
 pub mod broadcast;
 pub mod chain;
+pub mod cosmos_tx;
 pub mod daemon;
 pub mod extract;
 pub mod frost_session;

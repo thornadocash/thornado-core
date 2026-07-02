@@ -174,8 +174,8 @@ async fn main() -> anyhow::Result<()> {
             match observer.scan_to_tip(&temporal_store, &vault_view).await {
                 Ok(obs) if !obs.is_empty() => {
                     tracing::info!(count = obs.len(), height = observer.last_scanned(), "observed inbound txs");
-                    // NOTE: posting observations to thornado is gated on the
-                    // cosmos-tx signing path (see broadcast::ThornadoObservationClient).
+                    // Observations can be posted to thornado via broadcast::ThornadoObservationClient
+                    // (SIGN_MODE_DIRECT) once a cosmos signing key is configured.
                 }
                 Ok(_) => {}
                 Err(e) => tracing::warn!(error = %e, "observe scan failed"),
