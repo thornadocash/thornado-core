@@ -185,6 +185,7 @@ type KeeperShielder interface {
 	GetShielderNoteRecordIteratorAfter(ctx cosmos.Context, cursor string) cosmos.Iterator
 	SetShielderDenominationLeaf(ctx cosmos.Context, denominationSats, index uint64, commitment string) error
 	GetShielderDenominationCommitments(ctx cosmos.Context, denominationSats uint64) ([]string, error)
+	SweepOrphanShielderNoteRecords(ctx cosmos.Context, denominationSats uint64) (int, error)
 	SetShielderTreeState(ctx cosmos.Context, state types.StoredShielderTreeState) error
 	GetShielderTreeState(ctx cosmos.Context, denominationSats uint64) (types.StoredShielderTreeState, bool, error)
 	PurgeShielderPoolState(ctx cosmos.Context)

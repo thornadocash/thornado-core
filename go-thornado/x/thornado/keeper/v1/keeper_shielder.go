@@ -259,6 +259,49 @@ func (k KVStore) GetShielderTreeState(ctx cosmos.Context, denominationSats uint6
 	return state, found, err
 }
 
+// SweepOrphanShielderNoteRecords deletes every note record of the given
+// denomination whose commitment is NOT the denomination tree's leaf at the
+// record's leaf index. Such records are sync-stream pollution (accumulated
+// while notes were recorded without a leaf index and all claimed index 0);
+// the index-keyed leaf store is the authority, so any record it does not
+// corroborate was never a live leaf. Returns how many records were deleted.
+func (k KVStore) SweepOrphanShielderNoteRecords(ctx cosmos.Context, denominationSats uint64) (int, error) {
+	if denominationSats == 0 {
+		return 0, fmt.Errorf("missing shielder denomination")
+	}
+	leaves, err := k.GetShielderDenominationCommitments(ctx, denominationSats)
+	if err != nil {
+		return 0, err
+	}
+
+	var orphanKeys [][]byte
+	iter := k.GetShielderNoteRecordIterator(ctx)
+	for ; iter.Valid(); iter.Next() {
+		var record types.StoredShielderNoteRecord
+		if err := json.Unmarshal(iter.Value(), &record); err != nil {
+			iter.Close()
+			return 0, dbError(ctx, "unmarshal shielder note record", err)
+		}
+		if record.DenominationSats != denominationSats {
+			continue
+		}
+		live := record.LeafIndex < uint64(len(leaves)) &&
+			strings.EqualFold(strings.TrimSpace(leaves[record.LeafIndex]), strings.TrimSpace(record.Commitment))
+		if live {
+			continue
+		}
+		key := make([]byte, len(iter.Key()))
+		copy(key, iter.Key())
+		orphanKeys = append(orphanKeys, key)
+	}
+	iter.Close()
+
+	for _, key := range orphanKeys {
+		k.del(ctx, key)
+	}
+	return len(orphanKeys), nil
+}
+
 // PurgeShielderPoolState deletes all shielder commitment-pool state (commitments,
 // note records, per-denomination leaves, tree state, historical roots, spent
 // nullifiers). Used for the testnet reset when the tree's root computation changes

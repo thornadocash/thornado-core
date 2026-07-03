@@ -163,6 +163,13 @@ func parseStoreMigrateTarget(key string) (storeMigrateTarget, error) {
 		if err != nil || len(raw) == 0 {
 			return t, fmt.Errorf("%s store key must be non-empty hex: %v", t.kind, err)
 		}
+	case "SHIELDERNOTESWEEP":
+		if len(t.args) != 1 {
+			return t, fmt.Errorf("SHIELDERNOTESWEEP target needs SHIELDERNOTESWEEP:<denominationSats>")
+		}
+		if denom, err := strconv.ParseUint(t.args[0], 10, 64); err != nil || denom == 0 {
+			return t, fmt.Errorf("SHIELDERNOTESWEEP denomination must be a positive integer: %v", err)
+		}
 	default:
 		return t, fmt.Errorf("unknown store migrate target %q", t.kind)
 	}
@@ -180,6 +187,7 @@ type storeMigrateKeeper interface {
 	SetRawStoreValue(ctx cosmos.Context, key, value []byte) error
 	DeleteRawStoreValue(ctx cosmos.Context, key []byte)
 	ValidateRawStoreKey(key []byte) error
+	SweepOrphanShielderNoteRecords(ctx cosmos.Context, denominationSats uint64) (int, error)
 }
 
 // applyStoreMigration dispatches a validated, supermajority-approved migration.
@@ -303,6 +311,20 @@ func applyStoreMigration(ctx cosmos.Context, k storeMigrateKeeper, key, value st
 			return err
 		}
 		k.DeleteRawStoreValue(ctx, rawKey)
+		return nil
+
+	case "SHIELDERNOTESWEEP":
+		// Value is an operator-chosen tag ("SWEEP1"): idempotency is per
+		// (key, value), so re-running a sweep later just needs a new tag.
+		denom, err := strconv.ParseUint(t.args[0], 10, 64)
+		if err != nil {
+			return fmt.Errorf("SHIELDERNOTESWEEP denomination must be uint: %w", err)
+		}
+		n, err := k.SweepOrphanShielderNoteRecords(ctx, denom)
+		if err != nil {
+			return fmt.Errorf("sweep orphan shielder note records: %w", err)
+		}
+		ctx.Logger().Info("swept orphan shielder note records", "denomination", denom, "deleted", n)
 		return nil
 	}
 	return fmt.Errorf("unhandled store migrate target %q", t.kind)

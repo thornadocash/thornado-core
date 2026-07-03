@@ -619,6 +619,9 @@ func (k KVStoreDummy) SetShielderDenominationLeaf(_ cosmos.Context, _, _ uint64,
 func (k KVStoreDummy) GetShielderDenominationCommitments(_ cosmos.Context, _ uint64) ([]string, error) {
 	return nil, nil
 }
+func (k KVStoreDummy) SweepOrphanShielderNoteRecords(_ cosmos.Context, _ uint64) (int, error) {
+	return 0, nil
+}
 func (k KVStoreDummy) SetShielderTreeState(_ cosmos.Context, _ types.StoredShielderTreeState) error {
 	return nil
 }

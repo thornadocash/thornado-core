@@ -19,6 +19,7 @@ type storeMigrateKeeperFake struct {
 	vaults  map[string]Vault
 	txouts  map[int64]*TxOut
 	raw     map[string][]byte
+	swept   []uint64
 }
 
 func newStoreMigrateKeeperFake() *storeMigrateKeeperFake {
@@ -103,6 +104,11 @@ func (k *storeMigrateKeeperFake) ClearTxOut(_ cosmos.Context, height int64) erro
 	return nil
 }
 
+func (k *storeMigrateKeeperFake) SweepOrphanShielderNoteRecords(_ cosmos.Context, denominationSats uint64) (int, error) {
+	k.swept = append(k.swept, denominationSats)
+	return 3, nil
+}
+
 func TestParseStoreMigrateTarget(t *testing.T) {
 	ok := []string{
 		"CONFIG:HALTSIGNINGBTC",
@@ -110,13 +116,18 @@ func TestParseStoreMigrateTarget(t *testing.T) {
 		"VAULTCOIN:tthorpub1xyz:BTC.BTC",
 		"VAULTSTATUS:tthorpub1xyz",
 		"TXOUTCANCEL:63391:0",
+		"SHIELDERNOTESWEEP:10000000",
+		"shieldernotesweep:10000000",
 	}
 	for _, k := range ok {
 		if _, err := parseStoreMigrateTarget(k); err != nil {
 			t.Fatalf("expected %q to parse, got %v", k, err)
 		}
 	}
-	bad := []string{"", "FOO:bar", "CONFIG", "VAULTCOIN:onlyone", "TXOUTCANCEL:1", "KVSET:nothex!!", "KVSET", "KVDEL:zz"}
+	bad := []string{
+		"", "FOO:bar", "CONFIG", "VAULTCOIN:onlyone", "TXOUTCANCEL:1", "KVSET:nothex!!", "KVSET", "KVDEL:zz",
+		"SHIELDERNOTESWEEP", "SHIELDERNOTESWEEP:0", "SHIELDERNOTESWEEP:abc", "SHIELDERNOTESWEEP:1:2",
+	}
 	for _, k := range bad {
 		if _, err := parseStoreMigrateTarget(k); err == nil {
 			t.Fatalf("expected %q to be rejected", k)
@@ -170,6 +181,17 @@ func TestApplyStoreMigrationKVDelAllowlist(t *testing.T) {
 	// Non-allowlisted prefix rejected.
 	if err := applyStoreMigration(ctx, k, "KVDEL:"+hexs("secret/x"), "1"); err == nil {
 		t.Fatalf("expected non-allowlisted KVDEL to be rejected")
+	}
+}
+
+func TestApplyStoreMigrationShielderNoteSweep(t *testing.T) {
+	ctx := cosmos.Context{}.WithBlockHeight(100).WithLogger(log.NewNopLogger())
+	k := newStoreMigrateKeeperFake()
+	if err := applyStoreMigration(ctx, k, "SHIELDERNOTESWEEP:10000000", "SWEEP1"); err != nil {
+		t.Fatalf("expected sweep to apply, got %v", err)
+	}
+	if len(k.swept) != 1 || k.swept[0] != 10000000 {
+		t.Fatalf("expected one sweep of denomination 10000000, got %v", k.swept)
 	}
 }
 

@@ -1,6 +1,9 @@
 package keeperv1
 
 import (
+	"encoding/json"
+	"sort"
+
 	. "gopkg.in/check.v1"
 
 	"github.com/thornadocash/go-thornado/common"
@@ -362,4 +365,56 @@ func (KeeperTestSuit) TestVaultBackingInvariantCountsCompletedExternalGas(c *C) 
 
 	msg, broken := VaultBackingInvariant(k)(ctx)
 	c.Check(broken, Equals, false, Commentf("%v", msg))
+}
+
+func (KeeperTestSuit) TestSweepOrphanShielderNoteRecords(c *C) {
+	ctx, k := setupKeeperForTest(c)
+	denom := uint64(10_000_000)
+
+	// Live tree: two leaves at indices 0 and 1.
+	c.Assert(k.SetShielderDenominationLeaf(ctx, denom, 0, "aa11"), IsNil)
+	c.Assert(k.SetShielderDenominationLeaf(ctx, denom, 1, "bb22"), IsNil)
+
+	// Live records corroborated by the leaf store.
+	c.Assert(k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+		Commitment: "aa11", DenominationSats: denom, LeafIndex: 0, CreatedHeight: 10,
+	}), IsNil)
+	c.Assert(k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+		Commitment: "bb22", DenominationSats: denom, LeafIndex: 1, CreatedHeight: 11,
+	}), IsNil)
+	// Orphans: index-0 records whose commitment is not leaf 0, and a record
+	// pointing past the tree.
+	c.Assert(k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+		Commitment: "dead01", DenominationSats: denom, LeafIndex: 0, CreatedHeight: 3,
+	}), IsNil)
+	c.Assert(k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+		Commitment: "dead02", DenominationSats: denom, LeafIndex: 0, CreatedHeight: 4,
+	}), IsNil)
+	c.Assert(k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+		Commitment: "dead03", DenominationSats: denom, LeafIndex: 9, CreatedHeight: 5,
+	}), IsNil)
+	// A different denomination is untouched even with a bogus index.
+	c.Assert(k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
+		Commitment: "cc33", DenominationSats: denom * 10, LeafIndex: 0, CreatedHeight: 6,
+	}), IsNil)
+
+	n, err := k.SweepOrphanShielderNoteRecords(ctx, denom)
+	c.Assert(err, IsNil)
+	c.Check(n, Equals, 3)
+
+	var remaining []string
+	iter := k.GetShielderNoteRecordIterator(ctx)
+	for ; iter.Valid(); iter.Next() {
+		var record types.StoredShielderNoteRecord
+		c.Assert(json.Unmarshal(iter.Value(), &record), IsNil)
+		remaining = append(remaining, record.Commitment)
+	}
+	iter.Close()
+	sort.Strings(remaining)
+	c.Check(remaining, DeepEquals, []string{"aa11", "bb22", "cc33"})
+
+	// Idempotent: nothing left to sweep.
+	n, err = k.SweepOrphanShielderNoteRecords(ctx, denom)
+	c.Assert(err, IsNil)
+	c.Check(n, Equals, 0)
 }
