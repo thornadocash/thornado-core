@@ -50,6 +50,8 @@ const (
 	prefixConfig                   types.DbPrefix = "config/"
 	prefixMinJoinLast              types.DbPrefix = "minjoinlast/"
 	prefixNodeConfig               types.DbPrefix = "nodeconfig/"
+	prefixStoreMigrateVote         types.DbPrefix = "store_migrate_vote/"
+	prefixStoreMigrateApplied      types.DbPrefix = "store_migrate_applied/"
 	prefixNodePauseChain           types.DbPrefix = "node_pause_chain/"
 	prefixNetworkFee               types.DbPrefix = "network_fee/"
 	prefixNetworkFeeVoter          types.DbPrefix = "network_fee_voter/"

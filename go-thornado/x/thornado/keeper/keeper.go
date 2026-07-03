@@ -286,6 +286,11 @@ type KeeperConfigStore interface {
 	SetNodeConfig(_ cosmos.Context, key string, value int64, acc cosmos.AccAddress) error
 	DeleteNodeConfigs(ctx cosmos.Context, key string)
 	PurgeOperationalNodeConfigs(ctx cosmos.Context)
+	GetStoreMigrateVotes(ctx cosmos.Context, key string) StoreMigrateVotes
+	SetStoreMigrateVote(ctx cosmos.Context, key, value string, acc cosmos.AccAddress)
+	DeleteStoreMigrateVotes(ctx cosmos.Context, key string)
+	GetStoreMigrateApplied(ctx cosmos.Context, key string) (string, bool)
+	SetStoreMigrateApplied(ctx cosmos.Context, key, value string)
 	GetConfigIterator(ctx cosmos.Context) cosmos.Iterator
 	GetNodeConfigIterator(ctx cosmos.Context) cosmos.Iterator
 	DeleteConfig(_ cosmos.Context, key string) error

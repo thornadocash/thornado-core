@@ -1,0 +1,23 @@
+syntax = "proto3";
+package types;
+
+option go_package = "github.com/thornadocash/go-thornado/x/thornado/types";
+
+import "gogoproto/gogo.proto";
+import "amino/amino.proto";
+
+// MsgStoreMigrate is a supermajority-voted state correction. Each active node
+// submits an identical (key, value); once two-thirds agree the targeted state
+// mutation is applied exactly once. `key` selects a typed migration target
+// (e.g. CONFIG:<KEY>, VAULTCOIN:<pubkey>:<asset>, TXOUTCANCEL:<height>:<index>);
+// `value` is the target-specific new value.
+message MsgStoreMigrate {
+  option (amino.name) = "thornado/MsgStoreMigrate";
+
+  string key = 1;
+  string value = 2;
+  bytes signer = 3 [
+    (gogoproto.casttype) = "github.com/cosmos/cosmos-sdk/types.AccAddress",
+    (amino.encoding) = "bech32"
+  ];
+}

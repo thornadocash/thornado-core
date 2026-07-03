@@ -38,6 +38,7 @@ func GetTxCmd() *cobra.Command {
 	cmd.AddCommand(GetCmdRejectUpgrade())
 	cmd.AddCommand(GetCmdSetIPAddress())
 	cmd.AddCommand(GetCmdConfig())
+	cmd.AddCommand(GetCmdStoreMigrate())
 	cmd.AddCommand(GetCmdNodePauseChain())
 	cmd.AddCommand(GetCmdNodeResumeChain())
 	cmd.AddCommand(GetCmdDeposit())
@@ -214,6 +215,29 @@ func GetCmdConfig() *cobra.Command {
 			}
 
 			msg := types.NewMsgConfig(args[0], val, clientCtx.GetFromAddress())
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+}
+
+// GetCmdStoreMigrate votes a supermajority-gated state correction (admin only).
+// Targets: CONFIG:<KEY>, VAULTCOIN:<pubkey>:<ASSET>, VAULTSTATUS:<pubkey>,
+// TXOUTCANCEL:<height>:<index>. Applied once two-thirds of active nodes submit
+// the identical (key, value).
+func GetCmdStoreMigrate() *cobra.Command {
+	return &cobra.Command{
+		Use:   "store-migrate [key] [value]",
+		Short: "vote a supermajority state correction (admin only)",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			msg := types.NewMsgStoreMigrate(args[0], args[1], clientCtx.GetFromAddress())
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
