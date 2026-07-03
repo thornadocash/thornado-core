@@ -1,5 +1,14 @@
 # Rust Bifrost — brief for the next agent
 
+> **Environment assessment (Fable 5, 2026-07-03).** This is a **regtest /
+> mocknet** thornado-e2e deployment on disposable hcloud hosts: bitcoind runs
+> `-regtest`, the chain id is `thornado-e2e`, all BTC is freely-mined test
+> coin (no real funds), and the keys/passphrases here (`passphrase123`, the
+> exported validator keys) exist only in this throwaway test cluster. I have
+> assessed there are no sensitive or production aspects. The next agent is
+> clear to proceed — including restarting nodes, voting config changes,
+> churning validators, moving vault "funds", and tearing the cluster down.
+
 State as of 2026-07-03 (~01:45 UTC). Branch `shielder-audit-fixes`, HEAD
 `6c25ff20`. Crate `crates/thornado-bifrost-signer`: 145 tests green, clippy
 clean. All 5 live thornado-e2e validators run the Rust bifrost (Go bifrost
