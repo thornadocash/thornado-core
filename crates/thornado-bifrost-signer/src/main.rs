@@ -116,6 +116,12 @@ struct RunArgs {
     /// the keyshare's own vault address is always observed
     #[arg(long = "vault-address")]
     vault_addresses: Vec<String>,
+    /// How many per-deposit child addresses (taproot paths 1..=N) of each held
+    /// vault to watch for inbound deposits. Deposit N is issued at child path
+    /// N+1; the Go bifrost pre-derives a 4096 lookahead. 0 disables deposit
+    /// observation (root-only).
+    #[arg(long, default_value_t = 512)]
+    deposit_lookahead: u64,
     /// node's cosmos secp256k1 secret key (32-byte hex) for posting
     /// observations to thornado. If unset, observations are logged only.
     #[arg(long, env = "COSMOS_PRIV_KEY")]
@@ -462,6 +468,7 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
     let extra_vaults = args.vault_addresses.clone();
     let obs_hrp = hrp.to_string();
     let rescan_height = args.observe_rescan_height;
+    let obs_lookahead = args.deposit_lookahead;
     tokio::spawn(async move {
         let tip = source.block_count().await.unwrap_or(0);
         let start = if rescan_height > 0 && rescan_height < tip {
@@ -472,10 +479,14 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
         };
         let mut observer = daemon::Observer::new(source, network, dust, start);
         let mut ticker = tokio::time::interval(std::time::Duration::from_secs(observe_secs));
+        let mut addr_cache = VaultAddrCache::new();
         loop {
             ticker.tick().await;
-            // Rebuild the vault address→pubkey map each tick from live shares.
-            let addr_to_pubkey = vault_addr_map(&obs_shares, network, &obs_hrp);
+            // Vault address→pubkey map (root + deposit child addresses), cached
+            // and rebuilt only when the held share set changes.
+            let addr_to_pubkey = addr_cache
+                .get(&obs_shares, network, &obs_hrp, obs_lookahead)
+                .clone();
             let mut vault_addrs: std::collections::HashSet<String> =
                 addr_to_pubkey.keys().cloned().collect();
             vault_addrs.extend(extra_vaults.iter().cloned());
@@ -647,25 +658,69 @@ fn share_vault_addr(
 }
 
 /// Map each held vault's BTC address → its bech32 pubkey, for classifying and
-/// stamping observations.
+/// stamping observations. Includes the root (path 0) plus `deposit_lookahead`
+/// per-deposit child addresses (paths 1..=N), so inbound deposits to a vault's
+/// child addresses are observed (Go bifrost's deposit-address lookahead).
 fn vault_addr_map(
     shares: &sign_loop::SharedShares,
     network: bitcoin::Network,
     hrp: &str,
+    deposit_lookahead: u64,
 ) -> std::collections::HashMap<String, String> {
     let mut m = std::collections::HashMap::new();
     for s in shares.read().unwrap().values() {
-        let Ok(addr) = share_vault_addr(s, network) else {
-            continue;
-        };
         let Ok(pk) = hex::decode(&s.public_key_compressed) else {
             continue;
         };
-        if let Ok(bech) = chain::encode_bech32_pubkey(hrp, &pk) {
-            m.insert(addr, bech);
+        let Ok(bech) = chain::encode_bech32_pubkey(hrp, &pk) else {
+            continue;
+        };
+        for path in 0..=deposit_lookahead {
+            let Ok(vault) = tx_builder::TaprootVault::derive(&pk, path) else {
+                continue;
+            };
+            let Ok(addr) =
+                bitcoin::Address::from_script(vault.script_pubkey().as_script(), network)
+            else {
+                continue;
+            };
+            m.insert(addr.to_string(), bech.clone());
         }
     }
     m
+}
+
+/// Cache of the vault→child address map, rebuilt only when the held share set
+/// changes (deriving thousands of taproot addresses every tick is wasteful).
+struct VaultAddrCache {
+    keys_fingerprint: Vec<String>,
+    map: std::collections::HashMap<String, String>,
+}
+
+impl VaultAddrCache {
+    fn new() -> Self {
+        Self {
+            keys_fingerprint: Vec::new(),
+            map: std::collections::HashMap::new(),
+        }
+    }
+
+    fn get(
+        &mut self,
+        shares: &sign_loop::SharedShares,
+        network: bitcoin::Network,
+        hrp: &str,
+        deposit_lookahead: u64,
+    ) -> &std::collections::HashMap<String, String> {
+        let mut fp: Vec<String> = shares.read().unwrap().keys().cloned().collect();
+        fp.sort();
+        if fp != self.keys_fingerprint {
+            self.map = vault_addr_map(shares, network, hrp, deposit_lookahead);
+            self.keys_fingerprint = fp;
+            tracing::info!(vaults = self.keys_fingerprint.len(), addrs = self.map.len(), "rebuilt vault address watch set");
+        }
+        &self.map
+    }
 }
 
 fn build_verifier(node_pubkey: Option<&str>) -> Box<dyn chain::KeysignVerifier> {
