@@ -538,13 +538,16 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
                 Err(e) => tracing::warn!(error = %e, "observe scan failed"),
             }
 
-            // Solvency: every ≥2 new BTC blocks, report each base vault's
-            // wallet balance so the chain's solvency voter can reach
-            // supermajority consensus across the active nodes (Go BTC client
-            // ReportSolvency; each node posts its own MsgSolvency vote).
+            // Solvency: report each base vault's wallet balance so the chain's
+            // solvency voter can reach supermajority consensus across the
+            // active nodes (Go BTC client ReportSolvency; each node posts its
+            // own MsgSolvency vote). Reports are quantized to EVEN BTC heights:
+            // the solvency id hashes the reported height, so nodes reporting at
+            // self-relative strides (Go's height-last>1 gate) can disagree on
+            // the id forever and never converge on one voter.
             if let Some(ref p) = obs_poster {
                 let tip = observer.last_scanned();
-                if tip - last_solvency_height > 1 {
+                if tip > last_solvency_height && tip % 2 == 0 {
                     match report_solvency(
                         &solvency_client,
                         &solvency_rpc,
