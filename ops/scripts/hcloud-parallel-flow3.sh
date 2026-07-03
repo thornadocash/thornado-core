@@ -369,7 +369,7 @@ for i in $(seq 1 "$COUNT"); do
   label="$(cat "$d/label.txt")"
   note="$(jq -c '.notes[0]' "$d/receipt.json")"
   denom="$(jq -r '.denomination_sats' <<<"$note")"
-  leaves="$(jq -c --argjson denom "$denom" '[.notes[] | select((.denomination_sats | tonumber) == $denom) | .commitment] | sort' "$run_dir/shielder-sync-after-shields.json")"
+  leaves="$(jq -c --argjson denom "$denom" '[.notes[] | select((.denomination_sats | tonumber) == $denom)] | group_by(.leaf_index | tonumber) | map(max_by(.created_height | tonumber)) | sort_by(.leaf_index | tonumber) | map(.commitment)' "$run_dir/shielder-sync-after-shields.json")"
   printf '%s\n' "$leaves" >"$d/proof-leaves.json"
   assert_shielder_root_committed "$denom" "$leaves" "parallel-flow3-${i}"
   if [[ "$DUPLICATE_RECIPIENT" == "1" ]]; then
