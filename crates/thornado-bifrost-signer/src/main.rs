@@ -130,8 +130,10 @@ struct RunArgs {
     /// leader keeps waiting for FULL membership before forming the party.
     #[arg(long, default_value_t = 3)]
     party_grace_secs: u64,
-    /// How long a member waits for the leader's join-party response.
-    #[arg(long, default_value_t = 8)]
+    /// How long a member waits for the leader's join-party response. Also the
+    /// leader's parked-join TTL — do not set below ~20s, or demand-driven
+    /// leading starves under load.
+    #[arg(long, default_value_t = 20)]
     join_wait_secs: u64,
     /// node's cosmos secp256k1 secret key (32-byte hex) for posting
     /// observations to thornado. If unset, observations are logged only.

@@ -122,9 +122,11 @@ impl Default for SignLoopCfg {
             min_utxo_conf: 1,
             party_wait: Duration::from_secs(12),
             party_grace: Duration::from_secs(3),
-            // Short relative to the leader's decision time: a member stuck on
-            // an absent leader blocks its whole sequential sign loop.
-            join_wait: Duration::from_secs(8),
+            // join_wait doubles as the leader's parked-join TTL: under load a
+            // busy leader may take most of this long to reach a demanded
+            // session, so cutting it (tried 8s) starves demand-driven leading
+            // and parties fail "not enough peers online".
+            join_wait: Duration::from_secs(20),
             keysign_timeout: Duration::from_secs(60),
             fetch_window: 20,
             max_batches_per_tick: 5,
