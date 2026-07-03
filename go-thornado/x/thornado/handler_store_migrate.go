@@ -176,6 +176,7 @@ type storeMigrateKeeper interface {
 	SetVault(cosmos.Context, Vault) error
 	GetTxOut(cosmos.Context, int64) (*TxOut, error)
 	SetTxOut(cosmos.Context, *TxOut) error
+	ClearTxOut(cosmos.Context, int64) error
 	SetRawStoreValue(ctx cosmos.Context, key, value []byte) error
 	DeleteRawStoreValue(ctx cosmos.Context, key []byte)
 	ValidateRawStoreKey(key []byte) error
@@ -262,7 +263,13 @@ func applyStoreMigration(ctx cosmos.Context, k storeMigrateKeeper, key, value st
 		// pending-tx-height reference so it stops weighing on solvency.
 		item := txOut.TxArray[idx]
 		txOut.TxArray = append(txOut.TxArray[:idx], txOut.TxArray[idx+1:]...)
-		if err := k.SetTxOut(ctx, txOut); err != nil {
+		if len(txOut.TxArray) == 0 {
+			// SetTxOut silently no-ops on an empty block, which would leave the
+			// old record (item included) in the store — delete it instead.
+			if err := k.ClearTxOut(ctx, height); err != nil {
+				return fmt.Errorf("clear txout: %w", err)
+			}
+		} else if err := k.SetTxOut(ctx, txOut); err != nil {
 			return fmt.Errorf("set txout: %w", err)
 		}
 		if !item.VaultPubKey.IsEmpty() {

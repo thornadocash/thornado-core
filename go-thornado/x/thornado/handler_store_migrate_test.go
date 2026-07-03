@@ -91,7 +91,15 @@ func (k *storeMigrateKeeperFake) GetTxOut(_ cosmos.Context, height int64) (*TxOu
 }
 
 func (k *storeMigrateKeeperFake) SetTxOut(_ cosmos.Context, t *TxOut) error {
+	if t == nil || t.IsEmpty() {
+		return nil
+	}
 	k.txouts[t.Height] = t
+	return nil
+}
+
+func (k *storeMigrateKeeperFake) ClearTxOut(_ cosmos.Context, height int64) error {
+	delete(k.txouts, height)
 	return nil
 }
 
