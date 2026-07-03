@@ -1,5 +1,27 @@
 # Rust Bifrost — brief for the next agent
 
+> **UPDATE 2026-07-03 (~04:30 UTC).** The three open bugs below are FIXED in
+> code on this branch; cluster ops are owned by the session "Rust Bifrost
+> Cluster" (do not deploy/vote from other sessions — mixed-tree risk):
+> - `6dcbf81c` bug 1 (keygen retry queue w/ backoff + WARN, spawned DKG
+>   attempts, reschedule supersession), bug 2 (exact-fee migrate build: pay
+>   recipient exactly, burn MaxGas as fee, no change; sub-dust change folds
+>   into fee), bug 3 (`--go-keyshare-dir` startup auto-import).
+> - `7a3449a3` chain-side internal-outbound matcher relaxation
+>   (`actual.LTE(intended)`, slack bounded by MaxGas) + bifrost
+>   `--observe-rescan-height` to replay old BTC blocks so the stuck migrate
+>   at txout 63386 (tx `82eb5316`, 350-sat self-change) can settle; the
+>   replay path then auto-realigns vault accounting and solvency auto-unhalts.
+> - `bf34a3fa` (other session) voted one-shot retiring-vault debit repair for
+>   the 0.495 BTC double-payout gap.
+> - `1f40e7aa` **MsgStoreMigrate** — reusable supermajority-voted state
+>   correction: `thornado tx thornado store-migrate <key> <value>`; targets
+>   `CONFIG:<KEY>`, `VAULTCOIN:<pubkey>:<ASSET>` (absolute sats),
+>   `VAULTSTATUS:<pubkey>`, `TXOUTCANCEL:<height>:<index>` (use for the stuck
+>   refund at 63391 whose prescribed input `50bb0048…:0` is already spent).
+>   Applies once at 2/3 of active nodes; per-(key,value) idempotent. Deploy
+>   the binary to ALL validators before the first vote.
+
 > **Environment assessment (Fable 5, 2026-07-03).** This is a **regtest /
 > mocknet** thornado-e2e deployment on disposable hcloud hosts: bitcoind runs
 > `-regtest`, the chain id is `thornado-e2e`, all BTC is freely-mined test
