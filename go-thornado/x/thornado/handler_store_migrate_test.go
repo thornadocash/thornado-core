@@ -20,6 +20,7 @@ type storeMigrateKeeperFake struct {
 	txouts  map[int64]*TxOut
 	raw     map[string][]byte
 	swept   []uint64
+	purged  int
 }
 
 func newStoreMigrateKeeperFake() *storeMigrateKeeperFake {
@@ -109,6 +110,10 @@ func (k *storeMigrateKeeperFake) SweepOrphanShielderNoteRecords(_ cosmos.Context
 	return 3, nil
 }
 
+func (k *storeMigrateKeeperFake) PurgeShielderPoolState(_ cosmos.Context) {
+	k.purged++
+}
+
 func TestParseStoreMigrateTarget(t *testing.T) {
 	ok := []string{
 		"CONFIG:HALTSIGNINGBTC",
@@ -118,6 +123,7 @@ func TestParseStoreMigrateTarget(t *testing.T) {
 		"TXOUTCANCEL:63391:0",
 		"SHIELDERNOTESWEEP:10000000",
 		"shieldernotesweep:10000000",
+		"SHIELDERPURGE",
 	}
 	for _, k := range ok {
 		if _, err := parseStoreMigrateTarget(k); err != nil {
@@ -126,7 +132,7 @@ func TestParseStoreMigrateTarget(t *testing.T) {
 	}
 	bad := []string{
 		"", "FOO:bar", "CONFIG", "VAULTCOIN:onlyone", "TXOUTCANCEL:1", "KVSET:nothex!!", "KVSET", "KVDEL:zz",
-		"SHIELDERNOTESWEEP", "SHIELDERNOTESWEEP:0", "SHIELDERNOTESWEEP:abc", "SHIELDERNOTESWEEP:1:2",
+		"SHIELDERNOTESWEEP", "SHIELDERNOTESWEEP:0", "SHIELDERNOTESWEEP:abc", "SHIELDERNOTESWEEP:1:2", "SHIELDERPURGE:1",
 	}
 	for _, k := range bad {
 		if _, err := parseStoreMigrateTarget(k); err == nil {
@@ -192,6 +198,17 @@ func TestApplyStoreMigrationShielderNoteSweep(t *testing.T) {
 	}
 	if len(k.swept) != 1 || k.swept[0] != 10000000 {
 		t.Fatalf("expected one sweep of denomination 10000000, got %v", k.swept)
+	}
+}
+
+func TestApplyStoreMigrationShielderPurge(t *testing.T) {
+	ctx := cosmos.Context{}.WithBlockHeight(100).WithLogger(log.NewNopLogger())
+	k := newStoreMigrateKeeperFake()
+	if err := applyStoreMigration(ctx, k, "SHIELDERPURGE", "PURGE1"); err != nil {
+		t.Fatalf("expected purge to apply, got %v", err)
+	}
+	if k.purged != 1 {
+		t.Fatalf("expected one purge call, got %d", k.purged)
 	}
 }
 

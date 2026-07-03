@@ -170,6 +170,10 @@ func parseStoreMigrateTarget(key string) (storeMigrateTarget, error) {
 		if denom, err := strconv.ParseUint(t.args[0], 10, 64); err != nil || denom == 0 {
 			return t, fmt.Errorf("SHIELDERNOTESWEEP denomination must be a positive integer: %v", err)
 		}
+	case "SHIELDERPURGE":
+		if len(t.args) != 0 {
+			return t, fmt.Errorf("SHIELDERPURGE target takes no arguments")
+		}
 	default:
 		return t, fmt.Errorf("unknown store migrate target %q", t.kind)
 	}
@@ -188,6 +192,7 @@ type storeMigrateKeeper interface {
 	DeleteRawStoreValue(ctx cosmos.Context, key []byte)
 	ValidateRawStoreKey(key []byte) error
 	SweepOrphanShielderNoteRecords(ctx cosmos.Context, denominationSats uint64) (int, error)
+	PurgeShielderPoolState(ctx cosmos.Context)
 }
 
 // applyStoreMigration dispatches a validated, supermajority-approved migration.
@@ -325,6 +330,16 @@ func applyStoreMigration(ctx cosmos.Context, k storeMigrateKeeper, key, value st
 			return fmt.Errorf("sweep orphan shielder note records: %w", err)
 		}
 		ctx.Logger().Info("swept orphan shielder note records", "denomination", denom, "deleted", n)
+		return nil
+
+	case "SHIELDERPURGE":
+		// The nuclear testnet reset (PurgeShielderPoolState): wipes notes,
+		// leaves, tree state, historical roots AND nullifiers together, so the
+		// mint and spend ledgers zero consistently and no stale root can
+		// re-prove a note whose nullifier was erased. Existing notes are
+		// intentionally invalidated; pooled vault funds stay (over-backed).
+		k.PurgeShielderPoolState(ctx)
+		ctx.Logger().Info("purged shielder pool state")
 		return nil
 	}
 	return fmt.Errorf("unhandled store migrate target %q", t.kind)
