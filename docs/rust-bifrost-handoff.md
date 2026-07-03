@@ -125,12 +125,20 @@ Shielder (4 stacked bugs, fixed in order — this was today's second ask):
    consensus; excludePendingOutboundFromVault misses migrations.
 2. **Sweep/invariant ledger design** (task chip filed): make the mint ledger
    sweep-proof (cumulative counters) so future sweeps can't orphan spends.
-3. **Party alignment decay**: under parallel 1-item sweep batches, per-node
-   sequential loops drift out of alignment over ~1h (stale parked streams,
-   "failed to answer join request") and throughput grinds; a fleet signer
-   restart (optionally with signer.redb purge) realigns and bursts the
-   backlog. Real fix: persistent party sessions or batched child-path sweeps
-   (child tweak is currently per-tx, forcing 1 tx per deposit path).
+3. **Party alignment decay — now the #1 reliability gap**: per-node
+   sequential sign loops drift out of alignment over hours (stale parked
+   streams, "failed to answer join request", keysign timeouts when a
+   "selected" member never got the leader's answer). Proven consequence: the
+   cluster churned cleanly unattended for ~6.5h (~40 complete migrations, one
+   every ~100 blocks), then ONE migration keysign wedged for ~55 min — the
+   retiring vault held all funds, the new vault sat empty, and "fail to
+   migrate funds: no source inputs" spammed every block (the pending txout's
+   input reservation blocks re-scheduling; that error means "migration
+   already queued", not fund loss). Remedy (verified twice): fleet signer
+   restart with signer.redb purge — the batch signed within 2 min. Real fix:
+   persistent party sessions or batched child-path sweeps. NOTE for queue
+   checks: /thornado/txout/all returns {"txout": current, "txouts": [...]}
+   — parse the "txouts" key.
 4. Residual regtest dust (unchanged, documented, no protocol loss).
 5. 26 unpushed commits — push/PR when the user asks.
 
