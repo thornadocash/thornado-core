@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 
 	math "cosmossdk.io/math"
 	"github.com/thornadocash/go-thornado/common"
@@ -624,7 +625,7 @@ func (vm *NetworkMgr) btcMigrationSourceInputs(ctx cosmos.Context, vault Vault, 
 			if change == 0 {
 				continue
 			}
-			vout := nextBTCChangeVout(usedOutVouts[tx.ID.String()])
+			vout := nextBTCChangeVout(usedOutVouts[strings.ToLower(tx.ID.String())])
 			key := btcSourceInputKey(tx.ID, vout)
 			if _, ok := candidates[key]; ok {
 				continue
@@ -724,8 +725,12 @@ func (vm *NetworkMgr) markSpentBTCSourceInputs(spent map[string]struct{}, inputs
 	}
 }
 
+// btcSourceInputKey normalizes txid case: Go-era observers posted uppercase
+// txids and the Rust observer posts lowercase, so a case-sensitive key treats
+// one UTXO as two candidates (the duplicate then gets a guessed — often
+// wrong — change vout, prescribing a phantom input the signer cannot spend).
 func btcSourceInputKey(txID common.TxID, vout uint32) string {
-	return txID.String() + ":" + strconv.FormatUint(uint64(vout), 10)
+	return strings.ToLower(txID.String()) + ":" + strconv.FormatUint(uint64(vout), 10)
 }
 
 // TriggerKeygen generate a record to instruct signer kick off keygen process
