@@ -5859,6 +5859,7 @@ dependencies = [
  "frost-secp256k1-tr",
  "futures",
  "hex",
+ "k256",
  "libp2p",
  "libp2p-stream",
  "prost 0.13.5",

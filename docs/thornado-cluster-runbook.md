@@ -281,6 +281,32 @@ Recovery that worked:
 4. reinstall build per-vault-batch-20260702023644 and restart thornado + bifrost
 ```
 
+### Refund Double-Payout Incident (49.5M sats)
+
+Found `2026-07-03` while diagnosing a solvency halt; the duplicate payment itself
+happened `2026-07-02` during overnight testing (BTC confs ~2235 and ~2090 at
+discovery). Snapshot: `meta/incident-solvency-20260703/` on the coordinator.
+
+```text
+refund in_hash acc000cfbfd3..., amount 49500000 (50M minus 1% fee)
+recipient bcrt1pn0lvnuslt7czguhcr8m5qdgjc69yd3srkj2h8yzqrfd2qvhzkdes9j3ejl
+tx1 c82c4951... spends the PINNED deposit outpoint acc000cf...:0  (orphan payment)
+tx2 0fd5302c... spends 4 re-selected UTXOs, settled as txout height 57160 epoch 3554
+book gap: retiring vault 12364406104 vs wallet 12314906104 = 49500000 exactly
+```
+
+Mechanism: the refund was signed and broadcast with its pinned source input (tx1,
+confirmed), then the item was re-queued/refreshed WITHOUT the pin, re-signed from
+different UTXOs (tx2), and both confirmed. Re-selecting source inputs on retry
+defeats Bitcoin's inherent same-input double-spend protection. The auto solvency
+check caught the 49.5M book-vs-wallet gap and halted BTC signing — working as
+intended; do not clear the halt without correcting the book or accepting the loss.
+
+Invariant to enforce in code: an outbound may only be re-signed with different
+source inputs after proving the previously signed tx did not land (spent-outpoint
+check on the prior inputs — same machinery as sweep SourceTxMissing). Pinned
+refund sources must survive purge/requeue.
+
 ### Per-Vault Batch Serialization Change
 
 Deployed `2026-07-02` (build `per-vault-batch-20260702023644`, thornado

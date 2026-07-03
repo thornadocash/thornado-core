@@ -27,6 +27,7 @@ frost-core.workspace = true
 frost-secp256k1-tr.workspace = true
 futures.workspace = true
 hex.workspace = true
+k256 = "0.13"
 libp2p.workspace = true
 libp2p-stream.workspace = true
 prost.workspace = true

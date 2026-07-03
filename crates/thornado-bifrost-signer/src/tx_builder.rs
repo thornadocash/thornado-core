@@ -83,7 +83,6 @@ impl TaprootVault {
     pub fn derive(compressed_pubkey: &[u8], path_index: u64) -> Result<Self> {
         use bitcoin::key::TapTweak;
         use bitcoin::secp256k1::{PublicKey, Scalar, Secp256k1};
-        use sha2::{Digest, Sha256};
 
         let secp = Secp256k1::verification_only();
         let base = PublicKey::from_slice(compressed_pubkey)
@@ -92,11 +91,7 @@ impl TaprootVault {
         let internal = if path_index == MAIN_VAULT_PATH_INDEX {
             base
         } else {
-            let mut h = Sha256::new();
-            h.update(VAULT_PATH_DOMAIN);
-            h.update(base.serialize()); // compressed, 33 bytes
-            h.update(path_index.to_be_bytes());
-            let digest: [u8; 32] = h.finalize().into();
+            let digest = child_path_tweak(&base.serialize(), path_index);
             let scalar = Scalar::from_be_bytes(digest)
                 .map_err(|e| TxError::Bitcoin(format!("child tweak scalar: {e}")))?;
             base.add_exp_tweak(&secp, &scalar)
@@ -118,6 +113,19 @@ impl TaprootVault {
         v.extend_from_slice(&self.output_key);
         ScriptBuf::from_bytes(v)
     }
+}
+
+/// The child-path tweak scalar bytes for a vault path (Go
+/// `DeriveBTCTaprootPubKey`): SHA256(domain ‖ compressed_base ‖ be64(path)).
+/// The FROST layer adds this scalar to the group key when signing for a
+/// non-root path; [`TaprootVault::derive`] adds t·G for the address.
+pub fn child_path_tweak(base_compressed: &[u8], path_index: u64) -> [u8; 32] {
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    h.update(VAULT_PATH_DOMAIN);
+    h.update(base_compressed);
+    h.update(path_index.to_be_bytes());
+    h.finalize().into()
 }
 
 /// A single recipient output.

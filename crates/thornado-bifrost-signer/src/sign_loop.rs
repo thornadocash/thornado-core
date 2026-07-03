@@ -375,6 +375,7 @@ pub fn keysign_session_ids(unsigned: &UnsignedTx, vault_pub: &[u8]) -> Result<Ve
 /// `keysign_session_id(vault, sighash)`), then assemble every witness. The
 /// mailbox must deliver every input session's frames (the router registers it
 /// under all of them); `run_keysign_multi` fans them to the right session.
+#[allow(clippy::too_many_arguments)]
 pub async fn frost_sign_tx<M: Mailbox>(
     mailbox: &mut M,
     share: &StoredShare,
@@ -382,18 +383,22 @@ pub async fn frost_sign_tx<M: Mailbox>(
     selected: &[String],
     unsigned: &mut UnsignedTx,
     vault_pub: &[u8],
+    vault_path_index: u64,
     timeout: Duration,
 ) -> Result<()> {
+    let child_tweak =
+        (vault_path_index != 0).then(|| crate::tx_builder::child_path_tweak(vault_pub, vault_path_index));
     let mut sessions = BTreeMap::new();
     let mut sid_order = Vec::with_capacity(unsigned.tx.input.len());
     for i in 0..unsigned.tx.input.len() {
         let sighash = taproot_sighash(unsigned, i)?;
         let sid = keysign_session_id(vault_pub, &sighash);
-        let session = SignSession::new_taproot(
+        let session = SignSession::new_taproot_with_child_tweak(
             share,
             local.to_string(),
             selected.to_vec(),
             sighash.to_vec(),
+            child_tweak,
         )?;
         sid_order.push(sid.clone());
         sessions.insert(sid, session);
@@ -835,6 +840,7 @@ impl SignLoop {
             &selected,
             &mut unsigned,
             &vault_pub,
+            rep.item.vault_path_index,
             self.cfg.keysign_timeout,
         )
         .await?;
@@ -1142,6 +1148,7 @@ mod tests {
                     &sel,
                     &mut unsigned,
                     &group_pub2,
+                    0,
                     Duration::from_secs(30),
                 )
                 .await
@@ -1176,5 +1183,139 @@ mod tests {
             let msg = bitcoin::secp256k1::Message::from_digest(sighash);
             secp.verify_schnorr(&sig, &msg, &xonly).expect("schnorr sig valid for vault key");
         }
+    }
+
+    /// Child-path (deposit sweep) signing: the FROST layer shifts every share
+    /// by the child scalar, so the signature verifies under the CHILD taproot
+    /// output key (`TaprootVault::derive(pk, path)`), rust-bitcoin as oracle.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn frost_sign_tx_child_path_produces_valid_taproot_spend() {
+        use crate::frost_session::{normalize_participants, KeygenSession};
+        use crate::transport::run_keygen;
+        use crate::tx_builder::Utxo;
+        use std::collections::HashMap;
+        use tokio::sync::mpsc;
+
+        struct MemMailbox {
+            me: String,
+            senders: HashMap<String, mpsc::UnboundedSender<(String, Vec<u8>)>>,
+            inbox: mpsc::UnboundedReceiver<(String, Vec<u8>)>,
+        }
+        impl Mailbox for MemMailbox {
+            async fn send(
+                &mut self,
+                to: &str,
+                framed: Vec<u8>,
+            ) -> std::result::Result<(), crate::transport::TransportError> {
+                if let Some(tx) = self.senders.get(to) {
+                    let _ = tx.send((self.me.clone(), framed));
+                }
+                Ok(())
+            }
+            async fn recv(&mut self) -> Option<(String, Vec<u8>)> {
+                self.inbox.recv().await
+            }
+        }
+
+        let names = normalize_participants(&["p0".into(), "p1".into(), "p2".into()]);
+        let mut senders = HashMap::new();
+        let mut receivers = HashMap::new();
+        for n in &names {
+            let (tx, rx) = mpsc::unbounded_channel();
+            senders.insert(n.clone(), tx);
+            receivers.insert(n.clone(), rx);
+        }
+
+        let mut handles = Vec::new();
+        for n in &names {
+            let mut mbox = MemMailbox {
+                me: n.clone(),
+                senders: senders.clone(),
+                inbox: receivers.remove(n).unwrap(),
+            };
+            let session = KeygenSession::new(n.clone(), names.clone(), 2).unwrap();
+            let n2 = n.clone();
+            handles.push(tokio::spawn(async move {
+                let share = run_keygen(&mut mbox, session, "kg-child").await.unwrap();
+                (n2, share, mbox)
+            }));
+        }
+        let mut shares = HashMap::new();
+        let mut mailboxes = HashMap::new();
+        for h in handles {
+            let (n, share, mbox) = h.await.unwrap();
+            shares.insert(n.clone(), share);
+            mailboxes.insert(n, mbox);
+        }
+
+        const PATH: u64 = 7;
+        let group_pub = hex::decode(&shares[&names[0]].public_key_compressed).unwrap();
+        let child_vault = TaprootVault::derive(&group_pub, PATH).unwrap();
+        let root_vault = TaprootVault::derive(&group_pub, 0).unwrap();
+        use bitcoin::hashes::Hash;
+        let sweep_input = Utxo {
+            txid: bitcoin::Txid::from_byte_array([5; 32]),
+            vout: 1,
+            amount_sats: 50_000,
+            confirmations: 6,
+        };
+
+        let mut sign_handles = Vec::new();
+        for n in &names {
+            let mut mbox = mailboxes.remove(n).unwrap();
+            let share = shares[n].clone();
+            let sel = names.clone();
+            let n2 = n.clone();
+            let child2 = child_vault.clone();
+            let root2 = root_vault.clone();
+            let input2 = sweep_input.clone();
+            let group_pub2 = group_pub.clone();
+            sign_handles.push(tokio::spawn(async move {
+                let mut unsigned = build_unsigned(&BuildRequest {
+                    vault: child2,
+                    inputs: vec![input2],
+                    recipients: vec![Recipient {
+                        script_pubkey: root2.script_pubkey(),
+                        amount_sats: 49_000,
+                    }],
+                    fee_rate: 2,
+                    spend_all: false,
+                    exact_fee_remainder: true,
+                })
+                .unwrap();
+                frost_sign_tx(
+                    &mut mbox,
+                    &share,
+                    &n2,
+                    &sel,
+                    &mut unsigned,
+                    &group_pub2,
+                    PATH,
+                    Duration::from_secs(30),
+                )
+                .await
+                .unwrap();
+                unsigned
+            }));
+        }
+        let mut signed = Vec::new();
+        for h in sign_handles {
+            signed.push(h.await.unwrap());
+        }
+        let txids: Vec<String> =
+            signed.iter().map(|u| u.tx.compute_txid().to_string()).collect();
+        assert!(txids.windows(2).all(|w| w[0] == w[1]));
+
+        let unsigned = &signed[0];
+        let w = &unsigned.tx.input[0].witness;
+        let sig_bytes = w.iter().next().unwrap();
+        let sighash = taproot_sighash(unsigned, 0).unwrap();
+        let secp = bitcoin::secp256k1::Secp256k1::verification_only();
+        let xonly =
+            bitcoin::secp256k1::XOnlyPublicKey::from_slice(&child_vault.output_key).unwrap();
+        let sig = bitcoin::secp256k1::schnorr::Signature::from_slice(&sig_bytes[..64]).unwrap();
+        let msg = bitcoin::secp256k1::Message::from_digest(sighash);
+        secp.verify_schnorr(&sig, &msg, &xonly)
+            .expect("schnorr sig valid for CHILD vault key");
     }
 }

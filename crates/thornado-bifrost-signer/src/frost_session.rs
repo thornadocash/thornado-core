@@ -167,6 +167,74 @@ pub fn keysign_session_id(vault_pubkey: &[u8], message: &[u8]) -> String {
     hex::encode(h.finalize())
 }
 
+/// Shift a FROST keyshare by an additive scalar tweak `t`: every Shamir share
+/// s_i becomes s_i + t (the shared polynomial gains a constant term), so the
+/// group secret becomes s + t and the group key P + t·G. Used to sign for
+/// vault CHILD paths, whose keys are base + t·G (Go `DeriveBTCTaprootPubKey`).
+fn child_tweak_packages(
+    kp: &frost::keys::KeyPackage,
+    pkp: &frost::keys::PublicKeyPackage,
+    t: &[u8; 32],
+) -> Result<(frost::keys::KeyPackage, frost::keys::PublicKeyPackage)> {
+    use k256::elliptic_curve::group::GroupEncoding;
+    use k256::elliptic_curve::PrimeField;
+
+    let t_scalar = Option::<k256::Scalar>::from(k256::Scalar::from_repr((*t).into()))
+        .ok_or_else(|| FrostError::Frost("child tweak scalar out of range".into()))?;
+    let t_point = k256::ProjectivePoint::GENERATOR * t_scalar;
+
+    let scalar_bytes: [u8; 32] = kp
+        .signing_share()
+        .serialize()
+        .try_into()
+        .map_err(|_| FrostError::Frost("bad signing share length".into()))?;
+    let s = Option::<k256::Scalar>::from(k256::Scalar::from_repr(scalar_bytes.into()))
+        .ok_or_else(|| FrostError::Frost("bad signing share scalar".into()))?;
+    let s2 = s + t_scalar;
+    let signing_share = frost::keys::SigningShare::deserialize(&s2.to_bytes())
+        .map_err(|e| FrostError::Frost(e.to_string()))?;
+
+    let add_point = |bytes: Vec<u8>| -> Result<Vec<u8>> {
+        let arr: [u8; 33] = bytes
+            .try_into()
+            .map_err(|_| FrostError::Frost("bad point length".into()))?;
+        let p = Option::<k256::AffinePoint>::from(k256::AffinePoint::from_bytes(&arr.into()))
+            .ok_or_else(|| FrostError::Frost("bad point encoding".into()))?;
+        let sum = k256::ProjectivePoint::from(p) + t_point;
+        Ok(sum.to_affine().to_bytes().to_vec())
+    };
+
+    let vk_bytes = pkp
+        .verifying_key()
+        .serialize()
+        .map_err(|e| FrostError::Frost(e.to_string()))?;
+    let verifying_key = frost::VerifyingKey::deserialize(&add_point(vk_bytes)?)
+        .map_err(|e| FrostError::Frost(e.to_string()))?;
+
+    let mut verifying_shares = std::collections::BTreeMap::new();
+    for (id, vs) in pkp.verifying_shares() {
+        let vs_bytes = vs.serialize().map_err(|e| FrostError::Frost(e.to_string()))?;
+        let shifted = frost::keys::VerifyingShare::deserialize(&add_point(vs_bytes)?)
+            .map_err(|e| FrostError::Frost(e.to_string()))?;
+        verifying_shares.insert(*id, shifted);
+    }
+
+    let our_vs = verifying_shares
+        .get(kp.identifier())
+        .cloned()
+        .ok_or_else(|| FrostError::Frost("own verifying share missing".into()))?;
+    let kp2 = frost::keys::KeyPackage::new(
+        *kp.identifier(),
+        signing_share,
+        our_vs,
+        verifying_key,
+        *kp.min_signers(),
+    );
+    let pkp2 =
+        frost::keys::PublicKeyPackage::new(verifying_shares, verifying_key, pkp.min_signers());
+    Ok((kp2, pkp2))
+}
+
 /// Keygen session ID: SHA256("keygen|<height>|<minSigners>|<sortedCsv>"), hex.
 pub fn keygen_session_id(height: i64, min_signers: u16, participants: &[String]) -> String {
     let csv = participants.join(",");
@@ -470,7 +538,7 @@ impl SignSession {
         participants: Vec<String>,
         message: Vec<u8>,
     ) -> Result<Self> {
-        Self::new_inner(share, local, participants, message, false)
+        Self::new_inner(share, local, participants, message, false, None)
     }
 
     /// Begin a BIP341 taproot key-path keysign: the aggregate signature is
@@ -483,7 +551,21 @@ impl SignSession {
         participants: Vec<String>,
         message: Vec<u8>,
     ) -> Result<Self> {
-        Self::new_inner(share, local, participants, message, true)
+        Self::new_inner(share, local, participants, message, true, None)
+    }
+
+    /// Begin a taproot keysign for a vault CHILD path: every share is shifted
+    /// by the child scalar t (`tx_builder::child_path_tweak`), so the group
+    /// key becomes base + t·G and the BIP341 tweak then lands on the child's
+    /// taproot output key (`TaprootVault::derive(pk, path)`).
+    pub fn new_taproot_with_child_tweak(
+        share: &StoredShare,
+        local: String,
+        participants: Vec<String>,
+        message: Vec<u8>,
+        child_tweak: Option<[u8; 32]>,
+    ) -> Result<Self> {
+        Self::new_inner(share, local, participants, message, true, child_tweak)
     }
 
     fn new_inner(
@@ -492,13 +574,18 @@ impl SignSession {
         participants: Vec<String>,
         message: Vec<u8>,
         taproot: bool,
+        child_tweak: Option<[u8; 32]>,
     ) -> Result<Self> {
         let participants = normalize_participants(&participants);
         if !participants.contains(&local) {
             return Err(FrostError::LocalPartyNotSelected);
         }
-        let key_package = share.key_package()?;
-        let public_key_package = share.public_key_package()?;
+        let mut key_package = share.key_package()?;
+        let mut public_key_package = share.public_key_package()?;
+        if let Some(t) = child_tweak {
+            (key_package, public_key_package) =
+                child_tweak_packages(&key_package, &public_key_package, &t)?;
+        }
 
         let mut rng = rand::rngs::OsRng;
         let (nonces, commitments) = frost::round1::commit(key_package.signing_share(), &mut rng);
