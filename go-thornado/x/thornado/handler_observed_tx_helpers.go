@@ -661,7 +661,13 @@ func handleObservedTxOutQuorum(
 		)
 		return nil
 	}
-	if !matchedTxOut && observedOutboundRequiresTxOutMatch(tx) {
+	// Only a FINAL unmatched outbound proves an unauthorized spend. A pre-final
+	// quorum observation can legitimately fail to match when settlement lands
+	// outside the signing window (slow signing under load): the non-internal
+	// outside-window matcher requires finality, so the match only becomes
+	// possible once the tx is final. Halting on the pre-final observation would
+	// freeze BTC signing on every congested-but-honest outbound.
+	if !matchedTxOut && tx.IsFinal() && observedOutboundRequiresTxOutMatch(tx) {
 		ctx.Logger().Info("halt BTC vault, observed outbound did not match an open txout",
 			"tx_id", tx.Tx.ID.String(),
 			"chain", tx.Tx.Chain.String(),
