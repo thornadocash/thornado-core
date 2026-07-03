@@ -1686,7 +1686,11 @@ func observedOutboundMatchesTxOut(tx ObservedTx, item TxOutItem) bool {
 					!maxGas.IsZero() &&
 					observedGas.LTE(maxGas)
 			}
-			return actual.Equal(intended) &&
+			// A signer may return sub-dust residue to the source vault as
+			// change instead of fee, leaving actual slightly below intended;
+			// migration settlement subtracts the full source-input total, so
+			// vault accounting stays exact either way.
+			return actual.LTE(intended) &&
 				observedGas.LTE(maxGas) &&
 				observedAmount.GTE(item.Coin.Amount) &&
 				observedAmount.LTE(intended)

@@ -69,6 +69,12 @@ struct RunArgs {
     /// signable without manual recovery.
     #[arg(long)]
     go_keyshare_dir: Option<String>,
+    /// Start the observe scan at this BTC height instead of the current tip.
+    /// Re-observing old blocks replays observations the chain has already
+    /// finalised (it dedups); used to re-match historical internal outbounds
+    /// after a matcher fix. 0 = start at tip.
+    #[arg(long, default_value_t = 0)]
+    observe_rescan_height: i64,
     /// enable the churn keygen loop (poll keygen blocks, run DKG, submit
     /// MsgKeygenVault). Requires the cosmos key to submit results.
     #[arg(long, default_value_t = false)]
@@ -455,8 +461,15 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
     let obs_poster = poster.clone();
     let extra_vaults = args.vault_addresses.clone();
     let obs_hrp = hrp.to_string();
+    let rescan_height = args.observe_rescan_height;
     tokio::spawn(async move {
-        let start = source.block_count().await.unwrap_or(0);
+        let tip = source.block_count().await.unwrap_or(0);
+        let start = if rescan_height > 0 && rescan_height < tip {
+            tracing::info!(from = rescan_height, tip, "observe rescan requested");
+            rescan_height
+        } else {
+            tip
+        };
         let mut observer = daemon::Observer::new(source, network, dust, start);
         let mut ticker = tokio::time::interval(std::time::Duration::from_secs(observe_secs));
         loop {
