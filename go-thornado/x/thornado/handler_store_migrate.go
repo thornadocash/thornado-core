@@ -1,6 +1,7 @@
 package thornado
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -154,6 +155,14 @@ func parseStoreMigrateTarget(key string) (storeMigrateTarget, error) {
 		if len(t.args) != 2 {
 			return t, fmt.Errorf("TXOUTCANCEL target needs TXOUTCANCEL:<height>:<index>")
 		}
+	case "KVSET", "KVDEL":
+		if len(t.args) != 1 {
+			return t, fmt.Errorf("%s target needs %s:<hex-store-key>", t.kind, t.kind)
+		}
+		raw, err := hex.DecodeString(t.args[0])
+		if err != nil || len(raw) == 0 {
+			return t, fmt.Errorf("%s store key must be non-empty hex: %v", t.kind, err)
+		}
 	default:
 		return t, fmt.Errorf("unknown store migrate target %q", t.kind)
 	}
@@ -167,6 +176,9 @@ type storeMigrateKeeper interface {
 	SetVault(cosmos.Context, Vault) error
 	GetTxOut(cosmos.Context, int64) (*TxOut, error)
 	SetTxOut(cosmos.Context, *TxOut) error
+	SetRawStoreValue(ctx cosmos.Context, key, value []byte) error
+	DeleteRawStoreValue(ctx cosmos.Context, key []byte)
+	ValidateRawStoreKey(key []byte) error
 }
 
 // applyStoreMigration dispatches a validated, supermajority-approved migration.
@@ -259,6 +271,31 @@ func applyStoreMigration(ctx cosmos.Context, k storeMigrateKeeper, key, value st
 				_ = k.SetVault(ctx, vault)
 			}
 		}
+		return nil
+
+	case "KVSET":
+		rawKey, err := hex.DecodeString(t.args[0])
+		if err != nil {
+			return fmt.Errorf("KVSET key must be hex: %w", err)
+		}
+		rawVal, err := hex.DecodeString(value)
+		if err != nil {
+			return fmt.Errorf("KVSET value must be hex: %w", err)
+		}
+		// SetRawStoreValue re-validates that the bytes decode as the type read
+		// under this prefix, so a raw write can never leave undecodable bytes
+		// that would panic a reader.
+		return k.SetRawStoreValue(ctx, rawKey, rawVal)
+
+	case "KVDEL":
+		rawKey, err := hex.DecodeString(t.args[0])
+		if err != nil {
+			return fmt.Errorf("KVDEL key must be hex: %w", err)
+		}
+		if err := k.ValidateRawStoreKey(rawKey); err != nil {
+			return err
+		}
+		k.DeleteRawStoreValue(ctx, rawKey)
 		return nil
 	}
 	return fmt.Errorf("unhandled store migrate target %q", t.kind)

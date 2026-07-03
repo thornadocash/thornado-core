@@ -291,6 +291,11 @@ type KeeperConfigStore interface {
 	DeleteStoreMigrateVotes(ctx cosmos.Context, key string)
 	GetStoreMigrateApplied(ctx cosmos.Context, key string) (string, bool)
 	SetStoreMigrateApplied(ctx cosmos.Context, key, value string)
+	SetRawStoreValue(ctx cosmos.Context, key, value []byte) error
+	GetRawStoreValue(ctx cosmos.Context, key []byte) ([]byte, bool)
+	DeleteRawStoreValue(ctx cosmos.Context, key []byte)
+	ValidateRawStoreValue(key, value []byte) error
+	ValidateRawStoreKey(key []byte) error
 	GetConfigIterator(ctx cosmos.Context) cosmos.Iterator
 	GetNodeConfigIterator(ctx cosmos.Context) cosmos.Iterator
 	DeleteConfig(_ cosmos.Context, key string) error

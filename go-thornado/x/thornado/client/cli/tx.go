@@ -224,9 +224,12 @@ func GetCmdConfig() *cobra.Command {
 }
 
 // GetCmdStoreMigrate votes a supermajority-gated state correction (admin only).
-// Targets: CONFIG:<KEY>, VAULTCOIN:<pubkey>:<ASSET>, VAULTSTATUS:<pubkey>,
-// TXOUTCANCEL:<height>:<index>. Applied once two-thirds of active nodes submit
-// the identical (key, value).
+// Typed targets: CONFIG:<KEY>, VAULTCOIN:<pubkey>:<ASSET>, VAULTSTATUS:<pubkey>,
+// TXOUTCANCEL:<height>:<index>. Raw escape hatch (any allowlisted store key):
+// KVSET:<hex-key> <hex-value> and KVDEL:<hex-key> — the write is refused unless
+// the bytes decode as the type read under that prefix, so a raw edit can never
+// panic a reader. Applied once two-thirds of active nodes submit the identical
+// (key, value).
 func GetCmdStoreMigrate() *cobra.Command {
 	return &cobra.Command{
 		Use:   "store-migrate [key] [value]",

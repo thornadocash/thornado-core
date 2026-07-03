@@ -419,6 +419,13 @@ func (k KVStoreDummy) GetStoreMigrateApplied(_ cosmos.Context, key string) (stri
 	return "", false
 }
 func (k KVStoreDummy) SetStoreMigrateApplied(_ cosmos.Context, key, value string) {}
+func (k KVStoreDummy) SetRawStoreValue(_ cosmos.Context, key, value []byte) error { return kaboom }
+func (k KVStoreDummy) GetRawStoreValue(_ cosmos.Context, key []byte) ([]byte, bool) {
+	return nil, false
+}
+func (k KVStoreDummy) DeleteRawStoreValue(_ cosmos.Context, key []byte)  {}
+func (k KVStoreDummy) ValidateRawStoreValue(key, value []byte) error     { return kaboom }
+func (k KVStoreDummy) ValidateRawStoreKey(key []byte) error              { return kaboom }
 func (k KVStoreDummy) DeleteConfig(_ cosmos.Context, key string) error          { return kaboom }
 func (k KVStoreDummy) GetConfigIterator(ctx cosmos.Context) cosmos.Iterator     { return nil }
 func (k KVStoreDummy) GetNodeConfigIterator(ctx cosmos.Context) cosmos.Iterator { return nil }

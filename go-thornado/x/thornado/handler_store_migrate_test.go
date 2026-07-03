@@ -1,6 +1,7 @@
 package thornado
 
 import (
+	"encoding/hex"
 	"testing"
 
 	"cosmossdk.io/log"
@@ -9,11 +10,15 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 )
 
-// storeMigrateKeeperFake implements storeMigrateKeeper for dispatch tests.
+// storeMigrateKeeperFake implements storeMigrateKeeper for dispatch tests. The
+// raw KVSET/KVDEL surface mirrors the real allowlist+decode guard: only keys
+// under an allowlisted prefix are accepted, and (for the vault prefix) the
+// value must be non-empty to stand in for "decodes as a Vault".
 type storeMigrateKeeperFake struct {
 	configs map[string]int64
 	vaults  map[string]Vault
 	txouts  map[int64]*TxOut
+	raw     map[string][]byte
 }
 
 func newStoreMigrateKeeperFake() *storeMigrateKeeperFake {
@@ -21,8 +26,49 @@ func newStoreMigrateKeeperFake() *storeMigrateKeeperFake {
 		configs: map[string]int64{},
 		vaults:  map[string]Vault{},
 		txouts:  map[int64]*TxOut{},
+		raw:     map[string][]byte{},
 	}
 }
+
+func (k *storeMigrateKeeperFake) ValidateRawStoreKey(key []byte) error {
+	if len(key) == 0 {
+		return errFakeEmptyKey
+	}
+	for _, p := range []string{"vault/", "txout/", "config/"} {
+		if len(key) >= len(p) && string(key[:len(p)]) == p {
+			return nil
+		}
+	}
+	return errFakeBadPrefix
+}
+
+func (k *storeMigrateKeeperFake) SetRawStoreValue(_ cosmos.Context, key, value []byte) error {
+	if err := k.ValidateRawStoreKey(key); err != nil {
+		return err
+	}
+	if len(value) == 0 {
+		return errFakeUndecodable // stand-in for "does not decode as the store type"
+	}
+	k.raw[string(key)] = value
+	return nil
+}
+
+func (k *storeMigrateKeeperFake) DeleteRawStoreValue(_ cosmos.Context, key []byte) {
+	if k.ValidateRawStoreKey(key) != nil {
+		return
+	}
+	delete(k.raw, string(key))
+}
+
+var (
+	errFakeEmptyKey     = fmtError("empty key")
+	errFakeBadPrefix    = fmtError("prefix not allowlisted")
+	errFakeUndecodable  = fmtError("undecodable value")
+)
+
+type fmtError string
+
+func (e fmtError) Error() string { return string(e) }
 
 func (k *storeMigrateKeeperFake) SetConfig(_ cosmos.Context, key string, value int64) {
 	k.configs[key] = value
@@ -62,12 +108,65 @@ func TestParseStoreMigrateTarget(t *testing.T) {
 			t.Fatalf("expected %q to parse, got %v", k, err)
 		}
 	}
-	bad := []string{"", "FOO:bar", "CONFIG", "VAULTCOIN:onlyone", "TXOUTCANCEL:1"}
+	bad := []string{"", "FOO:bar", "CONFIG", "VAULTCOIN:onlyone", "TXOUTCANCEL:1", "KVSET:nothex!!", "KVSET", "KVDEL:zz"}
 	for _, k := range bad {
 		if _, err := parseStoreMigrateTarget(k); err == nil {
 			t.Fatalf("expected %q to be rejected", k)
 		}
 	}
+	// KVSET/KVDEL with valid hex keys parse.
+	for _, k := range []string{"KVSET:7661756c742f", "KVDEL:7661756c742f"} {
+		if _, err := parseStoreMigrateTarget(k); err != nil {
+			t.Fatalf("expected %q to parse, got %v", k, err)
+		}
+	}
+}
+
+func TestApplyStoreMigrationKVSetRejectsUndecodable(t *testing.T) {
+	ctx := cosmos.Context{}.WithBlockHeight(100).WithLogger(log.NewNopLogger())
+	k := newStoreMigrateKeeperFake()
+	vaultKeyHex := hexs("vault/SOMEPUBKEY")
+
+	// Empty value stands in for "does not decode as a Vault" -> rejected, no write.
+	if err := applyStoreMigration(ctx, k, "KVSET:"+vaultKeyHex, ""); err == nil {
+		t.Fatalf("expected undecodable KVSET to be rejected")
+	}
+	if len(k.raw) != 0 {
+		t.Fatalf("rejected KVSET must not write, got %v", k.raw)
+	}
+
+	// Key outside the allowlist is rejected.
+	if err := applyStoreMigration(ctx, k, "KVSET:"+hexs("randomprefix/x"), hexs("data")); err == nil {
+		t.Fatalf("expected non-allowlisted prefix to be rejected")
+	}
+
+	// A valid (allowlisted prefix, non-empty value) write succeeds.
+	if err := applyStoreMigration(ctx, k, "KVSET:"+vaultKeyHex, hexs("VAULTBYTES")); err != nil {
+		t.Fatalf("expected valid KVSET to apply, got %v", err)
+	}
+	if string(k.raw["vault/SOMEPUBKEY"]) != "VAULTBYTES" {
+		t.Fatalf("expected raw write, got %v", k.raw)
+	}
+}
+
+func TestApplyStoreMigrationKVDelAllowlist(t *testing.T) {
+	ctx := cosmos.Context{}.WithBlockHeight(100).WithLogger(log.NewNopLogger())
+	k := newStoreMigrateKeeperFake()
+	k.raw["vault/GONE"] = []byte("x")
+	if err := applyStoreMigration(ctx, k, "KVDEL:"+hexs("vault/GONE"), "1"); err != nil {
+		t.Fatalf("expected KVDEL to apply, got %v", err)
+	}
+	if _, ok := k.raw["vault/GONE"]; ok {
+		t.Fatalf("expected key deleted")
+	}
+	// Non-allowlisted prefix rejected.
+	if err := applyStoreMigration(ctx, k, "KVDEL:"+hexs("secret/x"), "1"); err == nil {
+		t.Fatalf("expected non-allowlisted KVDEL to be rejected")
+	}
+}
+
+func hexs(s string) string {
+	return hex.EncodeToString([]byte(s))
 }
 
 func TestApplyStoreMigrationConfig(t *testing.T) {
