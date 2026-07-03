@@ -91,6 +91,7 @@ pub struct Observer<S: BlockSource> {
     dust_sats: u64,
     max_reorg_rescan: i64,
     last_scanned: i64,
+    max_value_outputs: usize,
 }
 
 impl<S: BlockSource> Observer<S> {
@@ -101,7 +102,15 @@ impl<S: BlockSource> Observer<S> {
             dust_sats,
             max_reorg_rescan: 100,
             last_scanned: start_height,
+            max_value_outputs: crate::observer::MAX_VALUE_OUTPUTS,
         }
+    }
+
+    /// Override the observer's max value-output count (fleet-wide operator
+    /// override; every observer must agree or observation quorum splits).
+    pub fn with_max_value_outputs(mut self, n: usize) -> Self {
+        self.max_value_outputs = n;
+        self
     }
 
     pub fn last_scanned(&self) -> i64 {
@@ -162,7 +171,7 @@ impl<S: BlockSource> Observer<S> {
     fn extract_block(&self, block: &DecodedBlock, vaults: &VaultView) -> Result<Vec<TxInItem>> {
         let mut out = Vec::new();
         for tx in &block.txs {
-            let mut item = extract::extract_observation(
+            let mut item = extract::extract_observation_capped(
                 block.height,
                 &tx.txid,
                 &tx.inputs,
@@ -172,6 +181,7 @@ impl<S: BlockSource> Observer<S> {
                 |a| vaults.is_protocol(a),
                 self.dust_sats,
                 self.network,
+                self.max_value_outputs,
             )?;
             if let Some(ref mut item) = item {
                 if item.observed_vault_pubkey.is_empty() {
@@ -455,6 +465,7 @@ mod tests {
             dust_sats: 10_000,
             max_reorg_rescan: 100,
             last_scanned: 2,
+            max_value_outputs: crate::observer::MAX_VALUE_OUTPUTS,
         };
         // Scanning height 3: its previous hash h2_new != recorded h2 -> reorg,
         // rescans height 2, plus extracts block 3.

@@ -9,6 +9,23 @@
 /// Maximum outputs a thornado-shaped tx may have (Go `ignoreTx`).
 pub const MAX_VALUE_OUTPUTS: usize = 10;
 
+/// Like [`should_ignore_tx`] but with an explicit output cap, so operators can
+/// raise the limit fleet-wide (all observers must agree or observation quorum
+/// splits) to observe an over-wide batch the chain should not have built.
+pub fn should_ignore_tx_capped(vins: &[Vin], vouts: &[Vout], max_value_outputs: usize) -> bool {
+    if vins.is_empty() || vouts.is_empty() || vouts.len() > max_value_outputs {
+        return true;
+    }
+    if vins[0].txid.is_empty() {
+        return true;
+    }
+    let with_value = vouts
+        .iter()
+        .filter(|v| !v.script_type.eq_ignore_ascii_case("nulldata") && v.value > 0.0)
+        .count();
+    with_value == 0 || with_value > max_value_outputs
+}
+
 /// A transaction output as seen during scanning.
 #[derive(Debug, Clone)]
 pub struct Vout {
@@ -30,18 +47,7 @@ pub struct Vin {
 /// inbound/outbound — no inputs, no/too-many outputs, missing first-input txid,
 /// or no output carrying value.
 pub fn should_ignore_tx(vins: &[Vin], vouts: &[Vout]) -> bool {
-    if vins.is_empty() || vouts.is_empty() || vouts.len() > MAX_VALUE_OUTPUTS {
-        return true;
-    }
-    if vins[0].txid.is_empty() {
-        return true;
-    }
-    let with_value = vouts
-        .iter()
-        .filter(|v| !v.script_type.eq_ignore_ascii_case("nulldata") && v.value > 0.0)
-        .count();
-    // no value outputs, or more than the thornado format allows
-    with_value == 0 || with_value > MAX_VALUE_OUTPUTS
+    should_ignore_tx_capped(vins, vouts, MAX_VALUE_OUTPUTS)
 }
 
 #[derive(Debug, thiserror::Error)]

@@ -170,6 +170,39 @@ where
     V: Fn(&str) -> bool,
     P: Fn(&str) -> bool,
 {
+    extract_observation_capped(
+        block_height,
+        txid,
+        inputs,
+        outputs,
+        sender,
+        is_vault,
+        is_protocol_controlled,
+        dust_threshold_sats,
+        network,
+        observer::MAX_VALUE_OUTPUTS,
+    )
+}
+
+/// [`extract_observation`] with an explicit output-count cap (see
+/// [`observer::should_ignore_tx_capped`]).
+#[allow(clippy::too_many_arguments)]
+pub fn extract_observation_capped<V, P>(
+    block_height: i64,
+    txid: &str,
+    inputs: &[DecodedInput],
+    outputs: &[DecodedOutput],
+    sender: &str,
+    is_vault: V,
+    is_protocol_controlled: P,
+    dust_threshold_sats: u64,
+    network: Network,
+    max_value_outputs: usize,
+) -> Result<Option<TxInItem>, ExtractError>
+where
+    V: Fn(&str) -> bool,
+    P: Fn(&str) -> bool,
+{
     let vins: Vec<observer::Vin> = inputs
         .iter()
         .map(|i| observer::Vin {
@@ -181,7 +214,7 @@ where
         .map(|o| to_observer_vout(o, network))
         .collect();
 
-    if observer::should_ignore_tx(&vins, &vouts) {
+    if observer::should_ignore_tx_capped(&vins, &vouts, max_value_outputs) {
         return Ok(None);
     }
 

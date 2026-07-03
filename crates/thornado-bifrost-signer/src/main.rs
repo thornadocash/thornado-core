@@ -122,6 +122,11 @@ struct RunArgs {
     /// observation (root-only).
     #[arg(long, default_value_t = 512)]
     deposit_lookahead: u64,
+    /// Max value outputs per observed tx (Go observer ignores >10). Raise
+    /// FLEET-WIDE only, to observe an over-wide batch the chain built by
+    /// mistake — observers that disagree split the observation quorum.
+    #[arg(long, default_value_t = 10)]
+    max_value_outputs: usize,
     /// How long the party leader collects join requests before deciding
     /// (below-threshold ceiling).
     #[arg(long, default_value_t = 12)]
@@ -482,6 +487,7 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
     let obs_hrp = hrp.to_string();
     let rescan_height = args.observe_rescan_height;
     let obs_lookahead = args.deposit_lookahead;
+    let obs_max_value_outputs = args.max_value_outputs;
     let solvency_client = chain::ThornadoClient::new(cfg.clone());
     let solvency_rpc = bitcoind::BitcoindRpc::new(btc_cfg.clone());
     tokio::spawn(async move {
@@ -492,7 +498,8 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
         } else {
             tip
         };
-        let mut observer = daemon::Observer::new(source, network, dust, start);
+        let mut observer = daemon::Observer::new(source, network, dust, start)
+            .with_max_value_outputs(obs_max_value_outputs);
         let mut ticker = tokio::time::interval(std::time::Duration::from_secs(observe_secs));
         let mut addr_cache = VaultAddrCache::new();
         let mut last_solvency_height: i64 = 0;
