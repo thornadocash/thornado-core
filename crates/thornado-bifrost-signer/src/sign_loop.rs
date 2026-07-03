@@ -752,6 +752,10 @@ impl SignLoop {
         // recipient a second time; every retry would pay again. When there are
         // no prescribed inputs at all (a lone unbatched item), select fresh.
         let batch_items_ref: Vec<TxOutItem> = batch.iter().map(|it| it.item.clone()).collect();
+        let prescribed = prescribed_inputs(&batch_items_ref).is_some();
+        let internal_batch = batch
+            .iter()
+            .all(|it| matches!(it.item.tx_type.as_str(), "migrate" | "sweep" | "consolidate"));
         let inputs = match prescribed_inputs(&batch_items_ref) {
             Some(inputs) => {
                 let mut all_spendable = true;
@@ -810,6 +814,7 @@ impl SignLoop {
             recipients,
             fee_rate,
             spend_all: false,
+            exact_fee_remainder: internal_batch && prescribed,
         })?;
 
         // The FROST session is keyed by the raw group key from the share;
@@ -1106,6 +1111,7 @@ mod tests {
             }],
             fee_rate: 2,
             spend_all: false,
+                exact_fee_remainder: false,
         };
 
         // All parties sign concurrently.
@@ -1126,6 +1132,7 @@ mod tests {
                     recipients: req_recipients,
                     fee_rate: 2,
                     spend_all: false,
+                exact_fee_remainder: false,
                 })
                 .unwrap();
                 frost_sign_tx(

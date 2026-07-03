@@ -63,6 +63,12 @@ struct RunArgs {
     /// for every vault it holds a share for (retiring + active during a churn).
     #[arg(long, default_value = "keyshares")]
     keyshare_dir: String,
+    /// Go bifrost home dir holding `localstate-<vault>.json` files. Scanned at
+    /// startup: each file's base64 `local_data` (a StoredShare) is converted
+    /// into `keyshare_dir`, so a chain-reactivated historical vault is always
+    /// signable without manual recovery.
+    #[arg(long)]
+    go_keyshare_dir: Option<String>,
     /// enable the churn keygen loop (poll keygen blocks, run DKG, submit
     /// MsgKeygenVault). Requires the cosmos key to submit results.
     #[arg(long, default_value_t = false)]
@@ -385,6 +391,13 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
     // Load every keyshare we hold (dir + optional single-file) into a shared
     // map keyed by hex group key. The keygen loop adds new shares on churn.
     std::fs::create_dir_all(&args.keyshare_dir).ok();
+    if let Some(go_dir) = &args.go_keyshare_dir {
+        match import_go_keyshares(go_dir, &args.keyshare_dir) {
+            Ok(n) if n > 0 => tracing::info!(count = n, "imported Go bifrost keyshares"),
+            Ok(_) => {}
+            Err(e) => tracing::warn!(error = %e, "Go keyshare import failed"),
+        }
+    }
     let shares: sign_loop::SharedShares = Default::default();
     {
         let mut w = shares.write().unwrap();
@@ -504,7 +517,7 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
     if args.keygen {
         match (&our_name, &poster) {
             (Some(name), Some(p)) => {
-                let kg = KeygenLoop {
+                let kg = std::sync::Arc::new(KeygenLoop {
                     client: chain::ThornadoClient::new(cfg.clone()),
                     poster: p.clone(),
                     shares: shares.clone(),
@@ -515,8 +528,10 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
                     hrp: hrp.to_string(),
                     network,
                     done: Default::default(),
+                    in_flight: Default::default(),
+                    pending: Default::default(),
                     last_scanned: std::sync::atomic::AtomicI64::new(0),
-                };
+                });
                 let node_pk = args.node_pubkey.clone();
                 tokio::spawn(async move {
                     let verifier = build_verifier(node_pk.as_deref());
@@ -567,6 +582,45 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
     sl.run(std::time::Duration::from_secs(args.sign_poll_secs))
         .await;
     Ok(())
+}
+
+/// Convert every Go bifrost `localstate-<vault>.json` in `go_dir` into a
+/// StoredShare file under `keyshare_dir` (skipping shares already present).
+/// Returns how many were newly imported.
+fn import_go_keyshares(go_dir: &str, keyshare_dir: &str) -> anyhow::Result<usize> {
+    use base64::Engine;
+    #[derive(serde::Deserialize)]
+    struct LocalState {
+        local_data: String,
+    }
+    let mut imported = 0;
+    for e in std::fs::read_dir(go_dir)?.flatten() {
+        let name = e.file_name().to_string_lossy().to_string();
+        if !name.starts_with("localstate-") || !name.ends_with(".json") {
+            continue;
+        }
+        let convert = || -> anyhow::Result<Option<String>> {
+            let ls: LocalState = serde_json::from_slice(&std::fs::read(e.path())?)?;
+            let raw = base64::engine::general_purpose::STANDARD.decode(ls.local_data.trim())?;
+            let share: frost_session::StoredShare = serde_json::from_slice(&raw)?;
+            let key = share.public_key_compressed.clone();
+            let dest = format!("{keyshare_dir}/keyshare-{}.json", &key[..16.min(key.len())]);
+            if std::path::Path::new(&dest).exists() {
+                return Ok(None);
+            }
+            std::fs::write(&dest, &raw)?;
+            Ok(Some(key))
+        };
+        match convert() {
+            Ok(Some(key)) => {
+                tracing::info!(file = %name, group_key = %key, "imported Go keyshare");
+                imported += 1;
+            }
+            Ok(None) => {}
+            Err(err) => tracing::warn!(file = %name, error = %err, "skipping Go localstate"),
+        }
+    }
+    Ok(imported)
 }
 
 /// The regtest/mainnet BTC address of a keyshare's vault (path 0).
@@ -621,6 +675,18 @@ fn build_verifier(node_pubkey: Option<&str>) -> Box<dyn chain::KeysignVerifier> 
 /// The churn keygen loop: scans thornado keygen blocks, runs the DKG for any
 /// vault membership this node belongs to, writes the new keyshare, and submits
 /// `MsgKeygenVault` so the chain forms the vault at consensus.
+struct PendingKeygen {
+    height: i64,
+    kg: chain::Keygen,
+    attempts: u32,
+    next_at: std::time::Instant,
+    first_seen: std::time::Instant,
+}
+
+/// How long a failed keygen keeps retrying before we abandon it and rely on
+/// the chain's keygen-retry to reschedule at a fresh height (fresh session id).
+const KEYGEN_RETRY_MAX_AGE: std::time::Duration = std::time::Duration::from_secs(15 * 60);
+
 struct KeygenLoop {
     client: chain::ThornadoClient,
     poster: broadcast::ThornadoObservationClient,
@@ -632,31 +698,40 @@ struct KeygenLoop {
     hrp: String,
     network: bitcoin::Network,
     done: std::sync::Mutex<std::collections::HashSet<String>>,
+    in_flight: std::sync::Mutex<std::collections::HashSet<String>>,
+    pending: std::sync::Mutex<Vec<PendingKeygen>>,
     last_scanned: std::sync::atomic::AtomicI64,
 }
 
 impl KeygenLoop {
-    async fn run(self, verifier: Box<dyn chain::KeysignVerifier>) {
+    async fn run(self: std::sync::Arc<Self>, verifier: Box<dyn chain::KeysignVerifier>) {
         let mut ticker = tokio::time::interval(std::time::Duration::from_secs(3));
         loop {
             ticker.tick().await;
             let height = match self.client.get_block_height().await {
                 Ok(h) => h,
-                Err(_) => continue,
+                Err(e) => {
+                    tracing::warn!(error = %e, "keygen loop: chain height unavailable");
+                    continue;
+                }
             };
             let last = self.last_scanned.load(std::sync::atomic::Ordering::SeqCst);
             let from = if last == 0 { (height - 1).max(1) } else { last + 1 };
             let to = height.min(from + 40);
             for h in from..=to {
                 if let Err(e) = self.scan_height(h, verifier.as_ref()).await {
-                    tracing::debug!(height = h, error = %e, "keygen scan");
+                    tracing::warn!(height = h, error = %e, "keygen scan failed; will re-scan");
+                    break;
                 }
                 self.last_scanned
                     .store(h, std::sync::atomic::Ordering::SeqCst);
             }
+            self.launch_due_keygens();
         }
     }
 
+    /// Collect this height's keygens into the pending queue (never runs the
+    /// DKG inline — scanning must not stall past rescheduled keygen blocks).
     async fn scan_height(
         &self,
         height: i64,
@@ -675,13 +750,97 @@ impl KeygenLoop {
             if kg.keygen_type != "BaseVaultKeygen" || !kg.members.contains(&self.our_name) {
                 continue;
             }
-            if self.done.lock().unwrap().contains(&kg.id) {
-                continue;
-            }
-            self.run_dkg(block.height, kg).await?;
-            self.done.lock().unwrap().insert(kg.id.clone());
+            self.enqueue(block.height, kg);
         }
         Ok(())
+    }
+
+    fn enqueue(&self, height: i64, kg: &chain::Keygen) {
+        if self.done.lock().unwrap().contains(&kg.id)
+            || self.in_flight.lock().unwrap().contains(&kg.id)
+        {
+            return;
+        }
+        let members_key = frost_session::normalize_participants(&kg.members).join(",");
+        let mut pend = self.pending.lock().unwrap();
+        if pend.iter().any(|p| p.kg.id == kg.id) {
+            return;
+        }
+        // A rescheduled keygen (chain keygen-retry) supersedes older pending
+        // attempts for the same member set: same DKG, fresh session id.
+        pend.retain(|p| {
+            let same = frost_session::normalize_participants(&p.kg.members).join(",") == members_key
+                && p.height < height;
+            if same {
+                tracing::warn!(old_height = p.height, new_height = height, "keygen superseded by rescheduled block");
+            }
+            !same
+        });
+        tracing::info!(height, id = %kg.id, n = kg.members.len(), "keygen queued");
+        pend.push(PendingKeygen {
+            height,
+            kg: kg.clone(),
+            attempts: 0,
+            next_at: std::time::Instant::now(),
+            first_seen: std::time::Instant::now(),
+        });
+    }
+
+    fn launch_due_keygens(self: &std::sync::Arc<Self>) {
+        let now = std::time::Instant::now();
+        let due: Vec<PendingKeygen> = {
+            let mut pend = self.pending.lock().unwrap();
+            pend.retain(|p| {
+                if p.first_seen.elapsed() > KEYGEN_RETRY_MAX_AGE {
+                    tracing::warn!(height = p.height, id = %p.kg.id, attempts = p.attempts,
+                        "abandoning keygen after max retry age; waiting for chain reschedule");
+                    return false;
+                }
+                true
+            });
+            let mut launched = Vec::new();
+            pend.retain(|p| {
+                if p.next_at <= now && !self.in_flight.lock().unwrap().contains(&p.kg.id) {
+                    launched.push(PendingKeygen {
+                        height: p.height,
+                        kg: p.kg.clone(),
+                        attempts: p.attempts,
+                        next_at: p.next_at,
+                        first_seen: p.first_seen,
+                    });
+                    return false;
+                }
+                true
+            });
+            launched
+        };
+        for entry in due {
+            self.in_flight.lock().unwrap().insert(entry.kg.id.clone());
+            let me = self.clone();
+            tokio::spawn(async move {
+                let attempt = entry.attempts + 1;
+                let result = me.run_dkg(entry.height, &entry.kg).await;
+                me.in_flight.lock().unwrap().remove(&entry.kg.id);
+                match result {
+                    Ok(()) => {
+                        me.done.lock().unwrap().insert(entry.kg.id.clone());
+                    }
+                    Err(e) => {
+                        tracing::warn!(height = entry.height, id = %entry.kg.id, attempt, error = %e,
+                            "CHURN DKG attempt failed; retrying with backoff");
+                        let backoff =
+                            std::time::Duration::from_secs(15 * u64::from(attempt.min(4)));
+                        me.pending.lock().unwrap().push(PendingKeygen {
+                            height: entry.height,
+                            kg: entry.kg,
+                            attempts: attempt,
+                            next_at: std::time::Instant::now() + backoff,
+                            first_seen: entry.first_seen,
+                        });
+                    }
+                }
+            });
+        }
     }
 
     async fn run_dkg(&self, height: i64, kg: &chain::Keygen) -> anyhow::Result<()> {

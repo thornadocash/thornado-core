@@ -196,6 +196,7 @@ fn party_signs_and_broadcasts_withdrawals_under_load() {
             }],
             fee_rate: 5,
             spend_all: true,
+                exact_fee_remainder: false,
         };
         let mut unsigned = build_unsigned(&req).unwrap();
         let sighash = taproot_sighash(&unsigned, 0).unwrap();

@@ -138,7 +138,17 @@ pub struct BuildRequest {
     /// If true (sweep/migrate/consolidate), spend all inputs; else send exact
     /// recipient amounts plus a change output.
     pub spend_all: bool,
+    /// Internal txouts (migrate) with prescribed inputs: pay recipients exactly
+    /// and burn the full remainder (the chain's MaxGas allocation) as fee, no
+    /// change output. The chain's internal-outbound matcher requires
+    /// amount+gas == coin+max_gas exactly, which only holds with this shape.
+    pub exact_fee_remainder: bool,
 }
+
+/// Below this, change is folded into the fee instead of creating an output
+/// (Go bifrost behavior; also keeps internal-outbound matching exact when the
+/// chain's fee estimate differs slightly from ours).
+pub const DUST_CHANGE_SATS: u64 = 546;
 
 /// An unsigned transaction plus the per-input prevout amounts needed for the
 /// BIP341 sighash (this is the checkpoint content in Go).
@@ -185,7 +195,15 @@ pub fn build_unsigned(req: &BuildRequest) -> Result<UnsignedTx> {
     let est_vsize = estimate_vsize(tx_in.len(), tx_out.len() + 1);
     let fee = req.fee_rate.saturating_mul(est_vsize);
 
-    if req.spend_all {
+    if req.exact_fee_remainder {
+        let recipient_total: u64 = req.recipients.iter().map(|r| r.amount_sats).sum();
+        if total_in <= recipient_total {
+            return Err(TxError::Insufficient {
+                need: recipient_total + 1,
+                have: total_in,
+            });
+        }
+    } else if req.spend_all {
         let recipient_total: u64 = req.recipients.iter().map(|r| r.amount_sats).sum();
         // Sweep semantics: single recipient gets everything minus fee.
         let payout = total_in
@@ -209,7 +227,7 @@ pub fn build_unsigned(req: &BuildRequest) -> Result<UnsignedTx> {
             });
         }
         let change = total_in - recipient_total - fee;
-        if change > 0 {
+        if change >= DUST_CHANGE_SATS {
             tx_out.push(TxOut {
                 value: Amount::from_sat(change),
                 script_pubkey: vault_spk.clone(),
@@ -344,6 +362,7 @@ mod tests {
             recipients: vec![Recipient { script_pubkey: recipient, amount_sats: 120_000 }],
             fee_rate: 10,
             spend_all: false,
+                exact_fee_remainder: false,
         };
         let mut unsigned = build_unsigned(&req).unwrap();
         // recipient + change
@@ -377,8 +396,74 @@ mod tests {
             }],
             fee_rate: 10,
             spend_all: false,
+                exact_fee_remainder: false,
         };
         assert!(matches!(build_unsigned(&req), Err(TxError::Insufficient { .. })));
+    }
+
+    /// The migrate shape the chain's internal matcher requires: exact recipient
+    /// amount, remainder (= the chain's MaxGas) burned as fee, NO change even
+    /// when the remainder exceeds dust.
+    #[test]
+    fn exact_fee_remainder_burns_max_gas_no_change() {
+        let recipient = ScriptBuf::from_bytes({
+            let mut v = vec![0x51, 0x20];
+            v.extend_from_slice(&[9u8; 32]);
+            v
+        });
+        let req = BuildRequest {
+            vault: vault(),
+            inputs: vec![Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 70_000_000, confirmations: 6 }],
+            recipients: vec![Recipient { script_pubkey: recipient, amount_sats: 69_994_225 }],
+            fee_rate: 35,
+            spend_all: false,
+            exact_fee_remainder: true,
+        };
+        let unsigned = build_unsigned(&req).unwrap();
+        assert_eq!(unsigned.tx.output.len(), 1);
+        assert_eq!(unsigned.tx.output[0].value.to_sat(), 69_994_225);
+        let fee: u64 = 70_000_000 - 69_994_225;
+        let out_total: u64 = unsigned.tx.output.iter().map(|o| o.value.to_sat()).sum();
+        assert_eq!(70_000_000 - out_total, fee); // remainder = 5775 = MaxGas
+    }
+
+    #[test]
+    fn exact_fee_remainder_rejects_zero_fee() {
+        let req = BuildRequest {
+            vault: vault(),
+            inputs: vec![Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 1000, confirmations: 6 }],
+            recipients: vec![Recipient {
+                script_pubkey: vault().script_pubkey(),
+                amount_sats: 1000,
+            }],
+            fee_rate: 1,
+            spend_all: false,
+            exact_fee_remainder: true,
+        };
+        assert!(matches!(build_unsigned(&req), Err(TxError::Insufficient { .. })));
+    }
+
+    /// Sub-dust change is folded into the fee (Go bifrost behavior) instead of
+    /// creating an unmatched 350-sat output.
+    #[test]
+    fn dust_change_folds_into_fee() {
+        let recipient = ScriptBuf::from_bytes({
+            let mut v = vec![0x51, 0x20];
+            v.extend_from_slice(&[7u8; 32]);
+            v
+        });
+        let req = BuildRequest {
+            vault: vault(),
+            inputs: vec![Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 100_000, confirmations: 6 }],
+            recipients: vec![Recipient { script_pubkey: recipient.clone(), amount_sats: 98_000 }],
+            fee_rate: 10,
+            spend_all: false,
+            exact_fee_remainder: false,
+        };
+        // est fee = 10 * vsize(1 in, 2 out); change = 2000 - fee < 546 → folded.
+        let unsigned = build_unsigned(&req).unwrap();
+        assert_eq!(unsigned.tx.output.len(), 1);
+        assert_eq!(unsigned.tx.output[0].value.to_sat(), 98_000);
     }
 
     #[test]
@@ -392,6 +477,7 @@ mod tests {
             }],
             fee_rate: 10,
             spend_all: true,
+                exact_fee_remainder: false,
         };
         let unsigned = build_unsigned(&req).unwrap();
         assert_eq!(unsigned.tx.output.len(), 1);

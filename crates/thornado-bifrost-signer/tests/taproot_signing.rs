@@ -129,6 +129,7 @@ fn frost_taproot_keypath_signature_is_valid_for_vault_address() {
         }],
         fee_rate: 5,
         spend_all: false,
+                exact_fee_remainder: false,
     };
     let mut unsigned = build_unsigned(&req).unwrap();
 
