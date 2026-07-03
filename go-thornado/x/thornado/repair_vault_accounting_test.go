@@ -71,7 +71,7 @@ func TestRetiringVaultDebitRepairApplies(t *testing.T) {
 			}),
 		},
 	}
-	applyVotedRetiringVaultDebitRepair(ctx, k, &invariantHaltEventMgr{})
+	applyVotedRetiringVaultRepair(ctx, k, &invariantHaltEventMgr{}, RepairRetiringVaultDebitSatsKey, false)
 
 	if got := k.configs[RepairRetiringVaultDebitSatsKey]; got != 0 {
 		t.Fatalf("expected repair config cleared, got %d", got)
@@ -96,7 +96,7 @@ func TestRetiringVaultCreditRepairApplies(t *testing.T) {
 			}),
 		},
 	}
-	applyVotedRetiringVaultDebitRepair(ctx, k, &invariantHaltEventMgr{})
+	applyVotedRetiringVaultRepair(ctx, k, &invariantHaltEventMgr{}, RepairRetiringVaultCreditSatsKey, true)
 
 	got := k.vaults[0].Coins.GetCoin(common.BTCAsset).Amount.Uint64()
 	if got != 12_244_906_454 {
@@ -118,7 +118,7 @@ func TestRetiringVaultDebitRepairRevertsOnBrokenInvariant(t *testing.T) {
 			}),
 		},
 	}
-	applyVotedRetiringVaultDebitRepair(ctx, k, &invariantHaltEventMgr{})
+	applyVotedRetiringVaultRepair(ctx, k, &invariantHaltEventMgr{}, RepairRetiringVaultDebitSatsKey, false)
 
 	got := k.vaults[0].Coins.GetCoin(common.BTCAsset).Amount.Uint64()
 	if got != 5000 {
@@ -137,7 +137,7 @@ func TestRetiringVaultDebitRepairGuards(t *testing.T) {
 		configs: map[string]int64{},
 		vaults:  Vaults{retiringTestVault(5000)},
 	}
-	applyVotedRetiringVaultDebitRepair(ctx, k, &invariantHaltEventMgr{})
+	applyVotedRetiringVaultRepair(ctx, k, &invariantHaltEventMgr{}, RepairRetiringVaultDebitSatsKey, false)
 	if len(k.saved) != 0 {
 		t.Fatal("expected no vault writes when config unset")
 	}
@@ -147,7 +147,7 @@ func TestRetiringVaultDebitRepairGuards(t *testing.T) {
 		configs: map[string]int64{RepairRetiringVaultDebitSatsKey: 10_000},
 		vaults:  Vaults{retiringTestVault(5000)},
 	}
-	applyVotedRetiringVaultDebitRepair(ctx, k, &invariantHaltEventMgr{})
+	applyVotedRetiringVaultRepair(ctx, k, &invariantHaltEventMgr{}, RepairRetiringVaultDebitSatsKey, false)
 	if len(k.saved) != 0 {
 		t.Fatal("expected no vault writes when debit exceeds book")
 	}
@@ -157,7 +157,7 @@ func TestRetiringVaultDebitRepairGuards(t *testing.T) {
 		configs: map[string]int64{RepairRetiringVaultDebitSatsKey: 10},
 		vaults:  Vaults{retiringTestVault(5000), retiringTestVault(6000)},
 	}
-	applyVotedRetiringVaultDebitRepair(ctx, k, &invariantHaltEventMgr{})
+	applyVotedRetiringVaultRepair(ctx, k, &invariantHaltEventMgr{}, RepairRetiringVaultDebitSatsKey, false)
 	if len(k.saved) != 0 {
 		t.Fatal("expected no vault writes with two retiring vaults")
 	}

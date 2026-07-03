@@ -20,6 +20,12 @@ import (
 const (
 	RepairRetiringVaultDebitSatsKey  = "REPAIR_RETIRINGVAULTDEBITSATS"
 	RepairRetiringVaultCreditSatsKey = "REPAIR_RETIRINGVAULTCREDITSATS"
+	// Voted one-shot: the value is a txout block height. Open BTC items at
+	// that height get their prescribed SourceInputs/MaxGas/GasRate cleared so
+	// the end-block exact refresh re-selects fresh unspent inputs. Recovers
+	// items whose prescribed inputs were consumed by ANOTHER settled outbound
+	// (double-prescription), which the refresh logic never retouches.
+	RepairReselectTxOutHeightKey = "REPAIR_RESELECTTXOUTHEIGHT"
 )
 
 type vaultDebitRepairKeeper interface {
@@ -31,9 +37,50 @@ type vaultDebitRepairKeeper interface {
 	InvariantRoutes() []common.InvariantRoute
 }
 
-func applyVotedRetiringVaultDebitRepair(ctx cosmos.Context, k vaultDebitRepairKeeper, eventMgr EventManager) {
-	applyVotedRetiringVaultRepair(ctx, k, eventMgr, RepairRetiringVaultDebitSatsKey, false)
-	applyVotedRetiringVaultRepair(ctx, k, eventMgr, RepairRetiringVaultCreditSatsKey, true)
+func applyVotedRetiringVaultDebitRepair(ctx cosmos.Context, mgr Manager) {
+	k := mgr.Keeper()
+	applyVotedRetiringVaultRepair(ctx, k, mgr.EventMgr(), RepairRetiringVaultDebitSatsKey, false)
+	applyVotedRetiringVaultRepair(ctx, k, mgr.EventMgr(), RepairRetiringVaultCreditSatsKey, true)
+	applyVotedTxOutReselect(ctx, mgr)
+}
+
+func applyVotedTxOutReselect(ctx cosmos.Context, mgr Manager) {
+	k := mgr.Keeper()
+	height, err := k.GetConfig(ctx, RepairReselectTxOutHeightKey)
+	if err != nil || height <= 0 {
+		return
+	}
+	k.SetConfig(ctx, RepairReselectTxOutHeightKey, 0)
+	k.DeleteNodeConfigs(ctx, RepairReselectTxOutHeightKey)
+	emitConfigEvent(ctx, mgr.EventMgr(), RepairReselectTxOutHeightKey, 0)
+
+	txOut, err := k.GetTxOut(ctx, height)
+	if err != nil || txOut == nil || txOut.IsEmpty() {
+		ctx.Logger().Error("txout reselect repair: no txout block", "height", height, "error", err)
+		return
+	}
+	cleared := 0
+	for i, item := range txOut.TxArray {
+		if !item.OutHash.IsEmpty() || !item.Chain.Equals(common.BTCChain) || len(item.SourceInputs) == 0 {
+			continue
+		}
+		txOut.TxArray[i].SourceInputs = nil
+		txOut.TxArray[i].MaxGas = common.Gas{}
+		txOut.TxArray[i].GasRate = 0
+		cleared++
+	}
+	if cleared == 0 {
+		ctx.Logger().Info("txout reselect repair: nothing to clear", "height", height)
+		return
+	}
+	if err := refreshBTCExactTxOutBlock(ctx, k, txOut); err != nil {
+		ctx.Logger().Error("txout reselect repair: refresh failed; will retry at end-block", "height", height, "error", err)
+	}
+	if err := k.SetTxOut(ctx, txOut); err != nil {
+		ctx.Logger().Error("txout reselect repair: fail to save txout", "height", height, "error", err)
+		return
+	}
+	ctx.Logger().Info("applied txout reselect repair", "height", height, "items_cleared", cleared)
 }
 
 func applyVotedRetiringVaultRepair(ctx cosmos.Context, k vaultDebitRepairKeeper, eventMgr EventManager, key string, credit bool) {
