@@ -3,6 +3,7 @@ package keeperv1
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/cosmos/cosmos-sdk/runtime"
@@ -264,18 +265,39 @@ func (k KVStore) GetShielderTreeState(ctx cosmos.Context, denominationSats uint6
 // record's leaf index. Such records are sync-stream pollution (accumulated
 // while notes were recorded without a leaf index and all claimed index 0);
 // the index-keyed leaf store is the authority, so any record it does not
-// corroborate was never a live leaf. Returns how many records were deleted.
+// corroborate was never a live leaf. Entries under the denomination prefix
+// whose key is not a leaf index are the pre-index commitment-keyed layout
+// (JSON bool values that break GetShielderDenominationCommitments) and are
+// deleted as well. Returns how many records were deleted in total.
 func (k KVStore) SweepOrphanShielderNoteRecords(ctx cosmos.Context, denominationSats uint64) (int, error) {
 	if denominationSats == 0 {
 		return 0, fmt.Errorf("missing shielder denomination")
 	}
-	leaves, err := k.GetShielderDenominationCommitments(ctx, denominationSats)
-	if err != nil {
-		return 0, err
+
+	// Read the leaves raw: the prefix may still hold legacy commitment-keyed
+	// bool entries that the typed accessor refuses to decode.
+	denomPrefix := shielderDenominationPrefix(denominationSats)
+	leaves := map[uint64]string{}
+	var legacyKeys [][]byte
+	iter := k.getIterator(ctx, kvTypes.DbPrefix(denomPrefix))
+	for ; iter.Valid(); iter.Next() {
+		index, err := strconv.ParseUint(strings.TrimPrefix(string(iter.Key()), denomPrefix), 10, 64)
+		var commitment string
+		if err == nil {
+			err = json.Unmarshal(iter.Value(), &commitment)
+		}
+		if err != nil {
+			key := make([]byte, len(iter.Key()))
+			copy(key, iter.Key())
+			legacyKeys = append(legacyKeys, key)
+			continue
+		}
+		leaves[index] = strings.TrimSpace(commitment)
 	}
+	iter.Close()
 
 	var orphanKeys [][]byte
-	iter := k.GetShielderNoteRecordIterator(ctx)
+	iter = k.GetShielderNoteRecordIterator(ctx)
 	for ; iter.Valid(); iter.Next() {
 		var record types.StoredShielderNoteRecord
 		if err := json.Unmarshal(iter.Value(), &record); err != nil {
@@ -285,9 +307,7 @@ func (k KVStore) SweepOrphanShielderNoteRecords(ctx cosmos.Context, denomination
 		if record.DenominationSats != denominationSats {
 			continue
 		}
-		live := record.LeafIndex < uint64(len(leaves)) &&
-			strings.EqualFold(strings.TrimSpace(leaves[record.LeafIndex]), strings.TrimSpace(record.Commitment))
-		if live {
+		if strings.EqualFold(leaves[record.LeafIndex], strings.TrimSpace(record.Commitment)) {
 			continue
 		}
 		key := make([]byte, len(iter.Key()))
@@ -296,10 +316,10 @@ func (k KVStore) SweepOrphanShielderNoteRecords(ctx cosmos.Context, denomination
 	}
 	iter.Close()
 
-	for _, key := range orphanKeys {
+	for _, key := range append(orphanKeys, legacyKeys...) {
 		k.del(ctx, key)
 	}
-	return len(orphanKeys), nil
+	return len(orphanKeys) + len(legacyKeys), nil
 }
 
 // PurgeShielderPoolState deletes all shielder commitment-pool state (commitments,

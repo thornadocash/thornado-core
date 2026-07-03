@@ -397,10 +397,20 @@ func (KeeperTestSuit) TestSweepOrphanShielderNoteRecords(c *C) {
 	c.Assert(k.SetShielderNoteRecord(ctx, types.StoredShielderNoteRecord{
 		Commitment: "cc33", DenominationSats: denom * 10, LeafIndex: 0, CreatedHeight: 6,
 	}), IsNil)
+	// Legacy pre-index layout: commitment-keyed bool entry under the
+	// denomination prefix. It breaks GetShielderDenominationCommitments and
+	// must be swept too.
+	legacyKey := []byte(shielderDenominationPrefix(denom) + "FEEDLEGACY")
+	c.Assert(k.setShielderJSON(ctx, legacyKey, true), IsNil)
 
 	n, err := k.SweepOrphanShielderNoteRecords(ctx, denom)
 	c.Assert(err, IsNil)
-	c.Check(n, Equals, 3)
+	c.Check(n, Equals, 4)
+
+	// The typed accessor works again and sees exactly the live leaves.
+	leaves, err := k.GetShielderDenominationCommitments(ctx, denom)
+	c.Assert(err, IsNil)
+	c.Check(leaves, DeepEquals, []string{"aa11", "bb22"})
 
 	var remaining []string
 	iter := k.GetShielderNoteRecordIterator(ctx)
