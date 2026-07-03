@@ -708,13 +708,15 @@ async fn report_solvency(
         if addrs.is_empty() {
             continue;
         }
-        let utxos = rpc
-            .list_unspent(&addrs)
+        // scantxoutset, NOT wallet listunspent: the vault addresses are not
+        // imported into the nodes' bitcoind wallets, so listunspent returns 0
+        // on any node the Go bifrost never ran on — three zero votes reached
+        // consensus and solvency-halted the chain. The UTXO-set scan needs no
+        // wallet state and is identical on every node.
+        let total_btc = rpc
+            .scan_tx_out_set_total(&addrs)
             .await
-            .map_err(|e| anyhow::anyhow!("listunspent: {e}"))?;
-        // Sum the float BTC amounts and convert once, matching Go's
-        // sumAccountUtxos + btcutil.NewAmount rounding.
-        let total_btc: f64 = utxos.iter().map(|u| u.amount).sum();
+            .map_err(|e| anyhow::anyhow!("scantxoutset: {e}"))?;
         let sats = thornado_bifrost_signer::extract::btc_to_sats(total_btc);
         match poster
             .submit_solvency(chain_name, &v.pub_key, sats, height)

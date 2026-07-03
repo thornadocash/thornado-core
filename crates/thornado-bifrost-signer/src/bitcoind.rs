@@ -236,6 +236,21 @@ impl BitcoindRpc {
         .await
     }
 
+    /// `scantxoutset start` over `addr(...)` descriptors — total confirmed
+    /// UTXO-set balance (BTC) for the addresses. Unlike `listunspent` this
+    /// needs no wallet import, so every node computes the same value — which
+    /// solvency votes require. Excludes mempool (deterministic across nodes).
+    pub async fn scan_tx_out_set_total(&self, addresses: &[String]) -> Result<f64> {
+        let descs: Vec<Value> = addresses
+            .iter()
+            .map(|a| serde_json::json!({ "desc": format!("addr({a})") }))
+            .collect();
+        let v: Value = self
+            .call("scantxoutset", serde_json::json!(["start", descs]))
+            .await?;
+        Ok(v.get("total_amount").and_then(Value::as_f64).unwrap_or(0.0))
+    }
+
     pub async fn get_mempool_entry(&self, txid: &str) -> Result<MempoolEntry> {
         self.call("getmempoolentry", serde_json::json!([txid])).await
     }
