@@ -13,6 +13,87 @@ use prost::Message;
 
 pub const MSG_OBSERVED_TX_IN_TYPE_URL: &str = "/types.MsgObservedTxIn";
 pub const MSG_OBSERVED_TX_OUT_TYPE_URL: &str = "/types.MsgObservedTxOut";
+pub const MSG_KEYGEN_VAULT_TYPE_URL: &str = "/types.MsgKeygenVault";
+
+/// KeygenType (thornado `types.KeygenType`).
+pub const KEYGEN_TYPE_BASE_VAULT: i32 = 1;
+
+/// `MsgKeygenVault` — the message each member submits after a churn DKG so the
+/// chain can form the new vault at consensus. Only the fields a successful
+/// no-blame keygen needs are encoded (proto tags match Go exactly); the
+/// optional blame/backup/check-signature fields are omitted.
+#[derive(Clone, PartialEq, Message)]
+pub struct MsgKeygenVault {
+    #[prost(string, tag = "1")]
+    pub id: String,
+    #[prost(string, tag = "2")]
+    pub vault_pub_key: String,
+    #[prost(int32, tag = "3")]
+    pub keygen_type: i32,
+    #[prost(string, repeated, tag = "4")]
+    pub pub_keys: Vec<String>,
+    #[prost(int64, tag = "5")]
+    pub height: i64,
+    #[prost(string, repeated, tag = "7")]
+    pub chains: Vec<String>,
+    #[prost(bytes = "vec", tag = "8")]
+    pub signer: Vec<u8>,
+    #[prost(int64, tag = "9")]
+    pub keygen_time: i64,
+}
+
+/// The frost id for a keygen vault message (Go `getFrostID`):
+/// `hex(sha256("m:<sorted member>"… + vault_pub_key + height))`, no blame.
+pub fn frost_id(members: &[String], vault_pub_key: &str, height: i64) -> String {
+    use sha2::{Digest, Sha256};
+    let mut sorted: Vec<&String> = members.iter().collect();
+    sorted.sort();
+    let mut s = String::new();
+    for m in sorted {
+        s.push_str("m:");
+        s.push_str(m);
+    }
+    // (no blame pubkeys)
+    s.push_str(vault_pub_key);
+    s.push_str(&height.to_string());
+    hex::encode(Sha256::digest(s.as_bytes()))
+}
+
+/// Build and sign a `MsgKeygenVault` as a SIGN_MODE_DIRECT tx.
+#[allow(clippy::too_many_arguments)]
+pub fn build_and_sign_keygen_vault(
+    members: &[String],
+    vault_pub_key: &str,
+    height: i64,
+    keygen_time_ms: i64,
+    chains: &[String],
+    signer_account: &[u8],
+    priv_key: &[u8],
+    pub_key: &[u8],
+    chain_id: &str,
+    account_number: u64,
+    sequence: u64,
+) -> Result<Vec<u8>, CosmosTxError> {
+    let msg = MsgKeygenVault {
+        id: frost_id(members, vault_pub_key, height),
+        vault_pub_key: vault_pub_key.to_string(),
+        keygen_type: KEYGEN_TYPE_BASE_VAULT,
+        pub_keys: members.to_vec(),
+        height,
+        chains: chains.to_vec(),
+        signer: signer_account.to_vec(),
+        keygen_time: keygen_time_ms,
+    };
+    build_and_sign_any(
+        MSG_KEYGEN_VAULT_TYPE_URL,
+        msg.encode_to_vec(),
+        priv_key,
+        pub_key,
+        chain_id,
+        account_number,
+        sequence,
+    )
+}
 pub const SECP256K1_PUBKEY_TYPE_URL: &str = "/cosmos.crypto.secp256k1.PubKey";
 /// Gas limit the Go bridge hard-codes.
 pub const GAS_LIMIT: u64 = 4_000_000_000;
@@ -258,13 +339,35 @@ pub fn build_and_sign_typed(
     account_number: u64,
     sequence: u64,
 ) -> Result<Vec<u8>, CosmosTxError> {
+    build_and_sign_any(
+        type_url,
+        msg.encode_to_vec(),
+        priv_key,
+        pub_key,
+        chain_id,
+        account_number,
+        sequence,
+    )
+}
+
+/// Sign an arbitrary already-encoded message under `type_url` as a
+/// SIGN_MODE_DIRECT tx and return the encoded `TxRaw`.
+pub fn build_and_sign_any(
+    type_url: &str,
+    msg_value: Vec<u8>,
+    priv_key: &[u8],
+    pub_key: &[u8],
+    chain_id: &str,
+    account_number: u64,
+    sequence: u64,
+) -> Result<Vec<u8>, CosmosTxError> {
     use bitcoin::secp256k1::{ecdsa, Message as SecpMessage, Secp256k1, SecretKey};
     use sha2::{Digest, Sha256};
 
     let body = TxBody {
         messages: vec![Any {
             type_url: type_url.to_string(),
-            value: msg.encode_to_vec(),
+            value: msg_value,
         }],
         memo: String::new(),
         timeout_height: 0,

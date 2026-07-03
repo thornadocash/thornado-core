@@ -246,6 +246,7 @@ pub struct SignerKey {
     pub chain_id: String,
 }
 
+#[derive(Clone)]
 pub struct ThornadoObservationClient {
     cfg: ChainConfig,
     /// bech32 signer address (the node's own account) — the tx signer.
@@ -385,6 +386,69 @@ impl ThornadoObservationClient {
             // code 6 (unknown request) is ignored like Go; others are errors.
             return Err(BroadcastError::Rpc(format!(
                 "broadcast rejected code {code}: {}",
+                result["log"].as_str().unwrap_or_default()
+            )));
+        }
+        Ok(hash)
+    }
+
+    /// Submit a `MsgKeygenVault` after a churn DKG so the chain forms the new
+    /// vault. Returns the tx hash.
+    pub async fn submit_keygen_vault(
+        &self,
+        members: &[String],
+        vault_pub_key: &str,
+        height: i64,
+        keygen_time_ms: i64,
+        chains: &[String],
+    ) -> Result<String> {
+        let key = self
+            .key
+            .as_ref()
+            .ok_or(BroadcastError::Unimplemented("signer key not configured"))?;
+        let (account_number, sequence) = self.fetch_account().await?;
+        let tx_raw = crate::cosmos_tx::build_and_sign_keygen_vault(
+            members,
+            vault_pub_key,
+            height,
+            keygen_time_ms,
+            chains,
+            &key.account_bytes,
+            &key.priv_key,
+            &key.pub_key,
+            &key.chain_id,
+            account_number,
+            sequence,
+        )
+        .map_err(|e| BroadcastError::Rpc(e.to_string()))?;
+
+        use base64::Engine as _;
+        let tx_b64 = base64::engine::general_purpose::STANDARD.encode(&tx_raw);
+        let rpc_url = if self.cfg.chain_rpc.starts_with("http") {
+            self.cfg.chain_rpc.clone()
+        } else {
+            format!("http://{}", self.cfg.chain_rpc)
+        };
+        let req = serde_json::json!({
+            "jsonrpc": "2.0", "id": "thornado-bifrost", "method": "broadcast_tx_sync",
+            "params": { "tx": tx_b64 }
+        });
+        let resp: serde_json::Value = self
+            .http
+            .post(&rpc_url)
+            .json(&req)
+            .send()
+            .await
+            .map_err(|e| BroadcastError::Rpc(e.to_string()))?
+            .json()
+            .await
+            .map_err(|e| BroadcastError::Rpc(e.to_string()))?;
+        let result = &resp["result"];
+        let code = result["code"].as_i64().unwrap_or(0);
+        let hash = result["hash"].as_str().unwrap_or_default().to_string();
+        if code != 0 && code != 6 {
+            return Err(BroadcastError::Rpc(format!(
+                "keygen-vault rejected code {code}: {}",
                 result["log"].as_str().unwrap_or_default()
             )));
         }

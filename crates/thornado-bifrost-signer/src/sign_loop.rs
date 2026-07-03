@@ -24,7 +24,7 @@ use crate::signer::{
     batch_items, frost_min_signers, frost_party_leader, next_frost_signer_attempt_height,
 };
 use crate::store::{SignerStore, TxOutStoreItem, TxStatus};
-use crate::transport::{run_keysign_multi, Libp2pMailbox, Mailbox};
+use crate::transport::{run_keysign_multi, Mailbox};
 use crate::tx_builder::{
     apply_taproot_witness, build_unsigned, taproot_sighash, utxo_key, BuildRequest, Recipient,
     TaprootVault, UnsignedTx,
@@ -59,6 +59,12 @@ pub enum SignLoopError {
 }
 
 type Result<T> = std::result::Result<T, SignLoopError>;
+
+/// Keyshares shared between the sign loop and the keygen loop, keyed by hex
+/// group key. The keygen loop inserts a new vault's share as soon as its DKG
+/// completes so the sign loop can sign migrations from it immediately.
+pub type SharedShares =
+    std::sync::Arc<std::sync::RwLock<std::collections::HashMap<String, StoredShare>>>;
 
 /// A member's join-party request accepted by the daemon's stream listener,
 /// waiting for the leader (this node) to respond on the same stream.
@@ -354,8 +360,21 @@ pub async fn member_join_party(
 // FROST signing of a built transaction
 // ---------------------------------------------------------------------------
 
+/// The FROST keysign session id for each input of `unsigned`
+/// (`keysign_session_id(vault, sighash_i)`), in input order.
+pub fn keysign_session_ids(unsigned: &UnsignedTx, vault_pub: &[u8]) -> Result<Vec<String>> {
+    let mut ids = Vec::with_capacity(unsigned.tx.input.len());
+    for i in 0..unsigned.tx.input.len() {
+        let sighash = taproot_sighash(unsigned, i)?;
+        ids.push(keysign_session_id(vault_pub, &sighash));
+    }
+    Ok(ids)
+}
+
 /// Run one taproot FROST session per input of `unsigned` (session id =
-/// `keysign_session_id(vault, sighash)`), then assemble every witness.
+/// `keysign_session_id(vault, sighash)`), then assemble every witness. The
+/// mailbox must deliver every input session's frames (the router registers it
+/// under all of them); `run_keysign_multi` fans them to the right session.
 pub async fn frost_sign_tx<M: Mailbox>(
     mailbox: &mut M,
     share: &StoredShare,
@@ -406,9 +425,13 @@ pub struct SignLoop {
     pub verifier: Box<dyn KeysignVerifier>,
     pub store: SignerStore,
     pub btc: BitcoindRpc,
-    pub share: StoredShare,
+    /// All keyshares this node holds, keyed by the vault's hex group key. A
+    /// churning node holds the retiring vault's share (to sign migrations) and
+    /// the new vault's share at once. Shared with the keygen loop, which adds
+    /// the new vault's share the moment a DKG completes.
+    pub shares: SharedShares,
     pub registry: PeerRegistry,
-    pub mailbox: Libp2pMailbox,
+    pub router: crate::transport::SessionRouter,
     pub control: libp2p_stream::Control,
     pub joins: tokio::sync::mpsc::Receiver<JoinRequest>,
     /// Join requests received while attending other sessions. A member asking
@@ -426,9 +449,9 @@ impl SignLoop {
         verifier: Box<dyn KeysignVerifier>,
         store: SignerStore,
         btc: BitcoindRpc,
-        share: StoredShare,
+        shares: SharedShares,
         registry: PeerRegistry,
-        mailbox: Libp2pMailbox,
+        router: crate::transport::SessionRouter,
         control: libp2p_stream::Control,
         joins: tokio::sync::mpsc::Receiver<JoinRequest>,
     ) -> Self {
@@ -438,18 +461,29 @@ impl SignLoop {
             verifier,
             store,
             btc,
-            share,
+            shares,
             registry,
-            mailbox,
+            router,
             control,
             joins,
             parked: Vec::new(),
         }
     }
 
-    /// The vault's taproot script/address facts for a path index.
-    fn vault_for(&self, path_index: u64) -> Result<TaprootVault> {
-        let pk = hex::decode(&self.share.public_key_compressed)
+    /// The keyshare for a chain vault identifier (bech32 `tthorpub…` or hex),
+    /// if this node holds it.
+    fn resolve_share(&self, vault_id: &str) -> Option<StoredShare> {
+        let hex = if vault_id.contains("pub1") {
+            hex::encode(crate::chain::decode_bech32_pubkey(vault_id).ok()?)
+        } else {
+            vault_id.to_string()
+        };
+        self.shares.read().unwrap().get(&hex).cloned()
+    }
+
+    /// The vault's taproot script/address facts for a share + path index.
+    fn vault_for(share: &StoredShare, path_index: u64) -> Result<TaprootVault> {
+        let pk = hex::decode(&share.public_key_compressed)
             .map_err(|e| SignLoopError::Config(format!("share pubkey hex: {e}")))?;
         Ok(TaprootVault::derive(&pk, path_index)?)
     }
@@ -490,16 +524,22 @@ impl SignLoop {
     /// still authenticated against the node key.
     async fn fetch_work(&mut self, _height: i64) -> Result<()> {
         let pending = self.client.get_pending_tx_out_keysigns().await?;
-        for txout in pending {
-            let has_ours = txout.tx_array.iter().any(|it| {
-                it.out_hash.is_empty() && it.vault_pub_key == self.cfg.vault_id
-            });
-            if !has_ours {
-                continue;
+        // Distinct (height, vault) with unsigned items for a vault we can sign.
+        // A churning node holds both the retiring and the new vault's share, so
+        // this naturally covers migration outbounds from the retiring vault.
+        let mut targets: std::collections::BTreeSet<(i64, String)> =
+            std::collections::BTreeSet::new();
+        for txout in &pending {
+            for it in &txout.tx_array {
+                if it.out_hash.is_empty() && self.resolve_share(&it.vault_pub_key).is_some() {
+                    targets.insert((txout.height, it.vault_pub_key.clone()));
+                }
             }
+        }
+        for (height, vault) in targets {
             let signed = match self
                 .client
-                .get_keysign(txout.height, &self.cfg.vault_id, self.verifier.as_ref())
+                .get_keysign(height, &vault, self.verifier.as_ref())
                 .await
             {
                 Ok(s) => s,
@@ -515,7 +555,7 @@ impl SignLoop {
                 stored.retry_until_height = signed.retry_until_height;
                 if self.store.get(&stored.key())?.is_none() {
                     self.store.put(&stored)?;
-                    tracing::info!(in_hash = %item.in_hash, height = signed.height, "queued txout for signing");
+                    tracing::info!(in_hash = %item.in_hash, height = signed.height, vault = %vault, "queued txout for signing");
                 }
             }
         }
@@ -555,7 +595,6 @@ impl SignLoop {
     /// (epoch, height) prefix of a parked join request against our store,
     /// ignoring local deferral — member demand overrides it.
     fn demanded_batch(&self, all: &[TxOutStoreItem]) -> Option<Vec<TxOutStoreItem>> {
-        let members = crate::frost_session::normalize_participants(&self.share.participants);
         for (_, req) in &self.parked {
             let Some((epoch, height)) = parse_party_session_id(&req.msg.id) else {
                 continue;
@@ -571,12 +610,18 @@ impl SignLoop {
                 .cloned()
                 .collect();
             let Some(batch) = next_batch(&subset) else { continue };
+            // The batch's vault decides the FROST member set and the session id.
+            let Some(share) = self.resolve_share(&batch[0].item.vault_pub_key) else {
+                continue;
+            };
+            let members = crate::frost_session::normalize_participants(&share.participants);
             let leader = frost_party_leader(&members, epoch, height);
             if leader.as_deref() == Some(self.cfg.local.as_str()) {
-                // Confirm the id actually matches this batch before leading.
                 let in_hashes: Vec<String> =
                     batch.iter().map(|it| it.item.in_hash.clone()).collect();
-                if party_session_id(&self.cfg.vault_id, epoch, height, &in_hashes) == req.msg.id {
+                let sid =
+                    party_session_id(&batch[0].item.vault_pub_key, epoch, height, &in_hashes);
+                if sid == req.msg.id {
                     return Some(batch);
                 }
             }
@@ -628,14 +673,20 @@ impl SignLoop {
     }
 
     async fn sign_batch(&mut self, batch: &[TxOutStoreItem], height: i64) -> Result<String> {
-        let rep = &batch[0];
-        let members = crate::frost_session::normalize_participants(&self.share.participants);
-        let threshold = frost_min_signers(members.len()).max(self.share.min_signers as usize);
+        let rep = batch[0].clone();
+        // Resolve the vault the batch belongs to — the retiring vault for a
+        // migration, the active vault for a normal outbound.
+        let vault_id = rep.item.vault_pub_key.clone();
+        let share = self
+            .resolve_share(&vault_id)
+            .ok_or_else(|| SignLoopError::Config(format!("no keyshare for vault {vault_id}")))?;
+        let members = crate::frost_session::normalize_participants(&share.participants);
+        let threshold = frost_min_signers(members.len()).max(share.min_signers as usize);
         let leader = frost_party_leader(&members, rep.epoch, rep.height)
             .ok_or_else(|| SignLoopError::Config("empty member set".into()))?;
 
         let in_hashes: Vec<String> = batch.iter().map(|it| it.item.in_hash.clone()).collect();
-        let sid = party_session_id(&self.cfg.vault_id, rep.epoch, rep.height, &in_hashes);
+        let sid = party_session_id(&vault_id, rep.epoch, rep.height, &in_hashes);
 
         let party_start = std::time::Instant::now();
         let selected = if leader == self.cfg.local {
@@ -682,7 +733,7 @@ impl SignLoop {
         tracing::info!(leader = %leader, selected = selected.len(), party_ms, "party formed");
 
         // Build the identical unsigned tx on every selected party.
-        let vault = self.vault_for(rep.item.vault_path_index)?;
+        let vault = Self::vault_for(&share, rep.item.vault_path_index)?;
         let vault_addr = bitcoin::Address::from_script(
             vault.script_pubkey().as_script(),
             self.cfg.network,
@@ -764,13 +815,17 @@ impl SignLoop {
         // The FROST session is keyed by the raw group key from the share;
         // cfg.vault_id is the chain's identifier string (bech32 on a live
         // chain, hex in test harnesses) and is only used for URLs.
-        let vault_pub = hex::decode(&self.share.public_key_compressed)
+        let vault_pub = hex::decode(&share.public_key_compressed)
             .map_err(|e| SignLoopError::Config(format!("share pubkey hex: {e}")))?;
         let n_inputs = unsigned.tx.input.len();
+        // Register one routed mailbox covering every input session, so
+        // concurrent keygen/keysign sessions on this host don't cross wires.
+        let session_ids = keysign_session_ids(&unsigned, &vault_pub)?;
+        let mut mbox = self.router.sessions_multi(&session_ids);
         let keysign_start = std::time::Instant::now();
         frost_sign_tx(
-            &mut self.mailbox,
-            &self.share,
+            &mut mbox,
+            &share,
             &self.cfg.local,
             &selected,
             &mut unsigned,

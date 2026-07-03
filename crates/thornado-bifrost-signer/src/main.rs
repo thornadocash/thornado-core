@@ -54,9 +54,19 @@ struct RunArgs {
     /// signer store path
     #[arg(long, default_value = "signer.redb")]
     store_path: String,
-    /// this node's FROST keyshare (JSON StoredShare) — enables the sign loop
+    /// this node's FROST keyshare (JSON StoredShare) — enables the sign loop.
+    /// Loaded into the keyshare directory alongside any churn-produced shares.
     #[arg(long, env = "KEYSHARE")]
     keyshare: Option<String>,
+    /// directory of FROST keyshares (one `*.json` StoredShare per vault). The
+    /// keygen loop writes new-vault shares here on churn; the sign loop signs
+    /// for every vault it holds a share for (retiring + active during a churn).
+    #[arg(long, default_value = "keyshares")]
+    keyshare_dir: String,
+    /// enable the churn keygen loop (poll keygen blocks, run DKG, submit
+    /// MsgKeygenVault). Requires the cosmos key to submit results.
+    #[arg(long, default_value_t = false)]
+    keygen: bool,
     /// this node's compressed secp256k1 pubkey (33-byte hex or thornado
     /// bech32 `tthorpub1...`) used to verify signed keysign payloads from the
     /// local thornadod
@@ -192,7 +202,7 @@ fn load_p2p_key(path: &str) -> anyhow::Result<libp2p::identity::Keypair> {
 struct P2pStack {
     registry: p2p::PeerRegistry,
     control: libp2p_stream::Control,
-    mailbox: transport::Libp2pMailbox,
+    router: transport::SessionRouter,
     joins_rx: tokio::sync::mpsc::Receiver<sign_loop::JoinRequest>,
 }
 
@@ -277,9 +287,8 @@ fn start_p2p(
         }
     });
 
-    let mailbox_control = control.clone();
-    let mailbox =
-        transport::Libp2pMailbox::new(mailbox_control, registry.name_to_peer(), inbound_rx);
+    let router =
+        transport::SessionRouter::new(control.clone(), registry.name_to_peer(), inbound_rx);
 
     // Drive the swarm so listeners, dials, and streams make progress, and
     // keep the mesh connected: every few seconds re-dial any registry peer
@@ -318,7 +327,7 @@ fn start_p2p(
     Ok(P2pStack {
         registry,
         control,
-        mailbox,
+        router,
         joins_rx,
     })
 }
@@ -360,19 +369,12 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
     let keypair = load_p2p_key(&args.p2p_key)?;
     let p2p_stack = start_p2p(keypair, &args.p2p_listen, args.peers.as_deref())?;
 
-    // Optional keyshare: with it the sign loop runs; without it observe-only.
-    let share: Option<frost_session::StoredShare> = match &args.keyshare {
-        Some(path) => {
-            let bytes = std::fs::read(path)?;
-            Some(serde_json::from_slice(&bytes)?)
-        }
-        None => {
-            tracing::warn!("--keyshare not set; sign loop disabled (observe-only)");
-            None
-        }
-    };
-
     let network = parse_network(&args.btc_network);
+    let hrp = if matches!(network, bitcoin::Network::Bitcoin) {
+        "thorpub"
+    } else {
+        "tthorpub"
+    };
     let btc_cfg = bitcoind::BitcoindConfig {
         host: args.btc_rpc_host.clone(),
         user: args.btc_rpc_user.clone(),
@@ -380,52 +382,100 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
         wallet: args.btc_wallet.clone(),
     };
 
-    // Vault facts: address derived from the share's group key (path 0). The
-    // chain-facing identifier may differ (bech32 on a live chain).
-    let mut vault_addresses: Vec<String> = args.vault_addresses.clone();
-    let mut vault_id = String::new();
-    if let Some(share) = &share {
-        vault_id = args
-            .vault_id
-            .clone()
-            .unwrap_or_else(|| share.public_key_compressed.clone());
-        let pk = hex::decode(&share.public_key_compressed)?;
-        let vault = tx_builder::TaprootVault::derive(&pk, 0).map_err(|e| anyhow::anyhow!(e))?;
-        let addr = bitcoin::Address::from_script(vault.script_pubkey().as_script(), network)?;
-        tracing::info!(vault = %addr, vault_id = %vault_id, "loaded FROST keyshare");
-        vault_addresses.push(addr.to_string());
+    // Load every keyshare we hold (dir + optional single-file) into a shared
+    // map keyed by hex group key. The keygen loop adds new shares on churn.
+    std::fs::create_dir_all(&args.keyshare_dir).ok();
+    let shares: sign_loop::SharedShares = Default::default();
+    {
+        let mut w = shares.write().unwrap();
+        let mut load = |bytes: &[u8]| -> anyhow::Result<()> {
+            let s: frost_session::StoredShare = serde_json::from_slice(bytes)?;
+            let addr = share_vault_addr(&s, network)?;
+            tracing::info!(vault = %addr, group_key = %s.public_key_compressed, "loaded FROST keyshare");
+            w.insert(s.public_key_compressed.clone(), s);
+            Ok(())
+        };
+        if let Ok(rd) = std::fs::read_dir(&args.keyshare_dir) {
+            for e in rd.flatten() {
+                if e.path().extension().and_then(|x| x.to_str()) == Some("json") {
+                    if let Ok(b) = std::fs::read(e.path()) {
+                        let _ = load(&b);
+                    }
+                }
+            }
+        }
+        if let Some(path) = &args.keyshare {
+            if let Ok(b) = std::fs::read(path) {
+                let _ = load(&b);
+            }
+        }
     }
+    tracing::info!(vaults = shares.read().unwrap().len(), "keyshares loaded");
 
-    // Observe loop: scan bitcoind, split inbound/outbound, post observations.
-    let temporal_store = temporal::TemporalStore::open(&args.temporal_path)?;
-    let vault_view = daemon::VaultView {
-        vault_addresses: vault_addresses.iter().cloned().collect(),
-        protocol_addresses: vault_addresses.iter().cloned().collect(),
-        observed_vault_pubkey: vault_id.clone(),
-    };
-    let source = daemon::BitcoindBlockSource::new(bitcoind::BitcoindRpc::new(btc_cfg.clone()));
+    // Our FROST participant name (this node's validator secp256k1 pubkey, as
+    // bech32) — needed to check keygen membership and to sign.
+    let our_name = args.node_pubkey.as_ref().map(|pk| {
+        if pk.contains("pub1") {
+            pk.clone()
+        } else {
+            hex::decode(pk)
+                .ok()
+                .and_then(|b| chain::encode_bech32_pubkey(hrp, &b).ok())
+                .unwrap_or_else(|| pk.clone())
+        }
+    });
+
     let poster = build_observation_poster(&args);
     if poster.is_none() {
-        tracing::warn!("--cosmos-priv-key not set; observations will be logged, not posted");
+        tracing::warn!("--cosmos-priv-key not set; observations/keygen will not be posted");
     }
+
+    // Observe loop: scan bitcoind, resolve each observation's vault from the
+    // live share set (so a new churn vault is watched the moment it forms),
+    // split inbound/outbound, post observations.
+    let temporal_store = temporal::TemporalStore::open(&args.temporal_path)?;
+    let source = daemon::BitcoindBlockSource::new(bitcoind::BitcoindRpc::new(btc_cfg.clone()));
     let observe_chain = "BTC".to_string();
-    let vault_set: std::collections::HashSet<String> = vault_addresses.iter().cloned().collect();
     let observe_secs = args.observe_poll_secs;
     let dust = args.dust_sats;
+    let obs_shares = shares.clone();
+    let obs_poster = poster.clone();
+    let extra_vaults = args.vault_addresses.clone();
+    let obs_hrp = hrp.to_string();
     tokio::spawn(async move {
         let start = source.block_count().await.unwrap_or(0);
         let mut observer = daemon::Observer::new(source, network, dust, start);
         let mut ticker = tokio::time::interval(std::time::Duration::from_secs(observe_secs));
         loop {
             ticker.tick().await;
+            // Rebuild the vault address→pubkey map each tick from live shares.
+            let addr_to_pubkey = vault_addr_map(&obs_shares, network, &obs_hrp);
+            let mut vault_addrs: std::collections::HashSet<String> =
+                addr_to_pubkey.keys().cloned().collect();
+            vault_addrs.extend(extra_vaults.iter().cloned());
+            let vault_view = daemon::VaultView {
+                vault_addresses: vault_addrs.clone(),
+                protocol_addresses: vault_addrs.clone(),
+                observed_vault_pubkey: String::new(),
+            };
             match observer.scan_to_tip(&temporal_store, &vault_view).await {
-                Ok(obs) if !obs.is_empty() => {
+                Ok(mut obs) if !obs.is_empty() => {
                     tracing::info!(count = obs.len(), height = observer.last_scanned(), "observed txs");
-                    let Some(ref p) = poster else { continue };
-                    // Outbound = the vault is the sender; inbound = the vault
-                    // is the receiver (Go GetInboundOutbound split).
-                    let (outbound, inbound): (Vec<_>, Vec<_>) =
-                        obs.iter().partition(|it| vault_set.contains(&it.sender));
+                    let Some(ref p) = obs_poster else { continue };
+                    // Resolve each observation's vault: sender-vault → outbound,
+                    // receiver-vault → inbound (Go GetInboundOutbound split).
+                    let mut inbound = Vec::new();
+                    let mut outbound = Vec::new();
+                    for it in obs.drain(..) {
+                        let mut it = it;
+                        if let Some(pk) = addr_to_pubkey.get(&it.sender) {
+                            it.observed_vault_pubkey = pk.clone();
+                            outbound.push(it);
+                        } else if let Some(pk) = addr_to_pubkey.get(&it.to) {
+                            it.observed_vault_pubkey = pk.clone();
+                            inbound.push(it);
+                        }
+                    }
                     for (kind, items) in [
                         (broadcast::ObservationKind::In, inbound),
                         (broadcast::ObservationKind::Out, outbound),
@@ -433,14 +483,13 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
                         if items.is_empty() {
                             continue;
                         }
-                        let batch = to_broadcast_txin(&observe_chain, &items);
+                        let refs: Vec<&_> = items.iter().collect();
+                        let batch = to_broadcast_txin(&observe_chain, &refs);
                         match p.broadcast_observation(kind, &batch).await {
                             Ok(hash) => {
                                 tracing::info!(%hash, ?kind, count = batch.tx_array.len(), "posted observation")
                             }
-                            Err(e) => {
-                                tracing::warn!(error = %e, ?kind, "failed to post observation")
-                            }
+                            Err(e) => tracing::warn!(error = %e, ?kind, "failed to post observation"),
                         }
                     }
                 }
@@ -450,44 +499,246 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
         }
     });
 
-    // Sign loop (needs a keyshare).
-    match share {
-        Some(share) => {
-            let sl_cfg = sign_loop::SignLoopCfg {
-                local: share.participant.clone(),
-                vault_id,
-                network,
-                signing_period: args.signing_period,
-                allow_respend_spent: args.allow_respend_spent,
-                ..Default::default()
-            };
-            let sl = sign_loop::SignLoop::new(
-                sl_cfg,
-                client,
-                verifier,
-                store,
-                bitcoind::BitcoindRpc::new(btc_cfg),
-                share,
-                p2p_stack.registry,
-                p2p_stack.mailbox,
-                p2p_stack.control,
-                p2p_stack.joins_rx,
-            );
-            tracing::info!("sign loop starting");
-            sl.run(std::time::Duration::from_secs(args.sign_poll_secs))
-                .await;
-        }
-        None => {
-            // Observe-only: park forever.
-            futures::future::pending::<()>().await;
+    // Keygen (churn) loop: poll keygen blocks, run DKG for any membership we
+    // belong to, write the new share, and submit MsgKeygenVault.
+    if args.keygen {
+        match (&our_name, &poster) {
+            (Some(name), Some(p)) => {
+                let kg = KeygenLoop {
+                    client: chain::ThornadoClient::new(cfg.clone()),
+                    poster: p.clone(),
+                    shares: shares.clone(),
+                    router: p2p_stack.router.clone(),
+                    our_name: name.clone(),
+                    node_pubkey: args.node_pubkey.clone().unwrap_or_default(),
+                    keyshare_dir: args.keyshare_dir.clone(),
+                    hrp: hrp.to_string(),
+                    network,
+                    done: Default::default(),
+                    last_scanned: std::sync::atomic::AtomicI64::new(0),
+                };
+                let node_pk = args.node_pubkey.clone();
+                tokio::spawn(async move {
+                    let verifier = build_verifier(node_pk.as_deref());
+                    tracing::info!("keygen loop starting");
+                    kg.run(verifier).await;
+                });
+            }
+            _ => tracing::warn!("--keygen set but node-pubkey/cosmos-key missing; keygen disabled"),
         }
     }
+
+    // Sign loop (needs at least one keyshare).
+    if shares.read().unwrap().is_empty() {
+        tracing::warn!("no keyshares; sign loop disabled (observe-only)");
+        futures::future::pending::<()>().await;
+        return Ok(());
+    }
+    let local = our_name.unwrap_or_else(|| {
+        shares
+            .read()
+            .unwrap()
+            .values()
+            .next()
+            .map(|s| s.participant.clone())
+            .unwrap_or_default()
+    });
+    let sl_cfg = sign_loop::SignLoopCfg {
+        local,
+        vault_id: args.vault_id.clone().unwrap_or_default(),
+        network,
+        signing_period: args.signing_period,
+        allow_respend_spent: args.allow_respend_spent,
+        ..Default::default()
+    };
+    let sl = sign_loop::SignLoop::new(
+        sl_cfg,
+        client,
+        verifier,
+        store,
+        bitcoind::BitcoindRpc::new(btc_cfg),
+        shares,
+        p2p_stack.registry,
+        p2p_stack.router,
+        p2p_stack.control,
+        p2p_stack.joins_rx,
+    );
+    tracing::info!("sign loop starting");
+    sl.run(std::time::Duration::from_secs(args.sign_poll_secs))
+        .await;
     Ok(())
+}
+
+/// The regtest/mainnet BTC address of a keyshare's vault (path 0).
+fn share_vault_addr(
+    s: &frost_session::StoredShare,
+    network: bitcoin::Network,
+) -> anyhow::Result<String> {
+    let pk = hex::decode(&s.public_key_compressed)?;
+    let vault = tx_builder::TaprootVault::derive(&pk, 0).map_err(|e| anyhow::anyhow!(e))?;
+    Ok(bitcoin::Address::from_script(vault.script_pubkey().as_script(), network)?.to_string())
+}
+
+/// Map each held vault's BTC address → its bech32 pubkey, for classifying and
+/// stamping observations.
+fn vault_addr_map(
+    shares: &sign_loop::SharedShares,
+    network: bitcoin::Network,
+    hrp: &str,
+) -> std::collections::HashMap<String, String> {
+    let mut m = std::collections::HashMap::new();
+    for s in shares.read().unwrap().values() {
+        let Ok(addr) = share_vault_addr(s, network) else {
+            continue;
+        };
+        let Ok(pk) = hex::decode(&s.public_key_compressed) else {
+            continue;
+        };
+        if let Ok(bech) = chain::encode_bech32_pubkey(hrp, &pk) {
+            m.insert(addr, bech);
+        }
+    }
+    m
+}
+
+fn build_verifier(node_pubkey: Option<&str>) -> Box<dyn chain::KeysignVerifier> {
+    match node_pubkey {
+        Some(pk) => {
+            let key = if pk.contains("pub1") {
+                chain::decode_bech32_pubkey(pk).ok()
+            } else {
+                hex::decode(pk).ok()
+            };
+            match key.and_then(|k| chain::Secp256k1Verifier::new(&k).ok()) {
+                Some(v) => Box::new(v),
+                None => Box::new(chain::InsecureAcceptAll),
+            }
+        }
+        None => Box::new(chain::InsecureAcceptAll),
+    }
+}
+
+/// The churn keygen loop: scans thornado keygen blocks, runs the DKG for any
+/// vault membership this node belongs to, writes the new keyshare, and submits
+/// `MsgKeygenVault` so the chain forms the vault at consensus.
+struct KeygenLoop {
+    client: chain::ThornadoClient,
+    poster: broadcast::ThornadoObservationClient,
+    shares: sign_loop::SharedShares,
+    router: transport::SessionRouter,
+    our_name: String,
+    node_pubkey: String,
+    keyshare_dir: String,
+    hrp: String,
+    network: bitcoin::Network,
+    done: std::sync::Mutex<std::collections::HashSet<String>>,
+    last_scanned: std::sync::atomic::AtomicI64,
+}
+
+impl KeygenLoop {
+    async fn run(self, verifier: Box<dyn chain::KeysignVerifier>) {
+        let mut ticker = tokio::time::interval(std::time::Duration::from_secs(3));
+        loop {
+            ticker.tick().await;
+            let height = match self.client.get_block_height().await {
+                Ok(h) => h,
+                Err(_) => continue,
+            };
+            let last = self.last_scanned.load(std::sync::atomic::Ordering::SeqCst);
+            let from = if last == 0 { (height - 1).max(1) } else { last + 1 };
+            let to = height.min(from + 40);
+            for h in from..=to {
+                if let Err(e) = self.scan_height(h, verifier.as_ref()).await {
+                    tracing::debug!(height = h, error = %e, "keygen scan");
+                }
+                self.last_scanned
+                    .store(h, std::sync::atomic::Ordering::SeqCst);
+            }
+        }
+    }
+
+    async fn scan_height(
+        &self,
+        height: i64,
+        verifier: &dyn chain::KeysignVerifier,
+    ) -> anyhow::Result<()> {
+        let block = match self
+            .client
+            .get_keygen_block(height, &self.node_pubkey, verifier)
+            .await
+        {
+            Ok(b) => b,
+            Err(chain::ChainError::UnavailableBlock) => return Ok(()),
+            Err(e) => return Err(e.into()),
+        };
+        for kg in &block.keygens {
+            if kg.keygen_type != "BaseVaultKeygen" || !kg.members.contains(&self.our_name) {
+                continue;
+            }
+            if self.done.lock().unwrap().contains(&kg.id) {
+                continue;
+            }
+            self.run_dkg(block.height, kg).await?;
+            self.done.lock().unwrap().insert(kg.id.clone());
+        }
+        Ok(())
+    }
+
+    async fn run_dkg(&self, height: i64, kg: &chain::Keygen) -> anyhow::Result<()> {
+        let members = frost_session::normalize_participants(&kg.members);
+        let min_signers =
+            sign_loop_min_signers(members.len());
+        let session_id = frost_session::keygen_session_id(height, min_signers, &members);
+        let session = frost_session::KeygenSession::new(
+            self.our_name.clone(),
+            members.clone(),
+            min_signers,
+        )
+        .map_err(|e| anyhow::anyhow!(e))?;
+        tracing::info!(height, n = members.len(), min = min_signers, "CHURN starting DKG");
+        let start = std::time::Instant::now();
+        let mut mbox = self.router.session(&session_id);
+        let share = tokio::time::timeout(
+            std::time::Duration::from_secs(120),
+            transport::run_keygen(&mut mbox, session, &session_id),
+        )
+        .await
+        .map_err(|_| anyhow::anyhow!("DKG timed out"))?
+        .map_err(|e| anyhow::anyhow!(e))?;
+        let dkg_ms = start.elapsed().as_millis();
+
+        let group_hex = share.public_key_compressed.clone();
+        let pk = hex::decode(&group_hex)?;
+        let vault_bech = chain::encode_bech32_pubkey(&self.hrp, &pk)?;
+        let vault_addr = share_vault_addr(&share, self.network)?;
+        tracing::info!(dkg_ms, vault = %vault_addr, vault_id = %vault_bech, "DKG_TIMING CHURN keygen complete");
+
+        // Persist + expose the share immediately so the sign loop can migrate.
+        let path = format!("{}/keyshare-{}.json", self.keyshare_dir, &group_hex[..16.min(group_hex.len())]);
+        std::fs::write(&path, serde_json::to_vec_pretty(&share)?)?;
+        self.shares.write().unwrap().insert(group_hex.clone(), share);
+
+        // Submit MsgKeygenVault so the chain forms the vault at consensus.
+        match self
+            .poster
+            .submit_keygen_vault(&members, &vault_bech, height, dkg_ms as i64, &["BTC".to_string()])
+            .await
+        {
+            Ok(hash) => tracing::info!(%hash, vault = %vault_bech, "submitted MsgKeygenVault"),
+            Err(e) => tracing::warn!(error = %e, "failed to submit MsgKeygenVault"),
+        }
+        Ok(())
+    }
+}
+
+/// FROST threshold for `n` members: ceil(2n/3) (Go `frostMinSigners`).
+fn sign_loop_min_signers(n: usize) -> u16 {
+    ((n * 2).div_ceil(3)) as u16
 }
 
 async fn run_keygen_cmd(args: KeygenArgs) -> anyhow::Result<()> {
     let keypair = load_p2p_key(&args.p2p_key)?;
-    let mut p2p_stack = start_p2p(keypair, &args.p2p_listen, Some(&args.peers))?;
+    let p2p_stack = start_p2p(keypair, &args.p2p_listen, Some(&args.peers))?;
 
     tracing::info!(secs = args.settle_secs, "waiting for peer connections to settle");
     tokio::time::sleep(std::time::Duration::from_secs(args.settle_secs)).await;
@@ -503,9 +754,10 @@ async fn run_keygen_cmd(args: KeygenArgs) -> anyhow::Result<()> {
 
     tracing::info!(local = %args.local_name, n = participants.len(), min = args.min_signers, "starting DKG");
     let dkg_start = std::time::Instant::now();
+    let mut mbox = p2p_stack.router.session(&session_id);
     let share = tokio::time::timeout(
         std::time::Duration::from_secs(120),
-        transport::run_keygen(&mut p2p_stack.mailbox, session, &session_id),
+        transport::run_keygen(&mut mbox, session, &session_id),
     )
     .await
     .map_err(|_| anyhow::anyhow!("DKG timed out after 120s"))?

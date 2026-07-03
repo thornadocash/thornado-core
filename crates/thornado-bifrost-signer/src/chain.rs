@@ -32,6 +32,7 @@ use sha2::{Digest, Sha256};
 
 /// REST endpoint templates (match Go constants).
 pub const KEYSIGN_ENDPOINT: &str = "/thornado/keysign"; // /{height}/{pubkey}
+pub const KEYGEN_ENDPOINT: &str = "/thornado/keygen"; // /{height}/{pubkey}
 pub const LAST_BLOCK_ENDPOINT: &str = "/thornado/lastblock";
 pub const VAULT_ENDPOINT: &str = "/thornado/vault"; // /{pubkey}
 pub const SIGNER_MEMBERSHIP_ENDPOINT: &str = "/thornado/vaults"; // /{pubkey}/signers
@@ -136,6 +137,28 @@ pub fn decode_bech32_pubkey(s: &str) -> Result<Vec<u8>> {
         )));
     }
     Ok(data[data.len() - 33..].to_vec())
+}
+
+/// The amino type-prefix for a `PubKeySecp256k1` (4-byte prefix + 0x21 length),
+/// which precedes the 33-byte compressed key in a thornado bech32 pubkey.
+pub const AMINO_SECP256K1_PREFIX: [u8; 5] = [0xeb, 0x5a, 0xe9, 0x87, 0x21];
+
+/// Encode a 33-byte compressed secp256k1 key as a thornado bech32 pubkey with
+/// the given hrp (`tthorpub` on testnet, `thorpub` on mainnet) — the inverse of
+/// [`decode_bech32_pubkey`].
+pub fn encode_bech32_pubkey(hrp: &str, compressed: &[u8]) -> Result<String> {
+    use bitcoin::bech32::{Bech32, Hrp};
+    if compressed.len() != 33 {
+        return Err(ChainError::Decode(format!(
+            "compressed pubkey is {} bytes, want 33",
+            compressed.len()
+        )));
+    }
+    let mut data = AMINO_SECP256K1_PREFIX.to_vec();
+    data.extend_from_slice(compressed);
+    let hrp = Hrp::parse(hrp).map_err(|e| ChainError::Decode(format!("bad hrp: {e}")))?;
+    bitcoin::bech32::encode::<Bech32>(hrp, &data)
+        .map_err(|e| ChainError::Decode(format!("bech32 encode: {e}")))
 }
 
 /// Decode a thornado bech32 account address (`tthor1...`) to its 20 raw bytes.
@@ -302,6 +325,28 @@ pub struct Vault {
     pub membership: Vec<String>,
 }
 
+/// One scheduled keygen in a keygen block (Go `types.Keygen`). `members` are
+/// the FROST participant pubkeys (bech32) that must run the DKG together.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Keygen {
+    #[serde(default)]
+    pub id: String,
+    #[serde(rename = "type", default)]
+    pub keygen_type: String, // "BaseVaultKeygen"
+    #[serde(default, deserialize_with = "flexnum::de_null_vec")]
+    pub members: Vec<String>,
+}
+
+/// A keygen block: the churn instruction the chain issues at a rotation
+/// (Go `types.KeygenBlock`).
+#[derive(Debug, Clone, Deserialize)]
+pub struct KeygenBlock {
+    #[serde(default, deserialize_with = "flexnum::de_i64")]
+    pub height: i64,
+    #[serde(default, deserialize_with = "flexnum::de_null_vec")]
+    pub keygens: Vec<Keygen>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct NetworkFee {
     #[serde(default)]
@@ -315,6 +360,13 @@ pub struct NetworkFee {
 #[derive(Deserialize)]
 struct KeysignResponse {
     keysign: Option<Box<RawValue>>,
+    #[serde(default)]
+    signature: String,
+}
+
+#[derive(Deserialize)]
+struct KeygenResponse {
+    keygen_block: Option<Box<RawValue>>,
     #[serde(default)]
     signature: String,
 }
@@ -507,6 +559,50 @@ impl ThornadoClient {
         }
         let wrapper: KeysignResponse = serde_json::from_slice(&body)?;
         verify_and_decode_keysign(&wrapper, verifier, height)
+    }
+
+    /// GET the keygen block for this node at a thornado height. 404 →
+    /// `UnavailableBlock`. The payload is signed by the node key exactly like
+    /// keysign; the signature is verified before the block is trusted.
+    pub async fn get_keygen_block(
+        &self,
+        height: i64,
+        node_pubkey: &str,
+        verifier: &dyn KeysignVerifier,
+    ) -> Result<KeygenBlock> {
+        let path = format!("{KEYGEN_ENDPOINT}/{height}/{node_pubkey}");
+        let url = self.url(&path);
+        let (body, status) = self.get(&url).await?;
+        if status == 404 {
+            return Err(ChainError::UnavailableBlock);
+        }
+        if status != 200 {
+            return Err(ChainError::Status { status, path });
+        }
+        let wrapper: KeygenResponse = serde_json::from_slice(&body)?;
+        let raw = wrapper
+            .keygen_block
+            .as_deref()
+            .map(RawValue::get)
+            .ok_or_else(|| ChainError::InvalidKeysign("empty keygen block".to_string()))?;
+        let block: KeygenBlock = serde_json::from_str(raw)?;
+        // Empty blocks (no churn scheduled) carry no meaningful signature.
+        if block.keygens.is_empty() {
+            return Ok(block);
+        }
+        if wrapper.signature.is_empty() {
+            return Err(ChainError::InvalidKeysign("keygen signature: empty".to_string()));
+        }
+        let signed = compact_json(raw.as_bytes());
+        let sig = base64::engine::general_purpose::STANDARD
+            .decode(&wrapper.signature)
+            .map_err(|_| ChainError::InvalidKeysign("keygen signature: cannot decode".to_string()))?;
+        if !verifier.verify(&signed, &sig) {
+            return Err(ChainError::InvalidKeysign(
+                "keygen signature: bad signature".to_string(),
+            ));
+        }
+        Ok(block)
     }
 
     async fn get_last_blocks(&self) -> Result<Vec<LastBlock>> {
@@ -1213,6 +1309,13 @@ mod tests {
             hex::encode(&key),
             "03c071652823bb80939f435b1ebfe4fe412594864c8b6da26fe4140a6201b1f592"
         );
+    }
+
+    #[test]
+    fn bech32_pubkey_round_trips() {
+        let bech = "tthorpub1addwnpepq0q8zefgywacpyulgdd3a0lyleqjt9yxfj9kmgn0us2q5cspk86ey8jvh0s";
+        let key = decode_bech32_pubkey(bech).unwrap();
+        assert_eq!(encode_bech32_pubkey("tthorpub", &key).unwrap(), bech);
     }
 
     #[test]

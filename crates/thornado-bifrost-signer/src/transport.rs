@@ -184,65 +184,199 @@ impl Libp2pMailbox {
     }
 }
 
+/// Open a fresh `/p2p/frost` stream to `peer` and write one framed message,
+/// retrying transient failures (connection not ready yet, duplicate-connection
+/// pruning). The round message is idempotent at the session layer.
+async fn send_framed_to_peer(
+    control: &mut libp2p_stream::Control,
+    to: &str,
+    peer: libp2p::PeerId,
+    framed: &[u8],
+) -> Result<()> {
+    let mut last_err = None;
+    for attempt in 0..12u32 {
+        let opened = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            control.open_stream(peer, crate::p2p::frost_protocol()),
+        )
+        .await;
+        let opened = match opened {
+            Ok(r) => r,
+            Err(_) => {
+                last_err = Some("open_stream timed out".to_string());
+                continue;
+            }
+        };
+        match opened {
+            Ok(mut stream) => {
+                use futures::AsyncWriteExt;
+                let write = async {
+                    stream.write_all(framed).await?;
+                    stream.flush().await
+                };
+                match write.await {
+                    Ok(()) => return Ok(()),
+                    Err(e) => {
+                        last_err = Some(e.to_string());
+                        tokio::time::sleep(std::time::Duration::from_millis(
+                            150 * (attempt as u64 + 1),
+                        ))
+                        .await;
+                    }
+                }
+            }
+            Err(e) => {
+                last_err = Some(e.to_string());
+                tokio::time::sleep(std::time::Duration::from_millis(150 * (attempt as u64 + 1)))
+                    .await;
+            }
+        }
+    }
+    Err(TransportError::Transport(format!(
+        "open_stream to {to} failed after retries: {}",
+        last_err.unwrap_or_default()
+    )))
+}
+
 impl Mailbox for Libp2pMailbox {
     async fn send(&mut self, to: &str, framed: Vec<u8>) -> Result<()> {
         let peer = *self
             .peers
             .get(to)
             .ok_or_else(|| TransportError::Transport(format!("unknown peer {to}")))?;
+        send_framed_to_peer(&mut self.control, to, peer, &framed).await
+    }
 
-        // Opening a stream can transiently fail if the connection isn't ready
-        // yet (or briefly dropped and re-dialed). Retry long enough to span
-        // the daemon's ~10s redial cycle — the round message is idempotent at
-        // the session layer.
-        let mut last_err = None;
-        for attempt in 0..12u32 {
-            // Bound each attempt: a stuck open_stream (peer mid-reconnect)
-            // must become a retryable error rather than hang the session.
-            let opened = tokio::time::timeout(
-                std::time::Duration::from_secs(5),
-                self.control.open_stream(peer, crate::p2p::frost_protocol()),
-            )
-            .await;
-            let opened = match opened {
-                Ok(r) => r,
-                Err(_) => {
-                    last_err = Some("open_stream timed out".to_string());
-                    continue;
-                }
-            };
-            match opened {
-                Ok(mut stream) => {
-                    use futures::AsyncWriteExt;
-                    // `framed` already carries the length prefix; write it raw.
-                    // A write can still fail (e.g. the connection was closing
-                    // under us — duplicate-connection pruning after mutual
-                    // dials); that is as retryable as a failed open.
-                    let write = async {
-                        stream.write_all(&framed).await?;
-                        stream.flush().await
-                    };
-                    match write.await {
-                        Ok(()) => return Ok(()),
-                        Err(e) => {
-                            last_err = Some(e.to_string());
-                            let backoff =
-                                std::time::Duration::from_millis(150 * (attempt as u64 + 1));
-                            tokio::time::sleep(backoff).await;
+    async fn recv(&mut self) -> Option<(String, Vec<u8>)> {
+        self.inbound.recv().await
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Session router — multiplex many concurrent FROST sessions (keygen + keysign)
+// over one libp2p host by routing inbound frames to per-session mailboxes.
+// ---------------------------------------------------------------------------
+
+type SessionMap =
+    std::sync::Arc<std::sync::Mutex<HashMap<String, tokio::sync::mpsc::UnboundedSender<(String, Vec<u8>)>>>>;
+type PendingMap = std::sync::Arc<
+    std::sync::Mutex<HashMap<String, Vec<(std::time::Instant, (String, Vec<u8>))>>>,
+>;
+
+/// Owns the raw inbound frost stream and fans each frame out to the mailbox of
+/// the session whose id it carries. Frames for a session not yet registered
+/// locally are briefly buffered (a peer may start a round before we do).
+#[derive(Clone)]
+pub struct SessionRouter {
+    control: libp2p_stream::Control,
+    peers: std::sync::Arc<HashMap<String, libp2p::PeerId>>,
+    sessions: SessionMap,
+    pending: PendingMap,
+}
+
+impl SessionRouter {
+    pub fn new(
+        control: libp2p_stream::Control,
+        peers: HashMap<String, libp2p::PeerId>,
+        mut inbound: tokio::sync::mpsc::Receiver<(String, Vec<u8>)>,
+    ) -> Self {
+        let sessions: SessionMap = Default::default();
+        let pending: PendingMap = Default::default();
+        let s = sessions.clone();
+        let p = pending.clone();
+        tokio::spawn(async move {
+            while let Some((from, framed)) = inbound.recv().await {
+                let sid = match unwrap(&framed) {
+                    Ok((mid, _)) => mid,
+                    Err(_) => continue,
+                };
+                let tx = { s.lock().unwrap().get(&sid).cloned() };
+                match tx {
+                    Some(tx) => {
+                        let _ = tx.send((from, framed));
+                    }
+                    None => {
+                        let mut pend = p.lock().unwrap();
+                        // drop buffers older than 60s so unclaimed session ids
+                        // cannot leak memory
+                        pend.retain(|_, v| {
+                            v.retain(|(t, _)| t.elapsed() < std::time::Duration::from_secs(60));
+                            !v.is_empty()
+                        });
+                        let buf = pend.entry(sid).or_default();
+                        if buf.len() < 1024 {
+                            buf.push((std::time::Instant::now(), (from, framed)));
                         }
                     }
                 }
-                Err(e) => {
-                    last_err = Some(e.to_string());
-                    let backoff = std::time::Duration::from_millis(150 * (attempt as u64 + 1));
-                    tokio::time::sleep(backoff).await;
+            }
+        });
+        Self {
+            control,
+            peers: std::sync::Arc::new(peers),
+            sessions,
+            pending,
+        }
+    }
+
+    /// Register a mailbox for `session_id`, draining any buffered early frames.
+    pub fn session(&self, session_id: &str) -> RoutedMailbox {
+        self.sessions_multi(std::slice::from_ref(&session_id.to_string()))
+    }
+
+    /// Register ONE mailbox under several session ids at once — used by a
+    /// batched keysign whose per-input sessions must all land in the same
+    /// mailbox so `run_keysign_multi` can fan them out.
+    pub fn sessions_multi(&self, ids: &[String]) -> RoutedMailbox {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        {
+            let mut pend = self.pending.lock().unwrap();
+            let mut reg = self.sessions.lock().unwrap();
+            for id in ids {
+                if let Some(buf) = pend.remove(id) {
+                    for (_, m) in buf {
+                        let _ = tx.send(m);
+                    }
                 }
+                reg.insert(id.clone(), tx.clone());
             }
         }
-        Err(TransportError::Transport(format!(
-            "open_stream to {to} failed after retries: {}",
-            last_err.unwrap_or_default()
-        )))
+        RoutedMailbox {
+            control: self.control.clone(),
+            peers: self.peers.clone(),
+            session_ids: ids.to_vec(),
+            inbound: rx,
+            sessions: self.sessions.clone(),
+        }
+    }
+}
+
+/// A per-session mailbox handed out by [`SessionRouter`], receiving frames for
+/// one or more session ids.
+pub struct RoutedMailbox {
+    control: libp2p_stream::Control,
+    peers: std::sync::Arc<HashMap<String, libp2p::PeerId>>,
+    session_ids: Vec<String>,
+    inbound: tokio::sync::mpsc::UnboundedReceiver<(String, Vec<u8>)>,
+    sessions: SessionMap,
+}
+
+impl Drop for RoutedMailbox {
+    fn drop(&mut self) {
+        let mut reg = self.sessions.lock().unwrap();
+        for id in &self.session_ids {
+            reg.remove(id);
+        }
+    }
+}
+
+impl Mailbox for RoutedMailbox {
+    async fn send(&mut self, to: &str, framed: Vec<u8>) -> Result<()> {
+        let peer = *self
+            .peers
+            .get(to)
+            .ok_or_else(|| TransportError::Transport(format!("unknown peer {to}")))?;
+        send_framed_to_peer(&mut self.control, to, peer, &framed).await
     }
 
     async fn recv(&mut self) -> Option<(String, Vec<u8>)> {
