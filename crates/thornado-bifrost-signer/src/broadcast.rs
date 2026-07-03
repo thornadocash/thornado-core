@@ -432,6 +432,49 @@ impl ThornadoObservationClient {
         .await
     }
 
+    /// Submit a `MsgSolvency` reporting a base vault's wallet balance on
+    /// `chain` (Go BTC client `ReportSolvency`). The chain tallies one vote per
+    /// active node and runs the insolvency check at supermajority. Returns the
+    /// tx hash.
+    pub async fn submit_solvency(
+        &self,
+        chain: &str,
+        vault_pub_key: &str,
+        amount_sats: u64,
+        height: i64,
+    ) -> Result<String> {
+        let key = self
+            .key
+            .as_ref()
+            .ok_or(BroadcastError::Unimplemented("signer key not configured"))?;
+        // Go Coins.String() for the single gas-asset coin: "<sats> BTC.BTC".
+        let coins_str = format!("{amount_sats} {chain}.{chain}");
+        let msg = crate::cosmos_tx::MsgSolvency {
+            id: crate::cosmos_tx::solvency_id(chain, vault_pub_key, &coins_str, height),
+            chain: chain.to_string(),
+            pub_key: vault_pub_key.to_string(),
+            coins: vec![crate::cosmos_tx::Coin {
+                asset: Some(parse_asset(&format!("{chain}.{chain}"))),
+                amount: amount_sats.to_string(),
+                decimals: 8,
+            }],
+            height,
+            signer: key.account_bytes.clone(),
+        };
+        self.broadcast_with_sequence(|account_number, sequence| {
+            crate::cosmos_tx::build_and_sign_solvency(
+                &msg,
+                &key.priv_key,
+                &key.pub_key,
+                &key.chain_id,
+                account_number,
+                sequence,
+            )
+            .map_err(|e| e.to_string())
+        })
+        .await
+    }
+
     /// Submit a `MsgKeygenVault` after a churn DKG so the chain forms the new
     /// vault. Returns the tx hash.
     pub async fn submit_keygen_vault(

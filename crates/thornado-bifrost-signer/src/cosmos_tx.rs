@@ -14,6 +14,7 @@ use prost::Message;
 pub const MSG_OBSERVED_TX_IN_TYPE_URL: &str = "/types.MsgObservedTxIn";
 pub const MSG_OBSERVED_TX_OUT_TYPE_URL: &str = "/types.MsgObservedTxOut";
 pub const MSG_KEYGEN_VAULT_TYPE_URL: &str = "/types.MsgKeygenVault";
+pub const MSG_SOLVENCY_TYPE_URL: &str = "/types.MsgSolvency";
 
 /// KeygenType (thornado `types.KeygenType`).
 pub const KEYGEN_TYPE_BASE_VAULT: i32 = 1;
@@ -40,6 +41,59 @@ pub struct MsgKeygenVault {
     pub signer: Vec<u8>,
     #[prost(int64, tag = "9")]
     pub keygen_time: i64,
+}
+
+/// `MsgSolvency` — each active node's periodic report of a base vault's
+/// on-chain wallet balance (proto tags mirror
+/// proto/thornado/v1/types/msg_solvency.proto). The chain tallies these per
+/// (id, chain) and runs the insolvency check at supermajority consensus.
+#[derive(Clone, PartialEq, Message)]
+pub struct MsgSolvency {
+    #[prost(string, tag = "1")]
+    pub id: String,
+    #[prost(string, tag = "2")]
+    pub chain: String,
+    #[prost(string, tag = "3")]
+    pub pub_key: String,
+    #[prost(message, repeated, tag = "4")]
+    pub coins: Vec<Coin>,
+    #[prost(int64, tag = "5")]
+    pub height: i64,
+    #[prost(bytes = "vec", tag = "6")]
+    pub signer: Vec<u8>,
+}
+
+/// The solvency id (Go `common.Solvency.Hash`):
+/// UPPERCASE hex of sha256("{chain}|{pubkey}|{coins}|{height}") where coins is
+/// Go `Coins.String()` — `"<amount> <CHAIN>.<SYMBOL>"` joined by ", ". The
+/// chain recomputes and compares this in ValidateBasic, and `NewTxID`
+/// upper-cases 64-char hashes, so the case matters.
+pub fn solvency_id(chain: &str, pub_key: &str, coins_str: &str, height: i64) -> String {
+    use sha2::{Digest, Sha256};
+    let input = format!("{chain}|{pub_key}|{coins_str}|{height}");
+    hex::encode_upper(Sha256::digest(input.as_bytes()))
+}
+
+/// Build and sign a `MsgSolvency` as a SIGN_MODE_DIRECT tx. `coins_str` must
+/// be the Go-format coins string used for the id (single coin: "<sats> BTC.BTC").
+#[allow(clippy::too_many_arguments)]
+pub fn build_and_sign_solvency(
+    msg: &MsgSolvency,
+    priv_key: &[u8],
+    pub_key: &[u8],
+    chain_id: &str,
+    account_number: u64,
+    sequence: u64,
+) -> Result<Vec<u8>, CosmosTxError> {
+    build_and_sign_any(
+        MSG_SOLVENCY_TYPE_URL,
+        msg.encode_to_vec(),
+        priv_key,
+        pub_key,
+        chain_id,
+        account_number,
+        sequence,
+    )
 }
 
 /// The frost id for a keygen vault message (Go `getFrostID`):
@@ -455,6 +509,46 @@ mod tests {
             }],
             signer: vec![1u8; 20],
         }
+    }
+
+    #[test]
+    fn solvency_id_matches_go_golden_vector() {
+        // Generated with go-thornado common.Solvency.Hash():
+        //   BTC|tthorpub1addwnpepqtxumemktdx6jvp2nwt53d3ysllaylqqt9hxfqpgqcanwcd3j2yejw3kpu6|12956236004 BTC.BTC|155123
+        let id = solvency_id(
+            "BTC",
+            "tthorpub1addwnpepqtxumemktdx6jvp2nwt53d3ysllaylqqt9hxfqpgqcanwcd3j2yejw3kpu6",
+            "12956236004 BTC.BTC",
+            155123,
+        );
+        assert_eq!(
+            id,
+            "42B7C0C01E551F17FA317696209FFBCFA378500FE30BF198028CF4079181A4C8"
+        );
+    }
+
+    #[test]
+    fn solvency_msg_roundtrips() {
+        let msg = MsgSolvency {
+            id: "AB".repeat(32),
+            chain: "BTC".into(),
+            pub_key: "tthorpub1vault".into(),
+            coins: vec![Coin {
+                asset: Some(Asset {
+                    chain: "BTC".into(),
+                    symbol: "BTC".into(),
+                    ticker: "BTC".into(),
+                    secured: false,
+                }),
+                amount: "12956236004".into(),
+                decimals: 8,
+            }],
+            height: 155123,
+            signer: vec![1u8; 20],
+        };
+        let bytes = msg.encode_to_vec();
+        let back = MsgSolvency::decode(bytes.as_slice()).unwrap();
+        assert_eq!(back, msg);
     }
 
     #[test]

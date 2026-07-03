@@ -469,6 +469,8 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
     let obs_hrp = hrp.to_string();
     let rescan_height = args.observe_rescan_height;
     let obs_lookahead = args.deposit_lookahead;
+    let solvency_client = chain::ThornadoClient::new(cfg.clone());
+    let solvency_rpc = bitcoind::BitcoindRpc::new(btc_cfg.clone());
     tokio::spawn(async move {
         let tip = source.block_count().await.unwrap_or(0);
         let start = if rescan_height > 0 && rescan_height < tip {
@@ -480,6 +482,7 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
         let mut observer = daemon::Observer::new(source, network, dust, start);
         let mut ticker = tokio::time::interval(std::time::Duration::from_secs(observe_secs));
         let mut addr_cache = VaultAddrCache::new();
+        let mut last_solvency_height: i64 = 0;
         loop {
             ticker.tick().await;
             // Vault address→pubkey map (root + deposit child addresses), cached
@@ -533,6 +536,29 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
                 }
                 Ok(_) => {}
                 Err(e) => tracing::warn!(error = %e, "observe scan failed"),
+            }
+
+            // Solvency: every ≥2 new BTC blocks, report each base vault's
+            // wallet balance so the chain's solvency voter can reach
+            // supermajority consensus across the active nodes (Go BTC client
+            // ReportSolvency; each node posts its own MsgSolvency vote).
+            if let Some(ref p) = obs_poster {
+                let tip = observer.last_scanned();
+                if tip - last_solvency_height > 1 {
+                    match report_solvency(
+                        &solvency_client,
+                        &solvency_rpc,
+                        p,
+                        &observe_chain,
+                        &addr_to_pubkey,
+                        tip,
+                    )
+                    .await
+                    {
+                        Ok(()) => last_solvency_height = tip,
+                        Err(e) => tracing::warn!(error = %e, "solvency report failed"),
+                    }
+                }
             }
         }
     });
@@ -649,6 +675,57 @@ fn import_go_keyshares(go_dir: &str, keyshare_dir: &str) -> anyhow::Result<usize
 }
 
 /// The regtest/mainnet BTC address of a keyshare's vault (path 0).
+/// Report each funded base vault's BTC wallet balance as a `MsgSolvency` vote
+/// (Go BTC client `ReportSolvency`). The balance sums `listunspent` (mempool
+/// included) over every watched address of the vault — root plus deposit child
+/// paths — matching Go's `solvencyVaultPaths`. Vaults we hold no share for
+/// (e.g. on a standby that never joined) are skipped, as is the whole report
+/// when this node is not Active (the chain rejects non-active solvency votes).
+async fn report_solvency(
+    client: &chain::ThornadoClient,
+    rpc: &bitcoind::BitcoindRpc,
+    poster: &broadcast::ThornadoObservationClient,
+    chain_name: &str,
+    addr_to_pubkey: &std::collections::HashMap<String, String>,
+    height: i64,
+) -> anyhow::Result<()> {
+    let nodes = client.get_node_accounts().await?;
+    let me = poster.signer_address();
+    let am_active = nodes.iter().any(|n| n.node_address == me && n.is_active());
+    if !am_active {
+        return Ok(());
+    }
+    let vaults = client.get_base_vaults().await?;
+    for v in vaults.iter().filter(|v| v.has_funds_for_chain(chain_name)) {
+        let addrs: Vec<String> = addr_to_pubkey
+            .iter()
+            .filter(|(_, pk)| **pk == v.pub_key)
+            .map(|(a, _)| a.clone())
+            .collect();
+        if addrs.is_empty() {
+            continue;
+        }
+        let utxos = rpc
+            .list_unspent(&addrs)
+            .await
+            .map_err(|e| anyhow::anyhow!("listunspent: {e}"))?;
+        // Sum the float BTC amounts and convert once, matching Go's
+        // sumAccountUtxos + btcutil.NewAmount rounding.
+        let total_btc: f64 = utxos.iter().map(|u| u.amount).sum();
+        let sats = thornado_bifrost_signer::extract::btc_to_sats(total_btc);
+        match poster
+            .submit_solvency(chain_name, &v.pub_key, sats, height)
+            .await
+        {
+            Ok(hash) => {
+                tracing::info!(%hash, vault = %v.pub_key, sats, height, "posted solvency")
+            }
+            Err(e) => tracing::warn!(error = %e, vault = %v.pub_key, "failed to post solvency"),
+        }
+    }
+    Ok(())
+}
+
 fn share_vault_addr(
     s: &frost_session::StoredShare,
     network: bitcoin::Network,

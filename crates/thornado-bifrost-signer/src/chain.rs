@@ -35,6 +35,7 @@ pub const KEYSIGN_ENDPOINT: &str = "/thornado/keysign"; // /{height}/{pubkey}
 pub const KEYGEN_ENDPOINT: &str = "/thornado/keygen"; // /{height}/{pubkey}
 pub const LAST_BLOCK_ENDPOINT: &str = "/thornado/lastblock";
 pub const VAULT_ENDPOINT: &str = "/thornado/vault"; // /{pubkey}
+pub const BASE_VAULTS_ENDPOINT: &str = "/thornado/vaults/base";
 pub const SIGNER_MEMBERSHIP_ENDPOINT: &str = "/thornado/vaults"; // /{pubkey}/signers
 pub const NETWORK_FEE_ENDPOINT: &str = "/thornado/network_fee";
 pub const NODE_ACCOUNT_ENDPOINT: &str = "/thornado/node"; // /{address}
@@ -323,6 +324,20 @@ pub struct Vault {
     pub pub_key_eddsa: String,
     #[serde(default, deserialize_with = "flexnum::de_null_vec")]
     pub membership: Vec<String>,
+    #[serde(default, deserialize_with = "flexnum::de_null_vec")]
+    pub coins: Vec<Coin>,
+    #[serde(default)]
+    pub status: String,
+}
+
+impl Vault {
+    /// True when the vault records funds for `chain` (Go `HasFundsForChain`).
+    pub fn has_funds_for_chain(&self, chain: &str) -> bool {
+        let prefix = format!("{chain}.");
+        self.coins
+            .iter()
+            .any(|c| c.asset.starts_with(&prefix) && c.amount_u64().map_or(false, |a| a > 0))
+    }
 }
 
 /// One scheduled keygen in a keygen block (Go `types.Keygen`). `members` are
@@ -660,6 +675,11 @@ impl ThornadoClient {
     /// GET /thornado/vault/{pubkey}
     pub async fn get_vault(&self, pubkey: &str) -> Result<Vault> {
         self.get_json_ok(&format!("{VAULT_ENDPOINT}/{pubkey}")).await
+    }
+
+    /// GET /thornado/vaults/base — every base vault with status + coins.
+    pub async fn get_base_vaults(&self) -> Result<Vec<Vault>> {
+        self.get_json_ok(BASE_VAULTS_ENDPOINT).await
     }
 
     /// GET /thornado/node/{address}
@@ -1235,6 +1255,8 @@ mod tests {
             pub_key: "vaultpk".to_string(),
             pub_key_eddsa: String::new(),
             membership: vec!["pk_b".to_string(), "pk_a".to_string(), "pk_c".to_string()],
+            coins: Vec::new(),
+            status: String::new(),
         };
         let node = |pk: &str, status: &str, member: bool| NodeAccount {
             node_address: format!("addr_{pk}"),
