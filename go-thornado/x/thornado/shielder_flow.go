@@ -901,14 +901,6 @@ func VerifyShieldAuthorization(depositPubkey string, signatureHex string, deposi
 	if err != nil {
 		return err
 	}
-	digest := hashLengthPrefixedParts([]string{
-		"thornado-shielder-v1",
-		"shield-authorization",
-		strings.TrimSpace(depositPubkey),
-		strings.TrimSpace(depositID),
-		fmt.Sprintf("%d", amountSats),
-		string(commitmentsJSON),
-	})
 	rawPubkey, err := secpPubkeyCandidates(strings.TrimSpace(depositPubkey))
 	if err != nil {
 		return fmt.Errorf("invalid deposit pubkey")
@@ -925,10 +917,34 @@ func VerifyShieldAuthorization(depositPubkey string, signatureHex string, deposi
 	if sigS.IsOverHalfOrder() {
 		return fmt.Errorf("high-S signature rejected")
 	}
-	for _, candidate := range rawPubkey {
-		pubkey, err := btcec.ParsePubKey(candidate)
-		if err == nil && signature.Verify(digest, pubkey) {
-			return nil
+	// The deposit id is a hash the caller signs verbatim, but the two verify
+	// call sites disagree on case: the ante passes depositID.String() (NewTxID
+	// upper-cases 64-char hashes) while msg_server passes the raw msg.DepositId.
+	// A client signs whichever case the API returned (lower-case, since the
+	// observer normalizes txids that way), so accept a signature over any case
+	// variant rather than fail one path.
+	trimmedID := strings.TrimSpace(depositID)
+	idCandidates := []string{trimmedID}
+	if upper := strings.ToUpper(trimmedID); upper != trimmedID {
+		idCandidates = append(idCandidates, upper)
+	}
+	if lower := strings.ToLower(trimmedID); lower != trimmedID {
+		idCandidates = append(idCandidates, lower)
+	}
+	for _, idCandidate := range idCandidates {
+		digest := hashLengthPrefixedParts([]string{
+			"thornado-shielder-v1",
+			"shield-authorization",
+			strings.TrimSpace(depositPubkey),
+			idCandidate,
+			fmt.Sprintf("%d", amountSats),
+			string(commitmentsJSON),
+		})
+		for _, candidate := range rawPubkey {
+			pubkey, err := btcec.ParsePubKey(candidate)
+			if err == nil && signature.Verify(digest, pubkey) {
+				return nil
+			}
 		}
 	}
 	return fmt.Errorf("shield authorization signature verification failed")
