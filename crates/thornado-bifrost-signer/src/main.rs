@@ -486,6 +486,7 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
             // and rebuilt only when the held share set changes.
             let addr_to_pubkey = addr_cache
                 .get(&obs_shares, network, &obs_hrp, obs_lookahead)
+                .await
                 .clone();
             let mut vault_addrs: std::collections::HashSet<String> =
                 addr_to_pubkey.keys().cloned().collect();
@@ -661,14 +662,16 @@ fn share_vault_addr(
 /// stamping observations. Includes the root (path 0) plus `deposit_lookahead`
 /// per-deposit child addresses (paths 1..=N), so inbound deposits to a vault's
 /// child addresses are observed (Go bifrost's deposit-address lookahead).
-fn vault_addr_map(
-    shares: &sign_loop::SharedShares,
+/// The address map over an owned slice of shares (so it can run off the async
+/// executor via `spawn_blocking`).
+fn vault_addr_map_from(
+    shares: &[frost_session::StoredShare],
     network: bitcoin::Network,
     hrp: &str,
     deposit_lookahead: u64,
 ) -> std::collections::HashMap<String, String> {
     let mut m = std::collections::HashMap::new();
-    for s in shares.read().unwrap().values() {
+    for s in shares {
         let Ok(pk) = hex::decode(&s.public_key_compressed) else {
             continue;
         };
@@ -705,7 +708,12 @@ impl VaultAddrCache {
         }
     }
 
-    fn get(
+    /// Return the address map, rebuilding on a blocking thread if the share
+    /// set changed. Deriving thousands of taproot child addresses is CPU-bound
+    /// synchronous EC math; running it inline on the async executor stalled the
+    /// FROST join-party handshakes (peers saw "not enough peers online"), so it
+    /// runs via `spawn_blocking`.
+    async fn get(
         &mut self,
         shares: &sign_loop::SharedShares,
         network: bitcoin::Network,
@@ -715,7 +723,16 @@ impl VaultAddrCache {
         let mut fp: Vec<String> = shares.read().unwrap().keys().cloned().collect();
         fp.sort();
         if fp != self.keys_fingerprint {
-            self.map = vault_addr_map(shares, network, hrp, deposit_lookahead);
+            // Snapshot the shares so the blocking task owns its own data.
+            let snapshot: Vec<frost_session::StoredShare> =
+                shares.read().unwrap().values().cloned().collect();
+            let hrp = hrp.to_string();
+            let map = tokio::task::spawn_blocking(move || {
+                vault_addr_map_from(&snapshot, network, &hrp, deposit_lookahead)
+            })
+            .await
+            .unwrap_or_default();
+            self.map = map;
             self.keys_fingerprint = fp;
             tracing::info!(vaults = self.keys_fingerprint.len(), addrs = self.map.len(), "rebuilt vault address watch set");
         }
