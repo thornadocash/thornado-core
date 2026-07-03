@@ -255,6 +255,11 @@ pub struct ThornadoObservationClient {
     broadcast_mode: String,
     key: Option<SignerKey>,
     http: reqwest::Client,
+    /// Next sequence to sign with, tracked locally: the auth endpoint returns
+    /// the CONFIRMED sequence, so back-to-back posts within one block would
+    /// reuse it and get rejected with "incorrect account sequence". The lock
+    /// also serializes concurrent posts from this daemon.
+    next_seq: std::sync::Arc<tokio::sync::Mutex<Option<u64>>>,
 }
 
 impl ThornadoObservationClient {
@@ -269,7 +274,74 @@ impl ThornadoObservationClient {
                 .timeout(std::time::Duration::from_secs(10))
                 .build()
                 .expect("reqwest client"),
+            next_seq: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
         }
+    }
+
+    /// Sign `build` with a sequence that accounts for our own unconfirmed txs
+    /// and broadcast it, retrying once on a sequence-mismatch rejection using
+    /// the sequence the node said it expected.
+    async fn broadcast_with_sequence<F>(&self, build: F) -> Result<String>
+    where
+        F: Fn(u64, u64) -> std::result::Result<Vec<u8>, String>,
+    {
+        let mut guard = self.next_seq.lock().await;
+        let (account_number, fetched) = self.fetch_account().await?;
+        let mut sequence = guard.map_or(fetched, |s| s.max(fetched));
+        for _attempt in 0..2 {
+            let tx_raw = build(account_number, sequence).map_err(BroadcastError::Rpc)?;
+            let result = self.post_tx(&tx_raw).await?;
+            let code = result["code"].as_i64().unwrap_or(0);
+            let hash = result["hash"].as_str().unwrap_or_default().to_string();
+            if code == 0 || code == 6 {
+                *guard = Some(sequence + 1);
+                return Ok(hash);
+            }
+            let log = result["log"].as_str().unwrap_or_default().to_string();
+            if code == 32 {
+                if let Some(expected) = parse_expected_sequence(&log) {
+                    if expected != sequence {
+                        sequence = expected;
+                        continue;
+                    }
+                }
+            }
+            *guard = None;
+            return Err(BroadcastError::Rpc(format!(
+                "broadcast rejected code {code}: {log}"
+            )));
+        }
+        *guard = None;
+        Err(BroadcastError::Rpc(
+            "broadcast rejected: sequence mismatch after retry".into(),
+        ))
+    }
+
+    /// POST a signed TxRaw to CometBFT `broadcast_tx_sync`, returning the
+    /// JSON-RPC `result` object.
+    async fn post_tx(&self, tx_raw: &[u8]) -> Result<serde_json::Value> {
+        use base64::Engine as _;
+        let tx_b64 = base64::engine::general_purpose::STANDARD.encode(tx_raw);
+        let rpc_url = if self.cfg.chain_rpc.starts_with("http") {
+            self.cfg.chain_rpc.clone()
+        } else {
+            format!("http://{}", self.cfg.chain_rpc)
+        };
+        let req = serde_json::json!({
+            "jsonrpc": "2.0", "id": "thornado-bifrost", "method": "broadcast_tx_sync",
+            "params": { "tx": tx_b64 }
+        });
+        let resp: serde_json::Value = self
+            .http
+            .post(&rpc_url)
+            .json(&req)
+            .send()
+            .await
+            .map_err(|e| BroadcastError::Rpc(e.to_string()))?
+            .json()
+            .await
+            .map_err(|e| BroadcastError::Rpc(e.to_string()))?;
+        Ok(resp["result"].clone())
     }
 
     /// Attach the signing key needed to actually post observations.
@@ -344,52 +416,20 @@ impl ThornadoObservationClient {
             .as_ref()
             .ok_or(BroadcastError::Unimplemented("signer key not configured"))?;
 
-        let (account_number, sequence) = self.fetch_account().await?;
         let msg = observation_to_msg(observation, &key.account_bytes);
-        let tx_raw = crate::cosmos_tx::build_and_sign_typed(
-            kind.type_url(),
-            &msg,
-            &key.priv_key,
-            &key.pub_key,
-            &key.chain_id,
-            account_number,
-            sequence,
-        )
-        .map_err(|e| BroadcastError::Rpc(e.to_string()))?;
-
-        // CometBFT broadcast_tx_sync JSON-RPC, tx as base64.
-        use base64::Engine as _;
-        let tx_b64 = base64::engine::general_purpose::STANDARD.encode(&tx_raw);
-        let rpc_url = if self.cfg.chain_rpc.starts_with("http") {
-            self.cfg.chain_rpc.clone()
-        } else {
-            format!("http://{}", self.cfg.chain_rpc)
-        };
-        let req = serde_json::json!({
-            "jsonrpc": "2.0", "id": "thornado-bifrost", "method": "broadcast_tx_sync",
-            "params": { "tx": tx_b64 }
-        });
-        let resp: serde_json::Value = self
-            .http
-            .post(&rpc_url)
-            .json(&req)
-            .send()
-            .await
-            .map_err(|e| BroadcastError::Rpc(e.to_string()))?
-            .json()
-            .await
-            .map_err(|e| BroadcastError::Rpc(e.to_string()))?;
-        let result = &resp["result"];
-        let code = result["code"].as_i64().unwrap_or(0);
-        let hash = result["hash"].as_str().unwrap_or_default().to_string();
-        if code != 0 && code != 6 {
-            // code 6 (unknown request) is ignored like Go; others are errors.
-            return Err(BroadcastError::Rpc(format!(
-                "broadcast rejected code {code}: {}",
-                result["log"].as_str().unwrap_or_default()
-            )));
-        }
-        Ok(hash)
+        self.broadcast_with_sequence(|account_number, sequence| {
+            crate::cosmos_tx::build_and_sign_typed(
+                kind.type_url(),
+                &msg,
+                &key.priv_key,
+                &key.pub_key,
+                &key.chain_id,
+                account_number,
+                sequence,
+            )
+            .map_err(|e| e.to_string())
+        })
+        .await
     }
 
     /// Submit a `MsgKeygenVault` after a churn DKG so the chain forms the new
@@ -406,54 +446,33 @@ impl ThornadoObservationClient {
             .key
             .as_ref()
             .ok_or(BroadcastError::Unimplemented("signer key not configured"))?;
-        let (account_number, sequence) = self.fetch_account().await?;
-        let tx_raw = crate::cosmos_tx::build_and_sign_keygen_vault(
-            members,
-            vault_pub_key,
-            height,
-            keygen_time_ms,
-            chains,
-            &key.account_bytes,
-            &key.priv_key,
-            &key.pub_key,
-            &key.chain_id,
-            account_number,
-            sequence,
-        )
-        .map_err(|e| BroadcastError::Rpc(e.to_string()))?;
-
-        use base64::Engine as _;
-        let tx_b64 = base64::engine::general_purpose::STANDARD.encode(&tx_raw);
-        let rpc_url = if self.cfg.chain_rpc.starts_with("http") {
-            self.cfg.chain_rpc.clone()
-        } else {
-            format!("http://{}", self.cfg.chain_rpc)
-        };
-        let req = serde_json::json!({
-            "jsonrpc": "2.0", "id": "thornado-bifrost", "method": "broadcast_tx_sync",
-            "params": { "tx": tx_b64 }
-        });
-        let resp: serde_json::Value = self
-            .http
-            .post(&rpc_url)
-            .json(&req)
-            .send()
-            .await
-            .map_err(|e| BroadcastError::Rpc(e.to_string()))?
-            .json()
-            .await
-            .map_err(|e| BroadcastError::Rpc(e.to_string()))?;
-        let result = &resp["result"];
-        let code = result["code"].as_i64().unwrap_or(0);
-        let hash = result["hash"].as_str().unwrap_or_default().to_string();
-        if code != 0 && code != 6 {
-            return Err(BroadcastError::Rpc(format!(
-                "keygen-vault rejected code {code}: {}",
-                result["log"].as_str().unwrap_or_default()
-            )));
-        }
-        Ok(hash)
+        self.broadcast_with_sequence(|account_number, sequence| {
+            crate::cosmos_tx::build_and_sign_keygen_vault(
+                members,
+                vault_pub_key,
+                height,
+                keygen_time_ms,
+                chains,
+                &key.account_bytes,
+                &key.priv_key,
+                &key.pub_key,
+                &key.chain_id,
+                account_number,
+                sequence,
+            )
+            .map_err(|e| e.to_string())
+        })
+        .await
     }
+}
+
+/// Extract N from an "incorrect account sequence" rejection log
+/// ("... expected N, got M ...").
+fn parse_expected_sequence(log: &str) -> Option<u64> {
+    let idx = log.find("expected ")?;
+    let rest = &log[idx + "expected ".len()..];
+    let end = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
+    rest[..end].parse().ok()
 }
 
 /// Parse a thornado asset string ("BTC.BTC") into a proto Asset.
