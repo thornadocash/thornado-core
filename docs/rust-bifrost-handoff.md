@@ -1,16 +1,16 @@
 # Rust Bifrost — brief for the next agent
 
-> **Environment (Fable 5, 2026-07-03 ~10:15 UTC).** Regtest/mocknet
+> **Environment (Fable 5, updated 2026-07-03 ~15:20 UTC).** Regtest/mocknet
 > thornado-e2e on disposable hcloud hosts: bitcoind `-regtest`, chain id
 > `thornado-e2e`, all BTC freely-mined test coin, keys/passphrases
 > (`passphrase123`, exported validator keys) exist only in this throwaway
 > cluster. No sensitive/production aspects. Next agent is clear to restart
 > nodes, vote configs, churn, move vault "funds", tear down.
 
-State: chain height ~69244. Branch `shielder-audit-fixes`, HEAD `a74d76c8`
-(17 commits past the prior `bf34a3fa` brief; **branch is local-only, nothing
-pushed** by design). Two sessions worked this branch today — coordination note
-at the bottom.
+State: chain height ~72700. Branch `shielder-audit-fixes`, HEAD `f8f83366`
+(**branch is local-only, nothing pushed** by design). The four open items of
+the previous brief were all closed this session (see the 15:20 fix log); two
+task chips were filed for the remaining design work.
 
 ## Headline: EVERYTHING WORKS
 
@@ -42,14 +42,13 @@ at the bottom.
 
 ## Deployed binaries — UNIFORM, keep it that way
 
-- thornadod `4ea6d6e4…` on all 5 at `/root/thornado/build/thornado`. Has: voted
-  repairs (DEBIT/CREDIT/RESELECT), MsgStoreMigrate (+TXOUTCANCEL last-item fix),
-  case-normalized BTC candidate tracking, **finality-gated** halt-on-unmatched,
-  relaxed internal matcher, **case-insensitive shield-auth deposit id**.
-- bifrost-signer `facaf520…` on all 5 at `/root/rust-bifrost-live/`. Has: DKG
-  retry queue, exact-fee migrate builds, cosmos sequence tracking, **child-path
-  FROST signing**, **deposit child-address watching** (`--deposit-lookahead`
-  512; Go used 4096) via spawn_blocking.
+- thornadod `291d6ca7…` on all 5 at `/root/thornado/build/thornado`. Adds over
+  the 10:15 brief: SHIELDERNOTESWEEP + SHIELDERPURGE voted targets, **BTC batch
+  cap 9 recipients/tx** (btcMaxBatchRecipients).
+- bifrost-signer `68d45ab4…`-lineage on all 5 at `/root/rust-bifrost-live/`
+  (relaunched via swap_churn.sh with `--deposit-lookahead 1024` baked in).
+  Adds: **MsgSolvency posting** (even-height, scantxoutset), **threshold+grace
+  party formation**, `--max-value-outputs` recovery knob.
 - shielder-e2e-helper on coordinator: built **WITH `--features proof-tests`**
   (real Groth16). Prior copy at `…prev-pt`.
 
@@ -77,29 +76,63 @@ Shielder (4 stacked bugs, fixed in order — this was today's second ask):
 4. redeem proofs empty unless FFI built `--features proof-tests` (`groth16:
    None` → chain "invalid proof").
 
-## OPEN ITEMS (none blocking, priority order)
+## 15:20 SESSION — the previous brief's 4 open items, all closed
 
-1. **Party-formation latency** (p95 12 s) — throughput ceiling. Leader waits
-   `party_wait=12s` when members lag; attempts convoy under load. Try
-   join_wait/party_wait tuning or persistent party sessions.
-2. **Solvency oracle is DOWN.** The Go bifrost on node6 was the only
-   MsgSolvency source. On restart it grabbed Rust's FROST port 9346
-   (SO_REUSEPORT → broke party formation) and was killed. Restart:
-   `systemd-run --unit=go-bifrost6-oracle2 --collect /root/run-gobifrost-6b.sh`
-   on node6 (uses `bifrost-6-oracle.env`, `BIFROST_FROST_P2P_PORT=9356` —
-   NEVER 9346). Halts are clear + invariant is active protection meanwhile.
-   Proper fix: wire MsgSolvency posting into the Rust bifrost
-   (attestation.rs is a pure port, not wired to a poster).
-3. **Shielder sync pollution**: ~1,100 orphan `leaf_index:0` notes (pre-fix
-   accumulation) in `/thornado/shielder/sync`; fresh notes index correctly.
-   Clients reconstruct as most-recent-per-index (flow3 jq ~line 372). A
-   store-migrate KVDEL sweep of the orphans would clean it permanently.
-4. Residual regtest dust (all documented, no protocol loss): 350 sats at old
-   root `bcrt1pcsay…`, 0.99 BTC double-paid to miner-controlled recipient,
-   0.495 BTC written off a phantom book.
-5. `--deposit-lookahead` 512 (Go 4096) — fine for e2e; raise via swap_churn
-   args if a run exceeds 512 deposits/vault.
-6. 17 unpushed commits — push/PR when the user asks.
+1. **Solvency: properly wired into the Rust signer** (fd59b521, 33f9cd5d,
+   846135ba). The single Go oracle could NEVER work — SolvencyVoter needs a
+   2/3 supermajority of actives; one attester is structurally insufficient.
+   Each active now posts MsgSolvency per funded base vault at EVEN BTC heights
+   (the id hashes the height; self-relative strides never converge), balance
+   from `scantxoutset` over root+child addr() descriptors (wallet listunspent
+   returns 0 on nodes without imports — three zero votes consensus-halted BTC
+   once; live lesson). Id is byte-exact vs Go common.Solvency.Hash (UPPER hex,
+   golden-vector tested). 4-of-4 vote convergence verified; auto-unhalt path
+   verified live repeatedly. The node6 Go oracle is RETIRED (its bootstrap
+   peers are stale Go peer-ids anyway; killed by swap_churn.sh's pgrep).
+2. **Party formation p95 12s → 3s** (0f388a75, 802b5ede). Leader forms the
+   party at THRESHOLD after a straggler grace (3s default) instead of waiting
+   the full 12s for the 4th member. Fleet under load: n=93, p50 83ms, p95
+   3.0s, max 5.9s. Knobs: --party-wait-secs/--party-grace-secs/
+   --join-wait-secs. DO NOT set join-wait <20s: it doubles as the leader's
+   parked-join TTL and starves demand-driven leading under parallel load.
+3. **Orphan notes purged** via new voted store-migrate targets:
+   SHIELDERNOTESWEEP:<denom> (1b3ea832, 261e204e; 2,646 records inc. the
+   legacy bool entries that broke GetShielderDenominationCommitments) — BUT
+   the note records double as the invariant's mint ledger, so the sweep left
+   spent(8.56B) > minted → the ENFORCED vault_backing invariant halted BTC
+   every block (tug-of-war with solvency auto-unhalt; churn frozen ~2.5h).
+   Resolved with SHIELDERPURGE (f8f83366) — voted PurgeShielderPoolState:
+   wipes mint AND spend ledgers + historical roots together (no stale root
+   can re-prove an erased nullifier). Shielder pool is now EMPTY; next flow
+   re-mints from scratch. Invariant healthy, churn resumed, clean churn
+   verified end-to-end after.
+4. **Pressure + past-512 flood done.** COUNT=25 full flow ran; its 25-output
+   withdrawal exposed THE bug of the day: the chain batcher had NO output
+   cap while BOTH observers ignore >10-output txs — the tx CONFIRMED on BTC
+   but could never be observed/matched (funds moved, items unsigned forever,
+   record undebited). Chain now caps batches at 9 recipients (2f832a6d,
+   big-bang deployed); recovery used the new --max-value-outputs (5c7b3039)
+   raised fleet-wide + --observe-rescan-height to observe tx c0041d38.
+   Deposit flood: 530 request-deposits in 3.5 min (zero errors), deposit at
+   child path 580 observed/matched/swept under --deposit-lookahead 1024 (now
+   baked into swap_churn.sh on all nodes).
+
+## OPEN ITEMS (priority order)
+
+1. **Churn-window solvency flap** (task chip filed): each migration/deposit
+   settlement window flips insolvent→halt→auto-unhalt for ~1 min because the
+   wallet moves at BTC confirmation but the vault record at observation
+   consensus; excludePendingOutboundFromVault misses migrations.
+2. **Sweep/invariant ledger design** (task chip filed): make the mint ledger
+   sweep-proof (cumulative counters) so future sweeps can't orphan spends.
+3. **Party alignment decay**: under parallel 1-item sweep batches, per-node
+   sequential loops drift out of alignment over ~1h (stale parked streams,
+   "failed to answer join request") and throughput grinds; a fleet signer
+   restart (optionally with signer.redb purge) realigns and bursts the
+   backlog. Real fix: persistent party sessions or batched child-path sweeps
+   (child tweak is currently per-tx, forcing 1 tx per deposit path).
+4. Residual regtest dust (unchanged, documented, no protocol loss).
+5. 26 unpushed commits — push/PR when the user asks.
 
 ## Ops recipes (all from the Mac)
 
