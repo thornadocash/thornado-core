@@ -51,9 +51,6 @@ import (
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	txmodule "github.com/cosmos/cosmos-sdk/x/auth/tx/config"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	authz "github.com/cosmos/cosmos-sdk/x/authz"
-	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
-	authzmodule "github.com/cosmos/cosmos-sdk/x/authz/module"
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -62,9 +59,6 @@ import (
 	consensusparamtypes "github.com/cosmos/cosmos-sdk/x/consensus/types"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
-	"github.com/cosmos/cosmos-sdk/x/mint"
-	mintkeeper "github.com/cosmos/cosmos-sdk/x/mint/keeper"
-	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
 	"github.com/cosmos/cosmos-sdk/x/params"
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
@@ -104,7 +98,6 @@ var (
 // module account permissions
 var maccPerms = map[string][]string{
 	authtypes.FeeCollectorName:     nil,
-	minttypes.ModuleName:           {authtypes.Minter},
 	stakingtypes.BondedPoolName:    {authtypes.Burner, authtypes.Staking},
 	stakingtypes.NotBondedPoolName: {authtypes.Burner, authtypes.Staking},
 	thornado.ModuleName:            {authtypes.Minter, authtypes.Burner},
@@ -132,10 +125,8 @@ type ThornadoApp struct {
 
 	// keepers
 	AccountKeeper authkeeper.AccountKeeper
-	AuthzKeeper   authzkeeper.Keeper
 	BankKeeper    bankkeeper.BaseKeeper
 	StakingKeeper *stakingkeeper.Keeper
-	MintKeeper    mintkeeper.Keeper
 	UpgradeKeeper *upgradekeeper.Keeper
 	// trunk-ignore(golangci-lint/staticcheck): deprecated TODO: SDK 0.53 cleanup
 	ParamsKeeper          paramskeeper.Keeper
@@ -222,10 +213,8 @@ func NewChainApp(
 
 	keys := storetypes.NewKVStoreKeys(
 		authtypes.StoreKey,
-		authzkeeper.StoreKey,
 		banktypes.StoreKey,
 		stakingtypes.StoreKey,
-		minttypes.StoreKey,
 		paramstypes.StoreKey,
 		consensusparamtypes.StoreKey,
 		upgradetypes.StoreKey,
@@ -279,12 +268,6 @@ func NewChainApp(
 		sdk.GetConfig().GetBech32AccountAddrPrefix(),
 		authtypes.NewModuleAddress(thornado.ModuleName).String(),
 	)
-	app.AuthzKeeper = authzkeeper.NewKeeper(
-		runtime.NewKVStoreService(keys[authzkeeper.StoreKey]),
-		app.appCodec,
-		app.MsgServiceRouter(),
-		app.AccountKeeper,
-	)
 	app.BankKeeper = bankkeeper.NewBaseKeeper(
 		app.appCodec,
 		runtime.NewKVStoreService(keys[banktypes.StoreKey]),
@@ -313,15 +296,6 @@ func NewChainApp(
 		authtypes.NewModuleAddress(thornado.ModuleName).String(),
 		authcodec.NewBech32Codec(sdk.GetConfig().GetBech32ValidatorAddrPrefix()),
 		authcodec.NewBech32Codec(sdk.GetConfig().GetBech32ConsensusAddrPrefix()),
-	)
-	app.MintKeeper = mintkeeper.NewKeeper(
-		app.appCodec,
-		runtime.NewKVStoreService(keys[minttypes.StoreKey]),
-		app.StakingKeeper,
-		app.AccountKeeper,
-		app.BankKeeper,
-		authtypes.FeeCollectorName,
-		authtypes.NewModuleAddress(thornado.ModuleName).String(),
 	)
 
 	// get skipUpgradeHeights from the app options
@@ -369,7 +343,6 @@ func NewChainApp(
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 	authModule := auth.NewAppModule(app.appCodec, app.AccountKeeper, authsims.RandomGenesisAccounts, app.GetSubspace(authtypes.ModuleName))
-	authzModule := authzmodule.NewAppModule(app.appCodec, app.AuthzKeeper, app.AccountKeeper, app.BankKeeper, app.InterfaceRegistry())
 	bankModule := bank.NewAppModule(app.appCodec, app.BankKeeper, app.AccountKeeper, app.GetSubspace(banktypes.ModuleName))
 	consensusModule := consensus.NewAppModule(app.appCodec, app.ConsensusParamsKeeper)
 	genutilModule := genutil.NewAppModule(app.AccountKeeper, app.StakingKeeper, app, txConfig)
@@ -381,7 +354,6 @@ func NewChainApp(
 	app.ModuleManager = module.NewManager(
 		genutilModule,
 		authModule,
-		authzModule,
 		bankModule,
 		stakingModule,
 		upgradeModule,
@@ -398,13 +370,11 @@ func NewChainApp(
 	app.BasicModuleManager = module.NewBasicManager(
 		genutil.NewAppModuleBasic(genutiltypes.DefaultMessageValidator),
 		authModule,
-		authzModule,
 		bankModule,
 		upgradeModule,
 		paramsModule,
 		consensusModule,
 		stakingModule,
-		mint.NewAppModule(app.appCodec, app.MintKeeper, app.AccountKeeper, nil, app.GetSubspace(minttypes.ModuleName)),
 		// non sdk modules
 		thornadoModule,
 	)
@@ -419,7 +389,6 @@ func NewChainApp(
 	// NOTE: staking module is required if HistoricalEntries param > 0
 	app.ModuleManager.SetOrderBeginBlockers(
 		genutiltypes.ModuleName,
-		authz.ModuleName,
 		stakingtypes.ModuleName,
 
 		// additional non simd modules
@@ -428,7 +397,6 @@ func NewChainApp(
 
 	app.ModuleManager.SetOrderEndBlockers(
 		genutiltypes.ModuleName,
-		authz.ModuleName,
 		stakingtypes.ModuleName,
 
 		// additional non simd modules
@@ -441,7 +409,6 @@ func NewChainApp(
 	genesisModuleOrder := []string{
 		// simd modules
 		authtypes.ModuleName,
-		authz.ModuleName,
 		banktypes.ModuleName,
 		stakingtypes.ModuleName,
 		genutiltypes.ModuleName,
@@ -830,7 +797,6 @@ func initParamsKeeper(appCodec codec.BinaryCodec, legacyAmino *codec.LegacyAmino
 	paramsKeeper.Subspace(authtypes.ModuleName)
 	paramsKeeper.Subspace(banktypes.ModuleName)
 	paramsKeeper.Subspace(stakingtypes.ModuleName)
-	paramsKeeper.Subspace(minttypes.ModuleName)
 
 	return paramsKeeper
 }

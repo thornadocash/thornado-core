@@ -7,8 +7,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/runtime"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
-	"github.com/thornadocash/go-thornado/constants"
-	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 func (k KVStore) setTxOut(ctx cosmos.Context, key []byte, record TxOut) {
@@ -34,71 +32,29 @@ func (k KVStore) getTxOut(ctx cosmos.Context, key []byte, record *TxOut) (bool, 
 	return true, nil
 }
 
-// AppendTxOut - append the given item to txOut
+// AppendTxOut - append the given item to a txOut block at or after the given height.
+// Batchable outbounds are grouped per vault by the x/thornado batch flow before
+// reaching the keeper; here every item gets a free block so it can never join a
+// pending batch it does not belong to.
 func (k KVStore) AppendTxOut(ctx cosmos.Context, height int64, item TxOutItem) error {
 	item.TxType = item.GetTxType()
-	if types.IsBatchableTxOutType(item.TxType) {
-		height, epoch := k.GetTxOutBatch(ctx, height)
-		block, err := k.GetTxOut(ctx, height)
+	var block *TxOut
+	for offset := int64(0); offset < 1000; offset++ {
+		candidate, err := k.GetTxOut(ctx, height+offset)
 		if err != nil {
 			return err
 		}
-		block.Epoch = epoch
-		if block.Status == "" {
-			block.Status = TxOutStatusPendingBatch
+		if candidate.IsEmpty() || candidate.Status == "" {
+			block = candidate
+			break
 		}
-		block.TxArray = append(block.TxArray, item)
-		return k.SetTxOut(ctx, block)
 	}
-
-	block, err := k.GetTxOut(ctx, height)
-	if err != nil {
-		return err
+	if block == nil {
+		return fmt.Errorf("fail to find empty txout slot from height %d", height)
 	}
-	if block.Status == "" {
-		block.Status = TxOutStatusPendingSign
-	}
+	block.Status = TxOutStatusPendingSign
 	block.TxArray = append(block.TxArray, item)
 	return k.SetTxOut(ctx, block)
-}
-
-func (k KVStore) GetTxOutBatch(ctx cosmos.Context, height int64) (int64, uint64) {
-	windowBlocks := constants.MinutesToBlocks(
-		k.GetConfigInt64(ctx, constants.Withdrawal_BatchWindowMinutes),
-		k.GetConfigInt64(ctx, constants.Chain_BlockTimeSeconds),
-	)
-	if windowBlocks <= 0 {
-		return height, 0
-	}
-	origin := k.getTxOutBatchOrigin(ctx, windowBlocks)
-	epoch := uint64((height - origin) / windowBlocks)
-	closeHeight := origin + (int64(epoch)+1)*windowBlocks
-	return closeHeight, epoch
-}
-
-func (k KVStore) getTxOutBatchOrigin(ctx cosmos.Context, windowBlocks int64) int64 {
-	const maxInt64 = int64(^uint64(0) >> 1)
-	origin := maxInt64
-	iterator := k.GetTxOutIterator(ctx)
-	defer iterator.Close()
-
-	for ; iterator.Valid(); iterator.Next() {
-		var txOut TxOut
-		if err := k.cdc.Unmarshal(iterator.Value(), &txOut); err != nil {
-			continue
-		}
-		if txOut.Status == "" {
-			continue
-		}
-		candidate := txOut.Height - (int64(txOut.Epoch)+1)*windowBlocks
-		if candidate < origin {
-			origin = candidate
-		}
-	}
-	if origin == maxInt64 {
-		return ctx.BlockHeight()
-	}
-	return origin
 }
 
 // ClearTxOut - remove the txout of the given height from key value  store

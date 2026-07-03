@@ -143,6 +143,14 @@ func (s *BitcoinTemporalStorageTestSuite) TestSpentUtxoHandling(c *C) {
 	c.Assert(ids[0], Equals, id2)
 	c.Assert(ids[1], Equals, id3)
 
+	heights, err := store.FindSpentUtxoHeights(id2)
+	c.Assert(err, IsNil)
+	c.Assert(heights, DeepEquals, []int64{100})
+
+	heights, err = store.FindSpentUtxoHeights(id3)
+	c.Assert(err, IsNil)
+	c.Assert(heights, DeepEquals, []int64{100})
+
 	// no ids set for height 101
 	ids, err = store.GetSpentUtxosByHeight(101)
 	c.Assert(err, IsNil)

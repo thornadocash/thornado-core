@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcutil"
-	btctxscript "github.com/thornadocash/go-thornado/bifrost/txscript/txscript"
+	"github.com/btcsuite/btcd/btcutil"
+	btctxscript "github.com/btcsuite/btcd/txscript"
 
 	btypes "github.com/thornadocash/go-thornado/bifrost/blockscanner/types"
 	"github.com/thornadocash/go-thornado/bifrost/metrics"

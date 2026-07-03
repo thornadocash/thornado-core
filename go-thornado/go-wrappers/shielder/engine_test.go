@@ -1,9 +1,89 @@
 package shielder
 
 import (
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"math/big"
+	"strings"
 	"testing"
 )
+
+// hexRootToDecimal mirrors thornado.ComputeShielderMerkleRoot: MerkleRoot returns a
+// little-endian field-hex root, which the keeper stores as a big-endian decimal.
+func hexRootToDecimal(t *testing.T, rootHex string) string {
+	t.Helper()
+	raw, err := hex.DecodeString(strings.TrimPrefix(strings.TrimSpace(rootHex), "0x"))
+	if err != nil {
+		t.Fatalf("decode root hex: %v", err)
+	}
+	for left, right := 0, len(raw)-1; left < right; left, right = left+1, right-1 {
+		raw[left], raw[right] = raw[right], raw[left]
+	}
+	return new(big.Int).SetBytes(raw).String()
+}
+
+func TestMerkleAppendMatchesFullRoot(t *testing.T) {
+	var leaves []string
+	for i := range 5 {
+		receiptJSON, err := DeriveShieldReceipt(fmt.Sprintf("append-%d", i), 100_000_000, "seed")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var receipt struct {
+			Notes []struct {
+				Commitment string `json:"commitment"`
+			} `json:"notes"`
+		}
+		if err := json.Unmarshal([]byte(receiptJSON), &receipt); err != nil {
+			t.Fatal(err)
+		}
+		leaves = append(leaves, receipt.Notes[0].Commitment)
+	}
+
+	filled := []string{}
+	var incrementalRoot string
+	for i, leaf := range leaves {
+		reqJSON, err := json.Marshal(map[string]any{
+			"filled_subtrees": filled,
+			"next_index":      i,
+			"leaf":            leaf,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		respJSON, err := MerkleAppend(string(reqJSON))
+		if err != nil {
+			t.Fatalf("append %d: %v", i, err)
+		}
+		var resp struct {
+			Root           string   `json:"root"`
+			FilledSubtrees []string `json:"filled_subtrees"`
+		}
+		if err := json.Unmarshal([]byte(respJSON), &resp); err != nil {
+			t.Fatal(err)
+		}
+		filled = resp.FilledSubtrees
+
+		// After each append the incremental root must equal a full recompute over the
+		// same prefix, so a client rebuilding the tree from the leaf list agrees.
+		prefixJSON, err := json.Marshal(leaves[:i+1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		fullHex, err := MerkleRoot(string(prefixJSON))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := hexRootToDecimal(t, fullHex); resp.Root != want {
+			t.Fatalf("append %d root mismatch: got %s want %s", i, resp.Root, want)
+		}
+		incrementalRoot = resp.Root
+	}
+	if incrementalRoot == "" {
+		t.Fatal("expected a root")
+	}
+}
 
 func TestDeriveShieldReceiptThroughRustFFI(t *testing.T) {
 	receiptJSON, err := DeriveShieldReceipt("dep-1", 100_000_000, "client-seed")

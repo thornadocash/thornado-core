@@ -219,6 +219,8 @@ func (s *ConfAdjustmentSuite) TestGetConfMulBasisPoint(c *C) {
 	bridge := &mockBridge{}
 	val, err := GetConfMulBasisPoint("BTC", bridge)
 	c.Assert(err, IsNil)
+	// Under the mocknet build, conf adjustment is disabled and the multiplier
+	// is fixed at MaxBasisPts (test networks don't rate-adjust confirmations).
 	c.Assert(val.Uint64(), Equals, uint64(constants.MaxBasisPts))
 }
 

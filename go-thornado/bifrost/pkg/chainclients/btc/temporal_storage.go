@@ -3,6 +3,7 @@ package btc
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rs/zerolog/log"
@@ -353,6 +354,33 @@ func (t *TemporalStorage) GetSpentUtxosByHeight(height int64) ([]string, error) 
 	}
 
 	return record.Ids, nil
+}
+
+func (t *TemporalStorage) FindSpentUtxoHeights(id string) ([]int64, error) {
+	if id == "" {
+		return nil, nil
+	}
+	iterator := t.db.NewIterator(util.BytesPrefix([]byte(PrefixSpentUtxoByHeight)), nil)
+	defer iterator.Release()
+	var heights []int64
+	for ; iterator.Next(); iterator.Valid() {
+		buf := iterator.Value()
+		if len(buf) == 0 {
+			continue
+		}
+		var record SpentUtxosByHeight
+		if err := json.Unmarshal(buf, &record); err != nil {
+			return nil, fmt.Errorf("fail to unmarshal utxo data: %w", err)
+		}
+		for _, spentID := range record.Ids {
+			if spentID == id {
+				heights = append(heights, record.Height)
+				break
+			}
+		}
+	}
+	sort.Slice(heights, func(i, j int) bool { return heights[i] < heights[j] })
+	return heights, iterator.Error()
 }
 
 func (t *TemporalStorage) setSpentUtxosByHeight(ids []string, height int64) error {

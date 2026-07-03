@@ -409,6 +409,23 @@ func (k KVStoreDummy) SetNodeConfig(_ cosmos.Context, key string, value int64, a
 }
 func (k KVStoreDummy) DeleteNodeConfigs(_ cosmos.Context, key string)           {}
 func (k KVStoreDummy) PurgeOperationalNodeConfigs(_ cosmos.Context)             {}
+func (k KVStoreDummy) GetStoreMigrateVotes(_ cosmos.Context, key string) StoreMigrateVotes {
+	return StoreMigrateVotes{Votes: map[string]string{}}
+}
+func (k KVStoreDummy) SetStoreMigrateVote(_ cosmos.Context, key, value string, acc cosmos.AccAddress) {
+}
+func (k KVStoreDummy) DeleteStoreMigrateVotes(_ cosmos.Context, key string) {}
+func (k KVStoreDummy) GetStoreMigrateApplied(_ cosmos.Context, key string) (string, bool) {
+	return "", false
+}
+func (k KVStoreDummy) SetStoreMigrateApplied(_ cosmos.Context, key, value string) {}
+func (k KVStoreDummy) SetRawStoreValue(_ cosmos.Context, key, value []byte) error { return kaboom }
+func (k KVStoreDummy) GetRawStoreValue(_ cosmos.Context, key []byte) ([]byte, bool) {
+	return nil, false
+}
+func (k KVStoreDummy) DeleteRawStoreValue(_ cosmos.Context, key []byte)  {}
+func (k KVStoreDummy) ValidateRawStoreValue(key, value []byte) error     { return kaboom }
+func (k KVStoreDummy) ValidateRawStoreKey(key []byte) error              { return kaboom }
 func (k KVStoreDummy) DeleteConfig(_ cosmos.Context, key string) error          { return kaboom }
 func (k KVStoreDummy) GetConfigIterator(ctx cosmos.Context) cosmos.Iterator     { return nil }
 func (k KVStoreDummy) GetNodeConfigIterator(ctx cosmos.Context) cosmos.Iterator { return nil }
@@ -596,12 +613,22 @@ func (k KVStoreDummy) GetShielderNoteRecordIterator(_ cosmos.Context) cosmos.Ite
 func (k KVStoreDummy) GetShielderNoteRecordIteratorAfter(_ cosmos.Context, _ string) cosmos.Iterator {
 	return NewDummyIterator()
 }
-func (k KVStoreDummy) SetShielderDenominationCommitment(_ cosmos.Context, _ uint64, _ string) error {
+func (k KVStoreDummy) SetShielderDenominationLeaf(_ cosmos.Context, _, _ uint64, _ string) error {
 	return nil
 }
 func (k KVStoreDummy) GetShielderDenominationCommitments(_ cosmos.Context, _ uint64) ([]string, error) {
 	return nil, nil
 }
+func (k KVStoreDummy) SweepOrphanShielderNoteRecords(_ cosmos.Context, _ uint64) (int, error) {
+	return 0, nil
+}
+func (k KVStoreDummy) SetShielderTreeState(_ cosmos.Context, _ types.StoredShielderTreeState) error {
+	return nil
+}
+func (k KVStoreDummy) GetShielderTreeState(_ cosmos.Context, denominationSats uint64) (types.StoredShielderTreeState, bool, error) {
+	return types.StoredShielderTreeState{DenominationSats: denominationSats}, false, nil
+}
+func (k KVStoreDummy) PurgeShielderPoolState(_ cosmos.Context) {}
 func (k KVStoreDummy) SetShielderMerkleRoot(_ cosmos.Context, _ uint64, _ string) error {
 	return nil
 }
@@ -620,6 +647,13 @@ func (k KVStoreDummy) GetShielderRedeem(_ cosmos.Context, _ string) (types.Shiel
 func (k KVStoreDummy) GetShielderRedeemByNullifier(_ cosmos.Context, _ string) (types.ShielderRedeem, error) {
 	return types.ShielderRedeem{}, nil
 }
+func (k KVStoreDummy) SetShielderRedeemOutHash(_ cosmos.Context, _, _ string) error {
+	return nil
+}
+func (k KVStoreDummy) GetShielderRedeemByOutHash(_ cosmos.Context, _ string) (types.ShielderRedeem, bool, error) {
+	return types.ShielderRedeem{}, false, nil
+}
+func (k KVStoreDummy) DeleteShielderRedeemOutHash(_ cosmos.Context, _ string) {}
 func (k KVStoreDummy) SetShielderNullifierSpent(_ cosmos.Context, _, _ string) error {
 	return nil
 }

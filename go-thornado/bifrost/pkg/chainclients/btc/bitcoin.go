@@ -14,8 +14,8 @@ import (
 	btcchaincfg "github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	btcwire "github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
-	btctxscript "github.com/thornadocash/go-thornado/bifrost/txscript/txscript"
+	"github.com/btcsuite/btcd/btcutil"
+	btctxscript "github.com/btcsuite/btcd/txscript"
 
 	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"

@@ -10,15 +10,11 @@ import (
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
 	"github.com/thornadocash/go-thornado/bifrost/p2p/storage"
 	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/btc"
-	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/shared/types"
 	"github.com/thornadocash/go-thornado/bifrost/pubkeymanager"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
 )
-
-// ChainClient exports the shared type.
-type ChainClient = types.ChainClient
 
 // LoadChains returns chain clients from chain configuration
 func LoadChains(thorKeys *thornadoclient.Keys,
@@ -28,14 +24,14 @@ func LoadChains(thorKeys *thornadoclient.Keys,
 	m *metrics.Metrics,
 	pubKeyValidator pubkeymanager.PubKeyValidator,
 	coordinator frost.SessionCoordinator,
-) (chains map[common.Chain]ChainClient, restart chan struct{}) {
+) (chains map[common.Chain]*btc.Client, restart chan struct{}) {
 	logger := log.Logger.With().Str("module", "bifrost").Logger()
 
-	chains = make(map[common.Chain]ChainClient)
+	chains = make(map[common.Chain]*btc.Client)
 	restart = make(chan struct{})
 	failedChains := []common.Chain{}
 
-	loadChain := func(chain config.BifrostChainConfiguration) (ChainClient, error) {
+	loadChain := func(chain config.BifrostChainConfiguration) (*btc.Client, error) {
 		if chain.ChainID != common.BTCChain {
 			return nil, fmt.Errorf("chain %s is not supported by thornado bifrost", chain.ChainID)
 		}
@@ -55,10 +51,8 @@ func LoadChains(thorKeys *thornadoclient.Keys,
 			continue
 		}
 
-		// trunk-ignore-all(golangci-lint/forcetypeassert)
-		utxoClient := client.(*btc.Client)
-		pubKeyValidator.RegisterCallback(utxoClient.RegisterPublicKey)
-		pubKeyValidator.RegisterPathCallback(utxoClient.RegisterPublicKeyAtPath)
+		pubKeyValidator.RegisterCallback(client.RegisterPublicKey)
+		pubKeyValidator.RegisterPathCallback(client.RegisterPublicKeyAtPath)
 		chains[chain.ChainID] = client
 	}
 

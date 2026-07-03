@@ -13,7 +13,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcjson"
 	btcwire "github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	stypes "github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
@@ -632,6 +632,9 @@ func (c *Client) recoverSpentSweepObservation(tx stypes.TxOutItem) (*stypes.TxIn
 }
 
 func (c *Client) findSpendingTx(input stypes.TxOutInput) (*btcjson.TxRawResult, int64, error) {
+	if input.TxID.IsEmpty() {
+		return nil, 0, fmt.Errorf("empty BTC source input tx id")
+	}
 	source, err := c.rpc.GetRawTransactionVerbose(input.TxID.String())
 	if err != nil {
 		return nil, 0, fmt.Errorf("fail to query sweep source tx %s: %w", input.TxID, err)
@@ -639,16 +642,21 @@ func (c *Client) findSpendingTx(input stypes.TxOutInput) (*btcjson.TxRawResult, 
 	if source == nil || source.BlockHash == "" {
 		return nil, 0, nil
 	}
-	sourceBlock, err := c.rpc.GetBlockVerbose(source.BlockHash)
+
+	unspent, err := c.rpc.GetTxOut(input.TxID.String(), input.Vout, true)
 	if err != nil {
-		return nil, 0, fmt.Errorf("fail to query sweep source block %s: %w", source.BlockHash, err)
+		return nil, 0, fmt.Errorf("fail to query BTC source output %s:%d: %w", input.TxID, input.Vout, err)
 	}
-	best, err := c.rpc.GetBlockCount()
+	if unspent != nil {
+		return nil, 0, nil
+	}
+
+	heights, err := c.temporalStorage.FindSpentUtxoHeights(formatUtxoKey(strings.ToLower(input.TxID.String()), input.Vout))
 	if err != nil {
-		return nil, 0, fmt.Errorf("fail to query BTC block count: %w", err)
+		return nil, 0, fmt.Errorf("fail to query spent BTC source index %s:%d: %w", input.TxID, input.Vout, err)
 	}
 	targetTxID := strings.ToLower(input.TxID.String())
-	for height := sourceBlock.Height; height <= best; height++ {
+	for _, height := range heights {
 		hash, err := c.rpc.GetBlockHash(height)
 		if err != nil {
 			return nil, 0, fmt.Errorf("fail to query BTC block hash %d: %w", height, err)
@@ -739,6 +747,14 @@ func (c *Client) observationFromRecoveredSweep(tx stypes.TxOutItem, input stypes
 // producing or signing an outbound transaction.
 func (c *Client) SourceTxMissing(tx stypes.TxOutItem, thornadoHeight int64) (bool, error) {
 	if tx.TxType != "sweep" {
+		return false, nil
+	}
+	if !c.IsBlockScannerHealthy() {
+		c.log.Debug().
+			Stringer("in_hash", tx.InHash).
+			Uint64("vault_path_index", tx.VaultPathIndex).
+			Int64("thornado_height", thornadoHeight).
+			Msg("deferring BTC sweep source missing check while block scanner is unhealthy")
 		return false, nil
 	}
 	if c.signerCacheManager.HasSigned(tx.CacheHash()) {

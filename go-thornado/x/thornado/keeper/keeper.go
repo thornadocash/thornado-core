@@ -183,14 +183,21 @@ type KeeperShielder interface {
 	SetShielderNoteRecord(ctx cosmos.Context, record types.StoredShielderNoteRecord) error
 	GetShielderNoteRecordIterator(ctx cosmos.Context) cosmos.Iterator
 	GetShielderNoteRecordIteratorAfter(ctx cosmos.Context, cursor string) cosmos.Iterator
-	SetShielderDenominationCommitment(ctx cosmos.Context, denominationSats uint64, commitment string) error
+	SetShielderDenominationLeaf(ctx cosmos.Context, denominationSats, index uint64, commitment string) error
 	GetShielderDenominationCommitments(ctx cosmos.Context, denominationSats uint64) ([]string, error)
+	SweepOrphanShielderNoteRecords(ctx cosmos.Context, denominationSats uint64) (int, error)
+	SetShielderTreeState(ctx cosmos.Context, state types.StoredShielderTreeState) error
+	GetShielderTreeState(ctx cosmos.Context, denominationSats uint64) (types.StoredShielderTreeState, bool, error)
+	PurgeShielderPoolState(ctx cosmos.Context)
 	SetShielderMerkleRoot(ctx cosmos.Context, denominationSats uint64, root string) error
 	ShielderMerkleRootExists(ctx cosmos.Context, denominationSats uint64, root string) bool
 	GetShielderMerkleRootIterator(ctx cosmos.Context) cosmos.Iterator
 	SetShielderRedeem(ctx cosmos.Context, withdrawal types.ShielderRedeem) error
 	GetShielderRedeem(ctx cosmos.Context, withdrawalID string) (types.ShielderRedeem, error)
 	GetShielderRedeemByNullifier(ctx cosmos.Context, nullifierHash string) (types.ShielderRedeem, error)
+	SetShielderRedeemOutHash(ctx cosmos.Context, outHash, withdrawalID string) error
+	GetShielderRedeemByOutHash(ctx cosmos.Context, outHash string) (types.ShielderRedeem, bool, error)
+	DeleteShielderRedeemOutHash(ctx cosmos.Context, outHash string)
 	SetShielderNullifierSpent(ctx cosmos.Context, nullifierHash string, withdrawalID string) error
 	ShielderNullifierSpent(ctx cosmos.Context, nullifierHash string) bool
 	GetShielderNullifierIterator(ctx cosmos.Context) cosmos.Iterator
@@ -280,6 +287,16 @@ type KeeperConfigStore interface {
 	SetNodeConfig(_ cosmos.Context, key string, value int64, acc cosmos.AccAddress) error
 	DeleteNodeConfigs(ctx cosmos.Context, key string)
 	PurgeOperationalNodeConfigs(ctx cosmos.Context)
+	GetStoreMigrateVotes(ctx cosmos.Context, key string) StoreMigrateVotes
+	SetStoreMigrateVote(ctx cosmos.Context, key, value string, acc cosmos.AccAddress)
+	DeleteStoreMigrateVotes(ctx cosmos.Context, key string)
+	GetStoreMigrateApplied(ctx cosmos.Context, key string) (string, bool)
+	SetStoreMigrateApplied(ctx cosmos.Context, key, value string)
+	SetRawStoreValue(ctx cosmos.Context, key, value []byte) error
+	GetRawStoreValue(ctx cosmos.Context, key []byte) ([]byte, bool)
+	DeleteRawStoreValue(ctx cosmos.Context, key []byte)
+	ValidateRawStoreValue(key, value []byte) error
+	ValidateRawStoreKey(key []byte) error
 	GetConfigIterator(ctx cosmos.Context) cosmos.Iterator
 	GetNodeConfigIterator(ctx cosmos.Context) cosmos.Iterator
 	DeleteConfig(_ cosmos.Context, key string) error

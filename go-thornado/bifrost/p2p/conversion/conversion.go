@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
-	crypto2 "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	crypto2 "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 // GetPeerIDFromSecp256PubKey converts a secp256k1 public key into a peer.ID.

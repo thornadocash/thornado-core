@@ -16,10 +16,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	cmtsecp256k1 "github.com/cometbft/cometbft/crypto/secp256k1"
 
 	"github.com/thornadocash/go-thornado/bifrost/blockscanner"
@@ -156,7 +156,7 @@ func NewClient(
 	if err != nil {
 		return nil, fmt.Errorf("fail to create vault signer: %w", err)
 	}
-	nodePrivKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), thorPrivateKey.Bytes())
+	nodePrivKey, _ := btcec.PrivKeyFromBytes(thorPrivateKey.Bytes())
 	nodePubKey, err := bech32AccountPubKey(nodePrivKey)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get node account public key: %w", err)
@@ -243,7 +243,7 @@ func NewObserveOnlyClient(
 	if err != nil {
 		return nil, fmt.Errorf("fail to get Thornado private key: %w", err)
 	}
-	nodePrivKey, _ := btcec.PrivKeyFromBytes(btcec.S256(), thorPrivateKey.Bytes())
+	nodePrivKey, _ := btcec.PrivKeyFromBytes(thorPrivateKey.Bytes())
 	nodePubKey, err := bech32AccountPubKey(nodePrivKey)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get node account public key: %w", err)
@@ -291,6 +291,9 @@ func (c *Client) ClearFrostPartyLeader() {
 
 // IsBlockScannerHealthy returns true if the block scanner is healthy.
 func (c *Client) IsBlockScannerHealthy() bool {
+	if c == nil || c.blockScanner == nil {
+		return false
+	}
 	return c.blockScanner.IsHealthy()
 }
 

@@ -54,6 +54,7 @@ type PubKeyManager struct {
 	stopChan       chan struct{}
 	callback       []OnNewPubKey
 	pathCallback   []OnNewPubKeyPath
+	pathCallbackMu *sync.Mutex
 	vaultAddresses map[string]common.ChainVaultInfo
 }
 
@@ -68,6 +69,7 @@ func NewPubKeyManager(bridge thornadoclient.ThornadoBridge, m *metrics.Metrics) 
 		rwMutex:        &sync.RWMutex{},
 		callback:       []OnNewPubKey{},
 		pathCallback:   []OnNewPubKeyPath{},
+		pathCallbackMu: &sync.Mutex{},
 		vaultAddresses: map[string]common.ChainVaultInfo{},
 	}, nil
 }
@@ -193,11 +195,12 @@ func (pkm *PubKeyManager) addPubKeyInternal(pk common.PubKey, signer bool, algo 
 
 	if newSecpKey {
 		pkm.fireCallback(pk)
-		pkm.addDepositAddressLookahead(pk)
+		pkm.cacheDepositAddressLookahead(pk)
+		go pkm.fireDepositAddressLookahead(pk)
 	}
 }
 
-func (pkm *PubKeyManager) addDepositAddressLookahead(pk common.PubKey) {
+func (pkm *PubKeyManager) cacheDepositAddressLookahead(pk common.PubKey) []uint64 {
 	type depositAddress struct {
 		pathIndex uint64
 		address   string
@@ -205,6 +208,7 @@ func (pkm *PubKeyManager) addDepositAddressLookahead(pk common.PubKey) {
 	}
 
 	addrs := make([]depositAddress, 0, common.DepositAddressLookahead*2)
+	seenPaths := make(map[uint64]struct{}, common.DepositAddressLookahead)
 	for _, pathType := range []common.VaultDepositPathType{common.VaultDepositPathUser, common.VaultDepositPathNode} {
 		pathIndexes, err := common.VaultDepositLookaheadPathIndexes(pathType)
 		if err != nil {
@@ -212,6 +216,10 @@ func (pkm *PubKeyManager) addDepositAddressLookahead(pk common.PubKey) {
 			continue
 		}
 		for _, pathIndex := range pathIndexes {
+			if _, ok := seenPaths[pathIndex]; ok {
+				continue
+			}
+			seenPaths[pathIndex] = struct{}{}
 			addr, err := common.DeriveBTCTaprootAddress(pk, pathIndex)
 			if err != nil {
 				pkm.logger.Error().Err(err).Str("pubkey", pk.String()).Uint64("path_index", pathIndex).Msg("fail to derive shielder deposit address")
@@ -235,9 +243,11 @@ func (pkm *PubKeyManager) addDepositAddressLookahead(pk common.PubKey) {
 	}
 	pkm.rwMutex.Unlock()
 
+	paths := make([]uint64, 0, len(addrs))
 	for _, item := range addrs {
-		pkm.firePathCallback(pk, item.pathIndex)
+		paths = append(paths, item.pathIndex)
 	}
+	return paths
 }
 
 // AddNodePubKey add the given public key as a node public key to internal storage
@@ -399,8 +409,10 @@ func (pkm *PubKeyManager) RegisterCallback(callback OnNewPubKey) {
 func (pkm *PubKeyManager) RegisterPathCallback(callback OnNewPubKeyPath) {
 	pkm.pathCallback = append(pkm.pathCallback, callback)
 	for _, pk := range pkm.secpPubKeySnapshot() {
-		pkm.addDepositAddressLookahead(pk)
-		go pkm.fireDepositAddressLookaheadToCallback(pk, callback)
+		go func(pk common.PubKey) {
+			pkm.cacheDepositAddressLookahead(pk)
+			pkm.fireDepositAddressLookaheadToCallback(pk, callback)
+		}(pk)
 	}
 }
 
@@ -419,6 +431,10 @@ func (pkm *PubKeyManager) secpPubKeySnapshot() common.PubKeys {
 }
 
 func (pkm *PubKeyManager) fireDepositAddressLookaheadToCallback(pk common.PubKey, callback OnNewPubKeyPath) {
+	pkm.lockPathCallbacks()
+	defer pkm.unlockPathCallbacks()
+
+	seenPaths := make(map[uint64]struct{}, common.DepositAddressLookahead)
 	for _, pathType := range []common.VaultDepositPathType{common.VaultDepositPathUser, common.VaultDepositPathNode} {
 		pathIndexes, err := common.VaultDepositLookaheadPathIndexes(pathType)
 		if err != nil {
@@ -426,10 +442,33 @@ func (pkm *PubKeyManager) fireDepositAddressLookaheadToCallback(pk common.PubKey
 			continue
 		}
 		for _, pathIndex := range pathIndexes {
+			if _, ok := seenPaths[pathIndex]; ok {
+				continue
+			}
+			seenPaths[pathIndex] = struct{}{}
 			if err := callback(pk, pathIndex); err != nil {
 				pkm.logger.Err(err).Uint64("path_index", pathIndex).Msg("fail to call path callback")
 			}
 		}
+	}
+}
+
+func (pkm *PubKeyManager) lockPathCallbacks() {
+	if pkm.pathCallbackMu == nil {
+		pkm.pathCallbackMu = &sync.Mutex{}
+	}
+	pkm.pathCallbackMu.Lock()
+}
+
+func (pkm *PubKeyManager) unlockPathCallbacks() {
+	if pkm.pathCallbackMu != nil {
+		pkm.pathCallbackMu.Unlock()
+	}
+}
+
+func (pkm *PubKeyManager) fireDepositAddressLookahead(pk common.PubKey) {
+	for _, callback := range pkm.pathCallback {
+		pkm.fireDepositAddressLookaheadToCallback(pk, callback)
 	}
 }
 

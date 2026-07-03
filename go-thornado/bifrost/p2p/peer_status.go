@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/rs/zerolog/log"
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p/messages"

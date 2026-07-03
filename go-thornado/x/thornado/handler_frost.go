@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"math/big"
 	"sort"
 	"strings"
 
 	"github.com/blang/semver"
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
+	btcecdsa "github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/cosmos/cosmos-sdk/telemetry"
 	"github.com/hashicorp/go-metrics"
 
@@ -55,16 +55,19 @@ var verifySecp256K1Signature = func(pk common.PubKey, sig []byte) error {
 	}
 
 	// build the signature
-	r := new(big.Int).SetBytes(sig[:32])
-	s := new(big.Int).SetBytes(sig[32:])
+	var r, s btcec.ModNScalar
+	rOverflow := r.SetByteSlice(sig[:32])
+	sOverflow := s.SetByteSlice(sig[32:])
+	if rOverflow || sOverflow {
+		return fmt.Errorf("signature scalar out of range")
+	}
 
 	// reject high-S signatures (BIP-62) to prevent signature malleability
-	halfOrder := new(big.Int).Rsh(btcec.S256().N, 1)
-	if s.Cmp(halfOrder) == 1 {
+	if s.IsOverHalfOrder() {
 		return fmt.Errorf("high-S signature rejected (BIP-62)")
 	}
 
-	signature := &btcec.Signature{R: r, S: s}
+	signature := btcecdsa.NewSignature(&r, &s)
 
 	// verify the signature
 	spk, err := pk.Secp256K1()

@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"context"
 	crand "crypto/rand"
 	"math/rand"
 	"sort"
@@ -9,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
 	tnet "github.com/libp2p/go-libp2p-testing/net"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +24,7 @@ func init() {
 }
 
 func setupHosts(t *testing.T, n int) []host.Host {
-	mn := mocknet.New(context.Background())
+	mn := mocknet.New()
 	var hosts []host.Host
 	for i := 0; i < n; i++ {
 
@@ -340,7 +339,7 @@ func TestNewPartyCoordinatorTimeOut(t *testing.T) {
 }
 
 func TestGetPeerIDs(t *testing.T) {
-	mn := mocknet.New(context.Background())
+	mn := mocknet.New()
 	// add peers to mock net
 
 	a1 := tnet.RandLocalTCPAddress()

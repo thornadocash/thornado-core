@@ -4,11 +4,17 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	"github.com/hashicorp/go-retryablehttp"
+	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/thornadocash/go-thornado/bifrost/metrics"
 	"github.com/thornadocash/go-thornado/common"
+	"github.com/thornadocash/go-thornado/config"
 	"github.com/thornadocash/go-thornado/x/thornado"
 )
 
@@ -89,5 +95,52 @@ func TestQueryTxOutPreservesSigningLeader(t *testing.T) {
 	}
 	if txOut.SigningAttempt != 2 || txOut.RetryUntilHeight != 18040 {
 		t.Fatalf("unexpected retry metadata: %+v", txOut)
+	}
+}
+
+func TestGetPendingTxOutKeysignsIncludesPendingRetryFromAll(t *testing.T) {
+	thornado.SetupConfigForTest()
+
+	var gotPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"txouts":[{
+			"height":"24733",
+			"status":"pending_retry",
+			"tx_array":[{
+				"chain":"BTC",
+				"to_address":"bcrt1pfrs56cns3k4nvt7wkym80kddmctklp2ajcce8vept6wyqt8p4n9syx5h94",
+				"vault_pub_key":"tthorpub1addwnpepq04e5l9z7ape6yu9zcda49u5s4puwcjmfjlffd4vcy85gx7s8fphqnu8rcy",
+				"coin":{"asset":"BTC.BTC","amount":"990000"},
+				"in_hash":"9FEF0CDB5AF0F2B7AE16A6F6DEA7B4ADB8649D96864E73BDA8192FC379AA7776",
+				"tx_type":"refund"
+			}]
+		}]}`))
+	}))
+	defer server.Close()
+
+	httpResponseCachesMu.Lock()
+	httpResponseCaches = make(map[string]*httpResponseCache)
+	httpResponseCachesMu.Unlock()
+
+	client := retryablehttp.NewClient()
+	client.RetryMax = 0
+	bridge := &thornadoBridge{
+		cfg:        config.BifrostClientConfiguration{ChainHost: server.URL},
+		httpClient: client,
+		errCounter: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "test_pending_txout_errors_total"}, []string{"error", "endpoint"}),
+		m:          &metrics.Metrics{},
+	}
+
+	txOuts, err := bridge.GetPendingTxOutKeysigns()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotPath != "/thornado/txout/all" && gotPath != "//thornado/txout/all" {
+		t.Fatalf("expected txout/all path, got %q", gotPath)
+	}
+	if len(txOuts) != 1 || txOuts[0].Height != 24733 || len(txOuts[0].TxArray) != 1 {
+		t.Fatalf("pending retry txout not returned: %+v", txOuts)
 	}
 }

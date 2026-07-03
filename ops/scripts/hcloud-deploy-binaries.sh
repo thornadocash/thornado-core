@@ -5,7 +5,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 COORDINATOR_HOST="${COORDINATOR_HOST:-5.223.51.101}"
 WORKER_HOSTS="${WORKER_HOSTS:-5.223.55.114 5.223.55.174 5.223.52.254 5.223.93.218}"
+WORKER_NODES="${WORKER_NODES:-}"
 REMOTE_ROOT="${REMOTE_ROOT:-/root/thornado}"
+REMOTE_INVENTORY="${REMOTE_INVENTORY:-$REMOTE_ROOT/ops/distributed-regtest-nodeper.env}"
 GO_BIN="${GO_BIN:-/usr/local/go/bin/go}"
 TAGS="${TAGS:-regtest mocknet}"
 BINS="${BINS:-thornado bifrost}"
@@ -18,6 +20,8 @@ INCLUDE_UNTRACKED="${INCLUDE_UNTRACKED:-0}"
 SYNC_SOURCE_TO_WORKERS="${SYNC_SOURCE_TO_WORKERS:-1}"
 KNOWN_HOSTS="${KNOWN_HOSTS:-/tmp/thornado-hcloud-known-hosts}"
 RUN_ROOT="${RUN_ROOT:-/tmp/thornado-nodeper-20260627104200}"
+BTC_RPC_PORT="${BTC_RPC_PORT:-24645}"
+BTC_P2P_PORT="${BTC_P2P_PORT:-24646}"
 
 ssh_base=(ssh -o BatchMode=yes -o UserKnownHostsFile="$KNOWN_HOSTS" -o StrictHostKeyChecking=accept-new)
 scp_base=(scp -q -o UserKnownHostsFile="$KNOWN_HOSTS" -o StrictHostKeyChecking=accept-new)
@@ -280,23 +284,16 @@ restart_bifrost_worker() {
   local host="$1"
   local node="$2"
 
-  ssh_bash "root@$host" "$REMOTE_ROOT" "$RUN_ROOT" "$node" "$BUILD_ID" <<'REMOTE'
+  ssh_bash "root@$host" "$REMOTE_ROOT" "$RUN_ROOT" "$node" "$BUILD_ID" "$REMOTE_INVENTORY" "$BTC_RPC_PORT" "$BTC_P2P_PORT" <<'REMOTE'
 set -euo pipefail
 remote_root="$1"
 run_root="$2"
 node="$3"
 build_id="$4"
-env_file="$run_root/meta/bifrost-$node.restart.env"
+remote_inventory="$5"
+btc_rpc_port="$6"
+btc_p2p_port="$7"
 log="$run_root/logs/bifrost-$node.restart-$build_id.log"
-
-if [[ ! -s "$env_file" ]]; then
-  pid="$(pgrep -f "$remote_root/build/bifrost --log-level" | head -n 1 || true)"
-  if [[ -z "$pid" ]]; then
-    echo "no bifrost process and no env file for node $node" >&2
-    exit 1
-  fi
-  cp "/proc/$pid/environ" "$env_file"
-fi
 
 pkill -TERM -f "$remote_root/build/bifrost --log-level" 2>/dev/null || true
 for _ in $(seq 1 20); do
@@ -308,14 +305,17 @@ done
 pkill -KILL -f "$remote_root/build/bifrost --log-level" 2>/dev/null || true
 
 mkdir -p "$run_root/logs" "$run_root/meta"
-nohup xargs -0 -a "$env_file" sh -c 'exec env "$@" /root/thornado/build/bifrost --log-level debug' sh >>"$log" 2>&1 &
-echo "$!" >"$run_root/meta/bifrost-$node.wrapper.pid"
-echo "$log" >"$run_root/meta/bifrost-$node.current-log"
+(
+  cd "$remote_root"
+  INVENTORY="$remote_inventory" RUN_ROOT="$run_root" NODE="$node" \
+    BTC_RPC_PORT="$btc_rpc_port" BTC_P2P_PORT="$btc_p2p_port" \
+    ops/scripts/distributed-regtest-cluster.sh start-worker-bifrost
+) >>"$log" 2>&1
 
-info_base="$(tr '\0' '\n' <"$env_file" | awk -F= '$1=="FROST_INFO_BASE"{print $2; exit}')"
-if [[ -z "$info_base" ]]; then
-  info_base=10340
-fi
+FROST_INFO_BASE=10340
+# shellcheck disable=SC1090
+source "$remote_inventory" 2>/dev/null || true
+info_base="$FROST_INFO_BASE"
 port=$((info_base + node))
 for _ in $(seq 1 60); do
   if curl -fsS "http://127.0.0.1:$port/ping" >/dev/null; then
@@ -336,16 +336,30 @@ REMOTE
 }
 
 restart_bifrost_workers() {
-  local failures=0 host pid node=0
+  local failures=0 host pid node idx=0
   mkdir -p "$local_tmp"
+  read -r -a hosts <<<"$WORKER_HOSTS"
+  if [[ -n "$WORKER_NODES" ]]; then
+    read -r -a nodes <<<"$WORKER_NODES"
+    [[ "${#hosts[@]}" == "${#nodes[@]}" ]] || {
+      echo "WORKER_HOSTS and WORKER_NODES length mismatch" >&2
+      return 1
+    }
+  else
+    nodes=()
+    for ((idx=0; idx<${#hosts[@]}; idx++)); do
+      nodes+=("$((idx + 1))")
+    done
+  fi
 
-  for host in $WORKER_HOSTS; do
-    node=$((node + 1))
+  for idx in "${!hosts[@]}"; do
+    host="${hosts[$idx]}"
+    node="${nodes[$idx]}"
     restart_bifrost_worker "$host" "$node" >"$local_tmp/restart-bifrost-$host.log" 2>&1 &
     echo "$!" >"$local_tmp/restart-bifrost-$host.pid"
   done
 
-  for host in $WORKER_HOSTS; do
+  for host in "${hosts[@]}"; do
     pid="$(cat "$local_tmp/restart-bifrost-$host.pid")"
     if wait "$pid"; then
       echo "restarted bifrost $host"
@@ -430,11 +444,25 @@ REMOTE
 }
 
 restart_thornado_workers() {
-  local failures=0 host node=0
+  local failures=0 host node idx=0
   mkdir -p "$local_tmp"
+  read -r -a hosts <<<"$WORKER_HOSTS"
+  if [[ -n "$WORKER_NODES" ]]; then
+    read -r -a nodes <<<"$WORKER_NODES"
+    [[ "${#hosts[@]}" == "${#nodes[@]}" ]] || {
+      echo "WORKER_HOSTS and WORKER_NODES length mismatch" >&2
+      return 1
+    }
+  else
+    nodes=()
+    for ((idx=0; idx<${#hosts[@]}; idx++)); do
+      nodes+=("$((idx + 1))")
+    done
+  fi
 
-  for host in $WORKER_HOSTS; do
-    node=$((node + 1))
+  for idx in "${!hosts[@]}"; do
+    host="${hosts[$idx]}"
+    node="${nodes[$idx]}"
     if restart_thornado_worker "$host" "$node" >"$local_tmp/restart-thornado-$host.log" 2>&1; then
       echo "restarted thornado $host"
       cat "$local_tmp/restart-thornado-$host.log"

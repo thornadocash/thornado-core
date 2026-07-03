@@ -1,9 +1,9 @@
 package btc
 
 import (
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
 	btcjson "github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/cometbft/cometbft/crypto/secp256k1"
 
 	"github.com/thornadocash/go-thornado/common"

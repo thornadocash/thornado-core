@@ -86,6 +86,86 @@ func TestRejectLeakyShielderRedeemProofRejectsTornadoMerklePath(t *testing.T) {
 	}
 }
 
+func TestRejectLeakyShielderRedeemProofAcceptsLegitimateProof(t *testing.T) {
+	legit := []byte(`{
+		"merkle_root":"12345",
+		"tornado":{
+			"protocol":"tornado-withdraw-v1",
+			"groth16":{
+				"pi_a":["1","2","1"],
+				"pi_b":[["3","4"],["5","6"],["1","0"]],
+				"pi_c":["7","8","1"],
+				"protocol":"groth16"
+			}
+		}
+	}`)
+	if err := RejectLeakyShielderRedeemProof(cosmos.Context{}, &shielderFloorTestKeeper{}, legit); err != nil {
+		t.Fatalf("legitimate proof shape should pass allowlist: %v", err)
+	}
+}
+
+func TestRejectLeakyShielderRedeemProofRejectsPathIndices(t *testing.T) {
+	err := RejectLeakyShielderRedeemProof(cosmos.Context{}, &shielderFloorTestKeeper{}, []byte(`{
+		"merkle_root":"12345",
+		"tornado":{"protocol":"p","merkle_path":{"path_indices":[0,1]}}
+	}`))
+	if err == nil {
+		t.Fatal("expected tornado path_indices leak to fail")
+	}
+}
+
+func TestRejectLeakyShielderRedeemProofRejectsPathElements(t *testing.T) {
+	err := RejectLeakyShielderRedeemProof(cosmos.Context{}, &shielderFloorTestKeeper{}, []byte(`{
+		"merkle_root":"12345",
+		"tornado":{"protocol":"p","merkle_path":{"path_elements":["abc"]}}
+	}`))
+	if err == nil {
+		t.Fatal("expected tornado path_elements leak to fail")
+	}
+}
+
+func TestRejectLeakyShielderRedeemProofRejectsLeafIndex(t *testing.T) {
+	for _, key := range []string{"leaf_index", "index", "position", "deposit_id", "depositIndex"} {
+		err := RejectLeakyShielderRedeemProof(cosmos.Context{}, &shielderFloorTestKeeper{}, []byte(`{
+			"merkle_root":"12345",
+			"`+key+`":7
+		}`))
+		if err == nil {
+			t.Fatalf("expected leaked field %q to fail", key)
+		}
+	}
+}
+
+func TestRejectLeakyShielderRedeemProofRejectsUnknownKey(t *testing.T) {
+	err := RejectLeakyShielderRedeemProof(cosmos.Context{}, &shielderFloorTestKeeper{}, []byte(`{
+		"merkle_root":"12345",
+		"totally_unexpected":"x"
+	}`))
+	if err == nil {
+		t.Fatal("expected arbitrary unknown key to fail")
+	}
+}
+
+func TestRejectLeakyShielderRedeemProofRejectsNestedUnknownKey(t *testing.T) {
+	err := RejectLeakyShielderRedeemProof(cosmos.Context{}, &shielderFloorTestKeeper{}, []byte(`{
+		"merkle_root":"12345",
+		"tornado":{"protocol":"p","groth16":{"pi_a":["1"],"pi_b":[["1"]],"pi_c":["1"],"leaked":"x"}}
+	}`))
+	if err == nil {
+		t.Fatal("expected nested unknown groth16 key to fail")
+	}
+}
+
+func TestRejectLeakyShielderRedeemProofRejectsRawNullifier(t *testing.T) {
+	err := RejectLeakyShielderRedeemProof(cosmos.Context{}, &shielderFloorTestKeeper{}, []byte(`{
+		"merkle_root":"12345",
+		"nullifier":"nf"
+	}`))
+	if err == nil {
+		t.Fatal("expected proof carrying raw nullifier to fail")
+	}
+}
+
 func TestValidateShielderRedeemPublicJSONRejectsMissingRecipient(t *testing.T) {
 	err := ValidateShielderRedeemPublicJSON([]byte(`{
 		"nullifier_hash":"1",

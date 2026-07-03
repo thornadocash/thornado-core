@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto" // nolint: staticcheck
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -325,7 +325,19 @@ func (pc *PartyCoordinator) sendResponseToAll(msg *messages.JoinPartyLeaderComm,
 			}
 		}(el)
 	}
-	wg.Wait()
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(pc.Timeout()):
+		pc.logger.Warn().
+			Str("msg_id", msg.ID).
+			Int("peers", len(peers)).
+			Msg("timed out sending join party responses")
+	}
 }
 
 func (pc *PartyCoordinator) sendResponseToPeer(msg *messages.JoinPartyLeaderComm, remotePeer peer.ID) {
@@ -378,7 +390,7 @@ func (pc *PartyCoordinator) sendRequestToAll(msgID string, msgSend []byte, peers
 }
 
 func (pc *PartyCoordinator) sendMsgToPeer(msgBuf []byte, msgID string, remotePeer peer.ID, protoc protocol.ID, needResponse bool) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
+	ctx, cancel := context.WithTimeout(context.Background(), PartyPeerConnectTimeout)
 	defer cancel()
 
 	pc.logger.Debug().Msgf("try to open stream to (%s) ", remotePeer)
@@ -387,6 +399,9 @@ func (pc *PartyCoordinator) sendMsgToPeer(msgBuf []byte, msgID string, remotePee
 		streamError := fmt.Errorf("fail to create stream to peer(%s):%w", remotePeer, err)
 		return streamError
 	}
+	if err := stream.SetDeadline(time.Now().Add(PartyPeerConnectTimeout)); err != nil {
+		pc.logger.Debug().Err(err).Str("peer", remotePeer.String()).Msg("fail to set stream deadline")
+	}
 	defer func() {
 		pc.streamMgr.AddStream(msgID, stream)
 		if closeErr := stream.Close(); closeErr != nil {
@@ -394,13 +409,13 @@ func (pc *PartyCoordinator) sendMsgToPeer(msgBuf []byte, msgID string, remotePee
 		}
 	}()
 	pc.logger.Debug().Msgf("open stream to (%s) successfully", remotePeer)
-	err = WriteStreamWithBuffer(msgBuf, stream)
+	err = WriteStreamWithBufferWithContext(ctx, msgBuf, stream)
 	if err != nil {
 		return fmt.Errorf("fail to write message to stream:%w", err)
 	}
 
 	if needResponse {
-		_, err = ReadStreamWithBuffer(stream)
+		_, err = ReadStreamWithBufferWithContext(ctx, stream)
 		if err != nil {
 			pc.logger.Error().Err(err).Msgf("fail to get the ")
 		}
@@ -453,7 +468,16 @@ func (pc *PartyCoordinator) joinPartyMember(msgID string, peerGroup *peerStatus,
 	}
 
 	close(done)
-	wg.Wait()
+	waitDone := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(waitDone)
+	}()
+	select {
+	case <-waitDone:
+	case <-time.After(time.Second):
+		pc.logger.Debug().Msg("timed out waiting for join party request sender to stop")
+	}
 
 	if sigNotify == "signature received" {
 		return nil, ErrSignReceived

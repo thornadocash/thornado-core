@@ -19,10 +19,10 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/thornadocash/go-thornado/bifrost/metrics"
-	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients"
 	"github.com/thornadocash/go-thornado/bifrost/pubkeymanager"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
+	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/btc"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/config"
 	stypes "github.com/thornadocash/go-thornado/x/thornado/types"
@@ -99,7 +99,7 @@ func txInItemsEqualIgnoreHeight(a, b *types.TxInItem) bool {
 // Observer observer service
 type Observer struct {
 	logger                zerolog.Logger
-	chains                map[common.Chain]chainclients.ChainClient
+	chains                map[common.Chain]*btc.Client
 	stopChan              chan struct{}
 	pubkeyMgr             *pubkeymanager.PubKeyManager
 	onDeck                map[txInKey]*types.TxIn
@@ -132,7 +132,7 @@ type Observer struct {
 
 // NewObserver create a new instance of Observer for chain
 func NewObserver(pubkeyMgr *pubkeymanager.PubKeyManager,
-	chains map[common.Chain]chainclients.ChainClient,
+	chains map[common.Chain]*btc.Client,
 	thornadoBridge thornadoclient.ThornadoBridge,
 	m *metrics.Metrics, dataPath string,
 	frostKeysignMetricMgr *metrics.FrostKeysignMetricMgr,
@@ -189,7 +189,7 @@ func NewObserver(pubkeyMgr *pubkeymanager.PubKeyManager,
 	}, nil
 }
 
-func (o *Observer) getChain(chainID common.Chain) (chainclients.ChainClient, error) {
+func (o *Observer) getChain(chainID common.Chain) (*btc.Client, error) {
 	chain, ok := o.chains[chainID]
 	if !ok {
 		o.logger.Debug().Str("chain", chainID.String()).Msg("is not supported yet")

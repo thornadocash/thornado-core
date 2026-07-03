@@ -191,6 +191,7 @@ func (am AppModule) BeginBlock(goCtx context.Context) error {
 	if version.Major > localVer.Major || version.Minor > localVer.Minor {
 		panic(fmt.Sprintf("Unsupported Version: update your binary (your version: %s, network consensus version: %s)", constants.SWVersion.String(), version.String()))
 	}
+	applyVotedRetiringVaultDebitRepair(ctx, am.mgr)
 	haltOnBrokenVaultBackingInvariant(ctx, am.mgr.Keeper(), am.mgr.EventMgr())
 
 	am.mgr.Keeper().ClearObservingAddresses(ctx)

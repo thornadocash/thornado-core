@@ -17,6 +17,7 @@ use crate::{Result, WithdrawalProof, WithdrawalPublicInputs};
 pub use super::ceremony::ENGINE_ID as PROTOCOL_ID;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct TornadoWithdrawProof {
     pub protocol: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]

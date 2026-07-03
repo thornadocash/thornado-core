@@ -56,6 +56,10 @@ message ShielderNoteRecord {
   string commitment = 1;
   uint64 denomination_sats = 2;
   int64 created_height = 3;
+  // leaf_index is the fixed position of this commitment in its denomination's
+  // incremental Merkle tree. Clients order same-denomination leaves by this to
+  // rebuild the tree and derive a spend path.
+  uint64 leaf_index = 4;
 }
 
 message ShielderSpentNullifier {

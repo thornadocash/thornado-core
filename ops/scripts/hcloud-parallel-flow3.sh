@@ -31,21 +31,62 @@ fi
 
 API_BASE="${API_BASE:-2370}"
 RPC_BASE="${RPC_BASE:-33360}"
+NODE_SPECS="${NODE_SPECS:-}"
+
+node_spec_field() {
+  local idx="$1" field="$2" entry spec host api rpc signer
+  if [[ -n "$NODE_SPECS" ]]; then
+    IFS=',' read -ra entries <<<"$NODE_SPECS"
+    for entry in "${entries[@]}"; do
+      if [[ "${entry%%=*}" == "$idx" ]]; then
+        spec="${entry#*=}"
+        IFS=':' read -r host api rpc signer <<<"$spec"
+        case "$field" in
+          host) printf '%s' "$host" ;;
+          api) printf '%s' "$api" ;;
+          rpc) printf '%s' "$rpc" ;;
+          signer) printf '%s' "$signer" ;;
+        esac
+        return 0
+      fi
+    done
+  fi
+  return 1
+}
 
 node_host() {
   local key="NODE${1}_HOST"
+  if node_spec_field "$1" host; then
+    return 0
+  fi
   printf '%s' "${!key:-}"
 }
 
 api_url() {
+  local port
+  if port="$(node_spec_field "$1" api)"; then
+    printf 'http://%s:%s\n' "$(node_host "$1")" "$port"
+    return 0
+  fi
   printf 'http://%s:%s\n' "$(node_host "$1")" "$((API_BASE + $1))"
 }
 
 rpc_url() {
+  local port
+  if port="$(node_spec_field "$1" rpc)"; then
+    printf 'http://%s:%s\n' "$(node_host "$1")" "$port"
+    return 0
+  fi
   printf 'http://%s:%s\n' "$(node_host "$1")" "$((RPC_BASE + $1))"
 }
 
-export THORNADO_TX_NODE="${THORNADO_TX_NODE:-tcp://$(node_host 1):$((RPC_BASE + 1))}"
+if [[ -z "${THORNADO_TX_NODE:-}" ]]; then
+  if tx_rpc_port="$(node_spec_field 1 rpc)"; then
+    export THORNADO_TX_NODE="tcp://$(node_host 1):${tx_rpc_port}"
+  else
+    export THORNADO_TX_NODE="tcp://$(node_host 1):$((RPC_BASE + 1))"
+  fi
+fi
 
 deposit_amount_for_index() {
   local i="$1" amount
@@ -328,7 +369,7 @@ for i in $(seq 1 "$COUNT"); do
   label="$(cat "$d/label.txt")"
   note="$(jq -c '.notes[0]' "$d/receipt.json")"
   denom="$(jq -r '.denomination_sats' <<<"$note")"
-  leaves="$(jq -c --argjson denom "$denom" '[.notes[] | select((.denomination_sats | tonumber) == $denom) | .commitment] | sort' "$run_dir/shielder-sync-after-shields.json")"
+  leaves="$(jq -c --argjson denom "$denom" '[.notes[] | select((.denomination_sats | tonumber) == $denom)] | group_by(.leaf_index | tonumber) | map(max_by(.created_height | tonumber)) | sort_by(.leaf_index | tonumber) | map(.commitment)' "$run_dir/shielder-sync-after-shields.json")"
   printf '%s\n' "$leaves" >"$d/proof-leaves.json"
   assert_shielder_root_committed "$denom" "$leaves" "parallel-flow3-${i}"
   if [[ "$DUPLICATE_RECIPIENT" == "1" ]]; then

@@ -1203,6 +1203,7 @@ func queryShielderSyncNotes(ctx cosmos.Context, k keeper.Keeper, cursor string, 
 			Commitment:       strings.TrimSpace(record.Commitment),
 			DenominationSats: record.DenominationSats,
 			CreatedHeight:    record.CreatedHeight,
+			LeafIndex:        record.LeafIndex,
 		})
 		last = key
 	}
@@ -1870,7 +1871,7 @@ func (qs queryServer) queryKeysign(ctx cosmos.Context, heightStr, pubKey string)
 		ctx.Logger().Error("fail to get tx out array from key value store", "error", err)
 		return nil, fmt.Errorf("fail to get tx out array from key value store: %w", err)
 	}
-	if txs.Status != "" && txs.Status != TxOutStatusPendingSign {
+	if txs.Status != "" && txs.Status != TxOutStatusPendingSign && txs.Status != TxOutStatusPendingRetry {
 		txs = &TxOut{
 			Height:           height,
 			Epoch:            txs.Epoch,

@@ -149,6 +149,7 @@ type (
 	MsgConsolidate              = types.MsgConsolidate
 	MsgOutboundTx               = types.MsgOutboundTx
 	MsgConfig                   = types.MsgConfig
+	MsgStoreMigrate             = types.MsgStoreMigrate
 	MsgNodePauseChain           = types.MsgNodePauseChain
 	MsgMigrate                  = types.MsgMigrate
 	MsgErrataTx                 = types.MsgErrataTx

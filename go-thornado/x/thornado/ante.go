@@ -163,6 +163,8 @@ func (ad AnteDecorator) anteHandleMessage(ctx sdk.Context, version semver.Versio
 		return IPAddressAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgConfig:
 		return ConfigAnteHandler(ctx, version, ad.keeper, *m)
+	case *types.MsgStoreMigrate:
+		return StoreMigrateAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgNodePauseChain:
 		return NodePauseChainAnteHandler(ctx, version, ad.keeper, *m)
 	case *types.MsgOperatorRotate:

@@ -13,7 +13,7 @@ import (
 var (
 	GitCommit       = "null"   // sha1 revision used to build the program
 	BuildTime       = "null"   // when the executable was built
-	Version         = "3.17.0" // software version
+	Version         = "3.17.1" // software version
 	int64Overrides  = map[ConfigName]int64{}
 	boolOverrides   = map[ConfigName]bool{}
 	stringOverrides = map[ConfigName]string{}

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	sdksecp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/x/thornado/types"
@@ -130,6 +132,40 @@ func TestShielderSyncStreamSelection(t *testing.T) {
 	}
 	if len(full.Deposits) != 1 || len(full.Notes) != 1 || len(full.Nullifiers) != 1 {
 		t.Fatalf("full sync lost legacy streams: deposits=%d notes=%d nullifiers=%d", len(full.Deposits), len(full.Notes), len(full.Nullifiers))
+	}
+}
+
+func TestQueryKeysignIncludesPendingRetry(t *testing.T) {
+	ctx := flowTestContext()
+	k := newShielderFlowTestKeeper()
+	vaultPubKey := GetRandomPubKey()
+	height := ctx.BlockHeight()
+	txOut := &TxOut{
+		Height: height,
+		Status: TxOutStatusPendingRetry,
+		TxArray: []TxOutItem{{
+			Chain:       common.BTCChain,
+			ToAddress:   common.Address("bcrt1prefund"),
+			VaultPubKey: vaultPubKey,
+			Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(100_000)),
+			InHash:      common.TxID("4E72D0DECDB0F5B39F0025047BD951D80C658079C04C18C02CFF5A2E31D974FD"),
+			TxType:      types.TxOutTypeRefund,
+		}},
+	}
+	if err := k.SetTxOut(ctx, txOut); err != nil {
+		t.Fatal(err)
+	}
+
+	qs := queryServer{
+		mgr: &Mgrs{K: k},
+		kbs: cosmos.KeybaseStore{SignerPrivKey: sdksecp256k1.GenPrivKey()},
+	}
+	resp, err := qs.queryKeysign(ctx, fmt.Sprintf("%d", height), vaultPubKey.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.Keysign.Status != TxOutStatusPendingRetry || len(resp.Keysign.TxArray) != 1 {
+		t.Fatalf("pending retry keysign omitted tx array: %+v", resp.Keysign)
 	}
 }
 

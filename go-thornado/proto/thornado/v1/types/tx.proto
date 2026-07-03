@@ -5,6 +5,7 @@ import "cosmos/msg/v1/msg.proto";
 import "types/msg_deposit.proto";
 import "types/msg_errata.proto";
 import "types/msg_config.proto";
+import "types/msg_store_migrate.proto";
 import "types/msg_network_fee.proto";
 import "types/msg_node_pause_chain.proto";
 import "types/msg_observed_txin.proto";
@@ -33,6 +34,7 @@ service Msg {
   rpc ErrataTx(MsgErrataTx) returns (MsgEmpty);
   rpc ErrataTxQuorum(MsgErrataTxQuorum) returns (MsgEmpty);
   rpc Config(MsgConfig) returns (MsgEmpty);
+  rpc StoreMigrate(MsgStoreMigrate) returns (MsgEmpty);
   rpc NetworkFee(MsgNetworkFee) returns (MsgEmpty);
   rpc NetworkFeeQuorum(MsgNetworkFeeQuorum) returns (MsgEmpty);
   rpc NodePauseChain(MsgNodePauseChain) returns (MsgEmpty);

@@ -134,7 +134,7 @@ func (tos *TxOutStorage) updateBatchStates(ctx cosmos.Context) error {
 	signingPeriod := getConfigDurationBlocks(ctx, tos.keeper, constants.Keysign_PeriodMinutes)
 	retryPeriod := getConfigDurationBlocks(ctx, tos.keeper, constants.Withdrawal_BatchWindowMinutes)
 	iterator := tos.keeper.GetTxOutIterator(ctx)
-	updates := make([]TxOut, 0)
+	blocks := make([]TxOut, 0)
 
 	for ; iterator.Valid(); iterator.Next() {
 		var txOut TxOut
@@ -145,6 +145,17 @@ func (tos *TxOutStorage) updateBatchStates(ctx cosmos.Context) error {
 		if txOut.IsEmpty() {
 			continue
 		}
+		blocks = append(blocks, txOut)
+	}
+	if err := iterator.Error(); shouldLogIteratorError(err) {
+		ctx.Logger().Error("txout iterator ended with error", "error", err)
+	}
+	if err := iterator.Close(); shouldLogIteratorError(err) {
+		ctx.Logger().Error("fail to close txout iterator", "error", err)
+	}
+
+	updates := make([]TxOut, 0, len(blocks))
+	for _, txOut := range blocks {
 		if txOutHasPendingBTCExactItems(txOut) {
 			if err := refreshBTCExactTxOutBlock(ctx, tos.keeper, &txOut); err != nil {
 				ctx.Logger().Error("fail to refresh pending bitcoin txout source inputs and gas", "height", txOut.Height, "error", err)
@@ -155,16 +166,40 @@ func (tos *TxOutStorage) updateBatchStates(ctx cosmos.Context) error {
 			updates = append(updates, txOut)
 			continue
 		}
-		if !txOutUsesBatching(txOut) {
-			updates = append(updates, txOut)
+		if txOutNeedsBatchSplit(txOut) {
+			splitTxOuts, err := splitMixedPendingBatch(ctx, tos.keeper, txOut)
+			if err != nil {
+				return err
+			}
+			// persist split blocks immediately so later slot probes in this pass
+			// see the occupied heights
+			for i := range splitTxOuts {
+				if err := tos.keeper.SetTxOut(ctx, &splitTxOuts[i]); err != nil {
+					return err
+				}
+			}
+			updates = append(updates, splitTxOuts...)
 			continue
 		}
-		if txOut.Status == TxOutStatusPendingBatch && txOut.Height <= ctx.BlockHeight() {
+		updates = append(updates, txOut)
+	}
+
+	for i := range updates {
+		txOut := &updates[i]
+		if txOut.Status == TxOutStatusPendingBatch && txOut.Height <= ctx.BlockHeight() &&
+			txOutBatchSourcesReady(*txOut) &&
+			!txOutEarlierVaultBatchPending(*txOut, updates) {
 			txOut.Status = TxOutStatusPendingSign
 			txOut.SigningAttempt = 0
+			// a batch held back waiting for its predecessor keeps its original close
+			// height; fast-forward the signing attempt so the retry clock measures
+			// from now rather than instantly escalating
+			if signingPeriod > 0 && ctx.BlockHeight() > txOut.Height {
+				txOut.SigningAttempt = uint64((ctx.BlockHeight() - txOut.Height) / signingPeriod)
+			}
 			txOut.RetryUntilHeight = 0
 		}
-		if txOut.Status == TxOutStatusPendingSign && txOutHasPendingItems(txOut) && signingPeriod > 0 && ctx.BlockHeight() >= txOut.Height+int64(txOut.SigningAttempt+1)*signingPeriod {
+		if txOut.Status == TxOutStatusPendingSign && txOutHasPendingItems(*txOut) && signingPeriod > 0 && ctx.BlockHeight() >= txOut.Height+int64(txOut.SigningAttempt+1)*signingPeriod {
 			txOut.Status = TxOutStatusPendingRetry
 			txOut.RetryUntilHeight = ctx.BlockHeight() + retryPeriod
 			txOut.SigningLeader = common.EmptyPubKey
@@ -174,10 +209,166 @@ func (tos *TxOutStorage) updateBatchStates(ctx cosmos.Context) error {
 			txOut.SigningAttempt++
 			txOut.RetryUntilHeight = 0
 		}
-		if txOut.Status == TxOutStatusPendingSign && txOutHasPendingItems(txOut) {
-			txOut.SigningLeader = tos.selectSigningLeader(ctx, txOut, txOut.SigningAttempt)
+		if txOut.Status == TxOutStatusPendingSign && txOutHasPendingItems(*txOut) {
+			txOut.SigningLeader = tos.selectSigningLeader(ctx, *txOut, txOut.SigningAttempt)
 		}
-		updates = append(updates, txOut)
+	}
+
+	for i := range updates {
+		if err := tos.keeper.SetTxOut(ctx, &updates[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// txOutBatchSourcesReady reports whether every unsigned item in the batch has source
+// inputs selected; a batch queued behind an unfinished predecessor gets its inputs only
+// after that predecessor completes and its change output becomes spendable.
+func txOutBatchSourcesReady(txOut TxOut) bool {
+	for _, item := range txOut.TxArray {
+		if item.OutHash.IsEmpty() && len(item.SourceInputs) == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// txOutEarlierVaultBatchPending reports whether an earlier batch for the same vault is
+// still incomplete. A vault's batches are signed strictly in order: batch N+1 must not
+// be promoted for signing until batch N is done.
+func txOutEarlierVaultBatchPending(txOut TxOut, all []TxOut) bool {
+	vault, ok := txOutBatchVault(txOut)
+	if !ok {
+		return false
+	}
+	for _, other := range all {
+		if other.Height >= txOut.Height {
+			continue
+		}
+		switch other.Status {
+		case TxOutStatusPendingBatch, TxOutStatusPendingSign, TxOutStatusPendingRetry:
+		default:
+			continue
+		}
+		if !txOutHasPendingItems(other) {
+			continue
+		}
+		otherVault, otherOk := txOutBatchVault(other)
+		if !otherOk || !otherVault.Equals(vault) {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+func (tos *TxOutStorage) splitMixedPendingBatch(ctx cosmos.Context, txOut TxOut) ([]TxOut, error) {
+	return splitMixedPendingBatch(ctx, tos.keeper, txOut)
+}
+
+// splitMixedPendingBatch separates a txout block that mixes item kinds which must not
+// share a batch: internal (immediate) items each move to their own pending_sign block,
+// and batchable items are grouped per vault, with each additional vault group moved to
+// its own pending_batch block.
+func splitMixedPendingBatch(ctx cosmos.Context, k keeper.Keeper, txOut TxOut) ([]TxOut, error) {
+	immediate := make([]TxOutItem, 0, len(txOut.TxArray))
+	vaultOrder := make([]string, 0, 2)
+	vaultGroups := make(map[string][]TxOutItem)
+	for _, item := range txOut.TxArray {
+		if !types.IsBatchableTxOutType(item.TxType) {
+			immediate = append(immediate, item)
+			continue
+		}
+		key := item.VaultPubKey.String()
+		if _, ok := vaultGroups[key]; !ok {
+			vaultOrder = append(vaultOrder, key)
+		}
+		vaultGroups[key] = append(vaultGroups[key], item)
+	}
+	if len(vaultOrder) == 0 || (len(vaultOrder) == 1 && len(immediate) == 0) {
+		return []TxOut{txOut}, nil
+	}
+
+	updates := make([]TxOut, 0, len(vaultOrder)+len(immediate))
+	txOut.TxArray = vaultGroups[vaultOrder[0]]
+	if txOut.Height <= ctx.BlockHeight() {
+		switch txOut.Status {
+		case TxOutStatusPendingSign, TxOutStatusPendingRetry:
+			txOut.Status = TxOutStatusPendingSign
+		default:
+			txOut.Status = TxOutStatusPendingBatch
+		}
+		txOut.SigningAttempt = 0
+		txOut.RetryUntilHeight = 0
+	}
+	updates = append(updates, txOut)
+
+	nextHeight := txOut.Height + 1
+	for _, key := range vaultOrder[1:] {
+		height, err := nextEmptyTxOutHeight(ctx, k, nextHeight)
+		if err != nil {
+			return nil, err
+		}
+		nextHeight = height + 1
+		updates = append(updates, TxOut{
+			Height:  height,
+			Epoch:   txOut.Epoch,
+			Status:  TxOutStatusPendingBatch,
+			TxArray: vaultGroups[key],
+		})
+	}
+	for _, item := range immediate {
+		height, err := nextEmptyTxOutHeight(ctx, k, nextHeight)
+		if err != nil {
+			return nil, err
+		}
+		nextHeight = height + 1
+		updates = append(updates, TxOut{
+			Height:  height,
+			Status:  TxOutStatusPendingSign,
+			TxArray: []TxOutItem{item},
+		})
+	}
+	ctx.Logger().Info("split mixed bitcoin pending batch",
+		"height", txOut.Height,
+		"vaults", len(vaultOrder),
+		"immediate", len(immediate),
+	)
+	return updates, nil
+}
+
+func (tos *TxOutStorage) nextEmptyTxOutHeight(ctx cosmos.Context, start int64) (int64, error) {
+	return nextEmptyTxOutHeight(ctx, tos.keeper, start)
+}
+
+func nextEmptyTxOutHeight(ctx cosmos.Context, k keeper.Keeper, start int64) (int64, error) {
+	for offset := int64(0); offset < 1000; offset++ {
+		height := start + offset
+		block, err := k.GetTxOut(ctx, height)
+		if err != nil {
+			return 0, err
+		}
+		if block == nil || block.IsEmpty() || block.Status == "" {
+			return height, nil
+		}
+	}
+	return 0, fmt.Errorf("fail to find empty txout height from %d", start)
+}
+
+func RepairMixedBTCPendingBatches(ctx cosmos.Context, k keeper.Keeper) error {
+	iterator := k.GetTxOutIterator(ctx)
+	mixed := make([]TxOut, 0)
+	for ; iterator.Valid(); iterator.Next() {
+		var txOut TxOut
+		if err := k.Cdc().Unmarshal(iterator.Value(), &txOut); err != nil {
+			_ = iterator.Close()
+			return err
+		}
+		if !txOutNeedsBatchSplit(txOut) {
+			continue
+		}
+		mixed = append(mixed, txOut)
 	}
 	if err := iterator.Error(); shouldLogIteratorError(err) {
 		ctx.Logger().Error("txout iterator ended with error", "error", err)
@@ -185,10 +376,16 @@ func (tos *TxOutStorage) updateBatchStates(ctx cosmos.Context) error {
 	if err := iterator.Close(); shouldLogIteratorError(err) {
 		ctx.Logger().Error("fail to close txout iterator", "error", err)
 	}
-
-	for _, txOut := range updates {
-		if err := tos.keeper.SetTxOut(ctx, &txOut); err != nil {
+	for _, txOut := range mixed {
+		splitTxOuts, err := splitMixedPendingBatch(ctx, k, txOut)
+		if err != nil {
 			return err
+		}
+		// persist each split immediately so subsequent slot probes see occupied heights
+		for i := range splitTxOuts {
+			if err := k.SetTxOut(ctx, &splitTxOuts[i]); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -203,16 +400,30 @@ func txOutHasPendingBTCExactItems(txOut TxOut) bool {
 	return false
 }
 
-func txOutUsesBatching(txOut TxOut) bool {
-	if len(txOut.TxArray) == 0 {
+// txOutNeedsBatchSplit reports whether a pending txout block holds items that must not
+// share a batch: batchable mixed with immediate items, or batchable items spanning more
+// than one vault.
+func txOutNeedsBatchSplit(txOut TxOut) bool {
+	switch txOut.Status {
+	case TxOutStatusPendingBatch, TxOutStatusPendingSign, TxOutStatusPendingRetry:
+	default:
 		return false
 	}
+	if len(txOut.TxArray) < 2 {
+		return false
+	}
+	hasBatchable := false
+	hasImmediate := false
+	vaults := make(map[string]struct{}, 2)
 	for _, item := range txOut.TxArray {
-		if !types.IsBatchableTxOutType(item.TxType) {
-			return false
+		if types.IsBatchableTxOutType(item.TxType) {
+			hasBatchable = true
+			vaults[item.VaultPubKey.String()] = struct{}{}
+		} else {
+			hasImmediate = true
 		}
 	}
-	return true
+	return (hasBatchable && hasImmediate) || len(vaults) > 1
 }
 
 func txOutHasPendingItems(txOut TxOut) bool {

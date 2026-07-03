@@ -8,10 +8,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients"
 	"github.com/thornadocash/go-thornado/bifrost/pubkeymanager"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient"
 	"github.com/thornadocash/go-thornado/bifrost/thornadoclient/types"
+	"github.com/thornadocash/go-thornado/bifrost/pkg/chainclients/btc"
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/x/thornado/ebifrost"
 )
@@ -36,7 +36,7 @@ func ManualObserveTxIDs(
 	thornadoBifrostGRPCAddress string,
 	bridge thornadoclient.ThornadoBridge,
 	pubkeyMgr pubkeymanager.PubKeyValidator,
-	chainClient chainclients.ChainClient,
+	chainClient *btc.Client,
 	txids []string,
 	allowFutureObservation bool,
 ) ([]ManualObserveResult, error) {

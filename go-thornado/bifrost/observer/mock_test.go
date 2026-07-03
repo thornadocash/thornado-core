@@ -9,12 +9,12 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	ic "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
-	"github.com/libp2p/go-libp2p-core/protocol"
+	ic "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
 	"google.golang.org/grpc"
 
@@ -83,7 +83,7 @@ func (m *MockPeerstore) AddPrivKey(peer.ID, ic.PrivKey) error {
 	return nil
 }
 
-func (m *MockPeerstore) AddProtocols(peer.ID, ...string) error {
+func (m *MockPeerstore) AddProtocols(peer.ID, ...protocol.ID) error {
 	// Mock implementation, do nothing
 	return nil
 }
@@ -105,7 +105,7 @@ func (m *MockPeerstore) Close() error {
 	return nil
 }
 
-func (m *MockPeerstore) FirstSupportedProtocol(peer.ID, ...string) (string, error) {
+func (m *MockPeerstore) FirstSupportedProtocol(peer.ID, ...protocol.ID) (protocol.ID, error) {
 	return "", nil
 }
 
@@ -113,7 +113,7 @@ func (m *MockPeerstore) Get(p peer.ID, key string) (interface{}, error) {
 	return nil, nil
 }
 
-func (m *MockPeerstore) GetProtocols(peer.ID) ([]string, error) {
+func (m *MockPeerstore) GetProtocols(peer.ID) ([]protocol.ID, error) {
 	return nil, nil
 }
 
@@ -145,7 +145,9 @@ func (m *MockPeerstore) RecordLatency(peer.ID, time.Duration) {
 	// Mock implementation, do nothing
 }
 
-func (m *MockPeerstore) RemoveProtocols(peer.ID, ...string) error {
+func (m *MockPeerstore) RemovePeer(peer.ID) {}
+
+func (m *MockPeerstore) RemoveProtocols(peer.ID, ...protocol.ID) error {
 	return nil
 }
 
@@ -157,11 +159,11 @@ func (m *MockPeerstore) SetAddrs(p peer.ID, addrs []multiaddr.Multiaddr, ttl tim
 	// Mock implementation, do nothing
 }
 
-func (m *MockPeerstore) SetProtocols(peer.ID, ...string) error {
+func (m *MockPeerstore) SetProtocols(peer.ID, ...protocol.ID) error {
 	return nil
 }
 
-func (m *MockPeerstore) SupportsProtocols(peer.ID, ...string) ([]string, error) {
+func (m *MockPeerstore) SupportsProtocols(peer.ID, ...protocol.ID) ([]protocol.ID, error) {
 	return nil, nil
 }
 

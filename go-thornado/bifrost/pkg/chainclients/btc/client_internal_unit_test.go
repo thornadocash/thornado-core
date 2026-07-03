@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/cometbft/cometbft/crypto/secp256k1"
 	"github.com/rs/zerolog"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -237,6 +237,22 @@ func TestSweepSourceActuallyMissingTreatsInactiveBlockTxAsMissing(t *testing.T) 
 	}
 	if !missing {
 		t.Fatal("inactive block source tx should be classified as missing")
+	}
+}
+
+func TestSourceTxMissingDefersWhenScannerUnhealthy(t *testing.T) {
+	client := &Client{
+		log: zerolog.Nop(),
+	}
+	missing, err := client.SourceTxMissing(stypes.TxOutItem{
+		TxType: "sweep",
+		InHash: common.TxID(strings.Repeat("1", 64)),
+	}, 100)
+	if err != nil {
+		t.Fatalf("SourceTxMissing returned error: %v", err)
+	}
+	if missing {
+		t.Fatal("unhealthy scanner must not prove a sweep source missing")
 	}
 }
 

@@ -44,6 +44,7 @@ type (
 	NodeAccount             = types.NodeAccount
 	NodeAccounts            = types.NodeAccounts
 	NodeConfigs             = types.NodeConfigs
+	StoreMigrateVotes       = types.StoreMigrateVotes
 	NodeStatus              = types.NodeStatus
 	Network                 = types.Network
 	VaultStatus             = types.VaultStatus

@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 )
 
 // newAddress in this file with build tags checks Mocknet(/Testnet)-specific addresses.

@@ -10,8 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-peerstore/addr"
+	"github.com/libp2p/go-libp2p/core/peer"
 	maddr "github.com/multiformats/go-multiaddr"
 
 	"github.com/thornadocash/go-thornado/bifrost/p2p/conversion"
@@ -54,8 +53,8 @@ func (kls *KeygenLocalState) UnmarshalJSON(data []byte) error {
 type LocalStateManager interface {
 	SaveLocalState(state KeygenLocalState) error
 	GetLocalState(pubKey string) (KeygenLocalState, error)
-	SaveAddressBook(addressBook map[peer.ID]addr.AddrList) error
-	RetrieveP2PAddresses() (addr.AddrList, error)
+	SaveAddressBook(addressBook map[peer.ID][]maddr.Multiaddr) error
+	RetrieveP2PAddresses() ([]maddr.Multiaddr, error)
 }
 
 // FileStateMgr save the local state to file
@@ -133,7 +132,7 @@ func (fsm *FileStateMgr) GetLocalState(pubKey string) (KeygenLocalState, error) 
 	return localState, nil
 }
 
-func (fsm *FileStateMgr) SaveAddressBook(address map[peer.ID]addr.AddrList) error {
+func (fsm *FileStateMgr) SaveAddressBook(address map[peer.ID][]maddr.Multiaddr) error {
 	if len(fsm.folder) < 1 {
 		return errors.New("base file path is invalid")
 	}
@@ -158,7 +157,7 @@ func (fsm *FileStateMgr) SaveAddressBook(address map[peer.ID]addr.AddrList) erro
 	return os.WriteFile(filePathName, buf.Bytes(), 0o600)
 }
 
-func (fsm *FileStateMgr) RetrieveP2PAddresses() (addr.AddrList, error) {
+func (fsm *FileStateMgr) RetrieveP2PAddresses() ([]maddr.Multiaddr, error) {
 	if len(fsm.folder) < 1 {
 		return nil, errors.New("base file path is invalid")
 	}

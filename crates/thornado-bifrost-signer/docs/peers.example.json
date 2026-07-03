@@ -1,0 +1,17 @@
+[
+  {
+    "name": "thorpub1addwnpepqexamplenode0secp256k1pubkeybech32",
+    "peer_id": "12D3KooWExampleNode0PeerIdBase58btc",
+    "addr": "/ip4/10.0.0.10/tcp/5040"
+  },
+  {
+    "name": "thorpub1addwnpepqexamplenode1secp256k1pubkeybech32",
+    "peer_id": "12D3KooWExampleNode1PeerIdBase58btc",
+    "addr": "/ip4/10.0.0.11/tcp/5040"
+  },
+  {
+    "name": "thorpub1addwnpepqexamplenode2secp256k1pubkeybech32",
+    "peer_id": "12D3KooWExampleNode2PeerIdBase58btc",
+    "addr": "/ip4/10.0.0.12/tcp/5040"
+  }
+]

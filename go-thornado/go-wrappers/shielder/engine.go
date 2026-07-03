@@ -19,6 +19,7 @@ char* thornado_shield_authorization_json(const char* client_seed, const char* de
 char* thornado_shield_authorization_for_deposit_json(const char* client_seed, uint64_t deposit_index, const char* deposit_id, uint64_t amount_sats, const char* note_commitments_json);
 char* thornado_shield_authorization_for_deposit_type_json(const char* client_seed, const char* deposit_type, uint64_t deposit_index, const char* deposit_id, uint64_t amount_sats, const char* note_commitments_json);
 char* thornado_merkle_root_json(const char* leaves_json);
+char* thornado_shielder_merkle_append_json(const char* request_json);
 char* thornado_recipient_binding_field_json(const char* recipient, uint64_t fee_sats, uint64_t denomination_sats);
 char* thornado_shielder_withdrawal_from_receipt_json(const char* note_json, const char* client_seed, const char* leaves_json, const char* recipient, uint64_t fee_sats);
 bool thornado_validate_withdrawal_public_json(const char* public_json);
@@ -122,6 +123,17 @@ func MerkleRoot(leavesJSON string) (string, error) {
 	leaves := cString(leavesJSON)
 	defer C.free(unsafe.Pointer(leaves))
 	return takeString(C.thornado_merkle_root_json(leaves))
+}
+
+// MerkleAppend appends a single leaf to an incremental Merkle tree. requestJSON is
+// {"filled_subtrees":["<decimal>",...],"next_index":N,"leaf":"<field-hex>"} (empty
+// filled_subtrees means an empty tree). It returns
+// {"root":"<decimal>","filled_subtrees":["<decimal>",...]}. The returned root is
+// byte-identical to what MerkleRoot would produce over the same leaves in order.
+func MerkleAppend(requestJSON string) (string, error) {
+	request := cString(requestJSON)
+	defer C.free(unsafe.Pointer(request))
+	return takeString(C.thornado_shielder_merkle_append_json(request))
 }
 
 func RecipientBindingField(recipient string, feeSats, denominationSats uint64) (string, error) {

@@ -249,8 +249,9 @@ start_worker_thornado() {
 
 frost_bootstrap_from_inventory() {
   local peers=() i host peer
-  for i in 1 2 3 4; do
+  for i in 1 2 3 4 5 6 7 8 9; do
     host="$(node_host "$i")"
+    [[ -n "$host" ]] || continue
     peer="$(curl --connect-timeout 2 --max-time 5 -fsS "http://${host}:$(frost_info_port "$i")/p2pid" 2>/dev/null || true)"
     [[ -n "$peer" ]] && peers+=("/ip4/${host}/tcp/$(frost_p2p_port "$i")/p2p/${peer}")
   done
@@ -264,14 +265,15 @@ frost_bootstrap_from_nodes_api() {
   local peers=() i host secp peer_id
   mkdir -p "$RUN_ROOT/meta"
   curl --connect-timeout 2 --max-time 5 -fsS "$(api_url "$query_node")/thornado/nodes" >"$nodes_file" 2>/dev/null || return 1
-  for i in 1 2 3 4; do
+  for i in 1 2 3 4 5 6 7 8 9; do
     host="$(node_host "$i")"
     secp="$(sed -n 's/^secp=//p' "$RUN_ROOT/meta/node${i}.env" 2>/dev/null || true)"
-    [[ -n "$host" && -n "$secp" ]] || return 1
+    [[ -n "$host" && -n "$secp" ]] || continue
     peer_id="$(jq -r --arg secp "$secp" '.[]? | select(.pub_key_set.secp256k1 == $secp) | .peer_id // empty' "$nodes_file" | head -n1)"
-    [[ -n "$peer_id" && "$peer_id" != "null" ]] || return 1
+    [[ -n "$peer_id" && "$peer_id" != "null" ]] || continue
     peers+=("/ip4/${host}/tcp/$(frost_p2p_port "$i")/p2p/${peer_id}")
   done
+  [[ "${#peers[@]}" -gt 0 ]] || return 1
   (IFS=,; printf '%s\n' "${peers[*]}")
 }
 
@@ -297,10 +299,10 @@ start_worker_bifrost() {
   controller="$(controller_host)"
   bootstrap="${FROST_BOOTSTRAP_PEERS:-}"
   if [[ -z "$bootstrap" ]]; then
-    bootstrap="$(cat "$RUN_ROOT/meta/bifrost-bootstrap-all" 2>/dev/null || true)"
+    bootstrap="$(frost_bootstrap_from_nodes_api "$NODE" || true)"
   fi
   if [[ -z "$bootstrap" ]]; then
-    bootstrap="$(frost_bootstrap_from_nodes_api "$NODE" || true)"
+    bootstrap="$(cat "$RUN_ROOT/meta/bifrost-bootstrap-all" 2>/dev/null || true)"
   fi
   if [[ -z "$bootstrap" ]]; then
     bootstrap="$(frost_bootstrap_from_inventory)"
@@ -338,6 +340,7 @@ start_worker_bifrost() {
     BIFROST_SIGNER_BLOCK_SCANNER_BLOCK_HEIGHT_DISCOVER_BACK_OFF="100ms" \
     BIFROST_SIGNER_BLOCK_SCANNER_PREFETCH_BLOCKS="1" BIFROST_SIGNER_BACKUP_KEYSHARES="false" \
     BIFROST_CHAINS_BTC_BLOCK_SCANNER_DB_PATH="$bhome/btc_observer" \
+    BIFROST_CHAINS_BTC_BLOCK_SCANNER_PREFETCH_BLOCKS="${BTC_BLOCK_SCANNER_PREFETCH_BLOCKS:-16}" \
     BIFROST_CHAINS_BTC_BLOCK_SCANNER_MAX_HEALTHY_LAG="24h" \
     BIFROST_CHAINS_BTC_SCANNER_LEVELDB_DB_PATH="$bhome/btc_scanner" \
     BIFROST_CHAINS_BTC_USERNAME="thornado" BIFROST_CHAINS_BTC_PASSWORD="thornado" \
@@ -405,6 +408,7 @@ controller actions (run on controller host):
   validate-genesis-config
   export-worker-bundles
   bond-workers
+  bond-worker-topup
   validate-flow3
   status
 
@@ -500,6 +504,13 @@ case "$action" in
     ;;
   bond-workers)
     bond_worker_nodes
+    ;;
+  bond-worker-topup)
+    require_inventory
+    [[ "$NODE" =~ ^[1-9]$ ]] || die "set NODE to 1..9"
+    [[ "${AMOUNT_SATS:-}" =~ ^[0-9]+$ ]] || die "set AMOUNT_SATS"
+    bond_extra_node_from_notes "$NODE" "$AMOUNT_SATS" "${LABEL:-distributed-node${NODE}-topup}"
+    NODE_IP_ADDRESS="$(node_host "$NODE")" register_extra_node "$NODE" "${LABEL:-distributed-node${NODE}-topup}"
     ;;
   validate-flow3)
     require_inventory

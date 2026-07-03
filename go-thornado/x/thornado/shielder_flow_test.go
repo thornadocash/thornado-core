@@ -1,17 +1,18 @@
 package thornado
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"sort"
 	"strings"
 	"testing"
 
 	"cosmossdk.io/log"
 	"github.com/blang/semver"
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
+	btcecdsa "github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	sdksecp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 
 	"github.com/thornadocash/go-thornado/common"
@@ -30,6 +31,7 @@ type shielderFlowTestKeeper struct {
 	noteRecords    map[string]types.StoredShielderNoteRecord
 	nullifiers     map[string][]byte
 	denominations  map[uint64][]string
+	treeStates     map[uint64]types.StoredShielderTreeState
 	merkleRoots    map[uint64]string
 	redeems        map[string]types.ShielderRedeem
 	nodeBonds      map[string]types.ShielderNodeBond
@@ -60,6 +62,7 @@ func newShielderFlowTestKeeper() *shielderFlowTestKeeper {
 		noteRecords:    make(map[string]types.StoredShielderNoteRecord),
 		nullifiers:     make(map[string][]byte),
 		denominations:  make(map[uint64][]string),
+		treeStates:     make(map[uint64]types.StoredShielderTreeState),
 		merkleRoots:    make(map[uint64]string),
 		redeems:        make(map[string]types.ShielderRedeem),
 		nodeBonds:      make(map[string]types.ShielderNodeBond),
@@ -190,13 +193,26 @@ func (k *shielderFlowTestKeeper) GetShielderNoteRecordIterator(ctx cosmos.Contex
 	return k.GetShielderNoteRecordIteratorAfter(ctx, "")
 }
 
-func (k *shielderFlowTestKeeper) SetShielderDenominationCommitment(_ cosmos.Context, denominationSats uint64, commitment string) error {
+func (k *shielderFlowTestKeeper) SetShielderDenominationLeaf(_ cosmos.Context, denominationSats, _ uint64, commitment string) error {
 	k.denominations[denominationSats] = append(k.denominations[denominationSats], commitment)
 	return nil
 }
 
 func (k *shielderFlowTestKeeper) GetShielderDenominationCommitments(_ cosmos.Context, denominationSats uint64) ([]string, error) {
 	return append([]string{}, k.denominations[denominationSats]...), nil
+}
+
+func (k *shielderFlowTestKeeper) SetShielderTreeState(_ cosmos.Context, state types.StoredShielderTreeState) error {
+	k.treeStates[state.DenominationSats] = state
+	return nil
+}
+
+func (k *shielderFlowTestKeeper) GetShielderTreeState(_ cosmos.Context, denominationSats uint64) (types.StoredShielderTreeState, bool, error) {
+	state, ok := k.treeStates[denominationSats]
+	if !ok {
+		return types.StoredShielderTreeState{DenominationSats: denominationSats}, false, nil
+	}
+	return state, true, nil
 }
 
 func (k *shielderFlowTestKeeper) SetShielderMerkleRoot(_ cosmos.Context, denominationSats uint64, root string) error {
@@ -973,7 +989,7 @@ func TestNodeFeeShieldAndUnshieldFlow(t *testing.T) {
 		FeePerSlotShare:    claim,
 		TotalCollectedSats: claim,
 	}
-	notes := []shielderNoteCommitment{{DenominationSats: claim, Commitment: "FEE_NOTE"}}
+	notes := []shielderNoteCommitment{{DenominationSats: claim, Commitment: flowCommitment("FEE_NOTE")}}
 	notePubKeys := []string{"02b0a63370f67e5a67541f8cb69df23d3fb4288e5b00c9148538a8b83d966b0cc3"}
 	signature := flowSignCompact(t, operatorPriv, shielderFeeClaimPayload(nodePubKey, owner, claim, claim, notes, notePubKeys))
 	deposit, err := ShieldShielderFees(ctx, k, owner, nodePubKey, signature, []string{flowNote(t, claim, "FEE_NOTE")}, notePubKeys)
@@ -1038,7 +1054,7 @@ func TestNodeFeeShieldAllowsMinFeeSizedClaim(t *testing.T) {
 		FeePerSlotShare:    claim,
 		TotalCollectedSats: claim,
 	}
-	notes := []shielderNoteCommitment{{DenominationSats: claim, Commitment: "FEE_NOTE_MIN"}}
+	notes := []shielderNoteCommitment{{DenominationSats: claim, Commitment: flowCommitment("FEE_NOTE_MIN")}}
 	notePubKeys := []string{"02b0a63370f67e5a67541f8cb69df23d3fb4288e5b00c9148538a8b83d966b0cc3"}
 	signature := flowSignCompact(t, operatorPriv, shielderFeeClaimPayload(nodePubKey, owner, claim, claim, notes, notePubKeys))
 	deposit, err := ShieldShielderFees(ctx, k, owner, nodePubKey, signature, []string{flowNote(t, claim, "FEE_NOTE_MIN")}, notePubKeys)
@@ -1301,7 +1317,7 @@ func TestNodeBidDepositAndSaleShieldThenSellerUnshield(t *testing.T) {
 	newNodePubKey := GetRandomBech32ConsensusPubKey()
 	oldOperator := GetRandomPubKey()
 	newOperator := GetRandomPubKey()
-	shieldPriv, err := btcec.NewPrivateKey(btcec.S256())
+	shieldPriv, err := btcec.NewPrivateKey()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1373,7 +1389,7 @@ func TestNodeBidDepositAndSaleShieldThenSellerUnshield(t *testing.T) {
 	if deposit.Settlement != types.DepositSettlementOperatorSale || deposit.SellerPayoutSats != originalBond || deposit.ProtocolBondSats != bidAmount-originalBond {
 		t.Fatalf("unexpected sale shield state: %#v", deposit)
 	}
-	if !k.ShielderCommitmentExists(ctx, "SELLER_NOTE") {
+	if !k.ShielderCommitmentExists(ctx, flowCommitment("SELLER_NOTE")) {
 		t.Fatal("seller payout note was not inserted")
 	}
 	if !k.nodeBonds[oldNodePubKey].Sold || k.nodeBonds[oldNodePubKey].FeeShareActive {
@@ -1916,9 +1932,18 @@ func TestDirectBaseVaultRefundPinnedSourceSurvivesPendingBatchRefresh(t *testing
 	}
 }
 
-func flowNote(t *testing.T, amount uint64, commitment string) string {
+// flowCommitment turns a human-readable test label into a valid 32-byte field-hex
+// commitment. The incremental Merkle append FFI parses each leaf as a field element
+// (unlike the old full-recompute path, which silently swallowed invalid hex), so
+// test commitments must be well-formed hex.
+func flowCommitment(label string) string {
+	sum := sha256.Sum256([]byte(label))
+	return hex.EncodeToString(sum[:])
+}
+
+func flowNote(t *testing.T, amount uint64, label string) string {
 	t.Helper()
-	raw, err := json.Marshal(shielderNoteCommitment{DenominationSats: amount, Commitment: commitment})
+	raw, err := json.Marshal(shielderNoteCommitment{DenominationSats: amount, Commitment: flowCommitment(label)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1985,16 +2010,7 @@ func flowShieldAuthorization(t *testing.T, priv *btcec.PrivateKey, depositPubkey
 		fmt.Sprintf("%d", amount),
 		string(commitmentsJSON),
 	})
-	signature, err := priv.Sign(digest)
-	if err != nil {
-		t.Fatal(err)
-	}
-	s := new(big.Int).Set(signature.S)
-	halfOrder := new(big.Int).Rsh(btcec.S256().N, 1)
-	if s.Cmp(halfOrder) == 1 {
-		s.Sub(btcec.S256().N, s)
-		signature.S = s
-	}
+	signature := btcecdsa.Sign(priv, digest)
 	return hex.EncodeToString(signature.Serialize())
 }
 
@@ -2016,7 +2032,7 @@ func validDepositPowToken(t *testing.T, ctx cosmos.Context, k keeper.Keeper, own
 
 func flowOperatorKey(t *testing.T) (*btcec.PrivateKey, common.PubKey) {
 	t.Helper()
-	priv, err := btcec.NewPrivateKey(btcec.S256())
+	priv, err := btcec.NewPrivateKey()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2034,23 +2050,17 @@ func flowOperatorKey(t *testing.T) (*btcec.PrivateKey, common.PubKey) {
 
 func flowSignCompact(t *testing.T, priv *btcec.PrivateKey, payload []byte) []byte {
 	t.Helper()
-	signature, err := priv.Sign(payload)
-	if err != nil {
-		t.Fatal(err)
+	signature := btcecdsa.Sign(priv, payload)
+	r := signature.R()
+	s := signature.S()
+	if s.IsOverHalfOrder() {
+		s.Negate()
 	}
-	s := new(big.Int).Set(signature.S)
-	halfOrder := new(big.Int).Rsh(btcec.S256().N, 1)
-	if s.Cmp(halfOrder) == 1 {
-		s.Sub(btcec.S256().N, s)
-	}
-	out := make([]byte, 64)
-	rb := signature.R.Bytes()
+	rb := r.Bytes()
 	sb := s.Bytes()
-	if len(rb) > 32 || len(sb) > 32 {
-		t.Fatalf("invalid signature limbs: r=%s s=%s", hex.EncodeToString(rb), hex.EncodeToString(sb))
-	}
-	copy(out[32-len(rb):32], rb)
-	copy(out[64-len(sb):], sb)
+	out := make([]byte, 64)
+	copy(out[:32], rb[:])
+	copy(out[32:], sb[:])
 	return out
 }
 

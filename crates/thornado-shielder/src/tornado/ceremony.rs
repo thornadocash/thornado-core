@@ -34,6 +34,7 @@ struct Manifest {
     upstream: String,
     merkle_depth: u64,
     public_inputs: Vec<String>,
+    withdraw_verification_key_sha256: String,
 }
 
 pub fn verification_key_sha256() -> String {
@@ -63,9 +64,14 @@ pub fn attestation() -> CeremonyAttestation {
 
 pub fn semi_trustless_at_least_one_honest() -> bool {
     // Production v2.1 artifacts are the community-audited MPC output; we pin only the vk and
-    // document the model rather than re-running the ceremony.
-    attestation().release == CEREMONY_RELEASE
-        && attestation().verification_key_sha256 == verification_key_sha256()
+    // document the model rather than re-running the ceremony. This asserts the embedded vk's
+    // real SHA-256 matches the hash pinned in MANIFEST.json (not a tautology against itself).
+    let manifest: Manifest = match serde_json::from_str(MANIFEST_JSON) {
+        Ok(manifest) => manifest,
+        Err(_) => return false,
+    };
+    manifest.release == CEREMONY_RELEASE
+        && manifest.withdraw_verification_key_sha256 == verification_key_sha256()
 }
 
 #[cfg(test)]
@@ -82,6 +88,15 @@ mod tests {
         assert_eq!(att.release, "v2.1");
         assert_eq!(att.public_inputs.len(), PUBLIC_INPUT_COUNT);
         assert!(semi_trustless_at_least_one_honest());
+    }
+
+    #[test]
+    fn manifest_pins_embedded_vk_hash() {
+        let manifest: Manifest = serde_json::from_str(MANIFEST_JSON).unwrap();
+        assert_eq!(
+            manifest.withdraw_verification_key_sha256,
+            verification_key_sha256()
+        );
     }
 
     #[test]

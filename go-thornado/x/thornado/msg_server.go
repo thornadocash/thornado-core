@@ -45,6 +45,11 @@ func (ms msgServer) Config(goCtx context.Context, msg *types.MsgConfig) (*types.
 	return externalHandler(goCtx, handler, msg)
 }
 
+func (ms msgServer) StoreMigrate(goCtx context.Context, msg *types.MsgStoreMigrate) (*types.MsgEmpty, error) {
+	handler := NewStoreMigrateHandler(ms.mgr)
+	return externalHandler(goCtx, handler, msg)
+}
+
 func (ms msgServer) NetworkFee(goCtx context.Context, msg *types.MsgNetworkFee) (*types.MsgEmpty, error) {
 	handler := NewNetworkFeeHandler(ms.mgr)
 	return externalHandler(goCtx, handler, msg)

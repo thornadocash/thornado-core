@@ -128,6 +128,7 @@ impl ShieldReceipt {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct WithdrawalProof {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub nullifier: String,
@@ -300,12 +301,31 @@ pub fn shield_authorization_for_deposit_type(
 ) -> ShieldAuthorization {
     let deposit_pubkey = client_pubkey_for_deposit_type(client_seed, deposit_type, deposit_index);
     let secret_key = deposit_secret_key_for_type(client_seed, deposit_type, deposit_index);
-    let message =
-        shield_authorization_message(&deposit_pubkey, deposit_id, amount_sats, note_commitments);
+    // Sign over the note-denomination total, not the caller-supplied amount:
+    // both verifiers (verify_shield_authorization here and the chain's
+    // VerifyShieldAuthorization) reconstruct the digest from the sum of the
+    // commitment denominations, so a caller amount that differs by even one sat
+    // (e.g. a sweep fee that doesn't leave a clean denomination sum) would make
+    // the signature un-verifiable. `amount_sats` still drives receipt/note
+    // derivation upstream; here it must match the notes we actually sign.
+    let _ = amount_sats;
+    let signed_amount_sats: u64 = note_commitments
+        .iter()
+        .map(|note| note.denomination_sats)
+        .sum();
+    let message = shield_authorization_message(
+        &deposit_pubkey,
+        deposit_id,
+        signed_amount_sats,
+        note_commitments,
+    );
     let signing_key = SigningKey::from(secret_key);
     let signature: SecpSignature = signing_key
         .sign_prehash(&message)
         .expect("32-byte shield authorization digest should sign");
+    // Chain rejects high-S signatures (BIP-146 low-S), matching the fee-claim
+    // authorization path; normalize before DER-encoding.
+    let signature = signature.normalize_s().unwrap_or(signature);
     ShieldAuthorization {
         signature: hex::encode(signature.to_der().as_bytes()),
         deposit_pubkey,
@@ -402,6 +422,49 @@ pub fn verify_shield_authorization(
 
 pub fn merkle_root(leaves: &[String]) -> String {
     tornado::merkle_root_hex(leaves).unwrap_or_default()
+}
+
+/// Request to append a single leaf to an incremental Merkle tree. `filled_subtrees`
+/// are decimal field elements (empty is treated as all-zero, i.e. an empty tree);
+/// `leaf` is a field-hex commitment (same encoding the keeper stores).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MerkleAppendRequest {
+    #[serde(default)]
+    pub filled_subtrees: Vec<String>,
+    pub next_index: u64,
+    pub leaf: String,
+}
+
+/// Result of an incremental append: the new root and updated filled subtrees, both
+/// as decimal field elements. The root matches `fr_to_decimal` of the tree root, so
+/// it is byte-identical to what the keeper stores from the full-recompute path.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MerkleAppendResponse {
+    pub root: String,
+    pub filled_subtrees: Vec<String>,
+}
+
+pub fn merkle_append(request: &MerkleAppendRequest) -> Result<MerkleAppendResponse> {
+    use tornado::field::{fr_from_decimal, fr_from_field_hex, fr_to_decimal};
+    let depth = tornado::merkle::MERKLE_TREE_DEPTH;
+    let filled: Vec<ark_bn254::Fr> = if request.filled_subtrees.is_empty() {
+        vec![ark_bn254::Fr::from(0u64); depth]
+    } else {
+        if request.filled_subtrees.len() != depth {
+            return Err(Error::InvalidProof);
+        }
+        request
+            .filled_subtrees
+            .iter()
+            .map(|value| fr_from_decimal(value).ok_or(Error::InvalidProof))
+            .collect::<Result<Vec<_>>>()?
+    };
+    let leaf = fr_from_field_hex(&request.leaf).ok_or(Error::InvalidProof)?;
+    let (root, new_filled) = tornado::merkle::append_leaf(&filled, request.next_index, leaf)?;
+    Ok(MerkleAppendResponse {
+        root: fr_to_decimal(root),
+        filled_subtrees: new_filled.into_iter().map(fr_to_decimal).collect(),
+    })
 }
 
 pub fn shielder_withdrawal_from_receipt(
@@ -926,6 +989,41 @@ mod tests {
             &commitments,
         )
         .unwrap();
+    }
+
+    #[test]
+    fn shield_authorization_signs_over_note_total_not_caller_amount() {
+        // Caller passes an amount that differs from the note-denomination sum
+        // (e.g. a sweep fee left a non-clean total). The verifier reconstructs
+        // the digest from the note total, so the signature must be over that
+        // total to verify — this is the deposit-2 shield failure regression.
+        let receipt = derive_shield_receipt("dep-2", 100_000_000, "client-seed").unwrap();
+        let commitments = receipt.commitments();
+        let note_total: u64 = commitments.iter().map(|c| c.denomination_sats).sum();
+        let wrong_amount = note_total + 987;
+        let authorization = shield_authorization("client-seed", "dep-2", wrong_amount, &commitments);
+        verify_shield_authorization(
+            &authorization.deposit_pubkey,
+            "dep-2",
+            &authorization,
+            &commitments,
+        )
+        .expect("signature must verify against the note total, not the caller amount");
+    }
+
+    #[test]
+    fn shield_authorization_signature_is_low_s() {
+        // The chain rejects high-S (BIP-146). Normalizing is idempotent, so a
+        // correctly low-S signature is unchanged by a second normalization.
+        let receipt = derive_shield_receipt("dep-3", 100_000_000, "client-seed").unwrap();
+        let commitments = receipt.commitments();
+        let authorization = shield_authorization("client-seed", "dep-3", 100_000_000, &commitments);
+        let der = hex::decode(&authorization.signature).unwrap();
+        let sig = SecpSignature::from_der(&der).unwrap();
+        assert!(
+            sig.normalize_s().is_none(),
+            "shield authorization signature must already be low-S"
+        );
     }
 
     #[test]

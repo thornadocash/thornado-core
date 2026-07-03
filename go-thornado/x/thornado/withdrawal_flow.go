@@ -10,6 +10,17 @@ import (
 )
 
 func QueueAuthorizedWithdrawalTxOut(ctx cosmos.Context, k keeper.Keeper, authorization types.ShielderRedeem) (types.ShielderRedeem, error) {
+	return queueAuthorizedWithdrawalTxOut(ctx, k, authorization, true)
+}
+
+// ReQueueAuthorizedWithdrawalTxOut re-queues a redeem whose outbound was reorged out
+// (errata). It skips fee booking because the withdrawal fee was already collected on
+// the original queue and is not refunded on errata; re-booking would double-count it.
+func ReQueueAuthorizedWithdrawalTxOut(ctx cosmos.Context, k keeper.Keeper, authorization types.ShielderRedeem) (types.ShielderRedeem, error) {
+	return queueAuthorizedWithdrawalTxOut(ctx, k, authorization, false)
+}
+
+func queueAuthorizedWithdrawalTxOut(ctx cosmos.Context, k keeper.Keeper, authorization types.ShielderRedeem, bookFee bool) (types.ShielderRedeem, error) {
 	if err := authorization.Valid(); err != nil {
 		return types.ShielderRedeem{}, err
 	}
@@ -40,8 +51,10 @@ func QueueAuthorizedWithdrawalTxOut(ctx cosmos.Context, k keeper.Keeper, authori
 	if err := appendBTCExactTxOut(ctx, k, ctx.BlockHeight(), item); err != nil {
 		return types.ShielderRedeem{}, err
 	}
-	if err := addWithdrawalFee(ctx, k, authorization.FeeSats); err != nil {
-		return types.ShielderRedeem{}, err
+	if bookFee {
+		if err := addWithdrawalFee(ctx, k, authorization.FeeSats); err != nil {
+			return types.ShielderRedeem{}, err
+		}
 	}
 	authorization.Status = types.DepositStatusKeysignQueued
 	if err := k.SetShielderRedeem(ctx, authorization); err != nil {

@@ -223,6 +223,32 @@ func processErrataOutboundTx(ctx cosmos.Context, k keeper.Keeper, eventMgr Event
 		return true, ErrInternal(err, "fail to emit security event")
 	}
 
+	// If this reorged-out outbound was a shielder redeem payout, re-queue it so the
+	// user is paid rather than having a spent note stranded. The nullifier stays
+	// spent (the note was legitimately consumed); we only re-issue the BTC send.
+	// The recredited vault funds above restore the balance the new outbound spends.
+	redeem, found, rerr := k.GetShielderRedeemByOutHash(ctx, er.Id.String())
+	if rerr != nil {
+		ctx.Logger().Error("fail to look up shielder redeem for errata", "error", rerr, "tx_id", er.Id.String())
+	} else if found && redeem.Status == types.ShielderRedeemStatusSettled {
+		k.DeleteShielderRedeemOutHash(ctx, er.Id.String())
+		redeem.OutHash = ""
+		redeem.Status = types.ShielderRedeemStatusAuthorized
+		redeem.RequestedHeight = ctx.BlockHeight()
+		// Retarget the re-issued outbound at the current active BTC vault, since the
+		// original vault may now be retiring/inactive.
+		if vault, _, verr := currentBTCVaultAddress(ctx, k); verr == nil {
+			redeem.VaultPubKey = vault.PubKey
+		}
+		// Re-queue without re-booking the withdrawal fee (already collected on the
+		// original queue and not refunded on errata), avoiding a double count.
+		if _, qerr := ReQueueAuthorizedWithdrawalTxOut(ctx, k, redeem); qerr != nil {
+			ctx.Logger().Error("fail to re-queue shielder redeem after errata", "error", qerr, "withdrawal_id", redeem.WithdrawalID)
+		} else {
+			ctx.Logger().Info("re-queued shielder redeem after outbound errata", "withdrawal_id", redeem.WithdrawalID, "tx_id", er.Id.String())
+		}
+	}
+
 	txOutVoter.SetReverted()
 	k.SetObservedTxOutVoter(ctx, txOutVoter)
 	return true, nil

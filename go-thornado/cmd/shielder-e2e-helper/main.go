@@ -9,7 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
+	btcecdsa "github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	sdksecp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	prefix "github.com/thornadocash/go-thornado/cmd"
@@ -73,19 +74,18 @@ func main() {
 		if err != nil {
 			die("invalid privkey hex: %v", err)
 		}
-		priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), privBytes)
-		sig, err := priv.Sign(digest)
-		if err != nil {
-			die("%v", err)
+		priv, _ := btcec.PrivKeyFromBytes(privBytes)
+		sig := btcecdsa.Sign(priv, digest)
+		r := sig.R()
+		s := sig.S()
+		if s.IsOverHalfOrder() {
+			s.Negate()
 		}
-		s := sig.S
-		halfOrder := new(big.Int).Rsh(btcec.S256().N, 1)
-		if s.Cmp(halfOrder) == 1 {
-			s = new(big.Int).Sub(btcec.S256().N, s)
-		}
+		rBytes := r.Bytes()
+		sBytes := s.Bytes()
 		out := make([]byte, 64)
-		sig.R.FillBytes(out[:32])
-		s.FillBytes(out[32:])
+		copy(out[:32], rBytes[:])
+		copy(out[32:], sBytes[:])
 		fmt.Println(hex.EncodeToString(out))
 	case "btc-address":
 		if len(os.Args) != 4 {

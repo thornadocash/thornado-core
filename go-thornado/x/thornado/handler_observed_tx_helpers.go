@@ -234,7 +234,8 @@ func handleObservedTxInQuorum(
 
 	mgr.ObMgr().AppendObserver(tx.Tx.Chain, voter.Tx.GetSigners())
 
-	if hasFinalised && tx.Tx.Chain.Equals(common.BTCChain) && vault.Status == ActiveVault && vault.IsBase() &&
+	if hasFinalised && tx.Tx.Chain.Equals(common.BTCChain) && vault.IsBase() &&
+		(vault.Status == ActiveVault || vault.Status == RetiringVault) &&
 		!tx.Tx.FromAddress.Equals(tx.Tx.ToAddress) && !observedBTCMigrationInbound(ctx, k, tx) {
 		rootAddr, rootErr := common.DeriveBTCTaprootAddress(tx.ObservedPubKey, common.MainVaultPathIndex)
 		if rootErr == nil && tx.Tx.ToAddress.Equals(rootAddr) {
@@ -660,7 +661,13 @@ func handleObservedTxOutQuorum(
 		)
 		return nil
 	}
-	if !matchedTxOut && observedOutboundRequiresTxOutMatch(tx) {
+	// Only a FINAL unmatched outbound proves an unauthorized spend. A pre-final
+	// quorum observation can legitimately fail to match when settlement lands
+	// outside the signing window (slow signing under load): the non-internal
+	// outside-window matcher requires finality, so the match only becomes
+	// possible once the tx is final. Halting on the pre-final observation would
+	// freeze BTC signing on every congested-but-honest outbound.
+	if !matchedTxOut && tx.IsFinal() && observedOutboundRequiresTxOutMatch(tx) {
 		ctx.Logger().Info("halt BTC vault, observed outbound did not match an open txout",
 			"tx_id", tx.Tx.ID.String(),
 			"chain", tx.Tx.Chain.String(),
@@ -1087,13 +1094,21 @@ func repairBTCInternalOutboundReplay(ctx cosmos.Context, mgr Manager, tx Observe
 	if !ok {
 		return false
 	}
+	k := mgr.Keeper()
+	voter, err := k.GetObservedTxOutVoter(ctx, tx.Tx.ID)
+	if err != nil {
+		ctx.Logger().Error("fail to get observed tx out voter for BTC internal outbound replay repair", "error", err, "tx_id", tx.Tx.ID.String())
+		return false
+	}
+	if observedTxOutVoterDone(voter) {
+		return false
+	}
 	if types.IsInternalTxOutType(item.TxType) && item.TxType == types.TxOutTypeMigrate {
 		return settleBTCMigrationSourceVault(ctx, mgr, tx)
 	}
 	if !types.IsInternalTxOutType(item.TxType) {
 		return false
 	}
-	k := mgr.Keeper()
 	vault, err := k.GetVault(ctx, tx.ObservedPubKey)
 	if err != nil {
 		ctx.Logger().Error("fail to get vault for BTC internal outbound replay repair", "error", err, "vault", tx.ObservedPubKey.String(), "tx_id", tx.Tx.ID.String())
@@ -1112,6 +1127,11 @@ func repairBTCInternalOutboundReplay(ctx cosmos.Context, mgr Manager, tx Observe
 		ctx.Logger().Error("fail to save vault after BTC internal outbound replay repair", "error", err, "vault", vault.PubKey.String(), "tx_id", tx.Tx.ID.String())
 		return false
 	}
+	if voter.Tx.IsEmpty() {
+		voter.Tx = tx
+	}
+	voter.SetDone()
+	k.SetObservedTxOutVoter(ctx, voter)
 	ctx.Logger().Info("repaired BTC internal outbound replay vault accounting",
 		"vault", vault.PubKey.String(),
 		"tx_id", tx.Tx.ID.String(),
@@ -1119,6 +1139,18 @@ func repairBTCInternalOutboundReplay(ctx cosmos.Context, mgr Manager, tx Observe
 		"coins", tx.Tx.Coins.String(),
 	)
 	return true
+}
+
+func observedTxOutVoterDone(voter ObservedTxVoter) bool {
+	if voter.Tx.Status == common.Status_done {
+		return true
+	}
+	for _, tx := range voter.Txs {
+		if tx.Status == common.Status_done {
+			return true
+		}
+	}
+	return false
 }
 
 func findMatchingBTCInternalTxOut(ctx cosmos.Context, k keeper.Keeper, tx ObservedTx) (TxOutItem, int64, bool) {
@@ -1528,8 +1560,16 @@ func markMatchedTxOutItemSettled(ctx cosmos.Context, mgr Manager, item TxOutItem
 		redeem, err := mgr.Keeper().GetShielderRedeem(ctx, item.InHash.String())
 		if err == nil && redeem.Status == types.DepositStatusKeysignQueued {
 			redeem.Status = types.ShielderRedeemStatusSettled
+			redeem.OutHash = tx.Tx.ID
 			if err := mgr.Keeper().SetShielderRedeem(ctx, redeem); err != nil {
 				ctx.Logger().Error("fail to mark shielder redeem settled", "error", err, "withdrawal_id", item.InHash.String())
+			}
+			// Index the outbound txid so an errata (reorg) of this payout can find
+			// and re-queue the redeem instead of stranding the spent note.
+			if !tx.Tx.ID.IsEmpty() {
+				if err := mgr.Keeper().SetShielderRedeemOutHash(ctx, tx.Tx.ID.String(), redeem.WithdrawalID); err != nil {
+					ctx.Logger().Error("fail to index shielder redeem out hash", "error", err, "withdrawal_id", redeem.WithdrawalID)
+				}
 			}
 		} else if err != nil {
 			ctx.Logger().Debug("matched outbound is not a shielder redeem", "error", err, "in_hash", item.InHash.String())
@@ -1652,7 +1692,11 @@ func observedOutboundMatchesTxOut(tx ObservedTx, item TxOutItem) bool {
 					!maxGas.IsZero() &&
 					observedGas.LTE(maxGas)
 			}
-			return actual.Equal(intended) &&
+			// A signer may return sub-dust residue to the source vault as
+			// change instead of fee, leaving actual slightly below intended;
+			// migration settlement subtracts the full source-input total, so
+			// vault accounting stays exact either way.
+			return actual.LTE(intended) &&
 				observedGas.LTE(maxGas) &&
 				observedAmount.GTE(item.Coin.Amount) &&
 				observedAmount.LTE(intended)

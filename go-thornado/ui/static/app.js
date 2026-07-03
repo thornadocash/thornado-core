@@ -2499,14 +2499,22 @@ async function shielderSync(options = {}) {
     payload.nullifiers.sort((a, b) => String(a.nullifier_hash || "").localeCompare(String(b.nullifier_hash || "")));
     payload.deposits.sort((a, b) => String(a.deposit_id || "").localeCompare(String(b.deposit_id || "")));
     const notesByDenomination = new Map();
+    const notesByDenominationEntries = new Map();
     for (const note of payload?.notes || []) {
       const denomination = Number(note.denomination_sats || 0);
       if (!denomination || !note.commitment) {
         continue;
       }
-      const leaves = notesByDenomination.get(denomination) || [];
-      leaves.push(note.commitment);
-      notesByDenomination.set(denomination, leaves);
+      const entries = notesByDenominationEntries.get(denomination) || [];
+      entries.push({ commitment: note.commitment, leafIndex: Number(note.leaf_index || 0) });
+      notesByDenominationEntries.set(denomination, entries);
+    }
+    for (const [denomination, entries] of notesByDenominationEntries) {
+      // Leaves MUST be ordered by their fixed incremental-tree leaf_index so the
+      // client rebuilds the exact same tree (and root/path) the chain computed.
+      // The previous lexicographic/sync order no longer matches the chain tree.
+      entries.sort((a, b) => a.leafIndex - b.leafIndex);
+      notesByDenomination.set(denomination, entries.map((entry) => entry.commitment));
     }
     const normalized = {
       notes: payload?.notes || [],

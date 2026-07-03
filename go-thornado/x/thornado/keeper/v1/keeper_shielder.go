@@ -3,7 +3,7 @@ package keeperv1
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/cosmos/cosmos-sdk/runtime"
@@ -214,7 +214,11 @@ func (k KVStore) GetShielderNoteRecordIteratorAfter(ctx cosmos.Context, cursor s
 	return k.getIteratorAfter(ctx, prefixShielderNotePubKey, cursor)
 }
 
-func (k KVStore) SetShielderDenominationCommitment(ctx cosmos.Context, denominationSats uint64, commitment string) error {
+// SetShielderDenominationLeaf stores a commitment at its fixed insertion index in
+// the denomination's incremental Merkle tree. The index-keyed layout means prefix
+// iteration returns leaves in insertion order deterministically across validators
+// (no sort), which is what the incremental tree and clients rebuild from.
+func (k KVStore) SetShielderDenominationLeaf(ctx cosmos.Context, denominationSats, index uint64, commitment string) error {
 	commitment = strings.TrimSpace(commitment)
 	if denominationSats == 0 {
 		return fmt.Errorf("missing shielder commitment denomination")
@@ -222,7 +226,7 @@ func (k KVStore) SetShielderDenominationCommitment(ctx cosmos.Context, denominat
 	if commitment == "" {
 		return fmt.Errorf("missing shielder commitment")
 	}
-	return k.setShielderJSON(ctx, shielderDenominationCommitmentKey(denominationSats, commitment), true)
+	return k.setShielderJSON(ctx, shielderDenominationLeafKey(denominationSats, index), commitment)
 }
 
 func (k KVStore) GetShielderDenominationCommitments(ctx cosmos.Context, denominationSats uint64) ([]string, error) {
@@ -234,15 +238,114 @@ func (k KVStore) GetShielderDenominationCommitments(ctx cosmos.Context, denomina
 
 	var commitments []string
 	for ; iter.Valid(); iter.Next() {
-		key := string(iter.Key())
-		idx := strings.LastIndex(key, "/")
-		if idx < 0 || idx == len(key)-1 {
+		var commitment string
+		if err := json.Unmarshal(iter.Value(), &commitment); err != nil {
+			return nil, dbError(ctx, "unmarshal shielder denomination leaf", err)
+		}
+		commitments = append(commitments, commitment)
+	}
+	return commitments, nil
+}
+
+func (k KVStore) SetShielderTreeState(ctx cosmos.Context, state types.StoredShielderTreeState) error {
+	if err := state.Valid(); err != nil {
+		return err
+	}
+	return k.setShielderJSON(ctx, shielderTreeStateKey(state.DenominationSats), state)
+}
+
+func (k KVStore) GetShielderTreeState(ctx cosmos.Context, denominationSats uint64) (types.StoredShielderTreeState, bool, error) {
+	state := types.StoredShielderTreeState{DenominationSats: denominationSats}
+	found, err := k.getShielderJSON(ctx, shielderTreeStateKey(denominationSats), &state)
+	return state, found, err
+}
+
+// SweepOrphanShielderNoteRecords deletes every note record of the given
+// denomination whose commitment is NOT the denomination tree's leaf at the
+// record's leaf index. Such records are sync-stream pollution (accumulated
+// while notes were recorded without a leaf index and all claimed index 0);
+// the index-keyed leaf store is the authority, so any record it does not
+// corroborate was never a live leaf. Entries under the denomination prefix
+// whose key is not a leaf index are the pre-index commitment-keyed layout
+// (JSON bool values that break GetShielderDenominationCommitments) and are
+// deleted as well. Returns how many records were deleted in total.
+func (k KVStore) SweepOrphanShielderNoteRecords(ctx cosmos.Context, denominationSats uint64) (int, error) {
+	if denominationSats == 0 {
+		return 0, fmt.Errorf("missing shielder denomination")
+	}
+
+	// Read the leaves raw: the prefix may still hold legacy commitment-keyed
+	// bool entries that the typed accessor refuses to decode.
+	denomPrefix := shielderDenominationPrefix(denominationSats)
+	leaves := map[uint64]string{}
+	var legacyKeys [][]byte
+	iter := k.getIterator(ctx, kvTypes.DbPrefix(denomPrefix))
+	for ; iter.Valid(); iter.Next() {
+		index, err := strconv.ParseUint(strings.TrimPrefix(string(iter.Key()), denomPrefix), 10, 64)
+		var commitment string
+		if err == nil {
+			err = json.Unmarshal(iter.Value(), &commitment)
+		}
+		if err != nil {
+			key := make([]byte, len(iter.Key()))
+			copy(key, iter.Key())
+			legacyKeys = append(legacyKeys, key)
 			continue
 		}
-		commitments = append(commitments, key[idx+1:])
+		leaves[index] = strings.TrimSpace(commitment)
 	}
-	sort.Strings(commitments)
-	return commitments, nil
+	iter.Close()
+
+	var orphanKeys [][]byte
+	iter = k.GetShielderNoteRecordIterator(ctx)
+	for ; iter.Valid(); iter.Next() {
+		var record types.StoredShielderNoteRecord
+		if err := json.Unmarshal(iter.Value(), &record); err != nil {
+			iter.Close()
+			return 0, dbError(ctx, "unmarshal shielder note record", err)
+		}
+		if record.DenominationSats != denominationSats {
+			continue
+		}
+		if strings.EqualFold(leaves[record.LeafIndex], strings.TrimSpace(record.Commitment)) {
+			continue
+		}
+		key := make([]byte, len(iter.Key()))
+		copy(key, iter.Key())
+		orphanKeys = append(orphanKeys, key)
+	}
+	iter.Close()
+
+	for _, key := range append(orphanKeys, legacyKeys...) {
+		k.del(ctx, key)
+	}
+	return len(orphanKeys) + len(legacyKeys), nil
+}
+
+// PurgeShielderPoolState deletes all shielder commitment-pool state (commitments,
+// note records, per-denomination leaves, tree state, historical roots, spent
+// nullifiers). Used for the testnet reset when the tree's root computation changes
+// from sorted to insertion order; existing notes are intentionally invalidated.
+func (k KVStore) PurgeShielderPoolState(ctx cosmos.Context) {
+	prefixes := []kvTypes.DbPrefix{
+		prefixShielderCommitment,
+		prefixShielderNotePubKey,
+		prefixShielderDenomCommitment,
+		prefixShielderTreeState,
+		prefixShielderMerkleRoot,
+		prefixShielderNullifier,
+	}
+	for _, prefix := range prefixes {
+		iter := k.getIterator(ctx, prefix)
+		var keys [][]byte
+		for ; iter.Valid(); iter.Next() {
+			keys = append(keys, append([]byte(nil), iter.Key()...))
+		}
+		iter.Close()
+		for _, key := range keys {
+			k.del(ctx, key)
+		}
+	}
 }
 
 func (k KVStore) SetShielderMerkleRoot(ctx cosmos.Context, denominationSats uint64, root string) error {
@@ -275,8 +378,12 @@ func shielderDenominationPrefix(denominationSats uint64) string {
 	return fmt.Sprintf("%s%020d/", prefixShielderDenomCommitment, denominationSats)
 }
 
-func shielderDenominationCommitmentKey(denominationSats uint64, commitment string) []byte {
-	return []byte(shielderDenominationPrefix(denominationSats) + strings.TrimSpace(commitment))
+func shielderDenominationLeafKey(denominationSats, index uint64) []byte {
+	return []byte(fmt.Sprintf("%s%020d", shielderDenominationPrefix(denominationSats), index))
+}
+
+func shielderTreeStateKey(denominationSats uint64) []byte {
+	return []byte(fmt.Sprintf("%s%020d", prefixShielderTreeState, denominationSats))
 }
 
 func shielderMerkleRootKey(denominationSats uint64, root string) []byte {
@@ -294,6 +401,48 @@ func (k KVStore) GetShielderRedeem(ctx cosmos.Context, withdrawalID string) (typ
 	record := types.ShielderRedeem{WithdrawalID: withdrawalID}
 	_, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderRedeem, withdrawalID), &record)
 	return record, err
+}
+
+// SetShielderRedeemOutHash indexes a settled outbound's BTC txid to its redeem so
+// an errata (reorg) of that outbound can recover and re-queue the redeem.
+func (k KVStore) SetShielderRedeemOutHash(ctx cosmos.Context, outHash, withdrawalID string) error {
+	outHash = strings.TrimSpace(outHash)
+	withdrawalID = strings.TrimSpace(withdrawalID)
+	if outHash == "" {
+		return fmt.Errorf("missing shielder redeem out hash")
+	}
+	if withdrawalID == "" {
+		return fmt.Errorf("missing shielder redeem id")
+	}
+	return k.setShielderJSON(ctx, k.GetKey(prefixShielderRedeemOutHash, outHash), withdrawalID)
+}
+
+// GetShielderRedeemByOutHash returns the redeem whose settled outbound had the
+// given BTC txid, plus whether a mapping was found.
+func (k KVStore) GetShielderRedeemByOutHash(ctx cosmos.Context, outHash string) (types.ShielderRedeem, bool, error) {
+	var withdrawalID string
+	found, err := k.getShielderJSON(ctx, k.GetKey(prefixShielderRedeemOutHash, strings.TrimSpace(outHash)), &withdrawalID)
+	if err != nil {
+		return types.ShielderRedeem{}, false, err
+	}
+	if !found || strings.TrimSpace(withdrawalID) == "" {
+		return types.ShielderRedeem{}, false, nil
+	}
+	redeem, err := k.GetShielderRedeem(ctx, withdrawalID)
+	if err != nil {
+		return types.ShielderRedeem{}, false, err
+	}
+	return redeem, true, nil
+}
+
+// DeleteShielderRedeemOutHash removes the outbound-txid index entry for a redeem
+// (used when an errata reverts a settled outbound before it is re-queued).
+func (k KVStore) DeleteShielderRedeemOutHash(ctx cosmos.Context, outHash string) {
+	outHash = strings.TrimSpace(outHash)
+	if outHash == "" {
+		return
+	}
+	k.del(ctx, k.GetKey(prefixShielderRedeemOutHash, outHash))
 }
 
 func (k KVStore) GetShielderRedeemByNullifier(ctx cosmos.Context, nullifierHash string) (types.ShielderRedeem, error) {

@@ -5,8 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-peerstore/addr"
+	"github.com/libp2p/go-libp2p/core/peer"
 	tnet "github.com/libp2p/go-libp2p-testing/net"
 	maddr "github.com/multiformats/go-multiaddr"
 	. "gopkg.in/check.v1"
@@ -92,7 +91,7 @@ func (s *FileStateMgrExtraSuite) TestSaveAddressBook_EmptyFolder(c *C) {
 	fsm, err := NewFileStateMgr("")
 	c.Assert(err, IsNil)
 
-	err = fsm.SaveAddressBook(map[peer.ID]addr.AddrList{})
+	err = fsm.SaveAddressBook(map[peer.ID][]maddr.Multiaddr{})
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "base file path is invalid")
 }
@@ -111,7 +110,7 @@ func (s *FileStateMgrExtraSuite) TestSaveAddressBook_SkipsLoopback(c *C) {
 	// Use a real peer ID from tnet
 	id := tnet.RandIdentityOrFatal(nil)
 
-	testAddr := make(map[peer.ID]addr.AddrList)
+	testAddr := make(map[peer.ID][]maddr.Multiaddr)
 	testAddr[id.ID()] = []maddr.Multiaddr{loopback, nonLoopback}
 
 	err = fsm.SaveAddressBook(testAddr)

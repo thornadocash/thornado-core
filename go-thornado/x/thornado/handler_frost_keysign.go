@@ -236,7 +236,7 @@ func (h FrostKeysignHandler) markTxOutPendingRetry(ctx cosmos.Context, msg MsgFr
 		ctx.Logger().Error("fail to get txout for keysign retry", "height", msg.Height, "error", err)
 		return
 	}
-	if !txOutUsesBatching(*txOut) || txOut.Status != TxOutStatusPendingSign {
+	if txOut.Status != TxOutStatusPendingSign || !txOutHasPendingItems(*txOut) {
 		return
 	}
 	hasPendingForVault := false
