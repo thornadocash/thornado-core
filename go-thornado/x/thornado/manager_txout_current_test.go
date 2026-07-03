@@ -1,6 +1,7 @@
 package thornado
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/thornadocash/go-thornado/common"
@@ -232,6 +233,51 @@ func TestAppendBTCExactTxOutSeparatesBatchRefundAndMigration(t *testing.T) {
 	got := k.txOutByHeight[migrationHeight]
 	if got.Status != TxOutStatusPendingSign || len(got.TxArray) != 1 || got.TxArray[0].TxType != types.TxOutTypeMigrate {
 		t.Fatalf("migration was not separated into pending sign txout: %#v", got)
+	}
+}
+
+func TestAppendBTCExactTxOutCapsBatchRecipients(t *testing.T) {
+	SetupConfigForTest()
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+	vaultPubKey := GetRandomPubKey()
+	vault := NewVaultV2(10, ActiveVault, BaseVault, vaultPubKey, common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	k.baseVaults = Vaults{vault}
+	addTestBTCVaultSourceInput(t, ctx, k, vaultPubKey, 2_000_000_000)
+
+	total := btcMaxBatchRecipients + 3
+	for i := 0; i < total; i++ {
+		item := TxOutItem{
+			Chain:          common.BTCChain,
+			ToAddress:      GetRandomBTCAddress(),
+			VaultPubKey:    vaultPubKey,
+			Coin:           common.NewCoin(common.BTCAsset, cosmos.NewUint(10_000_000)),
+			InHash:         GetRandomTxHash(),
+			ModuleName:     BaseName,
+			VaultPathIndex: common.MainVaultPathIndex,
+			TxType:         types.TxOutTypeRefund,
+		}
+		if err := appendBTCExactTxOut(ctx, k, ctx.BlockHeight(), item); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if len(k.txOutByHeight) != 2 {
+		t.Fatalf("expected the batch to split into 2 txout blocks, got %d", len(k.txOutByHeight))
+	}
+	var sizes []int
+	for _, txOut := range k.txOutByHeight {
+		if txOut.Status != TxOutStatusPendingBatch {
+			t.Fatalf("expected pending_batch block, got %#v", txOut.Status)
+		}
+		if len(txOut.TxArray) > btcMaxBatchRecipients {
+			t.Fatalf("batch block exceeds recipient cap: %d", len(txOut.TxArray))
+		}
+		sizes = append(sizes, len(txOut.TxArray))
+	}
+	sort.Ints(sizes)
+	if sizes[0] != 3 || sizes[1] != btcMaxBatchRecipients {
+		t.Fatalf("unexpected batch split sizes: %v", sizes)
 	}
 }
 

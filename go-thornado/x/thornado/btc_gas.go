@@ -43,10 +43,18 @@ func btcGasCoinFromNativeSats(sats uint64) common.Coin {
 	return coin
 }
 
+// btcMaxBatchRecipients caps how many outbound items may share one batch tx. The
+// BTC observers (Go ignoreTx and the Rust port) ignore any tx with more than 10
+// outputs, so a batch of more than 9 recipients + 1 vault change builds a tx that
+// confirms on Bitcoin but can never be observed or matched — the funds move while
+// the txout items stay unsigned forever.
+const btcMaxBatchRecipients = 9
+
 // btcVaultBatchTxOut returns the txout block collecting batchable outbounds for the
 // given vault. Each vault grows its own batch: an open pending_batch block whose close
-// height has not yet arrived is reused; otherwise a new block is opened one batch window
-// ahead with the vault's next epoch sequence number.
+// height has not yet arrived is reused while it has room for another recipient;
+// otherwise a new block is opened one batch window ahead with the vault's next epoch
+// sequence number.
 func btcVaultBatchTxOut(ctx cosmos.Context, k keeper.Keeper, vault common.PubKey) (*TxOut, error) {
 	iterator := k.GetTxOutIterator(ctx)
 	if iterator == nil {
@@ -68,6 +76,9 @@ func btcVaultBatchTxOut(ctx cosmos.Context, k keeper.Keeper, vault common.PubKey
 			nextEpoch = txOut.Epoch + 1
 		}
 		if txOut.Status != TxOutStatusPendingBatch || txOut.Height <= ctx.BlockHeight() {
+			continue
+		}
+		if len(txOut.TxArray) >= btcMaxBatchRecipients {
 			continue
 		}
 		if open == nil || txOut.Height < open.Height {
