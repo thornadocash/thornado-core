@@ -122,6 +122,17 @@ struct RunArgs {
     /// observation (root-only).
     #[arg(long, default_value_t = 512)]
     deposit_lookahead: u64,
+    /// How long the party leader collects join requests before deciding
+    /// (below-threshold ceiling).
+    #[arg(long, default_value_t = 12)]
+    party_wait_secs: u64,
+    /// Straggler grace: once the signing threshold has joined, how long the
+    /// leader keeps waiting for FULL membership before forming the party.
+    #[arg(long, default_value_t = 3)]
+    party_grace_secs: u64,
+    /// How long a member waits for the leader's join-party response.
+    #[arg(long, default_value_t = 8)]
+    join_wait_secs: u64,
     /// node's cosmos secp256k1 secret key (32-byte hex) for posting
     /// observations to thornado. If unset, observations are logged only.
     #[arg(long, env = "COSMOS_PRIV_KEY")]
@@ -618,6 +629,9 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
         network,
         signing_period: args.signing_period,
         allow_respend_spent: args.allow_respend_spent,
+        party_wait: std::time::Duration::from_secs(args.party_wait_secs),
+        party_grace: std::time::Duration::from_secs(args.party_grace_secs),
+        join_wait: std::time::Duration::from_secs(args.join_wait_secs),
         ..Default::default()
     };
     let sl = sign_loop::SignLoop::new(

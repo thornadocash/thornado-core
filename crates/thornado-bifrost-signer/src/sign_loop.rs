@@ -89,6 +89,10 @@ pub struct SignLoopCfg {
     pub min_utxo_conf: u64,
     /// How long the leader collects join requests before deciding.
     pub party_wait: Duration,
+    /// Grace the leader gives stragglers once threshold is met: after this
+    /// long it stops waiting for FULL membership and forms the party with
+    /// whoever joined. `party_wait` remains the below-threshold ceiling.
+    pub party_grace: Duration,
     /// How long a member waits for the leader's response.
     pub join_wait: Duration,
     /// Ceiling for driving all of a tx's FROST sessions to completion.
@@ -117,7 +121,10 @@ impl Default for SignLoopCfg {
             signing_period: 30,
             min_utxo_conf: 1,
             party_wait: Duration::from_secs(12),
-            join_wait: Duration::from_secs(20),
+            party_grace: Duration::from_secs(3),
+            // Short relative to the leader's decision time: a member stuck on
+            // an absent leader blocks its whole sequential sign loop.
+            join_wait: Duration::from_secs(8),
             keysign_timeout: Duration::from_secs(60),
             fetch_window: 20,
             max_batches_per_tick: 5,
@@ -262,8 +269,11 @@ pub fn broadcast_error_is_benign(message: &str) -> bool {
 // ---------------------------------------------------------------------------
 
 /// Leader side: collect join requests for `session_id` until every member is
-/// in or `wait` elapses, then answer every joined stream. Success needs
-/// `threshold` parties (leader included). `seed` carries already-received
+/// in, then answer every joined stream. Success needs `threshold` parties
+/// (leader included). Stragglers get `grace` from party start; once threshold
+/// is met and `grace` has elapsed the party forms with whoever joined —
+/// `wait` is only the ceiling while still BELOW threshold (a laggard must not
+/// stall every batch for the full wait). `seed` carries already-received
 /// (parked) requests; requests for other session ids are parked back via
 /// `parked` so demand-driven leading can pick them up next.
 #[allow(clippy::too_many_arguments)]
@@ -276,6 +286,7 @@ pub async fn leader_form_party(
     members: &[String],
     threshold: usize,
     wait: Duration,
+    grace: Duration,
 ) -> Result<Vec<String>> {
     let mut coordinator =
         p2p::Coordinator::new_leader(session_id, local, members.iter().cloned(), threshold);
@@ -285,12 +296,19 @@ pub async fn leader_form_party(
             joined.push((req.from.clone(), req.stream));
         }
     }
-    let deadline = tokio::time::Instant::now() + wait;
+    let start = tokio::time::Instant::now();
+    let deadline = start + wait;
+    let grace_deadline = start + grace.min(wait);
 
     while coordinator.selected().len() < members.len() {
+        let next_deadline = if coordinator.ready() {
+            grace_deadline
+        } else {
+            deadline
+        };
         let req = tokio::select! {
             r = joins.recv() => r,
-            _ = tokio::time::sleep_until(deadline) => break,
+            _ = tokio::time::sleep_until(next_deadline) => break,
         };
         let Some(req) = req else { break };
         if req.msg.id != session_id {
@@ -715,6 +733,7 @@ impl SignLoop {
                 &members,
                 threshold,
                 self.cfg.party_wait,
+                self.cfg.party_grace,
             )
             .await?
         } else {
