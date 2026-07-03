@@ -9,10 +9,11 @@ import (
 )
 
 type vaultDebitRepairKeeperFake struct {
-	configs map[string]int64
-	vaults  Vaults
-	saved   []Vault
-	routes  []common.InvariantRoute
+	configs      map[string]int64
+	vaults       Vaults
+	saved        []Vault
+	routes       []common.InvariantRoute
+	votesCleared []string
 }
 
 func (k *vaultDebitRepairKeeperFake) GetConfig(_ cosmos.Context, key string) (int64, error) {
@@ -21,6 +22,10 @@ func (k *vaultDebitRepairKeeperFake) GetConfig(_ cosmos.Context, key string) (in
 
 func (k *vaultDebitRepairKeeperFake) SetConfig(_ cosmos.Context, key string, value int64) {
 	k.configs[key] = value
+}
+
+func (k *vaultDebitRepairKeeperFake) DeleteNodeConfigs(_ cosmos.Context, key string) {
+	k.votesCleared = append(k.votesCleared, key)
 }
 
 func (k *vaultDebitRepairKeeperFake) GetBaseVaultsByStatus(_ cosmos.Context, status VaultStatus) (Vaults, error) {
@@ -74,6 +79,31 @@ func TestRetiringVaultDebitRepairApplies(t *testing.T) {
 	got := k.vaults[0].Coins.GetCoin(common.BTCAsset).Amount.Uint64()
 	if got != 12_244_906_454 {
 		t.Fatalf("expected book 12244906454 after debit, got %d", got)
+	}
+	if len(k.votesCleared) != 1 || k.votesCleared[0] != RepairRetiringVaultDebitSatsKey {
+		t.Fatalf("expected node votes cleared for debit key, got %v", k.votesCleared)
+	}
+}
+
+func TestRetiringVaultCreditRepairApplies(t *testing.T) {
+	ctx := cosmos.Context{}.WithBlockHeight(100).WithLogger(log.NewNopLogger())
+	k := &vaultDebitRepairKeeperFake{
+		configs: map[string]int64{RepairRetiringVaultCreditSatsKey: 49_500_000},
+		vaults:  Vaults{retiringTestVault(12_195_406_454)},
+		routes: []common.InvariantRoute{
+			common.NewInvariantRoute("vault_backing", func(cosmos.Context) ([]string, bool) {
+				return nil, false
+			}),
+		},
+	}
+	applyVotedRetiringVaultDebitRepair(ctx, k, &invariantHaltEventMgr{})
+
+	got := k.vaults[0].Coins.GetCoin(common.BTCAsset).Amount.Uint64()
+	if got != 12_244_906_454 {
+		t.Fatalf("expected book 12244906454 after credit, got %d", got)
+	}
+	if len(k.votesCleared) != 1 || k.votesCleared[0] != RepairRetiringVaultCreditSatsKey {
+		t.Fatalf("expected node votes cleared for credit key, got %v", k.votesCleared)
 	}
 }
 
