@@ -13,6 +13,7 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 func processSolvencyAttestation(
@@ -179,7 +180,7 @@ func clearMatchingSolvencySigningHalt(ctx cosmos.Context, k solvencyHaltConfigKe
 // insolvent usually means vault has more coins than wallet
 // return true means the vault is insolvent , the network should halt , otherwise false
 func insolvencyCheck(ctx cosmos.Context, mgr Manager, vault Vault, coins common.Coins, chain common.Chain) bool {
-	adjustVault, err := excludePendingOutboundFromVault(ctx, mgr, vault)
+	adjustVault, pendingMigrate, err := excludePendingOutboundFromVault(ctx, mgr, vault)
 	if err != nil {
 		ctx.Logger().Error("fail to exclude pending outbound from vault, assuming insolvent", "error", err)
 		return true
@@ -200,11 +201,21 @@ func insolvencyCheck(ctx cosmos.Context, mgr Manager, vault Vault, coins common.
 			continue
 		}
 		// If adjusted amount is zero but original was non-zero, pending outbounds
-		// exceeded the vault balance. Use the original amount as a fallback so that
-		// insolvency (e.g. wallet drained to zero) is not silently bypassed.
+		// consumed (or exceeded) the vault balance. Use the original amount as a
+		// fallback so that insolvency (e.g. wallet drained to zero) is not silently
+		// bypassed — except for the portion covered by pending migrations, which
+		// legitimately spend the vault's entire balance during every churn.
 		if c.IsEmpty() {
 			origAmount, ok := originalAmounts[c.Asset.String()]
 			if !ok || origAmount.IsZero() {
+				continue
+			}
+			migrateAmount, hasMigrate := pendingMigrate[c.Asset.String()]
+			if hasMigrate {
+				origAmount = common.SafeSub(origAmount, migrateAmount)
+			}
+			if origAmount.IsZero() {
+				ctx.Logger().Info("pending migration covers vault balance, skipping solvency fallback", "asset", c.Asset.String(), "migrate pending", migrateAmount.String())
 				continue
 			}
 			ctx.Logger().Info("pending outbounds exceed vault balance, using original for solvency check", "asset", c.Asset.String(), "original", origAmount.String())
@@ -253,7 +264,7 @@ func insolvencyCheck(ctx cosmos.Context, mgr Manager, vault Vault, coins common.
 	return false
 }
 
-func excludePendingOutboundFromVault(ctx cosmos.Context, mgr Manager, vault Vault) (Vault, error) {
+func excludePendingOutboundFromVault(ctx cosmos.Context, mgr Manager, vault Vault) (Vault, map[string]cosmos.Uint, error) {
 	// Deep copy vault coins to avoid mutating the caller's slice backing array.
 	// Element-by-element copy ensures the pass-by-value contract is honored,
 	// even if future code modifies Amount in-place rather than via SafeSub.
@@ -270,16 +281,17 @@ func excludePendingOutboundFromVault(ctx cosmos.Context, mgr Manager, vault Vaul
 	if startHeight < 1 {
 		startHeight = 1
 	}
+	pendingMigrate := make(map[string]cosmos.Uint)
 	seenSignedOutHashes := make(map[common.TxID]struct{})
 	for i := int64(1); i < ctx.BlockHeight(); i++ {
 		blockOut, err := mgr.Keeper().GetTxOut(ctx, i)
 		if err != nil {
 			ctx.Logger().Error("fail to get block tx out", "error", err)
-			return vault, fmt.Errorf("fail to get block tx out, err: %w", err)
+			return vault, pendingMigrate, fmt.Errorf("fail to get block tx out, err: %w", err)
 		}
-		vault = deductVaultBlockPendingOutbound(ctx, mgr, vault, blockOut, i >= startHeight, seenSignedOutHashes)
+		vault = deductVaultBlockPendingOutbound(ctx, mgr, vault, blockOut, i >= startHeight, seenSignedOutHashes, pendingMigrate)
 	}
-	return vault, nil
+	return vault, pendingMigrate, nil
 }
 
 func deductVaultBlockPendingOutbound(
@@ -289,6 +301,7 @@ func deductVaultBlockPendingOutbound(
 	block *TxOut,
 	includeOpenTxOut bool,
 	seenSignedOutHashes map[common.TxID]struct{},
+	pendingMigrate map[string]cosmos.Uint,
 ) Vault {
 	if block == nil {
 		return vault
@@ -301,16 +314,35 @@ func deductVaultBlockPendingOutbound(
 			if !includeOpenTxOut {
 				continue
 			}
-			vault = deductVaultOutboundItem(vault, txOutItem.Coin, txOutMaxGasCoin(txOutItem))
+			gasCoin := txOutMaxGasCoin(txOutItem)
+			addPendingMigrateDeduction(pendingMigrate, txOutItem, gasCoin)
+			vault = deductVaultOutboundItem(vault, txOutItem.Coin, gasCoin)
 			continue
 		}
 		if !signedOutboundAwaitingVaultAccounting(ctx, mgr, txOutItem) {
 			continue
 		}
 		gasCoin := signedOutboundGasCoin(ctx, mgr, vault, txOutItem, seenSignedOutHashes)
+		addPendingMigrateDeduction(pendingMigrate, txOutItem, gasCoin)
 		vault = deductVaultOutboundItem(vault, txOutItem.Coin, gasCoin)
 	}
 	return vault
+}
+
+func addPendingMigrateDeduction(pendingMigrate map[string]cosmos.Uint, txOutItem TxOutItem, gasCoin common.Coin) {
+	if types.NormalizeTxOutType(txOutItem.TxType) != types.TxOutTypeMigrate {
+		return
+	}
+	for _, coin := range []common.Coin{txOutItem.Coin, gasCoin} {
+		if coin.IsEmpty() {
+			continue
+		}
+		total, ok := pendingMigrate[coin.Asset.String()]
+		if !ok {
+			total = cosmos.ZeroUint()
+		}
+		pendingMigrate[coin.Asset.String()] = total.Add(coin.Amount)
+	}
 }
 
 func deductVaultOutboundItem(vault Vault, coin, gasCoin common.Coin) Vault {
