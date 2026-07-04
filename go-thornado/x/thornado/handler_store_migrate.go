@@ -170,6 +170,10 @@ func parseStoreMigrateTarget(key string) (storeMigrateTarget, error) {
 		if denom, err := strconv.ParseUint(t.args[0], 10, 64); err != nil || denom == 0 {
 			return t, fmt.Errorf("SHIELDERNOTESWEEP denomination must be a positive integer: %v", err)
 		}
+	case "SHIELDERSPENDSWEEP":
+		if len(t.args) != 0 {
+			return t, fmt.Errorf("SHIELDERSPENDSWEEP target takes no arguments")
+		}
 	case "SHIELDERPURGE":
 		if len(t.args) != 0 {
 			return t, fmt.Errorf("SHIELDERPURGE target takes no arguments")
@@ -192,6 +196,7 @@ type storeMigrateKeeper interface {
 	DeleteRawStoreValue(ctx cosmos.Context, key []byte)
 	ValidateRawStoreKey(key []byte) error
 	SweepOrphanShielderNoteRecords(ctx cosmos.Context, denominationSats uint64) (int, error)
+	SweepOldRegimeShielderSpends(ctx cosmos.Context, appendLeaf types.ShielderMerkleAppendFunc) (int, int, error)
 	PurgeShielderPoolState(ctx cosmos.Context)
 }
 
@@ -330,6 +335,25 @@ func applyStoreMigration(ctx cosmos.Context, k storeMigrateKeeper, key, value st
 			return fmt.Errorf("sweep orphan shielder note records: %w", err)
 		}
 		ctx.Logger().Info("swept orphan shielder note records", "denomination", denom, "deleted", n)
+		return nil
+
+	case "SHIELDERSPENDSWEEP":
+		// Value is an operator-chosen tag, as for SHIELDERNOTESWEEP. Era is
+		// decided by replaying each denomination's tree from the index-keyed
+		// leaf store: recorded roots the replay cannot reproduce are
+		// old-regime, and their nullifiers/redeems go with them — a nullifier
+		// may only be dropped once no surviving root can re-prove its note.
+		roots, spends, err := k.SweepOldRegimeShielderSpends(ctx, func(filled []string, index uint64, leaf string) (string, []string, error) {
+			appended, err := AppendShielderMerkleLeaf(filled, index, leaf)
+			if err != nil {
+				return "", nil, err
+			}
+			return appended.Root, appended.FilledSubtrees, nil
+		})
+		if err != nil {
+			return fmt.Errorf("sweep old-regime shielder spends: %w", err)
+		}
+		ctx.Logger().Info("swept old-regime shielder spends", "roots_deleted", roots, "nullifiers_deleted", spends)
 		return nil
 
 	case "SHIELDERPURGE":

@@ -428,6 +428,11 @@ func (m StoredShielderTreeState) Valid() error {
 	return nil
 }
 
+// ShielderMerkleAppendFunc appends one leaf to an incremental Merkle tree and
+// returns the new root plus updated filled subtrees. Injected into keeper-level
+// tree replays so the keeper does not depend on the Rust engine binding.
+type ShielderMerkleAppendFunc func(filledSubtrees []string, nextIndex uint64, leaf string) (string, []string, error)
+
 func (m StoredShielderNoteRecord) Key() string {
 	return strings.TrimSpace(m.Commitment)
 }

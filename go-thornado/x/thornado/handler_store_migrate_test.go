@@ -8,6 +8,7 @@ import (
 
 	"github.com/thornadocash/go-thornado/common"
 	"github.com/thornadocash/go-thornado/common/cosmos"
+	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 // storeMigrateKeeperFake implements storeMigrateKeeper for dispatch tests. The
@@ -15,12 +16,13 @@ import (
 // under an allowlisted prefix are accepted, and (for the vault prefix) the
 // value must be non-empty to stand in for "decodes as a Vault".
 type storeMigrateKeeperFake struct {
-	configs map[string]int64
-	vaults  map[string]Vault
-	txouts  map[int64]*TxOut
-	raw     map[string][]byte
-	swept   []uint64
-	purged  int
+	configs     map[string]int64
+	vaults      map[string]Vault
+	txouts      map[int64]*TxOut
+	raw         map[string][]byte
+	swept       []uint64
+	spendSweeps int
+	purged      int
 }
 
 func newStoreMigrateKeeperFake() *storeMigrateKeeperFake {
@@ -63,9 +65,9 @@ func (k *storeMigrateKeeperFake) DeleteRawStoreValue(_ cosmos.Context, key []byt
 }
 
 var (
-	errFakeEmptyKey     = fmtError("empty key")
-	errFakeBadPrefix    = fmtError("prefix not allowlisted")
-	errFakeUndecodable  = fmtError("undecodable value")
+	errFakeEmptyKey    = fmtError("empty key")
+	errFakeBadPrefix   = fmtError("prefix not allowlisted")
+	errFakeUndecodable = fmtError("undecodable value")
 )
 
 type fmtError string
@@ -110,6 +112,11 @@ func (k *storeMigrateKeeperFake) SweepOrphanShielderNoteRecords(_ cosmos.Context
 	return 3, nil
 }
 
+func (k *storeMigrateKeeperFake) SweepOldRegimeShielderSpends(_ cosmos.Context, _ types.ShielderMerkleAppendFunc) (int, int, error) {
+	k.spendSweeps++
+	return 2, 1, nil
+}
+
 func (k *storeMigrateKeeperFake) PurgeShielderPoolState(_ cosmos.Context) {
 	k.purged++
 }
@@ -123,6 +130,8 @@ func TestParseStoreMigrateTarget(t *testing.T) {
 		"TXOUTCANCEL:63391:0",
 		"SHIELDERNOTESWEEP:10000000",
 		"shieldernotesweep:10000000",
+		"SHIELDERSPENDSWEEP",
+		"shielderspendsweep",
 		"SHIELDERPURGE",
 	}
 	for _, k := range ok {
@@ -133,6 +142,7 @@ func TestParseStoreMigrateTarget(t *testing.T) {
 	bad := []string{
 		"", "FOO:bar", "CONFIG", "VAULTCOIN:onlyone", "TXOUTCANCEL:1", "KVSET:nothex!!", "KVSET", "KVDEL:zz",
 		"SHIELDERNOTESWEEP", "SHIELDERNOTESWEEP:0", "SHIELDERNOTESWEEP:abc", "SHIELDERNOTESWEEP:1:2", "SHIELDERPURGE:1",
+		"SHIELDERSPENDSWEEP:1",
 	}
 	for _, k := range bad {
 		if _, err := parseStoreMigrateTarget(k); err == nil {
@@ -198,6 +208,17 @@ func TestApplyStoreMigrationShielderNoteSweep(t *testing.T) {
 	}
 	if len(k.swept) != 1 || k.swept[0] != 10000000 {
 		t.Fatalf("expected one sweep of denomination 10000000, got %v", k.swept)
+	}
+}
+
+func TestApplyStoreMigrationShielderSpendSweep(t *testing.T) {
+	ctx := cosmos.Context{}.WithBlockHeight(100).WithLogger(log.NewNopLogger())
+	k := newStoreMigrateKeeperFake()
+	if err := applyStoreMigration(ctx, k, "SHIELDERSPENDSWEEP", "SWEEP1"); err != nil {
+		t.Fatalf("expected spend sweep to apply, got %v", err)
+	}
+	if k.spendSweeps != 1 {
+		t.Fatalf("expected one spend sweep call, got %d", k.spendSweeps)
 	}
 }
 

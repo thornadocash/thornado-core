@@ -407,8 +407,8 @@ func (k KVStoreDummy) GetNodeConfigs(ctx cosmos.Context, key string) (NodeConfig
 func (k KVStoreDummy) SetNodeConfig(_ cosmos.Context, key string, value int64, acc cosmos.AccAddress) error {
 	return kaboom
 }
-func (k KVStoreDummy) DeleteNodeConfigs(_ cosmos.Context, key string)           {}
-func (k KVStoreDummy) PurgeOperationalNodeConfigs(_ cosmos.Context)             {}
+func (k KVStoreDummy) DeleteNodeConfigs(_ cosmos.Context, key string) {}
+func (k KVStoreDummy) PurgeOperationalNodeConfigs(_ cosmos.Context)   {}
 func (k KVStoreDummy) GetStoreMigrateVotes(_ cosmos.Context, key string) StoreMigrateVotes {
 	return StoreMigrateVotes{Votes: map[string]string{}}
 }
@@ -423,9 +423,9 @@ func (k KVStoreDummy) SetRawStoreValue(_ cosmos.Context, key, value []byte) erro
 func (k KVStoreDummy) GetRawStoreValue(_ cosmos.Context, key []byte) ([]byte, bool) {
 	return nil, false
 }
-func (k KVStoreDummy) DeleteRawStoreValue(_ cosmos.Context, key []byte)  {}
-func (k KVStoreDummy) ValidateRawStoreValue(key, value []byte) error     { return kaboom }
-func (k KVStoreDummy) ValidateRawStoreKey(key []byte) error              { return kaboom }
+func (k KVStoreDummy) DeleteRawStoreValue(_ cosmos.Context, key []byte)         {}
+func (k KVStoreDummy) ValidateRawStoreValue(key, value []byte) error            { return kaboom }
+func (k KVStoreDummy) ValidateRawStoreKey(key []byte) error                     { return kaboom }
 func (k KVStoreDummy) DeleteConfig(_ cosmos.Context, key string) error          { return kaboom }
 func (k KVStoreDummy) GetConfigIterator(ctx cosmos.Context) cosmos.Iterator     { return nil }
 func (k KVStoreDummy) GetNodeConfigIterator(ctx cosmos.Context) cosmos.Iterator { return nil }
@@ -627,6 +627,12 @@ func (k KVStoreDummy) SetShielderTreeState(_ cosmos.Context, _ types.StoredShiel
 }
 func (k KVStoreDummy) GetShielderTreeState(_ cosmos.Context, denominationSats uint64) (types.StoredShielderTreeState, bool, error) {
 	return types.StoredShielderTreeState{DenominationSats: denominationSats}, false, nil
+}
+func (k KVStoreDummy) GetShielderTreeStateIterator(_ cosmos.Context) cosmos.Iterator {
+	return NewDummyIterator()
+}
+func (k KVStoreDummy) SweepOldRegimeShielderSpends(_ cosmos.Context, _ types.ShielderMerkleAppendFunc) (int, int, error) {
+	return 0, 0, nil
 }
 func (k KVStoreDummy) PurgeShielderPoolState(_ cosmos.Context) {}
 func (k KVStoreDummy) SetShielderMerkleRoot(_ cosmos.Context, _ uint64, _ string) error {

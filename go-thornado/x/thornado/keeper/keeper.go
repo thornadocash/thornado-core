@@ -188,6 +188,8 @@ type KeeperShielder interface {
 	SweepOrphanShielderNoteRecords(ctx cosmos.Context, denominationSats uint64) (int, error)
 	SetShielderTreeState(ctx cosmos.Context, state types.StoredShielderTreeState) error
 	GetShielderTreeState(ctx cosmos.Context, denominationSats uint64) (types.StoredShielderTreeState, bool, error)
+	GetShielderTreeStateIterator(ctx cosmos.Context) cosmos.Iterator
+	SweepOldRegimeShielderSpends(ctx cosmos.Context, appendLeaf types.ShielderMerkleAppendFunc) (int, int, error)
 	PurgeShielderPoolState(ctx cosmos.Context)
 	SetShielderMerkleRoot(ctx cosmos.Context, denominationSats uint64, root string) error
 	ShielderMerkleRootExists(ctx cosmos.Context, denominationSats uint64, root string) bool

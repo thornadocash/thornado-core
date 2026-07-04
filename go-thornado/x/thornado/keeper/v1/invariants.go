@@ -3,6 +3,7 @@ package keeperv1
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/thornadocash/go-thornado/common"
@@ -553,14 +554,35 @@ func backingNoteLiabilitySats(ctx cosmos.Context, k KVStore) (uint64, uint64, []
 	return minted - spent, spent, msg, broken
 }
 
+// backingMintedNoteSats sums cumulative minted note value from the per-denomination
+// tree states: every appended leaf is one minted note of that denomination, leaves
+// are never removed on spend (nullifier model), and the tree state is the one
+// shielder store no sweep may touch — so the mint ledger survives record sweeps.
+// Note records are kept as a secondary check only: per denomination they can never
+// total more than the tree admits; an excess is orphan-record pollution (the
+// SHIELDERNOTESWEEP condition), not extra liability.
 func backingMintedNoteSats(ctx cosmos.Context, k KVStore) (uint64, []string, bool) {
 	var total uint64
 	var msg []string
 	var broken bool
 
-	iterator := k.GetShielderNoteRecordIterator(ctx)
-	defer iterator.Close()
+	treeTotals := map[uint64]uint64{}
+	treeIterator := k.GetShielderTreeStateIterator(ctx)
+	for ; treeIterator.Valid(); treeIterator.Next() {
+		var state types.StoredShielderTreeState
+		if err := json.Unmarshal(treeIterator.Value(), &state); err != nil {
+			msg = append(msg, fmt.Sprintf("invalid tree state encoding: %s", string(treeIterator.Key())))
+			broken = true
+			continue
+		}
+		minted := state.NextIndex * state.DenominationSats
+		treeTotals[state.DenominationSats] = minted
+		total += minted
+	}
+	treeIterator.Close()
 
+	recordTotals := map[uint64]uint64{}
+	iterator := k.GetShielderNoteRecordIterator(ctx)
 	for ; iterator.Valid(); iterator.Next() {
 		var record types.StoredShielderNoteRecord
 		if err := json.Unmarshal(iterator.Value(), &record); err != nil {
@@ -568,7 +590,20 @@ func backingMintedNoteSats(ctx cosmos.Context, k KVStore) (uint64, []string, boo
 			broken = true
 			continue
 		}
-		total += record.DenominationSats
+		recordTotals[record.DenominationSats] += record.DenominationSats
+	}
+	iterator.Close()
+
+	denominations := make([]uint64, 0, len(recordTotals))
+	for denomination := range recordTotals {
+		denominations = append(denominations, denomination)
+	}
+	slices.Sort(denominations)
+	for _, denomination := range denominations {
+		if recordTotals[denomination] > treeTotals[denomination] {
+			msg = append(msg, fmt.Sprintf("denomination %d note records total %d exceeds tree-minted %d", denomination, recordTotals[denomination], treeTotals[denomination]))
+			broken = true
+		}
 	}
 
 	return total, msg, broken

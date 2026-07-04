@@ -322,6 +322,155 @@ func (k KVStore) SweepOrphanShielderNoteRecords(ctx cosmos.Context, denomination
 	return len(orphanKeys) + len(legacyKeys), nil
 }
 
+func (k KVStore) GetShielderTreeStateIterator(ctx cosmos.Context) cosmos.Iterator {
+	return k.getIterator(ctx, prefixShielderTreeState)
+}
+
+// replayShielderDenominationRoots rebuilds a denomination's incremental Merkle
+// tree from the index-keyed leaf store and returns the root after every append —
+// the complete set of roots the current regime has ever exposed (a superset of
+// the recorded historical roots, which are only written per batch). The replay
+// must terminate on the stored tree state's root exactly; anything else means
+// the leaf store cannot vouch for the live tree and no sweep may trust it.
+func (k KVStore) replayShielderDenominationRoots(ctx cosmos.Context, state types.StoredShielderTreeState, appendLeaf types.ShielderMerkleAppendFunc) (map[string]bool, error) {
+	denomPrefix := shielderDenominationPrefix(state.DenominationSats)
+	leaves := map[uint64]string{}
+	iter := k.getIterator(ctx, kvTypes.DbPrefix(denomPrefix))
+	for ; iter.Valid(); iter.Next() {
+		index, err := strconv.ParseUint(strings.TrimPrefix(string(iter.Key()), denomPrefix), 10, 64)
+		var commitment string
+		if err == nil {
+			err = json.Unmarshal(iter.Value(), &commitment)
+		}
+		if err != nil {
+			continue
+		}
+		leaves[index] = strings.TrimSpace(commitment)
+	}
+	iter.Close()
+
+	if uint64(len(leaves)) != state.NextIndex {
+		return nil, fmt.Errorf("denomination %d has %d indexed leaves, tree state expects %d", state.DenominationSats, len(leaves), state.NextIndex)
+	}
+
+	roots := map[string]bool{}
+	var filled []string
+	var root string
+	for index := uint64(0); index < state.NextIndex; index++ {
+		leaf, ok := leaves[index]
+		if !ok {
+			return nil, fmt.Errorf("denomination %d is missing leaf index %d", state.DenominationSats, index)
+		}
+		var err error
+		root, filled, err = appendLeaf(filled, index, leaf)
+		if err != nil {
+			return nil, fmt.Errorf("replay denomination %d leaf %d: %w", state.DenominationSats, index, err)
+		}
+		roots[strings.TrimSpace(root)] = true
+	}
+	if state.NextIndex > 0 && strings.TrimSpace(root) != strings.TrimSpace(state.Root) {
+		return nil, fmt.Errorf("denomination %d replay root %s does not match tree state root %s", state.DenominationSats, root, state.Root)
+	}
+	return roots, nil
+}
+
+// SweepOldRegimeShielderSpends deletes the spend-side state of the pre-leaf-index
+// regime: every recorded historical Merkle root that the current index-keyed leaf
+// store cannot reproduce by replay, and every nullifier record (plus its redeem
+// and outbound-txid index) whose redeem proved against such a root. Era is decided
+// by root-set membership — on-chain and deterministic, the same authority principle
+// as SweepOrphanShielderNoteRecords. Roots and nullifiers must go together: a
+// nullifier may only be dropped once no surviving root can re-prove its note.
+// Nullifiers whose redeem record is missing are kept (era undecidable) and remain
+// individually visible through the vault_backing invariant. Returns the deleted
+// root and nullifier counts.
+func (k KVStore) SweepOldRegimeShielderSpends(ctx cosmos.Context, appendLeaf types.ShielderMerkleAppendFunc) (int, int, error) {
+	var states []types.StoredShielderTreeState
+	iter := k.getIterator(ctx, prefixShielderTreeState)
+	for ; iter.Valid(); iter.Next() {
+		var state types.StoredShielderTreeState
+		if err := json.Unmarshal(iter.Value(), &state); err != nil {
+			iter.Close()
+			return 0, 0, dbError(ctx, "unmarshal shielder tree state", err)
+		}
+		states = append(states, state)
+	}
+	iter.Close()
+
+	liveRootsByDenomination := map[uint64]map[string]bool{}
+	liveRoots := map[string]bool{}
+	for _, state := range states {
+		roots, err := k.replayShielderDenominationRoots(ctx, state, appendLeaf)
+		if err != nil {
+			return 0, 0, err
+		}
+		liveRootsByDenomination[state.DenominationSats] = roots
+		for root := range roots {
+			liveRoots[root] = true
+		}
+	}
+
+	rootPrefix := string(prefixShielderMerkleRoot)
+	var deadRootKeys [][]byte
+	iter = k.getIterator(ctx, prefixShielderMerkleRoot)
+	for ; iter.Valid(); iter.Next() {
+		parts := strings.SplitN(strings.TrimPrefix(string(iter.Key()), rootPrefix), "/", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		denomination, err := strconv.ParseUint(parts[0], 10, 64)
+		if err != nil {
+			continue
+		}
+		if liveRootsByDenomination[denomination][strings.TrimSpace(parts[1])] {
+			continue
+		}
+		deadRootKeys = append(deadRootKeys, append([]byte(nil), iter.Key()...))
+	}
+	iter.Close()
+
+	type deadSpend struct {
+		nullifierKey []byte
+		withdrawalID string
+		outHash      string
+	}
+	var deadSpends []deadSpend
+	iter = k.GetShielderNullifierIterator(ctx)
+	for ; iter.Valid(); iter.Next() {
+		withdrawalID, err := invariantNullifierWithdrawalID(iter.Value())
+		if err != nil || withdrawalID == "" {
+			continue
+		}
+		withdrawal, err := k.GetShielderRedeem(ctx, withdrawalID)
+		if err != nil {
+			iter.Close()
+			return 0, 0, err
+		}
+		merkleRoot := strings.TrimSpace(withdrawal.MerkleRoot)
+		if merkleRoot == "" || liveRoots[merkleRoot] {
+			continue
+		}
+		deadSpends = append(deadSpends, deadSpend{
+			nullifierKey: append([]byte(nil), iter.Key()...),
+			withdrawalID: withdrawalID,
+			outHash:      strings.TrimSpace(withdrawal.OutHash.String()),
+		})
+	}
+	iter.Close()
+
+	for _, key := range deadRootKeys {
+		k.del(ctx, key)
+	}
+	for _, spend := range deadSpends {
+		k.del(ctx, spend.nullifierKey)
+		k.del(ctx, k.GetKey(prefixShielderRedeem, spend.withdrawalID))
+		if spend.outHash != "" {
+			k.del(ctx, k.GetKey(prefixShielderRedeemOutHash, spend.outHash))
+		}
+	}
+	return len(deadRootKeys), len(deadSpends), nil
+}
+
 // PurgeShielderPoolState deletes all shielder commitment-pool state (commitments,
 // note records, per-denomination leaves, tree state, historical roots, spent
 // nullifiers). Used for the testnet reset when the tree's root computation changes
