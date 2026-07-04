@@ -217,6 +217,162 @@ func TestSolvencyCheckAllowsOldSignedBTCOutboundAwaitingObservedVoter(t *testing
 	}
 }
 
+func TestSolvencyCheckAllowsFullBalanceMigrationOpenTxOut(t *testing.T) {
+	ctx := cosmos.Context{}.WithBlockHeight(315).WithLogger(log.NewNopLogger())
+	vaultPubKey := GetRandomPubKey()
+	to := mustAddress(t, "bcrt1q9hln7upfz396r6lkry0unnv4y2tuxra6hhvq57")
+
+	vault := Vault{
+		PubKey: vaultPubKey,
+		Coins:  common.Coins{common.NewCoin(common.BTCAsset, cosmos.NewUint(12_956_224_454))},
+	}
+	walletCoins := common.Coins{}
+	mgr := &Mgrs{K: solvencyTestKeeper{
+		configs: map[constants.ConfigName]int64{
+			constants.Chain_BlockTimeSeconds: 6,
+			constants.Keysign_PeriodMinutes:  10,
+		},
+		txOuts: map[int64]*TxOut{
+			309: {
+				Height: 309,
+				TxArray: []TxOutItem{
+					{
+						Chain:       common.BTCChain,
+						VaultPubKey: vaultPubKey,
+						Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(12_956_214_454)),
+						MaxGas:      common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(10_000))},
+						ToAddress:   to,
+						TxType:      types.TxOutTypeMigrate,
+					},
+				},
+			},
+		},
+	}}
+
+	if insolvencyCheck(ctx, mgr, vault, walletCoins, common.BTCChain) {
+		t.Fatal("full-balance migration awaiting confirmation should not halt solvency")
+	}
+}
+
+func TestSolvencyCheckAllowsFullBalanceMigrationAwaitingVaultAccounting(t *testing.T) {
+	ctx := cosmos.Context{}.WithBlockHeight(1886).WithLogger(log.NewNopLogger())
+	vaultPubKey := GetRandomPubKey()
+	outHash := mustTxID(t, "DEB75C2A44A8A7B01D635E82F7B917E8B5F2B38FC09F91DD719F55BD890970D3")
+	to := mustAddress(t, "bcrt1qw84my4v866jvy33g92v8008ztplr5c9cd80qsk")
+
+	vault := Vault{
+		PubKey: vaultPubKey,
+		Coins:  common.Coins{common.NewCoin(common.BTCAsset, cosmos.NewUint(12_956_224_454))},
+	}
+	walletCoins := common.Coins{}
+	mgr := &Mgrs{K: solvencyTestKeeper{
+		configs: map[constants.ConfigName]int64{
+			constants.Chain_BlockTimeSeconds: 6,
+			constants.Keysign_PeriodMinutes:  10,
+		},
+		txOuts: map[int64]*TxOut{
+			1600: {
+				Height: 1600,
+				TxArray: []TxOutItem{
+					{
+						Chain:       common.BTCChain,
+						VaultPubKey: vaultPubKey,
+						Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(12_956_214_454)),
+						MaxGas:      common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(10_000))},
+						ToAddress:   to,
+						OutHash:     outHash,
+						TxType:      types.TxOutTypeMigrate,
+					},
+				},
+			},
+		},
+	}}
+
+	if insolvencyCheck(ctx, mgr, vault, walletCoins, common.BTCChain) {
+		t.Fatal("signed full-balance migration awaiting vault accounting should not halt solvency")
+	}
+}
+
+func TestSolvencyCheckStillHaltsWhenNonMigrateOutboundsZeroVault(t *testing.T) {
+	ctx := cosmos.Context{}.WithBlockHeight(315).WithLogger(log.NewNopLogger())
+	vaultPubKey := GetRandomPubKey()
+	to := mustAddress(t, "bcrt1q9hln7upfz396r6lkry0unnv4y2tuxra6hhvq57")
+
+	vault := Vault{
+		PubKey: vaultPubKey,
+		Coins:  common.Coins{common.NewCoin(common.BTCAsset, cosmos.NewUint(1_000_000))},
+	}
+	walletCoins := common.Coins{}
+	mgr := &Mgrs{K: solvencyTestKeeper{
+		configs: map[constants.ConfigName]int64{
+			constants.Chain_BlockTimeSeconds: 6,
+			constants.Keysign_PeriodMinutes:  10,
+		},
+		txOuts: map[int64]*TxOut{
+			309: {
+				Height: 309,
+				TxArray: []TxOutItem{
+					{
+						Chain:       common.BTCChain,
+						VaultPubKey: vaultPubKey,
+						Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(1_000_000)),
+						ToAddress:   to,
+						TxType:      types.TxOutTypeOut,
+					},
+				},
+			},
+		},
+	}}
+
+	if !insolvencyCheck(ctx, mgr, vault, walletCoins, common.BTCChain) {
+		t.Fatal("non-migrate outbounds zeroing the vault should still halt solvency")
+	}
+}
+
+func TestSolvencyCheckStillHaltsWhenMigrationOnlyPartiallyCoversVault(t *testing.T) {
+	ctx := cosmos.Context{}.WithBlockHeight(315).WithLogger(log.NewNopLogger())
+	vaultPubKey := GetRandomPubKey()
+	to := mustAddress(t, "bcrt1q9hln7upfz396r6lkry0unnv4y2tuxra6hhvq57")
+
+	vault := Vault{
+		PubKey: vaultPubKey,
+		Coins:  common.Coins{common.NewCoin(common.BTCAsset, cosmos.NewUint(1_000_000))},
+	}
+	walletCoins := common.Coins{}
+	mgr := &Mgrs{K: solvencyTestKeeper{
+		configs: map[constants.ConfigName]int64{
+			constants.Chain_BlockTimeSeconds: 6,
+			constants.Keysign_PeriodMinutes:  10,
+		},
+		txOuts: map[int64]*TxOut{
+			309: {
+				Height: 309,
+				TxArray: []TxOutItem{
+					{
+						Chain:       common.BTCChain,
+						VaultPubKey: vaultPubKey,
+						Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(590_000)),
+						MaxGas:      common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(10_000))},
+						ToAddress:   to,
+						TxType:      types.TxOutTypeMigrate,
+					},
+					{
+						Chain:       common.BTCChain,
+						VaultPubKey: vaultPubKey,
+						Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(400_000)),
+						ToAddress:   to,
+						TxType:      types.TxOutTypeOut,
+					},
+				},
+			},
+		},
+	}}
+
+	if !insolvencyCheck(ctx, mgr, vault, walletCoins, common.BTCChain) {
+		t.Fatal("migration covering only part of the vault should still halt solvency")
+	}
+}
+
 func mustTxID(t *testing.T, value string) common.TxID {
 	t.Helper()
 	txID, err := common.NewTxID(value)
