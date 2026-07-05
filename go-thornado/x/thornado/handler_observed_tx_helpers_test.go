@@ -2894,3 +2894,90 @@ func TestUnifiedEpochBatchSweepsAsVinsMigrateRemainder(t *testing.T) {
 		t.Fatal("already-matched detection failed for unified batch")
 	}
 }
+
+func TestBTCEpochBatchAmountMatchesSelfRemainderExact(t *testing.T) {
+	union := cosmos.NewUint(500_000_000)
+	maxGas := cosmos.NewUint(52_430)
+	// Self-paying remainder (consolidate/migrate back to vault root): the chain's
+	// gas estimate now matches the signer's mined fee exactly, so the observed
+	// amount equals the stored coin (union - maxGas) to the sat.
+	exp := btcEpochBatchExpectations{
+		externalTotal: cosmos.ZeroUint(),
+		selfTotal:     union.Sub(maxGas),
+		unionValue:    union,
+		totalMaxGas:   maxGas,
+	}
+	if !btcEpochBatchAmountMatches(exp, union.Sub(maxGas), maxGas) {
+		t.Fatal("self-remainder batch must match when observed amount == coin")
+	}
+	// Any deviation from the exact coin is rejected — an overpaid fee (signer
+	// shorting the vault) or a skim must not settle.
+	if btcEpochBatchAmountMatches(exp, union.Sub(maxGas).Sub(cosmos.NewUint(1)), maxGas.Add(cosmos.NewUint(1))) {
+		t.Fatal("self-remainder batch must reject an amount below the computed coin")
+	}
+	// External-recipient batches require the exact recipient total.
+	extExp := btcEpochBatchExpectations{
+		externalTotal: cosmos.NewUint(120_000),
+		unionValue:    union,
+		totalMaxGas:   maxGas,
+	}
+	if !btcEpochBatchAmountMatches(extExp, cosmos.NewUint(120_000), cosmos.NewUint(5_000)) {
+		t.Fatal("external batch must match on exact recipient total")
+	}
+	if btcEpochBatchAmountMatches(extExp, cosmos.NewUint(120_001), cosmos.NewUint(5_000)) {
+		t.Fatal("external batch must reject a wrong recipient total")
+	}
+}
+
+// TestBTCEstimatedVSizeMatchesSignerTaproot locks the chain's vsize estimate to
+// the Rust signer's estimate_vsize formula (taproot key-spend witness, no auto
+// change). A 25-input, 1-output internal batch is exactly 1498 vbytes; at 35
+// sat/vb that is the 52_430-sat fee observed on the live 25-deposit batch.
+func TestBTCEstimatedVSizeMatchesSignerTaproot(t *testing.T) {
+	vaultPubKey := GetRandomPubKey()
+	root, err := common.DeriveBTCTaprootAddress(vaultPubKey, common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inputs := make([]types.TxOutInput, 25)
+	for i := range inputs {
+		inputs[i] = types.TxOutInput{TxId: GetRandomTxHash(), Vout: uint32(i), AmountSats: 20_000_000}
+	}
+	// signer's estimate_vsize(n_in, n_out) with the taproot witness model.
+	signerVSize := func(nIn, nOut int) int64 {
+		varint := func(n int) int {
+			switch {
+			case n <= 0xfc:
+				return 1
+			case n <= 0xffff:
+				return 3
+			default:
+				return 5
+			}
+		}
+		base := 4 + varint(nIn) + nIn*(32+4+1+4) + varint(nOut) + nOut*(8+1+34) + 4
+		witness := 2 + nIn*(1+1+65)
+		total := base + witness
+		weight := base*3 + total
+		return int64((weight + 3) / 4)
+	}
+	// Internal remainder: one output, no change.
+	got, err := btcEstimatedVSize(vaultPubKey, common.MainVaultPathIndex, []common.Address{root}, inputs, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := signerVSize(25, 1); got != want {
+		t.Fatalf("chain vsize %d != signer vsize %d (25-in/1-out no change)", got, want)
+	}
+	if got != 1498 {
+		t.Fatalf("expected the live 25-input batch vsize 1498, got %d", got)
+	}
+	// Withdrawal with change: two recipients + one change output.
+	got2, err := btcEstimatedVSize(vaultPubKey, common.MainVaultPathIndex, []common.Address{root, root}, inputs, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := signerVSize(25, 3); got2 != want {
+		t.Fatalf("chain vsize %d != signer vsize %d (25-in/3-out with change)", got2, want)
+	}
+}

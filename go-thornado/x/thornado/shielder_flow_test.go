@@ -565,7 +565,7 @@ func TestUserShieldAndUnshieldFlowQueuesNetWithdrawal(t *testing.T) {
 	if got := k.txOuts[0].Coin.Amount.Uint64(); got != amount-fee {
 		t.Fatalf("unexpected withdrawal amount: %d", got)
 	}
-	expectedGas, err := btcExactGasCoin(deposit.VaultPubKey, common.MainVaultPathIndex, []common.Address{redeem.Recipient}, []types.TxOutInput{sourceInput}, 14)
+	expectedGas, err := btcExactGasCoin(deposit.VaultPubKey, common.MainVaultPathIndex, []common.Address{redeem.Recipient}, []types.TxOutInput{sourceInput}, 14, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -667,6 +667,7 @@ func TestBTCSourceInputSelectionPrefersLargeUTXOOverOldDustAtSpendLimit(t *testi
 		cosmos.NewUint(19_800_000),
 		1000,
 		0,
+		true,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -1774,7 +1775,7 @@ func TestExpiredDepositRefundSubtractsFee(t *testing.T) {
 	if got := k.txOuts[0].Coin.Amount.Uint64(); got != amount-fee {
 		t.Fatalf("refund did not subtract fee: %d/%d", got, amount-fee)
 	}
-	expectedGas, err := btcExactGasCoin(baseVault.PubKey, common.MainVaultPathIndex, []common.Address{deposit.ReturnAddress}, []types.TxOutInput{sourceInput}, 14)
+	expectedGas, err := btcExactGasCoin(baseVault.PubKey, common.MainVaultPathIndex, []common.Address{deposit.ReturnAddress}, []types.TxOutInput{sourceInput}, 14, true)
 	if err != nil {
 		t.Fatal(err)
 	}

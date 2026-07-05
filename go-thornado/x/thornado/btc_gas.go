@@ -417,6 +417,11 @@ func refreshBTCEpochBatchGroup(ctx cosmos.Context, k keeper.Keeper, txOut *TxOut
 		remainderTarget = item.Coin.Amount
 	}
 
+	// A remainder item absorbs the whole leftover, so the tx has no separate
+	// change output; without one, the batch returns its change to root and the
+	// estimate must include it (matching the signer's built tx exactly).
+	hasChange := len(remainders) == 0
+
 	// Root UTXOs are selected to cover the fixed vouts plus the remainder target
 	// net of pinned value; gas converges over a few passes as the input count
 	// changes the estimate.
@@ -426,7 +431,7 @@ func refreshBTCEpochBatchGroup(ctx cosmos.Context, k keeper.Keeper, txOut *TxOut
 	for attempt := 0; attempt < 3; attempt++ {
 		maxGasCoin = btcGasCoinFromNativeSats(0)
 		if len(union) > 0 {
-			maxGasCoin, err = btcExactGasCoin(vault.PubKey, common.MainVaultPathIndex, outputAddrs, union, gasRate)
+			maxGasCoin, err = btcExactGasCoin(vault.PubKey, common.MainVaultPathIndex, outputAddrs, union, gasRate, hasChange)
 			if err != nil {
 				return err
 			}
@@ -453,7 +458,7 @@ func refreshBTCEpochBatchGroup(ctx cosmos.Context, k keeper.Keeper, txOut *TxOut
 	if len(union) == 0 {
 		return fmt.Errorf("missing bitcoin source inputs for txout height %d", txOut.Height)
 	}
-	maxGasCoin, err = btcExactGasCoin(vault.PubKey, common.MainVaultPathIndex, outputAddrs, union, gasRate)
+	maxGasCoin, err = btcExactGasCoin(vault.PubKey, common.MainVaultPathIndex, outputAddrs, union, gasRate, hasChange)
 	if err != nil {
 		return err
 	}
@@ -562,9 +567,14 @@ func refreshBTCLegacyTxOutGroup(ctx cosmos.Context, k keeper.Keeper, txOut *TxOu
 		totalOutput = totalOutput.Add(item.Coin.Amount)
 	}
 
+	// Internal outbounds (migrate/consolidate) burn their whole remainder as
+	// fee with no change output; withdrawals/refunds pay recipients exactly and
+	// return change to the vault.
+	hasChange := !types.IsInternalTxOutType(first.TxType)
+
 	inputs := first.SourceInputs
 	if len(inputs) == 0 {
-		inputs, err = selectBTCVaultSourceInputsForOutputs(ctx, k, vault, first.VaultPathIndex, sourceAddr, outputAddrs, totalOutput, gasRate, txOut.Height)
+		inputs, err = selectBTCVaultSourceInputsForOutputs(ctx, k, vault, first.VaultPathIndex, sourceAddr, outputAddrs, totalOutput, gasRate, txOut.Height, hasChange)
 		if err != nil {
 			return err
 		}
@@ -573,7 +583,7 @@ func refreshBTCLegacyTxOutGroup(ctx cosmos.Context, k keeper.Keeper, txOut *TxOu
 		return fmt.Errorf("missing bitcoin source inputs for txout height %d", txOut.Height)
 	}
 
-	maxGasCoin, err := btcExactGasCoin(first.VaultPubKey, first.VaultPathIndex, outputAddrs, inputs, gasRate)
+	maxGasCoin, err := btcExactGasCoin(first.VaultPubKey, first.VaultPathIndex, outputAddrs, inputs, gasRate, hasChange)
 	if err != nil {
 		return err
 	}
@@ -623,6 +633,7 @@ func selectBTCVaultSourceInputsForOutputs(
 	outputAmount cosmos.Uint,
 	gasRate int64,
 	ignoreTxOutHeight int64,
+	hasChange bool,
 ) ([]types.TxOutInput, error) {
 	required := outputAmount
 	var selected []types.TxOutInput
@@ -631,7 +642,7 @@ func selectBTCVaultSourceInputsForOutputs(
 		if len(selected) == 0 {
 			return nil, fmt.Errorf("no bitcoin source inputs available for vault %s", vault.PubKey)
 		}
-		maxGasCoin, err := btcExactGasCoin(vault.PubKey, vaultPathIndex, outputAddrs, selected, gasRate)
+		maxGasCoin, err := btcExactGasCoin(vault.PubKey, vaultPathIndex, outputAddrs, selected, gasRate, hasChange)
 		if err != nil {
 			return nil, err
 		}
@@ -832,18 +843,31 @@ func btcVaultSourceCandidates(ctx cosmos.Context, k keeper.Keeper, vault Vault, 
 	return result
 }
 
-func btcExactGasCoin(vaultPubKey common.PubKey, vaultPathIndex uint64, outputAddrs []common.Address, inputs []types.TxOutInput, gasRate int64) (common.Coin, error) {
+func btcExactGasCoin(vaultPubKey common.PubKey, vaultPathIndex uint64, outputAddrs []common.Address, inputs []types.TxOutInput, gasRate int64, hasChange bool) (common.Coin, error) {
 	if gasRate <= 0 {
 		return common.NoCoin, fmt.Errorf("invalid bitcoin gas rate: %d", gasRate)
 	}
-	vSize, err := btcEstimatedVSize(vaultPubKey, vaultPathIndex, outputAddrs, inputs)
+	vSize, err := btcEstimatedVSize(vaultPubKey, vaultPathIndex, outputAddrs, inputs, hasChange)
 	if err != nil {
 		return common.NoCoin, err
 	}
 	return btcGasCoinFromNativeSats(uint64(gasRate) * uint64(vSize)), nil
 }
 
-func btcEstimatedVSize(vaultPubKey common.PubKey, vaultPathIndex uint64, outputAddrs []common.Address, inputs []types.TxOutInput) (int64, error) {
+// btcTaprootKeyspendWitnessLen is the witness size the signer actually produces:
+// one stack item, a 65-byte Schnorr signature (64 bytes + the SIGHASH byte, as
+// the signer signs with SIGHASH_ALL|ANYONECANPAY). Modelling this as a P2WPKH
+// witness (72-byte ECDSA sig + 33-byte pubkey) overestimated every input by
+// ~10 vbytes, which on a 25-input batch inflated the fee ~20% and left the
+// chain's remainder coin below the observed amount so the batch never settled.
+const btcTaprootKeyspendWitnessLen = 65
+
+// btcEstimatedVSize returns the vsize of the transaction the signer will build
+// for these inputs and recipient outputs. It must match the signer's
+// estimate_vsize byte-for-byte (taproot key-spend witness, change only when the
+// tx actually returns change), so the chain's max-gas equals the signer's mined
+// fee and the settlement matcher can require an exact amount.
+func btcEstimatedVSize(vaultPubKey common.PubKey, vaultPathIndex uint64, outputAddrs []common.Address, inputs []types.TxOutInput, hasChange bool) (int64, error) {
 	if len(inputs) == 0 {
 		return 0, fmt.Errorf("cannot estimate bitcoin tx size without source inputs")
 	}
@@ -855,8 +879,7 @@ func btcEstimatedVSize(vaultPubKey common.PubKey, vaultPathIndex uint64, outputA
 		}
 		txIn := wire.NewTxIn(wire.NewOutPoint(hash, input.Vout), nil, nil)
 		txIn.Witness = [][]byte{
-			make([]byte, 72),
-			make([]byte, 33),
+			make([]byte, btcTaprootKeyspendWitnessLen),
 		}
 		tx.AddTxIn(txIn)
 	}
@@ -867,11 +890,13 @@ func btcEstimatedVSize(vaultPubKey common.PubKey, vaultPathIndex uint64, outputA
 		}
 		tx.AddTxOut(wire.NewTxOut(0, script))
 	}
-	changeScript, err := btcVaultOutputScript(vaultPubKey, vaultPathIndex)
-	if err != nil {
-		return 0, err
+	if hasChange {
+		changeScript, err := btcVaultOutputScript(vaultPubKey, vaultPathIndex)
+		if err != nil {
+			return 0, err
+		}
+		tx.AddTxOut(wire.NewTxOut(0, changeScript))
 	}
-	tx.AddTxOut(wire.NewTxOut(0, changeScript))
 
 	strippedSize := tx.SerializeSizeStripped()
 	totalSize := tx.SerializeSize()

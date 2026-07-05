@@ -178,7 +178,7 @@ func (vm *NetworkMgr) consolidateActiveBTCVaults(ctx cosmos.Context, mgr Manager
 		for _, input := range item.SourceInputs {
 			sourceAmount = sourceAmount.Add(cosmos.NewUint(input.AmountSats))
 		}
-		maxGasCoin, err := btcExactGasCoin(vault.PubKey, common.MainVaultPathIndex, []common.Address{rootAddr}, item.SourceInputs, gasRate)
+		maxGasCoin, err := btcExactGasCoin(vault.PubKey, common.MainVaultPathIndex, []common.Address{rootAddr}, item.SourceInputs, gasRate, false)
 		if err != nil {
 			return err
 		}
@@ -543,7 +543,7 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 					for _, input := range toi.SourceInputs {
 						sourceAmount = sourceAmount.Add(cosmos.NewUint(input.AmountSats))
 					}
-					maxGasCoin, err := btcExactGasCoin(vault.PubKey, common.MainVaultPathIndex, []common.Address{addr}, toi.SourceInputs, toi.GasRate)
+					maxGasCoin, err := btcExactGasCoin(vault.PubKey, common.MainVaultPathIndex, []common.Address{addr}, toi.SourceInputs, toi.GasRate, false)
 					if err != nil {
 						return err
 					}

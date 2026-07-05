@@ -1467,9 +1467,18 @@ func btcEpochBatchAmountMatches(exp btcEpochBatchExpectations, observedAmount, o
 	if !exp.externalTotal.IsZero() {
 		return observedAmount.Equal(exp.externalTotal)
 	}
+	// A self-paying remainder (consolidate/migrate back to this vault's root)
+	// pays exactly the coin the chain computed: union minus the max gas. The
+	// chain's gas estimate matches the signer's mined fee byte-for-byte (same
+	// taproot-accurate vsize, same rate), so this is an exact equality, not a
+	// tolerance — a signer that overpaid fees or shorted the vault would not
+	// match here.
 	if !exp.selfTotal.IsZero() {
 		return observedAmount.Equal(exp.selfTotal)
 	}
+	// Pure input-spend with no explicit output (vin-only sweeps returning their
+	// change to root): there is no fixed coin to check, so require value
+	// conservation — everything spent goes back to the vault minus the fee.
 	if exp.unionValue.LTE(observedGas) {
 		return false
 	}

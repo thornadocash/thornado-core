@@ -44,7 +44,7 @@ func TestTxOutEndBlockUpdatesGasWithoutInboundVoter(t *testing.T) {
 		t.Fatal(err)
 	}
 	stored := k.txOutByHeight[txOut.Height]
-	expectedGas, err := btcExactGasCoin(vaultPubKey, common.MainVaultPathIndex, []common.Address{toAddress}, []types.TxOutInput{sourceInput}, 14)
+	expectedGas, err := btcExactGasCoin(vaultPubKey, common.MainVaultPathIndex, []common.Address{toAddress}, []types.TxOutInput{sourceInput}, 14, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestRefreshBTCExactTxOutInternalSweepUsesSelectedInputLessGas(t *testing.T)
 		t.Fatal(err)
 	}
 	stored := k.txOutByHeight[txOut.Height]
-	expectedGas, err := btcExactGasCoin(vaultPubKey, txOut.TxArray[0].VaultPathIndex, []common.Address{toAddress}, []types.TxOutInput{sourceInput}, 14)
+	expectedGas, err := btcExactGasCoin(vaultPubKey, txOut.TxArray[0].VaultPathIndex, []common.Address{toAddress}, []types.TxOutInput{sourceInput}, 14, false)
 	if err != nil {
 		t.Fatal(err)
 	}
