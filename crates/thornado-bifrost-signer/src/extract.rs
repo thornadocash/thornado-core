@@ -181,13 +181,14 @@ where
         dust_threshold_sats,
         network,
         observer::MAX_VALUE_OUTPUTS,
+        |a, b| a == b,
     )
 }
 
 /// [`extract_observation`] with an explicit output-count cap (see
 /// [`observer::should_ignore_tx_capped`]).
 #[allow(clippy::too_many_arguments)]
-pub fn extract_observation_capped<V, P>(
+pub fn extract_observation_capped<V, P, S>(
     block_height: i64,
     txid: &str,
     inputs: &[DecodedInput],
@@ -198,10 +199,12 @@ pub fn extract_observation_capped<V, P>(
     dust_threshold_sats: u64,
     network: Network,
     max_value_outputs: usize,
+    same_vault: S,
 ) -> Result<Option<TxInItem>, ExtractError>
 where
     V: Fn(&str) -> bool,
     P: Fn(&str) -> bool,
+    S: Fn(&str, &str) -> bool,
 {
     let vins: Vec<observer::Vin> = inputs
         .iter()
@@ -242,7 +245,7 @@ where
                 continue;
             }
             let receiver = &v.addresses[0];
-            if receiver.eq_ignore_ascii_case(sender) {
+            if receiver.eq_ignore_ascii_case(sender) || same_vault(sender, receiver) {
                 continue;
             }
             if to_addr.is_empty() {
@@ -275,13 +278,16 @@ where
     // sends take the normal branch (outputs to a vault). Matches Go getTxIns,
     // which calls getOutput(sender, tx, consolidate=true) for protocol senders.
     let consolidate = is_protocol_controlled(sender);
-    let selected = match observer::select_output(
+    let selected = match observer::select_outputs_vault_aware(
         sender,
         &vouts,
         consolidate,
         &is_protocol_controlled,
         &is_vault,
-    ) {
+        &same_vault,
+    )
+    .map(|v| v[0])
+    {
         Ok(idx) => idx,
         Err(ObserveError::NoOutputMatch) => return Ok(None),
     };

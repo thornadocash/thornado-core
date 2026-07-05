@@ -43,19 +43,27 @@ func btcGasCoinFromNativeSats(sats uint64) common.Coin {
 	return coin
 }
 
-// btcMaxBatchRecipients caps how many outbound items may share one batch tx. The
-// BTC observers (Go ignoreTx and the Rust port) ignore any tx with more than 10
-// outputs, so a batch of more than 9 recipients + 1 vault change builds a tx that
-// confirms on Bitcoin but can never be observed or matched — the funds move while
-// the txout items stay unsigned forever.
+// btcMaxBatchRecipients caps how many VOUT-bearing items may share one batch tx.
+// The BTC observers (Go ignoreTx and the Rust port) ignore any tx with more than
+// --max-value-outputs (default 10) outputs, so a batch of more than 9 recipients +
+// 1 vault change builds a tx that confirms on Bitcoin but can never be observed or
+// matched — the funds move while the txout items stay unsigned forever. Vin-only
+// items (sweeps, pinned migrates) contribute inputs, not outputs, and are capped
+// separately by btcMaxBatchVins.
 const btcMaxBatchRecipients = 9
 
-// btcVaultBatchTxOut returns the txout block collecting batchable outbounds for the
-// given vault. Each vault grows its own batch: an open pending_batch block whose close
-// height has not yet arrived is reused while it has room for another recipient;
-// otherwise a new block is opened one batch window ahead with the vault's next epoch
-// sequence number.
-func btcVaultBatchTxOut(ctx cosmos.Context, k keeper.Keeper, vault common.PubKey) (*TxOut, error) {
+// btcMaxBatchVins caps how many source inputs one batch tx may spend. FROST signs
+// ~250ms per input; 64 inputs stays well inside the keysign timeout.
+const btcMaxBatchVins = 64
+
+// btcVaultBatchTxOut returns the txout block collecting the unified epoch batch for
+// the given vault: sweeps and pinned migrates ride as vins, outbounds as vouts, and
+// at most one unpinned internal item absorbs the remainder. An open pending_batch
+// block whose close height has not yet arrived is reused while it has room for the
+// incoming item; otherwise a new block is opened one batch window ahead with the
+// vault's next epoch sequence number.
+func btcVaultBatchTxOut(ctx cosmos.Context, k keeper.Keeper, incoming TxOutItem) (*TxOut, error) {
+	vault := incoming.VaultPubKey
 	iterator := k.GetTxOutIterator(ctx)
 	if iterator == nil {
 		return nil, fmt.Errorf("fail to create txout iterator")
@@ -78,7 +86,7 @@ func btcVaultBatchTxOut(ctx cosmos.Context, k keeper.Keeper, vault common.PubKey
 		if txOut.Status != TxOutStatusPendingBatch || txOut.Height <= ctx.BlockHeight() {
 			continue
 		}
-		if len(txOut.TxArray) >= btcMaxBatchRecipients {
+		if !btcBatchHasRoom(txOut, incoming) {
 			continue
 		}
 		if open == nil || txOut.Height < open.Height {
@@ -111,7 +119,7 @@ func btcVaultBatchTxOut(ctx cosmos.Context, k keeper.Keeper, vault common.PubKey
 }
 
 // txOutBatchVault returns the vault pubkey of a batch block: a block whose items are
-// all batchable and belong to a single vault.
+// all epoch-batchable and belong to a single vault.
 func txOutBatchVault(txOut TxOut) (common.PubKey, bool) {
 	if len(txOut.TxArray) == 0 {
 		return common.EmptyPubKey, false
@@ -121,20 +129,90 @@ func txOutBatchVault(txOut TxOut) (common.PubKey, bool) {
 		return common.EmptyPubKey, false
 	}
 	for _, item := range txOut.TxArray {
-		if !types.IsBatchableTxOutType(item.TxType) || !item.VaultPubKey.Equals(vault) {
+		if !btcEpochBatchItem(item) || !item.VaultPubKey.Equals(vault) {
 			return common.EmptyPubKey, false
 		}
 	}
 	return vault, true
 }
 
+// btcEpochBatchItem reports whether the item belongs in its vault's unified epoch
+// batch: outbound and internal kinds spend from the vault root; sweeps contribute
+// their pinned child-path deposit UTXO as an extra vin.
+func btcEpochBatchItem(item TxOutItem) bool {
+	if !item.Chain.Equals(common.BTCChain) {
+		return false
+	}
+	switch types.NormalizeTxOutType(item.GetTxType()) {
+	case types.TxOutTypeOut, types.TxOutTypeRefund, types.TxOutTypeMigrate, types.TxOutTypeConsolidate:
+		return item.VaultPathIndex == common.MainVaultPathIndex
+	case types.TxOutTypeSweep:
+		return item.VaultPathIndex != common.MainVaultPathIndex
+	default:
+		return false
+	}
+}
+
+// btcBatchVinOnlyItem reports whether the item contributes only inputs to its batch
+// tx: deposit sweeps (child-path pin) and pinned migrates (specific root UTXO pin).
+// Their value flows into the batch's remainder or change output; they get no vout.
+func btcBatchVinOnlyItem(item TxOutItem) bool {
+	if !btcEpochBatchItem(item) {
+		return false
+	}
+	switch types.NormalizeTxOutType(item.GetTxType()) {
+	case types.TxOutTypeSweep:
+		return true
+	case types.TxOutTypeMigrate:
+		return btcPinnedSourceInputs(item)
+	default:
+		return false
+	}
+}
+
+// btcBatchRemainderItem reports whether the item absorbs the batch remainder
+// (union value minus fixed vouts minus gas): unpinned migrates and consolidates.
+// At most one such item may share a batch.
+func btcBatchRemainderItem(item TxOutItem) bool {
+	if !btcEpochBatchItem(item) || btcBatchVinOnlyItem(item) {
+		return false
+	}
+	return types.IsInternalTxOutType(item.TxType)
+}
+
+// btcBatchHasRoom reports whether an open pending_batch block can take the incoming
+// item: vout-bearing items are capped at btcMaxBatchRecipients, vin-only items at
+// btcMaxBatchVins, and only one remainder item may ride per batch.
+func btcBatchHasRoom(txOut TxOut, incoming TxOutItem) bool {
+	vinOnly, vouts, remainders := 0, 0, 0
+	for _, item := range txOut.TxArray {
+		switch {
+		case btcBatchVinOnlyItem(item):
+			vinOnly++
+		case btcBatchRemainderItem(item):
+			remainders++
+			vouts++
+		default:
+			vouts++
+		}
+	}
+	switch {
+	case btcBatchVinOnlyItem(incoming):
+		return vinOnly < btcMaxBatchVins
+	case btcBatchRemainderItem(incoming):
+		return remainders == 0 && vouts < btcMaxBatchRecipients
+	default:
+		return vouts < btcMaxBatchRecipients
+	}
+}
+
 func appendBTCExactTxOut(ctx cosmos.Context, k keeper.Keeper, height int64, item TxOutItem) error {
 	item.TxType = item.GetTxType()
-	if types.IsBatchableTxOutType(item.TxType) {
+	if btcEpochBatchItem(item) {
 		if item.VaultPubKey.IsEmpty() {
 			return fmt.Errorf("fail to batch bitcoin txout: empty vault pubkey")
 		}
-		block, err := btcVaultBatchTxOut(ctx, k, item.VaultPubKey)
+		block, err := btcVaultBatchTxOut(ctx, k, item)
 		if err != nil {
 			return err
 		}
@@ -204,7 +282,16 @@ func refreshBTCExactTxOutBlock(ctx cosmos.Context, k keeper.Keeper, txOut *TxOut
 		}
 
 		group := []int{i}
-		if btcBatchableTxOut(item) {
+		if txOut.Status == TxOutStatusPendingBatch && btcEpochBatchItem(item) {
+			for j := i + 1; j < len(txOut.TxArray); j++ {
+				other := txOut.TxArray[j]
+				if !handled[j] && btcEpochBatchItem(other) &&
+					other.VaultPubKey.Equals(item.VaultPubKey) &&
+					other.OutHash.IsEmpty() {
+					group = append(group, j)
+				}
+			}
+		} else if btcBatchableTxOut(item) {
 			for j := i + 1; j < len(txOut.TxArray); j++ {
 				if !handled[j] && btcSameBatchSource(item, txOut.TxArray[j]) && txOut.TxArray[j].OutHash.IsEmpty() {
 					group = append(group, j)
@@ -237,6 +324,192 @@ func refreshBTCExactTxOutGroup(ctx cosmos.Context, k keeper.Keeper, txOut *TxOut
 		return nil
 	}
 	first := txOut.TxArray[group[0]]
+	// unified epoch semantics apply while the batch is still open; promoted
+	// blocks (and pre-upgrade in-flight blocks) keep the legacy per-item math
+	if txOut.Status == TxOutStatusPendingBatch && btcEpochBatchItem(first) {
+		return refreshBTCEpochBatchGroup(ctx, k, txOut, group)
+	}
+	return refreshBTCLegacyTxOutGroup(ctx, k, txOut, group)
+}
+
+// refreshBTCEpochBatchGroup computes the unified epoch batch tx for one vault:
+// vins = every vin-only item's pinned UTXO plus root UTXOs selected to cover the
+// fixed vouts, vouts = one per outbound item plus at most one remainder internal
+// item that absorbs (union - fixed - gas). All items carry the identical unioned
+// SourceInputs, each stamped with the taproot path that controls it.
+func refreshBTCEpochBatchGroup(ctx cosmos.Context, k keeper.Keeper, txOut *TxOut, group []int) error {
+	first := txOut.TxArray[group[0]]
+	vault, err := k.GetVault(ctx, first.VaultPubKey)
+	if err != nil {
+		return fmt.Errorf("fail to get bitcoin txout vault: %w", err)
+	}
+	if vault.PubKey.IsEmpty() {
+		return fmt.Errorf("missing bitcoin txout vault: %s", first.VaultPubKey)
+	}
+	rootAddr, err := common.DeriveBTCTaprootAddress(vault.PubKey, common.MainVaultPathIndex)
+	if err != nil {
+		return err
+	}
+	gasRate, err := btcGasRateFromKeeper(ctx, k)
+	if err != nil {
+		return err
+	}
+
+	var vinOnly, vouts, remainders []int
+	for _, idx := range group {
+		item := txOut.TxArray[idx]
+		if !item.Coin.Asset.Equals(common.BTCAsset) {
+			return fmt.Errorf("bitcoin txout item is not BTC: %s", item.Coin.Asset)
+		}
+		switch {
+		case btcBatchVinOnlyItem(item):
+			vinOnly = append(vinOnly, idx)
+		case btcBatchRemainderItem(item):
+			remainders = append(remainders, idx)
+		default:
+			vouts = append(vouts, idx)
+		}
+	}
+	if len(remainders) > 1 {
+		return fmt.Errorf("bitcoin epoch batch at height %d has %d remainder items", txOut.Height, len(remainders))
+	}
+
+	// every pinned item contributes its pin to the union: sweeps and pinned
+	// migrates as vin-only value, refunds because they must spend the exact
+	// deposit UTXO they return (double-payout protection)
+	pins := make([]types.TxOutInput, 0, len(group))
+	seenPins := make(map[string]struct{})
+	for _, idx := range group {
+		item := txOut.TxArray[idx]
+		isVinOnly := btcBatchVinOnlyItem(item)
+		if !isVinOnly && !btcPinnedSourceInputs(item) {
+			continue
+		}
+		itemPins := btcItemPinnedInputs(item)
+		if len(itemPins) == 0 {
+			if isVinOnly {
+				return fmt.Errorf("bitcoin vin-only txout item %s has no pinned source input", item.InHash)
+			}
+			continue
+		}
+		for _, pin := range itemPins {
+			key := btcSourceInputKey(pin.TxId, pin.Vout)
+			if _, ok := seenPins[key]; ok {
+				continue
+			}
+			seenPins[key] = struct{}{}
+			pins = append(pins, pin)
+		}
+	}
+	pinnedValue := btcSourceInputsAmount(pins)
+
+	outputAddrs := make([]common.Address, 0, len(vouts)+1)
+	fixedTotal := cosmos.ZeroUint()
+	for _, idx := range vouts {
+		item := txOut.TxArray[idx]
+		outputAddrs = append(outputAddrs, item.ToAddress)
+		fixedTotal = fixedTotal.Add(item.Coin.Amount)
+	}
+	remainderTarget := cosmos.ZeroUint()
+	if len(remainders) == 1 {
+		item := txOut.TxArray[remainders[0]]
+		outputAddrs = append(outputAddrs, item.ToAddress)
+		remainderTarget = item.Coin.Amount
+	}
+
+	// Root UTXOs are selected to cover the fixed vouts plus the remainder target
+	// net of pinned value; gas converges over a few passes as the input count
+	// changes the estimate.
+	union := append([]types.TxOutInput(nil), pins...)
+	var maxGasCoin common.Coin
+	needed := fixedTotal.Add(remainderTarget)
+	for attempt := 0; attempt < 3; attempt++ {
+		maxGasCoin = btcGasCoinFromNativeSats(0)
+		if len(union) > 0 {
+			maxGasCoin, err = btcExactGasCoin(vault.PubKey, common.MainVaultPathIndex, outputAddrs, union, gasRate)
+			if err != nil {
+				return err
+			}
+		}
+		required := needed.Add(maxGasCoin.Amount)
+		if btcSourceInputsAmount(union).GTE(required) {
+			break
+		}
+		shortfall := required.Sub(cosmos.MinUint(pinnedValue, required))
+		rootInputs := btcSelectVaultSourceInputs(ctx, k, vault, rootAddr, shortfall, txOut.Height)
+		if len(rootInputs) == 0 {
+			if len(remainders) == 1 && pinnedValue.GT(fixedTotal.Add(maxGasCoin.Amount)) {
+				// pins alone fund the batch; the remainder absorbs what is left
+				union = append([]types.TxOutInput(nil), pins...)
+				break
+			}
+			return fmt.Errorf("no bitcoin source inputs available for vault %s epoch batch", vault.PubKey)
+		}
+		union = append(append([]types.TxOutInput(nil), pins...), rootInputs...)
+		if len(union) > btcMaxBatchVins {
+			return fmt.Errorf("bitcoin epoch batch at height %d needs %d vins, cap is %d", txOut.Height, len(union), btcMaxBatchVins)
+		}
+	}
+	if len(union) == 0 {
+		return fmt.Errorf("missing bitcoin source inputs for txout height %d", txOut.Height)
+	}
+	maxGasCoin, err = btcExactGasCoin(vault.PubKey, common.MainVaultPathIndex, outputAddrs, union, gasRate)
+	if err != nil {
+		return err
+	}
+	unionValue := btcSourceInputsAmount(union)
+	spendTotal := fixedTotal.Add(maxGasCoin.Amount)
+	if unionValue.LT(spendTotal) {
+		return fmt.Errorf("insufficient bitcoin epoch batch inputs for vault %s: need %s, have %s", vault.PubKey, spendTotal, unionValue)
+	}
+	if len(remainders) == 1 {
+		remainderCoin := unionValue.Sub(spendTotal)
+		if remainderCoin.LTE(common.BTCChain.DustThreshold()) {
+			return fmt.Errorf("bitcoin epoch batch remainder %s is dust for vault %s", remainderCoin, vault.PubKey)
+		}
+		txOut.TxArray[remainders[0]].Coin = common.NewCoin(common.BTCAsset, remainderCoin)
+	}
+	for _, idx := range vinOnly {
+		txOut.TxArray[idx].Coin = common.NewCoin(common.BTCAsset, cosmos.ZeroUint())
+	}
+
+	gasShares := btcSplitGasCoin(maxGasCoin, len(group))
+	for i, idx := range group {
+		txOut.TxArray[idx].SourceInputs = append([]types.TxOutInput(nil), union...)
+		txOut.TxArray[idx].MaxGas = common.Gas{gasShares[i]}
+		txOut.TxArray[idx].GasRate = gasRate
+	}
+	return nil
+}
+
+// btcItemPinnedInputs extracts the source inputs a vin-only item pins: entries whose
+// TxId matches the item's InHash. On the creation shape (the item still carries only
+// its own pin) the entries get stamped with the item's taproot path; once the union
+// is in place the stamped PathIndex disambiguates entries sharing a funding txid.
+func btcItemPinnedInputs(item TxOutItem) []types.TxOutInput {
+	var all, byPath []types.TxOutInput
+	for _, input := range item.SourceInputs {
+		if !input.TxId.Equals(item.InHash) {
+			continue
+		}
+		all = append(all, input)
+		if input.PathIndex == item.VaultPathIndex {
+			byPath = append(byPath, input)
+		}
+	}
+	if len(byPath) > 0 {
+		return byPath
+	}
+	for i := range all {
+		all[i].PathIndex = item.VaultPathIndex
+	}
+	return all
+}
+
+// refreshBTCLegacyTxOutGroup keeps the pre-epoch behavior for BTC items that do not
+// participate in the unified batch.
+func refreshBTCLegacyTxOutGroup(ctx cosmos.Context, k keeper.Keeper, txOut *TxOut, group []int) error {
+	first := txOut.TxArray[group[0]]
 	vault, err := k.GetVault(ctx, first.VaultPubKey)
 	if err != nil {
 		return fmt.Errorf("fail to get bitcoin txout vault: %w", err)
@@ -265,7 +538,7 @@ func refreshBTCExactTxOutGroup(ctx cosmos.Context, k keeper.Keeper, txOut *TxOut
 	}
 
 	inputs := first.SourceInputs
-	if len(inputs) == 0 || (btcBatchableTxOut(first) && txOut.Status == TxOutStatusPendingBatch && !btcPinnedSourceInputs(first)) {
+	if len(inputs) == 0 {
 		inputs, err = selectBTCVaultSourceInputsForOutputs(ctx, k, vault, first.VaultPathIndex, sourceAddr, outputAddrs, totalOutput, gasRate, txOut.Height)
 		if err != nil {
 			return err
@@ -394,8 +667,7 @@ func btcVaultSourceCandidates(ctx cosmos.Context, k keeper.Keeper, vault Vault, 
 				item.OutHash.IsEmpty() &&
 				item.Chain.Equals(common.BTCChain) &&
 				item.VaultPubKey.Equals(vault.PubKey) &&
-				item.VaultPathIndex == common.MainVaultPathIndex &&
-				types.IsBatchableTxOutType(item.TxType)
+				btcEpochBatchItem(item)
 			if item.Chain.Equals(common.BTCChain) && len(item.SourceInputs) > 0 && !samePendingBatch {
 				for _, input := range item.SourceInputs {
 					spent[btcSourceInputKey(input.TxId, input.Vout)] = struct{}{}
@@ -406,7 +678,11 @@ func btcVaultSourceCandidates(ctx cosmos.Context, k keeper.Keeper, vault Vault, 
 				if usedOutVouts[key] == nil {
 					usedOutVouts[key] = make(map[uint32]struct{})
 				}
-				usedOutVouts[key][item.OutVout] = struct{}{}
+				// vin-only items carry no vout of their own; registering their
+				// placeholder OutVout would mask the batch's real change vout
+				if !btcBatchVinOnlyItem(item) {
+					usedOutVouts[key][item.OutVout] = struct{}{}
+				}
 				voter, err := k.GetObservedTxOutVoter(ctx, item.OutHash)
 				if err == nil {
 					markSpentBTCSourceInputs(spent, voter.Tx.Tx.SourceInputs)

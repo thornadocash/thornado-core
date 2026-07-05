@@ -72,6 +72,10 @@ pub struct VaultView {
     pub vault_addresses: std::collections::HashSet<String>,
     /// Addresses that are protocol-controlled (vault-owned senders).
     pub protocol_addresses: std::collections::HashSet<String>,
+    /// Address -> owning vault pubkey (root + child paths). Lets the extractor
+    /// treat a batch's change to the vault root as same-wallet even when the
+    /// tx's sender resolves to a child-path deposit address.
+    pub addr_vault: std::collections::HashMap<String, String>,
     pub observed_vault_pubkey: String,
 }
 
@@ -81,6 +85,15 @@ impl VaultView {
     }
     pub fn is_protocol(&self, a: &str) -> bool {
         self.protocol_addresses.contains(a)
+    }
+    pub fn same_vault(&self, a: &str, b: &str) -> bool {
+        if a == b {
+            return true;
+        }
+        match (self.addr_vault.get(a), self.addr_vault.get(b)) {
+            (Some(va), Some(vb)) => va == vb,
+            _ => false,
+        }
     }
 }
 
@@ -182,6 +195,7 @@ impl<S: BlockSource> Observer<S> {
                 self.dust_sats,
                 self.network,
                 self.max_value_outputs,
+                |a, b| vaults.same_vault(a, b),
             )?;
             if let Some(ref mut item) = item {
                 if item.observed_vault_pubkey.is_empty() {
@@ -384,6 +398,7 @@ mod tests {
         let mut vaults = std::collections::HashSet::new();
         vaults.insert(vault_addr.to_string());
         VaultView {
+            addr_vault: std::collections::HashMap::new(),
             vault_addresses: vaults,
             protocol_addresses: std::collections::HashSet::new(),
             observed_vault_pubkey: "thorpub1vault".into(),

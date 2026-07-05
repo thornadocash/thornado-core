@@ -44,6 +44,7 @@ fn sort_utxos_matches_go_selection_order() {
             .input
             .iter()
             .map(|e| Utxo {
+                path_index: 0,
                 txid: Txid::from_str(&e.txid).expect("valid txid hex"),
                 vout: 0,
                 amount_sats: (e.amount * 100_000_000.0).round() as u64,

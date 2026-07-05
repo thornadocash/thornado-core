@@ -2083,6 +2083,7 @@ func queueVaultPathSweepWithInHash(ctx cosmos.Context, mgr Manager, tx ObservedT
 				TxId:       tx.Tx.ID,
 				Vout:       tx.Tx.SourceVout,
 				AmountSats: coin.Amount.Uint64(),
+				PathIndex:  pathIndex,
 			},
 		},
 	}

@@ -183,8 +183,10 @@ fn party_signs_and_broadcasts_withdrawals_under_load() {
         let mut txid_bytes = hex::decode(&fund_txid).unwrap();
         txid_bytes.reverse(); // display hex -> internal
         let req = BuildRequest {
+            base_pubkey: None,
             vault: vault.clone(),
             inputs: vec![Utxo {
+                path_index: 0,
                 txid: Txid::from_slice(&txid_bytes).unwrap(),
                 vout,
                 amount_sats,

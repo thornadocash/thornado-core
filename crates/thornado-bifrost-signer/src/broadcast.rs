@@ -719,6 +719,7 @@ mod tests {
             vault_path_index: 0,
             tx_type: "out".into(),
             source_inputs: vec![ChainTxOutInput {
+                path_index: 0,
                 tx_id: "feed".into(),
                 vout: 3,
                 amount_sats: 70_000,

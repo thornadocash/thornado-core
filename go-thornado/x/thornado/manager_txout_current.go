@@ -17,7 +17,6 @@ import (
 	"github.com/thornadocash/go-thornado/common/cosmos"
 	"github.com/thornadocash/go-thornado/constants"
 	"github.com/thornadocash/go-thornado/x/thornado/keeper"
-	"github.com/thornadocash/go-thornado/x/thornado/types"
 )
 
 // TxOutStorage is going to manage all the outgoing tx
@@ -276,7 +275,7 @@ func splitMixedPendingBatch(ctx cosmos.Context, k keeper.Keeper, txOut TxOut) ([
 	vaultOrder := make([]string, 0, 2)
 	vaultGroups := make(map[string][]TxOutItem)
 	for _, item := range txOut.TxArray {
-		if !types.IsBatchableTxOutType(item.TxType) {
+		if !btcEpochBatchItem(item) {
 			immediate = append(immediate, item)
 			continue
 		}
@@ -416,7 +415,7 @@ func txOutNeedsBatchSplit(txOut TxOut) bool {
 	hasImmediate := false
 	vaults := make(map[string]struct{}, 2)
 	for _, item := range txOut.TxArray {
-		if types.IsBatchableTxOutType(item.TxType) {
+		if btcEpochBatchItem(item) {
 			hasBatchable = true
 			vaults[item.VaultPubKey.String()] = struct{}{}
 		} else {

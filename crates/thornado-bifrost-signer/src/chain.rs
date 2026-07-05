@@ -217,6 +217,10 @@ pub struct TxOutInput {
     pub vout: u32,
     #[serde(default, deserialize_with = "flexnum::de_u64")]
     pub amount_sats: u64,
+    /// Taproot path controlling this input (0 = vault root; a deposit sweep's
+    /// input carries its child path so the signer applies the right tweak).
+    #[serde(default, deserialize_with = "flexnum::de_u64")]
+    pub path_index: u64,
 }
 
 /// One outbound to sign (Go `TxArrayItem`).

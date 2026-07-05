@@ -16,6 +16,7 @@ message TxOutInput {
       [ (gogoproto.casttype) = "github.com/thornadocash/go-thornado/common.TxID" ];
   uint32 vout = 2;
   uint64 amount_sats = 3;
+  uint64 path_index = 4;
 }
 
 message TxOutItem {

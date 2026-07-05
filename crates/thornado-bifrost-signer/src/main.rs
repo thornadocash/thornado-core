@@ -517,6 +517,7 @@ async fn run_daemon(args: RunArgs) -> anyhow::Result<()> {
             let vault_view = daemon::VaultView {
                 vault_addresses: vault_addrs.clone(),
                 protocol_addresses: vault_addrs.clone(),
+                addr_vault: addr_to_pubkey.clone(),
                 observed_vault_pubkey: String::new(),
             };
             match observer.scan_to_tip(&temporal_store, &vault_view).await {

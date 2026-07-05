@@ -39,6 +39,10 @@ pub struct Utxo {
     pub vout: u32,
     pub amount_sats: u64,
     pub confirmations: u64,
+    /// Taproot path that controls this UTXO (0 = vault root). Unified epoch
+    /// batches spend deposit child-path UTXOs alongside root UTXOs; each input
+    /// signs under its own tweaked key.
+    pub path_index: u64,
 }
 
 /// Format matching Go `formatUtxoKey`: "<txid_lowercase>-<vout>".
@@ -138,6 +142,10 @@ pub struct Recipient {
 /// Inputs to building one (possibly batched) outbound transaction.
 pub struct BuildRequest {
     pub vault: TaprootVault,
+    /// Compressed secp256k1 base vault pubkey; needed to derive per-input
+    /// prevout scripts when inputs sit on different taproot paths (unified
+    /// epoch batches). None = every input pays `vault` (legacy shape).
+    pub base_pubkey: Option<Vec<u8>>,
     pub inputs: Vec<Utxo>,
     /// One output per batched TxOutItem.
     pub recipients: Vec<Recipient>,
@@ -184,11 +192,20 @@ pub fn build_unsigned(req: &BuildRequest) -> Result<UnsignedTx> {
     let prevouts: Vec<TxOut> = req
         .inputs
         .iter()
-        .map(|u| TxOut {
-            value: Amount::from_sat(u.amount_sats),
-            script_pubkey: vault_spk.clone(),
+        .map(|u| {
+            let script_pubkey = match (&req.base_pubkey, u.path_index) {
+                (Some(base), path) if path != MAIN_VAULT_PATH_INDEX => {
+                    TaprootVault::derive(base, path)?.script_pubkey()
+                }
+                (Some(base), _) => TaprootVault::derive(base, MAIN_VAULT_PATH_INDEX)?.script_pubkey(),
+                (None, _) => vault_spk.clone(),
+            };
+            Ok(TxOut {
+                value: Amount::from_sat(u.amount_sats),
+                script_pubkey,
+            })
         })
-        .collect();
+        .collect::<Result<Vec<TxOut>>>()?;
 
     let mut tx_out: Vec<TxOut> = req
         .recipients
@@ -344,9 +361,9 @@ mod tests {
     #[test]
     fn utxo_sort_is_stable_by_conf_then_txid() {
         let mut u = vec![
-            Utxo { txid: dummy_txid(2), vout: 0, amount_sats: 10, confirmations: 1 },
-            Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 10, confirmations: 5 },
-            Utxo { txid: dummy_txid(3), vout: 0, amount_sats: 10, confirmations: 5 },
+            Utxo { txid: dummy_txid(2), vout: 0, amount_sats: 10, confirmations: 1, path_index: 0 },
+            Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 10, confirmations: 5, path_index: 0 },
+            Utxo { txid: dummy_txid(3), vout: 0, amount_sats: 10, confirmations: 5, path_index: 0 },
         ];
         sort_utxos(&mut u);
         assert_eq!(u[0].confirmations, 5);
@@ -363,9 +380,10 @@ mod tests {
         });
         let req = BuildRequest {
             vault: vault(),
+            base_pubkey: None,
             inputs: vec![
-                Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 100_000, confirmations: 6 },
-                Utxo { txid: dummy_txid(2), vout: 1, amount_sats: 50_000, confirmations: 6 },
+                Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 100_000, confirmations: 6, path_index: 0 },
+                Utxo { txid: dummy_txid(2), vout: 1, amount_sats: 50_000, confirmations: 6, path_index: 0 },
             ],
             recipients: vec![Recipient { script_pubkey: recipient, amount_sats: 120_000 }],
             fee_rate: 10,
@@ -397,7 +415,8 @@ mod tests {
     fn insufficient_funds_detected() {
         let req = BuildRequest {
             vault: vault(),
-            inputs: vec![Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 1000, confirmations: 6 }],
+            base_pubkey: None,
+            inputs: vec![Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 1000, confirmations: 6, path_index: 0 }],
             recipients: vec![Recipient {
                 script_pubkey: vault().script_pubkey(),
                 amount_sats: 5000,
@@ -421,7 +440,8 @@ mod tests {
         });
         let req = BuildRequest {
             vault: vault(),
-            inputs: vec![Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 70_000_000, confirmations: 6 }],
+            base_pubkey: None,
+            inputs: vec![Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 70_000_000, confirmations: 6, path_index: 0 }],
             recipients: vec![Recipient { script_pubkey: recipient, amount_sats: 69_994_225 }],
             fee_rate: 35,
             spend_all: false,
@@ -439,7 +459,8 @@ mod tests {
     fn exact_fee_remainder_rejects_zero_fee() {
         let req = BuildRequest {
             vault: vault(),
-            inputs: vec![Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 1000, confirmations: 6 }],
+            base_pubkey: None,
+            inputs: vec![Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 1000, confirmations: 6, path_index: 0 }],
             recipients: vec![Recipient {
                 script_pubkey: vault().script_pubkey(),
                 amount_sats: 1000,
@@ -462,7 +483,8 @@ mod tests {
         });
         let req = BuildRequest {
             vault: vault(),
-            inputs: vec![Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 100_000, confirmations: 6 }],
+            base_pubkey: None,
+            inputs: vec![Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 100_000, confirmations: 6, path_index: 0 }],
             recipients: vec![Recipient { script_pubkey: recipient.clone(), amount_sats: 98_000 }],
             fee_rate: 10,
             spend_all: false,
@@ -478,7 +500,8 @@ mod tests {
     fn sweep_spends_all_minus_fee() {
         let req = BuildRequest {
             vault: vault(),
-            inputs: vec![Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 100_000, confirmations: 6 }],
+            base_pubkey: None,
+            inputs: vec![Utxo { txid: dummy_txid(1), vout: 0, amount_sats: 100_000, confirmations: 6, path_index: 0 }],
             recipients: vec![Recipient {
                 script_pubkey: vault().script_pubkey(),
                 amount_sats: 0,

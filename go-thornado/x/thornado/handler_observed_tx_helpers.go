@@ -1378,59 +1378,128 @@ func observedOutboundRequiresTxOutMatch(tx ObservedTx) bool {
 	return true
 }
 
+// btcEpochBatchExpectations summarizes what a unified epoch batch expects an
+// observed outbound to look like. External vouts pay addresses other than the
+// vault root; self vouts (a consolidate remainder) pay the root; a batch of only
+// vin-only items produces a pure change tx whose amount is union minus gas.
+type btcEpochBatchExpectations struct {
+	externalTotal cosmos.Uint
+	selfTotal     cosmos.Uint
+	unionValue    cosmos.Uint
+	totalMaxGas   cosmos.Uint
+	inputs        []types.TxOutInput
+	items         int
+	vinOnly       int
+}
+
+func btcEpochBatchExpectationsFor(txOut *TxOut, tx ObservedTx, rootAddr common.Address, requireOutHash bool) (btcEpochBatchExpectations, bool) {
+	exp := btcEpochBatchExpectations{
+		externalTotal: cosmos.ZeroUint(),
+		selfTotal:     cosmos.ZeroUint(),
+		unionValue:    cosmos.ZeroUint(),
+		totalMaxGas:   cosmos.ZeroUint(),
+	}
+	for _, item := range txOut.TxArray {
+		if requireOutHash {
+			if item.OutHash.IsEmpty() || !item.OutHash.Equals(tx.Tx.ID) {
+				return exp, false
+			}
+		} else if !item.OutHash.IsEmpty() {
+			return exp, false
+		}
+		if !item.Chain.Equals(common.BTCChain) ||
+			!item.VaultPubKey.Equals(tx.ObservedPubKey) ||
+			!btcEpochBatchItem(item) ||
+			!item.Coin.Asset.Equals(common.BTCAsset) ||
+			len(item.SourceInputs) == 0 {
+			return exp, false
+		}
+		if exp.inputs == nil {
+			exp.inputs = item.SourceInputs
+		} else if !btcTxOutInputsEqual(exp.inputs, item.SourceInputs) {
+			return exp, false
+		}
+		switch {
+		case btcBatchVinOnlyItem(item):
+			exp.vinOnly++
+		case item.ToAddress.Equals(rootAddr):
+			exp.selfTotal = exp.selfTotal.Add(item.Coin.Amount)
+		default:
+			exp.externalTotal = exp.externalTotal.Add(item.Coin.Amount)
+		}
+		exp.totalMaxGas = exp.totalMaxGas.Add(item.MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount)
+		exp.items++
+	}
+	exp.unionValue = btcSourceInputsAmount(exp.inputs)
+	return exp, exp.items > 0
+}
+
+// btcEpochBatchAmountMatches checks the observed amount against the batch shape:
+// external recipients dominate when present (observers skip change back to the
+// source); a self-paying remainder is the amount when there are no external vouts;
+// a pure vin-only batch settles the whole union minus the observed gas as change.
+func btcEpochBatchAmountMatches(exp btcEpochBatchExpectations, observedAmount, observedGas cosmos.Uint) bool {
+	if !exp.externalTotal.IsZero() {
+		return observedAmount.Equal(exp.externalTotal)
+	}
+	if !exp.selfTotal.IsZero() {
+		return observedAmount.Equal(exp.selfTotal)
+	}
+	if exp.unionValue.LTE(observedGas) {
+		return false
+	}
+	return observedAmount.Equal(exp.unionValue.Sub(observedGas))
+}
+
 func markObservedOutboundTxOutBatch(ctx cosmos.Context, mgr Manager, txOut *TxOut, tx ObservedTx) bool {
 	if txOut == nil {
 		return false
 	}
-	if !tx.Tx.Chain.Equals(common.BTCChain) || len(txOut.TxArray) < 2 {
+	if !tx.Tx.Chain.Equals(common.BTCChain) || len(txOut.TxArray) < 1 {
 		return false
 	}
 	rootAddr, err := common.DeriveBTCTaprootAddress(tx.ObservedPubKey, common.MainVaultPathIndex)
-	if err != nil || !tx.Tx.FromAddress.Equals(rootAddr) {
+	if err != nil {
 		return false
 	}
 	observedAmount := tx.Tx.Coins.GetCoin(common.BTCAsset).Amount
 	observedGas := tx.Tx.Gas.ToCoins().GetCoin(common.BTCAsset).Amount
-	total := cosmos.ZeroUint()
-	totalMaxGas := cosmos.ZeroUint()
-	matched := 0
-	expectedInputs := []types.TxOutInput(nil)
-	for _, item := range txOut.TxArray {
-		if !item.OutHash.IsEmpty() ||
-			!item.Chain.Equals(common.BTCChain) ||
-			!item.VaultPubKey.Equals(tx.ObservedPubKey) ||
-			item.VaultPathIndex != common.MainVaultPathIndex ||
-			!types.IsBatchableTxOutType(item.TxType) ||
-			!item.Coin.Asset.Equals(common.BTCAsset) ||
-			len(item.SourceInputs) == 0 {
-			return false
-		}
-		if expectedInputs == nil {
-			expectedInputs = item.SourceInputs
-		} else if !btcTxOutInputsEqual(expectedInputs, item.SourceInputs) {
-			return false
-		}
-		total = total.Add(item.Coin.Amount)
-		totalMaxGas = totalMaxGas.Add(item.MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount)
-		matched++
-	}
-	if matched < 2 ||
-		!total.Equal(observedAmount) ||
-		!observedTxSpentTxOutInputs(tx.Tx.SourceInputs, expectedInputs) ||
-		totalMaxGas.IsZero() {
+	exp, ok := btcEpochBatchExpectationsFor(txOut, tx, rootAddr, false)
+	if !ok {
 		return false
 	}
-	if observedGas.GT(totalMaxGas) {
+	// single-item blocks with a legacy coin-bearing item keep the per-item match
+	// path; a unified single is a zeroed vin-only sweep
+	if exp.items < 2 && !(exp.vinOnly == exp.items && exp.items == 1 && txOut.TxArray[0].Coin.Amount.IsZero()) {
+		return false
+	}
+	// unified txs may be funded purely from child-path pins, so the observed
+	// from-address is only required to be the root when no vin-only items ride
+	if !tx.Tx.FromAddress.Equals(rootAddr) && exp.vinOnly == 0 {
+		return false
+	}
+	if !btcEpochBatchAmountMatches(exp, observedAmount, observedGas) ||
+		!observedTxSpentTxOutInputs(tx.Tx.SourceInputs, exp.inputs) ||
+		exp.totalMaxGas.IsZero() {
+		return false
+	}
+	if observedGas.GT(exp.totalMaxGas) {
 		ctx.Logger().Error("settling BTC batch outbound with gas above max gas",
 			"height", txOut.Height,
 			"tx_id", tx.Tx.ID.String(),
 			"observed_gas", observedGas.String(),
-			"max_gas", totalMaxGas.String(),
+			"max_gas", exp.totalMaxGas.String(),
 		)
 	}
+	vout := uint32(0)
 	for i := range txOut.TxArray {
 		txOut.TxArray[i].OutHash = tx.Tx.ID
-		txOut.TxArray[i].OutVout = uint32(i)
+		if btcBatchVinOnlyItem(txOut.TxArray[i]) {
+			txOut.TxArray[i].OutVout = 0
+			continue
+		}
+		txOut.TxArray[i].OutVout = vout
+		vout++
 	}
 	if err := mgr.Keeper().SetTxOut(ctx, txOut); err != nil {
 		ctx.Logger().Error("fail to save batched tx out", "error", err)
@@ -1442,7 +1511,8 @@ func markObservedOutboundTxOutBatch(ctx cosmos.Context, mgr Manager, txOut *TxOu
 	ctx.Logger().Info("matched observed outbound to txout batch",
 		"height", txOut.Height,
 		"tx_id", tx.Tx.ID.String(),
-		"items", matched,
+		"items", exp.items,
+		"vin_only", exp.vinOnly,
 	)
 	return true
 }
@@ -1504,41 +1574,28 @@ func observedOutboundMatchesSettledTxOut(tx ObservedTx, item TxOutItem) bool {
 }
 
 func observedOutboundAlreadyMatchedTxOutBatch(txOut *TxOut, tx ObservedTx) bool {
-	if txOut == nil || tx.Tx.ID.IsEmpty() || !tx.Tx.Chain.Equals(common.BTCChain) || len(txOut.TxArray) < 2 {
+	if txOut == nil || tx.Tx.ID.IsEmpty() || !tx.Tx.Chain.Equals(common.BTCChain) || len(txOut.TxArray) < 1 {
 		return false
 	}
 	rootAddr, err := common.DeriveBTCTaprootAddress(tx.ObservedPubKey, common.MainVaultPathIndex)
-	if err != nil || !tx.Tx.FromAddress.Equals(rootAddr) {
+	if err != nil {
 		return false
 	}
-	total := cosmos.ZeroUint()
-	totalMaxGas := cosmos.ZeroUint()
-	matched := 0
-	expectedInputs := []types.TxOutInput(nil)
-	for _, item := range txOut.TxArray {
-		if item.OutHash.IsEmpty() ||
-			!item.OutHash.Equals(tx.Tx.ID) ||
-			!item.Chain.Equals(common.BTCChain) ||
-			!item.VaultPubKey.Equals(tx.ObservedPubKey) ||
-			item.VaultPathIndex != common.MainVaultPathIndex ||
-			!types.IsBatchableTxOutType(item.TxType) ||
-			!item.Coin.Asset.Equals(common.BTCAsset) ||
-			len(item.SourceInputs) == 0 {
-			return false
-		}
-		if expectedInputs == nil {
-			expectedInputs = item.SourceInputs
-		} else if !btcTxOutInputsEqual(expectedInputs, item.SourceInputs) {
-			return false
-		}
-		total = total.Add(item.Coin.Amount)
-		totalMaxGas = totalMaxGas.Add(item.MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount)
-		matched++
+	exp, ok := btcEpochBatchExpectationsFor(txOut, tx, rootAddr, true)
+	if !ok {
+		return false
 	}
-	return matched >= 2 &&
-		total.Equal(tx.Tx.Coins.GetCoin(common.BTCAsset).Amount) &&
-		observedTxSpentTxOutInputs(tx.Tx.SourceInputs, expectedInputs) &&
-		!totalMaxGas.IsZero()
+	if exp.items < 2 && !(exp.vinOnly == exp.items && exp.items == 1 && txOut.TxArray[0].Coin.Amount.IsZero()) {
+		return false
+	}
+	if !tx.Tx.FromAddress.Equals(rootAddr) && exp.vinOnly == 0 {
+		return false
+	}
+	observedAmount := tx.Tx.Coins.GetCoin(common.BTCAsset).Amount
+	observedGas := tx.Tx.Gas.ToCoins().GetCoin(common.BTCAsset).Amount
+	return btcEpochBatchAmountMatches(exp, observedAmount, observedGas) &&
+		observedTxSpentTxOutInputs(tx.Tx.SourceInputs, exp.inputs) &&
+		!exp.totalMaxGas.IsZero()
 }
 
 func markMatchedTxOutItemSettled(ctx cosmos.Context, mgr Manager, item TxOutItem, tx ObservedTx) {

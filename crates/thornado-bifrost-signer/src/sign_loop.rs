@@ -210,15 +210,20 @@ pub fn recipients_for(
     use std::str::FromStr;
     let mut out = Vec::with_capacity(batch.len());
     for it in batch {
-        let addr = bitcoin::Address::from_str(&it.item.to_address)
-            .map_err(|e| SignLoopError::Config(format!("bad to_address {}: {e}", it.item.to_address)))?
-            .require_network(network)
-            .map_err(|e| SignLoopError::Config(format!("address network: {e}")))?;
         let amount = it
             .item
             .coin
             .amount_u64()
             .map_err(|e| SignLoopError::Config(format!("bad amount: {e}")))?;
+        // vin-only items (unified-batch sweeps, pinned migrates) carry a zeroed
+        // coin: they contribute inputs, not outputs
+        if amount == 0 {
+            continue;
+        }
+        let addr = bitcoin::Address::from_str(&it.item.to_address)
+            .map_err(|e| SignLoopError::Config(format!("bad to_address {}: {e}", it.item.to_address)))?
+            .require_network(network)
+            .map_err(|e| SignLoopError::Config(format!("address network: {e}")))?;
         out.push(Recipient {
             script_pubkey: addr.script_pubkey(),
             amount_sats: amount,
@@ -403,14 +408,21 @@ pub async fn frost_sign_tx<M: Mailbox>(
     selected: &[String],
     unsigned: &mut UnsignedTx,
     vault_pub: &[u8],
-    vault_path_index: u64,
+    input_paths: &[u64],
     timeout: Duration,
 ) -> Result<()> {
-    let child_tweak =
-        (vault_path_index != 0).then(|| crate::tx_builder::child_path_tweak(vault_pub, vault_path_index));
+    if input_paths.len() != unsigned.tx.input.len() {
+        return Err(SignLoopError::Config(format!(
+            "input path count {} does not match inputs {}",
+            input_paths.len(),
+            unsigned.tx.input.len()
+        )));
+    }
     let mut sessions = BTreeMap::new();
     let mut sid_order = Vec::with_capacity(unsigned.tx.input.len());
     for i in 0..unsigned.tx.input.len() {
+        let child_tweak = (input_paths[i] != 0)
+            .then(|| crate::tx_builder::child_path_tweak(vault_pub, input_paths[i]));
         let sighash = taproot_sighash(unsigned, i)?;
         let sid = keysign_session_id(vault_pub, &sighash);
         let session = SignSession::new_taproot_with_child_tweak(
@@ -758,8 +770,19 @@ impl SignLoop {
         let party_ms = party_start.elapsed().as_millis();
         tracing::info!(leader = %leader, selected = selected.len(), party_ms, "party formed");
 
-        // Build the identical unsigned tx on every selected party.
-        let vault = Self::vault_for(&share, rep.item.vault_path_index)?;
+        // Build the identical unsigned tx on every selected party. A unified
+        // epoch batch (multiple items, or a zeroed vin-only item) spends from
+        // the vault ROOT with per-input child tweaks; only a legacy lone
+        // coin-bearing item at a child path keeps the child-vault shape.
+        let unified = batch.len() > 1
+            || batch
+                .iter()
+                .any(|it| it.item.coin.amount_u64().unwrap_or(0) == 0)
+            || batch
+                .iter()
+                .any(|it| it.item.source_inputs.iter().any(|s| s.path_index != 0));
+        let spend_path = if unified { 0 } else { rep.item.vault_path_index };
+        let vault = Self::vault_for(&share, spend_path)?;
         let vault_addr = bitcoin::Address::from_script(
             vault.script_pubkey().as_script(),
             self.cfg.network,
@@ -834,13 +857,38 @@ impl SignLoop {
         let input_keys: Vec<String> =
             inputs.iter().map(|u| utxo_key(&u.txid, u.vout)).collect();
 
+        // Per-input signing paths: unified batches sign each input under its
+        // own taproot path; the legacy lone-item shape signs every input under
+        // the item's path (child sweeps prescribe inputs without path stamps).
+        let input_paths: Vec<u64> = if unified {
+            inputs.iter().map(|u| u.path_index).collect()
+        } else {
+            vec![rep.item.vault_path_index; inputs.len()]
+        };
+        let base_pubkey = unified
+            .then(|| hex::decode(&share.public_key_compressed))
+            .transpose()
+            .map_err(|e| SignLoopError::Config(format!("share pubkey hex: {e}")))?;
+
+        // A remainder item (unpinned internal at the root path with a chain
+        // computed coin) absorbs union - vouts - gas exactly: no change output.
+        let has_remainder = batch.iter().any(|it| {
+            matches!(it.item.tx_type.as_str(), "migrate" | "consolidate")
+                && it.item.vault_path_index == 0
+                && it.item.coin.amount_u64().unwrap_or(0) > 0
+        });
+        let exact = prescribed
+            && !recipients.is_empty()
+            && (has_remainder || (internal_batch && !unified));
+
         let mut unsigned = build_unsigned(&BuildRequest {
             vault,
+            base_pubkey,
             inputs,
             recipients,
             fee_rate,
             spend_all: false,
-            exact_fee_remainder: internal_batch && prescribed,
+            exact_fee_remainder: exact,
         })?;
 
         // The FROST session is keyed by the raw group key from the share;
@@ -861,7 +909,7 @@ impl SignLoop {
             &selected,
             &mut unsigned,
             &vault_pub,
-            rep.item.vault_path_index,
+            &input_paths,
             self.cfg.keysign_timeout,
         )
         .await?;
@@ -945,6 +993,7 @@ mod tests {
                 source_inputs: inputs
                     .iter()
                     .map(|(t, v, a)| TxOutInput {
+                        path_index: 0,
                         tx_id: (*t).into(),
                         vout: *v,
                         amount_sats: *a,
@@ -1124,6 +1173,7 @@ mod tests {
         let vault = TaprootVault::derive(&group_pub, 0).unwrap();
         use bitcoin::hashes::Hash;
         let mk_utxo = |b: u8, sats: u64| Utxo {
+            path_index: 0,
             txid: bitcoin::Txid::from_byte_array([b; 32]),
             vout: 0,
             amount_sats: sats,
@@ -1131,6 +1181,7 @@ mod tests {
         };
         let req = BuildRequest {
             vault: vault.clone(),
+            base_pubkey: None,
             inputs: vec![mk_utxo(1, 100_000), mk_utxo(2, 60_000)],
             recipients: vec![Recipient {
                 script_pubkey: vault.script_pubkey(),
@@ -1155,6 +1206,7 @@ mod tests {
             sign_handles.push(tokio::spawn(async move {
                 let mut unsigned = build_unsigned(&BuildRequest {
                     vault: vault2,
+                    base_pubkey: None,
                     inputs: req_inputs,
                     recipients: req_recipients,
                     fee_rate: 2,
@@ -1169,7 +1221,7 @@ mod tests {
                     &sel,
                     &mut unsigned,
                     &group_pub2,
-                    0,
+                    &[0, 0],
                     Duration::from_secs(30),
                 )
                 .await
@@ -1275,6 +1327,7 @@ mod tests {
         let root_vault = TaprootVault::derive(&group_pub, 0).unwrap();
         use bitcoin::hashes::Hash;
         let sweep_input = Utxo {
+            path_index: 0,
             txid: bitcoin::Txid::from_byte_array([5; 32]),
             vout: 1,
             amount_sats: 50_000,
@@ -1294,6 +1347,7 @@ mod tests {
             sign_handles.push(tokio::spawn(async move {
                 let mut unsigned = build_unsigned(&BuildRequest {
                     vault: child2,
+                    base_pubkey: None,
                     inputs: vec![input2],
                     recipients: vec![Recipient {
                         script_pubkey: root2.script_pubkey(),
@@ -1311,7 +1365,7 @@ mod tests {
                     &sel,
                     &mut unsigned,
                     &group_pub2,
-                    PATH,
+                    &[PATH],
                     Duration::from_secs(30),
                 )
                 .await
@@ -1338,5 +1392,166 @@ mod tests {
         let msg = bitcoin::secp256k1::Message::from_digest(sighash);
         secp.verify_schnorr(&sig, &msg, &xonly)
             .expect("schnorr sig valid for CHILD vault key");
+    }
+
+    /// Unified epoch batch: one tx spending a CHILD-path deposit UTXO and a
+    /// ROOT UTXO, each input FROST-signed under its own tweak; both witnesses
+    /// must verify against their respective taproot output keys and the
+    /// prevouts must carry per-path scripts.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn frost_sign_tx_multi_path_batch_produces_valid_spends() {
+        use crate::frost_session::KeygenSession;
+        use crate::transport::run_keygen;
+        use crate::tx_builder::Utxo;
+        use std::collections::HashMap;
+        use tokio::sync::mpsc;
+
+        struct MemMailbox {
+            me: String,
+            senders: HashMap<String, mpsc::UnboundedSender<(String, Vec<u8>)>>,
+            inbox: mpsc::UnboundedReceiver<(String, Vec<u8>)>,
+        }
+        impl Mailbox for MemMailbox {
+            async fn send(
+                &mut self,
+                to: &str,
+                framed: Vec<u8>,
+            ) -> std::result::Result<(), crate::transport::TransportError> {
+                if let Some(tx) = self.senders.get(to) {
+                    let _ = tx.send((self.me.clone(), framed));
+                }
+                Ok(())
+            }
+            async fn recv(&mut self) -> Option<(String, Vec<u8>)> {
+                self.inbox.recv().await
+            }
+        }
+
+        let names: Vec<String> = vec!["p0".into(), "p1".into(), "p2".into()];
+        let mut senders = HashMap::new();
+        let mut receivers = HashMap::new();
+        for n in &names {
+            let (tx, rx) = mpsc::unbounded_channel();
+            senders.insert(n.clone(), tx);
+            receivers.insert(n.clone(), rx);
+        }
+
+        let mut handles = Vec::new();
+        for n in &names {
+            let mut mbox = MemMailbox {
+                me: n.clone(),
+                senders: senders.clone(),
+                inbox: receivers.remove(n).unwrap(),
+            };
+            let session = KeygenSession::new(n.clone(), names.clone(), 2).unwrap();
+            let n2 = n.clone();
+            handles.push(tokio::spawn(async move {
+                let share = run_keygen(&mut mbox, session, "kg-multi").await.unwrap();
+                (n2, share, mbox)
+            }));
+        }
+        let mut shares = HashMap::new();
+        let mut mailboxes = HashMap::new();
+        for h in handles {
+            let (n, share, mbox) = h.await.unwrap();
+            shares.insert(n.clone(), share);
+            mailboxes.insert(n, mbox);
+        }
+
+        const PATH: u64 = 3;
+        let group_pub = hex::decode(&shares[&names[0]].public_key_compressed).unwrap();
+        let child_vault = TaprootVault::derive(&group_pub, PATH).unwrap();
+        let root_vault = TaprootVault::derive(&group_pub, 0).unwrap();
+        use bitcoin::hashes::Hash;
+        let inputs = vec![
+            Utxo {
+                txid: bitcoin::Txid::from_byte_array([7; 32]),
+                vout: 0,
+                amount_sats: 20_000_000,
+                confirmations: 6,
+                path_index: PATH,
+            },
+            Utxo {
+                txid: bitcoin::Txid::from_byte_array([8; 32]),
+                vout: 1,
+                amount_sats: 5_000_000,
+                confirmations: 6,
+                path_index: 0,
+            },
+        ];
+        let migrate_to = TaprootVault::derive(&group_pub, 0).unwrap();
+
+        let mut sign_handles = Vec::new();
+        for n in &names {
+            let mut mbox = mailboxes.remove(n).unwrap();
+            let share = shares[n].clone();
+            let sel = names.clone();
+            let n2 = n.clone();
+            let inputs2 = inputs.clone();
+            let root2 = root_vault.clone();
+            let dest2 = migrate_to.clone();
+            let group_pub2 = group_pub.clone();
+            sign_handles.push(tokio::spawn(async move {
+                let mut unsigned = build_unsigned(&BuildRequest {
+                    vault: root2,
+                    base_pubkey: Some(group_pub2.clone()),
+                    inputs: inputs2,
+                    recipients: vec![Recipient {
+                        script_pubkey: dest2.script_pubkey(),
+                        amount_sats: 24_990_000,
+                    }],
+                    fee_rate: 2,
+                    spend_all: false,
+                    exact_fee_remainder: true,
+                })
+                .unwrap();
+                frost_sign_tx(
+                    &mut mbox,
+                    &share,
+                    &n2,
+                    &sel,
+                    &mut unsigned,
+                    &group_pub2,
+                    &[PATH, 0],
+                    Duration::from_secs(30),
+                )
+                .await
+                .unwrap();
+                unsigned
+            }));
+        }
+        let mut signed = Vec::new();
+        for h in sign_handles {
+            signed.push(h.await.unwrap());
+        }
+        let txids: Vec<String> =
+            signed.iter().map(|u| u.tx.compute_txid().to_string()).collect();
+        assert!(txids.windows(2).all(|w| w[0] == w[1]), "parties disagree on txid");
+
+        let unsigned = &signed[0];
+        assert_eq!(
+            unsigned.prevouts[0].script_pubkey,
+            child_vault.script_pubkey(),
+            "child input prevout must carry the child script"
+        );
+        assert_eq!(
+            unsigned.prevouts[1].script_pubkey,
+            root_vault.script_pubkey(),
+            "root input prevout must carry the root script"
+        );
+
+        let secp = bitcoin::secp256k1::Secp256k1::verification_only();
+        for (i, vault_key) in [(0usize, &child_vault), (1usize, &root_vault)] {
+            let w = &unsigned.tx.input[i].witness;
+            let sig_bytes = w.iter().next().unwrap();
+            let sighash = taproot_sighash(unsigned, i).unwrap();
+            let xonly =
+                bitcoin::secp256k1::XOnlyPublicKey::from_slice(&vault_key.output_key).unwrap();
+            let sig =
+                bitcoin::secp256k1::schnorr::Signature::from_slice(&sig_bytes[..64]).unwrap();
+            let msg = bitcoin::secp256k1::Message::from_digest(sighash);
+            secp.verify_schnorr(&sig, &msg, &xonly)
+                .unwrap_or_else(|e| panic!("input {i} sig invalid under its path key: {e}"));
+        }
     }
 }

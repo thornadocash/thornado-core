@@ -2757,3 +2757,138 @@ func TestBTCMigrationOutboundMatchesHistoricalTxOut(t *testing.T) {
 		t.Fatalf("expected observed migration amount to update txout coin, got %d", got)
 	}
 }
+
+func TestUnifiedEpochBatchSweepsAsVinsMigrateRemainder(t *testing.T) {
+	SetupConfigForTest()
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+	k.configs[constants.UTXO_MaxSpendCount] = 10
+	mgr := newShielderFlowTestManager(k)
+	vaultPubKey := GetRandomPubKey()
+	rootInput := addTestBTCVaultSourceInput(t, ctx, k, vaultPubKey, 2_000_000)
+	rootAddr, err := common.DeriveBTCTaprootAddress(vaultPubKey, common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	migrateAddr := GetRandomBTCAddress()
+
+	txOut := NewTxOut(ctx.BlockHeight())
+	txOut.Status = TxOutStatusPendingBatch
+	const sweeps = 3
+	for i := uint64(0); i < sweeps; i++ {
+		depositID := GetRandomTxHash()
+		pathIndex := testUserDepositPathIndex(t, i)
+		k.deposits[depositID.String()] = types.DepositRecord{
+			DepositID:        depositID,
+			VaultPubKey:      vaultPubKey,
+			DepositPathIndex: pathIndex,
+			Status:           types.DepositStatusDepositMatched,
+		}
+		txOut.TxArray = append(txOut.TxArray, TxOutItem{
+			Chain:          common.BTCChain,
+			ToAddress:      rootAddr,
+			VaultPubKey:    vaultPubKey,
+			VaultPathIndex: pathIndex,
+			Coin:           common.NewCoin(common.BTCAsset, cosmos.NewUint(19_990_000)),
+			InHash:         depositID,
+			ModuleName:     BaseName,
+			TxType:         types.TxOutTypeSweep,
+			SourceInputs: []types.TxOutInput{{
+				TxId:       depositID,
+				Vout:       0,
+				AmountSats: 20_000_000,
+				PathIndex:  pathIndex,
+			}},
+		})
+	}
+	txOut.TxArray = append(txOut.TxArray, TxOutItem{
+		Chain:          common.BTCChain,
+		ToAddress:      migrateAddr,
+		VaultPubKey:    vaultPubKey,
+		VaultPathIndex: common.MainVaultPathIndex,
+		Coin:           common.NewCoin(common.BTCAsset, cosmos.NewUint(61_000_000)),
+		InHash:         common.BlankTxID,
+		TxType:         types.TxOutTypeMigrate,
+	})
+	// target exceeds the pinned sweep value so the batch must pull in root UTXOs
+
+	if err := refreshBTCExactTxOutBlock(ctx, k, txOut); err != nil {
+		t.Fatal(err)
+	}
+
+	union := txOut.TxArray[0].SourceInputs
+	if len(union) != sweeps+1 {
+		t.Fatalf("expected union of %d inputs (3 pins + root), got %d: %#v", sweeps+1, len(union), union)
+	}
+	for i, item := range txOut.TxArray {
+		if !btcTxOutInputsEqual(item.SourceInputs, union) {
+			t.Fatalf("item %d does not carry the union: %#v", i, item.SourceInputs)
+		}
+	}
+	unionValue := btcSourceInputsAmount(union)
+	if got := unionValue.Uint64(); got != sweeps*20_000_000+2_000_000 {
+		t.Fatalf("unexpected union value: %d", got)
+	}
+	totalGas := cosmos.ZeroUint()
+	for i := 0; i < sweeps; i++ {
+		if !txOut.TxArray[i].Coin.Amount.IsZero() {
+			t.Fatalf("sweep %d coin not zeroed: %s", i, txOut.TxArray[i].Coin.Amount)
+		}
+		totalGas = totalGas.Add(txOut.TxArray[i].MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount)
+	}
+	migrateItem := txOut.TxArray[sweeps]
+	totalGas = totalGas.Add(migrateItem.MaxGas.ToCoins().GetCoin(common.BTCAsset).Amount)
+	expectedRemainder := unionValue.Sub(totalGas)
+	if !migrateItem.Coin.Amount.Equal(expectedRemainder) {
+		t.Fatalf("migrate remainder %s != union - gas %s", migrateItem.Coin.Amount, expectedRemainder)
+	}
+	rootPinFound := false
+	for _, input := range union {
+		if input.TxId.Equals(rootInput.TxId) {
+			rootPinFound = true
+			if input.PathIndex != common.MainVaultPathIndex {
+				t.Fatalf("root input carries wrong path index: %d", input.PathIndex)
+			}
+		}
+	}
+	if !rootPinFound {
+		t.Fatal("root input missing from union")
+	}
+	k.txOutByHeight[txOut.Height] = *txOut
+
+	outHash := GetRandomTxHash()
+	observedTx := common.NewTx(
+		outHash,
+		rootAddr,
+		migrateAddr,
+		common.NewCoins(common.NewCoin(common.BTCAsset, migrateItem.Coin.Amount)),
+		common.Gas{common.NewCoin(common.BTCAsset, totalGas)},
+	)
+	for _, input := range union {
+		observedTx.SourceInputs = append(observedTx.SourceInputs, common.TxInput{
+			TxID: input.TxId, Vout: input.Vout, AmountSats: input.AmountSats,
+		})
+	}
+	observed := common.NewObservedTx(observedTx, ctx.BlockHeight(), vaultPubKey, ctx.BlockHeight())
+
+	if !markObservedOutboundTxOut(ctx, mgr, observed) {
+		t.Fatal("expected unified batch observation to settle all items")
+	}
+	stored := k.txOutByHeight[txOut.Height]
+	for i := 0; i < sweeps; i++ {
+		item := stored.TxArray[i]
+		if !item.OutHash.Equals(outHash) || item.OutVout != 0 {
+			t.Fatalf("sweep %d not settled as vin-only: %#v", i, item)
+		}
+		deposit := k.deposits[item.InHash.String()]
+		if !deposit.SweepComplete {
+			t.Fatalf("deposit %s sweep not marked complete", item.InHash)
+		}
+	}
+	if got := stored.TxArray[sweeps]; !got.OutHash.Equals(outHash) || got.OutVout != 0 {
+		t.Fatalf("migrate item not settled at vout 0: %#v", got)
+	}
+	if !observedOutboundAlreadyMatchedTxOutBatch(&stored, observed) {
+		t.Fatal("already-matched detection failed for unified batch")
+	}
+}

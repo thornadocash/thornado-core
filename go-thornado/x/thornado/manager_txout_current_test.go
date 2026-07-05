@@ -171,7 +171,7 @@ func TestTxOutEndBlockDoesNotMutatePrescribedPendingSignBTCGas(t *testing.T) {
 	}
 }
 
-func TestAppendBTCExactTxOutSeparatesBatchRefundAndMigration(t *testing.T) {
+func TestAppendBTCExactTxOutUnifiesRefundAndMigration(t *testing.T) {
 	SetupConfigForTest()
 	ctx := testContext(100)
 	k := newShielderFlowTestKeeper()
@@ -223,16 +223,29 @@ func TestAppendBTCExactTxOutSeparatesBatchRefundAndMigration(t *testing.T) {
 	if err := appendBTCExactTxOut(ctx, k, batchHeight, migrate); err != nil {
 		t.Fatal(err)
 	}
-	if len(k.txOutByHeight) != 2 {
-		t.Fatalf("expected refund batch and separate migration txout, got %d", len(k.txOutByHeight))
+	if len(k.txOutByHeight) != 1 {
+		t.Fatalf("expected one unified epoch batch txout, got %d", len(k.txOutByHeight))
 	}
-	if got := k.txOutByHeight[batchHeight]; got.Status != TxOutStatusPendingBatch || len(got.TxArray) != 1 || got.TxArray[0].TxType != types.TxOutTypeRefund {
-		t.Fatalf("refund batch was mutated: %#v", got)
+	got := k.txOutByHeight[batchHeight]
+	if got.Status != TxOutStatusPendingBatch || len(got.TxArray) != 2 {
+		t.Fatalf("refund and migration did not share the epoch batch: %#v", got)
 	}
-	migrationHeight := batchHeight + 1
-	got := k.txOutByHeight[migrationHeight]
-	if got.Status != TxOutStatusPendingSign || len(got.TxArray) != 1 || got.TxArray[0].TxType != types.TxOutTypeMigrate {
-		t.Fatalf("migration was not separated into pending sign txout: %#v", got)
+	if got.TxArray[0].TxType != types.TxOutTypeRefund || got.TxArray[1].TxType != types.TxOutTypeMigrate {
+		t.Fatalf("unexpected epoch batch item order: %#v", got.TxArray)
+	}
+	// both items must carry the identical unioned source inputs, with the
+	// refund's pinned deposit UTXO included
+	if !btcTxOutInputsEqual(got.TxArray[0].SourceInputs, got.TxArray[1].SourceInputs) {
+		t.Fatalf("epoch batch items disagree on source inputs: %#v vs %#v", got.TxArray[0].SourceInputs, got.TxArray[1].SourceInputs)
+	}
+	foundPin := false
+	for _, input := range got.TxArray[0].SourceInputs {
+		if input.TxId.Equals(refundHash) {
+			foundPin = true
+		}
+	}
+	if !foundPin {
+		t.Fatalf("refund pin missing from unioned source inputs: %#v", got.TxArray[0].SourceInputs)
 	}
 }
 
@@ -332,13 +345,19 @@ func TestRepairMixedBTCPendingBatchThenEndBlockPromotes(t *testing.T) {
 	if err := store.EndBlock(ctx, mgr); err != nil {
 		t.Fatal(err)
 	}
-	refundTxOut := k.txOutByHeight[mixedHeight]
-	if refundTxOut.Status != TxOutStatusPendingSign || len(refundTxOut.TxArray) != 1 || refundTxOut.TxArray[0].TxType != types.TxOutTypeRefund {
-		t.Fatalf("refund batch was not promoted cleanly: %#v", refundTxOut)
+	unifiedTxOut := k.txOutByHeight[mixedHeight]
+	if unifiedTxOut.Status != TxOutStatusPendingSign || len(unifiedTxOut.TxArray) != 2 {
+		t.Fatalf("unified refund+migration batch was not promoted cleanly: %#v", unifiedTxOut)
 	}
-	migrationTxOut := k.txOutByHeight[mixedHeight+1]
-	if migrationTxOut.Status != TxOutStatusPendingSign || len(migrationTxOut.TxArray) != 1 || migrationTxOut.TxArray[0].TxType != types.TxOutTypeMigrate {
-		t.Fatalf("migration was not split into its own pending sign txout: %#v", migrationTxOut)
+	if unifiedTxOut.TxArray[0].TxType != types.TxOutTypeRefund || unifiedTxOut.TxArray[1].TxType != types.TxOutTypeMigrate {
+		t.Fatalf("unexpected unified batch item order: %#v", unifiedTxOut.TxArray)
+	}
+	if !btcTxOutInputsEqual(unifiedTxOut.TxArray[0].SourceInputs, unifiedTxOut.TxArray[1].SourceInputs) {
+		t.Fatalf("unified batch items disagree on source inputs: %#v vs %#v",
+			unifiedTxOut.TxArray[0].SourceInputs, unifiedTxOut.TxArray[1].SourceInputs)
+	}
+	if _, ok := k.txOutByHeight[mixedHeight+1]; ok {
+		t.Fatalf("migration should not have been split into its own txout")
 	}
 }
 
@@ -550,7 +569,7 @@ func TestRepairSplitsMixedVaultPendingBatch(t *testing.T) {
 	}
 }
 
-func TestTxOutEndBlockSplitsMixedPendingSignAndAssignsLeader(t *testing.T) {
+func TestTxOutEndBlockKeepsMixedPendingSignTogetherAndAssignsLeader(t *testing.T) {
 	SetupConfigForTest()
 	ctx := testContext(160)
 	k := newShielderFlowTestKeeper()
@@ -602,22 +621,21 @@ func TestTxOutEndBlockSplitsMixedPendingSignAndAssignsLeader(t *testing.T) {
 	}
 
 	batchTxOut := k.txOutByHeight[mixedHeight]
-	if batchTxOut.Status != TxOutStatusPendingSign || len(batchTxOut.TxArray) != 1 || batchTxOut.TxArray[0].TxType != types.TxOutTypeRefund {
-		t.Fatalf("batchable item was not preserved as pending sign: %#v", batchTxOut)
+	if batchTxOut.Status != TxOutStatusPendingSign || len(batchTxOut.TxArray) != 2 {
+		t.Fatalf("unified refund+consolidate block was not preserved as pending sign: %#v", batchTxOut)
 	}
-	internalTxOut := k.txOutByHeight[mixedHeight+1]
-	if internalTxOut.Status != TxOutStatusPendingSign || len(internalTxOut.TxArray) != 1 || internalTxOut.TxArray[0].TxType != types.TxOutTypeConsolidate {
-		t.Fatalf("internal item was not split into pending sign txout: %#v", internalTxOut)
+	if batchTxOut.TxArray[0].TxType != types.TxOutTypeRefund || batchTxOut.TxArray[1].TxType != types.TxOutTypeConsolidate {
+		t.Fatalf("unexpected unified block item order: %#v", batchTxOut.TxArray)
+	}
+	if _, ok := k.txOutByHeight[mixedHeight+1]; ok {
+		t.Fatalf("internal item should not have been split into its own txout")
 	}
 
 	if err := store.EndBlock(ctx.WithBlockHeight(ctx.BlockHeight()+1), mgr); err != nil {
 		t.Fatal(err)
 	}
 	if got := k.txOutByHeight[mixedHeight].SigningLeader; !got.Equals(nodePubKey) {
-		t.Fatalf("batchable txout leader not assigned: %s", got)
-	}
-	if got := k.txOutByHeight[mixedHeight+1].SigningLeader; !got.Equals(nodePubKey) {
-		t.Fatalf("internal txout leader not assigned: %s", got)
+		t.Fatalf("unified txout leader not assigned: %s", got)
 	}
 }
 

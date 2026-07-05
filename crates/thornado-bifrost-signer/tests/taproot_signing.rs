@@ -117,7 +117,9 @@ fn frost_taproot_keypath_signature_is_valid_for_vault_address() {
     };
     let req = BuildRequest {
         vault: vault.clone(),
+        base_pubkey: None,
         inputs: vec![Utxo {
+            path_index: 0,
             txid: Txid::from_byte_array([0x11; 32]),
             vout: 0,
             amount_sats: 100_000,

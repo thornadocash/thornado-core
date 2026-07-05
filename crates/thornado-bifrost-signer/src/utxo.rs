@@ -27,6 +27,7 @@ pub fn to_utxos(items: &[ListUnspentItem]) -> Vec<Utxo> {
                 vout: it.vout,
                 amount_sats: btc_to_sats(it.amount),
                 confirmations: it.confirmations.max(0) as u64,
+                path_index: 0,
             })
         })
         .collect()
@@ -44,6 +45,7 @@ pub fn prescribed_inputs(batch: &[TxOutItem]) -> Option<Vec<Utxo>> {
                 vout: input.vout,
                 amount_sats: input.amount_sats,
                 confirmations: 0,
+                path_index: input.path_index,
             });
         }
     }
@@ -130,6 +132,7 @@ mod tests {
     #[test]
     fn prescribed_inputs_dedupe_and_order() {
         let mk = |b: u8, vout: u32, sats: u64| TxOutInput {
+            path_index: 0,
             tx_id: txid_hex(b),
             vout,
             amount_sats: sats,

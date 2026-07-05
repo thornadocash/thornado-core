@@ -77,6 +77,26 @@ where
     P: Fn(&str) -> bool,
     B: Fn(&str) -> bool,
 {
+    select_outputs_vault_aware(sender, vouts, consolidate, is_protocol_controlled, is_base, |a, b| a == b)
+}
+
+/// Like [`select_outputs`], but "change back to self" is judged by
+/// `same_vault(sender, receiver)`: a unified epoch batch may spend child-path
+/// deposit UTXOs (sender = a child address) while its change pays the vault
+/// root — same wallet, different address.
+pub fn select_outputs_vault_aware<P, B, S>(
+    sender: &str,
+    vouts: &[Vout],
+    consolidate: bool,
+    is_protocol_controlled: P,
+    is_base: B,
+    same_vault: S,
+) -> Result<Vec<usize>, ObserveError>
+where
+    P: Fn(&str) -> bool,
+    B: Fn(&str) -> bool,
+    S: Fn(&str, &str) -> bool,
+{
     let sender_protocol = is_protocol_controlled(sender);
     let mut selected = Vec::new();
     for (idx, vout) in vouts.iter().enumerate() {
@@ -90,9 +110,9 @@ where
         if !sender_protocol && !is_base(receiver) {
             continue;
         }
-        // consolidate keeps self-outputs (receiver == sender); a normal tx
-        // keeps outputs to others — i.e. keep when `consolidate == same`.
-        let same = receiver == sender;
+        // consolidate keeps self-outputs (same wallet); a normal tx keeps
+        // outputs to others — i.e. keep when `consolidate == same`.
+        let same = receiver == sender || same_vault(sender, receiver);
         if consolidate == same {
             selected.push(idx);
         }
@@ -115,7 +135,7 @@ where
     P: Fn(&str) -> bool,
     B: Fn(&str) -> bool,
 {
-    select_outputs(sender, vouts, consolidate, is_protocol_controlled, is_base)
+    select_outputs_vault_aware(sender, vouts, consolidate, is_protocol_controlled, is_base, |a, b| a == b)
         .map(|v| v[0])
 }
 
