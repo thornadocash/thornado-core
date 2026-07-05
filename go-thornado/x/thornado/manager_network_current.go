@@ -262,6 +262,35 @@ func (vm *NetworkMgr) btcConsolidationSourceInputs(ctx cosmos.Context, vault Vau
 	return inputs
 }
 
+// vaultHasUnsignedMigrateTxOut reports whether any txout block still carries an
+// unsigned migrate item from the given vault, regardless of how old the block
+// is. Used to serialize migration rounds strictly.
+func vaultHasUnsignedMigrateTxOut(ctx cosmos.Context, k keeper.Keeper, pubkey common.PubKey) bool {
+	iterator := k.GetTxOutIterator(ctx)
+	if iterator == nil {
+		return false
+	}
+	defer func() {
+		if err := iterator.Close(); shouldLogIteratorError(err) {
+			ctx.Logger().Error("fail to close txout iterator", "error", err)
+		}
+	}()
+	for ; iterator.Valid(); iterator.Next() {
+		var txOut TxOut
+		if err := k.Cdc().Unmarshal(iterator.Value(), &txOut); err != nil {
+			continue
+		}
+		for _, item := range txOut.TxArray {
+			if item.OutHash.IsEmpty() &&
+				types.NormalizeTxOutType(item.GetTxType()) == types.TxOutTypeMigrate &&
+				item.VaultPubKey.Equals(pubkey) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func vaultHasPendingTxType(ctx cosmos.Context, k keeper.Keeper, pubkey common.PubKey, txType string) bool {
 	signingPeriod := getConfigDurationBlocks(ctx, k, constants.Keysign_PeriodMinutes)
 	startHeight := ctx.BlockHeight() - signingPeriod
@@ -309,6 +338,13 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 		if vault.LenPendingTxBlockHeights(ctx.BlockHeight(), getConfigDurationBlocks(ctx, mgr.Keeper(), constants.Keysign_PeriodMinutes)) > 0 {
 			ctx.Logger().Info("Skipping the migration of funds while transactions are still pending")
 			// This refers to migrate TxOutItems only.
+			return nil
+		}
+		// The vault-record pending heights are windowed by the signing period;
+		// a migration stuck past the window would otherwise let rounds stack
+		// into duplicate unsigned migrates competing for the same UTXOs.
+		if vaultHasUnsignedMigrateTxOut(ctx, mgr.Keeper(), vault.PubKey) {
+			ctx.Logger().Info("Skipping the migration of funds while an unsigned migrate txout is pending", "vault", vault.PubKey.String())
 			return nil
 		}
 

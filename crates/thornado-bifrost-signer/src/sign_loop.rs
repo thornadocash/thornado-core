@@ -573,6 +573,29 @@ impl SignLoop {
                 }
             }
         }
+        // Reconcile: evict Available store items the chain no longer lists as
+        // pending (e.g. a voted TXOUTCANCEL removed the block). Phantom items
+        // scramble every node's attempt schedule — peers keep leading parties
+        // for work nobody else recognizes.
+        let chain_pending: std::collections::HashSet<(i64, String)> = pending
+            .iter()
+            .flat_map(|t| {
+                t.tx_array
+                    .iter()
+                    .filter(|it| it.out_hash.is_empty())
+                    .map(move |it| (t.height, it.in_hash.clone()))
+            })
+            .collect();
+        for it in self.store.list()? {
+            if it.status != TxStatus::Available || !it.item.out_hash.is_empty() {
+                continue;
+            }
+            if !chain_pending.contains(&(it.height, it.item.in_hash.clone())) {
+                tracing::info!(in_hash = %it.item.in_hash, height = it.height, "evicting store item no longer pending on chain");
+                self.store.remove(&it.key())?;
+            }
+        }
+
         for (height, vault) in targets {
             let signed = match self
                 .client
@@ -897,6 +920,22 @@ impl SignLoop {
         let vault_pub = hex::decode(&share.public_key_compressed)
             .map_err(|e| SignLoopError::Config(format!("share pubkey hex: {e}")))?;
         let n_inputs = unsigned.tx.input.len();
+        {
+            let sighash0 = taproot_sighash(&unsigned, 0)
+                .map(|h| hex::encode(&h[..8]))
+                .unwrap_or_default();
+            tracing::info!(
+                height = rep.height,
+                txid = %unsigned.tx.compute_txid(),
+                sighash0 = %sighash0,
+                inputs = n_inputs,
+                outputs = unsigned.tx.output.len(),
+                paths = ?input_paths,
+                unified,
+                exact,
+                "SIGN_ATTEMPT unsigned tx facts"
+            );
+        }
         // Register one routed mailbox covering every input session, so
         // concurrent keygen/keysign sessions on this host don't cross wires.
         let session_ids = keysign_session_ids(&unsigned, &vault_pub)?;

@@ -1278,6 +1278,7 @@ func markObservedOpenBTCOutboundOutsideSigningWindow(ctx cosmos.Context, mgr Man
 
 	var bestTxOut *TxOut
 	bestIndex := -1
+	bestExact := false
 	for ; iterator.Valid(); iterator.Next() {
 		var txOut TxOut
 		if err := mgr.Keeper().Cdc().Unmarshal(iterator.Value(), &txOut); err != nil {
@@ -1294,10 +1295,14 @@ func markObservedOpenBTCOutboundOutsideSigningWindow(ctx cosmos.Context, mgr Man
 			if !item.OutHash.IsEmpty() || !observedOutboundMatchesTxOut(tx, item) {
 				continue
 			}
-			if bestTxOut == nil || txOut.Height > bestTxOut.Height {
+			exact := observedOutboundMatchesTxOutExact(tx, item)
+			if bestTxOut == nil ||
+				(exact && !bestExact) ||
+				(exact == bestExact && txOut.Height > bestTxOut.Height) {
 				copyTxOut := txOut
 				bestTxOut = &copyTxOut
 				bestIndex = i
+				bestExact = exact
 			}
 		}
 	}
@@ -1331,6 +1336,20 @@ func markObservedBTCInternalHistoricalTxOut(ctx cosmos.Context, mgr Manager, tx 
 		len(tx.Tx.SourceInputs) == 0 {
 		return false, false
 	}
+	for _, exactPass := range []bool{true, false} {
+		matched, newly := markObservedBTCInternalHistoricalTxOutPass(ctx, mgr, tx, latestHeight, exactPass)
+		if matched {
+			return matched, newly
+		}
+	}
+	return false, false
+}
+
+// markObservedBTCInternalHistoricalTxOutPass runs one scan over historical
+// txouts: the exact pass only settles items whose prescribed inputs equal the
+// observed spend, the fuzzy pass keeps the legacy amount-window behavior for
+// items that never had inputs stamped.
+func markObservedBTCInternalHistoricalTxOutPass(ctx cosmos.Context, mgr Manager, tx ObservedTx, latestHeight int64, exact bool) (bool, bool) {
 	for height := latestHeight; height >= 1; height-- {
 		txOut, err := mgr.Keeper().GetTxOut(ctx, height)
 		if err != nil {
@@ -1338,8 +1357,14 @@ func markObservedBTCInternalHistoricalTxOut(ctx cosmos.Context, mgr Manager, tx 
 		}
 		for i, item := range txOut.TxArray {
 			if !types.IsInternalTxOutType(item.TxType) ||
-				!item.OutHash.IsEmpty() ||
-				!observedOutboundMatchesTxOut(tx, item) {
+				!item.OutHash.IsEmpty() {
+				continue
+			}
+			if exact {
+				if !observedOutboundMatchesTxOutExact(tx, item) {
+					continue
+				}
+			} else if !observedOutboundMatchesTxOut(tx, item) {
 				continue
 			}
 			ctx.Logger().Info("matched historical BTC internal outbound to txout item", "height", height, "tx_id", tx.Tx.ID.String(), "in_hash", item.InHash.String(), "tx_type", item.TxType)
@@ -1695,6 +1720,22 @@ func txOutInputsFromObserved(observed []common.TxInput) []types.TxOutInput {
 		})
 	}
 	return inputs
+}
+
+// observedOutboundMatchesTxOutExact is the strict form of
+// observedOutboundMatchesTxOut: the observed tx must spend exactly the item's
+// prescribed inputs, one-to-one. An exact-input item must never lose its
+// observation to a fuzzy competitor whose amount window happens to cover the
+// same tx (stale migrate rounds share candidate UTXOs with the round that
+// actually signed).
+func observedOutboundMatchesTxOutExact(tx ObservedTx, item TxOutItem) bool {
+	if len(item.SourceInputs) == 0 || len(tx.Tx.SourceInputs) != len(item.SourceInputs) {
+		return false
+	}
+	if !observedTxSpentTxOutInputs(tx.Tx.SourceInputs, item.SourceInputs) {
+		return false
+	}
+	return observedOutboundMatchesTxOut(tx, item)
 }
 
 func observedOutboundMatchesTxOut(tx ObservedTx, item TxOutItem) bool {
