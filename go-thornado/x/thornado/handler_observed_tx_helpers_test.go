@@ -2777,6 +2777,8 @@ func TestUnifiedEpochBatchSweepsAsVinsMigrateRemainder(t *testing.T) {
 	const sweeps = 3
 	for i := uint64(0); i < sweeps; i++ {
 		depositID := GetRandomTxHash()
+		// requested deposits key the record by request id, NOT the funding txid
+		fundingTxID := GetRandomTxHash()
 		pathIndex := testUserDepositPathIndex(t, i)
 		k.deposits[depositID.String()] = types.DepositRecord{
 			DepositID:        depositID,
@@ -2794,7 +2796,7 @@ func TestUnifiedEpochBatchSweepsAsVinsMigrateRemainder(t *testing.T) {
 			ModuleName:     BaseName,
 			TxType:         types.TxOutTypeSweep,
 			SourceInputs: []types.TxOutInput{{
-				TxId:       depositID,
+				TxId:       fundingTxID,
 				Vout:       0,
 				AmountSats: 20_000_000,
 				PathIndex:  pathIndex,

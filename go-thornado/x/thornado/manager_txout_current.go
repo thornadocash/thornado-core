@@ -225,9 +225,23 @@ func (tos *TxOutStorage) updateBatchStates(ctx cosmos.Context) error {
 // inputs selected; a batch queued behind an unfinished predecessor gets its inputs only
 // after that predecessor completes and its change output becomes spendable.
 func txOutBatchSourcesReady(txOut TxOut) bool {
-	for _, item := range txOut.TxArray {
-		if item.OutHash.IsEmpty() && len(item.SourceInputs) == 0 {
+	first := -1
+	for i, item := range txOut.TxArray {
+		if !item.OutHash.IsEmpty() {
+			continue
+		}
+		if len(item.SourceInputs) == 0 {
 			return false
+		}
+		if len(txOut.TxArray) > 1 {
+			if first < 0 {
+				first = i
+			} else if !btcTxOutInputsEqual(txOut.TxArray[first].SourceInputs, item.SourceInputs) {
+				// the epoch union has not been computed (a refresh error left
+				// creation-shape pins in place); promoting now would sign the
+				// items as separate transactions
+				return false
+			}
 		}
 	}
 	return true

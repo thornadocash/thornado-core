@@ -482,11 +482,36 @@ func refreshBTCEpochBatchGroup(ctx cosmos.Context, k keeper.Keeper, txOut *TxOut
 	return nil
 }
 
-// btcItemPinnedInputs extracts the source inputs a vin-only item pins: entries whose
-// TxId matches the item's InHash. On the creation shape (the item still carries only
-// its own pin) the entries get stamped with the item's taproot path; once the union
-// is in place the stamped PathIndex disambiguates entries sharing a funding txid.
+// btcItemPinnedInputs extracts the source inputs a vin-only item pins. A
+// child-path sweep pins the UTXO sitting on its own taproot path — the deposit
+// id (InHash) is NOT necessarily the funding txid (requested deposits key the
+// record by request id), so pins are identified by path stamp; the creation
+// shape (no stamps yet) treats every entry as the item's own pin and stamps
+// it. A pinned migrate at the root path references its UTXO by txid.
 func btcItemPinnedInputs(item TxOutItem) []types.TxOutInput {
+	if item.VaultPathIndex != common.MainVaultPathIndex {
+		var byPath []types.TxOutInput
+		stamped := false
+		for _, input := range item.SourceInputs {
+			if input.PathIndex == item.VaultPathIndex {
+				byPath = append(byPath, input)
+			}
+			if input.PathIndex != common.MainVaultPathIndex {
+				stamped = true
+			}
+		}
+		if len(byPath) > 0 {
+			return byPath
+		}
+		if !stamped {
+			pins := append([]types.TxOutInput(nil), item.SourceInputs...)
+			for i := range pins {
+				pins[i].PathIndex = item.VaultPathIndex
+			}
+			return pins
+		}
+		return nil
+	}
 	var all, byPath []types.TxOutInput
 	for _, input := range item.SourceInputs {
 		if !input.TxId.Equals(item.InHash) {

@@ -195,14 +195,18 @@ func TestMatchCoreDepositProcessesMultipleOutputsFromSameBTCTx(t *testing.T) {
 	if len(k.txOuts) != 2 {
 		t.Fatalf("expected two sweep txouts, got %#v", k.txOuts)
 	}
-	if !k.txOuts[0].InHash.Equals(firstDeposit.DepositID) ||
-		!k.txOuts[0].SourceInputs[0].TxId.Equals(txID) ||
-		k.txOuts[0].SourceInputs[0].Vout != 2 {
-		t.Fatalf("first sweep did not preserve source outpoint: %#v", k.txOuts[0])
+	// Batched sweeps carry the epoch union; each item's own outpoint stays
+	// recoverable via its path stamp.
+	assertPin := func(item TxOutItem, depositID common.TxID, wantVout uint32) {
+		t.Helper()
+		if !item.InHash.Equals(depositID) {
+			t.Fatalf("sweep in_hash mismatch: %#v", item)
+		}
+		pins := btcItemPinnedInputs(item)
+		if len(pins) != 1 || !pins[0].TxId.Equals(txID) || pins[0].Vout != wantVout {
+			t.Fatalf("sweep did not preserve source outpoint %d: pins=%#v item=%#v", wantVout, pins, item)
+		}
 	}
-	if !k.txOuts[1].InHash.Equals(secondDeposit.DepositID) ||
-		!k.txOuts[1].SourceInputs[0].TxId.Equals(txID) ||
-		k.txOuts[1].SourceInputs[0].Vout != 4 {
-		t.Fatalf("second sweep did not preserve source outpoint: %#v", k.txOuts[1])
-	}
+	assertPin(k.txOuts[0], firstDeposit.DepositID, 2)
+	assertPin(k.txOuts[1], secondDeposit.DepositID, 4)
 }
