@@ -1026,6 +1026,9 @@ func (tos *TxOutStorage) addToBlockOut(ctx cosmos.Context, mgr Manager, item TxO
 		ctx.Logger().Error("fail to emit scheduled outbound event", "error", err)
 	}
 
+	if item.Chain.Equals(common.BTCChain) {
+		return appendBTCExactTxOut(ctx, tos.keeper, outboundHeight, item)
+	}
 	return tos.keeper.AppendTxOut(ctx, outboundHeight, item)
 }
 

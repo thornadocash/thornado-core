@@ -188,7 +188,7 @@ func (vm *NetworkMgr) consolidateActiveBTCVaults(ctx cosmos.Context, mgr Manager
 			continue
 		}
 		item.Coin = common.NewCoin(common.BTCAsset, maxSpendable)
-		if err := vm.k.AppendTxOut(ctx, ctx.BlockHeight(), item); err != nil {
+		if err := appendBTCExactTxOut(ctx, vm.k, ctx.BlockHeight(), item); err != nil {
 			return fmt.Errorf("fail to add bitcoin consolidate txout: %w", err)
 		}
 		vault.InboundTxCount = 0
@@ -521,7 +521,7 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 					// The round amount is only a selection target; once inputs are selected,
 					// the destination amount is the full selected value minus max gas.
 					toi.Coin.Amount = common.SafeSub(sourceAmount, maxGasAmount)
-					if err := vm.k.AppendTxOut(ctx, ctx.BlockHeight(), toi); err != nil {
+					if err := appendBTCExactTxOut(ctx, vm.k, ctx.BlockHeight(), toi); err != nil {
 						return fmt.Errorf("fail to add bitcoin migration txout: %w", err)
 					}
 					ok = true

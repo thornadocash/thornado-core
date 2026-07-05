@@ -2094,7 +2094,7 @@ func queueVaultPathSweepWithInHash(ctx cosmos.Context, mgr Manager, tx ObservedT
 		"path_index", pathIndex,
 		"amount", amount.String(),
 	)
-	return mgr.Keeper().AppendTxOut(ctx, ctx.BlockHeight(), item)
+	return appendBTCExactTxOut(ctx, mgr.Keeper(), ctx.BlockHeight(), item)
 }
 
 func currentBTCVaultAddress(ctx cosmos.Context, k keeper.Keeper) (Vault, common.Address, error) {
