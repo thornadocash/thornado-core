@@ -786,8 +786,12 @@ func btcVaultSourceCandidates(ctx cosmos.Context, k keeper.Keeper, vault Vault, 
 			}
 			for _, observed := range voter.Txs {
 				tx := observed.Tx
+				// Match on vault identity, NOT from_address==root: a unified epoch
+				// batch spends child-path sweep UTXOs, so the observed from_address
+				// is a child address even though its change returns to the vault
+				// root. Gating on from_address stranded that change and skipped
+				// marking the batch's inputs spent (see btcMigrationSourceInputs).
 				if !tx.Chain.Equals(common.BTCChain) ||
-					!tx.FromAddress.Equals(sourceAddr) ||
 					!observed.ObservedPubKey.Equals(vault.PubKey) {
 					continue
 				}

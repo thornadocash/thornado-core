@@ -1081,6 +1081,62 @@ func TestBTCMigrationSourceInputsCapsAtMaxBatchVins(t *testing.T) {
 	}
 }
 
+func TestBTCMigrationSourceInputsFindsChildInputBatchChange(t *testing.T) {
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+	networkMgr := &NetworkMgr{k: k}
+
+	vaultPubKey := GetRandomPubKey()
+	vault := NewVaultV2(20, RetiringVault, BaseVault, vaultPubKey, common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	rootAddr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A unified batch spends child-path deposit sweep UTXOs, so the observed
+	// from_address is a CHILD address even though the batch's change returns to
+	// the vault ROOT. The reconstruction must match on vault identity, not
+	// from_address==root, or that change UTXO is stranded and migration fails.
+	childAddr, err := common.DeriveBTCTaprootAddress(vaultPubKey, testUserDepositPathIndex(t, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if childAddr.Equals(rootAddr) {
+		t.Fatal("child address must differ from root")
+	}
+	batchTx, err := common.NewTxID("9611111111111111111111111111111111111111111111111111111111111111")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	obs := common.NewObservedTx(
+		common.NewTx(
+			batchTx,
+			childAddr,             // from = child sweep-input address, NOT the vault root
+			GetRandomBTCAddress(), // to = external refund recipient
+			common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(90_000_000))),
+			common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(10_000))},
+		),
+		50, vaultPubKey, 50,
+	)
+	obs.Tx.SourceInputs = []common.TxInput{
+		{TxID: GetRandomTxHash(), Vout: 0, AmountSats: 300_000_000},
+		{TxID: GetRandomTxHash(), Vout: 0, AmountSats: 200_000_000},
+	}
+	k.SetObservedTxOutVoter(ctx, ObservedTxVoter{TxID: batchTx, Txs: common.ObservedTxs{obs}})
+
+	inputs := networkMgr.btcMigrationSourceInputs(ctx, vault, rootAddr, cosmos.NewUint(100_000_000))
+	if len(inputs) != 1 {
+		t.Fatalf("child-input batch change UTXO must be found for migration, got %d inputs", len(inputs))
+	}
+	if !inputs[0].TxId.Equals(batchTx) {
+		t.Fatalf("expected change from the batch tx, got %#v", inputs[0])
+	}
+	wantChange := uint64(500_000_000 - 90_000_000 - 10_000)
+	if inputs[0].AmountSats != wantChange {
+		t.Fatalf("change amount %d != expected %d", inputs[0].AmountSats, wantChange)
+	}
+}
+
 func TestBTCMigrationSourceInputsSelectLargestUTXORegardlessOfDiscoveryOrder(t *testing.T) {
 	ctx := testContext(100)
 	k := newShielderFlowTestKeeper()

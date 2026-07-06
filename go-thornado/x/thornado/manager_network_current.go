@@ -648,8 +648,14 @@ func (vm *NetworkMgr) btcMigrationSourceInputs(ctx cosmos.Context, vault Vault, 
 		}
 		for _, observed := range voter.Txs {
 			tx := observed.Tx
+			// Match on vault identity, NOT from_address==root. A unified epoch
+			// batch spends child-path deposit sweep UTXOs, so the observed
+			// from_address is a child address even though the batch's change
+			// returns to the vault ROOT (main path). Gating on from_address
+			// stranded that change UTXO (migration then failed "no source
+			// inputs") and skipped marking the batch's own inputs spent (so an
+			// already-spent UTXO could be re-selected and wedge the migrate).
 			if !tx.Chain.Equals(common.BTCChain) ||
-				!tx.FromAddress.Equals(sourceAddr) ||
 				!observed.ObservedPubKey.Equals(vault.PubKey) {
 				continue
 			}
