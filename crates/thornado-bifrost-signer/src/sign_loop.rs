@@ -21,7 +21,7 @@ use crate::chain::{KeysignVerifier, ThornadoClient, TxOutItem};
 use crate::frost_session::{keysign_session_id, SignSession, StoredShare};
 use crate::p2p::{self, PeerRegistry};
 use crate::signer::{
-    batch_items, frost_min_signers, frost_party_leader, next_frost_signer_attempt_height,
+    frost_min_signers, frost_party_leader, next_frost_signer_attempt_height,
 };
 use crate::store::{SignerStore, TxOutStoreItem, TxStatus};
 use crate::transport::{run_keysign_multi, Mailbox};
@@ -171,9 +171,14 @@ fn source_inputs_key(item: &TxOutItem) -> String {
 }
 
 /// The next batch to sign from the available work: the representative is the
-/// first item; peers that are batchable (same chain/vault/path) AND share the
-/// representative's exact prescribed inputs join it. Items with no prescribed
-/// inputs, or different inputs, sign on their own. Deterministic order.
+/// first item; every other available item that shares its EXACT prescribed
+/// input union joins it, regardless of tx type or path. The chain builds a
+/// unified epoch batch (child-path sweeps, main-path refunds/withdrawals, and a
+/// migrate/consolidate remainder) as one block on one shared union, and it must
+/// sign as one BTC tx — so grouping is by the union, not by type/path (the old
+/// Go `sameBatchSource` rule, which only co-signed same-path base outbounds,
+/// would strand the sweeps and let the remainder spend the union alone). Items
+/// with no prescribed inputs, or a different union, sign on their own.
 pub fn next_batch(avail: &[TxOutStoreItem]) -> Option<Vec<TxOutStoreItem>> {
     let rep = avail.first()?;
     let rep_key = source_inputs_key(&rep.item);
@@ -182,24 +187,13 @@ pub fn next_batch(avail: &[TxOutStoreItem]) -> Option<Vec<TxOutStoreItem>> {
     if rep_key.is_empty() {
         return Some(vec![rep.clone()]);
     }
-    let all_items: Vec<TxOutItem> = avail.iter().map(|it| it.item.clone()).collect();
-    match batch_items(&all_items, &rep.item) {
-        Some(batch) => {
-            let keys: std::collections::HashSet<String> = batch
-                .iter()
-                .filter(|it| source_inputs_key(it) == rep_key)
-                .map(|it| it.in_hash.clone())
-                .collect();
-            Some(
-                avail
-                    .iter()
-                    .filter(|it| keys.contains(&it.item.in_hash))
-                    .cloned()
-                    .collect(),
-            )
-        }
-        None => Some(vec![rep.clone()]),
-    }
+    Some(
+        avail
+            .iter()
+            .filter(|it| source_inputs_key(&it.item) == rep_key)
+            .cloned()
+            .collect(),
+    )
 }
 
 /// Recipient outputs for the batch, in batch order (all parties must agree).
@@ -1096,13 +1090,39 @@ mod tests {
     }
 
     #[test]
-    fn next_batch_single_when_not_batchable() {
-        let mut lone = stored("a", 10, 0, TxStatus::Available, 0);
+    fn next_batch_single_when_inputs_distinct() {
+        // A migrate spending its OWN distinct inputs does not share a union
+        // with the other item, so it signs alone. Grouping is by union, not by
+        // type: it is the distinct inputs, not the "migrate" type, that isolate
+        // it here.
+        let mut lone = stored_in("a", 10, 0, TxStatus::Available, 0, &[("mig", 0, 500_000)]);
         lone.item.tx_type = "migrate".into();
-        let other = stored("b", 11, 0, TxStatus::Available, 0);
+        let other = stored_in("b", 11, 0, TxStatus::Available, 0, &[("other", 0, 100_000)]);
         let batch = next_batch(&[lone.clone(), other]).unwrap();
         assert_eq!(batch.len(), 1);
         assert_eq!(batch[0].item.in_hash, "a");
+    }
+
+    #[test]
+    fn next_batch_groups_mixed_types_sharing_union() {
+        // A unified epoch batch: child-path sweeps, a main-path refund, and a
+        // consolidate remainder all carry the SAME prescribed union, so they
+        // must sign as ONE tx — grouping is by union, not by type/path. The old
+        // sameBatchSource rule would have signed the consolidate alone and
+        // stranded the sweeps.
+        let union = &[("u0", 0, 20_000_000), ("u1", 0, 20_000_000), ("u2", 0, 15_000_000)];
+        let mut sweep = stored_in("s", 10, 0, TxStatus::Available, 0, union);
+        sweep.item.tx_type = "sweep".into();
+        sweep.item.vault_path_index = 51;
+        let mut refund = stored_in("r", 10, 1, TxStatus::Available, 0, union);
+        refund.item.tx_type = "refund".into();
+        let mut cons = stored_in("c", 10, 2, TxStatus::Available, 0, union);
+        cons.item.tx_type = "consolidate".into();
+        let batch = next_batch(&[sweep, refund, cons]).unwrap();
+        assert_eq!(batch.len(), 3, "sweep+refund+consolidate sharing a union must sign together");
+        let types: std::collections::HashSet<&str> =
+            batch.iter().map(|it| it.item.tx_type.as_str()).collect();
+        assert!(types.contains("sweep") && types.contains("refund") && types.contains("consolidate"));
     }
 
     #[test]
