@@ -52,8 +52,34 @@ func btcGasCoinFromNativeSats(sats uint64) common.Coin {
 // separately by btcMaxBatchVins.
 const btcMaxBatchRecipients = 9
 
-// btcMaxBatchVins caps how many source inputs one batch tx may spend. FROST signs
-// ~250ms per input; 64 inputs stays well inside the keysign timeout.
+// btcMaxBatchVins caps how many source inputs any single BTC tx may spend
+// (unified epoch batch AND vault migration). The binding constraint is FROST
+// signing, not Bitcoin:
+//
+//   - FROST: the signer runs one taproot keysign session per input, and total
+//     keysign time scales ~linearly with input count (measured live at
+//     ~250ms/input, p50 246ms / max 533ms per input; a 26-input batch took
+//     6.7s). The signer's keysign_timeout is 60s and is a hard wall — an
+//     attempt that exceeds it aborts and the whole batch retries, so a tx that
+//     cannot keysign within 60s never confirms. The hard failure point is
+//     ~60s/250ms ≈ 240 inputs (typical) or ~112 (if every input hit worst-case
+//     latency). 64 inputs signs in ~16s typically, leaving ~44s of headroom for
+//     straggler inputs, WAN jitter, and the slowest node; party formation runs
+//     BEFORE keysign (separate join-party phase), so the full 60s is available
+//     for the FROST rounds. 64 keeps ~1.7x margin even against all-worst-case
+//     per-input latency.
+//   - Bitcoin (not binding): a taproot key-spend input is ~57.75 vbytes, so 64
+//     inputs is ~3.7 kvbytes; with up to 10 outputs ~4 kvbytes total — ~4% of
+//     the 100,000-vbyte standard-tx relay limit (MAX_STANDARD_TX_WEIGHT). BTC
+//     would only bind near ~1,700 taproot inputs.
+//
+// This is a SAFETY ceiling, not a normal operating point: an epoch batch carries
+// one input per deposit swept in a ~1-min window plus a few root UTXOs (well
+// under 64), and a vault's migration carries its root UTXOs — which consolidation
+// keeps bounded (each epoch batch adds one change UTXO to root; consolidate
+// combines them). In correct operation the count stays far below 64; capping
+// migration here guarantees that even an over-fragmented vault can never build a
+// tx FROST cannot sign (it migrates in ≤64-input rounds instead of wedging).
 const btcMaxBatchVins = 64
 
 // btcVaultBatchTxOut returns the txout block collecting the unified epoch batch for

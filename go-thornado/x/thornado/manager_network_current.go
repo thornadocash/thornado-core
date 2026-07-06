@@ -720,6 +720,15 @@ func (vm *NetworkMgr) btcMigrationSourceInputs(ctx cosmos.Context, vault Vault, 
 	var total uint64
 	inputs := make([]types.TxOutInput, 0, len(candidateInputs))
 	for _, input := range candidateInputs {
+		// Never select more inputs than one tx can FROST-sign. A vault that has
+		// accumulated more UTXOs than the cap migrates in successive rounds (the
+		// migrate amount is the selected UTXO total minus gas, so a partial round
+		// is safe) rather than building an unsignable tx that would wedge. In
+		// correct operation consolidation keeps the count below the cap, so
+		// migration is a single tx.
+		if len(inputs) >= btcMaxBatchVins {
+			break
+		}
 		inputs = append(inputs, input)
 		total += input.AmountSats
 		if !required.IsZero() && cosmos.NewUint(total).GTE(required) {

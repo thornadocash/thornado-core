@@ -1043,6 +1043,44 @@ func TestBTCMigrationSourceInputsSelectWholeUTXOAtOrAboveTarget(t *testing.T) {
 	}
 }
 
+func TestBTCMigrationSourceInputsCapsAtMaxBatchVins(t *testing.T) {
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+	networkMgr := &NetworkMgr{k: k}
+
+	vaultPubKey := GetRandomPubKey()
+	vault := NewVaultV2(10, RetiringVault, BaseVault, vaultPubKey, common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	sourceAddr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// More UTXOs than one tx can FROST-sign. Each is equal-value so the sort is
+	// stable; required is the full total, so without the cap the selector would
+	// take every one — with the cap it must stop at btcMaxBatchVins.
+	const nUTXOs = btcMaxBatchVins + 20
+	items := make([]TxOutItem, 0, nUTXOs)
+	for i := 0; i < nUTXOs; i++ {
+		outHash, herr := common.NewTxID(fmt.Sprintf("9%063x", i+1))
+		if herr != nil {
+			t.Fatal(herr)
+		}
+		items = append(items, TxOutItem{
+			Chain:       common.BTCChain,
+			ToAddress:   sourceAddr,
+			VaultPubKey: vaultPubKey,
+			Coin:        common.NewCoin(common.BTCAsset, cosmos.NewUint(1_000_000)),
+			OutHash:     outHash,
+		})
+	}
+	k.txOutByHeight[10] = TxOut{Height: 10, TxArray: items}
+
+	inputs := networkMgr.btcMigrationSourceInputs(ctx, vault, sourceAddr, cosmos.NewUint(uint64(nUTXOs)*1_000_000))
+	if len(inputs) != btcMaxBatchVins {
+		t.Fatalf("migration selection must cap at %d inputs, got %d", btcMaxBatchVins, len(inputs))
+	}
+}
+
 func TestBTCMigrationSourceInputsSelectLargestUTXORegardlessOfDiscoveryOrder(t *testing.T) {
 	ctx := testContext(100)
 	k := newShielderFlowTestKeeper()
