@@ -110,8 +110,16 @@ func (h FrostHandler) validate(ctx cosmos.Context, msg *MsgKeygenVault) error {
 		return cosmos.ErrUnknownRequest("invalid frost message")
 	}
 
+	// Accept attestations for any keygen block within TEN retry windows, not
+	// one. An attester whose local chain lags references the keygen block at
+	// ITS height (one or two reschedules behind the tip); rejecting it means
+	// the vault never reaches full attestation, the chain re-triggers keygen
+	// every retry window, and concurrent DKG rounds pile up forever (live
+	// 2026-07-08: node9 ~50 blocks behind → every churn DKG completed and was
+	// rejected for staleness). Member-set matching below still scopes the
+	// attestation to the exact keygen; the window only fences ancient replays.
 	churnRetryBlocks := getConfigDurationBlocks(ctx, h.mgr.Keeper(), constants.Churn_RetryIntervalMinutes)
-	if msg.Height <= ctx.BlockHeight()-churnRetryBlocks {
+	if msg.Height <= ctx.BlockHeight()-churnRetryBlocks*10 {
 		return cosmos.ErrUnknownRequest("invalid keygen block")
 	}
 

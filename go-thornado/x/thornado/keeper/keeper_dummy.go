@@ -154,6 +154,10 @@ func (k KVStoreDummy) HasCoins(ctx cosmos.Context, addr cosmos.AccAddress, coins
 }
 
 func (k KVStoreDummy) SetLastSignedHeight(_ cosmos.Context, _ int64) error { return kaboom }
+func (k KVStoreDummy) SetUnmatchedOutboundHeight(_ cosmos.Context, _ common.TxID, _ int64) {}
+func (k KVStoreDummy) GetUnmatchedOutboundHeight(_ cosmos.Context, _ common.TxID) int64 { return 0 }
+func (k KVStoreDummy) DeleteUnmatchedOutbound(_ cosmos.Context, _ common.TxID)          {}
+
 func (k KVStoreDummy) GetLastSignedHeight(_ cosmos.Context) (int64, error) {
 	return 0, kaboom
 }

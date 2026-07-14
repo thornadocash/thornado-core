@@ -80,6 +80,9 @@ type KeeperConfigDefaults interface {
 type KeeperLastHeight interface {
 	SetLastSignedHeight(ctx cosmos.Context, height int64) error
 	GetLastSignedHeight(ctx cosmos.Context) (int64, error)
+	SetUnmatchedOutboundHeight(ctx cosmos.Context, txID common.TxID, height int64)
+	GetUnmatchedOutboundHeight(ctx cosmos.Context, txID common.TxID) int64
+	DeleteUnmatchedOutbound(ctx cosmos.Context, txID common.TxID)
 	SetLastChainHeight(ctx cosmos.Context, chain common.Chain, height int64) error
 	ForceSetLastChainHeight(ctx cosmos.Context, chain common.Chain, height int64)
 	GetLastChainHeight(ctx cosmos.Context, chain common.Chain) (int64, error)

@@ -26,6 +26,14 @@ const (
 	// items whose prescribed inputs were consumed by ANOTHER settled outbound
 	// (double-prescription), which the refresh logic never retouches.
 	RepairReselectTxOutHeightKey = "REPAIR_RESELECTTXOUTHEIGHT"
+	// Voted one-shot: the value is a txout block height. Every BTC item at
+	// that height is REOPENED — OutHash/OutVout cleared along with the input
+	// prescription — so the refresh re-selects inputs and the signers sign it
+	// again. Recovers a block falsely settled by an observed tx that never
+	// paid its recipients (duplicate input unions made two blocks
+	// indistinguishable to the batch matcher). Operators must verify the
+	// block's recipients were NOT paid before voting this.
+	RepairReopenTxOutHeightKey = "REPAIR_REOPENTXOUTHEIGHT"
 )
 
 type vaultDebitRepairKeeper interface {
@@ -42,6 +50,60 @@ func applyVotedRetiringVaultDebitRepair(ctx cosmos.Context, mgr Manager) {
 	applyVotedRetiringVaultRepair(ctx, k, mgr.EventMgr(), RepairRetiringVaultDebitSatsKey, false)
 	applyVotedRetiringVaultRepair(ctx, k, mgr.EventMgr(), RepairRetiringVaultCreditSatsKey, true)
 	applyVotedTxOutReselect(ctx, mgr)
+	applyVotedTxOutReopen(ctx, mgr)
+}
+
+func applyVotedTxOutReopen(ctx cosmos.Context, mgr Manager) {
+	k := mgr.Keeper()
+	height, err := k.GetConfig(ctx, RepairReopenTxOutHeightKey)
+	if err != nil || height <= 0 {
+		return
+	}
+	k.SetConfig(ctx, RepairReopenTxOutHeightKey, 0)
+	k.DeleteNodeConfigs(ctx, RepairReopenTxOutHeightKey)
+	emitConfigEvent(ctx, mgr.EventMgr(), RepairReopenTxOutHeightKey, 0)
+
+	txOut, err := k.GetTxOut(ctx, height)
+	if err != nil || txOut == nil || txOut.IsEmpty() {
+		ctx.Logger().Error("txout reopen repair: no txout block", "height", height, "error", err)
+		return
+	}
+	reopened := 0
+	pending := 0
+	for i, item := range txOut.TxArray {
+		if !item.Chain.Equals(common.BTCChain) {
+			continue
+		}
+		if item.OutHash.IsEmpty() {
+			pending++
+			continue
+		}
+		txOut.TxArray[i].OutHash = common.TxID("")
+		txOut.TxArray[i].OutVout = 0
+		txOut.TxArray[i].SourceInputs = nil
+		txOut.TxArray[i].MaxGas = common.Gas{}
+		txOut.TxArray[i].GasRate = 0
+		reopened++
+	}
+	if reopened == 0 && pending == 0 {
+		ctx.Logger().Info("txout reopen repair: nothing to reopen", "height", height)
+		return
+	}
+	// A settled block is stamped complete; updateBatchStates never demotes it,
+	// and queryKeysign hides pending items behind that status, so signers skip
+	// the block forever. Reset the batch state machine along with the items.
+	txOut.Status = TxOutStatusPendingBatch
+	txOut.SigningLeader = ""
+	txOut.SigningAttempt = 0
+	txOut.RetryUntilHeight = 0
+	if err := refreshBTCExactTxOutBlock(ctx, k, txOut); err != nil {
+		ctx.Logger().Error("txout reopen repair: refresh failed; will retry at end-block", "height", height, "error", err)
+	}
+	if err := k.SetTxOut(ctx, txOut); err != nil {
+		ctx.Logger().Error("txout reopen repair: fail to save txout", "height", height, "error", err)
+		return
+	}
+	ctx.Logger().Info("applied txout reopen repair", "height", height, "items_reopened", reopened)
 }
 
 func applyVotedTxOutReselect(ctx cosmos.Context, mgr Manager) {

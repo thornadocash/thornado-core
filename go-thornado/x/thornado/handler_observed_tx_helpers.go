@@ -645,6 +645,7 @@ func handleObservedTxOutQuorum(
 	matchedTxOut, _ := markObservedOutboundTxOutStatus(ctx, mgr, tx)
 	migrationSourceSettled := false
 	if matchedTxOut {
+		mgr.Keeper().DeleteUnmatchedOutbound(ctx, tx.Tx.ID)
 		if creditBTCMigrationDestination(ctx, mgr, &voter, tx) {
 			ctx.Logger().Info("credited BTC migration destination vault from outbound",
 				"tx_id", tx.Tx.ID.String(),
@@ -668,15 +669,34 @@ func handleObservedTxOutQuorum(
 	// possible once the tx is final. Halting on the pre-final observation would
 	// freeze BTC signing on every congested-but-honest outbound.
 	if !matchedTxOut && tx.IsFinal() && observedOutboundRequiresTxOutMatch(tx) {
-		ctx.Logger().Info("halt BTC vault, observed outbound did not match an open txout",
-			"tx_id", tx.Tx.ID.String(),
-			"chain", tx.Tx.Chain.String(),
-			"from", tx.Tx.FromAddress.String(),
-			"to", tx.Tx.ToAddress.String(),
-			"pubkey", tx.ObservedPubKey.String(),
-		)
-		if err := haltBTCVaultForIssue(ctx, mgr.Keeper(), mgr.EventMgr(), tx.Tx, "observed outbound without open txout"); err != nil {
-			return fmt.Errorf("fail to halt BTC vault: %w", err)
+		// Grace: the first unmatched-final processing only records the height.
+		// One-block ordering between observation finality and batch refresh
+		// state was flapping halt/auto-unhalt on unified sweep settlements. A
+		// genuinely unauthorized spend never matches — a later processing
+		// (straggler observation votes always trickle in over following
+		// blocks) still finds no match and halts; the solvency check
+		// independently halts on the drained wallet as defense in depth.
+		firstUnmatched := mgr.Keeper().GetUnmatchedOutboundHeight(ctx, tx.Tx.ID)
+		if firstUnmatched == 0 {
+			mgr.Keeper().SetUnmatchedOutboundHeight(ctx, tx.Tx.ID, ctx.BlockHeight())
+			ctx.Logger().Info("final outbound unmatched; deferring halt for recheck",
+				"tx_id", tx.Tx.ID.String(),
+				"chain", tx.Tx.Chain.String(),
+				"from", tx.Tx.FromAddress.String(),
+				"to", tx.Tx.ToAddress.String(),
+				"pubkey", tx.ObservedPubKey.String(),
+			)
+		} else if ctx.BlockHeight() > firstUnmatched+btcUnmatchedOutboundGraceBlocks {
+			ctx.Logger().Info("halt BTC vault, observed outbound did not match an open txout",
+				"tx_id", tx.Tx.ID.String(),
+				"chain", tx.Tx.Chain.String(),
+				"from", tx.Tx.FromAddress.String(),
+				"to", tx.Tx.ToAddress.String(),
+				"pubkey", tx.ObservedPubKey.String(),
+			)
+			if err := haltBTCVaultForIssue(ctx, mgr.Keeper(), mgr.EventMgr(), tx.Tx, "observed outbound without open txout"); err != nil {
+				return fmt.Errorf("fail to halt BTC vault: %w", err)
+			}
 		}
 	}
 
@@ -1183,17 +1203,40 @@ func markObservedOutboundTxOutStatus(ctx cosmos.Context, mgr Manager, tx Observe
 	if earliestHeight < 1 {
 		earliestHeight = 1
 	}
-	for height := ctx.BlockHeight(); height >= earliestHeight; height-- {
+	for height := earliestHeight; height <= ctx.BlockHeight(); height++ {
 		txOut, err := mgr.Keeper().GetTxOut(ctx, height)
 		if err != nil {
-			ctx.Logger().Debug("unable to get txOut record", "error", err, "height", height)
 			continue
 		}
 		if observedOutboundAlreadyMatchedTxOut(txOut, tx) {
 			return true, false
 		}
-		if markObservedOutboundTxOutBatch(ctx, mgr, txOut, tx) {
-			return true, true
+	}
+	// Batch settle-once guard: one observed tx BATCH-settles at most one txout
+	// block, ever. A batch is matched by value+inputs only (the observation
+	// carries no per-recipient outputs), so duplicate input unions make two
+	// pending blocks indistinguishable and a replayed observation event
+	// (consensus then finality, straggler votes) would settle a block the tx
+	// never paid. Per-item paths verify recipients exactly and keep their own
+	// precedence semantics (e.g. open item over stale completed duplicate).
+	if !observedOutboundAlreadySettledAnyTxOut(ctx, mgr, tx) {
+		// Oldest-first: the signer signs the oldest scheduled batch first, so
+		// when two blocks would both match, the earlier one is the real batch.
+		for height := earliestHeight; height <= ctx.BlockHeight(); height++ {
+			txOut, err := mgr.Keeper().GetTxOut(ctx, height)
+			if err != nil {
+				continue
+			}
+			if markObservedOutboundTxOutBatch(ctx, mgr, txOut, tx) {
+				return true, true
+			}
+		}
+	}
+	for height := ctx.BlockHeight(); height >= earliestHeight; height-- {
+		txOut, err := mgr.Keeper().GetTxOut(ctx, height)
+		if err != nil {
+			ctx.Logger().Debug("unable to get txOut record", "error", err, "height", height)
+			continue
 		}
 		for i, item := range txOut.TxArray {
 			if !observedOutboundMatchesTxOut(tx, item) {
@@ -1269,6 +1312,7 @@ func markObservedOpenBTCOutboundOutsideSigningWindow(ctx cosmos.Context, mgr Man
 		return false, false
 	}
 
+	batchEligible := !observedOutboundAlreadySettledAnyTxOut(ctx, mgr, tx)
 	iterator := mgr.Keeper().GetTxOutIterator(ctx)
 	defer func() {
 		if err := iterator.Close(); shouldLogIteratorError(err) {
@@ -1288,7 +1332,7 @@ func markObservedOpenBTCOutboundOutsideSigningWindow(ctx cosmos.Context, mgr Man
 		if txOut.Height > latestHeight || txOut.IsEmpty() || !txOutHasPendingItems(txOut) {
 			continue
 		}
-		if markObservedOutboundTxOutBatch(ctx, mgr, &txOut, tx) {
+		if batchEligible && markObservedOutboundTxOutBatch(ctx, mgr, &txOut, tx) {
 			return true, true
 		}
 		for i, item := range txOut.TxArray {
@@ -1549,6 +1593,31 @@ func markObservedOutboundTxOutBatch(ctx cosmos.Context, mgr Manager, txOut *TxOu
 		"vin_only", exp.vinOnly,
 	)
 	return true
+}
+
+func observedOutboundAlreadySettledAnyTxOut(ctx cosmos.Context, mgr Manager, tx ObservedTx) bool {
+	if tx.Tx.ID.IsEmpty() {
+		return false
+	}
+	iterator := mgr.Keeper().GetTxOutIterator(ctx)
+	if iterator == nil {
+		return false
+	}
+	defer func() {
+		if err := iterator.Close(); shouldLogIteratorError(err) {
+			ctx.Logger().Error("fail to close txout iterator", "error", err)
+		}
+	}()
+	for ; iterator.Valid(); iterator.Next() {
+		var txOut TxOut
+		if err := mgr.Keeper().Cdc().Unmarshal(iterator.Value(), &txOut); err != nil {
+			continue
+		}
+		if observedOutboundAlreadyMatchedTxOut(&txOut, tx) {
+			return true
+		}
+	}
+	return false
 }
 
 func observedOutboundAlreadyMatchedTxOut(txOut *TxOut, tx ObservedTx) bool {

@@ -49,6 +49,13 @@ func (h SetNodeKeysHandler) validate(ctx cosmos.Context, msg MsgSetNodeKeys) err
 	if err != nil {
 		return err
 	}
+	// A node with keys assigned may re-submit the IDENTICAL pubkey set to
+	// rotate only its consensus key (lost/regenerated validator key on a
+	// standby node — Active/Disabled are already rejected above). A different
+	// pubkey set is still refused: node identity is immutable once assigned.
+	if !nodeAccount.PubKeySet.IsEmpty() && !nodeAccount.PubKeySet.Equals(msg.PubKeySetSet) {
+		return fmt.Errorf("node %s already has pubkey set assigned", nodeAccount.NodeAddress)
+	}
 	if err := h.mgr.Keeper().EnsureNodeKeysUnique(ctx, nodeAccount.NodeAddress, msg.NodeConsPubKey, msg.PubKeySetSet); err != nil {
 		return err
 	}
@@ -104,9 +111,9 @@ func validateNodeKeysAuth(ctx cosmos.Context, k keeper.Keeper, signer cosmos.Acc
 		return NodeAccount{}, fmt.Errorf("node %s is disabled, so it can't update itself", nodeAccount.NodeAddress)
 	}
 
-	if !nodeAccount.PubKeySet.IsEmpty() {
-		return NodeAccount{}, fmt.Errorf("node %s already has pubkey set assigned", nodeAccount.NodeAddress)
-	}
+	// The assigned-keys check lives in the handler's validate(), where the
+	// message is available: an identical pubkey set is allowed through so a
+	// standby node can rotate a lost consensus key.
 
 	return nodeAccount, nil
 }
