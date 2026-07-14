@@ -288,7 +288,7 @@ pub async fn leader_form_party(
     threshold: usize,
     wait: Duration,
     grace: Duration,
-) -> Result<Vec<String>> {
+) -> Result<(Vec<String>, String)> {
     let mut coordinator =
         p2p::Coordinator::new_leader(session_id, local, members.iter().cloned(), threshold);
     let mut joined: Vec<(String, libp2p::Stream)> = Vec::new();
@@ -322,7 +322,20 @@ pub async fn leader_form_party(
     }
 
     let timed_out = !coordinator.ready();
-    let response = coordinator.response(timed_out);
+    // Mint a per-run salt and ship it in the response id (`sid|salt`). Every
+    // member scopes its FROST keysign session ids with it, so frames from an
+    // aborted earlier run of the SAME batch (same vault+sighash, e.g. after a
+    // fleet chain restart killed a keysign mid-round) route nowhere instead
+    // of corrupting round-1 commitments ("participant's commitment is
+    // incorrect" desync that previously needed a fleet-wide store purge).
+    let run_salt = {
+        use rand::RngCore;
+        let mut b = [0u8; 8];
+        rand::rngs::OsRng.fill_bytes(&mut b);
+        hex::encode(b)
+    };
+    let mut response = coordinator.response(timed_out);
+    response.id = format!("{session_id}|{run_salt}");
     let framed = response.encode();
     for (name, mut stream) in joined {
         if let Err(e) = crate::wire::write_frame(&mut stream, &framed).await {
@@ -336,7 +349,7 @@ pub async fn leader_form_party(
         }
         .into());
     }
-    Ok(coordinator.selected())
+    Ok((coordinator.selected(), run_salt))
 }
 
 /// Member side: open a join-party stream to the leader, announce ourselves,
@@ -347,7 +360,7 @@ pub async fn member_join_party(
     local: &str,
     session_id: &str,
     wait: Duration,
-) -> Result<Vec<String>> {
+) -> Result<(Vec<String>, String)> {
     let request = JoinPartyLeaderComm {
         id: session_id.to_string(),
         msg_type: "request".into(),
@@ -367,7 +380,15 @@ pub async fn member_join_party(
             .map_err(|e| p2p::P2pError::Transport(e.to_string()))?;
         let resp = JoinPartyLeaderComm::decode(&resp_bytes)
             .map_err(|e| p2p::P2pError::Transport(e.to_string()))?;
-        p2p::interpret_response(&resp)
+        let selected = p2p::interpret_response(&resp)?;
+        // The leader mints a per-run salt and appends it to the response id
+        // (`sid|salt`); keysign session ids are scoped by it.
+        let run_salt = resp
+            .id
+            .split_once('|')
+            .map(|(_, s)| s.to_string())
+            .unwrap_or_default();
+        Ok::<_, p2p::P2pError>((selected, run_salt))
     };
     match tokio::time::timeout(wait, attempt).await {
         Ok(res) => Ok(res?),
@@ -381,11 +402,15 @@ pub async fn member_join_party(
 
 /// The FROST keysign session id for each input of `unsigned`
 /// (`keysign_session_id(vault, sighash_i)`), in input order.
-pub fn keysign_session_ids(unsigned: &UnsignedTx, vault_pub: &[u8]) -> Result<Vec<String>> {
+pub fn keysign_session_ids(
+    unsigned: &UnsignedTx,
+    vault_pub: &[u8],
+    run_salt: &str,
+) -> Result<Vec<String>> {
     let mut ids = Vec::with_capacity(unsigned.tx.input.len());
     for i in 0..unsigned.tx.input.len() {
         let sighash = taproot_sighash(unsigned, i)?;
-        ids.push(keysign_session_id(vault_pub, &sighash));
+        ids.push(keysign_session_id(vault_pub, &sighash, run_salt));
     }
     Ok(ids)
 }
@@ -403,6 +428,7 @@ pub async fn frost_sign_tx<M: Mailbox>(
     unsigned: &mut UnsignedTx,
     vault_pub: &[u8],
     input_paths: &[u64],
+    run_salt: &str,
     timeout: Duration,
 ) -> Result<()> {
     if input_paths.len() != unsigned.tx.input.len() {
@@ -418,7 +444,7 @@ pub async fn frost_sign_tx<M: Mailbox>(
         let child_tweak = (input_paths[i] != 0)
             .then(|| crate::tx_builder::child_path_tweak(vault_pub, input_paths[i]));
         let sighash = taproot_sighash(unsigned, i)?;
-        let sid = keysign_session_id(vault_pub, &sighash);
+        let sid = keysign_session_id(vault_pub, &sighash, run_salt);
         let session = SignSession::new_taproot_with_child_tweak(
             share,
             local.to_string(),
@@ -743,7 +769,7 @@ impl SignLoop {
         let sid = party_session_id(&vault_id, rep.epoch, rep.height, &in_hashes);
 
         let party_start = std::time::Instant::now();
-        let selected = if leader == self.cfg.local {
+        let (selected, run_salt) = if leader == self.cfg.local {
             // Hand any parked requests for this session to the coordinator.
             let mut seed = Vec::new();
             let mut rest = Vec::new();
@@ -932,7 +958,7 @@ impl SignLoop {
         }
         // Register one routed mailbox covering every input session, so
         // concurrent keygen/keysign sessions on this host don't cross wires.
-        let session_ids = keysign_session_ids(&unsigned, &vault_pub)?;
+        let session_ids = keysign_session_ids(&unsigned, &vault_pub, &run_salt)?;
         let mut mbox = self.router.sessions_multi(&session_ids);
         let keysign_start = std::time::Instant::now();
         frost_sign_tx(
@@ -943,6 +969,7 @@ impl SignLoop {
             &mut unsigned,
             &vault_pub,
             &input_paths,
+            &run_salt,
             self.cfg.keysign_timeout,
         )
         .await?;
@@ -1281,7 +1308,8 @@ mod tests {
                     &mut unsigned,
                     &group_pub2,
                     &[0, 0],
-                    Duration::from_secs(30),
+                    "test-salt",
+                Duration::from_secs(30),
                 )
                 .await
                 .unwrap();
@@ -1425,7 +1453,8 @@ mod tests {
                     &mut unsigned,
                     &group_pub2,
                     &[PATH],
-                    Duration::from_secs(30),
+                    "test-salt",
+                Duration::from_secs(30),
                 )
                 .await
                 .unwrap();
@@ -1572,7 +1601,8 @@ mod tests {
                     &mut unsigned,
                     &group_pub2,
                     &[PATH, 0],
-                    Duration::from_secs(30),
+                    "test-salt",
+                Duration::from_secs(30),
                 )
                 .await
                 .unwrap();

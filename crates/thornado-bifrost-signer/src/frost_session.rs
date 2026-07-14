@@ -159,11 +159,16 @@ pub fn identifier_for(participants: &[String], party: &str) -> Result<frost::Ide
     frost::Identifier::try_from(index).map_err(|e| FrostError::Frost(e.to_string()))
 }
 
-/// Keysign session ID: SHA256(vaultPubKey || message), hex-encoded.
-pub fn keysign_session_id(vault_pubkey: &[u8], message: &[u8]) -> String {
+/// Keysign session ID: SHA256(vaultPubKey || message || runSalt), hex-encoded.
+/// The run salt is minted by the party leader per signing run and distributed
+/// in the join-party response, so retries of the same batch (identical vault
+/// and sighash) never share a session id with an aborted earlier run — stale
+/// round frames route nowhere instead of corrupting commitments.
+pub fn keysign_session_id(vault_pubkey: &[u8], message: &[u8], run_salt: &str) -> String {
     let mut h = Sha256::new();
     h.update(vault_pubkey);
     h.update(message);
+    h.update(run_salt.as_bytes());
     hex::encode(h.finalize())
 }
 
@@ -516,6 +521,13 @@ impl KeygenSession {
 pub struct SignSession {
     local: String,
     participants: Vec<String>,
+    /// The share's FULL participant set in normalized order. FROST
+    /// identifiers were dealt by 1-based position in THIS list at keygen;
+    /// mapping them by position in the SELECTED party instead shifted every
+    /// member sorted after an absent one (any 3-of-4 party excluding a
+    /// non-last member signed with mismatched identities — "participant's
+    /// commitment is incorrect" on every attempt).
+    share_participants: Vec<String>,
     key_package: frost::keys::KeyPackage,
     public_key_package: frost::keys::PublicKeyPackage,
     message: Vec<u8>,
@@ -580,6 +592,14 @@ impl SignSession {
         if !participants.contains(&local) {
             return Err(FrostError::LocalPartyNotSelected);
         }
+        let share_participants = normalize_participants(&share.participants);
+        for p in &participants {
+            if !share_participants.contains(p) {
+                return Err(FrostError::Frost(format!(
+                    "selected participant {p} is not in the keyshare participant set"
+                )));
+            }
+        }
         let mut key_package = share.key_package()?;
         let mut public_key_package = share.public_key_package()?;
         if let Some(t) = child_tweak {
@@ -603,6 +623,7 @@ impl SignSession {
         let mut me = Self {
             local,
             participants,
+            share_participants,
             key_package,
             public_key_package,
             message,
@@ -615,7 +636,7 @@ impl SignSession {
             aborted: None,
             taproot,
         };
-        let id = identifier_for(&me.participants, &me.local)?;
+        let id = identifier_for(&me.share_participants, &me.local)?;
         me.commitments.insert(id, commitments);
         Ok(me)
     }
@@ -642,7 +663,7 @@ impl SignSession {
         if self.finished() {
             return Ok(true);
         }
-        let id = identifier_for(&self.participants, &msg.from)?;
+        let id = identifier_for(&self.share_participants, &msg.from)?;
         let bytes = msg.decode_payload()?;
         match msg.kind.as_str() {
             "sign_round1" => {
@@ -694,7 +715,7 @@ impl SignSession {
         }
         .map_err(|e| FrostError::Frost(e.to_string()))?;
 
-        let id = identifier_for(&self.participants, &self.local)?;
+        let id = identifier_for(&self.share_participants, &self.local)?;
         self.signature_shares.insert(id, share);
         // absorb any round2 shares that arrived early
         let pending = std::mem::take(&mut self.pending_shares);
@@ -743,7 +764,7 @@ impl SignSession {
         let signature = match agg {
             Ok(s) => s,
             Err(e) => {
-                let culprits = blame_names(&self.participants, &e);
+                let culprits = blame_names(&self.share_participants, &e);
                 if culprits.is_empty() {
                     return Err(FrostError::Frost(e.to_string()));
                 }
@@ -913,8 +934,60 @@ mod tests {
     }
 
     #[test]
+    fn keysign_subset_excluding_mid_sorted_member_verifies() {
+        // Regression: FROST identifiers are dealt by position in the FULL
+        // participant set at keygen. A signing subset that excludes a member
+        // from the MIDDLE of the sorted order must still map every selected
+        // member to its keygen identifier — mapping by position in the
+        // subset shifted identities and made every such party fail
+        // ("participant's commitment is incorrect", live 2026-07-08: any
+        // cq27me party excluding node9, sorted 2nd of 4).
+        let names = party_names(4);
+        let min = 3u16;
+        let (shares, group_key) = distributed_keygen(&names, min);
+
+        let sorted = normalize_participants(&names);
+        // Drop the SECOND member: the remaining three span positions 1,3,4.
+        let chosen: Vec<String> = vec![sorted[0].clone(), sorted[2].clone(), sorted[3].clone()];
+        let message = b"thornado taproot sighash placeholder--32b".to_vec();
+
+        let mut sessions: BTreeMap<String, SignSession> = BTreeMap::new();
+        let mut inflight = Vec::new();
+        for name in &chosen {
+            let mut s =
+                SignSession::new(&shares[name], name.clone(), chosen.clone(), message.clone())
+                    .unwrap();
+            inflight.extend(s.drain_outputs());
+            sessions.insert(name.clone(), s);
+        }
+
+        let mut signature: Option<[u8; 64]> = None;
+        pump(inflight, |target, msg| {
+            let mut out = Vec::new();
+            if let Some(s) = sessions.get_mut(target) {
+                if s.handle(msg).unwrap() {
+                    signature = s.signature();
+                }
+                out.extend(s.drain_outputs());
+            }
+            out
+        });
+
+        let sig = signature.expect("aggregated signature produced by mid-exclusion subset");
+        let sig = frost::Signature::deserialize(&sig).unwrap();
+        group_key
+            .verify(&message, &sig)
+            .expect("mid-exclusion subset signature verifies against group key");
+    }
+
+    #[test]
     fn session_ids_match_spec_shape() {
-        let id = keysign_session_id(b"vault", b"msg");
+        let id = keysign_session_id(b"vault", b"msg", "salt1");
+        assert_ne!(
+            id,
+            keysign_session_id(b"vault", b"msg", "salt2"),
+            "same batch under a different run salt must be a different session"
+        );
         assert_eq!(id.len(), 64); // hex sha256
         let kg = keygen_session_id(100, 2, &party_names(3));
         assert_eq!(kg.len(), 64);
