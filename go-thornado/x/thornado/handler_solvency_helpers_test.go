@@ -2,6 +2,8 @@ package thornado
 
 import (
 	"errors"
+	"sort"
+	"strconv"
 	"testing"
 
 	"cosmossdk.io/log"
@@ -30,6 +32,20 @@ func (k solvencyTestKeeper) GetTxOut(_ cosmos.Context, height int64) (*TxOut, er
 		return txOut, nil
 	}
 	return &TxOut{Height: height}, nil
+}
+
+func (k solvencyTestKeeper) GetTxOutIterator(_ cosmos.Context) cosmos.Iterator {
+	iter := keeper.NewDummyIterator()
+	heights := make([]int64, 0, len(k.txOuts))
+	for height := range k.txOuts {
+		heights = append(heights, height)
+	}
+	sort.Slice(heights, func(i, j int) bool { return heights[i] < heights[j] })
+	for _, height := range heights {
+		value, _ := k.Cdc().Marshal(k.txOuts[height])
+		iter.AddItem([]byte(strconv.FormatInt(height, 10)), value)
+	}
+	return iter
 }
 
 func (k solvencyTestKeeper) GetObservedTxOutVoter(_ cosmos.Context, hash common.TxID) (ObservedTxVoter, error) {

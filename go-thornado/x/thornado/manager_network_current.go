@@ -206,13 +206,8 @@ func (vm *NetworkMgr) btcConsolidationSourceInputs(ctx cosmos.Context, vault Vau
 	candidates := make(map[string]types.TxOutInput)
 	spent := make(map[string]struct{})
 
-	for height := int64(1); height <= ctx.BlockHeight(); height++ {
-		txOut, err := vm.k.GetTxOut(ctx, height)
-		if err != nil {
-			ctx.Logger().Error("fail to get txout while collecting consolidation source inputs", "height", height, "error", err)
-			continue
-		}
-		for _, item := range txOut.TxArray {
+	for _, blk := range txOutsAscending(ctx, vm.k, ctx.BlockHeight(), true) {
+		for _, item := range blk.txOut.TxArray {
 			if !item.OutHash.IsEmpty() {
 				voter, err := vm.k.GetObservedTxOutVoter(ctx, item.OutHash)
 				if err == nil {
@@ -399,7 +394,8 @@ func (vm *NetworkMgr) migrateFunds(ctx cosmos.Context, mgr Manager) error {
 			continue
 		}
 
-		// move partial funds every 30 minutes
+		// full-balance migration, attempted on the interval cadence; partial
+		// rounds happen only when source inputs exceed btcMaxBatchVins
 		if (ctx.BlockHeight()-vault.StatusSince)%migrateInterval == 0 {
 			for _, coin := range availableCoins {
 				// Internal native assets are not migrated. BTC.BTC is an external
@@ -591,24 +587,26 @@ func (vm *NetworkMgr) btcMigrationSourceInputs(ctx cosmos.Context, vault Vault, 
 	spent := make(map[string]struct{})
 	usedOutVouts := make(map[string]map[uint32]struct{})
 
-	for height := int64(1); height <= ctx.BlockHeight(); height++ {
-		txOut, err := vm.k.GetTxOut(ctx, height)
-		if err != nil {
-			ctx.Logger().Error("fail to get txout while collecting migration source inputs", "height", height, "error", err)
-			continue
-		}
-		for _, item := range txOut.TxArray {
+	for _, blk := range txOutsAscending(ctx, vm.k, ctx.BlockHeight(), true) {
+		for _, item := range blk.txOut.TxArray {
 			if item.Chain.Equals(common.BTCChain) && len(item.SourceInputs) > 0 {
 				for _, input := range item.SourceInputs {
 					spent[btcSourceInputKey(input.TxId, input.Vout)] = struct{}{}
 				}
 			}
 			if !item.OutHash.IsEmpty() {
-				key := item.OutHash.String()
+				key := strings.ToLower(item.OutHash.String())
 				if usedOutVouts[key] == nil {
 					usedOutVouts[key] = make(map[uint32]struct{})
 				}
-				usedOutVouts[key][item.OutVout] = struct{}{}
+				// vin-only items carry no vout of their own; registering their
+				// placeholder OutVout would shift the guessed vout for the tx's
+				// real output past the end of the tx (a sweep's 25 zero-amount
+				// items would otherwise prescribe the phantom vout 1 on a
+				// one-output tx)
+				if !btcBatchVinOnlyItem(item) {
+					usedOutVouts[key][item.OutVout] = struct{}{}
+				}
 				voter, err := vm.k.GetObservedTxOutVoter(ctx, item.OutHash)
 				if err == nil {
 					vm.markSpentBTCSourceInputs(spent, voter.Tx.Tx.SourceInputs)
@@ -660,11 +658,21 @@ func (vm *NetworkMgr) btcMigrationSourceInputs(ctx cosmos.Context, vault Vault, 
 				continue
 			}
 			vm.markSpentBTCSourceInputs(spent, tx.SourceInputs)
-			if len(tx.SourceInputs) == 0 || tx.ToAddress.Equals(sourceAddr) || tx.ID.IsEmpty() {
+			if len(tx.SourceInputs) == 0 || tx.ID.IsEmpty() {
 				continue
 			}
-			change := btcObservedOutboundChangeAmount(tx)
-			if change == 0 {
+			var amount uint64
+			if tx.ToAddress.Equals(sourceAddr) {
+				// Vault-internal tx (sweep/consolidate): the destination output
+				// IS the vault's root UTXO. The bifrost classifies these as
+				// protocol outbounds and never posts an inbound observation, and
+				// their txout items are zero-amount vin carriers, so this branch
+				// is the only place that UTXO can be reconstructed.
+				amount = tx.Coins.GetCoin(common.BTCAsset).Amount.Uint64()
+			} else {
+				amount = btcObservedOutboundChangeAmount(tx)
+			}
+			if amount == 0 {
 				continue
 			}
 			vout := nextBTCChangeVout(usedOutVouts[strings.ToLower(tx.ID.String())])
@@ -675,7 +683,7 @@ func (vm *NetworkMgr) btcMigrationSourceInputs(ctx cosmos.Context, vault Vault, 
 			candidates[key] = types.TxOutInput{
 				TxId:       tx.ID,
 				Vout:       vout,
-				AmountSats: change,
+				AmountSats: amount,
 			}
 		}
 	}

@@ -1137,6 +1137,148 @@ func TestBTCMigrationSourceInputsFindsChildInputBatchChange(t *testing.T) {
 	}
 }
 
+func TestBTCMigrationSourceInputsFindsSweepSelfPayOutput(t *testing.T) {
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+	networkMgr := &NetworkMgr{k: k}
+
+	vaultPubKey := GetRandomPubKey()
+	vault := NewVaultV2(20, RetiringVault, BaseVault, vaultPubKey, common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	rootAddr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	childAddr, err := common.DeriveBTCTaprootAddress(vaultPubKey, testUserDepositPathIndex(t, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sweepTx, err := common.NewTxID("9711111111111111111111111111111111111111111111111111111111111111")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// A sweep-only epoch batch pays the vault's OWN root: from = child address,
+	// to = root, destination output = swept total minus gas. It gets no inbound
+	// observation (the bifrost classifies vault-internal txs as protocol
+	// outbounds) and its txout items are zero-amount vin carriers, so the
+	// destination output must be reconstructed from the observed outbound.
+	obs := common.NewObservedTx(
+		common.NewTx(
+			sweepTx,
+			childAddr,
+			rootAddr,
+			common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(499_947_570))),
+			common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(52_430))},
+		),
+		50, vaultPubKey, 50,
+	)
+	obs.Tx.SourceInputs = []common.TxInput{
+		{TxID: GetRandomTxHash(), Vout: 0, AmountSats: 300_000_000},
+		{TxID: GetRandomTxHash(), Vout: 0, AmountSats: 200_000_000},
+	}
+	k.SetObservedTxOutVoter(ctx, ObservedTxVoter{TxID: sweepTx, Txs: common.ObservedTxs{obs}})
+
+	inputs := networkMgr.btcMigrationSourceInputs(ctx, vault, rootAddr, cosmos.NewUint(100_000_000))
+	if len(inputs) != 1 {
+		t.Fatalf("sweep self-pay output must be found for migration, got %d inputs", len(inputs))
+	}
+	if !inputs[0].TxId.Equals(sweepTx) || inputs[0].Vout != 0 {
+		t.Fatalf("expected sweep destination output at vout 0, got %#v", inputs[0])
+	}
+	if inputs[0].AmountSats != 499_947_570 {
+		t.Fatalf("sweep output amount %d != expected 499947570", inputs[0].AmountSats)
+	}
+}
+
+func TestBTCMigrationSourceInputsSweepVinOnlyItemsDoNotShiftSelfPayVout(t *testing.T) {
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+	networkMgr := &NetworkMgr{k: k}
+
+	vaultPubKey := GetRandomPubKey()
+	vault := NewVaultV2(20, RetiringVault, BaseVault, vaultPubKey, common.Chains{common.BTCChain}.Strings(), GetRandomPubKey())
+	rootAddr, err := vault.DeriveBTCAddress(common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	childAddr, err := common.DeriveBTCTaprootAddress(vaultPubKey, testUserDepositPathIndex(t, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sweepTx, err := common.NewTxID("9811111111111111111111111111111111111111111111111111111111111111")
+	if err != nil {
+		t.Fatal(err)
+	}
+	spenderTx, err := common.NewTxID("9822222222222222222222222222222222222222222222222222222222222222")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The settled sweep's txout block: zero-amount vin-only items stamped with
+	// the sweep's out hash and placeholder OutVout 0. They must NOT register
+	// vout 0 as used, or the self-pay candidate is guessed at the phantom
+	// vout 1 (the sweep tx has a single output) — the live bug that prescribed
+	// an unspendable 8.4 BTC migrate on 2026-07-08.
+	items := make([]TxOutItem, 0, 25)
+	for i := 0; i < 25; i++ {
+		items = append(items, TxOutItem{
+			Chain:          common.BTCChain,
+			ToAddress:      rootAddr,
+			VaultPubKey:    vaultPubKey,
+			Coin:           common.NewCoin(common.BTCAsset, cosmos.ZeroUint()),
+			OutHash:        sweepTx,
+			TxType:         types.TxOutTypeSweep,
+			VaultPathIndex: uint64(i + 1),
+		})
+	}
+	k.txOutByHeight[10] = TxOut{Height: 10, TxArray: items}
+
+	sweepObs := common.NewObservedTx(
+		common.NewTx(
+			sweepTx,
+			childAddr,
+			rootAddr,
+			common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(499_947_570))),
+			common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(52_430))},
+		),
+		50, vaultPubKey, 50,
+	)
+	sweepObs.Tx.SourceInputs = []common.TxInput{
+		{TxID: GetRandomTxHash(), Vout: 0, AmountSats: 500_000_000},
+	}
+	k.SetObservedTxOutVoter(ctx, ObservedTxVoter{TxID: sweepTx, Txs: common.ObservedTxs{sweepObs}})
+
+	inputs := networkMgr.btcMigrationSourceInputs(ctx, vault, rootAddr, cosmos.NewUint(100_000_000))
+	if len(inputs) != 1 || inputs[0].Vout != 0 || !inputs[0].TxId.Equals(sweepTx) {
+		t.Fatalf("self-pay candidate must be the sweep's real vout 0, got %#v", inputs)
+	}
+
+	// Once vout 0 is spent by a later observed outbound, the sweep tx must
+	// contribute NO candidate at all — a shifted-vout guess would survive the
+	// spent filter as a phantom input.
+	spenderObs := common.NewObservedTx(
+		common.NewTx(
+			spenderTx,
+			rootAddr,
+			GetRandomBTCAddress(),
+			common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(9_900_000))),
+			common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(5_000))},
+		),
+		60, vaultPubKey, 60,
+	)
+	spenderObs.Tx.SourceInputs = []common.TxInput{
+		{TxID: sweepTx, Vout: 0, AmountSats: 499_947_570},
+	}
+	k.SetObservedTxOutVoter(ctx, ObservedTxVoter{TxID: spenderTx, Txs: common.ObservedTxs{spenderObs}})
+
+	inputs = networkMgr.btcMigrationSourceInputs(ctx, vault, rootAddr, cosmos.NewUint(100_000_000))
+	for _, in := range inputs {
+		if in.TxId.Equals(sweepTx) {
+			t.Fatalf("spent sweep output must not be re-selected (phantom vout %d)", in.Vout)
+		}
+	}
+}
+
 func TestBTCMigrationSourceInputsSelectLargestUTXORegardlessOfDiscoveryOrder(t *testing.T) {
 	ctx := testContext(100)
 	k := newShielderFlowTestKeeper()
@@ -2568,6 +2710,86 @@ func TestBTCInternalOutboundReplayRepairIsIdempotent(t *testing.T) {
 	}
 	if !observedTxOutVoterDone(voter) {
 		t.Fatal("repair did not mark outbound voter done")
+	}
+}
+
+func TestObservedOutboundSettlesOnlyOldestBlockWithDuplicateUnion(t *testing.T) {
+	ctx := testContext(100)
+	k := newShielderFlowTestKeeper()
+	mgr := newShielderFlowTestManager(k)
+
+	vaultPubKey := GetRandomPubKey()
+	rootAddr, err := common.DeriveBTCTaprootAddress(vaultPubKey, common.MainVaultPathIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sweepUTXO, err := common.NewTxID("9811111111111111111111111111111111111111111111111111111111111111")
+	if err != nil {
+		t.Fatal(err)
+	}
+	paidTx, err := common.NewTxID("9822222222222222222222222222222222222222222222222222222222222222")
+	if err != nil {
+		t.Fatal(err)
+	}
+	union := []types.TxOutInput{{TxId: sweepUTXO, Vout: 0, AmountSats: 500_000_000}}
+
+	// Two pending blocks, value-identical, both prescribed the SAME input
+	// union (stale double-prescription). The observed tx pays only block 90's
+	// recipients; by value+inputs the blocks are indistinguishable.
+	makeBlock := func(height int64) TxOut {
+		items := make([]TxOutItem, 0, 2)
+		for i := 0; i < 2; i++ {
+			items = append(items, TxOutItem{
+				Chain:          common.BTCChain,
+				ToAddress:      GetRandomBTCAddress(),
+				VaultPubKey:    vaultPubKey,
+				Coin:           common.NewCoin(common.BTCAsset, cosmos.NewUint(9_900_000)),
+				MaxGas:         common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(5_000))},
+				InHash:         GetRandomTxHash(),
+				VaultPathIndex: common.MainVaultPathIndex,
+				TxType:         types.TxOutTypeOut,
+				SourceInputs:   append([]types.TxOutInput(nil), union...),
+			})
+		}
+		return TxOut{Height: height, TxArray: items}
+	}
+	k.txOutByHeight[90] = makeBlock(90)
+	k.txOutByHeight[91] = makeBlock(91)
+
+	tx := common.NewObservedTx(
+		common.NewTx(
+			paidTx,
+			rootAddr,
+			k.txOutByHeight[90].TxArray[0].ToAddress,
+			common.NewCoins(common.NewCoin(common.BTCAsset, cosmos.NewUint(19_800_000))),
+			common.Gas{common.NewCoin(common.BTCAsset, cosmos.NewUint(8_000))},
+		),
+		99, vaultPubKey, 99,
+	)
+	tx.Tx.SourceInputs = []common.TxInput{{TxID: sweepUTXO, Vout: 0, AmountSats: 500_000_000}}
+
+	matched, newlyMatched := markObservedOutboundTxOutStatus(ctx, mgr, tx)
+	if !matched || !newlyMatched {
+		t.Fatalf("first observation must settle a block, got matched=%v newly=%v", matched, newlyMatched)
+	}
+	settled := k.txOutByHeight[90]
+	for _, item := range settled.TxArray {
+		if !item.OutHash.Equals(paidTx) {
+			t.Fatalf("oldest block 90 must be the settled one, item out=%s", item.OutHash)
+		}
+	}
+
+	// Replayed observation event (finality re-processing / straggler votes):
+	// must be recognized as already settled, and must NOT settle block 91.
+	matched, newlyMatched = markObservedOutboundTxOutStatus(ctx, mgr, tx)
+	if !matched || newlyMatched {
+		t.Fatalf("replayed observation must be already-matched, got matched=%v newly=%v", matched, newlyMatched)
+	}
+	other := k.txOutByHeight[91]
+	for _, item := range other.TxArray {
+		if !item.OutHash.IsEmpty() {
+			t.Fatalf("block 91 was falsely settled by a tx that never paid it: out=%s", item.OutHash)
+		}
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
@@ -81,6 +82,13 @@ const btcMaxBatchRecipients = 9
 // migration here guarantees that even an over-fragmented vault can never build a
 // tx FROST cannot sign (it migrates in ≤64-input rounds instead of wedging).
 const btcMaxBatchVins = 64
+
+// btcUnmatchedOutboundGraceBlocks is how many blocks past the first
+// unmatched-final observation processing the halt is deferred. One block of
+// grace absorbs the observation-finality vs batch-refresh ordering flap;
+// straggler observation votes re-process the tx well within the window, so a
+// genuinely unauthorized spend still halts.
+const btcUnmatchedOutboundGraceBlocks = 1
 
 // btcVaultBatchTxOut returns the txout block collecting the unified epoch batch for
 // the given vault: sweeps and pinned migrates ride as vins, outbounds as vouts, and
@@ -649,6 +657,43 @@ func btcSplitGasCoin(total common.Coin, parts int) []common.Coin {
 	return shares
 }
 
+type txOutAtHeight struct {
+	height int64
+	txOut  *TxOut
+}
+
+// txOutsAscending returns every stored txout block up to maxHeight (exclusive
+// when includeMax is false) in ascending height order. Behaviorally identical
+// to the dense `for h := 1; h <= height; h++ { GetTxOut(h) }` walk it replaces
+// — empty heights contribute nothing — without O(chain-height) store reads per
+// call, which made every block with a pending BTC batch (and every solvency
+// attestation) cost seconds once the chain passed ~100k blocks.
+func txOutsAscending(ctx cosmos.Context, k keeper.Keeper, maxHeight int64, includeMax bool) []txOutAtHeight {
+	res := make([]txOutAtHeight, 0, 64)
+	iter := k.GetTxOutIterator(ctx)
+	if iter == nil {
+		return res
+	}
+	defer func() {
+		if err := iter.Close(); shouldLogIteratorError(err) {
+			ctx.Logger().Error("fail to close txout iterator", "error", err)
+		}
+	}()
+	for ; iter.Valid(); iter.Next() {
+		var txOut TxOut
+		if err := k.Cdc().Unmarshal(iter.Value(), &txOut); err != nil {
+			ctx.Logger().Error("fail to unmarshal txout while scanning ascending", "error", err)
+			continue
+		}
+		if txOut.Height > maxHeight || (!includeMax && txOut.Height == maxHeight) {
+			continue
+		}
+		res = append(res, txOutAtHeight{height: txOut.Height, txOut: &txOut})
+	}
+	sort.Slice(res, func(i, j int) bool { return res[i].height < res[j].height })
+	return res
+}
+
 func selectBTCVaultSourceInputsForOutputs(
 	ctx cosmos.Context,
 	k keeper.Keeper,
@@ -718,13 +763,9 @@ func btcVaultSourceCandidates(ctx cosmos.Context, k keeper.Keeper, vault Vault, 
 	spent := make(map[string]struct{})
 	usedOutVouts := make(map[string]map[uint32]struct{})
 
-	for height := int64(1); height <= ctx.BlockHeight(); height++ {
-		txOut, err := k.GetTxOut(ctx, height)
-		if err != nil {
-			ctx.Logger().Error("fail to get txout while collecting bitcoin source inputs", "height", height, "error", err)
-			continue
-		}
-		for _, item := range txOut.TxArray {
+	for _, blk := range txOutsAscending(ctx, k, ctx.BlockHeight(), true) {
+		height := blk.height
+		for _, item := range blk.txOut.TxArray {
 			samePendingBatch := height == ignoreTxOutHeight &&
 				item.OutHash.IsEmpty() &&
 				item.Chain.Equals(common.BTCChain) &&
@@ -736,7 +777,7 @@ func btcVaultSourceCandidates(ctx cosmos.Context, k keeper.Keeper, vault Vault, 
 				}
 			}
 			if !item.OutHash.IsEmpty() {
-				key := item.OutHash.String()
+				key := strings.ToLower(item.OutHash.String())
 				if usedOutVouts[key] == nil {
 					usedOutVouts[key] = make(map[uint32]struct{})
 				}
@@ -796,14 +837,24 @@ func btcVaultSourceCandidates(ctx cosmos.Context, k keeper.Keeper, vault Vault, 
 					continue
 				}
 				markSpentBTCSourceInputs(spent, tx.SourceInputs)
-				if len(tx.SourceInputs) == 0 || tx.ToAddress.Equals(sourceAddr) || tx.ID.IsEmpty() {
+				if len(tx.SourceInputs) == 0 || tx.ID.IsEmpty() {
 					continue
 				}
-				change := btcObservedOutboundChangeAmount(tx)
-				if change == 0 {
+				var amount uint64
+				if tx.ToAddress.Equals(sourceAddr) {
+					// Vault-internal tx (sweep/consolidate): the destination output
+					// IS the vault's root UTXO. The bifrost classifies these as
+					// protocol outbounds and never posts an inbound observation, and
+					// their txout items are zero-amount vin carriers, so this branch
+					// is the only place that UTXO can be reconstructed.
+					amount = tx.Coins.GetCoin(common.BTCAsset).Amount.Uint64()
+				} else {
+					amount = btcObservedOutboundChangeAmount(tx)
+				}
+				if amount == 0 {
 					continue
 				}
-				vout := nextBTCChangeVout(usedOutVouts[tx.ID.String()])
+				vout := nextBTCChangeVout(usedOutVouts[strings.ToLower(tx.ID.String())])
 				key := btcSourceInputKey(tx.ID, vout)
 				if _, ok := candidates[key]; ok {
 					continue
@@ -812,7 +863,7 @@ func btcVaultSourceCandidates(ctx cosmos.Context, k keeper.Keeper, vault Vault, 
 					input: types.TxOutInput{
 						TxId:       tx.ID,
 						Vout:       vout,
-						AmountSats: change,
+						AmountSats: amount,
 					},
 					height: observed.BlockHeight,
 				}

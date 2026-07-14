@@ -283,13 +283,8 @@ func excludePendingOutboundFromVault(ctx cosmos.Context, mgr Manager, vault Vaul
 	}
 	pendingMigrate := make(map[string]cosmos.Uint)
 	seenSignedOutHashes := make(map[common.TxID]struct{})
-	for i := int64(1); i < ctx.BlockHeight(); i++ {
-		blockOut, err := mgr.Keeper().GetTxOut(ctx, i)
-		if err != nil {
-			ctx.Logger().Error("fail to get block tx out", "error", err)
-			return vault, pendingMigrate, fmt.Errorf("fail to get block tx out, err: %w", err)
-		}
-		vault = deductVaultBlockPendingOutbound(ctx, mgr, vault, blockOut, i >= startHeight, seenSignedOutHashes, pendingMigrate)
+	for _, blk := range txOutsAscending(ctx, mgr.Keeper(), ctx.BlockHeight(), false) {
+		vault = deductVaultBlockPendingOutbound(ctx, mgr, vault, blk.txOut, blk.height >= startHeight, seenSignedOutHashes, pendingMigrate)
 	}
 	return vault, pendingMigrate, nil
 }
